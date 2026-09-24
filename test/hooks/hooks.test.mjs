@@ -107,6 +107,16 @@ test("guard.bash judges the command a harness verb would run, so the allow rule 
   rmSync(root, { recursive: true, force: true });
 });
 
+// branching --into (steps/10-create.md) relies on these two classifications: switch falls
+// through to the permission prompt, checkout stays hard-denied.
+test("guard.bash lets git switch -c through to the prompt and keeps git checkout -b denied", () => {
+  const { root } = project();
+  const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
+  assert.equal(decision("git -C src/Api/.worktrees/feat-a switch -c feat-b feat-a"), null);
+  assert.equal(decision("git -C src/Api/.worktrees/feat-a checkout -b feat-b"), "deny");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("emit.ledger attributes a Stop without an agent id to the lead, not to the agent it spawned", () => {
   const { root, id } = project();
   const tp = transcript(root, [user("build it"), assistant([tool("Agent", { subagent_type: "architect", description: "Write the order" })]), assistant([{ type: "text", text: `▶ ${id} · phase 1/1 done\n[a] approve · [x] reject: <why>` }])]);

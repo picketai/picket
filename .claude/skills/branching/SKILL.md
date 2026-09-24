@@ -6,7 +6,8 @@ description: >
   hydrated on the way in and released on the way out. Use when the user says "start a branch",
   "spin up a worktree", "resume work on <branch>", "set up branches for this feature", "list
   my worktrees", or "tear down the worktree for <branch>". Needs an explicit branch name and
-  never invents one. `/branching <branch>`, `/branching --list [branch]`, `/branching --remove
+  never invents one. `/branching <branch>`, `/branching <branch> --into <branch|path> [--from
+  <base>]` (branch inside an existing worktree), `/branching --list [branch]`, `/branching --remove
   <branch>`. The developer reads it at a work item's first phase when the project has nested repos.
 user-invocable: true
 ---
@@ -26,6 +27,7 @@ Scan is read-only: for each child with a `.git` entry or a passing `git rev-pars
 | Input | Operation | Read |
 |---|---|---|
 | `<branch>` | create or resume | `steps/10-create.md` |
+| `<branch> --into <branch\|path> [--from <base>]` | create inside an existing linked worktree (switch it onto `<branch>`), from `<base>` or its current HEAD | `steps/10-create.md` |
 | `--list [branch]` | list, read-only: `git -C <repo> worktree list` per repo, filtered to the branch when given | none |
 | `--remove <branch>` | scoped removal | `steps/20-remove.md` |
 
@@ -33,7 +35,7 @@ A branch name is mandatory for create and remove. Missing: print the operations 
 
 ## Invariants
 
-Feature-scoped naming: branch and worktree path (`<repo>/.worktrees/<branch with / and spaces as ->`) derive from the explicit name, never random; a clash gives git's loud "already checked out", never corruption. Resume before create. Scoped teardown: only the named worktree, prune only in that repo after listing its registrations. Submodules hydrated on entry and released on exit, each gated on `submodule status`, never with `--force` against unsurveyed content. No shared untracked state: each worktree owns its `node_modules`, build output and `.env`.
+Feature-scoped naming: branch and worktree path (`<repo>/.worktrees/<branch with / and spaces as ->`) derive from the explicit name, never random; a clash gives git's loud "already checked out", never corruption. One exception: with `--into` the worktree folder keeps its original name, and the branch it held before (the displaced branch) is checked out nowhere, its ref untouched. Resume before create. Scoped teardown: only the named worktree, prune only in that repo after listing its registrations. Submodules hydrated on entry and released on exit, each gated on `submodule status`, never with `--force` against unsurveyed content. No shared untracked state: each worktree owns its `node_modules`, build output and `.env`.
 
 Every mutating `git worktree`, `git submodule` or deletion command is shown for confirmation before it runs. Deletion commands are guard-denied unless every operand names a path inside a `.worktrees/<name>` directory, quoted; a refusal means the path is wrong, not that another tool should be tried.
 
@@ -41,4 +43,4 @@ Runtime collisions between worktrees (ports, a shared dev database) are out of s
 
 ## Report
 
-Manifest state (created, healed, unchanged); then per repo: resumed or created worktree with path and base, submodules hydrated or left alone; or the listing; or what was removed, which rung cleared it, which submodules were released first, and that the branch ref itself still exists.
+Manifest state (created, healed, unchanged); then per repo: resumed or created worktree with path and base, submodules hydrated or left alone; for INTO, the worktree path, new branch, base, displaced branch and the switch-back command `/branching <displaced> --into <branch>`; or the listing; or what was removed, which rung cleared it, which submodules were released first, and that the branch ref itself still exists.
