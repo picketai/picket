@@ -44,6 +44,38 @@ test("route.verdict applies PHASE DONE from a developer block and reports the ne
   rmSync(root, { recursive: true, force: true });
 });
 
+test("route.verdict reads the block a subagent handed back, not the paraphrase after it", () => {
+  const { root, id } = project();
+  // The lead's transcript opens with the user's request, so it holds no `work:` hint.
+  const main = join(root, "main.jsonl");
+  writeFileSync(main, JSON.stringify(user("fix the export")) + "\n");
+  const block = `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE`;
+  const own = transcript(root, [
+    user(`work: ${id}\nphase: 1\nartifact: work/${id}/order.md`),
+    assistant([tool("SubagentHandback", { message: block })]),
+    { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t", content: "Report delivered to your caller." }] } },
+    assistant([{ type: "text", text: "Phase 1 is staged and waits for approval.\n\nPHASE DONE" }]),
+  ]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s4", transcript_path: main, agent_transcript_path: own, cwd: root, agent_type: "developer" }, root);
+  assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.equal(readFileSync(join(root, "work", id, "phases", "1.block.md"), "utf8").includes("Files: src/a.ts"), true, "the saved block is the handed-back one");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("route.verdict ignores a hand-back from an earlier turn of the same agent", () => {
+  const { root, id } = project();
+  const own = transcript(root, [
+    user(`work: ${id}\nphase: 1`),
+    assistant([tool("SubagentHandback", { message: `## Phase 1 of ${id}: A\n\nDone.\n\nPHASE DONE` })]),
+    user("what did you change in src/a.ts?"),
+    assistant([{ type: "text", text: "Only the export header." }]),
+  ]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s5", transcript_path: own, agent_transcript_path: own, cwd: root, agent_type: "developer" }, root);
+  assert.equal(out, null);
+  assert.equal(deriveState(id, root).phases[0].done, false);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("guard.block bounces a contract block without a token and passes one with it", () => {
   const { root, id } = project();
   const bad = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nI think this is approved.` }])]);

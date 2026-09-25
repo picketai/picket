@@ -85,9 +85,38 @@ function lastAssistantEntry(path) {
   return null;
 }
 
+// The assistant entries of the turn that just ended, newest first: everything after the last
+// request, which is a `user` entry that is not a tool result coming back.
+function currentTurnAssistantEntries(path) {
+  let chunk;
+  try {
+    chunk = readTail(path, WINDOWS[1]);
+  } catch {
+    return [];
+  }
+  const out = [];
+  const lines = chunk.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    let entry;
+    try {
+      entry = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    if (entry?.type === "assistant" && Array.isArray(entry.message?.content)) out.push(entry);
+    if (entry?.type === "user") {
+      const content = entry.message?.content;
+      if (!(Array.isArray(content) && content.some((c) => c?.type === "tool_result"))) break;
+    }
+  }
+  return out;
+}
+
 // --- Candidate texts -------------------------------------------------------
 // SendMessage is matched loosely: the team tool may surface plain or MCP-scoped.
-const SEND_TOOLS = /(^|__)SendMessage$/;
+// SubagentHandback is how a subagent delivers its report to the caller (Claude Code 2.1.280 on):
+// the block goes in its `message`, and the final text after it is often a paraphrase with no heading.
+const SEND_TOOLS = /(^|__)(SendMessage|SubagentHandback)$/;
 // Preferred payload keys, then longest-string fallback — so a field rename in
 // the team tool degrades to "still finds the body" rather than "sees nothing".
 const BODY_KEYS = ["message", "content", "text", "body", "summary", "prompt"];
@@ -109,16 +138,13 @@ function bodyFromToolInput(input) {
 }
 
 // --- Contract detection ----------------------------------------------------
-// Order is load-bearing and must match the previous emit.metrics.mjs order, so
-// the same text keeps classifying to the same block across this change.
+// The agents' contract headings (the <output_format> blocks in .claude/agents/). First match wins.
 const BLOCKS = [
-  ["crosscheck", /^##\s+Cross-check:/m],
-  ["cumulative", /^##\s+Cumulative Review\s+—/m],
-  ["perphase", /^##\s+Phase Review\s+—/m],
-  ["amendment", /^##\s+Architect Amendment\s+—/m],
-  ["all-phases", /^##\s+All Phases Complete\s+—/m],
-  ["phase", /^##\s+Phase\s+\d+\s+(Complete|Stalled)\s+—/m],
-  ["discussion", /^Mode:\s+Discussion/m],
+  ["phase", /^##\s+Phase\s+\d+\s+of\s+[a-z0-9-]+/m],
+  ["review", /^##\s+Review:\s+[a-z0-9-]+/m],
+  ["artifact", /^##\s+(Order|Design|Amendment):\s+[a-z0-9-]+/m],
+  ["report", /^##\s+Report:\s+[a-z0-9-]+/m],
+  ["expedited", /^##\s+Expedited:\s+[a-z0-9-]+/m],
 ];
 
 export function detectBlock(text) {
@@ -150,8 +176,9 @@ export function detectScope(text) {
 
 // --- The one entry point both hooks call -----------------------------------
 // Returns the turn's contract text plus the model that produced it, from a
-// single tail read. Candidate order: SendMessage payloads (newest first), then
-// the final assistant text, then the harness-supplied last_assistant_message.
+// single tail read. Candidate order: SendMessage and SubagentHandback payloads
+// from anywhere in the current turn (newest first), then the final assistant
+// text, then the harness-supplied last_assistant_message.
 // The first candidate carrying a recognised block header wins; with none, the
 // plain final text is returned so non-block turns behave exactly as before.
 //
@@ -169,16 +196,18 @@ export function readTurn(data, { includeToolPayloads = isSubagentTurn(data) } = 
   const entry = path && existsSync(path) ? lastAssistantEntry(path) : null;
   if (entry) {
     model = entry.message?.model ?? null;
-    const content = entry.message.content;
     if (includeToolPayloads)
-      for (let i = content.length - 1; i >= 0; i--) {
-        const c = content[i];
-        if (c?.type === "tool_use" && SEND_TOOLS.test(c.name ?? "")) {
-          const body = bodyFromToolInput(c.input);
-          if (body.trim()) candidates.push(body);
+      for (const turnEntry of currentTurnAssistantEntries(path)) {
+        const content = turnEntry.message.content;
+        for (let i = content.length - 1; i >= 0; i--) {
+          const c = content[i];
+          if (c?.type === "tool_use" && SEND_TOOLS.test(c.name ?? "")) {
+            const body = bodyFromToolInput(c.input);
+            if (body.trim()) candidates.push(body);
+          }
         }
       }
-    const text = content
+    const text = entry.message.content
       .filter((c) => c?.type === "text")
       .map((c) => c.text)
       .join("\n");

@@ -4,7 +4,7 @@
 // relaying a block. Never blocks; a failure is reported as context and the turn ends normally.
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { readTurn, spawnHints, blockLines } from "./lib/transcript.mjs";
+import { readTurn, spawnHints, blockLines, agentTranscript } from "./lib/transcript.mjs";
 import { findVerdict, route } from "../lib/route.mjs";
 import { projectRoot } from "../lib/work.mjs";
 import { saveBlock } from "../lib/packet.mjs";
@@ -37,7 +37,8 @@ try {
         break;
       }
     }
-    const hints = spawnHints(data.transcript_path);
+    // The spawn message lives in the agent's own transcript; `transcript_path` is the lead's.
+    const hints = spawnHints(agentTranscript(data));
     const id = info?.id ?? hints.work_id;
     if (info?.scope === "pr") {
       // A pull request review has no work item to advance; keep the block for the post-back step.
