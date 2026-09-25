@@ -15,7 +15,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "node --test test/ bench/test/",
+    "test": "node --test --test-concurrency=1 test/ bench/test/",
     "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
     "lint:agents": "node scripts/lint-agents.mjs",
     "lint:contract": "node .claude/hooks/lint.contract.mjs",
