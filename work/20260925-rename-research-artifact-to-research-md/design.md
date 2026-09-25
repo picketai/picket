@@ -132,3 +132,5 @@ Claude Code's built-in Write validation refuses any Write from a subagent whose 
 none
 
 ## Revision log
+
+- 2026-09-25: out of plan: package.json runs `npm test` with `--test-concurrency=1` (cd0dbea); the hook cold-start budget failed only under parallel load, blocking T-2.6.
