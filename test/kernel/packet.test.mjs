@@ -63,6 +63,16 @@ test("a missing block degrades to 'not reported', a blocked item shows the reaso
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a research packet points at work/<id>/research.md", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-packet-"));
+  mkdirSync(join(root, ".claude"));
+  const s = createWork({ lane: "research", title: "How pricing works", root });
+  writeFileSync(join(root, "work", s.id, "research.md"), "---\nkind: report\n---\n# Report\n\n## Summary\n\nPricing is computed per invoice line.\n");
+  const { text } = packet(s.id, root);
+  assert.match(text, new RegExp(`^  report {4}work/${s.id}/research\\.md$`, "m"));
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("cut keeps short strings and ends long ones with an ellipsis inside the limit", () => {
   assert.equal(cut("short", 10), "short");
   assert.equal(cut("a".repeat(20), 10).length, 10);

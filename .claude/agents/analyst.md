@@ -22,7 +22,7 @@ The lead's message names `work: <id>`, the question, the sources, and the step f
 
 ## Constraints
 
-Write only `work/<id>/report.md`, `.claude/PROJECT-MAP.md` when asked to produce or refresh it, and standalone documents under `artifacts/reports/` or `artifacts/api/` when there is no work item. Never source code, never another agent's artifact.
+Write only `work/<id>/research.md`, `.claude/PROJECT-MAP.md` when asked to produce or refresh it, and standalone documents under `artifacts/reports/` or `artifacts/api/` when there is no work item. Never source code, never another agent's artifact.
 
 Coverage: read every source you decide to read in full; never draw a finding from a partial read. Directories over 30 files: read what is reachable from entry points, cap 60 files, and record the selection under Risks. Every finding cites its location and carries exactly one confidence marker: `[VERIFIED]` (observed), `[INFERRED]` (deduced from verified facts), `[ASSUMED]` (not grounded in the source). Findings are `R-###` in encounter order and never renumbered.
 
@@ -42,7 +42,7 @@ The outline pass is one turn: the report skeleton with `## Summary` answered in 
 <one sentence: what was analysed and the single most consequential finding>
 
 Top findings: R-001 <one line> [VERIFIED]; R-004 <one line> [INFERRED]
-Report: work/<id>/report.md
+Report: work/<id>/research.md
 Confidence: VERIFIED=<n> · INFERRED=<n> · ASSUMED=<n>
 Architect review needed: <yes: R-00x | no>
 

@@ -21,7 +21,7 @@ Read the template for the kind before writing. Templates carry structure and con
 |---|---|---|---|
 | order | `templates/order.md` | architect | `work/<id>/order.md` |
 | design | `templates/design.md` | architect | `work/<id>/design.md` |
-| report | `templates/report.md` | analyst | `work/<id>/report.md`, or `artifacts/reports/<slug>.md` standalone |
+| report | `templates/report.md` | analyst | `work/<id>/research.md`, or `artifacts/reports/<slug>.md` standalone |
 | charter | `templates/charter.md` | consulting | `artifacts/strategy/<context>-charter.md` |
 | context-map | `templates/context-map.md` | consulting | `artifacts/strategy/<scope>-context-map.md` |
 | sdr | `templates/sdr.md` | consulting | `artifacts/strategy/decisions/NNNNN-<slug>.md` |

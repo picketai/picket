@@ -1,7 +1,7 @@
 // The work item: one directory under work/<id>/ whose files ARE the state.
 //
 //   work/<id>/state.yaml        id, lane, title, status, created, updated, blocked_reason
-//   work/<id>/{order,design,report}.md   the lane's artifact; phases are `## Phase N` headings,
+//   work/<id>/{order,design,research}.md the lane's artifact; phases are `## Phase N` headings,
 //                               must_haves live in the frontmatter (see verify.mjs)
 //   work/<id>/phases/N.done     marker: developer finished phase N (content = ISO timestamp)
 //   work/<id>/phases/N.approved marker: user approved phase N
@@ -24,7 +24,7 @@ function gitHead(root) {
 
 export const LANES = ["fast", "order", "design", "research"];
 export const STATUSES = ["open", "blocked", "done", "abandoned"];
-export const ARTIFACT_BY_LANE = { fast: null, order: "order.md", design: "design.md", research: "report.md" };
+export const ARTIFACT_BY_LANE = { fast: null, order: "order.md", design: "design.md", research: "research.md" };
 
 export function projectRoot(from = process.cwd()) {
   if (process.env.CLAUDE_PROJECT_DIR) return resolve(process.env.CLAUDE_PROJECT_DIR);

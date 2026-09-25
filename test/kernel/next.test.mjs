@@ -62,6 +62,8 @@ test("blocked items ask the user; fast and research have their own shapes", () =
   const q = createWork({ lane: "research", title: "How", root: r });
   assert.deepEqual([next(q.id, r).action, next(q.id, r).actor], ["write_artifact", "analyst"]);
   writeFileSync(join(r, "work", q.id, "report.md"), "# Report\n");
+  assert.equal(next(q.id, r).action, "write_artifact", "the old report.md name is not read: no fallback");
+  writeFileSync(join(r, "work", q.id, "research.md"), "# Report\n");
   assert.equal(next(q.id, r).action, "approve_phase");
   rmSync(r, { recursive: true, force: true });
 });

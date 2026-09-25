@@ -5,7 +5,7 @@
 // same every time, and the lead prints it verbatim.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { deriveState, projectRoot, readArtifact, workDir } from "./work.mjs";
+import { ARTIFACT_BY_LANE, deriveState, projectRoot, readArtifact, workDir } from "./work.mjs";
 import { next } from "./next.mjs";
 
 export const WIDTH = 100;
@@ -138,7 +138,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(`▶ ${deep ? "report" : "outline"} ready · ${id}`);
     lines.push(`  ${firstSentence(summary || s.title, width - 2)}`);
     lines.push("");
-    lines.push(field("report", `work/${id}/report.md`, width));
+    lines.push(field("report", `work/${id}/${ARTIFACT_BY_LANE.research}`, width));
     lines.push(field("findings", String(findings), width));
   } else if (n.action === "resolve_block") {
     const raw = s.current_phase ? readBlock(id, s.current_phase, root) : null;

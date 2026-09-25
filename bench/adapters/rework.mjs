@@ -51,7 +51,7 @@ export function signals(texts, summary) {
 }
 
 export function reportFiles(repo) {
-  return [...filesMatching(repo, "work/*/report.md"), ...filesMatching(repo, "artifacts/reports/*.md")];
+  return [...filesMatching(repo, "work/*/research.md"), ...filesMatching(repo, "artifacts/reports/*.md")];
 }
 
 export const allowedTools = trunk.allowedTools;

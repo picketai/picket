@@ -29,7 +29,7 @@ Keep every heading and required checklist item; tick `- [x]` only what the evide
 ## Sources, in priority order
 
 1. Git, the ground truth: `git -C <repo> log <default>..HEAD --oneline` and `git -C <repo> diff <default>...HEAD --stat`. Uncommitted work is named as such, never claimed.
-2. The work item: `work/<id>/order.md` or `design.md` decisions, `verdicts.jsonl` (phase blocks carry tests, lint, verification; the reviewer's `APPROVED`), `report.md` hooks.
+2. The work item: `work/<id>/order.md` or `design.md` decisions, `verdicts.jsonl` (phase blocks carry tests, lint, verification; the reviewer's `APPROVED`), `research.md` hooks.
 3. The conversation, for user rulings and deferred items the files do not carry.
 
 Write for the PR reviewer: what changed, why, how it was verified, what is deliberately out of scope. Cite verdicts factually ("cumulative review APPROVED, 12/12 criteria PASS"). Failed or skipped tests are stated.

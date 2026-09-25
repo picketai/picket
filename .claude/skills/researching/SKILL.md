@@ -40,7 +40,7 @@ node .claude/bin/harness.mjs packet <id>
 ▶ outline ready · <id>
   <the report's first Summary sentence>
 
-  report    work/<id>/report.md
+  report    work/<id>/research.md
   findings  4
 
 [a] accept   [d] deeper pass   [x] reject: <why>
@@ -54,9 +54,9 @@ node .claude/bin/harness.mjs packet <id>
 ## Report: <id>
 
 <the report's one-sentence answer>
-Report: work/<id>/report.md · findings: <n> · architect review: <yes: R-00x | no>
+Report: work/<id>/research.md · findings: <n> · architect review: <yes: R-00x | no>
 ```
 
 ## Rules of the lane
 
-The analyst writes `work/<id>/report.md` only and never proposes designs; a finding that needs a decision is flagged `[ARCHITECT REVIEW NEEDED]` and the lead offers `ordering` or `designing` in the closing line. Ticket pulls are part of ingestion; any ticket write is surfaced for the user's confirmation before it happens.
+The analyst writes `work/<id>/research.md` only and never proposes designs; a finding that needs a decision is flagged `[ARCHITECT REVIEW NEEDED]` and the lead offers `ordering` or `designing` in the closing line. Ticket pulls are part of ingestion; any ticket write is surfaced for the user's confirmation before it happens.

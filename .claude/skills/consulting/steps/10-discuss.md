@@ -1,6 +1,6 @@
 # Consulting, step 1: discuss
 
-Read, in one batch and bounded by the question: `.claude/MEMORY.md` (the glossary and decision log), any report or design record the user named (else the newest `work/*/report.md` if one plainly frames the question), and the strategic artifacts under `artifacts/strategy/` whose contexts appear in the question (charters in full, context maps that overlap, SDRs by status and `## Decision`).
+Read, in one batch and bounded by the question: `.claude/MEMORY.md` (the glossary and decision log), any report or design record the user named (else the newest `work/*/research.md` if one plainly frames the question), and the strategic artifacts under `artifacts/strategy/` whose contexts appear in the question (charters in full, context maps that overlap, SDRs by status and `## Decision`).
 
 Frame the question in your own words. When your framing differs from the user's, say so before answering; the job is to challenge thin reasoning, not to rephrase it.
 
