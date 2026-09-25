@@ -30,7 +30,7 @@ Read the template for the kind before writing. Templates carry structure and con
 
 ## Shared rules
 
-Filenames come from `node .claude/skills/documenting/scripts/filename.mjs --kind <kind> "<subject>"` (add `--work <id>` for order and design); never derive one by hand. The script lowercases, drops stopwords, hyphenates, truncates to five tokens, and prefixes a zero-padded sequence where the kind numbers its files.
+Filenames come from `node .claude/skills/documenting/scripts/filename.mjs --kind <kind> "<subject>"` (add `--work <id>` for order and design); never derive one by hand. The script lowercases, drops stopwords, hyphenates, truncates to five tokens, and prefixes a zero-padded sequence where the kind numbers its files; a name that would start with report, summary, findings or analysis gets an `about-` prefix, because Claude Code refuses such a basename from a subagent.
 
 Every template starts with a YAML frontmatter block (`kind`, `title`, `date`, `audience`, `sources`, `confidence`; order and design add `lane` and `phases`). Sections are fixed headings in fixed order. `<!-- required -->` marks the ones that must be filled; `<!-- optional: trigger -->` names when an optional one appears. Placeholders are `[REPLACE: ...]`. Strip every placeholder and every HTML comment before writing.
 

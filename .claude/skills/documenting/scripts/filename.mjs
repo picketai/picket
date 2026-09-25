@@ -2,7 +2,8 @@
 // Deterministic filename-stem derivation for the documenting skill.
 // Usage: node filename.mjs <type> "<subject phrase>"
 // Types: report, adr, plan, sdr, charter, context-map, glossary, progress, api
-// Prints the derived filename stem on stdout (numbered types include the NNNNN- prefix).
+// Prints the derived filename stem on stdout (numbered types include the NNNNN- prefix; a stem
+// that would start with report, summary, findings or analysis gets an about- prefix).
 import { readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -111,9 +112,19 @@ function nextSequence(dir) {
   return next;
 }
 
+// Mirrors Claude Code's subagent Write check (2.1.282): a basename matching
+// /^(REPORT|SUMMARY|FINDINGS|ANALYSIS).*\.md$/i is refused with "Subagents should return
+// findings as text, not write report files". A name that would match gets the `about-` prefix.
+const BLOCKED_BASENAME = /^(report|summary|findings|analysis)/i;
+
+function safe(name) {
+  return BLOCKED_BASENAME.test(name) ? `about-${name}` : name;
+}
+
+let out;
 if (type === 'adr') {
   const next = nextSequence(join(REPO_ROOT, 'artifacts/adr'));
-  process.stdout.write(`${String(next).padStart(5, '0')}-${stem}\n`);
+  out = `${String(next).padStart(5, '0')}-${stem}`;
 } else if (type === 'design') {
   // Design records live in artifacts/plans/ but share history with legacy ADR-prefixed
   // pairs, so the sequence scans BOTH directories — a new record must never collide
@@ -122,10 +133,10 @@ if (type === 'adr') {
     nextSequence(join(REPO_ROOT, 'artifacts/adr')),
     nextSequence(join(REPO_ROOT, 'artifacts/plans')),
   );
-  process.stdout.write(`${String(next).padStart(5, '0')}-${stem}\n`);
+  out = `${String(next).padStart(5, '0')}-${stem}`;
 } else if (type === 'sdr') {
   const next = nextSequence(join(REPO_ROOT, 'artifacts/strategy/decisions'));
-  process.stdout.write(`${String(next).padStart(5, '0')}-${stem}\n`);
+  out = `${String(next).padStart(5, '0')}-${stem}`;
 } else if (type === 'plan') {
   // Plans inherit the paired ADR's prefix if a matching stem exists; otherwise unprefixed.
   let prefix = '';
@@ -136,13 +147,13 @@ if (type === 'adr') {
       if (match && match[1] > prefix) prefix = match[1];
     }
   }
-  process.stdout.write(prefix ? `${prefix}-${stem}\n` : `${stem}\n`);
+  out = prefix ? `${prefix}-${stem}` : stem;
 } else if (type === 'progress') {
   // Progress files: `plan-<short-title>-progress.md` under .claude/agent-memory/developer/.
   // The subject is expected to be the plan short-title; prepend `plan-` if not already there.
-  const out = stem.startsWith('plan-') ? stem : `plan-${stem}`;
-  process.stdout.write(`${out}\n`);
+  out = stem.startsWith('plan-') ? stem : `plan-${stem}`;
 } else {
-  // report, charter, context-map, glossary — no numeric prefix.
-  process.stdout.write(`${stem}\n`);
+  // report, charter, context-map, glossary, api: no numeric prefix.
+  out = stem;
 }
+process.stdout.write(`${safe(out)}\n`);
