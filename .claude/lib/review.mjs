@@ -1,11 +1,13 @@
 // The review summary: everything the reviewer used to detect for itself, computed once by code.
-// size class, frameworks, concerns, security paths, changed files, and the diff base.
+// size class, frameworks, concerns, security paths, changed files, and the diff base, across the
+// project root and every nested repo (repos.mjs).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { deriveState, projectRoot } from "./work.mjs";
 import { DEFAULT_SECURITY_PATHS } from "./admit.mjs";
 import * as git from "./git.mjs";
+import { nestedRepos, readBases } from "./repos.mjs";
 
 export const SIZE = Object.freeze({ small: { files: 3, lines: 50 }, medium: { files: 10, lines: 400 } });
 
@@ -118,12 +120,17 @@ export function reviewSummary(id, o = {}) {
   const root = o.root ?? projectRoot();
   const s = deriveState(id, root);
   const base = o.base ?? s.base ?? "HEAD";
-  const changed = git.changedSince(root, base).filter((f) => !/^(work\/|\.claude\/|artifacts\/)/.test(f));
-  const { added, removed } = numstat(root, base);
+  const nested = nestedChanges(id, root, s.branch);
+  // The root sees a nested repo as one untracked directory entry; its files are counted below instead.
+  const nestedEntries = new Set(nested.flatMap((r) => [r.path, `${r.path}/`]));
+  const rootChanged = git.changedSince(root, base).filter((f) => !/^(work\/|\.claude\/|artifacts\/)/.test(f) && !nestedEntries.has(f));
+  const changed = [...rootChanged, ...nested.flatMap((r) => r.changed)].sort();
+  const { added, removed } = nested.reduce((sum, r) => ({ added: sum.added + r.added, removed: sum.removed + r.removed }), numstat(root, base));
   const sec = securityPaths(root);
   return {
     work_id: id,
     base,
+    request: existsSync(join(root, "work", id, "request.md")) ? `work/${id}/request.md` : null,
     size: sizeClass(changed.length, added + removed),
     changed_files: changed,
     lines_added: added,
@@ -132,5 +139,34 @@ export function reviewSummary(id, o = {}) {
     concerns: detectConcerns(root, changed),
     security_path: changed.some((f) => sec.some((p) => f.startsWith(p))),
     phases: s.phase_count,
+    repos: nested.filter((r) => r.skipped || r.changed.length).map(repoReport),
   };
+}
+
+/** One `repos` entry of the summary: a touched repo with its file count, or a skipped one with why. */
+function repoReport({ path, worktree, base, base_from, changed, skipped }) {
+  if (skipped) return { path, worktree, base: null, skipped };
+  return { path, worktree, base, base_from, files: changed.length };
+}
+
+/**
+ * Each nested repo diffed in its work tree: the linked worktree on the item's branch when there is
+ * one, else the repo path; against the base recorded at `harness new`, else merge-base with the
+ * repo's default branch. Changed paths come back prefixed with the repo path.
+ */
+function nestedChanges(id, root, branch) {
+  const bases = readBases(id, root);
+  return nestedRepos(root).map((repo) => {
+    const repoDir = join(root, repo.path);
+    const entry = { path: repo.path, worktree: null, base: null, changed: [], added: 0, removed: 0 };
+    if (!git.isRepo(repoDir)) return { ...entry, skipped: "not a git repository" };
+    const worktree = ((branch && git.worktreeOnBranch(repoDir, branch)) || repoDir).replaceAll("\\", "/");
+    const recorded = bases[repo.path];
+    const fallbackBranch = recorded ? null : (repo.default_branch ?? git.defaultBranch(worktree));
+    const base = recorded ?? (fallbackBranch && git.mergeBase(worktree, "HEAD", fallbackBranch));
+    if (!base) return { ...entry, worktree, skipped: "no recorded base and no default branch to merge-base with" };
+    const { added, removed } = numstat(worktree, base);
+    const changed = git.changedSince(worktree, base).map((f) => `${repo.path}/${f}`);
+    return { ...entry, worktree, base, base_from: recorded ? "recorded" : "merge-base", changed, added, removed };
+  });
 }

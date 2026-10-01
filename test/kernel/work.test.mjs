@@ -1,9 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 import { createWork, deriveState, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../.claude/lib/work.mjs";
+
+const BIN = resolve(".claude/bin/harness.mjs");
 
 function tempRoot() {
   const root = mkdtempSync(join(tmpdir(), "harness-work-"));
@@ -23,6 +26,21 @@ test("create, read, list", () => {
   assert.deepEqual(listWork(root), [s.id]);
   assert.throws(() => createWork({ lane: "order", title: "Summary endpoint", root, now: new Date("2026-09-07T10:00:00Z") }), /already exists/);
   assert.throws(() => createWork({ lane: "huge", title: "x", root }), /lane must be/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("harness new saves --text and --request byte for byte as request.md, and nothing without them (T-1.5)", () => {
+  const root = tempRoot();
+  const text = 'Add a "fee" rule\nline two, with a trailing space ';
+  const run = (...args) => JSON.parse(execFileSync("node", [BIN, "new", "--lane", "order", ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } }));
+  const a = run("--title", "With text", "--text", text);
+  assert.equal(readFileSync(join(root, "work", a.id, "request.md"), "utf8"), text);
+  const file = join(root, "req.txt");
+  writeFileSync(file, "from a file\r\nkept CRLF\r\n");
+  const b = run("--title", "With file", "--request", file);
+  assert.deepEqual(readFileSync(join(root, "work", b.id, "request.md")), readFileSync(file));
+  const c = run("--title", "Without");
+  assert.equal(existsSync(join(root, "work", c.id, "request.md")), false);
   rmSync(root, { recursive: true, force: true });
 });
 

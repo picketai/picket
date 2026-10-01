@@ -3,9 +3,11 @@
 Open the item (skip when a `--id` from an escalating lane already exists):
 
 ```
-node .claude/bin/harness.mjs new --lane order --title "<six-word title>"
+node .claude/bin/harness.mjs new --lane order --title "<six-word title>" --text "<the request, verbatim>"
 node .claude/bin/harness.mjs preflight <id> --human
 ```
+
+The kernel saves the request as `work/<id>/request.md`, which the cumulative review traces against. A request with quotes or newlines goes in a scratchpad file passed as `--request <file>` instead.
 
 Preflight `fail` lines stop you here; print them and ask. `warn` lines are passed to the architect verbatim.
 

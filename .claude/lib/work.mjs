@@ -7,12 +7,15 @@
 //   work/<id>/phases/N.approved marker: user approved phase N
 //   work/<id>/phases/N.reviewed marker: reviewer passed phase N (checkpoint or cumulative)
 //   work/<id>/verdicts.jsonl    one line per verdict: { ts, agent, verdict, phase }
+//   work/<id>/request.md        the request as given to `harness new`, written once (optional)
+//   work/<id>/repos.yaml        each nested repo's HEAD at creation (see repos.mjs)
 //
 // Nothing in here is remembered by a model. Everything is derived from the files on each call.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { frontmatter, parse, stringify } from "./yaml-lite.mjs";
 import { execFileSync } from "node:child_process";
+import { recordBases } from "./repos.mjs";
 
 function gitHead(root) {
   try {
@@ -102,7 +105,11 @@ export function validateState(s) {
   return true;
 }
 
-export function createWork({ lane, title, id, source = null, root = projectRoot(), now = new Date() }) {
+/**
+ * Opens a work item. `request`, when a non-empty string, is saved byte for byte as request.md and
+ * never rewritten: it is what the cumulative review traces the change back to.
+ */
+export function createWork({ lane, title, id, source = null, request = null, root = projectRoot(), now = new Date() }) {
   if (!LANES.includes(lane)) throw new Error(`lane must be one of ${LANES.join("|")}`);
   const wid = id ?? newId(title, now);
   if (existsSync(join(workDir(wid, root), "state.yaml"))) throw new Error(`work item ${wid} already exists`);
@@ -112,6 +119,8 @@ export function createWork({ lane, title, id, source = null, root = projectRoot(
   if (base) state.base = base;
   writeState(state, root);
   mkdirSync(join(workDir(wid, root), "phases"), { recursive: true });
+  if (typeof request === "string" && request !== "") writeFileSync(join(workDir(wid, root), "request.md"), request);
+  recordBases(wid, root);
   return state;
 }
 

@@ -3,7 +3,7 @@
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
 //
 //   harness admit [--request <file>|--text "<request>"] [--touched a,b]
-//   harness new --lane <fast|order|design|research> --title "<title>" [--id <slug>] [--source <ref>]
+//   harness new --lane <fast|order|design|research> --title "<title>" [--id <slug>] [--source <ref>] [--text "<request>"|--request <file|->]
 //   harness list
 //   harness state <id>
 //   harness set <id> status=<open|blocked|done|abandoned> [blocked_reason="<why>"] [branch=<name>] [title="<t>"]
@@ -82,7 +82,8 @@ async function main(argv) {
     }
     case "new": {
       if (!opt.lane || !opt.title) throw new Error("new needs --lane and --title");
-      const s = createWork({ lane: opt.lane, title: String(opt.title), id: opt.id, source: opt.source, root });
+      const given = typeof opt.text === "string" || typeof opt.request === "string";
+      const s = createWork({ lane: opt.lane, title: String(opt.title), id: opt.id, source: opt.source, request: given ? readRequest(opt) : null, root });
       out({ ...s, dir: `work/${s.id}`, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}`);
       return 0;
     }
@@ -150,7 +151,7 @@ async function main(argv) {
       }
       if (!rest[0]) throw new Error("review-summary needs <id> or --range <base>..<head>");
       const r = reviewSummary(rest[0], { root, base: opt.base });
-      out(r, opt, (v) => `${v.size} · ${v.changed_files.length} file(s), +${v.lines_added}/-${v.lines_removed} · frameworks ${v.frameworks.join(",") || "-"} · concerns ${v.concerns.join(",") || "-"} · security ${v.security_path ? "yes" : "no"} · base ${v.base.slice(0, 8)}`);
+      out(r, opt, (v) => `${v.size} · ${v.changed_files.length} file(s), +${v.lines_added}/-${v.lines_removed} · frameworks ${v.frameworks.join(",") || "-"} · concerns ${v.concerns.join(",") || "-"} · security ${v.security_path ? "yes" : "no"} · base ${v.base.slice(0, 8)} · repos ${v.repos.length}`);
       return 0;
     }
     case "cost": {

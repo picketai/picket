@@ -21,6 +21,33 @@ export function head(root) {
   return git(root, ["rev-parse", "--short", "HEAD"]);
 }
 
+/** The full sha a revision names, or null. */
+export function revParse(root, rev) {
+  return git(root, ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`]);
+}
+
+/** The work tree (main or linked) that has `refs/heads/<branch>` checked out, or null. */
+export function worktreeOnBranch(repo, branchName) {
+  const out = git(repo, ["worktree", "list", "--porcelain"]);
+  if (!out) return null;
+  for (const block of out.split(/\r?\n\r?\n/)) {
+    const path = block.match(/^worktree (.+)$/m)?.[1];
+    if (path && block.match(/^branch (.+)$/m)?.[1] === `refs/heads/${branchName}`) return path;
+  }
+  return null;
+}
+
+export function mergeBase(repo, a, b) {
+  return git(repo, ["merge-base", a, b]);
+}
+
+/** The branch `origin/HEAD` points at, else the first local main, master or trunk; null when none. */
+export function defaultBranch(repo) {
+  const remote = git(repo, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
+  if (remote) return remote.replace(/^origin\//, "");
+  return ["main", "master", "trunk"].find((b) => revParse(repo, `refs/heads/${b}`)) ?? null;
+}
+
 /** Uncommitted paths outside the given prefixes (work/ and .claude/ are the harness's own noise). */
 export function dirtyPaths(root, ignorePrefixes = ["work/", ".claude/"]) {
   const out = git(root, ["status", "--porcelain", "--untracked-files=all"]);

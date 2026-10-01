@@ -1,9 +1,11 @@
 # Designing, step 1: open the work item and get the record written
 
 ```
-node .claude/bin/harness.mjs new --lane design --title "<six-word title>"
+node .claude/bin/harness.mjs new --lane design --title "<six-word title>" --text "<the request, verbatim>"
 node .claude/bin/harness.mjs preflight <id> --human
 ```
+
+The kernel saves the request as `work/<id>/request.md`, which the cumulative review traces against. A request with quotes or newlines goes in a scratchpad file passed as `--request <file>` instead; an item escalated from ordering passes the same request again.
 
 Preflight `fail` lines stop you; print them and ask. Spawn the architect once, named `architect`, with this message followed by the Architect section below pasted verbatim (it is in your context already; pasting it saves the architect a round trip):
 
