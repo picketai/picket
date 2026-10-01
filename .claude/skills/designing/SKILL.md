@@ -28,6 +28,7 @@ One step file at a time, each under 80 lines. The phase loop and the user gate a
 | `harness next` says | Read |
 |---|---|
 | `write_artifact` by architect | `steps/10-design.md`: open the work item, spawn the architect with the design template |
+| `resolve_sources` by user | `steps/10-design.md`: the opening gate; print the packet, stop, apply each pick |
 | `implement_phase`, phase 1 | `steps/20-crosscheck.md`: start the developer AND the reviewer's cross-check in the same turn |
 | `implement_phase`, later phases | `.claude/skills/ordering/steps/20-phase.md` |
 | `approve_phase` by user | `.claude/skills/ordering/steps/30-gate.md` |

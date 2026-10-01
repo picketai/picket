@@ -28,6 +28,7 @@ One step file at a time, each under 80 lines. `harness next <id>` tells you whic
 | `harness next` says | Read |
 |---|---|
 | `write_artifact` by architect | `steps/10-order.md`: open the work item, spawn the architect with the order template |
+| `resolve_sources` by user | `steps/10-order.md`: the opening gate; print the packet, stop, apply each pick |
 | `implement_phase` by developer | `steps/20-phase.md`: spawn or continue the developer for phase n |
 | `approve_phase` by user | `steps/30-gate.md`: render the gate packet, stop, apply the reply with `harness route` |
 | `review_cumulative` by reviewer | `steps/40-review.md`: compute the review summary, spawn the reviewer, route the verdict |

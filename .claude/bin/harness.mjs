@@ -3,7 +3,7 @@
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
 //
 //   harness admit [--request <file>|--text "<request>"] [--touched a,b]
-//   harness new --lane <fast|order|design|research> --title "<title>" [--id <slug>] [--source <ref>] [--text "<request>"|--request <file|->]
+//   harness new --lane <fast|order|design|research> --title "<title>" [--id <slug>] [--source <ref>] [--text "<request>"|--request <file|->] [--ticket <KEY> --story <file>]
 //   harness list
 //   harness state <id>
 //   harness set <id> status=<open|blocked|done|abandoned> [blocked_reason="<why>"] [branch=<name>] [title="<t>"]
@@ -19,6 +19,7 @@
 //   harness check [--steps test,lint,build] [--only "<command>"]
 //   harness source find <name> <substring>          tracked files across every worktree and branch
 //   harness source grep <name> <regex> [--path <p>]  matching lines, identical hits merged
+//   harness source pick <id> <ref> <label>           the user's version of an ambiguous story reference
 //   harness packet <id>            the gate packet for the current stop, as text (--json for the structure)
 //   harness review-summary --range <base>..<head>
 //   harness pr <url> [--repo <path>]   resolve (root, or a nested clone under src/), fetch and summarise a pull request
@@ -32,7 +33,7 @@ import { admit } from "../lib/admit.mjs";
 import { drive, renderDrive } from "../lib/drive.mjs";
 import { check, renderCheck } from "../lib/check.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
-import { createWork, deriveState, listWork, projectRoot, readState, writeState } from "../lib/work.mjs";
+import { createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
 import { preflight } from "../lib/preflight.mjs";
 import { verify } from "../lib/verify.mjs";
@@ -40,7 +41,7 @@ import { route, findVerdict } from "../lib/route.mjs";
 import { cost } from "../lib/cost.mjs";
 import { reviewSummary } from "../lib/review.mjs";
 import { loadConfig } from "../lib/config.mjs";
-import { find as findInSource, grep as grepInSource } from "../lib/sources.mjs";
+import { IntakeError, find as findInSource, grep as grepInSource, pick as pickSource } from "../lib/sources.mjs";
 
 function parse(argv) {
   const pos = [];
@@ -62,10 +63,11 @@ function out(value, opt, text) {
   else console.log(opt.pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value));
 }
 
-function readRequest(opt) {
-  if (opt.text) return String(opt.text);
-  if (opt.request) return readFileSync(opt.request === "-" ? 0 : opt.request, "utf8");
-  throw new Error("admit needs --text or --request <file|->");
+/** The request from `--text "<text>"` or `--request <file|->`; a flag given without a value is an error. */
+function readRequest(opt, verb) {
+  if (typeof opt.text === "string") return opt.text;
+  if (typeof opt.request === "string") return readFileSync(opt.request === "-" ? 0 : opt.request, "utf8");
+  throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
 async function main(argv) {
@@ -75,7 +77,7 @@ async function main(argv) {
   switch (verb) {
     case "admit": {
       // Skills inject this line with $ARGUMENTS; an empty request must not be an error, it must say so.
-      const text = opt.text === true || opt.text === "" || (!opt.text && !opt.request) ? "" : readRequest(opt);
+      const text = opt.text === true || opt.text === "" || (!opt.text && !opt.request) ? "" : readRequest(opt, "admit");
       if (!text.trim()) {
         out({ lane: null, reasons: ["no request text given"], signals: {} }, opt, () => "lane: (none) · re-run with the request text: harness admit --text \"<request>\"");
         return 0;
@@ -86,8 +88,18 @@ async function main(argv) {
     }
     case "new": {
       if (!opt.lane || !opt.title) throw new Error("new needs --lane and --title");
-      const given = typeof opt.text === "string" || typeof opt.request === "string";
-      const s = createWork({ lane: opt.lane, title: String(opt.title), id: opt.id, source: opt.source, request: given ? readRequest(opt) : null, root });
+      const given = "text" in opt || "request" in opt;
+      const request = given ? readRequest(opt, "new") : null;
+      if (given && !request) throw new Error('new: the request is empty; pass the request text with --text "<request>" or drop the flag');
+      if (("ticket" in opt || "story" in opt) && (typeof opt.ticket !== "string" || typeof opt.story !== "string")) throw new Error("new needs --ticket <KEY> and --story <file> together");
+      let s;
+      try {
+        s = createWork({ lane: opt.lane, title: String(opt.title), id: opt.id, source: opt.ticket ?? opt.source, request, story: opt.story ? readFileSync(opt.story) : null, root });
+      } catch (err) {
+        if (!(err instanceof IntakeError)) throw err;
+        out({ error: "source references not found", failures: err.failures }, opt, () => err.message);
+        return 2;
+      }
       out({ ...s, dir: `work/${s.id}`, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}`);
       return 0;
     }
@@ -210,10 +222,18 @@ async function main(argv) {
       return 0;
     }
     case "source": {
+      const { sources } = loadConfig(root);
+      if (rest[0] === "pick") {
+        // The opening gate's answer: one version for an ambiguous story reference.
+        const [, id, ref, label] = rest;
+        if (!id || !ref || !label) throw new Error("source pick needs <id> <ref> <label>");
+        const rec = pickSource(workDir(id, root), ref, label, sources);
+        out({ ...rec, next: next(id, root) }, opt, (v) => `${v.ref}: ${v.branch ?? v.worktree} @ ${String(v.commit).slice(0, 8)} (chosen_by user) · next: ${v.next.action}`);
+        return 0;
+      }
       // Read-only discovery across every worktree and local branch of a declared source.
       const [sub, name, query] = rest;
-      if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring> or grep <name> <regex> [--path <prefix>]");
-      const { sources } = loadConfig(root);
+      if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring>, grep <name> <regex> [--path <prefix>], or pick <id> <ref> <label>");
       const source = sources.find((s) => s.name === name);
       if (!source) throw new Error(`no source named ${name}; declared: ${sources.map((s) => s.name).join(", ") || "(none, see .claude/harness.json)"}`);
       if (!source.root) {

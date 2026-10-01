@@ -7,6 +7,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ARTIFACT_BY_LANE, deriveState, projectRoot, readArtifact, workDir } from "./work.mjs";
 import { next } from "./next.mjs";
+import { loadConfig } from "./config.mjs";
+import { ambiguousRefs, candidates } from "./sources.mjs";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -102,6 +104,16 @@ function decisionLines(value, width = WIDTH) {
   return shown;
 }
 
+/** One line per version of an ambiguous reference: label, branch, short commit, dirty flag. */
+function describeCandidates(ref, root) {
+  const source = loadConfig(root).sources.find((s) => s.name === ref.source);
+  if (!source?.root) return (ref.candidates ?? []).map((label) => `${label} (source ${ref.source} unreachable)`);
+  return candidates(source, ref.path).map((c) => {
+    const branch = c.branch === c.label ? "" : ` (${c.branch ? `branch ${c.branch}` : "detached"})`;
+    return `${c.label}${branch} @ ${String(c.commit ?? "").slice(0, 8)}${c.dirty ? " · uncommitted changes" : ""} · ${c.worktree ?? "branch only, no worktree"}`;
+  });
+}
+
 /**
  * The lines the lead prints at a stop, for whatever `harness next` says. Empty options means no
  * decision is due and the packet is a status line.
@@ -140,6 +152,13 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push("");
     lines.push(field("report", `work/${id}/${ARTIFACT_BY_LANE.research}`, width));
     lines.push(field("findings", String(findings), width));
+  } else if (n.action === "resolve_sources") {
+    lines.push(`▶ source references differ · ${id}`);
+    lines.push(`  ${cut(`${n.detail}; pick one version of each`, width - 2)}`);
+    for (const ref of ambiguousRefs(workDir(id, root))) {
+      lines.push("", `  ${cut(ref.ref, width - 2)}`);
+      for (const c of describeCandidates(ref, root)) lines.push(`    ${cut(c, width - 4)}`);
+    }
   } else if (n.action === "resolve_block") {
     const raw = s.current_phase ? readBlock(id, s.current_phase, root) : null;
     const b = parseBlock(raw ?? "");

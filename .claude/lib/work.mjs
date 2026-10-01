@@ -9,6 +9,8 @@
 //   work/<id>/verdicts.jsonl    one line per verdict: { ts, agent, verdict, phase }
 //   work/<id>/request.md        the request as given to `harness new`, written once (optional)
 //   work/<id>/repos.yaml        each nested repo's HEAD at creation (see repos.mjs)
+//   work/<id>/story.md          the ticket's text as fetched, written once (optional)
+//   work/<id>/sources.yaml      the story's resolved references, snapshots in sources/ (sources.mjs)
 //
 // Nothing in here is remembered by a model. Everything is derived from the files on each call.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from "node:fs";
@@ -16,6 +18,8 @@ import { join, resolve } from "node:path";
 import { frontmatter, parse, stringify } from "./yaml-lite.mjs";
 import { execFileSync } from "node:child_process";
 import { recordBases } from "./repos.mjs";
+import { loadConfig } from "./config.mjs";
+import { IntakeError, resolveReferences, writeIntake } from "./sources.mjs";
 
 function gitHead(root) {
   try {
@@ -106,13 +110,16 @@ export function validateState(s) {
 }
 
 /**
- * Opens a work item. `request`, when a non-empty string, is saved byte for byte as request.md and
- * never rewritten: it is what the cumulative review traces the change back to.
+ * Opens a work item. `request` (a non-empty string) and `story` (a ticket's text, string or bytes)
+ * are saved byte for byte as request.md and story.md and never rewritten: they are what the
+ * cumulative review traces the change back to. The story's references are resolved against the
+ * reachable sources first; a pin that matches nothing throws IntakeError before anything is written.
  */
-export function createWork({ lane, title, id, source = null, request = null, root = projectRoot(), now = new Date() }) {
+export function createWork({ lane, title, id, source = null, request = null, story = null, root = projectRoot(), now = new Date() }) {
   if (!LANES.includes(lane)) throw new Error(`lane must be one of ${LANES.join("|")}`);
   const wid = id ?? newId(title, now);
   if (existsSync(join(workDir(wid, root), "state.yaml"))) throw new Error(`work item ${wid} already exists`);
+  const intake = story == null ? null : storyIntake(String(story), root);
   const state = { id: wid, lane, title, status: "open", created: now.toISOString(), updated: now.toISOString() };
   if (source) state.source = source;
   const base = gitHead(root);
@@ -120,8 +127,19 @@ export function createWork({ lane, title, id, source = null, request = null, roo
   writeState(state, root);
   mkdirSync(join(workDir(wid, root), "phases"), { recursive: true });
   if (typeof request === "string" && request !== "") writeFileSync(join(workDir(wid, root), "request.md"), request);
+  if (story != null) writeFileSync(join(workDir(wid, root), "story.md"), story);
+  if (intake) writeIntake(workDir(wid, root), intake);
   recordBases(wid, root);
   return state;
+}
+
+/** The story's references resolved against the reachable sources; null when none is reachable. */
+function storyIntake(text, root) {
+  const sources = loadConfig(root).sources;
+  if (!sources.some((s) => s.root)) return null;
+  const intake = resolveReferences(text, sources);
+  if (intake.failures.length) throw new IntakeError(intake.failures);
+  return intake;
 }
 
 /** The lane's artifact, parsed: frontmatter, body, and the `## Phase N` headings in order. */

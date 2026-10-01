@@ -32,5 +32,9 @@ bench/results/probe*.json
 .worktrees/
 .claude/branching/
 
+# source snapshots: copies of an external repo's documents; sources.yaml with their hashes is
+# committed (committing the bytes is OQ-002 of 20261001-external-sources-and-traced-cumulative-review)
+work/*/sources/
+
 # per-machine Claude Code settings; may carry secrets such as AZDO_PAT in its env block
 .claude/settings.local.json

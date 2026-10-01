@@ -9,7 +9,11 @@ node .claude/bin/harness.mjs preflight <id> --human
 
 The kernel saves the request as `work/<id>/request.md`, which the cumulative review traces against. A request with quotes or newlines goes in a scratchpad file passed as `--request <file>` instead.
 
+A request that names a Jira key (`RENT-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file in the session scratchpad, and add `--ticket <KEY> --story <file>` to `harness new`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
+
 Preflight `fail` lines stop you here; print them and ask. `warn` lines are passed to the architect verbatim.
+
+When `harness next <id>` says `resolve_sources`, this is the opening gate: print `harness packet <id>` verbatim and stop. Apply each reply with `harness source pick <id> <ref> <label>`, then continue below. Add `sources: work/<id>/sources.yaml` to the architect's message when that file exists.
 
 Spawn the architect once, named `architect`, with this message followed by the Architect section below pasted verbatim (it is in your context already; pasting it saves the architect a round trip):
 

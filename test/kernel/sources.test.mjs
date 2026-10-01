@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { execFileSync } from "node:child_process";
-import { candidates, contentHash, find, grep, listWorktrees, localBranches } from "../../.claude/lib/sources.mjs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../.claude/lib/sources.mjs";
+import { parse as parseYaml } from "../../.claude/lib/yaml-lite.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");
 const HOOKS = resolve(".claude/hooks");
@@ -127,6 +128,135 @@ test("preflight warns on an unset source and reports the worktree count when it 
   assert.match(cli(root, ["preflight", id, "--human"]).out, /^warn config: /m);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
+});
+
+/** Opens an order item with a story through the CLI, against the given source. */
+function openWithStory(root, story, sourceRoot) {
+  const file = join(root, "story.txt");
+  writeFileSync(file, story);
+  return cli(root, ["new", "--lane", "order", "--title", "Fees", "--ticket", "RENT-1", "--story", file], sourceRoot);
+}
+
+function readYaml(root, id) {
+  return parseYaml(readFileSync(join(root, "work", id, "sources.yaml"), "utf8"));
+}
+
+test("a document only in the main worktree resolves single, and the snapshot is its bytes (T-4.1, T-4.6)", () => {
+  const { base, main } = tempSource();
+  mkdirSync(join(main, "docs", "rent"));
+  writeFileSync(join(main, "docs", "rent", "pricing.md"), "# Rent pricing\n");
+  git(main, "add", "-A");
+  git(main, "commit", "-q", "-m", "rent pricing");
+  writeFileSync(join(main, "docs", "rent", "pricing.md"), "# Rent pricing\n\nDraft: weekend rate.\n");
+  const root = tempProject();
+  const r = openWithStory(root, "As a renter I pay what `docs/rent/pricing.md` says.\n", main);
+  assert.equal(r.code, 0, r.err);
+  const { id, source } = JSON.parse(r.out);
+  assert.equal(source, "RENT-1");
+  assert.equal(readFileSync(join(root, "work", id, "story.md"), "utf8"), "As a renter I pay what `docs/rent/pricing.md` says.\n");
+  const [ref] = readYaml(root, id).refs;
+  assert.deepEqual([ref.ref, ref.status, ref.chosen_by, ref.branch, ref.dirty], ["docs/rent/pricing.md", "resolved", "single", "main", true]);
+  assert.equal(ref.commit, git(main, "rev-parse", "HEAD"), "a dirty copy records the worktree's HEAD");
+  assert.deepEqual(readFileSync(join(root, "work", id, ref.snapshot)), readFileSync(join(main, "docs", "rent", "pricing.md")));
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("CRLF in the main worktree and LF on a branch are identical, and the main worktree wins (T-4.2)", () => {
+  const { base, main } = tempSource();
+  writeFileSync(join(main, "docs", "pricing.md"), "# Pricing\r\n\r\nThe daily rate is 10.\r\n");
+  const root = tempProject();
+  const r = openWithStory(root, "See docs/pricing.md.", main);
+  assert.equal(r.code, 0, r.err);
+  const [ref] = readYaml(root, JSON.parse(r.out).id).refs;
+  assert.equal(ref.chosen_by, "identical");
+  assert.equal(ref.worktree, listWorktrees(main)[0].path);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("differing versions are ambiguous until the user picks one (T-4.3)", () => {
+  const { base, main, feat } = tempSource();
+  writeFileSync(join(feat, "docs", "pricing.md"), "# Pricing\n\nThe daily rate is 12.\n");
+  const root = tempProject();
+  const id = JSON.parse(openWithStory(root, "The fee follows docs/pricing.md.", main).out).id;
+  const [ref] = readYaml(root, id).refs;
+  assert.deepEqual([ref.status, ref.candidates, ref.snapshot], ["ambiguous", ["main", "feat-x", "old"], undefined]);
+  const gate = JSON.parse(cli(root, ["next", id], main).out);
+  assert.deepEqual([gate.action, gate.actor], ["resolve_sources", "user"]);
+  assert.match(cli(root, ["packet", id], main).out, /docs\/pricing\.md\n {4}main @ \w{8} · .*\n {4}feat-x @ \w{8} · uncommitted changes · .*\n {4}old @ \w{8} · branch only/);
+  const unknown = cli(root, ["source", "pick", id, "docs/pricing.md", "nope"], main);
+  assert.equal(unknown.code, 1);
+  assert.match(unknown.err, /labels: main, feat-x, old/);
+  const picked = cli(root, ["source", "pick", id, "docs/pricing.md", "feat-x"], main);
+  assert.equal(picked.code, 0, picked.err);
+  assert.equal(JSON.parse(picked.out).next.action, "write_artifact");
+  const [after] = readYaml(root, id).refs;
+  assert.deepEqual([after.status, after.chosen_by, after.branch, after.candidates], ["resolved", "user", "feat-x", undefined]);
+  assert.equal(readFileSync(join(root, "work", id, after.snapshot), "utf8"), "# Pricing\n\nThe daily rate is 12.\n");
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a pin that matches nothing exits 2 listing the places and creates no work item (T-4.4)", () => {
+  const { base, main } = tempSource();
+  const root = tempProject();
+  const r = openWithStory(root, "Per analysis@old:docs/none.md the fee is waived.", main);
+  assert.equal(r.code, 2);
+  assert.deepEqual(JSON.parse(r.out).failures, ["analysis@old:docs/none.md: no docs/none.md on branch old; searched main, feat-x, old"]);
+  assert.equal(existsSync(join(root, "work")) && readdirSync(join(root, "work")).length > 0, false);
+  const pinned = openWithStory(root, "Per analysis@old:docs/pricing.md the fee is waived.", main);
+  assert.equal(pinned.code, 0, pinned.err);
+  const [ref] = readYaml(root, JSON.parse(pinned.out).id).refs;
+  assert.deepEqual([ref.chosen_by, ref.branch, ref.worktree], ["pin", "old", null]);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("ordinary words stay plain text; a path-like miss with an extension is unmatched (T-4.5)", () => {
+  const { base, main } = tempSource();
+  const root = tempProject();
+  const r = openWithStory(root, "Weekly and/or monthly; see notes/missing.md, docs/pricing.md:3 and https://x.io/a/b.md.", main);
+  const record = readYaml(root, JSON.parse(r.out).id);
+  assert.deepEqual(record.refs.map((x) => x.ref), ["docs/pricing.md"]);
+  assert.deepEqual(record.unmatched, ["notes/missing.md"]);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("tokens strip punctuation and line suffixes, read pins, refuse dot segments, and cap at 200", () => {
+  assert.deepEqual(tokens("(docs/a.md:12), `b.md`, c.md, analysis@feat-x:docs/c.md ../etc/passwd"), [
+    { ref: "docs/a.md", source: null, path: "docs/a.md", pin: null },
+    { ref: "b.md", source: null, path: "b.md", pin: null },
+    { ref: "analysis@feat-x:docs/c.md", source: "analysis", path: "docs/c.md", pin: "feat-x" },
+  ]);
+  assert.equal(tokens(Array.from({ length: 300 }, (_, i) => `d/f${i}.md`).join(" ")).length, 200);
+});
+
+test("with no reachable source the story is saved and no sources.yaml is written", () => {
+  const root = tempProject();
+  const r = openWithStory(root, "See docs/pricing.md.", null);
+  assert.equal(r.code, 0, r.err);
+  const id = JSON.parse(r.out).id;
+  assert.equal(existsSync(join(root, "work", id, "story.md")), true);
+  assert.equal(existsSync(join(root, "work", id, "sources.yaml")), false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("source grep reports an invalid regex instead of no hits", () => {
+  const { base, main } = tempSource();
+  const root = tempProject();
+  const r = cli(root, ["source", "grep", "analysis", "rate["], main);
+  assert.equal(r.code, 1);
+  assert.match(r.err, /git grep failed/);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("snapshot bytes are ignored by git and sources.yaml is not (T-4.7)", () => {
+  const ignored = (p) => spawnSync("git", ["check-ignore", "-q", p], { cwd: resolve(".") }).status === 0;
+  assert.equal(ignored("work/x/sources/analysis/a.md"), true);
+  assert.equal(ignored("work/x/sources.yaml"), false);
 });
 
 test("SessionStart names each source with its root, or unreachable with the reason (T-3.6)", () => {

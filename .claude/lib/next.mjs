@@ -1,9 +1,11 @@
 // The single next action for a work item, computed from derived state. Never stored.
 // Every branch returns { action, actor, phase, detail, options } where `options` is the bracket menu
 // the gate packet shows the user (empty when no user decision is due).
-import { deriveState } from "./work.mjs";
+import { deriveState, workDir } from "./work.mjs";
+import { ambiguousRefs } from "./sources.mjs";
 
 export const ACTIONS = Object.freeze([
+  "resolve_sources", // user picks a version for each ambiguous story reference
   "write_artifact", // architect or analyst produces the lane's artifact
   "implement_phase", // developer implements phase N
   "approve_phase", // user decides on phase N
@@ -22,6 +24,13 @@ export function next(id, root) {
 
   if (s.status === "done" || s.status === "abandoned") return { ...base, action: "none", actor: null, detail: `work item is ${s.status}` };
   if (s.status === "blocked") return { ...base, action: "resolve_block", actor: "user", detail: s.blocked_reason, options: ["[c] continue", "[x] abandon"] };
+
+  // The opening gate: a story reference with differing versions across the source's worktrees is
+  // the user's pick, before anyone reads it.
+  const ambiguous = ambiguousRefs(workDir(id, root));
+  if (ambiguous.length) {
+    return { ...base, action: "resolve_sources", actor: "user", detail: `${ambiguous.length} reference(s) differ across worktrees`, options: [`[p] pick: harness source pick ${id} <ref> <label>`] };
+  }
 
   if (s.lane === "fast") {
     // The fast lane has no artifact and no phases: it is running or it is done.

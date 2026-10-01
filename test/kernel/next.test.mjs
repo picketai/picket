@@ -68,6 +68,22 @@ test("blocked items ask the user; fast and research have their own shapes", () =
   rmSync(r, { recursive: true, force: true });
 });
 
+test("an ambiguous source reference is the user's pick before the artifact is written, after a block", () => {
+  const r = root();
+  const s = createWork({ lane: "design", title: "Fees", root: r });
+  const intake = (status) => `refs:\n  - ref: docs/fees.md\n    source: analysis\n    path: docs/fees.md\n    status: ${status}\n    candidates: [main, feat-fees]\nunmatched: []\n`;
+  writeFileSync(join(r, "work", s.id, "sources.yaml"), intake("ambiguous"));
+  const n = next(s.id, r);
+  assert.deepEqual([n.action, n.actor, n.detail], ["resolve_sources", "user", "1 reference(s) differ across worktrees"]);
+  assert.deepEqual(n.options, [`[p] pick: harness source pick ${s.id} <ref> <label>`]);
+  writeState({ ...s, status: "blocked", blocked_reason: "waiting" }, r);
+  assert.equal(next(s.id, r).action, "resolve_block", "a block still comes first");
+  writeState({ ...s, status: "open" }, r);
+  writeFileSync(join(r, "work", s.id, "sources.yaml"), intake("resolved"));
+  assert.equal(next(s.id, r).action, "write_artifact");
+  rmSync(r, { recursive: true, force: true });
+});
+
 test("design lane inserts a checkpoint at the midpoint of a long plan", () => {
   const r = root();
   const s = createWork({ lane: "design", title: "Big", root: r });
