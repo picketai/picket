@@ -1,6 +1,5 @@
 // Where the read-only sources live on disk, for the guards (D-008). A source is declared in the
-// project config with an env root; every worktree of that repository is protected, the root and
-// each linked one. Read from the filesystem, never by spawning git: a guard runs on every tool
+// project config with an env root; protectionScope says what that root protects. Read from the filesystem, never by spawning git: a guard runs on every tool
 // call and must stay inside the hook budget. The kernel lists the same worktrees with
 // `git worktree list` (lib/sources.mjs); a test keeps the two in step.
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
@@ -68,14 +67,27 @@ export function enclosingRepo(dir) {
 }
 
 /**
- * Every worktree of the repository holding `root`: the main one and each linked one still on
- * disk. A root set to a subfolder (`D:\analysis\docs`) protects the whole repository; a root in
- * no repository protects itself.
+ * What a source root protects (D-008 r3), with the reason so preflight can name it:
+ * - `folder`: the root is in no repository, or in this project's own repository (any of its
+ *   worktrees), so only the root folder is protected and the project stays writable;
+ * - `repository`: the root is inside another repository, so that repository's top level and every
+ *   linked worktree are protected (`D:\analysis\docs` protects all of `D:\analysis`).
+ * `topLevel` says whether the root is itself a worktree's top level.
+ * @returns {{ kind: "folder"|"repository", paths: string[], topLevel: boolean }}
  */
-function worktreePaths(sourceRoot) {
-  const root = enclosingRepo(sourceRoot);
-  const common = root && commonGitDir(root);
-  if (!common) return [canonicalPath(sourceRoot)];
+export function protectionScope(sourceRoot, projectRoot) {
+  const repo = enclosingRepo(sourceRoot);
+  const common = repo && commonGitDir(repo);
+  const topLevel = Boolean(repo) && canonicalPath(repo) === canonicalPath(sourceRoot);
+  const ownCommon = commonGitDir(enclosingRepo(projectRoot) ?? projectRoot);
+  if (!common || (ownCommon && canonicalPath(common) === canonicalPath(ownCommon))) {
+    return { kind: "folder", paths: [canonicalPath(sourceRoot)], topLevel };
+  }
+  return { kind: "repository", paths: worktreePaths(repo, common), topLevel };
+}
+
+/** Every worktree of the repository at `root` (common git dir `common`): the main one and each linked one still on disk. */
+function worktreePaths(root, common) {
   const paths = [root];
   if (basename(common) === ".git") paths.push(dirname(common)); // the main worktree
   let entries = [];
@@ -97,7 +109,7 @@ function worktreePaths(sourceRoot) {
 export function sourceRoots(projectRoot, env = process.env) {
   return loadConfig(projectRoot, env)
     .sources.filter((s) => s.root)
-    .map((s) => ({ name: s.name, paths: worktreePaths(s.root) }));
+    .map((s) => ({ name: s.name, paths: protectionScope(s.root, projectRoot).paths }));
 }
 
 /** The name of the source whose worktree holds `absPath`, or null. */

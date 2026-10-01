@@ -131,6 +131,23 @@ test("preflight warns on an unset source and reports the worktree count when it 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a root inside this project protects that folder only; a subfolder of another repo protects the repo; preflight warns on both", () => {
+  const { base, main } = tempSource();
+  const root = tempProject();
+  const plain = join(root, "notes");
+  mkdirSync(plain);
+  const roots = sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: plain });
+  assert.deepEqual(roots[0].paths, [canonicalPath(plain)]);
+  assert.equal(underSource(join(plain, "a.md"), roots), "analysis");
+  assert.equal(underSource(join(root, "src", "a.ts"), roots), null, "the project stays writable");
+  assert.equal(underSource(join(main, "README.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: join(main, "docs") })), "analysis");
+  const id = JSON.parse(cli(root, ["new", "--lane", "order", "--title", "Fees"]).out).id;
+  assert.match(cli(root, ["preflight", id, "--human"], plain).out, /^warn source:analysis: .+ is not a repository top level; .+ that folder only/m);
+  assert.match(cli(root, ["preflight", id, "--human"], join(main, "docs")).out, /^warn source:analysis: .+ is not a repository top level; the guards protect its whole repository/m);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
 /** Opens an order item with a story through the CLI, against the given source. */
 function openWithStory(root, story, sourceRoot) {
   const file = join(root, "story.txt");

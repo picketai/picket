@@ -631,37 +631,74 @@ function nodePath(p) {
   return msys ? `${msys[1]}:${p.slice(2) || "/"}` : p;
 }
 
-// A segment that acts inside a source (D-008 r2) is judged by this policy instead of the general
-// `safe` class, which lets `git tag`, `reflog` and `remote` through whatever their arguments.
+// A segment that acts inside a source (D-008 r3) is judged by an allow-list alone, never by the
+// general `safe` class: that class trusts `git tag`, `reflog`, `remote` and tools that write
+// (`prettier --write`, `eslint --fix`). Anything not on the list is denied, never prompted.
+const SOURCE_READERS = new Set(["cd", "pwd", "cat", "head", "tail", "wc", "ls", "dir", "stat", "tree", "file", "diff", "grep", "rg", "Get-ChildItem", "Select-String"]);
 const SOURCE_GIT_READS = new Set(["log", "show", "diff", "blame", "status", "ls-files", "ls-tree", "rev-parse", "grep", "cat-file"]);
 const SOURCE_LISTING_FLAGS = new Set(["--list", "-l", "-a", "-r", "-v"]);
-const SOURCE_WRITERS = new Set(["cp", "mv", "tee", "touch", "mkdir", "ln", "npm", "yarn", "pnpm", "dotnet", "Copy-Item", "Move-Item", "New-Item", "Set-Content", "Out-File"]);
+// The only git global options allowed: `-c`, `--config-env` and `--exec-path` can make a pager or alias run a command.
+const SOURCE_GIT_GLOBALS = new Set(["-C", "--git-dir", "--work-tree", "--no-pager"]);
+const FIND_ACTIONS = /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/;
+// The few reader flags that write a file or run a command: `rg --pre`, `tree -o`, `file -C`.
+const READER_WRITE_FLAGS = { rg: /^--pre(=|$)/, tree: /^-o/, file: /^(-C|--compile)$/ };
+// A print-only sed script: `p` after an optional line or regex address range (`1,20p`, `/rate/p`).
+const SED_ADDRESS = String.raw`(\d+|\$|\/[^/]*\/)`;
+const SED_PRINT = new RegExp(`^(${SED_ADDRESS}(,${SED_ADDRESS})?)?p$`);
 
-/**
- * Git inside a source: a strict read-only list, everything else denied. Also denied: a global
- * `-c`/`--exec-path` (a pager or alias can run a command), `--output` (writes a file), and
- * `grep -O` (opens a pager).
- */
-function sourceGitPolicy(seg) {
+/** Git globals before the subcommand are only the allowed ones (and their values). */
+function gitGlobalsAllowed(seg) {
   const globals = seg.slice(1, seg.length - (stripGitGlobalOpts(seg).length - 1));
-  if (globals.some((t) => typeof t === "string" && /^(-c|--exec-path)/.test(t))) return "deny";
-  const [, sub, ...rest] = stripGitGlobalOpts(seg);
-  const args = rest.filter((t) => typeof t === "string");
-  if (args.some((t) => /^--output(=|$)/.test(t))) return "deny";
-  if (sub === "grep" && args.some((t) => /^(-O|--open-files-in-pager)/.test(t))) return "deny";
-  if (SOURCE_GIT_READS.has(sub)) return "safe";
-  if (sub === "worktree" && args[0] === "list") return "safe";
-  if ((sub === "branch" || sub === "tag") && args.every((t) => SOURCE_LISTING_FLAGS.has(t))) return "safe";
-  return "deny";
+  for (let i = 0; i < globals.length; i++) {
+    const t = globals[i];
+    if (typeof t !== "string") return false;
+    const [name, inline] = t.split(/=(.*)/s);
+    if (!SOURCE_GIT_GLOBALS.has(name)) return false;
+    if (inline === undefined && name !== "--no-pager") i++; // `-C <path>` consumes its value
+  }
+  return true;
 }
 
-/** Any command inside a source: writers denied, plainly read-only allowed, the rest to the prompt. */
-function sourcePolicy(seg, cwd) {
+/** Git inside a source: the strict read-only list; also no `--output` (writes a file) or `grep -O` (opens a pager). */
+function sourceGitAllowed(seg) {
+  if (!gitGlobalsAllowed(seg)) return false;
+  const [, sub, ...rest] = stripGitGlobalOpts(seg);
+  const args = rest.filter((t) => typeof t === "string");
+  if (args.some((t) => /^--output(=|$)/.test(t))) return false;
+  if (sub === "grep" && args.some((t) => /^(-O|--open-files-in-pager)/.test(t))) return false;
+  if (SOURCE_GIT_READS.has(sub)) return true;
+  if (sub === "worktree") return args.length === 1 && args[0] === "list";
+  if (sub === "branch" || sub === "tag") return args.every((t) => SOURCE_LISTING_FLAGS.has(t));
+  return false;
+}
+
+/** `sed -n` whose every script only prints: no `-i`, no `w` or `e` command, no other flag. */
+function sedPrintOnly(seg) {
+  const args = seg.slice(1);
+  if (!args.includes("-n")) return false;
+  const scripts = [];
+  const files = [];
+  for (let i = 0; i < args.length; i++) {
+    const t = args[i];
+    if (typeof t !== "string") return false;
+    if (t === "-n") continue;
+    if (t === "-e") scripts.push(args[++i]);
+    else if (t.startsWith("-")) return false;
+    else files.push(t);
+  }
+  if (!scripts.length) scripts.push(files.shift());
+  return scripts.every((s) => typeof s === "string" && SED_PRINT.test(s));
+}
+
+/** Whether a segment that acts inside a source may run: on the allow-list, or denied. */
+function sourceAllowed(seg) {
   const root = normalizeRoot(seg[0]);
-  if (root === "git") return sourceGitPolicy(seg);
-  if (DENY_ROOTS.has(root) || SOURCE_WRITERS.has(root)) return "deny";
-  if (root === "sed" && seg.some((t) => typeof t === "string" && /^(-[a-zA-Z]*i|--in-place)/.test(t))) return "deny";
-  return classifySegment(seg, cwd) === "safe" ? "safe" : "unknown";
+  if (root === "git") return sourceGitAllowed(seg);
+  if (root === "sed") return sedPrintOnly(seg);
+  if (root === "find") return !seg.some((t) => typeof t === "string" && FIND_ACTIONS.test(t));
+  const writesOrRuns = READER_WRITE_FLAGS[root];
+  if (writesOrRuns && seg.some((t) => typeof t === "string" && writesOrRuns.test(t))) return false;
+  return SOURCE_READERS.has(root);
 }
 
 /**
@@ -790,13 +827,9 @@ async function main() {
   const cwdsSeen = [cwd];
   let effCwd = cwd;
   for (const seg of segments) {
-    let cls = classifySegment(seg, effCwd);
     const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
-    if (hit) {
-      cls = sourcePolicy(seg, effCwd);
-      if (cls === "deny") return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
-    }
-    classifications.push(cls);
+    if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
+    classifications.push(hit ? "safe" : classifySegment(seg, effCwd));
     if (normalizeRoot(seg[0]) === "cd") {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);
@@ -817,8 +850,7 @@ async function main() {
         return decide("deny", `guard.bash: the command wrapped in a harness verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
       }
       if (roots.length) {
-        // Through a wrapper the prompt never shows, so anything but a plain read is denied here.
-        const hit = innerSegs.map((s) => (sourcePolicy(s, effCwd) === "safe" ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
+        const hit = innerSegs.map((s) => (sourceAllowed(s) ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
         if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a harness verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
       }
     }
