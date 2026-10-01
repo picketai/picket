@@ -259,6 +259,80 @@ test("snapshot bytes are ignored by git and sources.yaml is not (T-4.7)", () => 
   assert.equal(ignored("work/x/sources.yaml"), false);
 });
 
+/** An order item opened without a story, so sources.yaml starts absent. */
+function openPlain(root) {
+  return JSON.parse(cli(root, ["new", "--lane", "order", "--title", "Later refs"]).out).id;
+}
+
+test("source add appends a single-candidate document once; a second add changes nothing (T-5.1)", () => {
+  const { base, main } = tempSource();
+  writeFileSync(join(main, "docs", "a.md"), "# A\n");
+  const root = tempProject();
+  const id = openPlain(root);
+  const first = cli(root, ["source", "add", id, "docs/a.md"], main);
+  assert.equal(first.code, 0, first.err);
+  assert.equal(JSON.parse(first.out).added, true);
+  const record = readFileSync(join(root, "work", id, "sources.yaml"));
+  const [ref] = parseYaml(String(record)).refs;
+  assert.deepEqual([ref.status, ref.chosen_by, ref.snapshot], ["resolved", "single", "sources/analysis/docs/a.md"]);
+  assert.equal(readFileSync(join(root, "work", id, ref.snapshot), "utf8"), "# A\n");
+  const again = cli(root, ["source", "add", id, "docs/a.md"], main);
+  assert.equal(JSON.parse(again.out).added, false);
+  assert.deepEqual(readFileSync(join(root, "work", id, "sources.yaml")), record);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("source add of a document with two versions exits 2 with both labels and writes nothing (T-5.2)", () => {
+  const { base, main, feat } = tempSource();
+  writeFileSync(join(feat, "docs", "pricing.md"), "# Pricing\n\nThe daily rate is 12.\n");
+  const root = tempProject();
+  const id = JSON.parse(openWithStory(root, "No references here.", main).out).id;
+  const before = readFileSync(join(root, "work", id, "sources.yaml"));
+  const r = cli(root, ["source", "add", id, "docs/pricing.md"], main);
+  assert.equal(r.code, 2);
+  assert.match(JSON.parse(r.out).error, /differs across places: main, feat-x, old/);
+  assert.deepEqual(readFileSync(join(root, "work", id, "sources.yaml")), before);
+  const missing = cli(root, ["source", "add", id, "docs/none.md"], main);
+  assert.equal(missing.code, 2);
+  assert.match(JSON.parse(missing.out).error, /not found; searched analysis: main, feat-x, old/);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("review-summary reports moved: true with both hashes after the worktree file is edited (T-5.3)", () => {
+  const { base, main } = tempSource();
+  writeFileSync(join(main, "docs", "a.md"), "# A\n");
+  const root = tempProject();
+  const id = openPlain(root);
+  cli(root, ["source", "add", id, "docs/a.md"], main);
+  const summary = () => JSON.parse(cli(root, ["review-summary", id], main).out).sources;
+  const [still] = summary();
+  assert.deepEqual([still.ref, still.moved, still.live_sha256 === still.snapshot_sha256], ["docs/a.md", false, true]);
+  writeFileSync(join(main, "docs", "a.md"), "# A, revised\n");
+  const [moved] = summary();
+  assert.equal(moved.moved, true);
+  assert.equal(moved.snapshot_sha256, still.snapshot_sha256);
+  assert.equal(moved.live_sha256, contentHash(Buffer.from("# A, revised\n")));
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a removed linked worktree reports live_sha256 null, moved true and a reason (T-5.4)", () => {
+  const { base, main, feat } = tempSource();
+  writeFileSync(join(feat, "docs", "only-feat.md"), "# Feat only\n");
+  const root = tempProject();
+  const id = openPlain(root);
+  const added = JSON.parse(cli(root, ["source", "add", id, "docs/only-feat.md"], main).out);
+  assert.equal(added.ref.branch, "feat-x");
+  git(main, "worktree", "remove", "--force", feat);
+  const [ref] = JSON.parse(cli(root, ["review-summary", id], main).out).sources;
+  assert.deepEqual([ref.live_sha256, ref.moved], [null, true]);
+  assert.match(ref.reason, /worktree .* no longer exists/);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("SessionStart names each source with its root, or unreachable with the reason (T-3.6)", () => {
   const { base, main } = tempSource();
   const root = tempProject();

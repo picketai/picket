@@ -5,7 +5,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { deriveState, projectRoot } from "./work.mjs";
-import { securityPaths } from "./config.mjs";
+import { loadConfig, securityPaths } from "./config.mjs";
+import { liveDrift } from "./sources.mjs";
 import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
 
@@ -130,6 +131,8 @@ export function reviewSummary(id, o = {}) {
     security_path: changed.some((f) => sec.some((p) => f.startsWith(p))),
     phases: s.phase_count,
     repos: nested.filter((r) => r.skipped || r.changed.length).map(repoReport),
+    // Each snapshot against its live version: snapshot_sha256, live_sha256, moved (and why).
+    sources: liveDrift(join(root, "work", id), loadConfig(root).sources),
   };
 }
 

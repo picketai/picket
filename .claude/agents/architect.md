@@ -20,6 +20,8 @@ You are a senior software architect. You decide how code is organised and how it
 
 The lead's message names `work: <id>`, the lane, the request text, and carries the architect section of the step file inline (`.claude/skills/ordering/steps/10-order.md`, `.claude/skills/designing/steps/10-design.md`, or `.claude/skills/designing/steps/40-amend.md`); read the step file only when the message lacks it. Start with, in one tool batch: `harness state <id>`, the template the section names, `.claude/PROJECT-MAP.md` when present, and the source files the request names. Read the code you are designing against; never guess structure.
 
+When the message carries `sources: work/<id>/sources.yaml`, read it and the snapshots it names under `work/<id>/sources/`, together with `work/<id>/story.md`. Cite a source document as `sources/<source>/<path>#<heading>:<line>`, never the live file, so you and the reviewer read the same bytes. To discover more, run `harness source find <name> <substring>` or `harness source grep <name> <regex>`. To bring a document in, run `harness source add <id> <ref>`. Exit 2 on an ambiguous document (it differs across worktrees) becomes an `OQ-###` naming the versions, with a fallback; never pick one yourself.
+
 ## Constraints
 
 Write only `work/<id>/order.md` or `work/<id>/design.md`. Never production code, never tests, never another work item.

@@ -172,26 +172,35 @@ export function tokens(text) {
   const out = new Map();
   for (const m of String(text).matchAll(/`([^`\n]+)`|(\S+)/g)) {
     if (out.size >= TOKEN_CAP) break;
-    const backticked = m[1] !== undefined;
     const word = (m[1] ?? m[2])
       .trim()
       .replace(/^[("'[{<*]+/, "")
       .replace(/[)"'\]}>.,;:!?*]+$/, "")
       .replace(/:\d+(-\d+)?$/, "");
-    if (!word || word.includes("://")) continue;
-    const pin = word.match(PIN);
-    if (pin) {
-      const [, source, branch, path] = pin;
-      if ((PATH_LIKE.test(path) || NAME_WITH_EXT.test(path)) && isSafe(path) && !out.has(word)) out.set(word, { ref: word, source, path, pin: branch });
-      continue;
-    }
-    if ((PATH_LIKE.test(word) || (backticked && NAME_WITH_EXT.test(word))) && isSafe(word) && !out.has(word)) out.set(word, { ref: word, source: null, path: word, pin: null });
+    const ref = asReference(word, { backticked: m[1] !== undefined });
+    if (ref && !out.has(ref.ref)) out.set(ref.ref, ref);
   }
   return [...out.values()];
 }
 
+/** One word as a reference, or null when it is plain text. A backticked bare name with an extension counts. */
+function asReference(word, { backticked }) {
+  if (!word || word.includes("://")) return null;
+  const pin = word.match(PIN);
+  if (pin) {
+    const [, source, branch, path] = pin;
+    return (PATH_LIKE.test(path) || NAME_WITH_EXT.test(path)) && isSafe(path) ? { ref: word, source, path, pin: branch } : null;
+  }
+  return (PATH_LIKE.test(word) || (backticked && NAME_WITH_EXT.test(word))) && isSafe(word) ? { ref: word, source: null, path: word, pin: null } : null;
+}
+
+/** A reference lookup that failed for a reason the caller must show: the CLI exits 2 on it. */
+export class LookupError extends Error {
+  exitCode = 2;
+}
+
 /** A pin that matches nothing: intake refuses to open the work item. */
-export class IntakeError extends Error {
+export class IntakeError extends LookupError {
   constructor(failures) {
     super(`source references not found:\n${failures.map((f) => `- ${f}`).join("\n")}`);
     this.failures = failures;
@@ -306,4 +315,57 @@ export function pick(dir, ref, label, sources) {
   intake.refs[i] = rec;
   writeRecord(dir, intake);
   return rec;
+}
+
+/**
+ * A reference the architect brings in after intake, under the same rule. Resolved: appended with
+ * its snapshot. Already present: a no-op that leaves sources.yaml untouched. Ambiguous or not
+ * found: LookupError, and nothing is written; the architect records an OQ instead of guessing.
+ * @returns {{ added: boolean, ref: object }}
+ */
+export function addRef(dir, ref, sources) {
+  const intake = readIntake(dir) ?? { refs: [], unmatched: [] };
+  const present = intake.refs.find((r) => r.ref === ref);
+  if (present) return { added: false, ref: present };
+  const t = asReference(ref, { backticked: true });
+  if (!t) throw new Error(`${ref} is not a path reference (expected <path> or <source>@<branch>:<path>)`);
+  const resolution = resolveReferences(`\`${ref}\``, sources);
+  if (resolution.failures.length) throw new LookupError(resolution.failures.join("\n"));
+  const [rec] = resolution.refs;
+  if (!rec) {
+    const searched = sources.filter((s) => s.root).map((s) => `${s.name}: ${places(s.root).map((p) => p.label).join(", ")}`);
+    throw new LookupError(`${ref}: not found; searched ${searched.join("; ") || "no reachable source"}`);
+  }
+  if (rec.status === "ambiguous") throw new LookupError(`${ref} differs across places: ${rec.candidates.join(", ")}; record an OQ, or pin it as ${rec.source}@<branch>:${rec.path}`);
+  snapshotInto(dir, rec, resolution.bytes.get(rec.ref));
+  writeRecord(dir, { refs: [...intake.refs, rec], unmatched: intake.unmatched.filter((u) => u !== rec.path) });
+  return { added: true, ref: rec };
+}
+
+/** The live bytes behind a resolved ref: its recorded worktree's file, else its branch's current tip. */
+function liveBytes(rec, source) {
+  if (rec.worktree) {
+    if (!existsSync(rec.worktree)) return { reason: `worktree ${rec.worktree} no longer exists` };
+    const file = join(rec.worktree, rec.path);
+    return existsSync(file) ? { bytes: readFileSync(file) } : { reason: `${rec.path} no longer exists in ${rec.worktree}` };
+  }
+  if (!source?.root) return { reason: `source ${rec.source} is unreachable${source?.reason ? `: ${source.reason}` : ""}` };
+  if (!git(source.root, ["rev-parse", "--verify", "--quiet", `refs/heads/${rec.branch}`])) return { reason: `branch ${rec.branch} no longer exists` };
+  const bytes = git(source.root, ["cat-file", "blob", `${rec.branch}:${rec.path}`], { buffer: true });
+  return bytes ? { bytes } : { reason: `${rec.path} no longer exists on ${rec.branch}` };
+}
+
+/**
+ * Whether each snapshotted document still matches its live version. A place that can no longer be
+ * read counts as moved, with the reason: the reviewer reports drift, it never blocks on it.
+ * @returns {Array<{ ref: string, snapshot_sha256: string, live_sha256: string|null, moved: boolean, reason?: string }>}
+ */
+export function liveDrift(dir, sources) {
+  return (readIntake(dir)?.refs ?? [])
+    .filter((r) => r.status === "resolved")
+    .map((rec) => {
+      const { bytes, reason } = liveBytes(rec, sources.find((s) => s.name === rec.source));
+      const live = bytes ? contentHash(bytes) : null;
+      return { ref: rec.ref, snapshot_sha256: rec.sha256, live_sha256: live, moved: live !== rec.sha256, ...(reason ? { reason } : {}) };
+    });
 }

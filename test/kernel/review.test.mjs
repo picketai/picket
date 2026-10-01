@@ -110,5 +110,6 @@ test("a project without nested repos writes no repos.yaml and reports repos []",
   assert.deepEqual(r.changed_files, ["a.ts"]);
   assert.deepEqual(r.repos, []);
   assert.equal(r.request, null);
+  assert.deepEqual(r.sources, [], "no sources.yaml, no drift entries (T-5.5)");
   rmSync(root, { recursive: true, force: true });
 });

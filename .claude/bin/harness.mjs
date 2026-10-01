@@ -20,6 +20,7 @@
 //   harness source find <name> <substring>          tracked files across every worktree and branch
 //   harness source grep <name> <regex> [--path <p>]  matching lines, identical hits merged
 //   harness source pick <id> <ref> <label>           the user's version of an ambiguous story reference
+//   harness source add <id> <ref>                    bring in a later reference (exit 2: ambiguous or missing)
 //   harness packet <id>            the gate packet for the current stop, as text (--json for the structure)
 //   harness review-summary --range <base>..<head>
 //   harness pr <url> [--repo <path>]   resolve (root, or a nested clone under src/), fetch and summarise a pull request
@@ -41,7 +42,7 @@ import { route, findVerdict } from "../lib/route.mjs";
 import { cost } from "../lib/cost.mjs";
 import { reviewSummary } from "../lib/review.mjs";
 import { loadConfig } from "../lib/config.mjs";
-import { IntakeError, find as findInSource, grep as grepInSource, pick as pickSource } from "../lib/sources.mjs";
+import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../lib/sources.mjs";
 
 function parse(argv) {
   const pos = [];
@@ -231,9 +232,24 @@ async function main(argv) {
         out({ ...rec, next: next(id, root) }, opt, (v) => `${v.ref}: ${v.branch ?? v.worktree} @ ${String(v.commit).slice(0, 8)} (chosen_by user) · next: ${v.next.action}`);
         return 0;
       }
+      if (rest[0] === "add") {
+        // A reference the architect brings in after intake; ambiguous or missing exits 2, writing nothing.
+        const [, id, ref] = rest;
+        if (!id || !ref) throw new Error("source add needs <id> <ref>");
+        readState(id, root); // an unknown id fails here, not as a missing directory
+        try {
+          const r = addSource(workDir(id, root), ref, sources);
+          out(r, opt, (v) => `${v.ref.ref}: ${v.added ? `added from ${v.ref.branch ?? v.ref.worktree} @ ${String(v.ref.commit).slice(0, 8)} (${v.ref.chosen_by}) · snapshot ${v.ref.snapshot}` : "already recorded"}`);
+          return 0;
+        } catch (err) {
+          if (!(err instanceof LookupError)) throw err;
+          out({ ref, error: err.message }, opt, () => err.message);
+          return 2;
+        }
+      }
       // Read-only discovery across every worktree and local branch of a declared source.
       const [sub, name, query] = rest;
-      if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring>, grep <name> <regex> [--path <prefix>], or pick <id> <ref> <label>");
+      if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring>, grep <name> <regex> [--path <prefix>], pick <id> <ref> <label>, or add <id> <ref>");
       const source = sources.find((s) => s.name === name);
       if (!source) throw new Error(`no source named ${name}; declared: ${sources.map((s) => s.name).join(", ") || "(none, see .claude/harness.json)"}`);
       if (!source.root) {
