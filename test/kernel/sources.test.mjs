@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../.claude/lib/sources.mjs";
 import { parse as parseYaml } from "../../.claude/lib/yaml-lite.mjs";
+import { canonicalPath, sourceRoots, underSource } from "../../.claude/hooks/lib/source-paths.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");
 const HOOKS = resolve(".claude/hooks");
@@ -329,6 +330,23 @@ test("a removed linked worktree reports live_sha256 null, moved true and a reaso
   const [ref] = JSON.parse(cli(root, ["review-summary", id], main).out).sources;
   assert.deepEqual([ref.live_sha256, ref.moved], [null, true]);
   assert.match(ref.reason, /worktree .* no longer exists/);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("sourceRoots lists the same worktrees as git worktree list, also from a linked worktree (T-6.6)", () => {
+  const { base, main, feat } = tempSource();
+  const second = join(base, "analysis-second");
+  git(main, "worktree", "add", "-q", "-b", "feat-y", second);
+  const root = tempProject();
+  const expected = listWorktrees(main).map((w) => canonicalPath(w.path)).sort();
+  assert.equal(expected.length, 3);
+  const fromFs = (sourceRoot) => sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: sourceRoot })[0].paths.slice().sort();
+  assert.deepEqual(fromFs(main), expected);
+  assert.deepEqual(fromFs(feat), expected, "a root that is itself a linked worktree still finds the others");
+  assert.equal(underSource(join(second, "docs", "new.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main })), "analysis");
+  assert.equal(underSource(join(root, "a.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main })), null);
+  assert.deepEqual(sourceRoots(root, {}), [], "no root, nothing protected");
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });

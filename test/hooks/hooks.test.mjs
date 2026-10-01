@@ -127,6 +127,73 @@ test("route.verdict closes the item on a cumulative APPROVED from the fresh cumu
   rmSync(root, { recursive: true, force: true });
 });
 
+/**
+ * A project that declares source `analysis`, and that source: a main worktree with docs/a.md and a
+ * linked worktree on feat-x. Hooks run with HARNESS_SOURCE_ANALYSIS pointing at the main worktree.
+ */
+function projectWithSource() {
+  const { root, id } = project();
+  writeFileSync(join(root, ".claude", "harness.json"), JSON.stringify({ sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } }));
+  const base = mkdtempSync(join(tmpdir(), "harness-guard-src-"));
+  const main = join(base, "analysis");
+  const g = (...args) => execFileSync("git", ["-C", main, "-c", "user.name=t", "-c", "user.email=t@t", ...args], { stdio: "ignore" });
+  mkdirSync(join(main, "docs"), { recursive: true });
+  execFileSync("git", ["init", "-q", "-b", "main", main]);
+  writeFileSync(join(main, "docs", "a.md"), "rate 10\n");
+  g("add", "-A");
+  g("commit", "-q", "-m", "a");
+  const feat = join(base, "analysis-feat");
+  g("worktree", "add", "-q", "-b", "feat-x", feat);
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: root, HARNESS_SOURCE_ANALYSIS: main };
+  const hook = (name, payload) => {
+    const out = execFileSync("node", [join(HOOKS, name)], { input: JSON.stringify(payload), encoding: "utf8", env });
+    return out.trim() ? JSON.parse(out).hookSpecificOutput : null;
+  };
+  const cleanup = () => {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(base, { recursive: true, force: true });
+  };
+  return { root, id, main, feat, hook, cleanup };
+}
+
+test("guard.scope denies writes under a source and its linked worktree, not in the project (T-6.1)", () => {
+  const { root, main, feat, hook, cleanup } = projectWithSource();
+  const write = (tool_name, file_path) => hook("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name, tool_input: { file_path }, cwd: root });
+  for (const target of [join(main, "docs", "a.md"), join(feat, "docs", "new.md")]) {
+    const w = write("Write", target);
+    assert.equal(w?.permissionDecision, "deny", target);
+    assert.match(w.permissionDecisionReason, /inside source analysis, which is read-only/);
+    assert.equal(write("Edit", target)?.permissionDecision, "deny");
+  }
+  assert.equal(write("Write", join(root, "src", "new.ts")), null);
+  cleanup();
+});
+
+test("guard.scope keeps the intake record kernel-owned (T-6.2)", () => {
+  const { root, id } = project();
+  for (const f of ["request.md", "story.md", "sources.yaml", "sources/a.md", "repos.yaml"]) {
+    const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "work", id, f) }, cwd: root }, root);
+    assert.match(out?.hookSpecificOutput?.permissionDecisionReason ?? "", /kernel-owned/, f);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.bash denies mutating commands in a source and keeps its reads allowed (T-6.3, T-6.4)", () => {
+  const { root, feat, main, hook, cleanup } = projectWithSource();
+  const wt = feat.replaceAll("\\", "/");
+  const decision = (command) => hook("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root });
+  for (const command of [`git -C "${wt}" commit -m x`, `cd "${wt}" && git add .`, `cp a.md "${wt}/a.md"`, `echo x > "${wt}/a.md"`, `node .claude/bin/harness.mjs drive --run "cp a.md ${wt}/a.md"`]) {
+    const d = decision(command);
+    assert.equal(d?.permissionDecision, "deny", command);
+    assert.match(d.permissionDecisionReason, /inside source analysis/, command);
+  }
+  for (const command of [`git -C "${wt}" log -1`, `cat "${main.replaceAll("\\", "/")}/docs/a.md"`, `grep -rn rate "${wt}"`]) {
+    assert.equal(decision(command)?.permissionDecision, "allow", command);
+  }
+  assert.equal(decision("cp a.md b.md"), null, "a copy inside the project still reaches the prompt");
+  cleanup();
+});
+
 test("route.verdict keeps a pull request review in the ledger instead of routing it", () => {
   const { root } = project();
   const block = "## Review: pr-7287 · pr\n\nApproved: the diff does what the description says.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";

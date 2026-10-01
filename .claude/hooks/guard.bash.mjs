@@ -36,8 +36,10 @@
  */
 
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
-import { dirname, join, resolve } from "path";
+import { dirname, isAbsolute, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { sourceRoots, underSource } from "./lib/source-paths.mjs";
+import { projectRoot } from "./lib/project-root.mjs";
 
 // Every invocation appends one line to .claude/ledger/guard-bash.log
 // (anchored to this script's location, NOT the spawn cwd, so it also proves
@@ -619,12 +621,60 @@ function checkNpmFamily(tokens, cwd) {
  */
 function applyCd(seg, currentCwd) {
   if (seg.length !== 2 || typeof seg[1] !== "string") return null;
-  let target = seg[1];
-  if (target === "-") return null;
-  // Git-Bash / MSYS drive paths: /c/foo -> c:/foo so Node can resolve them.
-  const msys = /^\/([A-Za-z])(\/|$)/.exec(target);
-  if (msys) target = `${msys[1]}:${target.slice(2) || "/"}`;
-  return currentCwd ? resolve(currentCwd, target) : null;
+  if (seg[1] === "-") return null;
+  return currentCwd ? resolve(currentCwd, nodePath(seg[1])) : null;
+}
+
+/** Git-Bash / MSYS drive paths: /c/foo -> c:/foo so Node can resolve them. */
+function nodePath(p) {
+  const msys = /^\/([A-Za-z])(\/|$)/.exec(p);
+  return msys ? `${msys[1]}:${p.slice(2) || "/"}` : p;
+}
+
+/**
+ * The source (a read-only repo, D-008) a segment would act inside: its effective cwd, or any
+ * operand that resolves under one — `-C <path>`, `--work-tree=<path>`, a file argument. Only
+ * asked of segments that are not plainly read-only, so `git -C <source> log` and `cat` stay allowed.
+ */
+function segmentSource(seg, cwd, roots) {
+  if (cwd) {
+    const inCwd = underSource(cwd, roots);
+    if (inCwd) return inCwd;
+  }
+  for (const tok of seg.slice(1)) {
+    if (typeof tok !== "string" || !tok) continue;
+    const value = nodePath(tok.match(/^--?[\w-]+=(.+)$/)?.[1] ?? tok);
+    if (value.startsWith("-") || (!cwd && !isAbsolute(value))) continue;
+    const hit = underSource(cwd ? resolve(cwd, value) : value, roots);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** A redirect target that lands in a source, resolved against every cwd the command passes through. */
+function redirectSource(targets, cwds, roots) {
+  for (const t of targets) {
+    if (typeof t !== "string" || !t) continue;
+    const p = nodePath(t);
+    for (const cwd of isAbsolute(p) ? [null] : cwds.filter(Boolean)) {
+      const hit = underSource(cwd ? resolve(cwd, p) : p, roots);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function sourceDenial(name, what) {
+  return `guard.bash: ${what} acts inside source ${name}, which is read-only; read it through \`harness source\` and the snapshots, and never write, commit or run tools there.`;
+}
+
+/** Protected source worktrees for this project; [] when none, so the guard behaves as before. */
+function protectedSources(input) {
+  try {
+    return sourceRoots(projectRoot(input));
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -703,11 +753,21 @@ async function main() {
 
   if (!segments.length) return fallThrough("no-segments");
 
+  const roots = protectedSources(input);
   const classifications = [];
+  const cwdsSeen = [cwd];
   let effCwd = cwd;
   for (const seg of segments) {
-    classifications.push(classifySegment(seg, effCwd));
-    if (normalizeRoot(seg[0]) === "cd") effCwd = applyCd(seg, effCwd);
+    const cls = classifySegment(seg, effCwd);
+    classifications.push(cls);
+    if (roots.length && cls !== "safe") {
+      const hit = segmentSource(seg, effCwd, roots);
+      if (hit) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
+    }
+    if (normalizeRoot(seg[0]) === "cd") {
+      effCwd = applyCd(seg, effCwd);
+      cwdsSeen.push(effCwd);
+    }
     // A kernel verb that runs a command string on the agent's behalf (drive --run/--start,
     // check --only) is a wrapper. Classify what it wraps, or the allow rule for harness.mjs
     // becomes a bypass: `harness drive --run "rm -rf src"` must be judged as `rm -rf src`.
@@ -719,11 +779,21 @@ async function main() {
       } catch {
         return fallThrough("wrapped-unparsable");
       }
-      const innerSegs = splitIntoSegments(innerTokens).segments;
+      const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
       if (innerSegs.some((s) => classifySegment(s, effCwd) === "deny")) {
         return decide("deny", `guard.bash: the command wrapped in a harness verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
       }
+      if (roots.length) {
+        const hit = innerSegs.map((s) => (classifySegment(s, effCwd) === "safe" ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
+        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a harness verb (${inner.slice(0, 60)})`));
+      }
     }
+  }
+
+  // A write redirect into a source denies even behind a read-only command: `echo x > <source>/a.md`.
+  if (roots.length && sawWriteRedirect) {
+    const hit = redirectSource(redirectTargets, cwdsSeen, roots);
+    if (hit) return decide("deny", sourceDenial(hit, "a write redirect"));
   }
 
   if (classifications.includes("deny")) {
