@@ -1,7 +1,7 @@
 // Pre-flight without a model: are the inputs there, is the tree sane, what tooling exists.
 // Each check is ok | warn | fail. One fail stops; warns are shown and work proceeds.
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { deriveState, projectRoot } from "./work.mjs";
 import * as git from "./git.mjs";
 import { loadConfig } from "./config.mjs";
@@ -29,6 +29,19 @@ export function detectTooling(root) {
     out.test = "pytest";
   }
   return out;
+}
+
+/** Same location on disk, whatever the spelling (8.3 short names, slashes, case on Windows). */
+function samePath(a, b) {
+  const canon = (p) => {
+    let real = resolve(p);
+    try {
+      real = realpathSync.native(real);
+    } catch {}
+    const out = real.replaceAll("\\", "/").replace(/\/+$/, "");
+    return process.platform === "win32" ? out.toLowerCase() : out;
+  };
+  return canon(a) === canon(b);
 }
 
 export function preflight(id, root = projectRoot()) {
@@ -73,6 +86,7 @@ export function preflight(id, root = projectRoot()) {
     const trees = source.root ? listWorktrees(source.root) : [];
     if (!source.root) add(`source:${source.name}`, "warn", `unreachable: ${source.reason}`);
     else if (!trees.length) add(`source:${source.name}`, "warn", `unreachable: ${source.root} is not a git repository`);
+    else if (!trees.some((t) => samePath(t.path, source.root))) add(`source:${source.name}`, "warn", `${source.root} is inside a worktree, not its top level; set ${source.env} to the repository root (the guards protect the whole repository either way)`);
     else add(`source:${source.name}`, "ok", `${source.root} · ${trees.length} worktree${trees.length === 1 ? "" : "s"}`);
   }
 

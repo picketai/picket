@@ -162,36 +162,77 @@ const hasExtension = (path) => /\.[A-Za-z0-9]+$/.test(basename(path));
 /** No `.`/`..` segment, so a snapshot path can never leave the work item. */
 const isSafe = (path) => !path.split("/").some((s) => s === "." || s === "..");
 
-/**
- * Path-like words of a story: `seg/seg[/seg…]`, or a backticked name with an extension, with
- * wrapping punctuation and a `:line` suffix stripped. `<source>@<branch>:<path>` is a pin.
- * At most TOKEN_CAP distinct references, in order of first appearance.
- * @returns {Array<{ ref: string, source: string|null, path: string, pin: string|null }>}
- */
-export function tokens(text) {
-  const out = new Map();
-  for (const m of String(text).matchAll(/`([^`\n]+)`|(\S+)/g)) {
-    if (out.size >= TOKEN_CAP) break;
-    const word = (m[1] ?? m[2])
-      .trim()
-      .replace(/^[("'[{<*]+/, "")
-      .replace(/[)"'\]}>.,;:!?*]+$/, "")
-      .replace(/:\d+(-\d+)?$/, "");
-    const ref = asReference(word, { backticked: m[1] !== undefined });
-    if (ref && !out.has(ref.ref)) out.set(ref.ref, ref);
+const MARKDOWN_LINK = /\[[^\]\n]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+
+function decodePercent(s) {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
   }
-  return [...out.values()];
 }
 
-/** One word as a reference, or null when it is plain text. A backticked bare name with an extension counts. */
-function asReference(word, { backticked }) {
+/**
+ * One raw token, cleaned: wrapping punctuation, then `#fragment` (kept as the anchor), `?query`
+ * and a `:line` suffix stripped. `docs/fees.md#late-fees,` gives `docs/fees.md` and `late-fees`.
+ */
+function cleanToken(raw) {
+  let word = raw.trim().replace(/^[("'[{<*]+/, "").replace(/[)"'\]}>.,;!?*]+$/, "");
+  let anchor = null;
+  const hash = word.indexOf("#");
+  if (hash >= 0) {
+    anchor = word.slice(hash + 1) || null;
+    word = word.slice(0, hash);
+  }
+  word = word.replace(/\?.*$/, "").replace(/:\d+(-\d+)?$/, "").replace(/[.,;:!?]+$/, "");
+  return { word, anchor };
+}
+
+/**
+ * One cleaned word as a reference; `{ unshaped }` when it looks like a path (a slash and an
+ * extension) but fails the path shape, so it is never looked up and goes to `unmatched`; null for
+ * plain text. A backticked bare name with an extension counts; `<source>@<branch>:<path>` is a pin.
+ */
+function classify(word, anchor, { backticked }) {
   if (!word || word.includes("://")) return null;
   const pin = word.match(PIN);
-  if (pin) {
-    const [, source, branch, path] = pin;
-    return (PATH_LIKE.test(path) || NAME_WITH_EXT.test(path)) && isSafe(path) ? { ref: word, source, path, pin: branch } : null;
-  }
-  return (PATH_LIKE.test(word) || (backticked && NAME_WITH_EXT.test(word))) && isSafe(word) ? { ref: word, source: null, path: word, pin: null } : null;
+  const path = pin ? pin[3] : word;
+  const shaped = (PATH_LIKE.test(path) || ((backticked || pin) && NAME_WITH_EXT.test(path))) && isSafe(path);
+  if (!shaped) return path.includes("/") && hasExtension(path) ? { unshaped: path } : null;
+  return pin ? { ref: word, source: pin[1], path, anchor, pin: pin[2] } : { ref: word, source: null, path, anchor, pin: null };
+}
+
+/**
+ * The references in a story, in order: every markdown link target (percent-escapes decoded, a
+ * leading `./` dropped), then the path-like words of the prose. Tokens with the same path merge;
+ * at most TOKEN_CAP references.
+ * @returns {{ refs: Array<{ ref, source, path, anchor, pin }>, unshaped: string[] }}
+ */
+function extract(text) {
+  const refs = new Map();
+  const unshaped = new Set();
+  const take = (raw, backticked) => {
+    const { word, anchor } = cleanToken(raw);
+    const r = classify(word, anchor, { backticked });
+    if (!r) return;
+    if (r.unshaped) unshaped.add(r.unshaped);
+    else if (!refs.has(r.ref) && refs.size < TOKEN_CAP) refs.set(r.ref, r);
+    else if (refs.has(r.ref) && !refs.get(r.ref).anchor) refs.get(r.ref).anchor = r.anchor;
+  };
+  const prose = String(text).replace(MARKDOWN_LINK, (_, target) => {
+    take(decodePercent(target).replace(/^\.\//, ""), true);
+    return " ";
+  });
+  for (const m of prose.matchAll(/`([^`\n]+)`|(\S+)/g)) take(m[1] ?? m[2], m[1] !== undefined);
+  return { refs: [...refs.values()], unshaped: [...unshaped] };
+}
+
+/**
+ * The references a story names (D-005): see extract.
+ * @returns {Array<{ ref: string, source: string|null, path: string, anchor: string|null, pin: string|null }>}
+ */
+export function tokens(text) {
+  return extract(text).refs;
 }
 
 /** A reference lookup that failed for a reason the caller must show: the CLI exits 2 on it. */
@@ -208,7 +249,9 @@ export class IntakeError extends LookupError {
 }
 
 function resolvedRecord(t, sourceName, c, chosenBy) {
-  return { ref: t.ref, source: sourceName, path: t.path, status: "resolved", chosen_by: chosenBy, worktree: c.worktree, branch: c.branch, commit: c.commit, sha256: c.sha256, dirty: c.dirty, snapshot: null };
+  const rec = { ref: t.ref, source: sourceName, path: t.path, status: "resolved", chosen_by: chosenBy, worktree: c.worktree, branch: c.branch, commit: c.commit, sha256: c.sha256, dirty: c.dirty, snapshot: null };
+  if (t.anchor) rec.anchor = t.anchor; // the heading the story pointed at, for citations
+  return rec;
 }
 
 /**
@@ -240,7 +283,9 @@ export function resolveReferences(text, sources) {
     refs.push(rec);
     if (b) bytes.set(rec.ref, b);
   };
-  for (const t of tokens(text)) {
+  const { refs: found, unshaped } = extract(text);
+  unmatched.push(...unshaped);
+  for (const t of found) {
     if (t.pin) {
       const source = sources.find((s) => s.name === t.source);
       if (!source?.root) {
@@ -254,7 +299,7 @@ export function resolveReferences(text, sources) {
     }
     const hit = reachable.map((s) => ({ source: s, found: candidates(s, t.path, placesOf.get(s.name)) })).find((h) => h.found.length);
     if (hit) keep(choose(t, hit.source.name, hit.found));
-    else if (t.path.includes("/") && hasExtension(t.path)) unmatched.push(t.path);
+    else if (t.path.includes("/") && hasExtension(t.path) && !unmatched.includes(t.path)) unmatched.push(t.path);
   }
   return { refs, unmatched, failures, bytes };
 }
@@ -325,10 +370,10 @@ export function pick(dir, ref, label, sources) {
  */
 export function addRef(dir, ref, sources) {
   const intake = readIntake(dir) ?? { refs: [], unmatched: [] };
-  const present = intake.refs.find((r) => r.ref === ref);
+  const [t] = extract(`\`${ref}\``).refs;
+  if (!t) throw new Error(`${ref} is not a path reference (expected <path>[#anchor] or <source>@<branch>:<path>)`);
+  const present = intake.refs.find((r) => r.ref === t.ref);
   if (present) return { added: false, ref: present };
-  const t = asReference(ref, { backticked: true });
-  if (!t) throw new Error(`${ref} is not a path reference (expected <path> or <source>@<branch>:<path>)`);
   const resolution = resolveReferences(`\`${ref}\``, sources);
   if (resolution.failures.length) throw new LookupError(resolution.failures.join("\n"));
   const [rec] = resolution.refs;

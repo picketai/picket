@@ -107,7 +107,7 @@ The kernel finds the clone by the repository name in the URL: the project root, 
 .claude/skills/reviewing/
   SKILL.md                                this file
   steps/10-alignment.md                   criteria to evidence, plus the comment and test floors (always)
-  steps/15-traced.md                      cumulative only: request and story first, plan last; replaces 10's alignment part
+  steps/15-traced.md                      cumulative only, with 10's floors and criteria rules: request and story first, plan last
   steps/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
   steps/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
   steps/40-framework-typescript.md        types, promises, errors, React, imports, leaks

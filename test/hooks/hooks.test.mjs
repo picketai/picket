@@ -182,14 +182,26 @@ test("guard.bash denies mutating commands in a source and keeps its reads allowe
   const { root, feat, main, hook, cleanup } = projectWithSource();
   const wt = feat.replaceAll("\\", "/");
   const decision = (command) => hook("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root });
-  for (const command of [`git -C "${wt}" commit -m x`, `cd "${wt}" && git add .`, `cp a.md "${wt}/a.md"`, `echo x > "${wt}/a.md"`, `node .claude/bin/harness.mjs drive --run "cp a.md ${wt}/a.md"`]) {
+  const denied = [
+    `git -C "${wt}" commit -m x`,
+    `cd "${wt}" && git add .`,
+    `cp a.md "${wt}/a.md"`,
+    `echo x > "${wt}/a.md"`,
+    `node .claude/bin/harness.mjs drive --run "cp a.md ${wt}/a.md"`,
+    `git -C "${wt}" tag -d v1`,
+    `git -C "${wt}" reflog expire --expire=now --all`,
+    `git -C "${wt}" remote set-url origin x`,
+  ];
+  for (const command of denied) {
     const d = decision(command);
     assert.equal(d?.permissionDecision, "deny", command);
     assert.match(d.permissionDecisionReason, /inside source analysis/, command);
   }
-  for (const command of [`git -C "${wt}" log -1`, `cat "${main.replaceAll("\\", "/")}/docs/a.md"`, `grep -rn rate "${wt}"`]) {
+  const src = main.replaceAll("\\", "/");
+  for (const command of [`git -C "${wt}" log -1`, `cat "${src}/docs/a.md"`, `grep -rn rate "${wt}"`, `git -C "${wt}" grep rate`, `git -C "${wt}" cat-file -p HEAD`]) {
     assert.equal(decision(command)?.permissionDecision, "allow", command);
   }
+  assert.equal(decision(`awk "{print}" "${src}/docs/a.md"`), null, "a read-only tool outside the safe set reaches the prompt");
   assert.equal(decision("cp a.md b.md"), null, "a copy inside the project still reaches the prompt");
   cleanup();
 });

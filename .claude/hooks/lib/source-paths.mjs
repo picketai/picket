@@ -56,10 +56,26 @@ function commonGitDir(root) {
   return common ? resolve(own, common) : own;
 }
 
-/** Every worktree of the repository at `root`: the main one and each linked one still on disk. */
-function worktreePaths(root) {
-  const common = commonGitDir(root);
-  if (!common) return [root];
+/** The top of the repository holding `dir`: the nearest ancestor (or itself) with a `.git` entry. */
+export function enclosingRepo(dir) {
+  let cur = resolve(dir);
+  for (;;) {
+    if (existsSync(join(cur, ".git"))) return cur;
+    const up = dirname(cur);
+    if (up === cur) return null;
+    cur = up;
+  }
+}
+
+/**
+ * Every worktree of the repository holding `root`: the main one and each linked one still on
+ * disk. A root set to a subfolder (`D:\analysis\docs`) protects the whole repository; a root in
+ * no repository protects itself.
+ */
+function worktreePaths(sourceRoot) {
+  const root = enclosingRepo(sourceRoot);
+  const common = root && commonGitDir(root);
+  if (!common) return [canonicalPath(sourceRoot)];
   const paths = [root];
   if (basename(common) === ".git") paths.push(dirname(common)); // the main worktree
   let entries = [];

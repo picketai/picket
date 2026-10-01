@@ -227,18 +227,36 @@ test("ordinary words stay plain text; a path-like miss with an extension is unma
 
 test("tokens strip punctuation and line suffixes, read pins, refuse dot segments, and cap at 200", () => {
   assert.deepEqual(tokens("(docs/a.md:12), `b.md`, c.md, analysis@feat-x:docs/c.md ../etc/passwd"), [
-    { ref: "docs/a.md", source: null, path: "docs/a.md", pin: null },
-    { ref: "b.md", source: null, path: "b.md", pin: null },
-    { ref: "analysis@feat-x:docs/c.md", source: "analysis", path: "docs/c.md", pin: "feat-x" },
+    { ref: "docs/a.md", source: null, path: "docs/a.md", anchor: null, pin: null },
+    { ref: "b.md", source: null, path: "b.md", anchor: null, pin: null },
+    { ref: "analysis@feat-x:docs/c.md", source: "analysis", path: "docs/c.md", anchor: null, pin: "feat-x" },
   ]);
   assert.equal(tokens(Array.from({ length: 300 }, (_, i) => `d/f${i}.md`).join(" ")).length, 200);
+});
+
+test("a #fragment and a markdown link target resolve their path; an unshaped path goes to unmatched", () => {
+  assert.deepEqual(tokens("See [late fees](./docs/rent/late%2Dfees.md), docs/rent/fees.md#late-fees and docs/rent/fees.md?v=2."), [
+    { ref: "docs/rent/late-fees.md", source: null, path: "docs/rent/late-fees.md", anchor: null, pin: null },
+    { ref: "docs/rent/fees.md", source: null, path: "docs/rent/fees.md", anchor: "late-fees", pin: null },
+  ]);
+  const { base, main } = tempSource();
+  mkdirSync(join(main, "docs", "rent"));
+  writeFileSync(join(main, "docs", "rent", "fees.md"), "# Fees\n");
+  const root = tempProject();
+  const r = openWithStory(root, "Per [fees](docs/rent/fees.md) and docs/rent/fees.md#late-fees; also docs/ré/x.md.", main);
+  const record = readYaml(root, JSON.parse(r.out).id);
+  assert.deepEqual(record.refs.map((x) => [x.ref, x.anchor]), [["docs/rent/fees.md", "late-fees"]]);
+  assert.deepEqual(record.unmatched, ["docs/ré/x.md"]);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
 });
 
 test("with no reachable source the story is saved and no sources.yaml is written", () => {
   const root = tempProject();
   const r = openWithStory(root, "See docs/pricing.md.", null);
   assert.equal(r.code, 0, r.err);
-  const id = JSON.parse(r.out).id;
+  const { id, warnings } = JSON.parse(r.out);
+  assert.match(warnings[0], /without snapshots: no reachable source \(analysis: HARNESS_SOURCE_ANALYSIS is not set/);
   assert.equal(existsSync(join(root, "work", id, "story.md")), true);
   assert.equal(existsSync(join(root, "work", id, "sources.yaml")), false);
   rmSync(root, { recursive: true, force: true });
@@ -347,6 +365,7 @@ test("sourceRoots lists the same worktrees as git worktree list, also from a lin
   assert.equal(underSource(join(second, "docs", "new.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main })), "analysis");
   assert.equal(underSource(join(root, "a.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main })), null);
   assert.deepEqual(sourceRoots(root, {}), [], "no root, nothing protected");
+  assert.deepEqual(fromFs(join(main, "docs")), expected, "a subfolder root protects the whole repository and its worktrees");
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });

@@ -24,6 +24,7 @@ Current work items:
    - `approve_phase` by user: render the gate packet exactly as `.claude/skills/ordering/steps/30-gate.md` describes, from the artifact's phase section and the last `PHASE DONE` block in `work/<id>/verdicts.jsonl`, and stop.
    - `implement_phase`, `write_artifact`, `review_cumulative`, `review_checkpoint`: open the lane skill the item's `lane` names (`ordering`, `designing`, `researching`) at the matching step. Agents from the previous session are gone; spawn fresh ones with the same messages the step file gives, and note in one line that the instance is new.
    - `resolve_block`: print `blocked_reason` and the options `[c] continue · [x] abandon`; stop.
+   - `resolve_sources`: the opening gate. Print `harness packet <id>` verbatim and stop; apply each reply with `harness source pick <id> <ref> <label>`, then continue the lane's step 1.
    - `close` or `none`: say so in one line.
 4. Fast-lane items have no artifact and no phases; if one is still `open`, the change was interrupted: show `git status` for the touch set and ask whether to finish or abandon.
 

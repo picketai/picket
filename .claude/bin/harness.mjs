@@ -101,7 +101,12 @@ async function main(argv) {
         out({ error: "source references not found", failures: err.failures }, opt, () => err.message);
         return 2;
       }
-      out({ ...s, dir: `work/${s.id}`, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}`);
+      // Intake without a reachable source still saves story.md; say so, or the missing snapshots go unnoticed.
+      const { sources } = loadConfig(root);
+      const noSource = opt.story && !sources.some((x) => x.root);
+      const why = sources.map((x) => `${x.name}: ${x.reason}`).join("; ") || "none declared in .claude/harness.json";
+      const warnings = noSource ? [`story.md saved without snapshots: no reachable source (${why})`] : [];
+      out({ ...s, dir: `work/${s.id}`, warnings, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}${v.warnings.map((w) => `\nWARNING: ${w}`).join("")}`);
       return 0;
     }
     case "list": {

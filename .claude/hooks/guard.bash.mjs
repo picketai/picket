@@ -631,10 +631,42 @@ function nodePath(p) {
   return msys ? `${msys[1]}:${p.slice(2) || "/"}` : p;
 }
 
+// A segment that acts inside a source (D-008 r2) is judged by this policy instead of the general
+// `safe` class, which lets `git tag`, `reflog` and `remote` through whatever their arguments.
+const SOURCE_GIT_READS = new Set(["log", "show", "diff", "blame", "status", "ls-files", "ls-tree", "rev-parse", "grep", "cat-file"]);
+const SOURCE_LISTING_FLAGS = new Set(["--list", "-l", "-a", "-r", "-v"]);
+const SOURCE_WRITERS = new Set(["cp", "mv", "tee", "touch", "mkdir", "ln", "npm", "yarn", "pnpm", "dotnet", "Copy-Item", "Move-Item", "New-Item", "Set-Content", "Out-File"]);
+
+/**
+ * Git inside a source: a strict read-only list, everything else denied. Also denied: a global
+ * `-c`/`--exec-path` (a pager or alias can run a command), `--output` (writes a file), and
+ * `grep -O` (opens a pager).
+ */
+function sourceGitPolicy(seg) {
+  const globals = seg.slice(1, seg.length - (stripGitGlobalOpts(seg).length - 1));
+  if (globals.some((t) => typeof t === "string" && /^(-c|--exec-path)/.test(t))) return "deny";
+  const [, sub, ...rest] = stripGitGlobalOpts(seg);
+  const args = rest.filter((t) => typeof t === "string");
+  if (args.some((t) => /^--output(=|$)/.test(t))) return "deny";
+  if (sub === "grep" && args.some((t) => /^(-O|--open-files-in-pager)/.test(t))) return "deny";
+  if (SOURCE_GIT_READS.has(sub)) return "safe";
+  if (sub === "worktree" && args[0] === "list") return "safe";
+  if ((sub === "branch" || sub === "tag") && args.every((t) => SOURCE_LISTING_FLAGS.has(t))) return "safe";
+  return "deny";
+}
+
+/** Any command inside a source: writers denied, plainly read-only allowed, the rest to the prompt. */
+function sourcePolicy(seg, cwd) {
+  const root = normalizeRoot(seg[0]);
+  if (root === "git") return sourceGitPolicy(seg);
+  if (DENY_ROOTS.has(root) || SOURCE_WRITERS.has(root)) return "deny";
+  if (root === "sed" && seg.some((t) => typeof t === "string" && /^(-[a-zA-Z]*i|--in-place)/.test(t))) return "deny";
+  return classifySegment(seg, cwd) === "safe" ? "safe" : "unknown";
+}
+
 /**
  * The source (a read-only repo, D-008) a segment would act inside: its effective cwd, or any
- * operand that resolves under one — `-C <path>`, `--work-tree=<path>`, a file argument. Only
- * asked of segments that are not plainly read-only, so `git -C <source> log` and `cat` stay allowed.
+ * operand that resolves under one: `-C <path>`, `--work-tree=<path>`, a file argument.
  */
 function segmentSource(seg, cwd, roots) {
   if (cwd) {
@@ -758,12 +790,13 @@ async function main() {
   const cwdsSeen = [cwd];
   let effCwd = cwd;
   for (const seg of segments) {
-    const cls = classifySegment(seg, effCwd);
-    classifications.push(cls);
-    if (roots.length && cls !== "safe") {
-      const hit = segmentSource(seg, effCwd, roots);
-      if (hit) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
+    let cls = classifySegment(seg, effCwd);
+    const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
+    if (hit) {
+      cls = sourcePolicy(seg, effCwd);
+      if (cls === "deny") return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
     }
+    classifications.push(cls);
     if (normalizeRoot(seg[0]) === "cd") {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);
@@ -784,8 +817,9 @@ async function main() {
         return decide("deny", `guard.bash: the command wrapped in a harness verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
       }
       if (roots.length) {
-        const hit = innerSegs.map((s) => (classifySegment(s, effCwd) === "safe" ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
-        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a harness verb (${inner.slice(0, 60)})`));
+        // Through a wrapper the prompt never shows, so anything but a plain read is denied here.
+        const hit = innerSegs.map((s) => (sourcePolicy(s, effCwd) === "safe" ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
+        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a harness verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
       }
     }
   }
