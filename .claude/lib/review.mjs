@@ -5,7 +5,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { deriveState, projectRoot } from "./work.mjs";
-import { DEFAULT_SECURITY_PATHS } from "./admit.mjs";
+import { securityPaths } from "./config.mjs";
 import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
 
@@ -73,16 +73,6 @@ function hasFile(root, pred, depth, dir = root, level = 0) {
     if (e.isDirectory() && hasFile(root, pred, depth, join(dir, e.name), level + 1)) return true;
   }
   return false;
-}
-
-function securityPaths(root) {
-  const p = join(root, ".claude", "harness.json");
-  if (existsSync(p)) {
-    try {
-      return JSON.parse(readFileSync(p, "utf8")).security_paths ?? DEFAULT_SECURITY_PATHS;
-    } catch {}
-  }
-  return DEFAULT_SECURITY_PATHS;
 }
 
 /** The summary for a committed range (a pull request): `git diff base head`, nothing from the working tree. */

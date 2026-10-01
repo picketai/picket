@@ -17,6 +17,8 @@
 //   harness drive --hit "GET /path" [--hit "POST /path <json>"]... [--start "<cmd>"] [--port N] [--wait /path]
 //   harness drive --run "<cli command>"
 //   harness check [--steps test,lint,build] [--only "<command>"]
+//   harness source find <name> <substring>          tracked files across every worktree and branch
+//   harness source grep <name> <regex> [--path <p>]  matching lines, identical hits merged
 //   harness packet <id>            the gate packet for the current stop, as text (--json for the structure)
 //   harness review-summary --range <base>..<head>
 //   harness pr <url> [--repo <path>]   resolve (root, or a nested clone under src/), fetch and summarise a pull request
@@ -37,6 +39,8 @@ import { verify } from "../lib/verify.mjs";
 import { route, findVerdict } from "../lib/route.mjs";
 import { cost } from "../lib/cost.mjs";
 import { reviewSummary } from "../lib/review.mjs";
+import { loadConfig } from "../lib/config.mjs";
+import { find as findInSource, grep as grepInSource } from "../lib/sources.mjs";
 
 function parse(argv) {
   const pos = [];
@@ -205,6 +209,22 @@ async function main(argv) {
       ].join("\n"));
       return 0;
     }
+    case "source": {
+      // Read-only discovery across every worktree and local branch of a declared source.
+      const [sub, name, query] = rest;
+      if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring> or grep <name> <regex> [--path <prefix>]");
+      const { sources } = loadConfig(root);
+      const source = sources.find((s) => s.name === name);
+      if (!source) throw new Error(`no source named ${name}; declared: ${sources.map((s) => s.name).join(", ") || "(none, see .claude/harness.json)"}`);
+      if (!source.root) {
+        out({ source: name, error: source.reason }, opt, (v) => `source ${v.source} is unreachable: ${v.error}`);
+        return 2;
+      }
+      const r = sub === "find" ? findInSource(source, query) : grepInSource(source, query, { path: typeof opt.path === "string" ? opt.path : null });
+      const more = (v) => (v.overflow ? `\n+${v.overflow} more not shown` : "");
+      out({ source: name, root: source.root, ...r }, opt, (v) => (v.hits.map((h) => (h.line ? `${h.path}:${h.line} [${h.places.join(", ")}] ${h.text}` : `${h.path} [${h.places.join(", ")}]`)).join("\n") || "(no hits)") + more(v));
+      return 0;
+    }
     case "check": {
       // Runs the detected test and lint commands, logs to .claude/ledger/, stops at the first failure.
       const r = check({ root, steps: opt.steps ? String(opt.steps).split(",").filter(Boolean) : undefined, only: opt.only === true ? undefined : opt.only, timeoutMs: opt.timeout ? Number(opt.timeout) * 1000 : undefined });
@@ -212,7 +232,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check packet pr`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check packet pr source`);
   }
 }
 

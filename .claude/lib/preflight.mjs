@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deriveState, projectRoot } from "./work.mjs";
 import * as git from "./git.mjs";
+import { loadConfig } from "./config.mjs";
+import { listWorktrees } from "./sources.mjs";
 
 export function detectTooling(root) {
   const out = { test: null, lint: null, build: null, run: null, stack: null };
@@ -64,6 +66,15 @@ export function preflight(id, root = projectRoot()) {
 
   const map = join(root, ".claude", "PROJECT-MAP.md");
   add("project_map", existsSync(map) ? "ok" : "warn", existsSync(map) ? "present" : "absent; the analyst can write one");
+
+  const config = loadConfig(root);
+  if (config.error) add("config", "warn", `${config.error}; using the default security paths and no sources`);
+  for (const source of config.sources) {
+    const trees = source.root ? listWorktrees(source.root) : [];
+    if (!source.root) add(`source:${source.name}`, "warn", `unreachable: ${source.reason}`);
+    else if (!trees.length) add(`source:${source.name}`, "warn", `unreachable: ${source.root} is not a git repository`);
+    else add(`source:${source.name}`, "ok", `${source.root} · ${trees.length} worktree${trees.length === 1 ? "" : "s"}`);
+  }
 
   const ok = !checks.some((c) => c.level === "fail");
   return { ok, checks, tooling, state: s };

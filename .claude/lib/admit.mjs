@@ -2,18 +2,18 @@
 // Deterministic by construction; the same request against the same tree always lands in the same
 // lane. Admission is declared here and re-checked by the lane skill against the observed touch set
 // (`recheck`), so a fast-lane change that grows past the cap escalates instead of silently overrunning.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { projectRoot } from "./work.mjs";
+import { DEFAULT_SECURITY_PATHS, securityPaths as configuredSecurityPaths } from "./config.mjs";
+
+export { DEFAULT_SECURITY_PATHS };
 
 export const CAPS = Object.freeze({
   fast_max_files: 3,
   order_max_phases: 3,
   order_max_decisions: 5,
 });
-
-/** Paths whose change always means the heavy lane. Extend per project in .claude/harness.json. */
-export const DEFAULT_SECURITY_PATHS = ["src/auth/", "src/crypto/", "src/security/", "Authentication/", "Authorization/"];
 
 const RESEARCH = /\b(how (does|is|are)|explain|understand|map (the|a)|report|no code changes|write (a|the) report|where (is|does)|why (does|is))\b/i;
 const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|credential|token|secret|crypto|encrypt|permission|security path)\b/i;
@@ -24,16 +24,6 @@ const CROSS_CONTEXT = /\b(other (service|repo|repository|context)|second repo|bo
 const NEW_SURFACE = /\b(add(ed)? (an? )?(new )?(endpoint|route|module|command|worker|handler|middleware|layer|feature)|new (endpoint|route|module|feature|capability))\b/i;
 const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|options?|strategy|should we)\b/i;
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak)\b/i;
-
-function loadProjectConfig(root) {
-  const p = join(root, ".claude", "harness.json");
-  if (!existsSync(p)) return {};
-  try {
-    return JSON.parse(readFileSync(p, "utf8"));
-  } catch {
-    return {};
-  }
-}
 
 /** Backticked repo-relative paths mentioned in the text that exist on disk. */
 export function mentionedPaths(text, root) {
@@ -49,6 +39,11 @@ function touchesSecurity(paths, text, securityPaths) {
   return paths.some((p) => securityPaths.some((s) => p.startsWith(s))) || securityPaths.some((s) => text.includes(s)) || SECURITY.test(text);
 }
 
+/** The project's security path prefixes (config.mjs); kept here because route.mjs imports it from admit. */
+export function securityPaths(root = projectRoot()) {
+  return configuredSecurityPaths(root);
+}
+
 /**
  * @param {string} text  the request
  * @param {object} [o]
@@ -56,15 +51,9 @@ function touchesSecurity(paths, text, securityPaths) {
  * @param {string[]} [o.touched]  observed touch set for a recheck (paths written so far)
  * @returns {{lane: string, reasons: string[], signals: object}}
  */
-/** The project's security path prefixes: `.claude/harness.json` `security_paths`, else the defaults. */
-export function securityPaths(root = projectRoot()) {
-  return loadProjectConfig(root).security_paths ?? DEFAULT_SECURITY_PATHS;
-}
-
 export function admit(text, o = {}) {
   const root = o.root ?? projectRoot();
-  const cfg = loadProjectConfig(root);
-  const securityPaths = cfg.security_paths ?? DEFAULT_SECURITY_PATHS;
+  const securityPaths = configuredSecurityPaths(root);
   const forced = text.match(/\blane:\s*(fast|order|design|research)\b/i)?.[1]?.toLowerCase();
   const paths = mentionedPaths(text, root);
   const touched = o.touched ?? [];
