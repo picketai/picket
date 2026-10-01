@@ -6,6 +6,13 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { parsePullRequestUrl, findRemote, locateRepo, fetchPullRequest, parseFindings, buildThreads, postReview, preparePullRequest, patFromEnv } from "../../.claude/lib/pr.mjs";
 
+test("parseFindings keeps the Likelihood and Leave it fields of a cumulative finding in the tail (T-2.4)", () => {
+  const block = "## Review: x · cumulative\n\nFindings: 1 major\n- [Major] src/Rent/Fees.cs:42 — the fee ignores the weekend rate. Weekend rentals are undercharged. Apply the rate before rounding. Likelihood: medium. Leave it: note in PR.\n\nCHANGES REQUIRED";
+  const [f] = parseFindings(block);
+  assert.deepEqual([f.severity, f.path, f.line], ["Major", "src/Rent/Fees.cs", 42]);
+  assert.equal(f.text, "the fee ignores the weekend rate. Weekend rentals are undercharged. Apply the rate before rounding. Likelihood: medium. Leave it: note in PR.");
+});
+
 test("parsePullRequestUrl reads Server, Services, legacy and GitHub forms", () => {
   const server = parsePullRequestUrl("https://tfs.corp.local/tfs/DefaultCollection/Fleet/_git/Rent/pullrequest/7287");
   assert.equal(server.provider, "azdo");

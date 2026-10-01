@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState } from "../../.claude/lib/work.mjs";
+import { createWork, deriveState, setMarker } from "../../.claude/lib/work.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 
@@ -110,6 +110,20 @@ test("guard.scope denies kernel-owned writes and unread edits, allows the rest",
   assert.match(run("guard.scope.mjs", sub, root).hookSpecificOutput.permissionDecisionReason, /read .* before editing/, "unread anywhere: denied");
   writeFileSync(join(subDir, "agent-a1.jsonl"), JSON.stringify(assistant([tool("Read", { file_path: join(root, "src", "c.ts") })])) + "\n");
   assert.equal(run("guard.scope.mjs", sub, root), null, "read in its own transcript: allowed");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("route.verdict closes the item on a cumulative APPROVED from the fresh cumulative-reviewer (T-2.5)", () => {
+  const { root, id } = project();
+  setMarker(id, 1, "done", root);
+  setMarker(id, 1, "approved", root);
+  const block = `## Review: ${id} · cumulative\n\nApproved: every story row passes.\n\nRequirements: PASS (2)\nAlignment: PASS\nDecisions: HONOURED\nRegression: none\nSources: none\nQuestions: none\nFindings: clean\n\nAPPROVED`;
+  const tp = transcript(root, [user(`You are reviewing a change you did not write. You have no context beyond what is below.\nwork: ${id}\nscope: cumulative`), assistant([{ type: "text", text: block }])]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s6", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "cumulative-reviewer" }, root);
+  assert.match(out.hookSpecificOutput.additionalContext, /APPROVED applied/);
+  assert.match(out.hookSpecificOutput.additionalContext, /Next: close/);
+  const last = deriveState(id, root).last_verdict;
+  assert.deepEqual([last.agent, last.scope], ["reviewer", "cumulative"]);
   rmSync(root, { recursive: true, force: true });
 });
 

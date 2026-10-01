@@ -58,7 +58,7 @@ First match wins.
 - Minor: advisory: style, naming, readability, or a best practice not in any checklist.
 - Nit: a typo, formatting, or wording point with no behavioural effect.
 
-Out of range: a defect on a line the diff did not touch (`git blame` SHA outside the range, or a file outside `changed_files`) is not a finding of this review. Mention it once as a Nit prefixed `pre-existing:` if it matters; it never counts toward the verdict.
+Out of range: a defect on a line the diff did not touch (`git blame` SHA outside the range, or a file outside `changed_files`) is not a finding of this review. Mention it once as a Nit prefixed `pre-existing:` if it matters; it never counts toward the verdict. One exception: in a cumulative review, a story requirement (`S` row) with no code anywhere is in range and FAILs wherever its code should have been.
 
 Machine-enforced exclusions: a finding the project's own gates already reject is noise. Before writing findings, note the enforced set from config: compiler warnings-as-errors and analyzers at `error`, banned-API lists, architecture-test projects, lint rules at `"error"`, strict `tsconfig` flags, pre-commit hooks, unconditional CI steps, DB constraints in migrations, and the resolved test and lint command. Skip findings in those classes. Three limits: nothing is excluded until it is detected; a rule at `warning`, or a path outside the tool's include glob, is not enforced; the guard's own code (trigger SQL, analyzer rule, auth filter, validator) stays fully in scope.
 
@@ -88,6 +88,8 @@ The last line of a review is exactly `APPROVED` or `CHANGES REQUIRED`, alone. `A
 
 UNCLEAR blocks fail-closed because an unjudgeable criterion is a plan defect, not a developer defect: the verdict reason names the ambiguity so the team lead routes it to the architect, not back to the developer.
 
+Story rows (`S-N`, cumulative only, `steps/15-traced.md`) differ in one way: FAIL blocks, UNCLEAR does not. An ambiguous story is a question for the user, so it goes on the `Questions:` line instead.
+
 The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. Any Critical or Major row gives `DRIFT DETECTED`; Minor rows are recorded and do not block.
 
 ## Pull request mode (`/reviewing <url>`, lead only)
@@ -105,6 +107,7 @@ The kernel finds the clone by the repository name in the URL: the project root, 
 .claude/skills/reviewing/
   SKILL.md                                this file
   steps/10-alignment.md                   criteria to evidence, plus the comment and test floors (always)
+  steps/15-traced.md                      cumulative only: request and story first, plan last; replaces 10's alignment part
   steps/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
   steps/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
   steps/40-framework-typescript.md        types, promises, errors, React, imports, leaks
