@@ -1,0 +1,1 @@
+- [Review summary drops .claude paths](review-summary-drops-claude-paths.md) — in this harness repo, review the full git range; changed_files omits .claude/**
