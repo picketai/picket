@@ -104,6 +104,21 @@ function decisionLines(value, width = WIDTH) {
   return shown;
 }
 
+const SHOWN_PROPOSALS = 3;
+
+function commentProposals(value) {
+  const v = String(value ?? "").trim();
+  if (!v || /^none$/i.test(v)) return [];
+  return v.split(/(?<=")\s*;\s+/).map((s) => s.trim()).filter(Boolean);
+}
+
+function proposalLines(proposals, width = WIDTH) {
+  const indent = `  ${"".padEnd(LABEL)}`;
+  const shown = proposals.slice(0, SHOWN_PROPOSALS).map((p, i) => `${indent}${i + 1} ${cut(p, width - indent.length - 2)}`);
+  if (proposals.length > SHOWN_PROPOSALS) shown.push(`${indent}+${proposals.length - SHOWN_PROPOSALS} more in the phase block`);
+  return shown;
+}
+
 /** One line per version of an ambiguous reference: label, branch, short commit, dirty flag. */
 function describeCandidates(ref, root) {
   const source = loadConfig(root).sources.find((s) => s.name === ref.source);
@@ -122,7 +137,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const s = deriveState(id, root);
   const n = next(id, root);
   const lines = [];
-  const options = n.options?.length ? n.options.join("   ") : null;
+  let options = n.options?.length ? n.options.join("   ") : null;
 
   if (n.action === "approve_phase" && s.lane !== "research") {
     const raw = readBlock(id, n.phase, root);
@@ -139,6 +154,12 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     if (dec.length) {
       lines.push(`  ${"decisions".padEnd(LABEL)}${dec[0].slice(2 + LABEL)}`);
       lines.push(...dec.slice(1));
+    }
+    const proposals = commentProposals(b.fields.comments);
+    if (proposals.length) {
+      const shown = proposalLines(proposals, width);
+      lines.push(`  ${"comments".padEnd(LABEL)}${shown[0].slice(2 + LABEL)}`, ...shown.slice(1));
+      if (options) options += "   [k] keep comment <n>";
     }
     // The developer stages and proposes a message; approval is what commits.
     if (b.fields.commit) lines.push(field("commit", `${b.fields.commit.replace(/\s*\(staged.*\)$/i, "")}  (staged; approval commits it)`, width));

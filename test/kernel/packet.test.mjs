@@ -54,6 +54,37 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   rmSync(root, { recursive: true, force: true });
 });
 
+const withComments = (value) => BLOCK.replace("Commit: 3f9c2a1", `Comments: ${value}\nCommit: 3f9c2a1`);
+
+test("comment proposals render numbered and add the keep option (T-3.1)", () => {
+  const { root, id } = setup();
+  setMarker(id, 1, "done", root);
+  saveBlock(id, 1, withComments('src/fee.ts:42 "half-up: the tariff table is published that way"'), root);
+  const { lines } = packet(id, root);
+  assert.ok(lines.includes('  comments  1 src/fee.ts:42 "half-up: the tariff table is published that way"'));
+  assert.match(lines.at(-1), /\[k\] keep comment <n>$/);
+
+  saveBlock(id, 1, withComments("none"), root);
+  const plain = packet(id, root);
+  assert.equal(plain.lines.some((l) => /^ {2}comments/.test(l)), false);
+  assert.doesNotMatch(plain.text, /keep comment/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("four proposals stay within the width and the fourth is counted (T-3.2)", () => {
+  const { root, id } = setup();
+  setMarker(id, 1, "done", root);
+  const long = "x".repeat(120);
+  const four = [1, 2, 3, 4].map((n) => `src/f${n}.ts:${n} "why ${n}; ${long}"`).join("; ");
+  saveBlock(id, 1, withComments(four), root);
+  const { lines } = packet(id, root);
+  for (const l of lines) assert.ok(l.length <= WIDTH, `line over ${WIDTH} chars: ${l}`);
+  assert.match(lines.find((l) => /^ {2}comments/.test(l)), /^ {2}comments {2}1 src\/f1\.ts:1 "why 1; x+…$/);
+  assert.equal(lines.filter((l) => /^ {12}[23] src\/f[23]\.ts/.test(l)).length, 2);
+  assert.ok(lines.includes(`  ${"".padEnd(10)}+1 more in the phase block`));
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("a missing block degrades to 'not reported', a blocked item shows the reason", () => {
   const { root, id } = setup();
   setMarker(id, 1, "done", root);

@@ -32,7 +32,10 @@ Apply the reply, then continue in the same turn:
 | `a`, `approved`, `ok`, `yes` | `harness route <id> --verdict approved --agent user --phase <n>` (this commits the staged phase with the developer's proposed message; the output names the sha) | `harness next`: next phase or review |
 | `r <m>`, `approved through <m>`, `run to <m>` | `harness route <id> --verdict approved --agent user --phase <n> --through <m>` | continue the developer with `run through <m>` |
 | `x <why>`, `reject: <why>`, anything else with a reason | `harness route <id> --verdict rejected --agent user --phase <n> --reason "<why>"` (nothing is committed; the staged work stays in the index for the developer to fix) | `SendMessage` the developer: `work: <id>`, `phase: <n>`, `rejected: <why verbatim>` |
+| `k <n>`, `keep <n>` | `harness comment <id> --path <p> --text "<t>"` with proposal n's path and text from the block's `Comments:` line | `SendMessage` the developer: `work: <id>`, `phase: <n>`, `comment approved: <path>:<line> "<text>"`; its next `PHASE DONE` brings a fresh packet |
 | a question | answer it | re-render the packet |
+
+An `a` reply with comment proposals pending drops them: no comment is the default.
 
 A reply that is neither an approval, a run grant, a rejection with a reason, nor a question is asked back once: "approve, run through, or reject with a reason?" Silence is not approval.
 

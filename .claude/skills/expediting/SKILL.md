@@ -30,7 +30,7 @@ Name the touch set before editing: the files you will change, at most three. Ask
 
 Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `node .claude/bin/harness.mjs admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `harness set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
 
-The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; comments explain why and are rare; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
+The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; no new comments (`.claude/rules/comments.md`), a needed why goes on the `Comments:` line for the user; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
 
 Add or adjust unit tests for the behaviour you changed; the module's existing test file first, a new file when none exists.
 
@@ -55,7 +55,10 @@ Files: <path>, <path>
 Tests: passed | failed: <what> | no suite detected
 Lint: passed | failed: <what> | none detected
 Verified: <command> → <observed result> | no drivable surface: <reason>
+Comments: <path>:<line> "<text>" | none
 Commit: <type>(<scope>): <what>   (staged; your answer commits it)
 
 [c] commit   [x] discard: <why>
 ```
+
+When `Comments:` lists proposals, number them and end the options line with `[k] keep comment <n>`.
