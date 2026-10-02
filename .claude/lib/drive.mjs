@@ -6,7 +6,7 @@
 //   harness drive --start "npm start" --port 8080 --wait /health --hit "POST /invoices {json}"
 //   harness drive --run "npm run cli -- list"                  # a CLI has no port: run and capture
 import { spawn, execSync } from "node:child_process";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import net from "node:net";
 import { projectRoot, listWork, deriveState } from "./work.mjs";
@@ -77,33 +77,54 @@ function killTree(child) {
   } catch {}
 }
 
-/** Tracked files with uncommitted changes, as repo-relative paths; [] outside a repo. */
-function modifiedTracked(root) {
+function gitLines(command, root) {
   try {
-    return execSync("git status --porcelain --untracked-files=no", { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
-      .split(/\r?\n/)
-      .filter(Boolean)
-      .map((l) => l.slice(3).trim().replace(/^"(.*)"$/, "$1"));
+    return execSync(command, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split(/\r?\n/).filter(Boolean);
   } catch {
     return [];
   }
 }
 
-/**
- * A drive is verification, so what it changes on disk is a side effect, not work: the invoice the
- * POST created, the log the CLI wrote. Restore tracked files the drive dirtied so the tree is as the
- * developer left it; untracked files are only reported (deleting is the developer's call).
- */
-function restoreSideEffects(root, before, keep) {
-  const after = modifiedTracked(root);
-  const dirtied = after.filter((p) => !before.includes(p));
-  if (keep || !dirtied.length) return { dirtied, restored: [] };
+/** Tracked files with uncommitted changes, as repo-relative paths; [] outside a repo. */
+function modifiedTracked(root) {
+  return gitLines("git status --porcelain --untracked-files=no", root).map((l) => l.slice(3).trim().replace(/^"(.*)"$/, "$1"));
+}
+
+function untrackedUnignored(root) {
+  return gitLines("git ls-files --others --exclude-standard", root);
+}
+
+function treeSnapshot(root) {
+  return { modified: modifiedTracked(root), untracked: untrackedUnignored(root) };
+}
+
+function checkout(root, paths) {
+  if (!paths.length) return [];
   try {
-    execSync(`git checkout -- ${dirtied.map((p) => `"${p}"`).join(" ")}`, { cwd: root, stdio: "ignore" });
-    return { dirtied, restored: dirtied };
+    execSync(`git checkout -- ${paths.map((p) => `"${p}"`).join(" ")}`, { cwd: root, stdio: "ignore" });
+    return paths;
   } catch {
-    return { dirtied, restored: [] };
+    return [];
   }
+}
+
+function removeFiles(root, paths) {
+  return paths.filter((p) => {
+    try {
+      rmSync(join(root, p), { force: true });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function restoreSideEffects(root, before, keep) {
+  const after = treeSnapshot(root);
+  const dirtied = after.modified.filter((p) => !before.modified.includes(p));
+  const created = after.untracked.filter((p) => !before.untracked.includes(p));
+  if (keep) return { dirtied, created, restored: [], removed: [] };
+  return { dirtied, created, restored: checkout(root, dirtied), removed: removeFiles(root, created) };
 }
 
 function logRow(root, row) {
@@ -132,7 +153,7 @@ export async function drive(o = {}) {
   const timeoutMs = Number(o.timeoutMs ?? 20_000);
   const row = { ts: new Date().toISOString(), kind: "drive", source: "harness drive", work_id: work.work_id, phase: work.phase };
 
-  const before = modifiedTracked(root);
+  const before = treeSnapshot(root);
   if (o.run) assertNotDestructive(o.run, "harness drive --run");
   if (o.start) assertNotDestructive(o.start, "harness drive --start");
 
@@ -208,7 +229,10 @@ export async function drive(o = {}) {
 /** One-screen human rendering; the last line is DRIVE OK or DRIVE FAILED. */
 export function renderDrive(v) {
   const one = (s) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, 160);
-  const side = () => (v.restored?.length ? [`restored ${v.restored.join(", ")} (changed by the drive, not by you)`] : v.dirtied?.length ? [`left dirty: ${v.dirtied.join(", ")}`] : []);
+  const side = () => [
+    ...(v.restored?.length ? [`restored ${v.restored.join(", ")} (changed by the drive, not by you)`] : v.dirtied?.length ? [`left dirty: ${v.dirtied.join(", ")}`] : []),
+    ...(v.removed?.length ? [`removed ${v.removed.join(", ")} (created by the drive, not by you)`] : v.created?.length ? [`left in place: ${v.created.join(", ")}`] : []),
+  ];
   if (v.mode === "run") {
     const tail = v.output.trim().split(/\r?\n/).slice(-15).join("\n");
     return [`${v.command} → exit ${v.exit_code} (${v.ms} ms)`, tail, ...side(), v.ok ? "DRIVE OK" : "DRIVE FAILED"].join("\n");

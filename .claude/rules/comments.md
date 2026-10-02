@@ -14,4 +14,4 @@ The one exception is a why for a specific value or condition that the code canno
 
 Example: `const ROUNDING = 0.5` rounds half-up because the tariff table is published that way. No name says that, so propose `src/fee.ts:42 "half-up: the tariff table is published that way"` and write it only after the user approves.
 
-If your change makes an existing comment stale, fix it or delete it. Leave other existing comments as they are.
+If your change makes an existing comment stale, delete it; never reword it. Leave other existing comments as they are.

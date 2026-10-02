@@ -48,7 +48,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { LANGS, DIRECTIVE_MARKERS, extOf, commentOf } from '../lib/comments.mjs';
+import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../lib/comments.mjs';
 
 // ---------------------------------------------------------------- args
 
@@ -383,7 +383,7 @@ function scanTests(file, added, isNew) {
   // linter's own signal table merely NAMES Testcontainers — mentioning a harness
   // is not using one, and a tool that cannot tell the difference flags every file
   // that documents the rule it enforces.
-  if (!lang) return;
+  if (!lang || lang === MARKUP) return;
 
   const body = added.map(a => a.text).join('\n');
   const allowAll = /craft-lint-allow:\s*(TK\d|ALL)\b/i.test(body);

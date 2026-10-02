@@ -178,6 +178,28 @@ test("guard.comments lets an approved comment through on its path while the item
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.comments matches an approval recorded as an absolute or dotted path", () => {
+  const { root, id } = project();
+  const harness = (...args) => execFileSync("node", [BIN, ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+  harness("comment", id, "--path", join(root, "src", "abs.ts"), "--text", "why abs");
+  harness("comment", id, "--path", ".\\src\\dot.ts", "--text", "why dot");
+  assert.equal(commentEdit(root, "src/abs.ts", "a();", lines("// why abs", "a();")), null, "absolute");
+  assert.equal(commentEdit(root, "src/dot.ts", "a();", lines("// why dot", "a();")), null, "dotted backslash");
+  if (process.platform === "win32") assert.equal(commentEdit(root, "SRC/Abs.ts", "a();", lines("// why abs", "a();")), null, "letter case");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.comments reads the file so an Edit inside an open block keeps the block state", () => {
+  const { root } = project();
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "d.py"), lines("def f():", '    """Totals the lines.', "    more", '    """', "    return 1"));
+  writeFileSync(join(root, "src", "b.ts"), lines("/*", " existing", " */", "const a = 1;"));
+  assert.equal(commentEdit(root, "src/d.py", "    more", lines("    more", "    added prose"))?.permissionDecision, "deny", "docstring");
+  assert.equal(commentEdit(root, "src/b.ts", " existing", lines(" existing", " added prose"))?.permissionDecision, "deny", "block comment");
+  assert.equal(commentEdit(root, "src/b.ts", "const a = 1;", "const a = 2;"), null, "code edit beside a block");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("route.verdict closes the item on a cumulative APPROVED from the fresh cumulative-reviewer (T-2.5)", () => {
   const { root, id } = project();
   setMarker(id, 1, "done", root);

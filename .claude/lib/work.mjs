@@ -14,7 +14,7 @@
 //
 // Nothing in here is remembered by a model. Everything is derived from the files on each call.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { frontmatter, parse, stringify } from "./yaml-lite.mjs";
 import { execFileSync } from "node:child_process";
 import { recordBases } from "./repos.mjs";
@@ -177,8 +177,22 @@ export function appendVerdict(id, entry, root = projectRoot()) {
   appendFileSync(p, JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n");
 }
 
-export function appendComment(id, { path, text }, root = projectRoot()) {
-  const entry = { ts: new Date().toISOString(), path: String(path).replaceAll("\\", "/").replace(/^\.\//, ""), text: String(text) };
+function isInside(dir, root) {
+  const rel = relative(root, dir);
+  return !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+export function commentPath(path, root = projectRoot(), cwd = process.cwd()) {
+  const base = isInside(cwd, root) ? cwd : root;
+  return relative(root, resolve(base, String(path))).replaceAll("\\", "/");
+}
+
+function samePath(a, b) {
+  return process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+export function appendComment(id, { path, text }, root = projectRoot(), cwd = process.cwd()) {
+  const entry = { ts: new Date().toISOString(), path: commentPath(path, root, cwd), text: String(text) };
   appendFileSync(join(workDir(id, root), "comments.jsonl"), JSON.stringify(entry) + "\n");
   return entry;
 }
@@ -196,6 +210,11 @@ export function approvedComments(root = projectRoot()) {
   return listWork(root)
     .filter((id) => ["open", "blocked"].includes(readState(id, root).status))
     .flatMap((id) => readComments(id, root));
+}
+
+export function approvedCommentsFor(rel, root = projectRoot()) {
+  const target = commentPath(rel, root, root);
+  return approvedComments(root).filter((entry) => samePath(commentPath(entry.path, root, root), target));
 }
 
 export function readVerdicts(id, root = projectRoot()) {

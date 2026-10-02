@@ -36,6 +36,21 @@ test("directives, licence headers, banners and strings are not comments", () => 
   assert.deepEqual(commentLines(lines("#!/usr/bin/env python", "# -*- coding: utf-8 -*-", "# noqa: E501"), ".py"), []);
 });
 
+test("a line token inside code is not a comment start", () => {
+  assert.deepEqual(commentLines(lines("if [ $# -eq 0 ]; then", "n=${#items[@]}", "x=1 # real"), ".sh"), ["real"]);
+  assert.deepEqual(commentLines("const a = <a>http://x</a>;", ".tsx"), []);
+  assert.deepEqual(commentLines(lines("#!/bin/sh", "# top"), ".sh"), ["top"]);
+  assert.deepEqual(commentLines("a();// tight", ".ts"), ["tight"]);
+});
+
+test("licence and justification markers exempt only their header and attribute forms", () => {
+  assert.deepEqual(commentLines(lines("// Licensed under the Apache License, Version 2.0", "// License: MIT", '[SuppressMessage("x", Justification = "y")]'), ".cs"), []);
+  assert.deepEqual(commentLines(lines("// licence check skipped: tariff rounds half up", "// Justification for the cap"), ".ts"), [
+    "licence check skipped: tariff rounds half up",
+    "Justification for the cap",
+  ]);
+});
+
 test("craft-lint-allow is not an exemption for the hook", () => {
   assert.deepEqual(commentLines("// craft-lint-allow: CD2 because", ".ts"), ["craft-lint-allow: CD2 because"]);
 });

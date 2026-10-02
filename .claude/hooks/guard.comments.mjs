@@ -6,19 +6,21 @@ import { LANGS, addedComments, extOf, normalise } from "../lib/comments.mjs";
 const QUOTED_LIMIT = 3;
 const QUOTE_WIDTH = 80;
 
+function editedFile(current, { old_string: from = "", new_string: to = "", replace_all: all }) {
+  if (!from || !current.includes(from)) return { before: from, after: to };
+  return { before: current, after: all ? current.split(from).join(to) : current.replace(from, () => to) };
+}
+
 function editTexts(data, abs) {
   const input = data.tool_input;
-  if (data.tool_name === "Edit") return { before: input.old_string ?? "", after: input.new_string ?? "" };
-  return { before: existsSync(abs) ? readFileSync(abs, "utf8") : "", after: input.content ?? "" };
+  const current = existsSync(abs) ? readFileSync(abs, "utf8") : "";
+  if (data.tool_name === "Edit") return editedFile(current, input);
+  return { before: current, after: input.content ?? "" };
 }
 
 async function unapproved(added, rel, root) {
-  const { approvedComments } = await import("../lib/work.mjs");
-  const approved = new Set(
-    approvedComments(root)
-      .filter((entry) => entry.path === rel)
-      .flatMap((entry) => String(entry.text).split(/\r?\n/).map(normalise)),
-  );
+  const { approvedCommentsFor } = await import("../lib/work.mjs");
+  const approved = new Set(approvedCommentsFor(rel, root).flatMap((entry) => String(entry.text).split(/\r?\n/).map(normalise)));
   return added.filter((body) => !approved.has(body));
 }
 
