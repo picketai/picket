@@ -29,7 +29,7 @@ function deny(reason) {
   process.exit(0);
 }
 
-if (/^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/.test(rel)) deny(`${rel} is kernel-owned; use \`harness new\`, \`harness set\`, \`harness route\` or \`harness source\`, never a direct write`);
+if (/^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|comments\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/.test(rel)) deny(`${rel} is kernel-owned; use \`harness new\`, \`harness set\`, \`harness route\`, \`harness comment\` or \`harness source\`, never a direct write`);
 if (/^\.claude\/ledger\//.test(rel)) deny(`${rel} is written by the hooks only`);
 
 const source = underSource(resolve(data.cwd ?? root, filePath), sourceRoots(root));

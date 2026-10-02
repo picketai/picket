@@ -177,6 +177,27 @@ export function appendVerdict(id, entry, root = projectRoot()) {
   appendFileSync(p, JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n");
 }
 
+export function appendComment(id, { path, text }, root = projectRoot()) {
+  const entry = { ts: new Date().toISOString(), path: String(path).replaceAll("\\", "/").replace(/^\.\//, ""), text: String(text) };
+  appendFileSync(join(workDir(id, root), "comments.jsonl"), JSON.stringify(entry) + "\n");
+  return entry;
+}
+
+function readComments(id, root) {
+  const p = join(workDir(id, root), "comments.jsonl");
+  if (!existsSync(p)) return [];
+  return readFileSync(p, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((l) => ({ id, ...JSON.parse(l) }));
+}
+
+export function approvedComments(root = projectRoot()) {
+  return listWork(root)
+    .filter((id) => ["open", "blocked"].includes(readState(id, root).status))
+    .flatMap((id) => readComments(id, root));
+}
+
 export function readVerdicts(id, root = projectRoot()) {
   const p = join(workDir(id, root), "verdicts.jsonl");
   if (!existsSync(p)) return [];

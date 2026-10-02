@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -56,6 +56,25 @@ test("the CLI walks a work item end to end and speaks JSON", () => {
   const rs = run(root, ["review-summary", created.id, "--base", "HEAD"]);
   assert.equal(rs.size, "small");
   assert.deepEqual(rs.changed_files, []);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("comment records an approval and needs both --path and --text (T-1.4)", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
+  mkdirSync(join(root, ".claude"));
+  const { id } = run(root, ["new", "--lane", "order", "--title", "Fee rounding"]);
+  const fails = (args) => assert.throws(() => execFileSync("node", [BIN, "comment", ...args, "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && /comment needs/.test(err.stderr));
+  fails([id, "--text", "why"]);
+  fails([id, "--path", "src/fee.ts"]);
+  fails([id, "--path", "--text", "why"]);
+  assert.throws(() => execFileSync("node", [BIN, "comment", "no-such-item", "--path", "a.ts", "--text", "t", "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && /no work item/.test(err.stderr));
+
+  const entry = run(root, ["comment", id, "--path", "src\\fee.ts", "--text", "half-up: the tariff table is published that way"]);
+  assert.deepEqual([entry.path, entry.text], ["src/fee.ts", "half-up: the tariff table is published that way"]);
+  const recorded = readFileSync(join(root, "work", id, "comments.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.equal(recorded.length, 1);
+  assert.deepEqual(Object.keys(recorded[0]), ["ts", "path", "text"]);
+  assert.equal(recorded[0].path, "src/fee.ts");
   rmSync(root, { recursive: true, force: true });
 });
 

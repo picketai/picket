@@ -113,6 +113,71 @@ test("guard.scope denies kernel-owned writes and unread edits, allows the rest",
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.scope keeps the comment approvals kernel-owned (T-1.5)", () => {
+  const { root, id } = project();
+  const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "work", id, "comments.jsonl"), content: "{}" }, cwd: root }, root);
+  assert.equal(out.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /kernel-owned/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+const BIN = resolve(".claude/bin/harness.mjs");
+const lines = (...rows) => rows.join("\n");
+
+function commentEdit(root, path, old_string, new_string) {
+  return run("guard.comments.mjs", { hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path: join(root, path), old_string, new_string }, cwd: root }, root)?.hookSpecificOutput ?? null;
+}
+
+for (const [form, path, added] of [
+  ["a line comment", "src/a.ts", "// sum the totals"],
+  ["an XML doc comment", "src/A.cs", "/// <remarks>Why</remarks>"],
+  ["a Python hash comment", "src/a.py", "# note"],
+  ["an HTML comment", "src/a.html", ["<", "!-- note --", ">"].join("")],
+]) {
+  test(`guard.comments denies an edit that adds ${form} (T-1.1)`, () => {
+    const { root } = project();
+    const out = commentEdit(root, path, "x = 1", lines(added, "x = 1"));
+    assert.equal(out?.permissionDecision, "deny");
+    assert.match(out.permissionDecisionReason, /^guard\.comments: /);
+    assert.match(out.permissionDecisionReason, new RegExp(path.replace(".", "\\.")));
+    rmSync(root, { recursive: true, force: true });
+  });
+}
+
+test("guard.comments allows kept comments, directives, docs, data files and strings (T-1.2)", () => {
+  const { root } = project();
+  assert.equal(commentEdit(root, "src/a.ts", lines("// keep", "const a = 1;"), lines("// keep", "const a = 2;")), null, "kept comment");
+  assert.equal(commentEdit(root, "src/a.ts", "a();", lines("// eslint-disable-next-line no-console", "a();")), null, "directive");
+  assert.equal(commentEdit(root, "src/a.ts", "a();", lines("// SPDX-License-Identifier: MIT", "a();")), null, "SPDX header");
+  const markupNote = ["<", "!-- note --", ">"].join("");
+  assert.equal(commentEdit(root, "docs/a.md", "x", lines("# Heading", markupNote, "x")), null, "markdown");
+  assert.equal(commentEdit(root, "conf/a.yaml", "a: 1", lines("# note", "a: 1")), null, "yaml");
+  assert.equal(commentEdit(root, "src/a.ts", "", 'const s = "// not a comment";'), null, "string literal");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.comments compares a Write with the file on disk", () => {
+  const { root } = project();
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "w.ts"), lines("// existing", "const a = 1;"));
+  const write = (content) => run("guard.comments.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "src", "w.ts"), content }, cwd: root }, root)?.hookSpecificOutput ?? null;
+  assert.equal(write(lines("// existing", "const a = 2;")), null);
+  assert.equal(write(lines("// existing", "// added", "const a = 2;"))?.permissionDecision, "deny");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.comments lets an approved comment through on its path while the item is open (T-1.3)", () => {
+  const { root, id } = project();
+  const harness = (...args) => execFileSync("node", [BIN, ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+  harness("comment", id, "--path", "src/fee.ts", "--text", "half-up: the tariff table is published that way");
+  const added = lines("// half-up: the tariff table is published that way", "const ROUNDING = 0.5;");
+  assert.equal(commentEdit(root, "src/fee.ts", "const ROUNDING = 0.5;", added), null, "approved path");
+  assert.equal(commentEdit(root, "src/other.ts", "const ROUNDING = 0.5;", added)?.permissionDecision, "deny", "other path");
+  harness("set", id, "status=done");
+  assert.equal(commentEdit(root, "src/fee.ts", "const ROUNDING = 0.5;", added)?.permissionDecision, "deny", "item closed");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("route.verdict closes the item on a cumulative APPROVED from the fresh cumulative-reviewer (T-2.5)", () => {
   const { root, id } = project();
   setMarker(id, 1, "done", root);

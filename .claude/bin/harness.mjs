@@ -34,7 +34,7 @@ import { admit } from "../lib/admit.mjs";
 import { drive, renderDrive } from "../lib/drive.mjs";
 import { check, renderCheck } from "../lib/check.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
-import { createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
+import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
 import { preflight } from "../lib/preflight.mjs";
 import { verify } from "../lib/verify.mjs";
@@ -201,6 +201,13 @@ async function main(argv) {
       out(r, opt, renderDrive);
       return r.ok ? 0 : 2;
     }
+    case "comment": {
+      if (!rest[0] || typeof opt.path !== "string" || typeof opt.text !== "string" || !opt.text.trim()) throw new Error('comment needs <id> --path <p> --text "<t>"');
+      readState(rest[0], root);
+      const entry = appendComment(rest[0], { path: opt.path, text: opt.text }, root);
+      out(entry, opt, (v) => `approved comment for ${v.path}: "${v.text}"`);
+      return 0;
+    }
     case "packet": {
       // A rendering verb: text by default, since the lead prints it verbatim.
       if (!rest[0]) throw new Error("packet needs <id>");
@@ -273,7 +280,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check comment packet pr source`);
   }
 }
 
