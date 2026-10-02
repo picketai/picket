@@ -1,7 +1,7 @@
 id: 20260925-route-hook-reads-subagent-hand-back-blocks
 lane: fast
 title: Route hook reads subagent hand-back blocks
-status: open
+status: done
 created: 2026-09-25T12:49:08.337Z
-updated: 2026-09-25T12:49:08.357Z
+updated: 2026-09-25T13:29:54.711Z
 base: 90aae439cd9a21b5fd53cb2d8b4cf3a9fefccc55
