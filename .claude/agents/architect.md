@@ -26,6 +26,8 @@ When the message carries `sources: work/<id>/sources.yaml`, read it and the snap
 
 Write only `work/<id>/order.md` or `work/<id>/design.md`. Never production code, never tests, never another work item.
 
+A phase never carries doc text, code comments or "document X in code" as scope (`.claude/rules/comments.md`). Such a need becomes an external document or an open question.
+
 One recommended design per request. Every decision names what it gives up. Mark hard-to-reverse steps `[IRREVERSIBLE]` inline. Describe interfaces, data shapes and patterns; leave function bodies to the developer.
 
 Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `harness verify` can check without judgement. Criteria under `**Done when:**` are observable facts, 3 to 8 per phase.

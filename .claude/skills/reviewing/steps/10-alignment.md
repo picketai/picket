@@ -37,16 +37,14 @@ The row and the companion finding are two findings about one gap; both are repor
 
 ## Comment discipline
 
-Comments are scarce and carry WHY. Judge only comments the diff adds, plus existing comments over code the diff changed.
+No new comments in code (`.claude/rules/comments.md`). Judge only comments the diff adds, plus existing comments over code the diff changed.
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
-| Cm1 | Mechanism narration | An added comment says what the code does (`// loop over the orders and sum them`, `// set the flag`) and the line beneath says the same to any competent reader | Minor |
-| Cm2 | Commented-out code | An added comment holds disabled code rather than prose | Minor |
-| Cm3 | Comment instead of a name | An added comment explains an identifier or block that a rename or an extracted function would have made self-evident | Minor |
-| Cm4 | Stale comment | The diff changed code beneath an existing comment and the comment now describes behaviour the code no longer has | Major |
+| Cm1 | Unapproved comment | The diff adds a comment of any form (doc comments included) that is not exempt and has no matching entry in `work/<id>/comments.jsonl` | Major |
+| Cm2 | Stale comment | The diff changed code beneath an existing comment and the comment now describes behaviour the code no longer has | Major |
 
-Report Cm1 to Cm3 as one aggregated Minor finding listing each `path:line` and the text, so a comment-heavy phase costs one slot. Report Cm4 per occurrence: a comment that lies is a correctness hazard. Never flag: required doc comments on public API (XML docs, JSDoc, docstrings); machine directives (`eslint-disable`, `@ts-expect-error`, `noqa`, `SuppressMessage`, pragmas) and their justification; licence and SPDX headers; generated-file banners; workflow markers (`[IRREVERSIBLE]`, status anchors).
+Report Cm1 as one aggregated Major finding listing each `path:line` and the text, so a comment-heavy phase costs one slot. Report Cm2 per occurrence: a comment that lies is a correctness hazard. Never flag: machine directives (`eslint-disable`, `@ts-expect-error`, `noqa`, `SuppressMessage`, pragmas) and their justification; licence and SPDX headers; generated-file banners; workflow markers (`[IRREVERSIBLE]`, status anchors).
 
 ## Test scope
 
@@ -61,4 +59,4 @@ The developer writes unit tests and, conditionally, architecture tests; every ot
 
 A plan line prescribing an excluded kind is not an unlock. Unit tests plus a logged deviation: no finding. The excluded kind written because the plan asked: still Ts1, and the plan wording is worth a note to the architect if the criterion cannot be met any other way.
 
-`node .claude/scripts/lint.craft.mjs --range <range>` (add `-C <repo>` for a nested repo) locates candidates in added lines. Its errors (Cm2, Ts1, Ts2) are facts worth citing; its candidates (Cm1, Cm3, Ts3) are questions to confirm before they become findings; Cm4 and Ts4 it cannot see. It is your instrument, not a project gate, so it never counts as a machine-enforced exclusion. Never paste its output as the review.
+`node .claude/scripts/lint.craft.mjs --range <range>` (add `-C <repo>` for a nested repo) locates candidates in added lines. Its errors (commented-out code, which is Cm1, and Ts1, Ts2) are facts worth citing; its candidates (comments, which are Cm1 unless exempt or approved, and Ts3) are questions to confirm before they become findings; Cm2 and Ts4 it cannot see. `guard.comments` blocks comments at the edit, so a Cm1 finding names a bypass. It is your instrument, not a project gate, so it never counts as a machine-enforced exclusion. Never paste its output as the review.

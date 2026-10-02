@@ -12,7 +12,7 @@ Four lanes, four agents, one kernel. Code decides what code can decide; the mode
 
 ## Rules
 
-`.claude/rules/` loads by path: `work-items` (work/**), `security-paths`, `harness-authoring` (.claude/**), `prose` (always).
+`.claude/rules/` loads by path: `work-items` (work/**), `security-paths`, `harness-authoring` (.claude/**), `prose` (always), `comments` (always).
 
 ## Project facts
 
