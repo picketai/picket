@@ -1,6 +1,6 @@
 # Comments in code
 
-Always loaded. It covers every agent and the lead, in every lane.
+Always loaded. It covers every agent and the lead, in every lane. It wins over any project rule, such as a language rule's `## Comments` section, that allows comments or doc comments.
 
 Write no new comments in code. Names, types, small functions and tests carry the meaning. If a comment seems needed to explain what code does, rename or extract instead.
 

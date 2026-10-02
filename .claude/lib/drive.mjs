@@ -77,21 +77,32 @@ function killTree(child) {
   } catch {}
 }
 
-function gitLines(command, root) {
+function gitEntries(command, root) {
   try {
-    return execSync(command, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split(/\r?\n/).filter(Boolean);
+    return execSync(command, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split("\0").filter(Boolean);
   } catch {
     return [];
   }
 }
 
+const isRenameOrCopy = (entry) => /^[RC]|^.[RC]/.test(entry);
+
+function currentPaths(statusEntries) {
+  const paths = [];
+  for (let i = 0; i < statusEntries.length; i++) {
+    paths.push(statusEntries[i].slice(3));
+    if (isRenameOrCopy(statusEntries[i])) i++;
+  }
+  return paths;
+}
+
 /** Tracked files with uncommitted changes, as repo-relative paths; [] outside a repo. */
 function modifiedTracked(root) {
-  return gitLines("git status --porcelain --untracked-files=no", root).map((l) => l.slice(3).trim().replace(/^"(.*)"$/, "$1"));
+  return currentPaths(gitEntries("git status --porcelain -z --untracked-files=no", root));
 }
 
 function untrackedUnignored(root) {
-  return gitLines("git ls-files --others --exclude-standard", root);
+  return gitEntries("git ls-files -z --others --exclude-standard", root);
 }
 
 function treeSnapshot(root) {

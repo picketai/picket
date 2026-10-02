@@ -125,6 +125,27 @@ http.createServer((req, res) => { writeFileSync("data.json", "[1]"); writeFileSy
   assert.equal(readFileSync(join(root, "data.json"), "utf8"), "[1]");
 });
 
+test("drive restores and removes non-ASCII paths by their real names", () => {
+  const root = fixture();
+  writeFileSync(
+    join(root, "store.mjs"),
+    `import http from "node:http"; import { writeFileSync } from "node:fs";
+http.createServer((req, res) => { writeFileSync("données.json", "[1]"); writeFileSync("café.log", "x"); res.end("ok"); }).listen(Number(process.env.PORT), "127.0.0.1");`,
+  );
+  writeFileSync(join(root, "données.json"), "[]");
+  writeFileSync(join(root, ".gitignore"), ".claude/ledger/\n");
+  const git = (args) => execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });
+  git(["init", "-q"]);
+  git(["-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"]);
+  git(["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "base"]);
+  const r = run(root, ["drive", "--start", "node store.mjs", "--hit", "POST /invoices"]);
+  assert.equal(r.code, 0, r.stderr);
+  assert.deepEqual(r.json.restored, ["données.json"]);
+  assert.deepEqual(r.json.removed, ["café.log"]);
+  assert.equal(readFileSync(join(root, "données.json"), "utf8"), "[]");
+  assert.equal(existsSync(join(root, "café.log")), false);
+});
+
 test("parseHit reads method, path and body", () => {
   assert.deepEqual(parseHit("/x"), { method: "GET", path: "/x", body: undefined });
   assert.deepEqual(parseHit("DELETE /x/1"), { method: "DELETE", path: "/x/1", body: undefined });
