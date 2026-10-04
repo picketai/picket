@@ -51,7 +51,7 @@ node .claude/bin/harness.mjs packet <id>
 ## Closing block
 
 ```
-## Report: <id>
+## Research closed: <id>
 
 <the report's one-sentence answer>
 Report: work/<id>/research.md · findings: <n> · architect review: <yes: R-00x | no>

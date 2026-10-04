@@ -1,0 +1,1 @@
+lane: fast. Rename the research lane's closing block heading in `.claude/skills/researching/SKILL.md` from '## Report: <id>' to '## Research closed: <id>', so the lead's closing block no longer matches the analyst contract heading that guard.block treats as a hand-back needing a verdict token.
