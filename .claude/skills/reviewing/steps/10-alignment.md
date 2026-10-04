@@ -48,7 +48,7 @@ Report Cm1 as one aggregated Major finding listing each `path:line` and the text
 
 ## Test scope
 
-The developer writes unit tests and, conditionally, architecture tests; every other kind needs an explicit unlock (`.claude/agents/assets/detectors.yaml#test_authoring_policy`). Judge only tests the diff adds.
+The developer writes unit tests and, conditionally, architecture tests; every other kind needs an explicit unlock (`.claude/agents/developer.md`). Judge only tests the diff adds.
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|

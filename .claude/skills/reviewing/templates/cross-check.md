@@ -2,7 +2,7 @@
 
 **Purpose:** Verify that a design's decisions and its execution phases are mutually consistent — and that both honour the analyst reports and strategic artifacts they cite — **before** the developer starts Phase 1. This is the artifact-consistency pass; the per-phase alignment check covers artifact↔code in-flight.
 
-**Model mapping.** The five checks below are written in the legacy pair's vocabulary. They apply verbatim to a Design Record (one file, `templates/design-record.md`) under this mapping: read "the ADR" as the record's `## Problem` + `## Decisions`, and "the plan" as the record's `## Scope` + `## Phases`. `## Alternatives Considered` maps to the decisions' `**Instead of:**` lines; the ADR's `## Context` citations map to citations in `## Problem`. The worked examples remain pair-shaped; the row grammar is identical either way.
+**Model mapping.** The five checks below are written in the legacy pair's vocabulary. They apply verbatim to a Design Record (one file, `.claude/skills/documenting/templates/design.md`) under this mapping: read "the ADR" as the record's `## Problem` + `## Decisions`, and "the plan" as the record's `## Scope` + `## Phases`. `## Alternatives Considered` maps to the decisions' `**Instead of:**` lines; the ADR's `## Context` citations map to citations in `## Problem`. The worked examples remain pair-shaped; the row grammar is identical either way.
 
 Fires once per design (re-fires on amendment when the architect's M5a conditions trip). Read-only — never writes to artifacts.
 
@@ -37,7 +37,7 @@ Run all five in order. Each produces zero or more rows. The verdict is computed 
 
 Walk every term that appears in **both** the ADR (Context, Decision, Consequences) and the plan (Problem, Scope, Phases). For each term:
 
-- Find its glossary entry under `artifacts/strategy/glossary/`. If absent, that's a separate finding (terminology not yet ratified).
+- Find its glossary entry in `.claude/MEMORY.md` (its `## Language`). If absent, that's a separate finding (terminology not yet ratified).
 - Compare its usage in the ADR vs the plan. If the same term is used to mean materially different things, emit a row.
 - If the plan introduces a domain term that does not appear in the ADR's domain language (and is not common English), emit a row.
 
@@ -91,7 +91,7 @@ Verdict is binary:
 
 ## Output format
 
-The block itself is specified in `agents/assets/instructions/reviewer/crosscheck.md` `## Output format`, governed by `agents/assets/brief.yaml#reviewer-crosscheck`. That is the single copy — this file supplies the checks and the severity rules, not a second block spec.
+The block itself is specified in `.claude/skills/reviewing/steps/60-crosscheck.md` (`## Findings and verdict`). That is the single copy — this file supplies the checks and the severity rules, not a second block spec.
 
 What this file adds: `X-###` IDs are scoped to the pass. They live in the conversation channel only, never in artifacts, are zero-padded to 3 digits and dense within one pass, and a new pass starts again at `X-001`.
 

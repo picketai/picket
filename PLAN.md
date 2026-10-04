@@ -114,7 +114,7 @@ Agents are shells of ≤120 lines. Procedure lives in step files loaded one at a
 
 ### 2.7 Skills
 
-Skill names are verbs ending in `-ing`. Every skill is a `SKILL.md` of at most 150 lines with a `<capability>. Use when <triggers>.` description, plus `steps/step-NN.md` files (≤80 lines each, loaded one at a time) and templates read on demand. References go one hop deep, never further. A `skills index` test asserts that every skill is reachable by exactly one route (auto-loaded, deferred, or user-only) and within budget.
+Skill names are verbs ending in `-ing`. Every skill is a `SKILL.md` of at most 150 lines with a `<capability>. Use when <triggers>.` description, plus `steps/NN-<name>.md` files (≤80 lines each, loaded one at a time) and templates read on demand. References go one hop deep, never further. A `skills index` test asserts that every skill is reachable by exactly one route (auto-loaded, deferred, or user-only) and within budget.
 
 | Skill | Route | Runs in | Does |
 |---|---|---|---|

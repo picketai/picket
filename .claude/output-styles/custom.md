@@ -11,14 +11,6 @@ instructions, CLAUDE.md, the agent contracts, the skills, and the hooks all stil
 apply unchanged. Where a rule here collides with a contract obligation (a verdict
 token, an `<output_format>` block, a template heading), the contract wins.
 
-The three rules between the `shared` markers below are also injected into every
-named teammate at spawn by `.claude/hooks/inject.prose.mjs`, which reads this file
-and extracts exactly that span. It is the single source of truth: edit here, and
-both the main session and the teammates pick it up. Do not move or rename the
-markers without updating that hook.
-
-<!-- shared:begin -->
-
 ## 1. No dashes
 
 Do not use em dashes (—) or en dashes (–) anywhere, including inside sentences, at
@@ -68,8 +60,6 @@ description.
 Weak: "Quantising the derived rate perturbs downstream figures."
 Strong: "Rounding the monthly rate changes the results. Example: 7% / 1200 =
 0.00583333… rounded to 0.005833 moves the rent from 1304.74 to 1304.72."
-
-<!-- shared:end -->
 
 ## 4. Lead with the answer
 
@@ -145,9 +135,7 @@ These rules govern prose you write, whether it lands in the terminal or in a fil
 Documents, reports, hooks, skills, and contract files you author yourself follow
 them.
 
-Four exemptions. Some dashes are protocol rather than punctuation: the Stop hooks classify a contract block by matching an em dash after its heading, so the fixed forms listed in `.claude/hooks/inject.prose.mjs` (`## Phase N Complete — …` and its siblings, plus `_N/A — CODE_DRIFT_`) are emitted and relayed verbatim. Rule 1 does not reach them.
-
-Quoted material is reproduced exactly as it is: file contents,
+Three exemptions. Quoted material is reproduced exactly as it is: file contents,
 diffs, command output, commit messages, and verbatim relayed teammate output are
 never rewritten to satisfy a rule here. Code, identifiers, paths, flags, URLs, and
 template placeholders are likewise untouched. And when editing an existing file

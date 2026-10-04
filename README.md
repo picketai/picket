@@ -19,12 +19,12 @@ Code decides what code can decide. Lane admission, the next action, phase verifi
 
 ```
 CLAUDE.md                  under 2 KB, loaded on every turn
-.claude/rules/             path-scoped rules: work-items, security-paths, harness-authoring, prose
+.claude/rules/             path-scoped rules: work-items, security-paths, harness-authoring, prose, comments
 .claude/agents/            analyst, architect, developer, reviewer (shells, at most 120 lines)
 .claude/skills/            lane skills, consulting, documenting, reviewing, ticketing, branching,
                            understanding, proofreading, summarizing, benchmarking, resuming, inspecting
 .claude/bin/harness.mjs    the kernel CLI; .claude/lib/ its modules (no runtime dependencies)
-.claude/hooks/             nine hooks: guards, schema lint, drive observer, stall monitor, verdict router, ledger
+.claude/hooks/             ten hooks: guards, schema lint, drive observer, stall monitor, state injection, verdict router, ledger
 work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)
 test/                      kernel, hook and budget tests: npm test

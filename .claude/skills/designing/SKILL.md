@@ -13,7 +13,7 @@ user-invocable: true
 
 # Designing
 
-Runs in the main session. You are the lead: one architect, one developer, one reviewer per work item, each spawned once and continued by `SendMessage`; the cumulative review alone gets a fresh reviewer (`steps/40-review.md` of ordering). Every routing decision comes from `harness next <id>`.
+Runs in the main session. You are the lead: one architect, one developer, one reviewer per work item, each spawned once and continued by `SendMessage`; the cumulative review alone gets a fresh reviewer (`.claude/skills/ordering/steps/40-review.md`). Every routing decision comes from `harness next <id>`.
 
 Lane check for this request:
 

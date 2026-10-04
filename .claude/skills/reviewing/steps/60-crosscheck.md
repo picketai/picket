@@ -12,7 +12,7 @@ Caps: 30 finding rows on a full pass, 10 on a delta. Past the cap the record is 
 
 ## Five checks, in order
 
-1. Terminology. For every term used in both decisions and phases: find its entry under `artifacts/strategy/glossary/` (a missing entry is its own Minor row); if the two sections use the term for materially different things, one row; if a phase introduces a domain term absent from the decisions and not common English, one row.
+1. Terminology. For every term used in both decisions and phases: find its entry in `.claude/MEMORY.md` (its `## Language`; a missing entry is its own Minor row); if the two sections use the term for materially different things, one row; if a phase introduces a domain term absent from the decisions and not common English, one row.
 2. Decision coverage. Every `D-###` has at least one phase criterion implementing it. A decision with zero criteria: Critical. A `D-###` cited by a phase that does not exist in the record: Critical.
 3. Reverse coverage. Every phase implements at least one decision. A phase whose criteria implement none: Major (scope creep or an incomplete decision set; the architect decides which).
 4. Driver-finding resolution. For each analyst report cited in `## Problem`, walk its `R-###` findings: a critical or major finding neither resolved by a phase nor marked out of scope in an `**Instead of:**` line is Major. For a cited SDR or charter, walk `TF-###` and `INV-###`: a `[TACTICAL DESIGN NEEDED]` item with no implementing phase is Major.
@@ -28,6 +28,6 @@ Evidence rules 2 and 3 of the skill apply: never infer a section's content from 
 
 ## Findings and verdict
 
-Each row is a skill finding line with the record anchor as its location, for example `artifacts/plans/00007-event-store.md#D-003`. Name the check in the first sentence. `ALIGNED` when no Critical or Major row exists; `DRIFT DETECTED` otherwise. The token stands alone on the last line.
+Each row is a skill finding line with the record anchor as its location, for example `work/<id>/design.md#D-003`. Name the check in the first sentence. `ALIGNED` when no Critical or Major row exists; `DRIFT DETECTED` otherwise. The token stands alone on the last line.
 
 Example row: `- [Critical] artifacts/plans/00012-payments.md#D-003 — Decision coverage: D-003 mandates idempotent retries and no phase criterion implements them. Retries will duplicate payments on timeout. Add a phase with a T-criterion for the idempotency key, or withdraw D-003.`
