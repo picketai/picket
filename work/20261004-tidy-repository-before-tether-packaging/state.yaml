@@ -1,0 +1,8 @@
+id: 20261004-tidy-repository-before-tether-packaging
+lane: design
+title: Tidy repository before Tether packaging
+status: open
+created: 2026-10-04T13:34:28.681Z
+updated: 2026-10-04T13:57:48.080Z
+base: d7fa1669f4e4bb8a4ccabb050bd03e9627732f9b
+run_through: 4

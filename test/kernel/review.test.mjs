@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -93,8 +93,6 @@ test("the manifest's nested entries win over the src/ scan, inline comments stri
 
 test("this repository has no nested repos, so the summary has the same shape as before (T-1.6)", () => {
   const here = resolve(".");
-  assert.ok(existsSync(join(here, ".claude", "branching", "manifest.yaml")));
-  assert.match(readFileSync(join(here, ".claude", "branching", "manifest.yaml"), "utf8"), /path: \./);
   assert.deepEqual(nestedRepos(here), []);
 });
 

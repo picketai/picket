@@ -13,13 +13,9 @@
   "license": "ISC",
   "author": "",
   "type": "commonjs",
-  "main": "index.js",
   "scripts": {
     "test": "node --test --test-concurrency=1 test/ bench/test/",
     "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
-    "lint:agents": "node scripts/lint-agents.mjs",
-    "lint:contract": "node .claude/hooks/lint.contract.mjs",
-    "lint:memory": "node .claude/hooks/lint.write.mjs --all",
     "bench:test": "node --test bench/test/",
     "bench:dry": "node bench/run.mjs --dry --harness trunk",
     "bench:report": "node bench/report.mjs",
