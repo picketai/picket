@@ -26,6 +26,10 @@ A named place where the core reads extension content: agent additions, review st
 **Floor**:
 The part of Tether no extension can change: the verdict tokens, `route` as the only state mutator, the guards, the user gate, the budgets.
 
+**Teammate**:
+An agent the lead starts with the Agent tool, such as `tether:developer`; in Claude Code terms, a subagent. Not a member of a Claude Code agent team.
+_Avoid_: agent team member
+
 ## Decisions
 
 - **Product name Tether, project TetherAI** (2026-10-02): plugin and CLI are `tether`, state lives in `.tether/`. npm, repository and organization names are settled at the alpha (2026-10-04); npm `tether` is taken, so expect a scope. Report: https://claude.ai/artifact/QyPJqATUoenwE4Cdc3R5km
@@ -34,3 +38,8 @@ The part of Tether no extension can change: the verdict tokens, `route` as the o
 - **Customization through extensions with a manifest, not an anonymous override folder** (2026-10-04): `.tether/extensions/<name>/extension.json`, enabled and ordered by `.tether/config.json`; chosen for maintainability (identity, version, compatibility check). Project-local only in the alpha; installing from a git URL comes later.
 - **Settings in `.tether/config.json`** (2026-10-04), tracked; runtime state in `.tether/state/`, ignored by git.
 - **Versioning: SemVer from 1.0.0-alpha.1, developed on the `framework` worktree until a shippable alpha** (2026-10-02).
+- **The Claude side ships as a plugin; `tether init` writes only what a plugin cannot** (2026-10-04): the spike carried agents, skills, hooks and the CLI as a plugin, and the whole harness graded the same as the copy-in run. `init` writes the CLAUDE.md block, settings and permission keys, `.tether/config.json`, and the marketplace keys. SDR: `artifacts/strategy/decisions/00001-tether-ships-claude-code-plugin.md`
+- **Skills and agents are always named `tether:<name>`** (2026-10-04): a bare name loses to a project skill of the same name. The kernel strips the prefix in one function. SDR 00001.
+- **Rules reach the lead and every teammate by hook injection from the plugin** (2026-10-04): SessionStart for the lead, SubagentStart for each agent, extension additions after core. Rejected: `paths` skills (they never injected) and copied `.claude/rules/` (drift). SDR 00001.
+- **Hooks stay one Node process each under the 200 ms cold budget** (2026-10-04): measured 46 to 66 ms from the plugin, within 6 ms of today. SDR 00001.
+- **Nothing writes under the plugin root** (2026-10-04): the installed plugin folder is shared by projects and replaced on update, so all state goes to `.tether/state/`. SDR 00001.
