@@ -46,6 +46,50 @@ test("new surfaces land in order, security and migrations in design, questions i
   rmSync(root, { recursive: true, force: true });
 });
 
+const SPIKE_REQUEST = "Tether plugin spike: a research work item whose throwaway code lives only under `spike/`. Question: can a Claude Code plugin carry Tether? Check that a version bump arrives with one update command.";
+
+test("a request that calls itself a research work item lands in research despite a bump (T-2.1)", () => {
+  const root = repo();
+  const r = admit(SPIKE_REQUEST, { root });
+  assert.equal(r.lane, "research");
+  assert.equal(r.signals.declared_research, true);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a declared research work item that adds a surface still lands in order (T-2.2)", () => {
+  const root = repo();
+  assert.equal(admit("This is a research work item: add an endpoint GET /invoices/:id/summary.", { root }).lane, "order");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a heading rename that mentions a verdict token lands in fast without the security signal (T-2.3)", () => {
+  const root = repo();
+  const r = admit("Rename the research lane's closing block heading in `.claude/skills/researching/SKILL.md` from '## Report: <id>' to '## Research closed: <id>', so the lead's closing block no longer matches the analyst contract heading that guard.block treats as a hand-back needing a verdict token.", { root });
+  assert.equal(r.lane, "fast");
+  assert.equal(r.signals.security, false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a credential token, alone or beside a verdict token, keeps the design lane (T-2.4)", () => {
+  const root = repo();
+  for (const p of [
+    "Expire the token after 15 minutes of inactivity.",
+    "Rotate the refresh token on every login.",
+    "Name the verdict token in the docs and validate the bearer token in the middleware.",
+  ]) {
+    const r = admit(p, { root });
+    assert.equal(r.lane, "design", p);
+    assert.equal(r.signals.security, true, p);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a token count in a cost table is not a security concern (T-2.5)", () => {
+  const root = repo();
+  assert.equal(admit("Show the token count per agent in the cost table.", { root }).signals.security, false);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("an explicit lane wins and a recheck escalates on overrun", () => {
   const root = repo();
   assert.equal(admit("lane: design. Rename a variable.", { root }).lane, "design");

@@ -24,6 +24,8 @@ const CROSS_CONTEXT = /\b(other (service|repo|repository|context)|second repo|bo
 const NEW_SURFACE = /\b(add(ed)? (an? )?(new )?(endpoint|route|module|command|worker|handler|middleware|layer|feature)|new (endpoint|route|module|feature|capability))\b/i;
 const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|options?|strategy|should we)\b/i;
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak)\b/i;
+const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
+const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 
 /** Backticked repo-relative paths mentioned in the text that exist on disk. */
 export function mentionedPaths(text, root) {
@@ -36,7 +38,11 @@ export function mentionedPaths(text, root) {
 }
 
 function touchesSecurity(paths, text, securityPaths) {
-  return paths.some((p) => securityPaths.some((s) => p.startsWith(s))) || securityPaths.some((s) => text.includes(s)) || SECURITY.test(text);
+  return paths.some((p) => securityPaths.some((s) => p.startsWith(s))) || securityPaths.some((s) => text.includes(s)) || SECURITY.test(withoutNonCredentialTokens(text));
+}
+
+function withoutNonCredentialTokens(text) {
+  return text.replace(NOT_A_CREDENTIAL, " ");
 }
 
 /** The project's security path prefixes (config.mjs); kept here because route.mjs imports it from admit. */
@@ -58,11 +64,13 @@ export function admit(text, o = {}) {
   const paths = mentionedPaths(text, root);
   const touched = o.touched ?? [];
   const reasons = [];
+  const declaredResearch = DECLARED_RESEARCH.test(text);
   const signals = {
     forced: forced ?? null,
     mentioned_paths: paths,
     touched: touched.length,
-    research: RESEARCH.test(text) && !SMALL_CHANGE.test(text) && !NEW_SURFACE.test(text),
+    declared_research: declaredResearch,
+    research: (declaredResearch || (RESEARCH.test(text) && !SMALL_CHANGE.test(text))) && !NEW_SURFACE.test(text),
     security: touchesSecurity([...paths, ...touched], text, securityPaths),
     migration: MIGRATION.test(text),
     irreversible: IRREVERSIBLE.test(text),
