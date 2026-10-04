@@ -1,0 +1,1 @@
+Add a kernel function that turns an agent type such as `tether:analyst` into the bare name `analyst`, and use it in every hook that reads an agent type, starting with `.claude/hooks/lib/transcript.mjs` where the agent-name pattern stops at the colon. (TF-001 of artifacts/strategy/decisions/00001-tether-ships-claude-code-plugin.md)

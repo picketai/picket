@@ -1,0 +1,7 @@
+id: 20261004-strip-tether-prefix-from-agent-types
+lane: fast
+title: Strip tether prefix from agent types
+status: abandoned
+created: 2026-10-04T12:55:56.517Z
+updated: 2026-10-04T12:57:14.046Z
+base: 318e39a0d36416ae2aa765ab67147352c93910d7
