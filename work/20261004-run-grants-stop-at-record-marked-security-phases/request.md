@@ -1,0 +1,3 @@
+A run grant must not cross a phase the design record marks as security-sensitive.
+
+Today `route()` decides a phase's own gate from the configured security path prefixes only (`.claude/lib/route.mjs:68-74`, prefixes from `.claude/lib/config.mjs`). On 2026-10-04, in 20261004-tidy-repository-before-tether-packaging, the design record marked phase 2 (`.claude/lib/admit.mjs`, how admission decides a security concern) as security-sensitive and the designing skill promised it its own gate, but no configured prefix matched, so the user's "run through 4" approved and committed it (9ddd51f) without a stop. The kernel should also stop a run at a phase the record itself marks, so the record, the skill and the gate agree.
