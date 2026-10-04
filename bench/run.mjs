@@ -169,6 +169,8 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       allowedTools: adapter.allowedTools,
       maxBudgetUsd: args.budget ?? task.budget_usd ?? 10,
       maxTurns: task.max_turns ?? 150,
+      pluginDir: adapter.pluginDir,
+      model: adapter.model,
       timeoutMs,
       eventsPath,
       approver,

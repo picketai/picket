@@ -1,0 +1,35 @@
+# Annotated example of .claude/branching/manifest.yaml
+#
+# GENERATED and SELF-HEALED by the `branching` skill — not hand-maintained.
+# Purpose: map the umbrella's nested git repos. It records repos ONLY.
+# Branch/worktree state is read live from git, never stored here.
+
+version: 1
+
+# Immediate children of this directory (relative to the umbrella root) are
+# scanned for git repos. Repos nested deeper are NOT scanned automatically.
+scan_root: src
+
+# Stamped with the current date on each scan / self-heal.
+generated: 2026-06-08
+
+repos:
+  # `name`           - the repo's directory name (display + selection label)
+  # `path`           - forward-slash path relative to the umbrella root
+  # `git_dir`        - resolved via `git rev-parse --absolute-git-dir`
+  #                    (handles both real .git dirs and .git gitlink files)
+  # `default_branch` - cached base for new branches; re-validated on self-heal
+  - name: ExampleApiSvc
+    path: src/ExampleApiSvc
+    git_dir: D:/workspace/github/AISpec/src/ExampleApiSvc/.git
+    default_branch: main
+
+  - name: ExampleWebApp
+    path: src/ExampleWebApp
+    git_dir: D:/workspace/github/AISpec/src/ExampleWebApp/.git
+    default_branch: trunk
+
+  - name: ExampleDesktopApp
+    path: src/ExampleDesktopApp
+    git_dir: D:/workspace/github/AISpec/src/ExampleDesktopApp/.git
+    default_branch: master

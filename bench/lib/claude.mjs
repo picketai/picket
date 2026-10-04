@@ -34,6 +34,8 @@ export function runClaude(o) {
   if (o.allowedTools?.length) args.push("--allowedTools", o.allowedTools.join(","));
   if (o.maxBudgetUsd) args.push("--max-budget-usd", String(o.maxBudgetUsd));
   if (o.maxTurns) args.push("--max-turns", String(o.maxTurns));
+  if (o.pluginDir) args.push("--plugin-dir", o.pluginDir);
+  if (o.model) args.push("--model", o.model);
   if (o.approver) {
     // The scripted user's approve button: every prompt goes to the bench MCP server, which allows
     // and logs it. `--strict-mcp-config` keeps the fixture's own MCP servers out of the session.

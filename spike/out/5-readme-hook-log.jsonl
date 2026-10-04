@@ -1,0 +1,1 @@
+{"event":"Stop","agent_type":null,"effort":null,"verdict":null,"keys":["session_id","transcript_path","cwd","scratchpad_dir","prompt_id","permission_mode","hook_event_name","stop_hook_active","last_assistant_message","background_tasks","session_crons"]}
