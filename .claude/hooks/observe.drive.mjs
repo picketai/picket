@@ -6,6 +6,7 @@ import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDriveCommand } from "./lib/drive-evidence.mjs";
 import { projectRoot, listWork, deriveState } from "../lib/work.mjs";
+import { bareAgentName } from "../lib/agent-name.mjs";
 
 let data;
 try {
@@ -34,7 +35,7 @@ try {
     JSON.stringify({
       ts: new Date().toISOString(),
       session: data.session_id ?? null,
-      agent: data.agent_type ?? null,
+      agent: bareAgentName(data.agent_type),
       // Kernel calls are bookkeeping, never evidence; `harness drive` writes its own evidence row.
       kind: /\bharness\.mjs\b/.test(cmd) ? "inspect" : isDriveCommand(cmd) ? "drive" : "inspect",
       command: cmd.replace(/\s+/g, " ").slice(0, 200),

@@ -378,6 +378,36 @@ test("emit.ledger appends a v2 row and observe.drive tags commands with the open
   rmSync(root, { recursive: true, force: true });
 });
 
+test("route.verdict applies PHASE DONE from a tether:developer whose block has no phase heading", () => {
+  const { root, id } = project();
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "Done.\n\nPHASE DONE" }])]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s7", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "tether:developer" }, root);
+  assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`PHASE DONE applied to ${id} phase 1`));
+  assert.equal(deriveState(id, root).phases[0].done, true);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("emit.ledger records tether-prefixed agents under their bare names", () => {
+  const { root, id } = project();
+  const ledger = () => readFileSync(join(root, ".claude", "ledger", "ledger.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const own = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "ok" }])]);
+  run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s8", transcript_path: own, agent_transcript_path: own, cwd: root, agent_type: "tether:developer" }, root);
+  assert.equal(ledger().at(-1).agent, "developer");
+
+  const spawning = transcript(root, [user("build it"), assistant([tool("Agent", { subagent_type: "tether:architect", description: "Write the order" })])]);
+  run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s8", transcript_path: spawning, agent_transcript_path: spawning, cwd: root }, root);
+  assert.equal(ledger().at(-1).agent, "architect");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("observe.drive records a tether:developer as developer", () => {
+  const { root } = project();
+  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "curl -s http://127.0.0.1:8080/health" }, cwd: root, session_id: "s9", agent_type: "tether:developer" }, root);
+  const drives = readFileSync(join(root, ".claude", "ledger", "drive-log.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.equal(drives.at(-1).agent, "developer");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("monitor.context speaks up after six look-around calls", () => {
   const { root } = project();
   const six = Array.from({ length: 6 }, () => tool("Read", { file_path: "x" }));

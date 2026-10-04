@@ -5,6 +5,7 @@ import { next } from "./next.mjs";
 import { securityPaths } from "./admit.mjs";
 import { commitStaged } from "./git.mjs";
 import { readBlock, parseBlock } from "./packet.mjs";
+import { bareAgentName } from "./agent-name.mjs";
 
 /**
  * Approval turns the developer's staged work into a commit. The message is the one the developer
@@ -77,6 +78,7 @@ export function phaseNeedsOwnGate(id, phase, root) {
 }
 
 export function route(o) {
+  o = { ...o, agent: bareAgentName(o.agent) };
   const root = o.root ?? projectRoot();
   const spec = VERDICTS[o.verdict];
   if (!spec) throw new Error(`unknown verdict "${o.verdict}"; exact tokens: ${Object.keys(VERDICTS).join(", ")}`);

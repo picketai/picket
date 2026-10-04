@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { createWork, deriveState } from "../../.claude/lib/work.mjs";
 import { route, findVerdict } from "../../.claude/lib/route.mjs";
 import { saveBlock } from "../../.claude/lib/packet.mjs";
+import { bareAgentName } from "../../.claude/lib/agent-name.mjs";
 
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-route-"));
@@ -118,5 +119,29 @@ test("wrong owner is refused, rejection clears the run grant, drift blocks", () 
   const r = route({ id, verdict: "DRIFT DETECTED", agent: "reviewer", scope: "crosscheck", root });
   assert.equal(r.next.action, "resolve_block");
   assert.equal(deriveState(id, root).status, "blocked");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("bareAgentName strips only the exact tether: prefix", () => {
+  assert.equal(bareAgentName("tether:analyst"), "analyst");
+  assert.equal(bareAgentName("analyst"), "analyst");
+  assert.equal(bareAgentName("other:developer"), "other:developer");
+  assert.equal(bareAgentName("tetherx:developer"), "tetherx:developer");
+  assert.equal(bareAgentName(undefined), null);
+  assert.equal(bareAgentName(""), null);
+});
+
+test("a tether:developer may route PHASE DONE and is recorded as developer", () => {
+  const { root, id } = setup();
+  route({ id, verdict: "PHASE DONE", agent: "tether:developer", phase: 1, root });
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.done")), true);
+  assert.equal(deriveState(id, root).verdicts.at(-1).agent, "developer");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("another plugin's developer may not route PHASE DONE", () => {
+  const { root, id } = setup();
+  assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "other:developer", phase: 1, root }), /not other:developer/);
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.done")), false);
   rmSync(root, { recursive: true, force: true });
 });

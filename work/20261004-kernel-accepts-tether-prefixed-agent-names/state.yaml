@@ -1,0 +1,7 @@
+id: 20261004-kernel-accepts-tether-prefixed-agent-names
+lane: order
+title: Kernel accepts tether-prefixed agent names
+status: open
+created: 2026-10-04T12:57:35.716Z
+updated: 2026-10-04T12:57:35.734Z
+base: 318e39a0d36416ae2aa765ab67147352c93910d7

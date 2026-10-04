@@ -1,6 +1,7 @@
 // Transcript helpers shared by the Stop, SubagentStop and PostToolUse hooks. One bounded tail
 // read per question; nulls instead of guesses when the window does not reach the answer.
 import { closeSync, existsSync, fstatSync, openSync, readSync } from "node:fs";
+import { bareAgentName } from "../../lib/agent-name.mjs";
 export { readTurn, turnSpan, isSubagentTurn, blockLines, agentTranscript } from "./turn-block.mjs";
 
 const WINDOW = 4 * 1024 * 1024;
@@ -105,13 +106,13 @@ function norm(p) {
 
 /** The agent's role: hook payload first, then the transcript's spawn hints, then "lead". */
 export function agentName(data, path) {
-  if (data?.agent_type) return String(data.agent_type);
-  if (data?.agent_name) return String(data.agent_name);
+  if (data?.agent_type) return bareAgentName(String(data.agent_type));
+  if (data?.agent_name) return bareAgentName(String(data.agent_name));
   // A Stop without an agent id is the lead's own turn. The transcript scan below would find the
   // lead's Agent spawn (`subagent_type: architect`) and label the lead's turn "architect".
   if (data?.hook_event_name === "Stop" && !data?.agent_id) return "lead";
   const text = readTail(path, 256 * 1024);
-  const m = text.match(/"agent_type"\s*:\s*"([a-z-]+)"/) ?? text.match(/"subagent_type"\s*:\s*"([a-z-]+)"/);
-  if (m) return m[1];
+  const m = text.match(/"agent_type"\s*:\s*"([a-z-]+(?::[a-z-]+)?)"/) ?? text.match(/"subagent_type"\s*:\s*"([a-z-]+(?::[a-z-]+)?)"/);
+  if (m) return bareAgentName(m[1]);
   return data?.hook_event_name === "SubagentStop" ? "subagent" : "lead";
 }
