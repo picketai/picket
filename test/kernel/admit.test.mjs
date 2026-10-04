@@ -90,6 +90,40 @@ test("a token count in a cost table is not a security concern (T-2.5)", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a credential context word keeps a token phrase flagged (T-1.1, T-1.2)", () => {
+  const root = repo();
+  for (const p of ["Limit the refresh token count per user to five.", "Invalidate cached tokens when the user logs out."]) {
+    const r = admit(p, { root });
+    assert.equal(r.lane, "design", p);
+    assert.equal(r.signals.security, true, p);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a verdict token rename stays in fast without the security signal (T-1.3)", () => {
+  const root = repo();
+  const p = "Rename the verdict token heading in the skill";
+  const r = admit(p, { root });
+  assert.equal(r.lane, "fast", p);
+  assert.equal(r.signals.security, false, p);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("plural tokens and qualified token counts set the security signal (T-1.4)", () => {
+  const root = repo();
+  for (const p of ["Expire the tokens after 15 minutes of inactivity.", "Cap the access token count at five."]) {
+    assert.equal(admit(p, { root }).signals.security, true, p);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("cached tokens in a cost table with no credential context are not a security concern (T-1.6)", () => {
+  const root = repo();
+  const p = "Show cached tokens per agent in the cost table.";
+  assert.equal(admit(p, { root }).signals.security, false, p);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("an explicit lane wins and a recheck escalates on overrun", () => {
   const root = repo();
   assert.equal(admit("lane: design. Rename a variable.", { root }).lane, "design");

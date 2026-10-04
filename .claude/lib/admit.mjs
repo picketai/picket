@@ -16,7 +16,7 @@ export const CAPS = Object.freeze({
 });
 
 const RESEARCH = /\b(how (does|is|are)|explain|understand|map (the|a)|report|no code changes|write (a|the) report|where (is|does)|why (does|is))\b/i;
-const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|credential|token|secret|crypto|encrypt|permission|security path)\b/i;
+const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|credential|tokens?|secret|crypto|encrypt|permission|security path)\b/i;
 const MIGRATION = /\b(migrat(e|ion)|schema|alter table|data file|rewrite the file|backfill)\b/i;
 const IRREVERSIBLE = /\b(irreversible|delete (all|the) (data|records)|drop (table|column)|force[- ]push|purge)\b/i;
 const NEW_DEPENDENCY = /\b(add|install|introduce) (a |the |an )?(new )?(dependency|package|library|framework)\b|\bnpm install\b|\bnuget\b/i;
@@ -26,6 +26,7 @@ const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|option
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak)\b/i;
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
+const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
 
 /** Backticked repo-relative paths mentioned in the text that exist on disk. */
 export function mentionedPaths(text, root) {
@@ -42,6 +43,7 @@ function touchesSecurity(paths, text, securityPaths) {
 }
 
 function withoutNonCredentialTokens(text) {
+  if (CREDENTIAL_CONTEXT.test(text)) return text;
   return text.replace(NOT_A_CREDENTIAL, " ");
 }
 
