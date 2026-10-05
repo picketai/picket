@@ -20,6 +20,7 @@ import { execFileSync } from "node:child_process";
 import { recordBases } from "./repos.mjs";
 import { loadConfig } from "./config.mjs";
 import { IntakeError, resolveReferences, writeIntake } from "./sources.mjs";
+import { projectRoot, workRoot } from "./paths.mjs";
 
 function gitHead(root) {
   try {
@@ -33,20 +34,7 @@ export const LANES = ["fast", "order", "design", "research"];
 export const STATUSES = ["open", "blocked", "done", "abandoned"];
 export const ARTIFACT_BY_LANE = { fast: null, order: "order.md", design: "design.md", research: "research.md" };
 
-export function projectRoot(from = process.cwd()) {
-  if (process.env.CLAUDE_PROJECT_DIR) return resolve(process.env.CLAUDE_PROJECT_DIR);
-  let dir = resolve(from);
-  for (;;) {
-    if (existsSync(join(dir, ".claude"))) return dir;
-    const parent = resolve(dir, "..");
-    if (parent === dir) return resolve(from);
-    dir = parent;
-  }
-}
-
-export function workRoot(root = projectRoot()) {
-  return join(root, "work");
-}
+export { projectRoot, workRoot };
 
 export function workDir(id, root = projectRoot()) {
   if (!/^[a-z0-9][a-z0-9-]{2,80}$/.test(id)) throw new Error(`invalid work id: ${id}`);

@@ -3,8 +3,8 @@
 // session resumes from disk, not from memory), and the project glossary when one exists.
 // Fails silently: a missing line here costs a `harness list`, not a contract.
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { projectRoot, listWork, deriveState } from "../lib/work.mjs";
+import { hostPath, hostRel } from "../lib/paths.mjs";
 import { next } from "../lib/next.mjs";
 import { loadConfig } from "../lib/config.mjs";
 
@@ -32,10 +32,10 @@ try {
     const lines = sources.map((s) => `- ${s.name}: ${s.root ?? `unreachable (${s.reason})`} · read-only; use harness source find|grep and the snapshots`);
     parts.push(`# Sources\n${lines.join("\n")}`);
   }
-  const memory = join(root, ".claude", "MEMORY.md");
+  const memory = hostPath(root, "MEMORY.md");
   if (existsSync(memory)) {
     const text = readFileSync(memory, "utf8").trim();
-    if (text) parts.push(`# Project glossary and decisions (.claude/MEMORY.md)\n${text.slice(0, 6000)}`);
+    if (text) parts.push(`# Project glossary and decisions (${hostRel("MEMORY.md")})\n${text.slice(0, 6000)}`);
   }
 } catch {}
 

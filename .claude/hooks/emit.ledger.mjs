@@ -3,10 +3,10 @@
 // telemetry: who, how long, which verdict, how many tool calls and re-reads, tokens, first
 // reviewable output. Never blocks, never fails loudly.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "./lib/transcript.mjs";
 import { findVerdict } from "../lib/route.mjs";
 import { projectRoot, listWork, readState } from "../lib/work.mjs";
+import { stateDir, statePath, STATE_FILES } from "../lib/paths.mjs";
 
 let data;
 try {
@@ -64,8 +64,7 @@ try {
     cost_usd: null,
     lines_added: null,
   };
-  const dir = join(root, ".claude", "ledger");
-  mkdirSync(dir, { recursive: true });
-  appendFileSync(join(dir, "ledger.jsonl"), JSON.stringify(row) + "\n");
+  mkdirSync(stateDir(root), { recursive: true });
+  appendFileSync(statePath(root, STATE_FILES.ledger), JSON.stringify(row) + "\n");
 } catch {}
 process.exit(0);

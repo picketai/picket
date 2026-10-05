@@ -3,10 +3,10 @@
 // with the kernel, and hand the lead the next action as context. The lead reads one line instead of
 // relaying a block. Never blocks; a failure is reported as context and the turn ends normally.
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { readTurn, spawnHints, blockLines, agentTranscript } from "./lib/transcript.mjs";
 import { findVerdict, route } from "../lib/route.mjs";
 import { projectRoot } from "../lib/work.mjs";
+import { stateDir, statePath, stateRel } from "../lib/paths.mjs";
 import { saveBlock } from "../lib/packet.mjs";
 
 const HEADINGS = [
@@ -42,10 +42,11 @@ try {
     const id = info?.id ?? hints.work_id;
     if (info?.scope === "pr") {
       // A pull request review has no work item to advance; keep the block for the post-back step.
-      const dir = join(projectRoot(data.cwd), ".claude", "ledger");
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, `${id}.review.md`), text.trim() + "\n");
-      out = `harness: ${verdict} recorded for ${id}; block saved to .claude/ledger/${id}.review.md. Print it verbatim, then offer [p] post to the PR · [d] done.`;
+      const root = projectRoot(data.cwd);
+      const name = `${id}.review.md`;
+      mkdirSync(stateDir(root), { recursive: true });
+      writeFileSync(statePath(root, name), text.trim() + "\n");
+      out = `harness: ${verdict} recorded for ${id}; block saved to ${stateRel(name)}. Print it verbatim, then offer [p] post to the PR · [d] done.`;
     } else if (id) {
       const scope = info?.scope === "phase" ? undefined : (info?.scope ?? (hints.scope && !hints.scope.startsWith("phase") ? hints.scope : undefined));
       const phase = info?.phase ?? hints.phase ?? undefined;

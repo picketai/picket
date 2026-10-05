@@ -1,11 +1,12 @@
 // Hooks are run as processes on synthetic payloads and transcripts, the way Claude Code runs them.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, deriveState, setMarker } from "../../.claude/lib/work.mjs";
+import { statePath, STATE_FILES } from "../../.claude/lib/paths.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 
@@ -320,6 +321,24 @@ test("guard.bash judges the command a harness verb would run, so the allow rule 
     () => execFileSync("node", [resolve(".claude/bin/harness.mjs"), "drive", "--run", "rm -rf src", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: ["ignore", "pipe", "pipe"] }),
     (err) => /refuses to run a destructive command/.test(err.stderr),
   );
+  rmSync(root, { recursive: true, force: true });
+});
+
+function listTree(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    return entry.isDirectory() ? [full, ...listTree(full)] : [full];
+  }).sort();
+}
+
+test("guard.bash traces into the project root's state folder and writes nothing beside itself (T-1.2)", () => {
+  const { root } = project();
+  const before = listTree(HOOKS);
+  run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root }, root);
+  const trace = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n");
+  assert.equal(trace.length, 1);
+  assert.equal(JSON.parse(trace[0]).command, "git status");
+  assert.deepEqual(listTree(HOOKS), before);
   rmSync(root, { recursive: true, force: true });
 });
 

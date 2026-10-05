@@ -1,0 +1,8 @@
+id: 20261005-separate-core-paths-state-and-config
+lane: design
+title: Separate core paths state and config
+status: open
+created: 2026-10-05T07:59:35.364Z
+updated: 2026-10-05T08:25:46.946Z
+base: b5cc4bbe6a5c293967f909075232a0a2932e42c4
+run_through: 8

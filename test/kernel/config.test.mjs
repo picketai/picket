@@ -12,9 +12,10 @@ function projectWith(configText) {
   return root;
 }
 
-test("config.mjs is the only file under .claude/lib that names harness.json (T-3.1)", () => {
+test("config.mjs and paths.mjs are the only files under .claude/lib that name harness.json (T-3.1)", () => {
   const lib = resolve(".claude/lib");
-  const offenders = readdirSync(lib).filter((f) => f.endsWith(".mjs") && f !== "config.mjs" && readFileSync(join(lib, f), "utf8").includes("harness.json"));
+  const owners = ["config.mjs", "paths.mjs"];
+  const offenders = readdirSync(lib).filter((f) => f.endsWith(".mjs") && !owners.includes(f) && readFileSync(join(lib, f), "utf8").includes("harness.json"));
   assert.deepEqual(offenders, []);
 });
 

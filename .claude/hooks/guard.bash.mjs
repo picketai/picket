@@ -36,23 +36,17 @@
  */
 
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
-import { dirname, isAbsolute, join, resolve } from "path";
-import { fileURLToPath } from "url";
+import { isAbsolute, join, resolve } from "path";
 import { sourceRoots, underSource } from "./lib/source-paths.mjs";
-import { projectRoot } from "./lib/project-root.mjs";
+import { projectRoot, stateDir, statePath, STATE_FILES } from "../lib/paths.mjs";
 
-// Every invocation appends one line to .claude/ledger/guard-bash.log
-// (anchored to this script's location, NOT the spawn cwd, so it also proves
-// the hook ran when spawned from an unexpected directory). This is the
-// evidence trail for "why did command X prompt/allow/deny": no log entry at
-// the time of a prompt means the hook never fired for that call.
 let RAW_FOR_TRACE = "";
 function trace(outcome) {
   try {
-    const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "ledger");
-    mkdirSync(dir, { recursive: true });
+    const root = projectRoot();
+    mkdirSync(stateDir(root), { recursive: true });
     appendFileSync(
-      join(dir, "guard-bash.log"),
+      statePath(root, STATE_FILES.guardLog),
       JSON.stringify({
         ts: new Date().toISOString(),
         outcome,
@@ -740,7 +734,7 @@ function sourceDenial(name, what) {
 /** Protected source worktrees for this project; [] when none, so the guard behaves as before. */
 function protectedSources(input) {
   try {
-    return sourceRoots(projectRoot(input));
+    return sourceRoots(projectRoot(input?.cwd));
   } catch {
     return [];
   }

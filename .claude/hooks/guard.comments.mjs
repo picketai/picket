@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
-import { repoRelative } from "./lib/project-root.mjs";
+import { repoRelative } from "../lib/paths.mjs";
 import { LANGS, addedComments, extOf, normalise } from "../lib/comments.mjs";
 
 const QUOTED_LIMIT = 3;

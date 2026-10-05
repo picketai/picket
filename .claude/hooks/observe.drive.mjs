@@ -3,9 +3,9 @@
 // inspect, tagged with the open work item and its current phase, so `harness verify` can check a
 // developer's "Verified:" claim against evidence the developer cannot write. Never blocks.
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { isDriveCommand } from "./lib/drive-evidence.mjs";
 import { projectRoot, listWork, deriveState } from "../lib/work.mjs";
+import { stateDir, statePath, STATE_FILES } from "../lib/paths.mjs";
 import { bareAgentName } from "../lib/agent-name.mjs";
 
 let data;
@@ -28,10 +28,9 @@ try {
       break;
     }
   }
-  const dir = join(root, ".claude", "ledger");
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(stateDir(root), { recursive: true });
   appendFileSync(
-    join(dir, "drive-log.jsonl"),
+    statePath(root, STATE_FILES.driveLog),
     JSON.stringify({
       ts: new Date().toISOString(),
       session: data.session_id ?? null,
