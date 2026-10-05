@@ -54,7 +54,51 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   rmSync(root, { recursive: true, force: true });
 });
 
-const withComments = (value) => BLOCK.replace("Commit: 3f9c2a1", `Comments: ${value}\nCommit: 3f9c2a1`);
+function gatedSetup({ entry, touchSet = "", config }) {
+  const root = mkdtempSync(join(tmpdir(), "harness-packet-"));
+  mkdirSync(join(root, ".claude"));
+  if (config) writeFileSync(join(root, ".claude", "harness.json"), JSON.stringify(config));
+  const s = createWork({ lane: "design", title: "Gated", root });
+  writeFileSync(
+    join(root, "work", s.id, "design.md"),
+    `---\nlane: design\nphases:\n  - n: 1\n${entry}  - n: 2\n    files: [lib/b.mjs]\n    security: false\n---\n# D\n\n## Phase 1: Gated\n\n${touchSet}t\n\n## Phase 2: Next\n\nt\n`,
+  );
+  setMarker(s.id, 1, "done", root);
+  saveBlock(s.id, 1, BLOCK, root);
+  return { root, id: s.id };
+}
+
+test("a phase with its own gate shows a gate line directly after files", () => {
+  const { root, id } = gatedSetup({ entry: "    files: [lib/a.mjs]\n    security: true\n" });
+  const { lines } = packet(id, root);
+  const files = lines.findIndex((l) => l.startsWith("  files"));
+  assert.equal(lines[files + 1], "  gate      phase 1 is marked security-sensitive in the record; run grants stop here");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a gate line naming a long touch-set path stays within the width", () => {
+  const longPath = `lib/secure/${"x".repeat(105)}.mjs`;
+  assert.equal(longPath.length, 120);
+  const { root, id } = gatedSetup({
+    entry: "    files: [lib/a.mjs]\n    security: false\n",
+    touchSet: `**Touch set:**\n- \`${longPath}\`: why\n\n`,
+    config: { security_paths: ["lib/secure/"] },
+  });
+  const { lines } = packet(id, root);
+  assert.ok(lines.some((l) => l.startsWith("  gate      phase 1 touches a security path")));
+  for (const l of lines) assert.ok(l.length <= WIDTH, `line over ${WIDTH} chars: ${l}`);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("an ungated phase's packet has no gate line", () => {
+  const { root, id } = setup();
+  setMarker(id, 1, "done", root);
+  saveBlock(id, 1, BLOCK, root);
+  assert.equal(packet(id, root).lines.some((l) => l.startsWith("  gate")), false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+const withComments =(value) => BLOCK.replace("Commit: 3f9c2a1", `Comments: ${value}\nCommit: 3f9c2a1`);
 
 test("comment proposals render numbered and add the keep option (T-3.1)", () => {
   const { root, id } = setup();

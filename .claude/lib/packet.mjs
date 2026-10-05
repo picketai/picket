@@ -150,6 +150,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(field("lint", b.fields.lint ?? "not reported", width));
     lines.push(field("verified", b.fields.verified ?? "not reported", width));
     lines.push(field("files", b.fields.files ? filesLine(b.fields.files, width) : "not reported", width));
+    if (n.own_gate) lines.push(field("gate", `phase ${n.phase} ${n.own_gate.reason}; run grants stop here`, width));
     const dec = decisionLines(b.fields.decisions, width);
     if (dec.length) {
       lines.push(`  ${"decisions".padEnd(LABEL)}${dec[0].slice(2 + LABEL)}`);

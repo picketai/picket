@@ -3,6 +3,7 @@
 // the gate packet shows the user (empty when no user decision is due).
 import { deriveState, workDir } from "./work.mjs";
 import { ambiguousRefs } from "./sources.mjs";
+import { ownGate } from "./gate.mjs";
 
 export const ACTIONS = Object.freeze([
   "resolve_sources", // user picks a version for each ambiguous story reference
@@ -20,7 +21,7 @@ const HEAVY = new Set(["design"]);
 
 export function next(id, root) {
   const s = deriveState(id, root);
-  const base = { id: s.id, lane: s.lane, status: s.status, phase: null, options: [] };
+  const base = { id: s.id, lane: s.lane, status: s.status, phase: null, options: [], own_gate: null };
 
   if (s.status === "done" || s.status === "abandoned") return { ...base, action: "none", actor: null, detail: `work item is ${s.status}` };
   if (s.status === "blocked") return { ...base, action: "resolve_block", actor: "user", detail: s.blocked_reason, options: ["[c] continue", "[x] abandon"] };
@@ -66,12 +67,15 @@ export function next(id, root) {
 
   const remaining = s.phases.filter((p) => p.n > current.n && !p.approved).map((p) => p.n);
   const runOffer = remaining.length ? `[r] run through ${remaining.at(-1)}` : null;
+  const own_gate = ownGate(id, current.n, root);
+  const awaiting = `phase ${current.n} of ${s.phase_count} is done and awaits your decision`;
   return {
     ...base,
     action: "approve_phase",
     actor: "user",
     phase: current.n,
-    detail: `phase ${current.n} of ${s.phase_count} is done and awaits your decision`,
+    detail: own_gate ? `${awaiting}; it ${own_gate.reason}` : awaiting,
     options: ["[a] approve", runOffer, "[x] reject: <why>"].filter(Boolean),
+    own_gate,
   };
 }

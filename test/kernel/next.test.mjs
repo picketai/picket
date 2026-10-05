@@ -84,6 +84,59 @@ test("an ambiguous source reference is the user's pick before the artifact is wr
   rmSync(r, { recursive: true, force: true });
 });
 
+function design(r, id, entries) {
+  const front = entries.map((extra, i) => `  - n: ${i + 1}\n    files: [lib/p${i + 1}.mjs]\n${extra}`).join("");
+  const body = entries.map((_, i) => `## Phase ${i + 1}: P${i + 1}\n\nt\n`).join("\n");
+  writeFileSync(join(r, "work", id, "design.md"), `---\nlane: design\nphases:\n${front}---\n# Design\n\n${body}`);
+}
+
+test("a done phase the record marks security-sensitive names its own_gate in the result and detail", () => {
+  const r = root();
+  const s = createWork({ lane: "design", title: "Marked", root: r });
+  design(r, s.id, ["    security: true\n", "    security: false\n"]);
+  setMarker(s.id, 1, "done", r);
+  const n = next(s.id, r);
+  assert.equal(n.action, "approve_phase");
+  assert.deepEqual(n.own_gate, { kind: "security_mark", reason: "is marked security-sensitive in the record" });
+  assert.ok(n.detail.endsWith("; it is marked security-sensitive in the record"), n.detail);
+  rmSync(r, { recursive: true, force: true });
+});
+
+test("an unmarked done phase has a null own_gate and the plain detail", () => {
+  const r = root();
+  const s = createWork({ lane: "design", title: "Plain", root: r });
+  design(r, s.id, ["    security: false\n", "    security: false\n"]);
+  setMarker(s.id, 1, "done", r);
+  const n = next(s.id, r);
+  assert.equal(n.own_gate, null);
+  assert.equal(n.detail, "phase 1 of 2 is done and awaits your decision");
+  rmSync(r, { recursive: true, force: true });
+});
+
+test("every action other than an order or design approve_phase carries own_gate: null", () => {
+  const r = root();
+  const s = createWork({ lane: "design", title: "Walk", root: r });
+  const seen = {};
+  const record = () => {
+    const n = next(s.id, r);
+    seen[n.action] = n.own_gate;
+  };
+  record();
+  design(r, s.id, ["    security: true\n"]);
+  record();
+  setMarker(s.id, 1, "done", r);
+  setMarker(s.id, 1, "approved", r);
+  record();
+  appendVerdict(s.id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" }, r);
+  record();
+  const q = createWork({ lane: "research", title: "How", root: r });
+  writeFileSync(join(r, "work", q.id, "research.md"), "# Report\n");
+  const research = next(q.id, r);
+  assert.deepEqual(seen, { write_artifact: null, implement_phase: null, review_cumulative: null, close: null });
+  assert.deepEqual([research.action, research.own_gate], ["approve_phase", null]);
+  rmSync(r, { recursive: true, force: true });
+});
+
 test("design lane inserts a checkpoint at the midpoint of a long plan", () => {
   const r = root();
   const s = createWork({ lane: "design", title: "Big", root: r });
