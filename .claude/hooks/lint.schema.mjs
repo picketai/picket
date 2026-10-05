@@ -23,6 +23,11 @@ const abs = resolve(data.cwd ?? root, filePath);
 const rel = relative(root, abs).replaceAll("\\", "/");
 if (!/^work\/[^/]+\/(order|design)\.md$/.test(rel) || !existsSync(abs)) process.exit(0);
 
+function hasValidSecurityMark(entry, lane) {
+  if (entry == null || !Object.hasOwn(entry, "security")) return lane !== "design";
+  return typeof entry.security === "boolean";
+}
+
 const problems = [];
 try {
   const text = readFileSync(abs, "utf8");
@@ -38,6 +43,7 @@ try {
   for (const p of fmPhases) {
     if (!Array.isArray(p.files)) problems.push(`phases[n=${p.n}].files must be a list`);
     if (!headings.includes(Number(p.n))) problems.push(`frontmatter phase ${p.n} has no "## Phase ${p.n}" heading`);
+    if (!hasValidSecurityMark(p, lane)) problems.push(`phases[n=${p.n}].security must be true or false`);
     // A grep must_have that can never match stalls the developer on a defect it may not fix.
     for (const g of Array.isArray(p.greps) ? p.greps : []) {
       if (!g?.path || !g?.pattern) {

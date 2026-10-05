@@ -13,7 +13,7 @@ step: .claude/skills/ordering/steps/20-phase.md, developer section follows
 
 Later phases: `work: <id>` and `phase: <n>` only, plus `run through <m>` when the user granted a run.
 
-Wait for `PHASE DONE` or `PHASE STALLED`. The hook routes it. `PHASE DONE` moves you to `steps/30-gate.md` (or straight to the next phase inside a granted run). `PHASE STALLED` makes the item `blocked`: print the developer's diagnosis and the options `[c] continue with a fresh developer · [d] redesign · [x] abandon`, then stop.
+Wait for `PHASE DONE` or `PHASE STALLED`. The hook routes it. `PHASE DONE` moves you to `steps/30-gate.md` (or the next phase, inside a granted run, when `harness next` says `implement_phase`). `PHASE STALLED` makes the item `blocked`: print the developer's diagnosis and the options `[c] continue with a fresh developer · [d] redesign · [x] abandon`, then stop.
 
 ## Developer section
 
@@ -23,6 +23,6 @@ Read `work/<id>/order.md` once per work item; later phases re-read only the phas
 
 Run `harness verify <id> <n> --no-tests` before you start to see the must_haves, and `harness verify <id> <n>` before you emit the block. Verify is the machine's view of done; `**Done when:**` is the human's. Both must hold.
 
-Inside a granted run (`run through <m>` in your message), continue to the next phase after `PHASE DONE` without waiting, emitting one block per phase, and stop at phase m or at the first phase whose touch set includes a security path.
+Inside a granted run (`run through <m>` in your message), the phase loop is unchanged: one phase, one block, end the turn. The kernel decides whether the run goes on, and the lead sends the next phase only while `harness next` says `implement_phase`.
 
 A criterion you cannot meet without changing a `D-###` decision is not yours to force: end with `PHASE STALLED` and name the decision. Three failed attempts at one criterion: the same.

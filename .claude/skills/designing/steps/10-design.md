@@ -30,7 +30,7 @@ Read `.claude/skills/documenting/templates/design.md`, `.claude/PROJECT-MAP.md` 
 Write `work/<id>/design.md` in two saves, because the developer starts on the first:
 
 1. First save: frontmatter (`lane: design`, `phases:` with the phase 1 entry at least), `## Problem` (the forces and binding constraints, 2 to 5 sentences), `## Decisions` complete, `## Scope`, and `## Phase 1` complete with touch set, changes, and 3 to 8 criteria. Nothing else yet.
-2. Second save: the remaining phases (up to 10, each independently shippable), `## Open questions`, an empty `## Revision log`, and the full `phases:` frontmatter with `files`, `greps`, `tests`, `drive` per phase.
+2. Second save: the remaining phases (up to 10, each independently shippable), `## Open questions`, an empty `## Revision log`, and the full `phases:` frontmatter with `files`, `greps`, `tests`, `drive`, `security` per phase.
 
 Decisions: at most eight `### D-###`. Each names the choice, the constraint it satisfies, `**Instead of:**` the strongest alternative with the reason it lost, `**Risks:**` as `RISK-###` with a mitigation. Mark `[IRREVERSIBLE]` inline where a step cannot be undone (a migration that drops data, a published contract, a deleted branch). Use tactical DDD vocabulary where the design touches domain logic or persistence; say "infrastructural decision" where it does not.
 

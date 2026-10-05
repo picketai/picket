@@ -41,7 +41,7 @@ One step file at a time, each under 80 lines. The phase loop and the user gate a
 
 Time to first reviewable output is the target: the architect emits the decisions and phase 1 before the remaining phases are polished, so the developer starts while the record is finished and cross-checked. `DRIFT DETECTED` arriving mid-phase blocks the item; the developer's phase 1 work is kept and re-checked after the amendment, never thrown away.
 
-A phase whose touch set includes a security path always takes its own approval; run grants skip it. `[IRREVERSIBLE]` steps take an explicit extra confirmation in the gate packet: add the line `⚠ irreversible: <step>` and the option `[i] confirm irreversible step`.
+A run grant stops at every phase that takes its own gate; `harness next` and the gate packet name the reason. `[IRREVERSIBLE]` steps take an explicit extra confirmation in the gate packet: add the line `⚠ irreversible: <step>` and the option `[i] confirm irreversible step`.
 
 Long plans (6 or more phases) get a checkpoint review before the phase after the midpoint; `harness next` schedules it.
 

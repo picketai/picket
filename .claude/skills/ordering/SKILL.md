@@ -39,7 +39,7 @@ One step file at a time, each under 80 lines. `harness next <id>` tells you whic
 
 Mechanical hops never end your turn: architect `ARTIFACT WRITTEN` starts phase 1, developer `PHASE DONE` renders the gate, user `approved` starts the next phase, reviewer `APPROVED` closes. The hooks apply each verdict with `harness route`; you read `harness next` and act.
 
-A run grant (`r <n>` or "approved through n") lets the developer continue through phase n without a stop, except a phase that touches a security path, which always stops. `harness route ... --through n` records it; the developer's continuation message names the phases.
+A run grant (`r <n>` or "approved through n") lets the developer continue through phase n without a stop, except a phase that takes its own gate, which always stops; `harness next` names the reason. `harness route ... --through n` records it; the developer's continuation message names the phases.
 
 A third `CHANGES REQUIRED` on the cumulative review, or a `PHASE STALLED`, is a user decision: print the diagnosis and the options `[c] continue with a fresh developer · [d] redesign · [x] abandon`, and stop.
 

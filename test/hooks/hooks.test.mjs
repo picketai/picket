@@ -357,6 +357,24 @@ test("lint.schema reports structural problems and the revision protocol", () => 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("lint.schema requires a boolean security on every design phase entry and not on order entries", () => {
+  const { root, id } = project();
+  const lint = (file) => run("lint.schema.mjs", { hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: file }, cwd: root }, root)?.hookSpecificOutput.additionalContext ?? "";
+  const s = createWork({ lane: "design", title: "Marked", root });
+  const p = join(root, "work", s.id, "design.md");
+  const record = (mark) => `---\nlane: design\nphases:\n  - n: 1\n    files: [src/a.ts]\n${mark}---\n# D\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n## Phase 1: A\n\n- **T-1.1** a\n- **T-1.2** b\n- **T-1.3** c\n\n## Revision log\n`;
+  const missing = "phases[n=1].security must be true or false";
+
+  writeFileSync(p, record(""));
+  assert.ok(lint(p).includes(missing), "an absent key is reported");
+  writeFileSync(p, record("    security: maybe\n"));
+  assert.ok(lint(p).includes(missing), "a non-boolean value is reported");
+  writeFileSync(p, record("    security: false\n"));
+  assert.doesNotMatch(lint(p), /security/);
+  assert.doesNotMatch(lint(join(root, "work", id, "order.md")), /security/, "an order record needs no security key");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("emit.ledger appends a v2 row and observe.drive tags commands with the open item", () => {
   const { root, id } = project();
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([tool("Read", { file_path: "a" }), tool("Read", { file_path: "a" }), tool("Edit", { file_path: "src/a.ts" })]), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nok\n\nPHASE DONE` }])]);

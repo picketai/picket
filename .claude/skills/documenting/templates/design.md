@@ -13,6 +13,7 @@ phases:
         pattern: [REPLACE: regex a criterion makes true]
     tests: true
     drive: [REPLACE: true when the phase touches a runtime surface]
+    security: [REPLACE: true when the phase changes authentication, authorisation, secret handling, or how the system decides a security concern or when it stops the user; false otherwise]
 ---
 # Design: [REPLACE: title]
 
@@ -48,7 +49,7 @@ phases:
 **Irreversible:** [REPLACE: the step, or omit the line]
 
 ## Phase 2: [REPLACE: title]
-<!-- optional: repeat the phase block; a security-path phase never shares a run grant -->
+<!-- optional: repeat the phase block; a phase with `security: true` or a security path never shares a run grant -->
 
 ## Open questions
 <!-- required; write "none" when empty; [STRATEGIC] flags a question for consulting -->
