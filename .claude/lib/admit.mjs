@@ -47,7 +47,6 @@ function withoutNonCredentialTokens(text) {
   return text.replace(NOT_A_CREDENTIAL, " ");
 }
 
-/** The project's security path prefixes (config.mjs); kept here because route.mjs imports it from admit. */
 export function securityPaths(root = projectRoot()) {
   return configuredSecurityPaths(root);
 }

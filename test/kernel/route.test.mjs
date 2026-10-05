@@ -68,6 +68,24 @@ test("a run grant never crosses a security path or an irreversible step; that ph
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a run grant stops at a phase the record marks security-sensitive", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-route-"));
+  mkdirSync(join(root, ".claude"));
+  const s = createWork({ lane: "design", title: "Tidy", root });
+  writeFileSync(
+    join(root, "work", s.id, "design.md"),
+    "---\nlane: design\nphases:\n  - n: 1\n    files: [lib/a.mjs]\n    security: false\n  - n: 2\n    files: [lib/tidy.mjs]\n    security: true\n  - n: 3\n    files: [lib/c.mjs]\n    security: false\n---\n# D\n\n## Phase 1: A\n\nt\n\n## Phase 2: Tidy\n\nt\n\n## Phase 3: C\n\nt\n",
+  );
+  route({ id: s.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  route({ id: s.id, verdict: "approved", agent: "user", phase: 1, through: 3, root });
+  const r = route({ id: s.id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.ok(r.applied.some((a) => a.includes("marked security-sensitive")), r.applied.join(" | "));
+  assert.equal(existsSync(join(root, "work", s.id, "phases", "2.approved")), false);
+  assert.equal(deriveState(s.id, root).run_through, undefined);
+  assert.deepEqual([r.next.action, r.next.phase], ["approve_phase", 2]);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("approval commits the staged phase with the developer's proposed message; rejection commits nothing", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-route-"));
   mkdirSync(join(root, ".claude"));
