@@ -11,7 +11,8 @@ export function install(repo, harnessRoot) {
   if (!existsSync(join(pluginDir, ".claude-plugin", "plugin.json"))) throw new Error(`plugin not built: ${pluginDir}`);
   if (!existsSync(join(harnessRoot, ".claude", "bin", "harness.mjs"))) throw new Error(`not a harness root: ${harnessRoot}`);
   cpSync(join(harnessRoot, "CLAUDE.md"), join(repo, "CLAUDE.md"));
-  cpSync(join(harnessRoot, ".claude", "rules"), join(repo, ".claude", "rules"), { recursive: true });
+  const hostDir = join(harnessRoot, ".claude");
+  cpSync(join(hostDir, "rules"), join(repo, ".claude", "rules"), { recursive: true, filter: (src) => !rework.isRepositoryOnly(src, hostDir) });
   cpSync(join(harnessRoot, ".claude", "harness.json"), join(repo, ".claude", "harness.json"));
   mkdirSync(join(repo, "work"), { recursive: true });
   const settings = JSON.parse(readFileSync(join(harnessRoot, ".claude", "settings.json"), "utf8"));

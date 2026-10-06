@@ -19,7 +19,8 @@ Code decides what code can decide. Lane admission, the next action, phase verifi
 
 ```
 CLAUDE.md                  under 2 KB, loaded on every turn
-.claude/rules/             path-scoped rules: work-items, security-paths, harness-authoring, prose, comments
+.claude/rules/             path-scoped rules: work-items, security-paths, prose, comments (shipped);
+                           harness-authoring (repository-only, never installed)
 .claude/agents/            analyst, architect, developer, reviewer (shells, at most 120 lines)
 .claude/skills/            lane skills, consulting, documenting, reviewing, ticketing, branching,
                            understanding, proofreading, summarizing, benchmarking, resuming, inspecting

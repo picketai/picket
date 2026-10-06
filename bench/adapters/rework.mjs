@@ -1,7 +1,7 @@
 // Adapter for the rework harness (branch `rework`): lanes, gate packets with bracket options, and
 // the closing blocks the lane skills print.
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { filesMatching } from "../lib/grade.mjs";
 import * as trunk from "./trunk.mjs";
 
@@ -9,12 +9,26 @@ export const name = "rework";
 
 const SKIP = ["ledger", "settings.local.json", "PROJECT-MAP.md", "branching"];
 
+export const REPOSITORY_ONLY = ["rules/harness-authoring.md"];
+
+const WINDOWS_LONG_PATH_PREFIX = "\\\\?\\";
+
+function withoutLongPathPrefix(path) {
+  return path.startsWith(WINDOWS_LONG_PATH_PREFIX) ? path.slice(WINDOWS_LONG_PATH_PREFIX.length) : path;
+}
+
+export function isRepositoryOnly(src, hostDir) {
+  const rel = relative(hostDir, withoutLongPathPrefix(src)).replaceAll("\\", "/");
+  return REPOSITORY_ONLY.includes(rel);
+}
+
 export function install(repo, harnessRoot) {
   if (!existsSync(join(harnessRoot, ".claude", "bin", "harness.mjs"))) throw new Error(`not a rework harness root: ${harnessRoot}`);
   cpSync(join(harnessRoot, "CLAUDE.md"), join(repo, "CLAUDE.md"));
-  cpSync(join(harnessRoot, ".claude"), join(repo, ".claude"), {
+  const hostDir = join(harnessRoot, ".claude");
+  cpSync(hostDir, join(repo, ".claude"), {
     recursive: true,
-    filter: (src) => !SKIP.some((s) => src.replaceAll("\\", "/").includes(`/.claude/${s}`)),
+    filter: (src) => !SKIP.some((s) => src.replaceAll("\\", "/").includes(`/.claude/${s}`)) && !isRepositoryOnly(src, hostDir),
   });
   mkdirSync(join(repo, "work"), { recursive: true });
   rmSync(join(repo, ".claude", "settings.local.json"), { force: true });

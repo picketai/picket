@@ -2,6 +2,29 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as trunk from "../adapters/trunk.mjs";
 import * as rework from "../adapters/rework.mjs";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+
+const SHIPPED_RULES = ["comments.md", "prose.md", "security-paths.md", "work-items.md"];
+
+test("a rework install holds the four shipped rules and not the repository-only harness-authoring rule", () => {
+  const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
+  try {
+    rework.install(repo, resolve("."));
+    assert.deepEqual(readdirSync(join(repo, ".claude", "rules")).sort(), SHIPPED_RULES);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("only harness-authoring is repository-only", () => {
+  const hostDir = resolve(".claude");
+  assert.equal(rework.isRepositoryOnly(join(hostDir, "rules", "harness-authoring.md"), hostDir), true);
+  assert.equal(rework.isRepositoryOnly(join(hostDir, "rules", "prose.md"), hostDir), false);
+  assert.equal(rework.isRepositoryOnly(join(hostDir, "rules"), hostDir), false);
+  if (process.platform === "win32") assert.equal(rework.isRepositoryOnly(`\\\\?\\${join(hostDir, "rules", "harness-authoring.md")}`, hostDir), true, "cpSync's long-path form");
+});
 
 test("trunk gate detection sees the lead's own wording, not only the developer block", () => {
   const lead = "Phase 1 of the plan is complete and waiting for your `approved`. The developer's block above carries the evidence.\n\nReply `approved`, `rejected: <reason>`, or with a question.";

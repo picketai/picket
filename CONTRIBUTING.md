@@ -10,7 +10,7 @@ The `## Layout` section of `README.md` maps every top-level folder. New things g
 
 - A kernel module goes in `.claude/lib/`, with its tests in `test/kernel/` as `<module>.test.mjs`.
 - A hook goes in `.claude/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`), is wired in `.claude/settings.json`, and is tested in `test/hooks/hooks.test.mjs`.
-- A skill, agent or rule follows `.claude/rules/harness-authoring.md`.
+- A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items` and `security-paths`.
 
 ## Code
 
