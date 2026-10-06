@@ -1,0 +1,930 @@
+{
+  "manifest": {
+    "harness": "rework",
+    "harness_root": "D:\\workspace\\github\\AISpec\\.worktrees\\framework",
+    "harness_commit": "d466eb8",
+    "harness_dirty": false,
+    "fixture_hash": "ba1d8b716475",
+    "claude_version": "2.1.282 (Claude Code)",
+    "node_version": "v20.11.1",
+    "effort_level": "high",
+    "permission_mode": "acceptEdits",
+    "allowed_tools": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git ls-files*)",
+      "Bash(git blame*)"
+    ],
+    "runs_per_task": 1,
+    "started": "2026-10-06T15:52:54.903Z"
+  },
+  "records": [
+    {
+      "task": "fast-01-pagination",
+      "lane_expected": "fast",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T15:52:55.606Z",
+      "session_ids": [
+        "68d3593a-9fa0-48ae-94e0-447a42c9c27f",
+        "68d3593a-9fa0-48ae-94e0-447a42c9c27f"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 25,
+      "cost_usd": 1.3727276000000002,
+      "usage": {
+        "input_tokens": 48,
+        "cache_read_input_tokens": 1659403,
+        "cache_creation_input_tokens": 82533,
+        "output_tokens": 5456
+      },
+      "api_ms": 145649,
+      "wall_ms": 106661,
+      "tool_calls": 22,
+      "tool_counts": {
+        "Bash": 10,
+        "Skill": 1,
+        "Grep": 4,
+        "Read": 5,
+        "Edit": 2
+      },
+      "reads": 5,
+      "unique_reads": 5,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 58125,
+      "first_tool_ms": 6153,
+      "first_reviewable_ms": 58125,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261006-fix-invoice-pagination-offset\n\nPage 1 now returns the first `size` invoices instead of skipping them.\n\nFiles: src/http/handlers.ts, test/router.test.ts\nTests: passed\nLint: passed\nVerified: `GET /invoices?page=1&size=2` → INV-1006, INV-1005 (newest two); `GET /invoices?page=2&size=2` → INV-1004, INV-1003, no gap or overlap\nComments: none\nCommit: fix(http): correct invoice list pagination offset (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed `9822b58`."
+      ],
+      "error": null,
+      "port": 8100,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9526,
+      "tokens_total": 1747440,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 13,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 21,
+          "failed": 0,
+          "total": 21,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "21/21 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:page \\* size, \\(page \\+ 1\\) \\* size",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-06T15:54:45.584Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-01-pagination-r1-muwuy1ru.jsonl"
+    },
+    {
+      "task": "fast-02-config-guard",
+      "lane_expected": "fast",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T15:54:46.384Z",
+      "session_ids": [
+        "e80ed0d1-8d17-41bb-bef3-a1025989ffe8",
+        "e80ed0d1-8d17-41bb-bef3-a1025989ffe8"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 21,
+      "cost_usd": 0.8285478000000001,
+      "usage": {
+        "input_tokens": 34,
+        "cache_read_input_tokens": 1152955,
+        "cache_creation_input_tokens": 40881,
+        "output_tokens": 4147
+      },
+      "api_ms": 100931,
+      "wall_ms": 72898,
+      "tool_calls": 18,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 1,
+        "Grep": 2,
+        "Read": 4,
+        "Glob": 1,
+        "Edit": 1,
+        "Write": 1
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 27057,
+      "first_tool_ms": 5546,
+      "first_reviewable_ms": 27057,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261006-fix-loadconfig-server-fallback\n\nloadConfig no longer throws on a missing `server` block; it falls back to DEFAULT_CONFIG like every other block.\n\nFiles: src/config.ts, test/config.test.ts\nTests: passed (22 passed, including 2 new)\nLint: passed\nVerified: no drivable surface: the bug only triggers on a malformed data/config.json, and the checked-in file is complete; the new unit tests exercise the empty-object and missing-server cases directly against temp files\nComments: none\n\nCommit: fix(config): fall back to defaults when server block is missing (staged; your answer commits it)\n\n[c] commit [x] discard: <why>",
+        "committed 8fa2721"
+      ],
+      "error": null,
+      "port": 8101,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9657,
+      "tokens_total": 1198017,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "src/config.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 30,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": false,
+        "own": {
+          "passed": 0,
+          "failed": 0,
+          "total": 0,
+          "error": "no vitest output"
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": false,
+            "detail": "0/0 passed, no vitest output"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/config.ts:raw\\.server!",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": false,
+      "finished": "2026-10-06T15:56:02.187Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-02-config-guard-r1-muwv0f9m.jsonl"
+    },
+    {
+      "task": "fast-03-rename",
+      "lane_expected": "fast",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T15:56:02.956Z",
+      "session_ids": [
+        "1dd70aa3-fd31-46fc-a1ca-78a33fc383da",
+        "1dd70aa3-fd31-46fc-a1ca-78a33fc383da"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 23,
+      "cost_usd": 0.9649510000000001,
+      "usage": {
+        "input_tokens": 42,
+        "cache_read_input_tokens": 1454255,
+        "cache_creation_input_tokens": 42560,
+        "output_tokens": 4292
+      },
+      "api_ms": 115791,
+      "wall_ms": 78159,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 6,
+        "Skill": 1,
+        "Read": 4,
+        "Grep": 2,
+        "Edit": 7
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 27370,
+      "first_tool_ms": 6006,
+      "first_reviewable_ms": 27370,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261006-rename-applystuff-to-describe-its-return-value\n\n`applyStuff` is now `computeSubtotalAndDiscount`, matching the `{ subtotal, discount }` it returns.\n\nFiles: src/domain/pricing.ts, src/domain/invoice.ts, test/pricing.test.ts\nTests: passed\nLint: passed\nVerified: no drivable surface: pure function, no runtime entry point\nComments: none\nCommit: refactor(pricing): rename applyStuff to computeSubtotalAndDiscount   (staged; your answer commits it)\n\n[c] commit   [x] discard: why",
+        "committed 3a56295"
+      ],
+      "error": null,
+      "port": 8102,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9715,
+      "tokens_total": 1501149,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "src/domain/invoice.ts",
+        "src/domain/pricing.ts",
+        "test/pricing.test.ts"
+      ],
+      "lines_added": 7,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "grep:src/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "10 file(s) scanned"
+          },
+          {
+            "name": "grep:test/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "grep:src/domain/pricing.ts:minLines: 25, percent: 10",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-06T15:57:22.963Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-03-rename-r1-muwv22dk.jsonl"
+    },
+    {
+      "task": "fast-04-listen-error-log",
+      "lane_expected": "fast",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T15:57:23.755Z",
+      "session_ids": [
+        "0a302a9d-72fa-4d6f-b25c-e3eb6be3eab2",
+        "0a302a9d-72fa-4d6f-b25c-e3eb6be3eab2"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 26,
+      "cost_usd": 1.0299543999999998,
+      "usage": {
+        "input_tokens": 44,
+        "cache_read_input_tokens": 1555580,
+        "cache_creation_input_tokens": 44769,
+        "output_tokens": 6580
+      },
+      "api_ms": 149719,
+      "wall_ms": 106685,
+      "tool_calls": 23,
+      "tool_counts": {
+        "Bash": 14,
+        "Skill": 1,
+        "Read": 3,
+        "Glob": 2,
+        "Edit": 1,
+        "Write": 2
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 32094,
+      "first_tool_ms": 5903,
+      "first_reviewable_ms": 32094,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261006-log-listen-errors-to-stderr\n\nListen failures now print a reason to stderr before the process exits, instead of exiting silently.\n\nFiles: src/http/server.ts, test/server.test.ts\nTests: passed (22/22, test/server.test.ts added)\nLint: passed\nVerified: started the service against a port held by another listener → exit code 1, stderr `address in use: 127.0.0.1:5917`\nComments: none\nCommit: fix(http): log listen errors to stderr before exiting   (staged; your answer commits it)\n\n[c] commit   [x] discard: why",
+        "Committed as `b815f9f` and the work item is closed (done)."
+      ],
+      "error": null,
+      "port": 8103,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cat > /tmp/verify_listen.cjs <<'EOF'\nconst { createServer } = require(\"node:http\");\nconst blocker = createServer(() => {});\nblocker.listen(5917, \"127.0.0.1\", () => {\n  const { spawnSync } = ",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.972,
+      "tokens_total": 1606973,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "src/http/server.ts",
+        "test/server.test.ts"
+      ],
+      "lines_added": 45,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "grep:src/http/server.ts:EADDRINUSE",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:console\\.error",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:process\\.exit\\(1\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/router.ts",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-06T15:59:12.318Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-04-listen-error-log-r1-muwv3spj.jsonl"
+    },
+    {
+      "task": "fast-05-page-size-default",
+      "lane_expected": "fast",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T15:59:13.125Z",
+      "session_ids": [
+        "354be1a1-ebd2-4cf7-be32-0ce9c6885798",
+        "354be1a1-ebd2-4cf7-be32-0ce9c6885798"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 38,
+      "cost_usd": 1.5450845999999996,
+      "usage": {
+        "input_tokens": 70,
+        "cache_read_input_tokens": 2606580,
+        "cache_creation_input_tokens": 51118,
+        "output_tokens": 7965
+      },
+      "api_ms": 203590,
+      "wall_ms": 143898,
+      "tool_calls": 35,
+      "tool_counts": {
+        "Bash": 19,
+        "Skill": 1,
+        "Grep": 3,
+        "Read": 6,
+        "Edit": 5,
+        "Glob": 1
+      },
+      "reads": 6,
+      "unique_reads": 6,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 25636,
+      "first_tool_ms": 5173,
+      "first_reviewable_ms": 25636,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261006-default-invoice-page-size-25\n\nGET /invoices now defaults to 25 results per page instead of 20.\n\nFiles: src/config.ts, data/config.json, test/router.test.ts\nTests: passed (21 tests)\nLint: passed\nVerified: `harness drive --hit \"GET /invoices\"` → `{\"page\":1,\"size\":25,...}`\nComments: none\nCommit: fix(config): default invoices page size to 25 (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "committed c1aa507"
+      ],
+      "error": null,
+      "port": 8104,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 1,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "(npm run start > /tmp/server_out.log 2>&1 &) ; sleep 2; curl -s \"http://127.0.0.1:8080/invoices?page=0\" | head -c 300; echo; pkill -f \"src/main.ts\" 2>/dev/null; true",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "curl -s \"http://127.0.0.1:8104/invoices?page=0\" | head -c 400; echo",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "pkill -f \"src/main.ts\" 2>/dev/null; sleep 1; ps aux | grep main.ts | grep -v grep || echo \"stopped\"",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "curl -s -m 2 \"http://127.0.0.1:8104/health\" ; echo",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 4,
+      "cache_hit_ratio": 0.9807,
+      "tokens_total": 2665733,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "data/config.json",
+        "src/config.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 18,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 21,
+          "failed": 0,
+          "total": 21,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "21/21 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/config.ts:defaultPageSize: 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:data/config.json:\"defaultPageSize\": 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-06T16:01:40.562Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-05-page-size-default-r1-muwv652w.jsonl"
+    },
+    {
+      "task": "fast-06-tax-rounding",
+      "lane_expected": "fast",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T16:01:41.402Z",
+      "session_ids": [
+        "42ecc557-a894-4ce3-9eba-3bf33da1bb8c",
+        "42ecc557-a894-4ce3-9eba-3bf33da1bb8c"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 24,
+      "cost_usd": 0.8483416000000001,
+      "usage": {
+        "input_tokens": 38,
+        "cache_read_input_tokens": 1300523,
+        "cache_creation_input_tokens": 39503,
+        "output_tokens": 4405
+      },
+      "api_ms": 118792,
+      "wall_ms": 84510,
+      "tool_calls": 21,
+      "tool_counts": {
+        "Bash": 12,
+        "Skill": 1,
+        "Read": 3,
+        "Grep": 3,
+        "Edit": 2
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 32693,
+      "first_tool_ms": 6829,
+      "first_reviewable_ms": 32693,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261006-round-percentage-helper-half-up\n\npercentOf now rounds half up, so a 19.99 EUR invoice at 7% tax shows 1.40 instead of 1.39.\n\nFiles: src/domain/money.ts, test/money.test.ts\nTests: passed (21/21, discount ladder included)\nLint: passed\nVerified: `percentOf(1999, 7)` → 140 (was 139)\nComments: none\nCommit: fix(money): round percentOf half up to nearest cent   (staged; your answer commits it)\n\n[c] commit   [x] discard: why",
+        "Committed as 1d20ebc and work item closed."
+      ],
+      "error": null,
+      "port": 8105,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9705,
+      "tokens_total": 1344469,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "src/domain/money.ts",
+        "test/money.test.ts"
+      ],
+      "lines_added": 5,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 21,
+          "failed": 0,
+          "total": 21,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "21/21 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "grep:src/domain/money.ts:Math\\.floor\\(\\(amount \\* ratePercent\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-06T16:03:09.179Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-06-tax-rounding-r1-muwv9bgw.jsonl"
+    },
+    {
+      "task": "order-07-summary-endpoint",
+      "lane_expected": "order",
+      "harness": "rework",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-06T16:03:09.954Z",
+      "session_ids": [
+        "16f808fd-4b65-4b02-94da-3dcc1b496cc1",
+        "16f808fd-4b65-4b02-94da-3dcc1b496cc1"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 24,
+      "cost_usd": 2.4664954,
+      "usage": {
+        "input_tokens": 46,
+        "cache_read_input_tokens": 1632586,
+        "cache_creation_input_tokens": 46797,
+        "output_tokens": 5405
+      },
+      "api_ms": 303505,
+      "wall_ms": 209242,
+      "tool_calls": 45,
+      "tool_counts": {
+        "Bash": 25,
+        "Skill": 1,
+        "Read": 9,
+        "Agent": 3,
+        "Write": 1,
+        "Edit": 5,
+        "Grep": 1
+      },
+      "reads": 9,
+      "unique_reads": 9,
+      "rereads": 0,
+      "subagents": 3,
+      "first_write_ms": 75109,
+      "first_tool_ms": 6700,
+      "first_reviewable_ms": 75109,
+      "model": "claude-sonnet-5",
+      "terminal": "completed",
+      "texts": [
+        "▶ phase 1/1 done · 20261006-add-invoice-summary-endpoint\n  `GET /invoices/:id/summary` now returns a six-key summary of one invoice…\n\n  tests     passed\n  lint      passed\n  verified  harness drive GET /invoices/INV-1002/summary → 200 {lineCount:1,totalCents:121980,total…\n  files     D:/workspace/github/AISpec/.worktrees/framework/bench/.runs/order-07-summary-endpoint-r…\n  decisions · T-1.2 checked by asserting the sorted key list, alongside the deep-equal\n            · T-1.4 compares the two raw 404 response bodies as strings\n  commit    feat(http): add GET /invoices/:id/summary with shared invoice 404 (staged; approval com…\n\n[a] approve   [x] reject: <why>",
+        "## Order closed: 20261006-add-invoice-summary-endpoint\n\nAdded `GET /invoices/:id/summary`, returning `{ id, customer, currency, lineCount, totalCents, total }` with the shared 404 shape for unknown ids, plus happy path and 404 unit tests.\nPhases: 1 · commits 64608f0..64608f0 · review: APPROVED"
+      ],
+      "error": null,
+      "port": 8106,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in src/http/handlers.ts src/http/router.ts src/http/server.ts src/domain/invoice.ts src/domain/money.ts src/domain/pricing.ts src/storage/jsonRepository.ts src/main.ts src/config.ts t",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "R=\"D:/workspace/github/AISpec/.worktrees/framework/bench/.runs/order-07-summary-endpoint-r1-muwvb7uh/repo\"; git -C \"$R\" diff 0b479d3a839ae032fb90e7f26fe0f63a4c8e2026 --stat; git -C \"$R\" diff 0b479d3a8",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "R=\"D:/workspace/github/AISpec/.worktrees/framework/bench/.runs/order-07-summary-endpoint-r1-muwvb7uh/repo\"; cd \"$R\"; grep -n \"INV-1002\" -A10 data/invoices.json | head -15; grep -n \"ratePercent\" src/co",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 3,
+      "cache_hit_ratio": 0.9721,
+      "tokens_total": 1684834,
+      "base_sha": "0b479d3a839ae032fb90e7f26fe0f63a4c8e2026",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 46,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:/invoices/:id/summary",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-06T16:06:42.478Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-07-summary-endpoint-r1-muwvb7uh.jsonl"
+    }
+  ]
+}
