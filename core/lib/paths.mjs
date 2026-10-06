@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const HOST_DIR = ".claude";
 export const TETHER_DIR = ".tether";
@@ -109,4 +110,12 @@ export function hostPath(root, ...segments) {
 
 export function workRoot(root = projectRoot()) {
   return join(root, WORK_DIR);
+}
+
+export function pluginRoot() {
+  return dirname(dirname(fileURLToPath(import.meta.url)));
+}
+
+export function rulesDir() {
+  return join(pluginRoot(), "rules");
 }

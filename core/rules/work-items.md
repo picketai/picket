@@ -1,7 +1,3 @@
----
-paths:
-  - "work/**"
----
 # Work items
 
 A work item is the directory `work/<id>/`. Its files are the state; nothing about it is remembered elsewhere.

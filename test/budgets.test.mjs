@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { joinedRules } from "../core/lib/hooks/inject.rules.mjs";
 
 const ROOT = resolve(".");
 const BUDGETS = {
@@ -13,9 +14,12 @@ const BUDGETS = {
   agent_lines: 120, // agent shells: identity, constraints, dispatch; procedure lives in step files
   skill_lines: 150, // SKILL.md: description, when, steps index; detail lives in steps/ and templates/
   step_lines: 80, // one step file is one screen
-  rule_lines: 60, // .claude/rules/*.md are path-scoped and small
+  rule_lines: 60,
   hook_cold_ms: 200, // a hook runs on every matching tool call
+  inject_chars: 10000,
 };
+
+const RULE_FOLDERS = [join(ROOT, ".claude", "rules"), join(ROOT, "core", "rules")];
 
 function lines(p) {
   return readFileSync(p, "utf8").split(/\r?\n/).length;
@@ -42,7 +46,7 @@ test("agent shells, skills, step files and rules stay within their line budgets"
   for (const p of walk(join(ROOT, ".claude", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
   for (const p of walk(join(ROOT, ".claude", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
   for (const p of walk(join(ROOT, ".claude", "skills"), (f) => /[\\/]steps[\\/].*\.md$/.test(f))) if (lines(p) > BUDGETS.step_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.step_lines}`);
-  for (const p of walk(join(ROOT, ".claude", "rules"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.rule_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.rule_lines}`);
+  for (const p of RULE_FOLDERS.flatMap((dir) => walk(dir, (f) => f.endsWith(".md")))) if (lines(p) > BUDGETS.rule_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.rule_lines}`);
   assert.deepEqual(over, []);
 });
 
@@ -88,4 +92,19 @@ test("hooks start cold under the budget", { skip: !existsSync(join(ROOT, "core",
     if (best > BUDGETS.hook_cold_ms) slow.push(`${rel(p)}: ${best} ms`);
   }
   assert.deepEqual(slow, []);
+});
+
+function injectionOverBudget(text) {
+  return text.length > BUDGETS.inject_chars ? `${text.length} chars > ${BUDGETS.inject_chars}` : null;
+}
+
+test("the injected rule text fits one hook's additionalContext limit", () => {
+  const text = joinedRules();
+  assert.ok(text, "core/rules holds no injected rule");
+  assert.equal(injectionOverBudget(text), null);
+});
+
+test("the injection budget check flags text past the limit", () => {
+  assert.equal(injectionOverBudget("x".repeat(BUDGETS.inject_chars)), null);
+  assert.equal(injectionOverBudget("x".repeat(BUDGETS.inject_chars + 1)), `${BUDGETS.inject_chars + 1} chars > ${BUDGETS.inject_chars}`);
 });

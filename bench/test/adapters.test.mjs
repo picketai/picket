@@ -12,7 +12,9 @@ test("a rework install holds the four shipped rules and not the repository-only 
   const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
   try {
     rework.install(repo, resolve("."));
-    assert.deepEqual(readdirSync(join(repo, ".claude", "rules")).sort(), SHIPPED_RULES);
+    assert.deepEqual(readdirSync(join(repo, "core", "rules")).sort(), SHIPPED_RULES);
+    const everyFile = readdirSync(repo, { recursive: true }).map((p) => String(p).replaceAll("\\", "/"));
+    assert.deepEqual(everyFile.filter((p) => p.endsWith("harness-authoring.md")), []);
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }

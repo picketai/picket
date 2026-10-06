@@ -8,6 +8,7 @@ import { hostPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths
 import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
 import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
+import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
 import { guardBash } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
@@ -21,6 +22,7 @@ const SHELLS = [
   "guard.block.mjs",
   "guard.comments.mjs",
   "guard.scope.mjs",
+  "inject.rules.mjs",
   "inject.state.mjs",
   "lint.schema.mjs",
   "monitor.context.mjs",
@@ -87,6 +89,40 @@ test("no handler reads stdin, writes stdout or exits the process (T-6.2)", () =>
     const code = readFileSync(join(HANDLERS, file), "utf8");
     for (const banned of ["process.exit", "readFileSync(0", "process.stdout"]) assert.equal(code.includes(banned), false, `${file} contains ${banned}`);
   }
+});
+
+const RULE_HEADINGS = ["# Writing rules", "# Comments in code", "# Work items", "# Security paths"];
+
+function headingOrder(text) {
+  return RULE_HEADINGS.map((heading) => text.indexOf(`${heading}\n`));
+}
+
+for (const event of [{ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
+  test(`injectRules returns the four rules in order for ${event.hook_event_name}`, () => {
+    const out = injectRules(event);
+    assert.equal(out.hookSpecificOutput.hookEventName, event.hook_event_name);
+    const text = out.hookSpecificOutput.additionalContext;
+    const positions = headingOrder(text);
+    assert.ok(positions.every((p) => p >= 0), `missing heading: ${positions}`);
+    assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+    assert.doesNotMatch(text, /^paths:/m);
+  });
+}
+
+test("injectRules joins the rule files with one blank line, in the injected order", () => {
+  withProject((root) => {
+    const dir = join(root, "rules");
+    mkdirSync(dir);
+    INJECTED_RULES.forEach((file, i) => writeFileSync(join(dir, file), `# Rule ${i}\n\nbody ${i}\n`));
+    const out = injectRules({ hook_event_name: "SessionStart" }, { rules: dir });
+    assert.equal(out.hookSpecificOutput.additionalContext, "# Rule 0\n\nbody 0\n\n# Rule 1\n\nbody 1\n\n# Rule 2\n\nbody 2\n\n# Rule 3\n\nbody 3");
+  });
+});
+
+test("injectRules returns null when the rules folder is missing", () => {
+  withProject((root) => {
+    assert.equal(injectRules({ hook_event_name: "SubagentStart" }, { rules: join(root, "no-rules") }), null);
+  });
 });
 
 test("emitLedger called directly appends one v2 row to the ledger (T-6.3)", () => {

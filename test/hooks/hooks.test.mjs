@@ -336,6 +336,17 @@ test("guard.bash judges the command a tether verb would run, by launcher or by s
   rmSync(root, { recursive: true, force: true });
 });
 
+for (const payload of [{ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
+  test(`inject.rules prints the four rules in order, without frontmatter, on ${payload.hook_event_name}`, () => {
+    const { root } = project();
+    const text = run("inject.rules.mjs", { ...payload, cwd: root }, root).hookSpecificOutput.additionalContext;
+    const positions = ["# Writing rules", "# Comments in code", "# Work items", "# Security paths"].map((h) => text.indexOf(`${h}\n`));
+    assert.ok(positions.every((p, i) => p >= 0 && (i === 0 || p > positions[i - 1])), `heading positions ${positions}`);
+    assert.doesNotMatch(text, /^paths:/m);
+    rmSync(root, { recursive: true, force: true });
+  });
+}
+
 const FORWARDERS = resolve(".claude/hooks");
 
 function runShell(dir, hook, payload, root) {
@@ -348,6 +359,7 @@ test("a .claude/hooks forwarder prints byte-identical output to its core/hooks s
     ["guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "rm -rf src" }, cwd: root }],
     ["guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root }],
     ["inject.state.mjs", { hook_event_name: "SessionStart", source: "startup", cwd: root }],
+    ["inject.rules.mjs", { hook_event_name: "SubagentStart", agent_type: "tether:developer", cwd: root }],
   ];
   for (const [hook, payload] of payloads) {
     const viaCore = runShell(HOOKS, hook, payload, root);

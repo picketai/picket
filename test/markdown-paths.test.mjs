@@ -33,6 +33,8 @@ const ELSEWHERE = [
     paths: [
       "API/",
       "Application/",
+      "Authentication/",
+      "Authorization/",
       "Common/",
       "Domain/",
       "Features/",
@@ -42,12 +44,19 @@ const ELSEWHERE = [
       "docs/",
       "src/",
       "src/auth.ts",
+      "src/auth/",
+      "src/crypto/",
+      "src/security/",
       ".azuredevops/pull_request_template.md",
       ".github/PULL_REQUEST_TEMPLATE.md",
     ],
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
   { why: "planned by SDR-00001", paths: ["rules/"] },
+  {
+    why: "moved to core/rules/ by the plugin design phase 3; agents, skills and CONTRIBUTING.md cite the new path from phase 4",
+    paths: [".claude/rules/comments.md", ".claude/rules/prose.md", ".claude/rules/work-items.md"],
+  },
   { why: "cited by SDR-00001 where it stood before the move to .claude/lib/", paths: [".claude/hooks/lib/transcript.mjs"] },
 ];
 

@@ -2,6 +2,7 @@
 paths:
   - ".claude/**"
   - "core/**"
+  - ".claude-plugin/**"
   - "CLAUDE.md"
 ---
 # Authoring the harness

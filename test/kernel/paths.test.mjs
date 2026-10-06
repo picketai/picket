@@ -28,8 +28,9 @@ test("the vendored tokenizer lives under core/lib/vendor and the scans leave it 
   assert.equal(kernelModules().includes(tokenizer), false);
 });
 
-test("no kernel, hook or bin module builds a path from its own location (T-1.1)", () => {
+test("no kernel, hook or bin module but paths.mjs builds a path from its own location (T-1.1)", () => {
   const offenders = kernelModules()
+    .filter((file) => !isPathsModule(file))
     .map((file) => ({ file, uses: selfLocationUses(readFileSync(file, "utf8")) }))
     .filter(({ uses }) => uses.length);
   assert.deepEqual(offenders, []);
@@ -136,8 +137,10 @@ test("paths exports locations only", () => {
     "hostPath",
     "hostRel",
     "legacyPath",
+    "pluginRoot",
     "projectRoot",
     "repoRelative",
+    "rulesDir",
     "stateDir",
     "statePath",
     "stateRel",
@@ -161,7 +164,15 @@ test("relative locations read as POSIX paths and absolute ones sit under the roo
   assert.deepEqual([...paths.BOOKKEEPING_PREFIXES], ["work/", ".claude/", ".tether/"]);
 });
 
-const PROMPT_FOLDERS = [".claude/skills", ".claude/agents", ".claude/rules"];
+test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits under it", () => {
+  const root = paths.pluginRoot();
+  assert.equal(root, resolve("core"));
+  assert.equal(existsSync(join(root, "lib", "paths.mjs")), true);
+  assert.equal(existsSync(join(root, "rules", "prose.md")), true);
+  assert.equal(paths.rulesDir(), join(root, "rules"));
+});
+
+const PROMPT_FOLDERS = [".claude/skills", ".claude/agents", ".claude/rules", "core/rules"];
 
 function filesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

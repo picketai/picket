@@ -12,7 +12,7 @@ Four lanes, four agents, one kernel. Code decides what code can decide; the mode
 
 ## Rules
 
-`.claude/rules/` loads by path: `work-items` (work/**), `security-paths`, `harness-authoring` (.claude/**), `prose` (always), `comments` (always).
+`core/rules/` is injected at session start and into every agent: `prose`, `comments`, `work-items`, `security-paths`. `harness-authoring` loads by path (.claude/**, core/**).
 
 ## Project facts
 

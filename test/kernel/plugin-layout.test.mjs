@@ -90,7 +90,7 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
 
 test("every .claude/hooks shell and the old CLI path is one import of its core/ counterpart", () => {
   const shells = readdirSync(FORWARDER_HOOKS).filter((file) => file.endsWith(".mjs"));
-  assert.equal(shells.length, 10);
+  assert.equal(shells.length, 11);
   for (const shell of shells) {
     assert.deepEqual(onlyLine(join(FORWARDER_HOOKS, shell)), [`import "../../core/hooks/${shell}";`], shell);
     assert.equal(existsSync(join(CORE, "hooks", shell)), true, shell);
