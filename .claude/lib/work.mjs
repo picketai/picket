@@ -62,6 +62,12 @@ export function listWork(root = projectRoot()) {
     .sort();
 }
 
+const ACTIVE_STATUSES = new Set(["open", "blocked"]);
+
+export function listOpenWork(root = projectRoot()) {
+  return listWork(root).filter((id) => ACTIVE_STATUSES.has(readState(id, root).status));
+}
+
 export function readState(id, root = projectRoot()) {
   const file = join(workDir(id, root), "state.yaml");
   if (!existsSync(file)) throw new Error(`no work item ${id} (missing ${file})`);

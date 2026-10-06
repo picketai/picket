@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../.claude/lib/work.mjs";
+import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../.claude/lib/work.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");
 
@@ -26,6 +26,23 @@ test("create, read, list", () => {
   assert.deepEqual(listWork(root), [s.id]);
   assert.throws(() => createWork({ lane: "order", title: "Summary endpoint", root, now: new Date("2026-09-07T10:00:00Z") }), /already exists/);
   assert.throws(() => createWork({ lane: "huge", title: "x", root }), /lane must be/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("listOpenWork keeps open and blocked ids in listWork order (T-4.1)", () => {
+  const root = tempRoot();
+  const now = new Date("2026-10-06T10:00:00Z");
+  const withStatus = (title, status) => {
+    const s = createWork({ lane: "order", title, root, now });
+    if (status !== "open") writeState({ ...readState(s.id, root), status, ...(status === "blocked" ? { blocked_reason: "waiting" } : {}) }, root);
+    return s.id;
+  };
+  const abandoned = withStatus("A abandoned", "abandoned");
+  const blocked = withStatus("B blocked", "blocked");
+  const done = withStatus("C done", "done");
+  const open = withStatus("D open", "open");
+  assert.deepEqual(listWork(root), [abandoned, blocked, done, open]);
+  assert.deepEqual(listOpenWork(root), [blocked, open]);
   rmSync(root, { recursive: true, force: true });
 });
 

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { listWork, deriveState } from "../work.mjs";
+import { listOpenWork, deriveState } from "../work.mjs";
 import { hostPath, hostRel } from "../paths.mjs";
 import { next } from "../next.mjs";
 import { loadConfig } from "../config.mjs";
@@ -13,9 +13,7 @@ function openItemLine(s, root) {
 }
 
 function openItemsPart(root) {
-  const open = listWork(root)
-    .map((id) => deriveState(id, root))
-    .filter((s) => s.status === "open" || s.status === "blocked");
+  const open = listOpenWork(root).map((id) => deriveState(id, root));
   if (!open.length) return null;
   const lines = open.slice(0, SHOWN_ITEMS).map((s) => openItemLine(s, root));
   const more = open.length > SHOWN_ITEMS ? `\n- and ${open.length - SHOWN_ITEMS} more (harness list)` : "";

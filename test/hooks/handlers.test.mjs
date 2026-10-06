@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createWork } from "../../.claude/lib/work.mjs";
+import { createWork, writeState } from "../../.claude/lib/work.mjs";
 import { hostPath, statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
 import { emitLedger } from "../../.claude/lib/hooks/emit.ledger.mjs";
 import { routeVerdict } from "../../.claude/lib/hooks/route.verdict.mjs";
@@ -117,6 +117,20 @@ test("injectState with an empty event lists the open work items (T-6.3)", () => 
     const out = injectState({}, { root });
     assert.equal(out.hookSpecificOutput.hookEventName, "SessionStart");
     assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`# Open work items\\n- ${s.id} · order · open`));
+  });
+});
+
+test("injectState lists open and blocked items and leaves a done item out (T-4.2)", () => {
+  withProject((root) => {
+    const open = createWork({ lane: "order", title: "Open one", root }).id;
+    const blocked = createWork({ lane: "order", title: "Blocked one", root });
+    writeState({ ...blocked, status: "blocked", blocked_reason: "waiting" }, root);
+    const done = createWork({ lane: "order", title: "Done one", root });
+    writeState({ ...done, status: "done" }, root);
+    const context = injectState({}, { root }).hookSpecificOutput.additionalContext;
+    assert.ok(context.includes(`- ${open} · order · open`));
+    assert.ok(context.includes(`- ${blocked.id} · order · blocked`));
+    assert.equal(context.includes(done.id), false);
   });
 });
 
