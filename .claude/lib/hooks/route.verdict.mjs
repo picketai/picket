@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { readTurn, spawnHints, blockLines, agentTranscript } from "../transcript.mjs";
+import { readTurn, latestHints, blockLines, agentTranscript } from "../transcript.mjs";
 import { findVerdict, route } from "../route.mjs";
 import { stateDir, statePath, stateRel } from "../paths.mjs";
 import { saveBlock } from "../packet.mjs";
@@ -49,7 +49,7 @@ function routeTurn(event, root) {
   const verdict = findVerdict(blockLines(text).last);
   if (!verdict) return null;
   const info = blockHeading(text);
-  const hints = spawnHints(agentTranscript(event));
+  const hints = latestHints(agentTranscript(event));
   const id = info?.id ?? hints.work_id;
   if (info?.scope === "pr") return keepPullRequestReview(id, verdict, text, root);
   return id ? applyVerdict({ event, info, hints, id, verdict, text, root }) : null;

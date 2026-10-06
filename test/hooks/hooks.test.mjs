@@ -359,6 +359,40 @@ test("guard.scope denies a model write under the legacy state folder (T-1.4)", (
   rmSync(root, { recursive: true, force: true });
 });
 
+function designProject(phaseCount) {
+  const root = mkdtempSync(join(tmpdir(), "harness-hooks-"));
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  execFileSync("git", ["-C", root, "init", "-q"]);
+  const s = createWork({ lane: "design", title: "Six phases", root });
+  const numbers = Array.from({ length: phaseCount }, (_, i) => i + 1);
+  const frontmatter = numbers.map((n) => `  - n: ${n}\n    files: [src/${n}.ts]\n    security: false\n`).join("");
+  const bodies = numbers.map((n) => `## Phase ${n}: P${n}\n\n- **T-${n}.1** a\n- **T-${n}.2** b\n- **T-${n}.3** c\n`).join("\n");
+  writeFileSync(join(root, "work", s.id, "design.md"), `---\nlane: design\nphases:\n${frontmatter}---\n# D\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n${bodies}\n## Revision log\n`);
+  return { root, id: s.id };
+}
+
+test("route.verdict records a continued reviewer's checkpoint on the phase of its latest message (T-2.4, T-2.5)", () => {
+  const { root, id } = designProject(6);
+  for (const n of [1, 2, 3, 4]) {
+    setMarker(id, n, "done", root);
+    setMarker(id, n, "approved", root);
+  }
+  const block = `## Review: ${id} · checkpoint (phases 1 to 4, base b5cc4bb to HEAD 4840897)\n\nApproved.\n\nFindings: clean\n\nAPPROVED`;
+  const tp = transcript(root, [
+    user(`work: ${id}\nscope: crosscheck`),
+    assistant([{ type: "text", text: `## Review: ${id} · crosscheck\n\nALIGNED` }]),
+    user(`The coordinator sent a message while you were working:\nwork: ${id}\nscope: checkpoint\nphase: 4`),
+    assistant([{ type: "text", text: block }]),
+  ]);
+  run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s9", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "reviewer" }, root);
+  assert.equal(existsSync(join(root, "work", id, "phases", "4.reviewed")), true);
+  assert.equal(existsSync(join(root, "work", id, "phases", "5.reviewed")), false);
+  const rows = readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.equal(rows.at(-1).phase, 4);
+  assert.equal(rows.at(-1).scope, "checkpoint");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("guard.bash allows a redirect into the state log sink and falls through on a variable target (T-2.2)", () => {
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput ?? null;

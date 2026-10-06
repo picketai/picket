@@ -5,6 +5,7 @@ import { bareAgentName } from "./agent-name.mjs";
 export { readTurn, turnSpan, isSubagentTurn, blockLines, agentTranscript } from "./turn-block.mjs";
 
 const WINDOW = 4 * 1024 * 1024;
+const WORK_LINE = /^\s*work:\s*([a-z0-9-]+)/m;
 
 export function readTail(path, maxBytes = WINDOW) {
   if (!path || !existsSync(path)) return "";
@@ -40,12 +41,32 @@ export function entries(path, maxBytes = WINDOW) {
 
 /** `work: <id>` and `phase: <n>` from the first user message of the transcript (the spawn message). */
 export function spawnHints(path) {
-  const all = entries(path, Infinity);
-  const first = all.find((e) => e?.type === "user" && !Array.isArray(e.message?.content) || (e?.type === "user" && Array.isArray(e.message?.content) && e.message.content.some((c) => c?.type === "text")));
-  const text = typeof first?.message?.content === "string" ? first.message.content : first?.message?.content?.filter((c) => c?.type === "text").map((c) => c.text).join("\n") ?? "";
+  const first = entries(path, Infinity).find(isUserTextMessage);
+  return hintsOf(messageText(first));
+}
+
+export function latestHints(path) {
+  const instructions = entries(path, Infinity).filter(isUserTextMessage).map(messageText).filter((text) => WORK_LINE.test(text));
+  return hintsOf(instructions.at(-1) ?? "");
+}
+
+function isUserTextMessage(entry) {
+  if (entry?.type !== "user") return false;
+  const content = entry.message?.content;
+  return !Array.isArray(content) || content.some((c) => c?.type === "text");
+}
+
+function messageText(entry) {
+  const content = entry?.message?.content;
+  if (typeof content === "string") return content;
+  return content?.filter((c) => c?.type === "text").map((c) => c.text).join("\n") ?? "";
+}
+
+function hintsOf(text) {
+  const phase = text.match(/^\s*phase:\s*(\d+)/m)?.[1];
   return {
-    work_id: text.match(/^\s*work:\s*([a-z0-9-]+)/m)?.[1] ?? null,
-    phase: text.match(/^\s*phase:\s*(\d+)/m) ? Number(text.match(/^\s*phase:\s*(\d+)/m)[1]) : null,
+    work_id: text.match(WORK_LINE)?.[1] ?? null,
+    phase: phase ? Number(phase) : null,
     lane: text.match(/^\s*lane:\s*(fast|order|design|research)/m)?.[1] ?? null,
     scope: text.match(/^\s*scope:\s*(crosscheck|cumulative|checkpoint|phase \d+)/m)?.[1] ?? null,
   };

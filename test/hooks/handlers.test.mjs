@@ -11,6 +11,7 @@ import { injectState } from "../../.claude/lib/hooks/inject.state.mjs";
 import { guardBash } from "../../.claude/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../.claude/lib/hooks/guard.scope.mjs";
 import { branchingManifestPath } from "../../.claude/lib/paths.mjs";
+import { latestHints, spawnHints } from "../../.claude/lib/transcript.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 const HANDLERS = resolve(".claude/lib/hooks");
@@ -157,6 +158,26 @@ test("guardScope denies the legacy state folder and hook state in any case, not 
     assert.equal(guard("Write", ".tether/state/branching.yaml"), null);
     assert.equal(guard("Write", ".Tether/State/Branching.yaml"), null);
     assert.equal(guard("Write", ".claude/ledger-notes.md"), null);
+  });
+});
+
+const continuation = (id) => `The coordinator sent a message while you were working:\nCheckpoint review of phases 1 to 4.\n\nwork: ${id}\nscope: checkpoint\nphase: 4`;
+
+test("latestHints reads the continuation, spawnHints keeps the spawn message (T-2.1, T-2.2)", () => {
+  withProject((root) => {
+    const id = "20261006-csv";
+    const tp = transcript(root, [user(`work: ${id}\nscope: crosscheck`), assistant("ALIGNED"), user(continuation(id))]);
+    assert.deepEqual(latestHints(tp), { work_id: id, phase: 4, lane: null, scope: "checkpoint" });
+    assert.deepEqual(spawnHints(tp), { work_id: id, phase: null, lane: null, scope: "crosscheck" });
+  });
+});
+
+test("latestHints skips a later message without a work line (T-2.3)", () => {
+  withProject((root) => {
+    const id = "20261006-csv";
+    const skillBody = "Review the phase named by `phase: <n>`.\nscope: checkpoint\nphase: 9";
+    const tp = transcript(root, [user(`work: ${id}\nscope: crosscheck`), user(continuation(id)), user(skillBody)]);
+    assert.deepEqual(latestHints(tp), { work_id: id, phase: 4, lane: null, scope: "checkpoint" });
   });
 });
 
