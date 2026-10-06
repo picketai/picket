@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { migrate, renderMigrate } from "../../.claude/lib/migrate.mjs";
 import { preflight } from "../../.claude/lib/preflight.mjs";
 import { createWork } from "../../.claude/lib/work.mjs";
-import { LEGACY, STATE_FILES, branchingManifestPath, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../.claude/lib/paths.mjs";
+import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../.claude/lib/paths.mjs";
 
 const LEGACY_LEDGER = `${LEGACY.stateDir}/${STATE_FILES.ledger}`;
 const LEGACY_GUARD_LOG = `${LEGACY.stateDir}/guard-bash.log`;
@@ -122,6 +122,31 @@ test("--dry-run reports the plan and changes no file", () => {
     assert.equal(r.moved.length, 2);
     assert.deepEqual(snapshot(root), before);
     assert.match(renderMigrate(r), /^dry run: appended /m);
+  });
+});
+
+test("harness.json becomes config.json with version 1 first and the same sources (T-5.5)", () => {
+  withProject((root) => {
+    const sources = { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } };
+    writeLegacy(root, LEGACY.config, JSON.stringify({ sources }));
+    const r = migrate(root);
+    assert.deepEqual(r.moved, [{ from: LEGACY.config, to: configRel(), how: "converted" }]);
+    assert.equal(readFileSync(configPath(root), "utf8"), JSON.stringify({ version: 1, sources }, null, 2) + "\n");
+    assert.equal(existsSync(legacyPath(root, LEGACY.config)), false);
+    assert.deepEqual(migrate(root).moved, []);
+  });
+});
+
+test("with both config files present nothing is deleted and the conflict is reported (T-5.5)", () => {
+  withProject((root) => {
+    writeLegacy(root, LEGACY.config, '{"sources":{}}');
+    writeLegacy(root, configRel(), '{"version":1}\n');
+    const r = migrate(root);
+    assert.deepEqual(r.moved, []);
+    assert.equal(r.skipped[0].from, LEGACY.config);
+    assert.match(r.skipped[0].reason, /exists/);
+    assert.equal(readFileSync(legacyPath(root, LEGACY.config), "utf8"), '{"sources":{}}');
+    assert.equal(readFileSync(configPath(root), "utf8"), '{"version":1}\n');
   });
 });
 

@@ -9,6 +9,7 @@ import { relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { frontmatter } from "../lib/yaml-lite.mjs";
 import { projectRoot } from "../lib/work.mjs";
+import { loadConfig } from "../lib/config.mjs";
 
 let data;
 try {
@@ -58,13 +59,12 @@ try {
       if (/\\\\/.test(g.pattern)) problems.push(`phases[n=${p.n}] grep pattern ${JSON.stringify(g.pattern)} contains a doubled backslash after parsing; write the regex once, e.g. pattern: lines\\[0\\]\\.quantity`);
     }
   }
-  const maxPhases = lane === "order" ? 3 : 10;
+  const { max_phases: maxPhases, max_decisions: maxDecisions } = loadConfig(root).lanes[lane];
   if (headings.length > maxPhases) problems.push(`${headings.length} phases; the ${lane} cap is ${maxPhases}`);
   const decisions = [...body.matchAll(/^### (D-\d{3})(?: \(r(\d+)\))?:/gm)];
   const ids = decisions.map((m) => m[1]);
   const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
   if (dupes.length) problems.push(`duplicate decision ids: ${[...new Set(dupes)].join(", ")}`);
-  const maxDecisions = lane === "order" ? 5 : 8;
   if (ids.length > maxDecisions) problems.push(`${ids.length} decisions; the ${lane} cap is ${maxDecisions}`);
   for (const m of body.matchAll(/^## Phase \d+[^\n]*\n([\s\S]*?)(?=^## |\s*$)/gm)) {
     const crit = (m[1].match(/^- \*\*T-\d+\.\d+\*\*/gm) ?? []).length;

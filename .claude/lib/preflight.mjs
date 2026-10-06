@@ -7,10 +7,14 @@ import { deriveState, projectRoot } from "./work.mjs";
 import * as git from "./git.mjs";
 import { loadConfig } from "./config.mjs";
 import { listWorktrees } from "./sources.mjs";
-import { LEGACY_STATE_LOCATIONS, hostPath, legacyPath } from "./paths.mjs";
+import { LEGACY_LOCATIONS, hostPath, legacyPath } from "./paths.mjs";
 
 export function detectTooling(root) {
-  const out = { test: null, lint: null, build: null, run: null, stack: null };
+  return { ...detectedTooling(root), ...loadConfig(root).commands };
+}
+
+function detectedTooling(root) {
+  const out ={ test: null, lint: null, build: null, run: null, stack: null };
   const pkg = join(root, "package.json");
   if (existsSync(pkg)) {
     const scripts = JSON.parse(readFileSync(pkg, "utf8")).scripts ?? {};
@@ -76,11 +80,12 @@ export function preflight(id, root = projectRoot()) {
   const map = hostPath(root, "PROJECT-MAP.md");
   add("project_map", existsSync(map) ? "ok" : "warn", existsSync(map) ? "present" : "absent; the analyst can write one");
 
-  const legacy = LEGACY_STATE_LOCATIONS.filter((rel) => existsSync(legacyPath(root, rel)));
+  const legacy = LEGACY_LOCATIONS.filter((rel) => existsSync(legacyPath(root, rel)));
   if (legacy.length) add("legacy_paths", "warn", `${legacy.join(", ")} still present; run harness migrate`);
 
   const config = loadConfig(root);
   if (config.error) add("config", "warn", `${config.error}; using the default security paths and no sources`);
+  if (config.warnings.length) add("config", "warn", config.warnings.join("; "));
   for (const source of config.sources) {
     let scope;
     const trees = source.root ? listWorktrees(source.root) : [];

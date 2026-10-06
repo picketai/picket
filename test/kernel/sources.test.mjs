@@ -7,6 +7,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../.claude/lib/sources.mjs";
 import { parse as parseYaml } from "../../.claude/lib/yaml-lite.mjs";
 import { canonicalPath, sourceRoots, underSource } from "../../.claude/hooks/lib/source-paths.mjs";
+import { writeConfig } from "./config-fixture.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");
 const HOOKS = resolve(".claude/hooks");
@@ -37,7 +38,7 @@ function tempSource() {
 function tempProject() {
   const root = mkdtempSync(join(tmpdir(), "harness-srcproj-"));
   mkdirSync(join(root, ".claude"));
-  writeFileSync(join(root, ".claude", "harness.json"), JSON.stringify({ sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } }));
+  writeConfig(root, { sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } });
   git(root, "init", "-q");
   return root;
 }
@@ -125,7 +126,7 @@ test("preflight warns on an unset source and reports the worktree count when it 
   assert.match(unset.out, /^warn source:analysis: unreachable: HARNESS_SOURCE_ANALYSIS is not set/m);
   const set = cli(root, ["preflight", id, "--human"], main);
   assert.match(set.out, /^ok {3}source:analysis: .+ · 2 worktrees$/m);
-  writeFileSync(join(root, ".claude", "harness.json"), "{ broken");
+  writeConfig(root, "{ broken");
   assert.match(cli(root, ["preflight", id, "--human"]).out, /^warn config: /m);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });

@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// PreToolUse on Write | Edit: three mechanical rules.
-//   2. Nothing is written inside a source (any worktree of a repo declared in .claude/harness.json).
 //   3. Read before edit: an Edit on a file this transcript never Read (or wrote) is denied, with
 //      the instruction to read it first. In-context memory of a file is a belief, not the file.
 import { readFileSync } from "node:fs";

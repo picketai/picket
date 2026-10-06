@@ -7,6 +7,7 @@ import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, deriveState, setMarker } from "../../.claude/lib/work.mjs";
 import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
+import { writeConfig } from "../kernel/config-fixture.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 
@@ -221,7 +222,7 @@ test("route.verdict closes the item on a cumulative APPROVED from the fresh cumu
  */
 function projectWithSource() {
   const { root, id } = project();
-  writeFileSync(join(root, ".claude", "harness.json"), JSON.stringify({ sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } }));
+  writeConfig(root, { sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } });
   const base = mkdtempSync(join(tmpdir(), "harness-guard-src-"));
   const main = join(base, "analysis");
   const g = (...args) => execFileSync("git", ["-C", main, "-c", "user.name=t", "-c", "user.email=t@t", ...args], { stdio: "ignore" });
@@ -410,6 +411,20 @@ test("lint.schema reports structural problems and the revision protocol", () => 
   assert.match(ctx, /phase headings must run 1, 2, 3/);
   assert.match(ctx, /D-001 body changed without bumping/);
   assert.match(ctx, /Revision log/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("lint.schema takes the order phase cap from the config (T-5.3)", () => {
+  const { root } = project();
+  const s = createWork({ lane: "order", title: "Three phases", root });
+  const p = join(root, "work", s.id, "order.md");
+  const phase = (n) => `## Phase ${n}: P${n}\n\n- **T-${n}.1** a\n- **T-${n}.2** b\n- **T-${n}.3** c\n\n`;
+  const entries = [1, 2, 3].map((n) => `  - n: ${n}\n    files: [src/a.ts]\n`).join("");
+  writeFileSync(p, `---\nlane: order\nphases:\n${entries}---\n# O\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n${[1, 2, 3].map(phase).join("")}## Revision log\n`);
+  const lint = () => run("lint.schema.mjs", { hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: p }, cwd: root }, root)?.hookSpecificOutput.additionalContext ?? "";
+  assert.doesNotMatch(lint(), /phases; the order cap/);
+  writeConfig(root, { version: 1, lanes: { order: { max_phases: 2 } } });
+  assert.match(lint(), /3 phases; the order cap is 2/);
   rmSync(root, { recursive: true, force: true });
 });
 

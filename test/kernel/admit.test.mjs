@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { admit, recheck, mentionedPaths } from "../../.claude/lib/admit.mjs";
+import { writeConfig } from "./config-fixture.mjs";
 
 function repo() {
   const root = mkdtempSync(join(tmpdir(), "harness-admit-"));
@@ -14,6 +15,17 @@ function repo() {
   }
   return root;
 }
+
+test("a configured fast cap of one file keeps a two-file request out of the fast lane (T-5.3)", () => {
+  const root = repo();
+  const request = "fix the typo in `src/config.ts` and `src/http/server.ts`";
+  assert.equal(admit(request, { root }).lane, "fast");
+  writeConfig(root, { version: 1, lanes: { fast: { max_files: 1 } } });
+  const capped = admit(request, { root });
+  assert.equal(capped.lane, "order");
+  assert.ok(capped.reasons.some((r) => /more than the fast cap of 1/.test(r)));
+  rmSync(root, { recursive: true, force: true });
+});
 
 test("mentionedPaths keeps only paths that exist", () => {
   const root = repo();

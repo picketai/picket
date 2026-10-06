@@ -5,14 +5,14 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { projectRoot } from "./work.mjs";
-import { DEFAULT_SECURITY_PATHS, securityPaths as configuredSecurityPaths } from "./config.mjs";
+import { DEFAULT_LANES, DEFAULT_SECURITY_PATHS, loadConfig } from "./config.mjs";
 
 export { DEFAULT_SECURITY_PATHS };
 
 export const CAPS = Object.freeze({
-  fast_max_files: 3,
-  order_max_phases: 3,
-  order_max_decisions: 5,
+  fast_max_files: DEFAULT_LANES.fast.max_files,
+  order_max_phases: DEFAULT_LANES.order.max_phases,
+  order_max_decisions: DEFAULT_LANES.order.max_decisions,
 });
 
 const RESEARCH = /\b(how (does|is|are)|explain|understand|map (the|a)|report|no code changes|write (a|the) report|where (is|does)|why (does|is))\b/i;
@@ -48,7 +48,7 @@ function withoutNonCredentialTokens(text) {
 }
 
 export function securityPaths(root = projectRoot()) {
-  return configuredSecurityPaths(root);
+  return loadConfig(root).security_paths;
 }
 
 /**
@@ -60,7 +60,9 @@ export function securityPaths(root = projectRoot()) {
  */
 export function admit(text, o = {}) {
   const root = o.root ?? projectRoot();
-  const securityPaths = configuredSecurityPaths(root);
+  const config = loadConfig(root);
+  const securityPaths = config.security_paths;
+  const maxFastFiles = config.lanes.fast.max_files;
   const forced = text.match(/\blane:\s*(fast|order|design|research)\b/i)?.[1]?.toLowerCase();
   const paths = mentionedPaths(text, root);
   const touched = o.touched ?? [];
@@ -98,7 +100,7 @@ export function admit(text, o = {}) {
 
   // Fast lane: small, local, bounded.
   const fileCount = Math.max(paths.length, touched.length);
-  const fastOk = !signals.new_surface && !signals.new_dependency && !signals.design_question && fileCount <= CAPS.fast_max_files && (signals.small_change || fileCount > 0);
+  const fastOk = !signals.new_surface && !signals.new_dependency && !signals.design_question && fileCount <= maxFastFiles && (signals.small_change || fileCount > 0);
   if (fastOk) {
     reasons.push(`small change: ${fileCount || "no"} file(s) named, no new surface, no new dependency, no design question`);
     return { lane: "fast", reasons, signals };
@@ -108,7 +110,7 @@ export function admit(text, o = {}) {
   if (signals.new_dependency) reasons.push("adds a dependency, which is a recorded decision");
   if (signals.new_surface) reasons.push("adds a new surface (endpoint, module, or handler)");
   if (signals.design_question) reasons.push("carries a design question");
-  if (fileCount > CAPS.fast_max_files) reasons.push(`touches ${fileCount} files, more than the fast cap of ${CAPS.fast_max_files}`);
+  if (fileCount > maxFastFiles) reasons.push(`touches ${fileCount} files, more than the fast cap of ${maxFastFiles}`);
   if (!reasons.length) reasons.push("not plainly small and not a heavy-lane trigger");
   return { lane: "order", reasons, signals };
 }

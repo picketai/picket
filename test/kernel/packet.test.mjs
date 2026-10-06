@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWork, setMarker } from "../../.claude/lib/work.mjs";
 import { packet, parseBlock, saveBlock, cut, WIDTH } from "../../.claude/lib/packet.mjs";
+import { writeConfig } from "./config-fixture.mjs";
 
 // The block the user's screenshot came from, in the developer's contract shape.
 const BLOCK = `## Phase 1 of X: Stop the poll write
@@ -57,7 +58,7 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
 function gatedSetup({ entry, touchSet = "", config }) {
   const root = mkdtempSync(join(tmpdir(), "harness-packet-"));
   mkdirSync(join(root, ".claude"));
-  if (config) writeFileSync(join(root, ".claude", "harness.json"), JSON.stringify(config));
+  if (config) writeConfig(root, config);
   const s = createWork({ lane: "design", title: "Gated", root });
   writeFileSync(
     join(root, "work", s.id, "design.md"),

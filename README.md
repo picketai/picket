@@ -26,6 +26,9 @@ CLAUDE.md                  under 2 KB, loaded on every turn
                            understanding, proofreading, summarizing, benchmarking, resuming, inspecting
 .claude/bin/harness.mjs    the kernel CLI; .claude/lib/ its modules (no runtime dependencies)
 .claude/hooks/             ten hooks: guards, schema lint, drive observer, stall monitor, state injection, verdict router, ledger
+.tether/config.json        project settings (tracked): security paths, sources, lane caps, commands;
+                           the contract is .claude/lib/config.schema.json
+.tether/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml
 work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)
 test/                      kernel, hook and budget tests: npm test

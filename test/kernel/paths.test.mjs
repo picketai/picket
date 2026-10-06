@@ -118,7 +118,7 @@ test("paths exports locations only", () => {
     "BOOKKEEPING_PREFIXES",
     "HOST_DIR",
     "LEGACY",
-    "LEGACY_STATE_LOCATIONS",
+    "LEGACY_LOCATIONS",
     "MODEL_WRITABLE_STATE_FILES",
     "STATE_FILES",
     "TETHER_DIR",
@@ -143,11 +143,11 @@ test("relative locations read as POSIX paths and absolute ones sit under the roo
   assert.equal(paths.stateRel("ledger.jsonl"), ".tether/state/ledger.jsonl");
   assert.equal(paths.statePath(root, paths.STATE_FILES.ledger), join(root, ".tether", "state", "ledger.jsonl"));
   assert.equal(paths.STATE_FILES.guardLog, "guard.log");
-  assert.equal(paths.configRel(), ".claude/harness.json");
-  assert.equal(paths.configPath(root), join(root, ".claude", "harness.json"));
+  assert.equal(paths.configRel(), ".tether/config.json");
+  assert.equal(paths.configPath(root), join(root, ".tether", "config.json"));
   assert.equal(paths.branchingManifestPath(root), join(root, ".tether", "state", "branching.yaml"));
   assert.equal(paths.legacyPath(root, paths.LEGACY.branchingManifest), join(root, ".claude", "branching", "manifest.yaml"));
-  assert.deepEqual([...paths.LEGACY_STATE_LOCATIONS], [".claude/ledger", ".claude/branching/manifest.yaml"]);
+  assert.deepEqual([...paths.LEGACY_LOCATIONS], [".claude/ledger", ".claude/branching/manifest.yaml", ".claude/harness.json"]);
   assert.equal(paths.hostRel("MEMORY.md"), ".claude/MEMORY.md");
   assert.equal(paths.hostPath(root, "MEMORY.md"), join(root, ".claude", "MEMORY.md"));
   assert.equal(paths.workRoot(root), join(root, "work"));

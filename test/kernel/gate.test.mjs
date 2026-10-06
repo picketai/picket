@@ -5,12 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWork } from "../../.claude/lib/work.mjs";
 import { ownGate } from "../../.claude/lib/gate.mjs";
+import { writeConfig } from "./config-fixture.mjs";
 
 function gateFor({ entry, body = "t\n", config }) {
   const root = mkdtempSync(join(tmpdir(), "harness-gate-"));
   try {
     mkdirSync(join(root, ".claude"));
-    if (config) writeFileSync(join(root, ".claude", "harness.json"), JSON.stringify(config));
+    if (config) writeConfig(root, config);
     const s = createWork({ lane: "design", title: "Gate", root });
     writeFileSync(join(root, "work", s.id, "design.md"), `---\nlane: design\nphases:\n  - n: 1\n${entry}---\n# D\n\n## Phase 1: One\n\n${body}`);
     return ownGate(s.id, 1, root);

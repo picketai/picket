@@ -13,7 +13,7 @@ export function install(repo, harnessRoot) {
   cpSync(join(harnessRoot, "CLAUDE.md"), join(repo, "CLAUDE.md"));
   const hostDir = join(harnessRoot, ".claude");
   cpSync(join(hostDir, "rules"), join(repo, ".claude", "rules"), { recursive: true, filter: (src) => !rework.isRepositoryOnly(src, hostDir) });
-  cpSync(join(harnessRoot, ".claude", "harness.json"), join(repo, ".claude", "harness.json"));
+  rework.copyConfig(repo, harnessRoot);
   mkdirSync(join(repo, "work"), { recursive: true });
   const settings = JSON.parse(readFileSync(join(harnessRoot, ".claude", "settings.json"), "utf8"));
   delete settings.hooks;

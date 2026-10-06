@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tether project configuration (.tether/config.json)",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Configuration format version. The loader reads version 1 and warns on any other value.",
+      "const": 1,
+      "default": 1
+    },
+    "security_paths": {
+      "description": "Path prefixes whose change always takes the design lane.",
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["src/auth/", "src/crypto/", "src/security/", "Authentication/", "Authorization/"]
+    },
+    "sources": {
+      "description": "Read-only repositories outside the project, by name. Each names the env var that holds its root on this machine.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": { "env": { "type": "string", "minLength": 1 } },
+        "required": ["env"]
+      },
+      "default": {}
+    },
+    "lanes": {
+      "description": "Caps per lane. A missing or invalid field keeps its default.",
+      "type": "object",
+      "properties": {
+        "fast": {
+          "type": "object",
+          "properties": { "max_files": { "type": "integer", "minimum": 1 } },
+          "additionalProperties": false
+        },
+        "order": {
+          "type": "object",
+          "properties": {
+            "max_phases": { "type": "integer", "minimum": 1 },
+            "max_decisions": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "design": {
+          "type": "object",
+          "properties": {
+            "max_phases": { "type": "integer", "minimum": 1 },
+            "max_decisions": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "fast": { "max_files": 3 },
+        "order": { "max_phases": 3, "max_decisions": 5 },
+        "design": { "max_phases": 10, "max_decisions": 8 }
+      }
+    },
+    "commands": {
+      "description": "Commands that override detection. A destructive command is dropped with a warning.",
+      "type": "object",
+      "properties": {
+        "test": { "type": "string", "minLength": 1 },
+        "lint": { "type": "string", "minLength": 1 },
+        "build": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false,
+      "default": {}
+    }
+  },
+  "additionalProperties": false
+}

@@ -6,7 +6,7 @@ export const TETHER_DIR = ".tether";
 export const WORK_DIR = "work";
 
 const STATE_REL = `${TETHER_DIR}/state`;
-const CONFIG_REL = `${HOST_DIR}/harness.json`;
+const CONFIG_REL = `${TETHER_DIR}/config.json`;
 
 export const STATE_FILES = Object.freeze({
   ledger: "ledger.jsonl",
@@ -25,7 +25,7 @@ export const LEGACY = Object.freeze({
   config: `${HOST_DIR}/harness.json`,
 });
 
-export const LEGACY_STATE_LOCATIONS = Object.freeze([LEGACY.stateDir, LEGACY.branchingManifest]);
+export const LEGACY_LOCATIONS = Object.freeze([LEGACY.stateDir, LEGACY.branchingManifest, LEGACY.config]);
 
 export const BOOKKEEPING_PREFIXES = Object.freeze([`${WORK_DIR}/`, `${HOST_DIR}/`, `${TETHER_DIR}/`]);
 

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "sources": {
+    "analysis": {
+      "env": "HARNESS_SOURCE_ANALYSIS"
+    }
+  }
+}

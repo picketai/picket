@@ -18,4 +18,4 @@ Four lanes, four agents, one kernel. Code decides what code can decide; the mode
 
 Operational one-liners every agent needs and none should rediscover. Append below.
 
-- Sources (read-only repos such as `analysis`) are declared in `.claude/harness.json`; each root comes from its env var, set in the `env` block of `.claude/settings.local.json`. Reach them with `harness source find|grep` and the work item's snapshots; nothing writes under a source.
+- Sources (read-only repos such as `analysis`) are declared in `.tether/config.json`; each root comes from its env var, set in the `env` block of `.claude/settings.local.json`. Reach them with `harness source find|grep` and the work item's snapshots; nothing writes under a source.

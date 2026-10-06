@@ -22,9 +22,19 @@ export function isRepositoryOnly(src, hostDir) {
   return REPOSITORY_ONLY.includes(rel);
 }
 
+const CONFIG_FILE = [".tether", "config.json"];
+
+export function copyConfig(repo, harnessRoot) {
+  const config = join(harnessRoot, ...CONFIG_FILE);
+  if (!existsSync(config)) return;
+  mkdirSync(join(repo, CONFIG_FILE[0]), { recursive: true });
+  cpSync(config, join(repo, ...CONFIG_FILE));
+}
+
 export function install(repo, harnessRoot) {
   if (!existsSync(join(harnessRoot, ".claude", "bin", "harness.mjs"))) throw new Error(`not a rework harness root: ${harnessRoot}`);
   cpSync(join(harnessRoot, "CLAUDE.md"), join(repo, "CLAUDE.md"));
+  copyConfig(repo, harnessRoot);
   const hostDir = join(harnessRoot, ".claude");
   cpSync(hostDir, join(repo, ".claude"), {
     recursive: true,

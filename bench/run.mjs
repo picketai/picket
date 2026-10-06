@@ -91,7 +91,7 @@ function manifest(adapter, harnessRoot, fixtureHash, args) {
     harness: adapter.name,
     harness_root: harnessRoot,
     harness_commit: sh("git rev-parse --short HEAD", harnessRoot),
-    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude CLAUDE.md", harnessRoot) ? true : false,
+    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .tether CLAUDE.md", harnessRoot) ? true : false,
     fixture_hash: fixtureHash,
     claude_version: sh("claude --version"),
     node_version: process.version,

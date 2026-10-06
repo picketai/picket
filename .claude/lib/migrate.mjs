@@ -1,5 +1,7 @@
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync } from "node:fs";
-import { LEGACY, STATE_FILES, legacyPath, stateDir, statePath, stateRel } from "./paths.mjs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { CONFIG_VERSION } from "./config.mjs";
+import { LEGACY, STATE_FILES, configPath, configRel, legacyPath, statePath, stateRel } from "./paths.mjs";
 
 const APPENDABLE = /\.(jsonl|log)$/;
 const REPLACEABLE = /^check-.*\.log$|\.review\.md$/;
@@ -36,6 +38,27 @@ function manifestAction(root) {
   return { how: "renamed", from, to, fromPath, toPath };
 }
 
+function readLegacyConfig(path) {
+  try {
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function configAction(root) {
+  const from = LEGACY.config;
+  const fromPath = legacyPath(root, from);
+  if (!existsSync(fromPath)) return null;
+  const to = configRel();
+  const toPath = configPath(root);
+  if (existsSync(toPath)) return { skip: { from, reason: `${to} exists; keeping both, merge ${from} by hand` } };
+  const legacy = readLegacyConfig(fromPath);
+  if (!legacy) return { skip: { from, reason: "not a JSON object; fix it, then run harness migrate again" } };
+  return { how: "converted", from, to, fromPath, toPath, config: { version: CONFIG_VERSION, ...legacy } };
+}
+
 function legacyEntries(root, dirRel) {
   const dir = legacyPath(root, dirRel);
   return existsSync(dir) ? readdirSync(dir) : null;
@@ -60,7 +83,12 @@ function planBranchingFolder(root) {
 function plan(root) {
   const state = planStateFolder(root);
   const branching = planBranchingFolder(root);
-  return { actions: [...state.actions, ...branching.actions], emptied: [...state.emptied, ...branching.emptied] };
+  const config = configAction(root);
+  return { actions: [...state.actions, ...branching.actions, ...(config ? [config] : [])], emptied: [...state.emptied, ...branching.emptied] };
+}
+
+function writeConfig(toPath, config) {
+  writeFileSync(toPath, JSON.stringify(config, null, 2) + "\n");
 }
 
 function appendLegacyRows(fromPath, toPath) {
@@ -70,17 +98,20 @@ function appendLegacyRows(fromPath, toPath) {
   unlinkSync(fromPath);
 }
 
-function apply({ how, fromPath, toPath }) {
+function apply({ how, fromPath, toPath, config }) {
+  mkdirSync(dirname(toPath), { recursive: true });
   if (how === "renamed") renameSync(fromPath, toPath);
   else if (how === "appended") appendLegacyRows(fromPath, toPath);
-  else unlinkSync(fromPath);
+  else if (how === "converted") {
+    writeConfig(toPath, config);
+    unlinkSync(fromPath);
+  } else unlinkSync(fromPath);
 }
 
 export function migrate(root, { dryRun = false } = {}) {
   const { actions, emptied } = plan(root);
   const moves = actions.filter((a) => !a.skip);
   if (!dryRun) {
-    if (moves.length) mkdirSync(stateDir(root), { recursive: true });
     for (const move of moves) apply(move);
     for (const dir of emptied) rmdirSync(legacyPath(root, dir));
   }
