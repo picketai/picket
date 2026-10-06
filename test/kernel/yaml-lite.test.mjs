@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parse, stringify, frontmatter } from "../../.claude/lib/yaml-lite.mjs";
+import { parse, stringify, frontmatter } from "../../core/lib/yaml-lite.mjs";
 
 test("parses scalars, inline lists and nested maps", () => {
   const doc = parse(`

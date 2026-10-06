@@ -1,4 +1,1 @@
-#!/usr/bin/env node
-import { runHook } from "../lib/hook.mjs";
-import { emitLedger } from "../lib/hooks/emit.ledger.mjs";
-await runHook(emitLedger);
+import "../../core/hooks/emit.ledger.mjs";

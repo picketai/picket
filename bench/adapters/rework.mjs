@@ -40,6 +40,7 @@ export function install(repo, harnessRoot) {
     recursive: true,
     filter: (src) => !SKIP.some((s) => src.replaceAll("\\", "/").includes(`/.claude/${s}`)) && !isRepositoryOnly(src, hostDir),
   });
+  cpSync(join(harnessRoot, "core"), join(repo, "core"), { recursive: true });
   mkdirSync(join(repo, "work"), { recursive: true });
   rmSync(join(repo, ".claude", "settings.local.json"), { force: true });
 }

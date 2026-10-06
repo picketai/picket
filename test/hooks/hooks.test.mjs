@@ -5,11 +5,11 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, exist
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, setMarker } from "../../.claude/lib/work.mjs";
-import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
+import { createWork, deriveState, setMarker } from "../../core/lib/work.mjs";
+import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
 import { writeConfig } from "../kernel/config-fixture.mjs";
 
-const HOOKS = resolve(".claude/hooks");
+const HOOKS = resolve("core/hooks");
 
 function run(hook, payload, root) {
   const out = execFileSync("node", [join(HOOKS, hook)], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
@@ -123,7 +123,7 @@ test("guard.scope keeps the comment approvals kernel-owned (T-1.5)", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const BIN = resolve(".claude/bin/harness.mjs");
+const BIN = resolve("core/bin/tether.mjs");
 const lines = (...rows) => rows.join("\n");
 
 function commentEdit(root, path, old_string, new_string) {
@@ -319,9 +319,49 @@ test("guard.bash judges the command a harness verb would run, so the allow rule 
   assert.equal(decision("node .claude/bin/harness.mjs state x"), null);
   // second layer: the kernel itself refuses, even if the hook were not installed
   assert.throws(
-    () => execFileSync("node", [resolve(".claude/bin/harness.mjs"), "drive", "--run", "rm -rf src", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: ["ignore", "pipe", "pipe"] }),
+    () => execFileSync("node", [BIN, "drive", "--run", "rm -rf src", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: ["ignore", "pipe", "pipe"] }),
     (err) => /refuses to run a destructive command/.test(err.stderr),
   );
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.bash judges the command a tether verb would run, by launcher or by script", () => {
+  const { root } = project();
+  const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
+  assert.equal(decision('tether drive --run "rm -rf src"'), "deny");
+  assert.equal(decision('node core/bin/tether.mjs check --only "git push --force origin trunk"'), "deny");
+  assert.equal(decision('core/bin/tether drive --start "sudo node server.mjs" --hit /health'), "deny");
+  assert.equal(decision('tether drive --run "npm run cli -- list"'), null);
+  assert.equal(decision("tether state x"), null);
+  rmSync(root, { recursive: true, force: true });
+});
+
+const FORWARDERS = resolve(".claude/hooks");
+
+function runShell(dir, hook, payload, root) {
+  return execFileSync("node", [join(dir, hook)], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+}
+
+test("a .claude/hooks forwarder prints byte-identical output to its core/hooks shell", () => {
+  const { root, id } = project();
+  const payloads = [
+    ["guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "rm -rf src" }, cwd: root }],
+    ["guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root }],
+    ["inject.state.mjs", { hook_event_name: "SessionStart", source: "startup", cwd: root }],
+  ];
+  for (const [hook, payload] of payloads) {
+    const viaCore = runShell(HOOKS, hook, payload, root);
+    assert.ok(viaCore.length > 0, `${hook} printed nothing for ${JSON.stringify(payload.tool_input ?? payload.source)}`);
+    assert.equal(runShell(FORWARDERS, hook, payload, root), viaCore, hook);
+  }
+  assert.match(runShell(HOOKS, "inject.state.mjs", payloads[2][1], root), new RegExp(id));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("the old CLI path forwards to core/bin/tether.mjs and prints the same JSON", () => {
+  const { root, id } = project();
+  const state = (bin) => execFileSync("node", [bin, "state", id, "--root", root], { encoding: "utf8" });
+  assert.equal(state(resolve(".claude/bin/harness.mjs")), state(BIN));
   rmSync(root, { recursive: true, force: true });
 });
 

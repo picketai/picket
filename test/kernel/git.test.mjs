@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { dirtyPaths, head, isRepo } from "../../.claude/lib/git.mjs";
+import { dirtyPaths, head, isRepo } from "../../core/lib/git.mjs";
 
 function gitIn(root, ...args) {
   execFileSync("git", ["-C", root, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args], { stdio: "ignore" });

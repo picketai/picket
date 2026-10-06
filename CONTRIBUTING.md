@@ -8,13 +8,13 @@ Name the product Tether in any text a user reads. "Harness" is the internal word
 
 The `## Layout` section of `README.md` maps every top-level folder. New things go here:
 
-- A kernel module goes in `.claude/lib/`, with its tests in `test/kernel/` as `<module>.test.mjs`.
-- A hook goes in `.claude/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`) and is wired in `.claude/settings.json`. Its logic is a handler in `.claude/lib/hooks/` under the same name, and the file in `.claude/hooks/` is a shell that passes the handler to `runHook` (`.claude/lib/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
+- A kernel module goes in `core/lib/`, with its tests in `test/kernel/` as `<module>.test.mjs`.
+- A hook goes in `core/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`), is registered in `core/hooks/hooks.json`, and, until the plugin cut-over, in `.claude/settings.json` through a one-line forwarder in `.claude/hooks/`. Its logic is a handler in `core/lib/hooks/` under the same name, and the file in `core/hooks/` is a shell that passes the handler to `runHook` (`core/lib/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items` and `security-paths`.
 
 ## Code
 
-Code is Node ESM in `.mjs` files. Everything under `.claude/lib/` and `.claude/hooks/` imports only `node:` built-ins, so the product installs with no dependencies. The one third-party parser is vendored at `.claude/lib/vendor/shell-quote-parse.mjs`.
+Code is Node ESM in `.mjs` files. Everything under `core/` imports only Node built-ins and paths inside `core/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The one third-party parser is vendored at `core/lib/vendor/shell-quote-parse.mjs`.
 
 Comments follow `.claude/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "../../.claude/lib/work.mjs";
-import { ownGate } from "../../.claude/lib/gate.mjs";
+import { createWork } from "../../core/lib/work.mjs";
+import { ownGate } from "../../core/lib/gate.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function gateFor({ entry, body = "t\n", config }) {

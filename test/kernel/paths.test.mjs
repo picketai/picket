@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
-import * as paths from "../../.claude/lib/paths.mjs";
+import * as paths from "../../core/lib/paths.mjs";
 import { codeLines, isPathsModule, kernelModules } from "./kernel-sources.mjs";
 
 const { projectRoot } = paths;
@@ -21,10 +21,10 @@ test("the self-location ban flags every forbidden form", () => {
   assert.deepEqual(selfLocationUses('const mod = await import("./vendor/x.mjs");'), []);
 });
 
-test("the vendored tokenizer lives under .claude/lib/vendor and the scans leave it out (T-7.5)", () => {
-  const tokenizer = resolve(".claude/lib/vendor/shell-quote-parse.mjs");
+test("the vendored tokenizer lives under core/lib/vendor and the scans leave it out (T-7.5)", () => {
+  const tokenizer = resolve("core/lib/vendor/shell-quote-parse.mjs");
   assert.equal(existsSync(tokenizer), true);
-  assert.equal(existsSync(resolve(".claude/hooks/vendor")), false);
+  assert.equal(existsSync(resolve("core/hooks/vendor")), false);
   assert.equal(kernelModules().includes(tokenizer), false);
 });
 

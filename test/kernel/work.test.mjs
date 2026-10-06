@@ -4,9 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../.claude/lib/work.mjs";
+import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../core/lib/work.mjs";
 
-const BIN = resolve(".claude/bin/harness.mjs");
+const BIN = resolve("core/bin/tether.mjs");
 
 function tempRoot() {
   const root = mkdtempSync(join(tmpdir(), "harness-work-"));

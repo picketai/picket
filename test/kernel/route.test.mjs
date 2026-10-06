@@ -4,10 +4,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState } from "../../.claude/lib/work.mjs";
-import { route, findVerdict } from "../../.claude/lib/route.mjs";
-import { saveBlock } from "../../.claude/lib/packet.mjs";
-import { bareAgentName } from "../../.claude/lib/agent-name.mjs";
+import { createWork, deriveState } from "../../core/lib/work.mjs";
+import { route, findVerdict } from "../../core/lib/route.mjs";
+import { saveBlock } from "../../core/lib/packet.mjs";
+import { bareAgentName } from "../../core/lib/agent-name.mjs";
 
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-route-"));

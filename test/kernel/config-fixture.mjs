@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { configPath } from "../../.claude/lib/paths.mjs";
+import { configPath } from "../../core/lib/paths.mjs";
 
 export function writeConfig(root, config) {
   const file = configPath(root);

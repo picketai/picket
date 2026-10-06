@@ -3,18 +3,18 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createWork, writeState } from "../../.claude/lib/work.mjs";
-import { hostPath, statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
-import { emitLedger } from "../../.claude/lib/hooks/emit.ledger.mjs";
-import { routeVerdict } from "../../.claude/lib/hooks/route.verdict.mjs";
-import { injectState } from "../../.claude/lib/hooks/inject.state.mjs";
-import { guardBash } from "../../.claude/lib/hooks/guard.bash.mjs";
-import { guardScope } from "../../.claude/lib/hooks/guard.scope.mjs";
-import { branchingManifestPath } from "../../.claude/lib/paths.mjs";
-import { latestHints, spawnHints } from "../../.claude/lib/transcript.mjs";
+import { createWork, writeState } from "../../core/lib/work.mjs";
+import { hostPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
+import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
+import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
+import { injectState } from "../../core/lib/hooks/inject.state.mjs";
+import { guardBash } from "../../core/lib/hooks/guard.bash.mjs";
+import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
+import { branchingManifestPath } from "../../core/lib/paths.mjs";
+import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
 
-const HOOKS = resolve(".claude/hooks");
-const HANDLERS = resolve(".claude/lib/hooks");
+const HOOKS = resolve("core/hooks");
+const HANDLERS = resolve("core/lib/hooks");
 const SHELLS = [
   "emit.ledger.mjs",
   "guard.bash.mjs",
@@ -59,7 +59,7 @@ function transcript(root, entries) {
 const user = (text) => ({ type: "user", message: { role: "user", content: text } });
 const assistant = (text) => ({ type: "assistant", message: { role: "assistant", model: "claude-opus-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 100 }, content: [{ type: "text", text }] } });
 
-test(".claude/hooks holds the ten shells, README.md and no other file (T-7.1)", () => {
+test("core/hooks holds hooks.json, the ten shells, README.md and no other file (T-7.1)", () => {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -68,7 +68,7 @@ test(".claude/hooks holds the ten shells, README.md and no other file (T-7.1)", 
     }
   };
   walk(HOOKS);
-  assert.deepEqual(files.sort(), ["README.md", ...SHELLS].sort());
+  assert.deepEqual(files.sort(), ["README.md", "hooks.json", ...SHELLS].sort());
 });
 
 test("every shell imports only runHook and its handler, in at most five lines (T-6.1, T-7.1)", () => {
@@ -195,8 +195,8 @@ test("latestHints skips a later message without a work line (T-2.3)", () => {
   });
 });
 
-test("no helper is left under .claude/hooks/lib; all four live in .claude/lib (T-6.4)", () => {
+test("no helper is left under .claude/hooks/lib; all four live in core/lib (T-6.4)", () => {
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
-  for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve(".claude/lib", helper)), true, helper);
+  for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve("core/lib", helper)), true, helper);
 });

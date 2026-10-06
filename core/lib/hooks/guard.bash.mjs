@@ -53,17 +53,11 @@ function trace(root, rawCommand, outcome) {
   } catch {}
 }
 
-// Load order: vendored copy, then the shell-quote package (dev convenience),
-// then fail open with a trace line so the outage is at least visible.
 async function loadTokenizer() {
   try {
     return (await import("../vendor/shell-quote-parse.mjs")).parse;
   } catch {
-    try {
-      return (await import("shell-quote")).parse;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -204,11 +198,20 @@ function normalizeRoot(token) {
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 
-/** Command strings a `node …/harness.mjs` segment would execute on the agent's behalf. */
+const KERNEL_SCRIPT = /(?:^|\/)(?:harness|tether)\.mjs$/i;
+const KERNEL_LAUNCHER = "tether";
+
+function kernelVerbStart(seg) {
+  if (normalizeRoot(seg[0]) === KERNEL_LAUNCHER) return 1;
+  if (normalizeRoot(seg[0]) === "node" && KERNEL_SCRIPT.test(String(seg[1] ?? "").replace(/\\/g, "/"))) return 2;
+  return null;
+}
+
 function wrappedCommands(seg) {
-  if (normalizeRoot(seg[0]) !== "node" || !/harness\.mjs$/i.test(String(seg[1] ?? "").replace(/\\/g, "/"))) return [];
+  const start = kernelVerbStart(seg);
+  if (start === null) return [];
   const out = [];
-  for (let i = 2; i < seg.length; i++) {
+  for (let i = start; i < seg.length; i++) {
     if (WRAPPING_FLAGS.has(seg[i]) && typeof seg[i + 1] === "string") out.push(seg[++i]);
   }
   return out;

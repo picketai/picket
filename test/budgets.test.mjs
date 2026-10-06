@@ -72,11 +72,11 @@ test("every skill has a description with a 'Use when' trigger and one declared r
   assert.deepEqual(problems, []);
 });
 
-test("hooks start cold under the budget", { skip: !existsSync(join(ROOT, ".claude", "hooks", "route.verdict.mjs")) && "phase 3 not landed" }, () => {
+test("hooks start cold under the budget", { skip: !existsSync(join(ROOT, "core", "hooks", "route.verdict.mjs")) && "phase 3 not landed" }, () => {
   const slow = [];
   // Best of three: the budget is the hook's own start-up, not the machine's load while the other
   // test files run in parallel (a single start measured 180 ms alone and 260 ms inside npm test).
-  for (const p of walk(join(ROOT, ".claude", "hooks"), (f) => f.endsWith(".mjs") && !f.includes("lib"))) {
+  for (const p of walk(join(ROOT, "core", "hooks"), (f) => f.endsWith(".mjs"))) {
     let best = Infinity;
     for (let i = 0; i < 3; i++) {
       const t0 = Date.now();

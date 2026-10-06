@@ -4,13 +4,13 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../.claude/lib/sources.mjs";
-import { parse as parseYaml } from "../../.claude/lib/yaml-lite.mjs";
-import { canonicalPath, sourceRoots, underSource } from "../../.claude/lib/source-paths.mjs";
+import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../core/lib/sources.mjs";
+import { parse as parseYaml } from "../../core/lib/yaml-lite.mjs";
+import { canonicalPath, sourceRoots, underSource } from "../../core/lib/source-paths.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
-const BIN = resolve(".claude/bin/harness.mjs");
-const HOOKS = resolve(".claude/hooks");
+const BIN = resolve("core/bin/tether.mjs");
+const HOOKS = resolve("core/hooks");
 
 function git(dir, ...args) {
   return execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();

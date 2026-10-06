@@ -10,8 +10,8 @@
 // Standalone, with no ccstatusline in the picture, still works:
 //   "statusLine": { "command": "node .claude/bin/statusline.mjs" }
 import { readFileSync } from "node:fs";
-import { projectRoot, listWork, deriveState } from "../lib/work.mjs";
-import { next } from "../lib/next.mjs";
+import { projectRoot, listWork, deriveState } from "../../core/lib/work.mjs";
+import { next } from "../../core/lib/next.mjs";
 
 const widget = process.argv.includes("--widget");
 

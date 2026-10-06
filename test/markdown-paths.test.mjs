@@ -47,7 +47,7 @@ const ELSEWHERE = [
     ],
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
-  { why: "planned by SDR-00001", paths: ["core/", "rules/"] },
+  { why: "planned by SDR-00001", paths: ["rules/"] },
   { why: "cited by SDR-00001 where it stood before the move to .claude/lib/", paths: [".claude/hooks/lib/transcript.mjs"] },
 ];
 

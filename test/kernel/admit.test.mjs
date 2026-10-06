@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { admit, recheck, mentionedPaths } from "../../.claude/lib/admit.mjs";
+import { admit, recheck, mentionedPaths } from "../../core/lib/admit.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function repo() {

@@ -24,10 +24,13 @@ CLAUDE.md                  under 2 KB, loaded on every turn
 .claude/agents/            analyst, architect, developer, reviewer (shells, at most 120 lines)
 .claude/skills/            lane skills, consulting, documenting, reviewing, ticketing, branching,
                            understanding, proofreading, summarizing, benchmarking, resuming, inspecting
-.claude/bin/harness.mjs    the kernel CLI; .claude/lib/ its modules (no runtime dependencies)
-.claude/hooks/             ten hooks: guards, schema lint, drive observer, stall monitor, state injection, verdict router, ledger
+core/bin/tether.mjs        the kernel CLI (core/bin/tether launches it); core/lib/ its modules (no runtime dependencies)
+core/hooks/                ten hooks: guards, schema lint, drive observer, stall monitor, state injection, verdict router, ledger;
+                           hooks.json is their plugin form
+.claude/bin/harness.mjs,   one-line forwarders into core/ while this repository moves to the plugin
+.claude/hooks/
 .tether/config.json        project settings (tracked): security paths, sources, lane caps, commands;
-                           the contract is .claude/lib/config.schema.json
+                           the contract is core/lib/config.schema.json
 .tether/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml
 work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)

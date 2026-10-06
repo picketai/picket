@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
-export const KERNEL_DIRS = [".claude/lib", ".claude/hooks", ".claude/bin"];
+export const KERNEL_DIRS = ["core/lib", "core/hooks", "core/bin"];
 const VENDOR_DIR = "vendor";
 const COMMENT_STARTS = ["//", "/*", "*"];
 

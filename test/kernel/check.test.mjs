@@ -4,9 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { statePath } from "../../.claude/lib/paths.mjs";
+import { statePath } from "../../core/lib/paths.mjs";
 
-const BIN = resolve(".claude/bin/harness.mjs");
+const BIN = resolve("core/bin/tether.mjs");
 
 function run(root, args) {
   try {

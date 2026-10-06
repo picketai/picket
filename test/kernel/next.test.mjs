@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork, setMarker, writeState, appendVerdict } from "../../.claude/lib/work.mjs";
-import { next } from "../../.claude/lib/next.mjs";
+import { createWork, setMarker, writeState, appendVerdict } from "../../core/lib/work.mjs";
+import { next } from "../../core/lib/next.mjs";
 
 function root() {
   const r = mkdtempSync(join(tmpdir(), "harness-next-"));

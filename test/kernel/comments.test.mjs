@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addedComments, commentLines, extOf, normalise } from "../../.claude/lib/comments.mjs";
+import { addedComments, commentLines, extOf, normalise } from "../../core/lib/comments.mjs";
 
 const lines = (...rows) => rows.join("\n");
 
