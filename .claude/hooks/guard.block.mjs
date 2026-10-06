@@ -3,7 +3,7 @@
 // token on its last line, and the block must stay within its line budget. Bounces the turn with
 // the reason otherwise. Only turns that carry a contract heading are judged.
 import { readFileSync } from "node:fs";
-import { readTurn, blockLines } from "./lib/transcript.mjs";
+import { readTurn, blockLines } from "../lib/transcript.mjs";
 import { VERDICTS } from "../lib/route.mjs";
 
 const CONTRACT = /^##\s+(Phase\s+\d+\s+of\s+[a-z0-9-]+|Review:\s+[a-z0-9-]+|(Order|Design|Amendment):\s+[a-z0-9-]+|Report:\s+[a-z0-9-]+)/m;

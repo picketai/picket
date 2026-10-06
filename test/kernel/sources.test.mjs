@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../.claude/lib/sources.mjs";
 import { parse as parseYaml } from "../../.claude/lib/yaml-lite.mjs";
-import { canonicalPath, sourceRoots, underSource } from "../../.claude/hooks/lib/source-paths.mjs";
+import { canonicalPath, sourceRoots, underSource } from "../../.claude/lib/source-paths.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");

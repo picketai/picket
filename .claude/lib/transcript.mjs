@@ -1,7 +1,7 @@
 // Transcript helpers shared by the Stop, SubagentStop and PostToolUse hooks. One bounded tail
 // read per question; nulls instead of guesses when the window does not reach the answer.
 import { closeSync, existsSync, fstatSync, openSync, readSync } from "node:fs";
-import { bareAgentName } from "../../lib/agent-name.mjs";
+import { bareAgentName } from "./agent-name.mjs";
 export { readTurn, turnSpan, isSubagentTurn, blockLines, agentTranscript } from "./turn-block.mjs";
 
 const WINDOW = 4 * 1024 * 1024;

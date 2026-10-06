@@ -37,7 +37,7 @@
 
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
-import { sourceRoots, underSource } from "./lib/source-paths.mjs";
+import { sourceRoots, underSource } from "../lib/source-paths.mjs";
 import { projectRoot, stateDir, statePath, stateRel, STATE_FILES } from "../lib/paths.mjs";
 
 let RAW_FOR_TRACE = "";

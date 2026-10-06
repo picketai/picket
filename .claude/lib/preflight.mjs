@@ -2,7 +2,7 @@
 // Each check is ok | warn | fail. One fail stops; warns are shown and work proceeds.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { protectionScope } from "../hooks/lib/source-paths.mjs";
+import { protectionScope } from "./source-paths.mjs";
 import { deriveState, projectRoot } from "./work.mjs";
 import * as git from "./git.mjs";
 import { loadConfig } from "./config.mjs";

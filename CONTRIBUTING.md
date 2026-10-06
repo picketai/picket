@@ -9,7 +9,7 @@ Name the product Tether in any text a user reads. "Harness" is the internal word
 The `## Layout` section of `README.md` maps every top-level folder. New things go here:
 
 - A kernel module goes in `.claude/lib/`, with its tests in `test/kernel/` as `<module>.test.mjs`.
-- A hook goes in `.claude/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`), is wired in `.claude/settings.json`, and is tested in `test/hooks/hooks.test.mjs`.
+- A hook goes in `.claude/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`) and is wired in `.claude/settings.json`. Its logic is a handler in `.claude/lib/hooks/` under the same name, and the file in `.claude/hooks/` is a shell that passes the handler to `runHook` (`.claude/lib/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items` and `security-paths`.
 
 ## Code

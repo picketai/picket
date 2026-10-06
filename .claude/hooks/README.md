@@ -15,8 +15,10 @@ Wired in `.claude/settings.json`. `guard.*` deny or bounce, `lint.*` and `monito
 | `route.verdict.mjs` | Stop, SubagentStop | applies the verdict to the work item with the kernel and hands back `harness next` as context |
 | `emit.ledger.mjs` | Stop, SubagentStop | one v2 ledger row per turn (`bench/schema/ledger-v2.schema.json`) |
 
-Libraries: `lib/transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `lib/turn-block.mjs` and `lib/drive-evidence.mjs` (kept from the previous harness for their tested parsers), `vendor/shell-quote-parse.mjs` (for `guard.bash`).
+A hook that is not a guard is a thin shell: it imports `runHook` from `.claude/lib/hook.mjs` and its handler from `.claude/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
 
-Standalone: `node .claude/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/`.
+Libraries in `.claude/lib/`: `transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `turn-block.mjs` and `drive-evidence.mjs` (kept from the previous harness for their tested parsers), `source-paths.mjs` (what a source protects). `vendor/shell-quote-parse.mjs` serves `guard.bash`.
+
+Standalone: `node .claude/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
 
 A blocked call or a bounced turn is the harness working. Fix the violation; do not retry variants.

@@ -3,8 +3,8 @@
 //      the instruction to read it first. In-context memory of a file is a belief, not the file.
 import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { wasRead, agentTranscript } from "./lib/transcript.mjs";
-import { sourceRoots, underSource } from "./lib/source-paths.mjs";
+import { wasRead, agentTranscript } from "../lib/transcript.mjs";
+import { sourceRoots, underSource } from "../lib/source-paths.mjs";
 import { MODEL_WRITABLE_STATE_FILES, projectRoot, stateRel } from "../lib/paths.mjs";
 
 let data;
