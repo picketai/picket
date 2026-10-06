@@ -351,6 +351,14 @@ test("guard.scope denies a model write under the state folder (T-2.2)", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.scope denies a model write under the legacy state folder (T-1.4)", () => {
+  const { root } = project();
+  const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, LEGACY.stateDir, STATE_FILES.driveLog) }, cwd: root }, root);
+  assert.equal(out?.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /harness migrate/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("guard.bash allows a redirect into the state log sink and falls through on a variable target (T-2.2)", () => {
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput ?? null;

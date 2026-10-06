@@ -143,6 +143,23 @@ test("guardScope called directly guards kernel and hook state but lets the branc
   });
 });
 
+test("guardScope denies the legacy state folder and hook state in any case, not look-alikes (T-1.1, T-1.2, T-1.3)", () => {
+  withProject((root) => {
+    const guard = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+    for (const [tool_name, rel] of [["Write", ".claude/ledger/drive-log.jsonl"], ["Edit", ".claude/ledger/drive-log.jsonl"], ["Write", ".claude/ledger/ledger.jsonl"]]) {
+      const out = guard(tool_name, rel);
+      assert.equal(out?.permissionDecision, "deny", `${tool_name} ${rel}`);
+      assert.match(out.permissionDecisionReason, /\.claude\/ledger\//);
+      assert.match(out.permissionDecisionReason, /harness migrate/);
+    }
+    assert.equal(guard("Write", ".Claude/Ledger/drive-log.jsonl")?.permissionDecision, "deny");
+    assert.equal(guard("Write", ".TETHER/State/drive-log.jsonl")?.permissionDecision, "deny");
+    assert.equal(guard("Write", ".tether/state/branching.yaml"), null);
+    assert.equal(guard("Write", ".Tether/State/Branching.yaml"), null);
+    assert.equal(guard("Write", ".claude/ledger-notes.md"), null);
+  });
+});
+
 test("no helper is left under .claude/hooks/lib; all four live in .claude/lib (T-6.4)", () => {
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
