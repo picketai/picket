@@ -8,18 +8,30 @@ import { hostPath, statePath, stateRel, STATE_FILES } from "../../.claude/lib/pa
 import { emitLedger } from "../../.claude/lib/hooks/emit.ledger.mjs";
 import { routeVerdict } from "../../.claude/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../.claude/lib/hooks/inject.state.mjs";
+import { guardBash } from "../../.claude/lib/hooks/guard.bash.mjs";
+import { guardScope } from "../../.claude/lib/hooks/guard.scope.mjs";
+import { branchingManifestPath } from "../../.claude/lib/paths.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 const HANDLERS = resolve(".claude/lib/hooks");
-const SHELLS = {
-  "emit.ledger.mjs": "emitLedger",
-  "inject.state.mjs": "injectState",
-  "lint.schema.mjs": "lintSchema",
-  "monitor.context.mjs": "monitorContext",
-  "observe.drive.mjs": "observeDrive",
-  "route.verdict.mjs": "routeVerdict",
-};
+const SHELLS = [
+  "emit.ledger.mjs",
+  "guard.bash.mjs",
+  "guard.block.mjs",
+  "guard.comments.mjs",
+  "guard.scope.mjs",
+  "inject.state.mjs",
+  "lint.schema.mjs",
+  "monitor.context.mjs",
+  "observe.drive.mjs",
+  "route.verdict.mjs",
+];
 const MAX_SHELL_LINES = 5;
+
+function handlerName(shell) {
+  const [kind, name] = shell.replace(/\.mjs$/, "").split(".");
+  return kind + name[0].toUpperCase() + name.slice(1);
+}
 
 function project() {
   const root = mkdtempSync(join(tmpdir(), "harness-handlers-"));
@@ -46,8 +58,21 @@ function transcript(root, entries) {
 const user = (text) => ({ type: "user", message: { role: "user", content: text } });
 const assistant = (text) => ({ type: "assistant", message: { role: "assistant", model: "claude-opus-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 100 }, content: [{ type: "text", text }] } });
 
-test("each of the six shells imports only runHook and its handler, in at most five lines (T-6.1)", () => {
-  for (const [file, handler] of Object.entries(SHELLS)) {
+test(".claude/hooks holds the ten shells, README.md and no other file (T-7.1)", () => {
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(join(dir, entry.name));
+      else files.push(join(dir, entry.name).slice(HOOKS.length + 1).replaceAll("\\", "/"));
+    }
+  };
+  walk(HOOKS);
+  assert.deepEqual(files.sort(), ["README.md", ...SHELLS].sort());
+});
+
+test("every shell imports only runHook and its handler, in at most five lines (T-6.1, T-7.1)", () => {
+  for (const file of SHELLS) {
+    const handler = handlerName(file);
     const lines = readFileSync(join(HOOKS, file), "utf8").split(/\r?\n/).filter((l) => l.trim());
     assert.ok(lines.length <= MAX_SHELL_LINES, `${file}: ${lines.length} lines`);
     const imports = lines.filter((l) => l.startsWith("import "));
@@ -91,6 +116,30 @@ test("injectState with an empty event lists the open work items (T-6.3)", () => 
     const out = injectState({}, { root });
     assert.equal(out.hookSpecificOutput.hookEventName, "SessionStart");
     assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`# Open work items\\n- ${s.id} · order · open`));
+  });
+});
+
+test("guardBash called directly decides, falls through, and traces once per call (T-7.2)", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(decision("rm -rf x"), "deny");
+    assert.equal(decision("git status"), "allow");
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+    assert.equal(decision(`npm test > ${stateRel("p.log")} 2>&1`), "allow");
+    assert.equal(decision("cat a > b"), null);
+    const trace = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n");
+    assert.equal(trace.length, 4);
+    assert.deepEqual(trace.map((l) => JSON.parse(l).outcome), ["deny", "allow", "allow", "fallthrough:write-redirect"]);
+  });
+});
+
+test("guardScope called directly guards kernel and hook state but lets the branching manifest through (T-7.3)", () => {
+  withProject((root) => {
+    const s = createWork({ lane: "order", title: "Scope", root });
+    const write = (file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(write(join(root, "work", s.id, "state.yaml")), "deny");
+    assert.equal(write(statePath(root, STATE_FILES.ledger)), "deny");
+    assert.equal(write(branchingManifestPath(root)), null);
   });
 });
 

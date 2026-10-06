@@ -14,7 +14,7 @@ The `## Layout` section of `README.md` maps every top-level folder. New things g
 
 ## Code
 
-Code is Node ESM in `.mjs` files. Everything under `.claude/lib/` and `.claude/hooks/` imports only `node:` built-ins, so the product installs with no dependencies. The one third-party parser is vendored at `.claude/hooks/vendor/shell-quote-parse.mjs`.
+Code is Node ESM in `.mjs` files. Everything under `.claude/lib/` and `.claude/hooks/` imports only `node:` built-ins, so the product installs with no dependencies. The one third-party parser is vendored at `.claude/lib/vendor/shell-quote-parse.mjs`.
 
 Comments follow `.claude/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 

@@ -21,6 +21,13 @@ test("the self-location ban flags every forbidden form", () => {
   assert.deepEqual(selfLocationUses('const mod = await import("./vendor/x.mjs");'), []);
 });
 
+test("the vendored tokenizer lives under .claude/lib/vendor and the scans leave it out (T-7.5)", () => {
+  const tokenizer = resolve(".claude/lib/vendor/shell-quote-parse.mjs");
+  assert.equal(existsSync(tokenizer), true);
+  assert.equal(existsSync(resolve(".claude/hooks/vendor")), false);
+  assert.equal(kernelModules().includes(tokenizer), false);
+});
+
 test("no kernel, hook or bin module builds a path from its own location (T-1.1)", () => {
   const offenders = kernelModules()
     .map((file) => ({ file, uses: selfLocationUses(readFileSync(file, "utf8")) }))
