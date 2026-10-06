@@ -19,5 +19,5 @@ const dir = join(root, ".tether", "state");
 mkdirSync(dir, { recursive: true });
 appendFileSync(
   join(dir, "hook-log.jsonl"),
-  JSON.stringify({ event: input.hook_event_name, agent_type: input.agent_type ?? null, effort: input.effort ?? null, verdict, keys: Object.keys(input) }) + "\n",
+  JSON.stringify({ event: input.hook_event_name, agent_type: input.agent_type ?? null, effort: input.effort ?? null, verdict, transcript_path: input.transcript_path ?? null, agent_transcript_path: input.agent_transcript_path ?? null, keys: Object.keys(input) }) + "\n",
 );

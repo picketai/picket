@@ -58,6 +58,36 @@ function withExtension(repo) {
 
 const withProjectOrdering = (repo) => put(repo, ".claude/skills/ordering/SKILL.md", PROJECT_ORDERING);
 
+const withFixture = (check) => (repo) => cpSync(join(SPIKE, "fixtures", check), repo, { recursive: true });
+
+const PLUGIN_STYLE = "tether:probe";
+const withPluginStyle = (repo) => put(repo, ".claude/settings.json", JSON.stringify({ outputStyle: PLUGIN_STYLE }));
+
+const CONTEXT_ONLY = "use no tool, answer from your context only";
+const LIST_11 = "list every line anywhere in your context (system prompt, project instructions, rules, reminders) that contains `Tether marker`, one per line, or NONE";
+
+function check11(subagent) {
+  return {
+    prompt: `Before spawning anything, list every line anywhere in your context that contains \`Tether marker\`, one per line, as section LEAD. Then spawn ${subagent} with the subagent tool and tell it: ${CONTEXT_ONLY}, ${LIST_11}. Write section PROBE with its answer.`,
+    setup: withFixture("11"),
+  };
+}
+
+function sizeReport(slots) {
+  return slots.map((s) => `the highest \`Tether marker ${s}-\` number, and whether the line \`Tether marker END-${s}\` is present`).join("; ") + "; then quote any line that mentions truncation, a limit, a preview or a saved file";
+}
+
+function check12(env) {
+  return {
+    prompt: `Before spawning anything, report for your own context, ${CONTEXT_ONLY}: ${sizeReport(["SA", "SB"])}. Write that as section LEAD. Then ${SPAWN} and tell it: ${CONTEXT_ONLY}; report ${sizeReport(["AA", "AB"])}. Do not answer until the probe has reported back. Then write section PROBE with its answer. Both sections are required.`,
+    setup: () => {},
+    env,
+  };
+}
+
+const sizeRun = (n) => check12({ SPIKE_INJECT_SA: String(n), SPIKE_INJECT_AA: String(n) });
+const SPLIT_CHARS = "6000";
+
 const RUNS = {
   "0": { prompt: "Reply OK", setup: () => {} },
   "6-slash": { prompt: "/ordering", setup: withProjectOrdering },
@@ -91,9 +121,19 @@ const RUNS = {
     prompt: `Invoke the where skill and report the root it prints. Then run \`tether next demo\` through the Bash tool, and run node "<that root>/bin/tether.mjs" next demo through the PowerShell tool, substituting the root. Report both outputs verbatim.`,
     setup: withDemo,
   },
+  "11": check11("the probe agent (subagent type `probe`, also listed as `tether:probe`)"),
+  "11-general": check11("a `general-purpose` agent"),
+  "12-split": check12({ SPIKE_INJECT_SA: SPLIT_CHARS, SPIKE_INJECT_SB: SPLIT_CHARS, SPIKE_INJECT_AA: SPLIT_CHARS, SPIKE_INJECT_AB: SPLIT_CHARS }),
+  "12-prefixed": {
+    prompt: "Invoke the tether:where skill and report the root it prints. Then spawn the agent `probe-prefixed` with the subagent tool (subagent type `probe-prefixed`, also listed as `tether:probe-prefixed`) and ask it for the Tether root. Report its answer verbatim, and name the output style you are running under.",
+    setup: withPluginStyle,
+  },
 };
 
-const GROUPS = { "6": ["6-slash", "6-qualified", "6-prose"], "5": ["5-readme", "5-work"] };
+const SIZES = process.argv.slice(3).filter((a) => /^\d+$/.test(a));
+for (const n of SIZES) RUNS[`12-${n}`] = sizeRun(Number(n));
+
+const GROUPS = { "6": ["6-slash", "6-qualified", "6-prose"], "5": ["5-readme", "5-work"], "11": ["11", "11-general"], "12": SIZES.map((n) => `12-${n}`) };
 
 function preflight() {
   if (process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is set");
@@ -109,7 +149,15 @@ function initSummary(eventsPath) {
     .find((e) => e.type === "system" && e.subtype === "init");
   if (!first) return null;
   const tether = (list) => (list ?? []).filter((n) => /tether|ordering|where|work-items|probe/.test(n));
-  return { model: first.model, plugins: (first.plugins ?? []).map((p) => `${p.name}@${p.source}:${p.version ?? ""}`), agents: tether(first.agents), skills: tether(first.skills), tools: (first.tools ?? []).filter((n) => /Task|Agent|Skill|Bash|PowerShell/.test(n)) };
+  return { model: first.model, output_style: first.output_style, plugins: (first.plugins ?? []).map((p) => `${p.name}@${p.source}:${p.version ?? ""}`), agents: tether(first.agents), skills: tether(first.skills), tools: (first.tools ?? []).filter((n) => /Task|Agent|Skill|Bash|PowerShell/.test(n)) };
+}
+
+function copyTranscripts(name, hookLog) {
+  const rows = readFileSync(hookLog, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const lead = rows.map((r) => r.transcript_path).find(Boolean);
+  const agents = [...new Set(rows.map((r) => r.agent_transcript_path).filter(Boolean))];
+  if (lead && existsSync(lead)) cpSync(lead, join(OUT, `${name}-lead-transcript.jsonl`));
+  agents.filter(existsSync).forEach((path, i) => cpSync(path, join(OUT, `${name}-agent-transcript${agents.length > 1 ? `-${i + 1}` : ""}.jsonl`)));
 }
 
 function template() {
@@ -140,6 +188,7 @@ async function runCheck(name) {
       timeoutMs: 10 * 60_000,
       pluginDir: PLUGIN,
       model: "haiku",
+      env: spec.env,
       eventsPath,
       approver: { configPath: mcpConfig, log: promptLog },
     });
@@ -147,7 +196,10 @@ async function runCheck(name) {
     untrustWorkspace(repo);
   }
   const hookLog = join(repo, ".tether", "state", "hook-log.jsonl");
-  if (existsSync(hookLog)) cpSync(hookLog, join(OUT, `${name}-hook-log.jsonl`));
+  if (existsSync(hookLog)) {
+    cpSync(hookLog, join(OUT, `${name}-hook-log.jsonl`));
+    copyTranscripts(name, hookLog);
+  }
   const memory = join(repo, ".claude", "agent-memory");
   if (existsSync(memory)) writeFileSync(join(OUT, `${name}-agent-memory.txt`), readdirSync(memory, { recursive: true }).join("\n"));
   if (existsSync(promptLog)) cpSync(promptLog, join(OUT, `${name}-prompts.jsonl`));
