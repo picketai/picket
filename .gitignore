@@ -26,6 +26,7 @@ bench/results/smoke*.json
 
 # harness ledger (hooks write it; harness cost reads it)
 .claude/ledger/
+.tether/state/
 bench/results/probe*.json
 
 # per-feature worktrees and the branching manifest (machine-local)

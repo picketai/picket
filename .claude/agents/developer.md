@@ -34,7 +34,7 @@ Never write a comment (`.claude/rules/comments.md`); `guard.comments` denies the
 ## Phase loop
 
 1. Implement the phase to its `**Done when:**` criteria, with names, small functions and tests carrying the meaning.
-2. `harness check`: runs the detected test and lint commands, logs to `.claude/ledger/`, prints the failing tail only, stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself; that shape costs a permission prompt every time.
+2. `harness check`: runs the detected test and lint commands, logs to `.tether/state/`, prints the failing tail only, stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself; that shape costs a permission prompt every time.
 3. Drive the changed flow through its real entry point when the phase touches one (endpoint, CLI, worker, startup wiring). Use `harness drive --hit "GET /path"` (add `--hit "POST /path <json>"` per request, `--run "<command>"` for a CLI): it starts the app on a free port, hits it, stops it, restores any file the drive itself changed, and logs the evidence, with no permission prompt. Loop drive, observe, fix until the observed behaviour matches the criteria. A green suite is not verification. Test-only or docs-only phases record `no drivable surface: <reason>`.
 4. `harness verify <id> <n>`; fix anything it reports.
 5. Stage the phase, do not commit it: `git add -A -- <touched paths>` as the last command before the block, so the index holds exactly what you are handing over. The user's approval commits it, with the message you propose on the `Commit:` line; a rejected phase never lands in history.

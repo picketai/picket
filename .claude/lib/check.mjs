@@ -1,7 +1,3 @@
-// harness check: run the project's test and lint (and build, on request) commands, log each to
-// .claude/ledger/check-<name>.log, and print the tail only when a step fails. One allow-listed
-// command replaces `npm test > log 2>&1; echo $?; tail log`, a shape that costs a permission
-// prompt every time, and it stops at the first failing step.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { projectRoot } from "./work.mjs";

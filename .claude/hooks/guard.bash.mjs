@@ -138,17 +138,6 @@ const WORKTREE_DIR = ".worktrees";
 // since "cat foo" is safe but "cat foo > important_file" is not.
 const WRITE_REDIRECT_OPS = new Set([">", ">>", "&>", "&>>"]);
 
-// The one write target this guard does auto-allow: the build/test log sink
-// that `implement.md` step 7 MANDATES
-// (`<test-command> > .claude/ledger/phase-<N>.log 2>&1`). Without this, the
-// contract tells the developer to use a command shape the guard refuses to
-// classify, so every phase's test run, build run and log digest falls through
-// to a permission prompt and waits for a human click.
-//
-// Safe because the sink is a dead-end: a `.log` file inside a `.claude/ledger`
-// directory is written by the toolkit, read by `logdigest.mjs`, and executed
-// by nothing. The path must be literal (no `..`, no glob, no variable), so a
-// redirect cannot walk out of the sink into source or config.
 const LOG_SINK_DIR = stateRel("");
 
 function isSanctionedLogSink(target) {
@@ -870,13 +859,6 @@ async function main() {
   if (sawWriteRedirect) {
     // Every target must be the sanctioned log sink; one stray target and the
     // whole command goes to the human, since a chained command writes both.
-    //
-    // Variable expansion is checked against the RAW command, not the parsed
-    // target: the tokenizer resolves `$FOO` before we ever see it, so
-    // `> .claude/ledger/$FOO.log` reaches isSanctionedLogSink already looking
-    // like a literal sink path while the shell writes somewhere else. `$?` is
-    // exempt - it is a status expansion, and `echo "exit=$?"` is part of the
-    // command shape implement.md step 7 mandates.
     const hasVarExpansion = /\$(?!\?)/.test(rawCommand);
     const allSinks =
       !hasVarExpansion &&

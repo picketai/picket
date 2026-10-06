@@ -33,6 +33,7 @@ import { reviewSummaryRange } from "../lib/review.mjs";
 import { admit } from "../lib/admit.mjs";
 import { drive, renderDrive } from "../lib/drive.mjs";
 import { check, renderCheck } from "../lib/check.mjs";
+import { migrate, renderMigrate } from "../lib/migrate.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
@@ -274,14 +275,18 @@ async function main(argv) {
       out({ source: name, root: source.root, ...r }, opt, (v) => (v.hits.map((h) => (h.line ? `${h.path}:${h.line} [${h.places.join(", ")}] ${h.text}` : `${h.path} [${h.places.join(", ")}]`)).join("\n") || "(no hits)") + more(v));
       return 0;
     }
+    case "migrate": {
+      const r = migrate(root, { dryRun: Boolean(opt["dry-run"]) });
+      out(r, opt, renderMigrate);
+      return 0;
+    }
     case "check": {
-      // Runs the detected test and lint commands, logs to .claude/ledger/, stops at the first failure.
       const r = check({ root, steps: opt.steps ? String(opt.steps).split(",").filter(Boolean) : undefined, only: opt.only === true ? undefined : opt.only, timeoutMs: opt.timeout ? Number(opt.timeout) * 1000 : undefined });
       out(r, opt, renderCheck);
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check comment packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
   }
 }
 

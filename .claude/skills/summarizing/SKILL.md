@@ -18,7 +18,7 @@ Input: `$ARGUMENTS`, an optional branch, sub-repo path or work id. Empty: scope 
 
 ## Repositories
 
-`.claude/branching/manifest.yaml` present → umbrella: candidates are its repos, kept when the session touched their feature branch (`harness state <id>` records `branch`; `git -C <repo> worktree list` confirms). No manifest → probe once for two or more nested repos under `src/`; otherwise the project root. One summary per touched repo, each independently under 4000 characters, labelled.
+`.tether/state/branching.yaml` present → umbrella: candidates are its repos, kept when the session touched their feature branch (`harness state <id>` records `branch`; `git -C <repo> worktree list` confirms). No manifest → probe once for two or more nested repos under `src/`; otherwise the project root. One summary per touched repo, each independently under 4000 characters, labelled.
 
 ## Template, first match wins
 

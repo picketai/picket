@@ -249,7 +249,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   record.cache_hit_ratio = round(cacheHitRatio(record.usage), 4);
   record.tokens_total = totalTokens(record.usage);
   record.base_sha = base;
-  record.changed_files = changedFiles(repo, base).filter((f) => !/^(test\/hidden\/|\.claude\/|artifacts\/|work\/|\.bench-vitest\.json)/.test(f));
+  record.changed_files = changedFiles(repo, base).filter((f) => !/^(test\/hidden\/|\.claude\/|\.tether\/|artifacts\/|work\/|\.bench-vitest\.json)/.test(f));
   record.lines_added = linesAdded(repo, base);
   record.signals = adapter.signals(record.texts, record);
   record.grade = grade({ repo, task, hiddenDir: join(BENCH, "hidden", task.id), adapter, base });

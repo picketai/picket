@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { statePath } from "../../.claude/lib/paths.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");
 
@@ -30,7 +31,7 @@ test("check runs test then lint, logs each, and says CHECK OK", () => {
   const v = JSON.parse(r.out);
   assert.equal(v.ok, true);
   assert.deepEqual(v.steps.map((s) => [s.name, s.status]), [["test", "passed"], ["lint", "passed"]]);
-  assert.match(readFileSync(join(root, ".claude", "ledger", "check-test.log"), "utf8"), /12 passed/);
+  assert.match(readFileSync(statePath(root, "check-test.log"), "utf8"), /12 passed/);
   const h = run(root, ["check", "--human"]);
   assert.match(h.out, /^test: passed · npm test/m);
   assert.equal(h.out.trim().split(/\r?\n/).at(-1), "CHECK OK");
@@ -44,7 +45,7 @@ test("check stops at the first red step and prints only its tail", () => {
   assert.match(r.out, /expected 3 to be 4/);
   assert.match(r.out, /not run: lint/);
   assert.equal(r.out.trim().split(/\r?\n/).at(-1), "CHECK FAILED");
-  assert.equal(existsSync(join(root, ".claude", "ledger", "check-lint.log")), false);
+  assert.equal(existsSync(statePath(root, "check-lint.log")), false);
 });
 
 test("check reports a missing script instead of inventing one, and --only runs a given command", () => {

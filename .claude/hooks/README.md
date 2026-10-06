@@ -5,11 +5,11 @@ Wired in `.claude/settings.json`. `guard.*` deny or bounce, `lint.*` and `monito
 | Hook | Event | Does |
 |---|---|---|
 | `inject.state.mjs` | SessionStart | open work items with their next action, plus `.claude/MEMORY.md` |
-| `guard.scope.mjs` | PreToolUse Write, Edit | denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `.claude/ledger/`); denies an Edit on a file this transcript never read |
+| `guard.scope.mjs` | PreToolUse Write, Edit | denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `.tether/state/` except `branching.yaml`); denies an Edit on a file this transcript never read |
 | `guard.comments.mjs` | PreToolUse Write, Edit | denies an edit that adds a comment line to a code file (detector in `lib/comments.mjs`, doc comments included), unless `harness comment` recorded the user's approval for that path and text on an open or blocked item |
 | `guard.bash.mjs` | PreToolUse Bash | the command evaluator kept from the previous harness: read-only commands allowed, destructive roots denied, compound and redirected commands prompt |
 | `lint.schema.mjs` | PostToolUse Write, Edit under `work/` | order and design artifacts: frontmatter, phase headings, decision ids, caps, placeholders, revision protocol against git HEAD |
-| `observe.drive.mjs` | PostToolUse Bash | appends drive or inspect rows to `.claude/ledger/drive-log.jsonl` with the open work item and phase; `harness verify` reads them |
+| `observe.drive.mjs` | PostToolUse Bash | appends drive or inspect rows to `.tether/state/drive-log.jsonl` with the open work item and phase; `harness verify` reads them |
 | `monitor.context.mjs` | PostToolUse Read, Grep, Glob, WebFetch, WebSearch | the stall detector: six look-around calls with no action get one line of context |
 | `guard.block.mjs` | Stop, SubagentStop | a turn with a contract heading must end with an exact verdict token and stay within 40 lines |
 | `route.verdict.mjs` | Stop, SubagentStop | applies the verdict to the work item with the kernel and hands back `harness next` as context |

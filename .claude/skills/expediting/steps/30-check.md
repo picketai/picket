@@ -6,7 +6,7 @@ Tests and lint, one command, no permission prompt:
 node .claude/bin/harness.mjs check --human
 ```
 
-It runs the detected test and lint commands, logs to `.claude/ledger/check-*.log`, prints the failing tail only and stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself.
+It runs the detected test and lint commands, logs to `.tether/state/check-*.log`, prints the failing tail only and stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself.
 
 Drive the changed flow through its real entry point when the change touches one. One command does the whole loop and costs no permission prompt:
 

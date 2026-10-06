@@ -15,11 +15,11 @@ const ELSEWHERE = [
     paths: [
       ".claude/PROJECT-MAP.md",
       ".claude/agent-memory/analyst/MEMORY.md",
-      ".claude/branching/manifest.yaml",
-      ".claude/ledger/",
-      ".claude/ledger/drive-log.jsonl",
-      ".claude/ledger/ledger.jsonl",
       ".claude/settings.local.json",
+      ".tether/state/",
+      ".tether/state/branching.yaml",
+      ".tether/state/drive-log.jsonl",
+      ".tether/state/ledger.jsonl",
       ".opensrc/",
       ".worktrees/",
       "artifacts/api/",
@@ -47,7 +47,7 @@ const ELSEWHERE = [
     ],
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
-  { why: "planned by SDR-00001", paths: [".tether/", ".tether/config.json", ".tether/state/", "core/", "rules/"] },
+  { why: "planned by SDR-00001", paths: [".tether/", ".tether/config.json", "core/", "rules/"] },
 ];
 
 const NOT_A_PATH_CHAR = /[\s<>*{}[\]$~|"'=(),…]/;

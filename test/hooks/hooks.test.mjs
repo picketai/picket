@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, deriveState, setMarker } from "../../.claude/lib/work.mjs";
-import { statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
+import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 
@@ -304,7 +304,7 @@ test("route.verdict keeps a pull request review in the ledger instead of routing
   const tp = transcript(root, [user("scope: pr"), assistant([{ type: "text", text: block }])]);
   const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "reviewer" }, root);
   assert.match(out.hookSpecificOutput.additionalContext, /APPROVED recorded for pr-7287/);
-  assert.equal(readFileSync(join(root, ".claude", "ledger", "pr-7287.review.md"), "utf8").trim(), block);
+  assert.equal(readFileSync(statePath(root, "pr-7287.review.md"), "utf8").trim(), block);
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -361,6 +361,24 @@ test("guard.bash allows a redirect into the state log sink and falls through on 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.bash sinks test logs into the new state folder only (T-4.4)", () => {
+  const { root } = project();
+  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+  const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
+  assert.equal(stateRel("phase-1.log"), ".tether/state/phase-1.log");
+  assert.equal(decision(`npm test > ${stateRel("phase-1.log")} 2>&1`), "allow");
+  assert.equal(decision(`npm test > ${LEGACY.stateDir}/x.log`), null);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.scope lets a model write the branching manifest and nothing else in the state folder (T-4.4)", () => {
+  const { root } = project();
+  const write = (file_path) => run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: root }, root);
+  assert.equal(write(statePath(root, STATE_FILES.ledger))?.hookSpecificOutput.permissionDecision, "deny");
+  assert.equal(write(branchingManifestPath(root)), null);
+  rmSync(root, { recursive: true, force: true });
+});
+
 // branching --into (steps/10-create.md) relies on these two classifications: switch falls
 // through to the permission prompt, checkout stays hard-denied.
 test("guard.bash lets git switch -c through to the prompt and keeps git checkout -b denied", () => {
@@ -375,7 +393,7 @@ test("emit.ledger attributes a Stop without an agent id to the lead, not to the 
   const { root, id } = project();
   const tp = transcript(root, [user("build it"), assistant([tool("Agent", { subagent_type: "architect", description: "Write the order" })]), assistant([{ type: "text", text: `▶ ${id} · phase 1/1 done\n[a] approve · [x] reject: <why>` }])]);
   run("emit.ledger.mjs", { hook_event_name: "Stop", session_id: "s2", transcript_path: tp, cwd: root }, root);
-  const rows = readFileSync(join(root, ".claude", "ledger", "ledger.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const rows = readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(rows.at(-1).agent, "lead");
   assert.equal(rows.at(-1).event, "gate");
   rmSync(root, { recursive: true, force: true });
@@ -417,7 +435,7 @@ test("emit.ledger appends a v2 row and observe.drive tags commands with the open
   const { root, id } = project();
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([tool("Read", { file_path: "a" }), tool("Read", { file_path: "a" }), tool("Edit", { file_path: "src/a.ts" })]), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nok\n\nPHASE DONE` }])]);
   run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "developer" }, root);
-  const rows = readFileSync(join(root, ".claude", "ledger", "ledger.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const rows = readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(rows.length, 1);
   assert.equal(rows[0].v, 2);
   assert.equal(rows[0].agent, "developer");
@@ -427,7 +445,7 @@ test("emit.ledger appends a v2 row and observe.drive tags commands with the open
   assert.equal(rows[0].usage.cache_read_input_tokens, 2000);
 
   run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "curl -s http://127.0.0.1:8080/health" }, cwd: root, session_id: "s1" }, root);
-  const drives = readFileSync(join(root, ".claude", "ledger", "drive-log.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const drives = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(drives[0].kind, "drive");
   assert.equal(drives[0].work_id, id);
   assert.equal(drives[0].phase, 1);
@@ -445,7 +463,7 @@ test("route.verdict applies PHASE DONE from a tether:developer whose block has n
 
 test("emit.ledger records tether-prefixed agents under their bare names", () => {
   const { root, id } = project();
-  const ledger = () => readFileSync(join(root, ".claude", "ledger", "ledger.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const ledger = () => readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   const own = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "ok" }])]);
   run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s8", transcript_path: own, agent_transcript_path: own, cwd: root, agent_type: "tether:developer" }, root);
   assert.equal(ledger().at(-1).agent, "developer");
@@ -459,7 +477,7 @@ test("emit.ledger records tether-prefixed agents under their bare names", () => 
 test("observe.drive records a tether:developer as developer", () => {
   const { root } = project();
   run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "curl -s http://127.0.0.1:8080/health" }, cwd: root, session_id: "s9", agent_type: "tether:developer" }, root);
-  const drives = readFileSync(join(root, ".claude", "ledger", "drive-log.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const drives = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(drives.at(-1).agent, "developer");
   rmSync(root, { recursive: true, force: true });
 });

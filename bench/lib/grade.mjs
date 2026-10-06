@@ -88,7 +88,7 @@ export function grade({ repo, task, hiddenDir, adapter, base = "HEAD" }) {
     ok(`grep:${g.path}:${g.pattern}`, found === expect, `${files.length} file(s) scanned`);
   }
   if (task.checks?.forbidden_paths_touched) {
-    const all = changedFiles(repo, base).filter((f) => !f.startsWith("test/hidden/") && !f.startsWith(".claude/") && f !== ".bench-vitest.json");
+    const all = changedFiles(repo, base).filter((f) => !f.startsWith("test/hidden/") && !isHarnessFile(f) && f !== ".bench-vitest.json");
     for (const pattern of task.checks.forbidden_paths_touched) {
       const hits = all.filter((f) => globMatch(pattern, f));
       ok(`untouched:${pattern}`, hits.length === 0, hits.join(", "));
@@ -117,6 +117,12 @@ export function grade({ repo, task, hiddenDir, adapter, base = "HEAD" }) {
   return { pass, own, hidden, checks };
 }
 
+export const HARNESS_DIRS = Object.freeze([".claude/", ".tether/"]);
+
+export function isHarnessFile(path) {
+  return HARNESS_DIRS.some((dir) => path.startsWith(dir));
+}
+
 /** Files the agent changed since `base` (the harness-install commit), committed or not, plus untracked. */
 export function changedFiles(repo, base = "HEAD") {
   const diffed = execFileSync("git", ["diff", "--name-only", base], { cwd: repo }).toString().split(/\r?\n/);
@@ -131,13 +137,13 @@ export function linesAdded(repo, base = "HEAD") {
     for (const line of out.split(/\r?\n/)) {
       const m = line.match(/^(\d+)\t(\d+)\t(.+)$/);
       if (!m) continue;
-      if (m[3].startsWith("artifacts/") || m[3].startsWith("work/") || m[3].startsWith(".claude/")) continue;
+      if (m[3].startsWith("artifacts/") || m[3].startsWith("work/") || isHarnessFile(m[3])) continue;
       added += Number(m[1]);
     }
     // untracked files are not in `git diff HEAD`; count their lines too
     const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard"], { cwd: repo }).toString().split(/\r?\n/).filter(Boolean);
     for (const f of untracked) {
-      if (f.startsWith("artifacts/") || f.startsWith("work/") || f.startsWith(".claude/") || f.startsWith("test/hidden/")) continue;
+      if (f.startsWith("artifacts/") || f.startsWith("work/") || isHarnessFile(f) || f.startsWith("test/hidden/")) continue;
       const p = join(repo, f);
       if (statSync(p).isFile()) added += readFileSync(p, "utf8").split(/\r?\n/).length;
     }

@@ -5,15 +5,27 @@ export const HOST_DIR = ".claude";
 export const TETHER_DIR = ".tether";
 export const WORK_DIR = "work";
 
-const STATE_REL = `${HOST_DIR}/ledger`;
+const STATE_REL = `${TETHER_DIR}/state`;
 const CONFIG_REL = `${HOST_DIR}/harness.json`;
-const BRANCHING_MANIFEST_REL = `${HOST_DIR}/branching/manifest.yaml`;
 
 export const STATE_FILES = Object.freeze({
   ledger: "ledger.jsonl",
   driveLog: "drive-log.jsonl",
-  guardLog: "guard-bash.log",
+  guardLog: "guard.log",
+  branchingManifest: "branching.yaml",
 });
+
+export const MODEL_WRITABLE_STATE_FILES = Object.freeze([STATE_FILES.branchingManifest]);
+
+export const LEGACY = Object.freeze({
+  stateDir: `${HOST_DIR}/ledger`,
+  guardLog: "guard-bash.log",
+  branchingDir: `${HOST_DIR}/branching`,
+  branchingManifest: `${HOST_DIR}/branching/manifest.yaml`,
+  config: `${HOST_DIR}/harness.json`,
+});
+
+export const LEGACY_STATE_LOCATIONS = Object.freeze([LEGACY.stateDir, LEGACY.branchingManifest]);
 
 export const BOOKKEEPING_PREFIXES = Object.freeze([`${WORK_DIR}/`, `${HOST_DIR}/`, `${TETHER_DIR}/`]);
 
@@ -80,7 +92,11 @@ export function configPath(root) {
 }
 
 export function branchingManifestPath(root) {
-  return underRoot(root, BRANCHING_MANIFEST_REL);
+  return statePath(root, STATE_FILES.branchingManifest);
+}
+
+export function legacyPath(root, rel) {
+  return underRoot(root, rel);
 }
 
 export function hostRel(...segments) {

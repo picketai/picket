@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { portOpen, parseHit } from "../../.claude/lib/drive.mjs";
+import { statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
 
 const BIN = resolve(".claude/bin/harness.mjs");
 
@@ -50,7 +51,7 @@ test("drive starts the detected app on a free port, hits it, stops it, and logs 
   assert.match(v.hits[1].body, /"method":"POST"/);
   assert.equal(v.stopped, true);
   assert.equal(await portOpen(v.port), false, "server must be gone after the drive");
-  const log = readFileSync(join(root, ".claude", "ledger", "drive-log.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const log = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(log.length, 1);
   assert.equal(log[0].kind, "drive");
   assert.equal(log[0].source, "harness drive");
@@ -81,7 +82,7 @@ test("drive --run captures a CLI command and fails fast on a non-zero exit", () 
   assert.equal(bad.code, 2);
   assert.equal(bad.json.ok, false);
   assert.equal(bad.json.exit_code, 3);
-  const log = readFileSync(join(root, ".claude", "ledger", "drive-log.jsonl"), "utf8").trim().split("\n");
+  const log = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n");
   assert.equal(log.length, 2);
 });
 
@@ -104,7 +105,7 @@ test("drive restores tracked files its own requests changed and removes files it
 http.createServer((req, res) => { writeFileSync("data.json", "[1]"); writeFileSync("new.log", "x"); res.end("ok"); }).listen(Number(process.env.PORT), "127.0.0.1");`,
   );
   writeFileSync(join(root, "data.json"), "[]");
-  writeFileSync(join(root, ".gitignore"), ".claude/ledger/\n");
+  writeFileSync(join(root, ".gitignore"), `${stateRel("")}/\n`);
   const git = (args) => execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });
   git(["init", "-q"]);
   git(["-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"]);
@@ -133,7 +134,7 @@ test("drive restores and removes non-ASCII paths by their real names", () => {
 http.createServer((req, res) => { writeFileSync("données.json", "[1]"); writeFileSync("café.log", "x"); res.end("ok"); }).listen(Number(process.env.PORT), "127.0.0.1");`,
   );
   writeFileSync(join(root, "données.json"), "[]");
-  writeFileSync(join(root, ".gitignore"), ".claude/ledger/\n");
+  writeFileSync(join(root, ".gitignore"), `${stateRel("")}/\n`);
   const git = (args) => execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });
   git(["init", "-q"]);
   git(["-c", "user.email=t@t", "-c", "user.name=t", "add", "-A"]);

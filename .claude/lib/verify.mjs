@@ -9,8 +9,6 @@
 //           pattern: invoices\.csv
 //       tests: true                                   # the project's test command must pass
 //       drive: true                                   # a drive-class command must be observed
-//
-// The drive log is written by the observe.drive hook (Phase 3) into .claude/ledger/drive-log.jsonl.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";

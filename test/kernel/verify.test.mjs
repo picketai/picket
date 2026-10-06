@@ -5,10 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWork } from "../../.claude/lib/work.mjs";
 import { verify, mustHaves } from "../../.claude/lib/verify.mjs";
+import { stateDir, statePath, STATE_FILES } from "../../.claude/lib/paths.mjs";
 
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-verify-"));
-  mkdirSync(join(root, ".claude", "ledger"), { recursive: true });
+  mkdirSync(stateDir(root), { recursive: true });
   const s = createWork({ lane: "order", title: "Csv", root });
   writeFileSync(
     join(root, "work", s.id, "order.md"),
@@ -53,7 +54,7 @@ test("verify fails on missing files, passes when files, greps and a drive exist"
   mkdirSync(join(root, "src", "http"), { recursive: true });
   writeFileSync(join(root, "src", "http", "csv.ts"), "export const x = 1;");
   writeFileSync(join(root, "src", "http", "handlers.ts"), 'router.add("GET", "/invoices.csv", h);');
-  writeFileSync(join(root, ".claude", "ledger", "drive-log.jsonl"), JSON.stringify({ kind: "drive", command: "curl http://127.0.0.1:8080/invoices.csv", work_id: id, phase: 1 }) + "\n");
+  writeFileSync(statePath(root, STATE_FILES.driveLog), JSON.stringify({ kind: "drive", command: "curl http://127.0.0.1:8080/invoices.csv", work_id: id, phase: 1 }) + "\n");
   r = verify(id, 1, { root, runTests: false });
   assert.equal(r.ok, true, JSON.stringify(r.results));
 

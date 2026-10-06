@@ -2,9 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, readState, writeState } from "../../.claude/lib/work.mjs";
+import { branchingManifestPath } from "../../.claude/lib/paths.mjs";
 import { reviewSummary } from "../../.claude/lib/review.mjs";
 import { nestedRepos, readBases } from "../../.claude/lib/repos.mjs";
 
@@ -85,8 +86,8 @@ test("without repos.yaml the nested repo is diffed from merge-base with its defa
 
 test("the manifest's nested entries win over the src/ scan, inline comments stripped", () => {
   const { root } = umbrella();
-  mkdirSync(join(root, ".claude", "branching"));
-  writeFileSync(join(root, ".claude", "branching", "manifest.yaml"), "version: 1\nscan_root: src   # nested clones\nrepos:\n  - name: Umbrella\n    path: .\n    default_branch: trunk\n  - name: Rent\n    path: src/Rent   # the product\n    default_branch: main\n");
+  mkdirSync(dirname(branchingManifestPath(root)), { recursive: true });
+  writeFileSync(branchingManifestPath(root), "version: 1\nscan_root: src   # nested clones\nrepos:\n  - name: Umbrella\n    path: .\n    default_branch: trunk\n  - name: Rent\n    path: src/Rent   # the product\n    default_branch: main\n");
   assert.deepEqual(nestedRepos(root), [{ path: "src/Rent", default_branch: "main" }]);
   rmSync(root, { recursive: true, force: true });
 });
