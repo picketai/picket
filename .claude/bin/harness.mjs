@@ -36,6 +36,7 @@ import { check, renderCheck } from "../lib/check.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
+import { configRel } from "../lib/paths.mjs";
 import { preflight } from "../lib/preflight.mjs";
 import { verify } from "../lib/verify.mjs";
 import { route, findVerdict } from "../lib/route.mjs";
@@ -104,7 +105,7 @@ async function main(argv) {
       // Intake without a reachable source still saves story.md; say so, or the missing snapshots go unnoticed.
       const { sources } = loadConfig(root);
       const noSource = opt.story && !sources.some((x) => x.root);
-      const why = sources.map((x) => `${x.name}: ${x.reason}`).join("; ") || "none declared in .claude/harness.json";
+      const why = sources.map((x) => `${x.name}: ${x.reason}`).join("; ") || `none declared in ${configRel()}`;
       const warnings = noSource ? [`story.md saved without snapshots: no reachable source (${why})`] : [];
       out({ ...s, dir: `work/${s.id}`, warnings, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}${v.warnings.map((w) => `\nWARNING: ${w}`).join("")}`);
       return 0;
@@ -263,7 +264,7 @@ async function main(argv) {
       const [sub, name, query] = rest;
       if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring>, grep <name> <regex> [--path <prefix>], pick <id> <ref> <label>, or add <id> <ref>");
       const source = sources.find((s) => s.name === name);
-      if (!source) throw new Error(`no source named ${name}; declared: ${sources.map((s) => s.name).join(", ") || "(none, see .claude/harness.json)"}`);
+      if (!source) throw new Error(`no source named ${name}; declared: ${sources.map((s) => s.name).join(", ") || `(none, see ${configRel()})`}`);
       if (!source.root) {
         out({ source: name, error: source.reason }, opt, (v) => `source ${v.source} is unreachable: ${v.error}`);
         return 2;

@@ -1,11 +1,11 @@
 // Reads the v2 ledger (.claude/ledger/ledger.jsonl, appended by the emit.ledger hook) and answers
 // the free telemetry questions: spend, cache ratio, tokens per accepted line, stops, bounces, by agent.
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { projectRoot } from "./work.mjs";
+import { statePath, STATE_FILES } from "./paths.mjs";
 
 export function readLedger(root = projectRoot()) {
-  const p = join(root, ".claude", "ledger", "ledger.jsonl");
+  const p = statePath(root, STATE_FILES.ledger);
   if (!existsSync(p)) return [];
   return readFileSync(p, "utf8")
     .split(/\r?\n/)

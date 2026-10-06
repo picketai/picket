@@ -1,5 +1,6 @@
 // Read-only git helpers. Every function returns data, never throws on a missing repo.
 import { execFileSync } from "node:child_process";
+import { BOOKKEEPING_PREFIXES } from "./paths.mjs";
 
 function git(root, args) {
   try {
@@ -48,8 +49,13 @@ export function defaultBranch(repo) {
   return ["main", "master", "trunk"].find((b) => revParse(repo, `refs/heads/${b}`)) ?? null;
 }
 
-/** Uncommitted paths outside the given prefixes (work/ and .claude/ are the harness's own noise). */
-export function dirtyPaths(root, ignorePrefixes = ["work/", ".claude/"]) {
+export const NON_PRODUCT_PREFIXES = Object.freeze([...BOOKKEEPING_PREFIXES, "artifacts/"]);
+
+export function isNonProduct(path) {
+  return NON_PRODUCT_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+export function dirtyPaths(root, ignorePrefixes = BOOKKEEPING_PREFIXES) {
   const out = git(root, ["status", "--porcelain", "--untracked-files=all"]);
   if (!out) return [];
   return out
@@ -66,12 +72,12 @@ export function changedSince(root, base) {
   return [...new Set([...diffed.split(/\r?\n/), ...untracked.split(/\r?\n/)].map((s) => s.trim()).filter(Boolean))].sort();
 }
 
-export function linesAddedSince(root, base, exclude = [/^work\//, /^\.claude\//, /^artifacts\//]) {
+export function linesAddedSince(root, base, excluded = isNonProduct) {
   const out = git(root, ["diff", "--numstat", base]) ?? "";
   let added = 0;
   for (const line of out.split(/\r?\n/)) {
     const m = line.match(/^(\d+)\t(\d+)\t(.+)$/);
-    if (m && !exclude.some((re) => re.test(m[3]))) added += Number(m[1]);
+    if (m && !excluded(m[3])) added += Number(m[1]);
   }
   return added;
 }

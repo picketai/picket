@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { reviewSummaryRange } from "./review.mjs";
+import { hostPath } from "./paths.mjs";
 
 export const PAT_VARS = ["AZDO_PAT", "AZURE_DEVOPS_EXT_PAT"];
 
@@ -117,7 +118,7 @@ export function fetchPullRequest(root, remote, id) {
 export function patFromEnv(env = process.env, root = process.cwd()) {
   for (const v of PAT_VARS) if (env[v]) return env[v];
   try {
-    const local = JSON.parse(readFileSync(join(root, ".claude", "settings.local.json"), "utf8"));
+    const local = JSON.parse(readFileSync(hostPath(root, "settings.local.json"), "utf8"));
     for (const v of PAT_VARS) if (local?.env?.[v]) return String(local.env[v]);
   } catch {}
   return null;

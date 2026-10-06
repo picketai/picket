@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { wasRead, agentTranscript } from "./lib/transcript.mjs";
 import { sourceRoots, underSource } from "./lib/source-paths.mjs";
-import { projectRoot } from "../lib/work.mjs";
+import { projectRoot, stateRel } from "../lib/paths.mjs";
 
 let data;
 try {
@@ -30,7 +30,7 @@ function deny(reason) {
 }
 
 if (/^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|comments\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/.test(rel)) deny(`${rel} is kernel-owned; use \`harness new\`, \`harness set\`, \`harness route\`, \`harness comment\` or \`harness source\`, never a direct write`);
-if (/^\.claude\/ledger\//.test(rel)) deny(`${rel} is written by the hooks only`);
+if (rel.startsWith(`${stateRel("")}/`)) deny(`${rel} is written by the hooks only`);
 
 const source = underSource(resolve(data.cwd ?? root, filePath), sourceRoots(root));
 if (source) deny(`${filePath} is inside source ${source}, which is read-only; read it through \`harness source\` and the snapshots`);

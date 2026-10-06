@@ -4,8 +4,8 @@
 // prompt every time, and it stops at the first failing step.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { projectRoot } from "./work.mjs";
+import { stateDir, statePath, stateRel } from "./paths.mjs";
 import { detectTooling } from "./preflight.mjs";
 import { assertNotDestructive } from "./unsafe.mjs";
 
@@ -24,8 +24,7 @@ export function check(o = {}) {
   const wanted = o.steps?.length ? o.steps : ["test", "lint"];
   if (o.only) assertNotDestructive(o.only, "harness check --only");
   const plan = o.only ? [{ name: "command", command: o.only }] : ORDER.filter((s) => wanted.includes(s)).map((s) => ({ name: s, command: tooling[s] }));
-  const dir = join(root, ".claude", "ledger");
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(stateDir(root), { recursive: true });
   const steps = [];
   let ok = true;
   for (const step of plan) {
@@ -38,8 +37,8 @@ export function check(o = {}) {
     // for the developer would fail here. Watch-mode runners are the project's problem, not ours.
     const r = spawnSync(step.command, { cwd: root, shell: true, encoding: "utf8", timeout: Number(o.timeoutMs ?? 300_000), windowsHide: true });
     const out = `${r.stdout ?? ""}${r.stderr ?? ""}`;
-    const log = join(dir, `check-${step.name}.log`);
-    writeFileSync(log, out);
+    const logName = `check-${step.name}.log`;
+    writeFileSync(statePath(root, logName), out);
     const code = r.status ?? (r.error ? 1 : 0);
     const passed = code === 0;
     steps.push({
@@ -48,7 +47,7 @@ export function check(o = {}) {
       status: passed ? "passed" : r.error?.code === "ETIMEDOUT" ? "timed out" : "failed",
       exit_code: code,
       ms: Date.now() - t,
-      log: `.claude/ledger/check-${step.name}.log`,
+      log: stateRel(logName),
       tail: passed ? "" : out.trim().split(/\r?\n/).slice(-30).join("\n"),
     });
     if (!passed) {

@@ -7,6 +7,7 @@ import { deriveState, projectRoot } from "./work.mjs";
 import * as git from "./git.mjs";
 import { loadConfig } from "./config.mjs";
 import { listWorktrees } from "./sources.mjs";
+import { hostPath } from "./paths.mjs";
 
 export function detectTooling(root) {
   const out = { test: null, lint: null, build: null, run: null, stack: null };
@@ -72,7 +73,7 @@ export function preflight(id, root = projectRoot()) {
   const tooling = detectTooling(root);
   add("tooling", tooling.test ? "ok" : "warn", tooling.test ? `test: ${tooling.test}${tooling.lint ? ` · lint: ${tooling.lint}` : ""}${tooling.run ? ` · run: ${tooling.run}` : ""}` : "no test command detected");
 
-  const map = join(root, ".claude", "PROJECT-MAP.md");
+  const map = hostPath(root, "PROJECT-MAP.md");
   add("project_map", existsSync(map) ? "ok" : "warn", existsSync(map) ? "present" : "absent; the analyst can write one");
 
   const config = loadConfig(root);

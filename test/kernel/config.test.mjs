@@ -2,8 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { loadConfig, DEFAULT_SECURITY_PATHS } from "../../.claude/lib/config.mjs";
+import { configRel } from "../../.claude/lib/paths.mjs";
+import { codeLines } from "./kernel-sources.mjs";
 
 function projectWith(configText) {
   const root = mkdtempSync(join(tmpdir(), "harness-config-"));
@@ -12,11 +14,12 @@ function projectWith(configText) {
   return root;
 }
 
-test("config.mjs and paths.mjs are the only files under .claude/lib that name harness.json (T-3.1)", () => {
+test("paths.mjs is the only file under .claude/lib whose code names the config file (T-2.4)", () => {
+  const configName = basename(configRel());
   const lib = resolve(".claude/lib");
-  const owners = ["config.mjs", "paths.mjs"];
-  const offenders = readdirSync(lib).filter((f) => f.endsWith(".mjs") && !owners.includes(f) && readFileSync(join(lib, f), "utf8").includes("harness.json"));
-  assert.deepEqual(offenders, []);
+  const naming = readdirSync(lib)
+    .filter((f) => f.endsWith(".mjs") && codeLines(readFileSync(join(lib, f), "utf8")).some((line) => line.includes(configName)));
+  assert.deepEqual(naming, ["paths.mjs"]);
 });
 
 test("an unset env var gives the source with root null and a reason naming the variable (T-3.2)", () => {

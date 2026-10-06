@@ -10,6 +10,7 @@ import { appendFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import net from "node:net";
 import { projectRoot, listWork, deriveState } from "./work.mjs";
+import { stateDir, statePath, STATE_FILES } from "./paths.mjs";
 import { detectTooling } from "./preflight.mjs";
 import { assertNotDestructive } from "./unsafe.mjs";
 
@@ -139,9 +140,8 @@ function restoreSideEffects(root, before, keep) {
 }
 
 function logRow(root, row) {
-  const dir = join(root, ".claude", "ledger");
-  mkdirSync(dir, { recursive: true });
-  appendFileSync(join(dir, "drive-log.jsonl"), JSON.stringify(row) + "\n");
+  mkdirSync(stateDir(root), { recursive: true });
+  appendFileSync(statePath(root, STATE_FILES.driveLog), JSON.stringify(row) + "\n");
 }
 
 /**

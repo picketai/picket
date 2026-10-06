@@ -15,6 +15,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { deriveState, readArtifact, projectRoot } from "./work.mjs";
+import { statePath, STATE_FILES } from "./paths.mjs";
 import { detectTooling } from "./preflight.mjs";
 
 export function mustHaves(id, n, root = projectRoot()) {
@@ -24,7 +25,7 @@ export function mustHaves(id, n, root = projectRoot()) {
 }
 
 export function readDriveLog(root = projectRoot()) {
-  const p = join(root, ".claude", "ledger", "drive-log.jsonl");
+  const p = statePath(root, STATE_FILES.driveLog);
   if (!existsSync(p)) return [];
   return readFileSync(p, "utf8")
     .split(/\r?\n/)

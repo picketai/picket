@@ -8,8 +8,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "./yaml-lite.mjs";
 import { revParse } from "./git.mjs";
-
-const MANIFEST = join(".claude", "branching", "manifest.yaml");
+import { branchingManifestPath } from "./paths.mjs";
 
 /** yaml-lite keeps an inline `# comment` as part of the value; the manifest has them. */
 function uncomment(value) {
@@ -17,7 +16,7 @@ function uncomment(value) {
 }
 
 function fromManifest(root) {
-  const file = join(root, MANIFEST);
+  const file = branchingManifestPath(root);
   if (!existsSync(file)) return [];
   let manifest;
   try {

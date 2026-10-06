@@ -1,23 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
 import * as paths from "../../.claude/lib/paths.mjs";
+import { codeLines, isPathsModule, kernelModules } from "./kernel-sources.mjs";
 
 const { projectRoot } = paths;
 
-const SCANNED_DIRS = [".claude/lib", ".claude/hooks", ".claude/bin"].map((d) => resolve(d));
-const VENDOR_DIR = "vendor";
 const SELF_LOCATION = ["import.meta.url", "import.meta.dirname", "import.meta.filename", "__dirname", "__filename", "process.argv[1]"];
-
-function moduleFiles(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) return entry.name === VENDOR_DIR ? [] : moduleFiles(full);
-    return entry.name.endsWith(".mjs") ? [full] : [];
-  });
-}
 
 function selfLocationUses(text) {
   return SELF_LOCATION.filter((needle) => text.includes(needle));
@@ -31,9 +22,25 @@ test("the self-location ban flags every forbidden form", () => {
 });
 
 test("no kernel, hook or bin module builds a path from its own location (T-1.1)", () => {
-  const offenders = SCANNED_DIRS.flatMap(moduleFiles)
+  const offenders = kernelModules()
     .map((file) => ({ file, uses: selfLocationUses(readFileSync(file, "utf8")) }))
     .filter(({ uses }) => uses.length);
+  assert.deepEqual(offenders, []);
+});
+
+function hostLiteralLines(text) {
+  return codeLines(text).filter((line) => line.includes(paths.HOST_DIR));
+}
+
+test("the host-folder ban flags a code line and skips comment lines", () => {
+  assert.deepEqual(hostLiteralLines('const dir = join(root, ".claude", "ledger");'), ['const dir = join(root, ".claude", "ledger");']);
+  assert.deepEqual(hostLiteralLines(["// see .claude/hooks", "/* .claude */", " * .claude/x", "const a = 1;"].join("\n")), []);
+});
+
+test("only paths.mjs spells the host folder in kernel, hook and bin code (T-2.1)", () => {
+  const offenders = kernelModules()
+    .filter((file) => !isPathsModule(file))
+    .flatMap((file) => hostLiteralLines(readFileSync(file, "utf8")).map((line) => `${file}: ${line.trim()}`));
   assert.deepEqual(offenders, []);
 });
 

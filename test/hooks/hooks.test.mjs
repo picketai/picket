@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, deriveState, setMarker } from "../../.claude/lib/work.mjs";
-import { statePath, STATE_FILES } from "../../.claude/lib/paths.mjs";
+import { statePath, stateRel, STATE_FILES } from "../../.claude/lib/paths.mjs";
 
 const HOOKS = resolve(".claude/hooks");
 
@@ -339,6 +339,25 @@ test("guard.bash traces into the project root's state folder and writes nothing 
   assert.equal(trace.length, 1);
   assert.equal(JSON.parse(trace[0]).command, "git status");
   assert.deepEqual(listTree(HOOKS), before);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.scope denies a model write under the state folder (T-2.2)", () => {
+  const { root } = project();
+  const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: statePath(root, STATE_FILES.ledger) }, cwd: root }, root);
+  assert.equal(out?.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /written by the hooks only/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.bash allows a redirect into the state log sink and falls through on a variable target (T-2.2)", () => {
+  const { root } = project();
+  const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput ?? null;
+  const allowed = decision(`git status > ${stateRel("phase-1.log")} 2>&1`);
+  assert.equal(allowed?.permissionDecision, "allow");
+  assert.ok(allowed.permissionDecisionReason.includes(stateRel("")));
+  assert.equal(decision(`git status > ${stateRel("$NAME.log")} 2>&1`), null);
+  assert.equal(decision("git status > elsewhere/phase-1.log 2>&1"), null);
   rmSync(root, { recursive: true, force: true });
 });
 

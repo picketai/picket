@@ -38,7 +38,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
 import { sourceRoots, underSource } from "./lib/source-paths.mjs";
-import { projectRoot, stateDir, statePath, STATE_FILES } from "../lib/paths.mjs";
+import { projectRoot, stateDir, statePath, stateRel, STATE_FILES } from "../lib/paths.mjs";
 
 let RAW_FOR_TRACE = "";
 function trace(outcome) {
@@ -149,7 +149,7 @@ const WRITE_REDIRECT_OPS = new Set([">", ">>", "&>", "&>>"]);
 // directory is written by the toolkit, read by `logdigest.mjs`, and executed
 // by nothing. The path must be literal (no `..`, no glob, no variable), so a
 // redirect cannot walk out of the sink into source or config.
-const LOG_SINK_DIR = ".claude/ledger";
+const LOG_SINK_DIR = stateRel("");
 
 function isSanctionedLogSink(target) {
   if (typeof target !== "string" || !target) return false;
@@ -892,7 +892,7 @@ async function main() {
   if (classifications.every((c) => c === "safe")) {
     return decide(
       "allow",
-      "guard.bash: all sub-commands are read-only/inspection commands, with no hidden execution and no write redirection outside the sanctioned .claude/ledger log sink."
+      `guard.bash: all sub-commands are read-only/inspection commands, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`
     );
   }
 

@@ -83,7 +83,7 @@ export function reviewSummaryRange(root, base, head) {
     changed = execFileSync("git", ["-C", root, "diff", "--name-only", base, head], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
       .split(/\r?\n/)
       .map((s) => s.trim())
-      .filter((f) => f && !/^(work\/|\.claude\/|artifacts\/)/.test(f))
+      .filter((f) => f && !git.isNonProduct(f))
       .sort();
   } catch {}
   const { added, removed } = numstat(root, base, head);
@@ -114,7 +114,7 @@ export function reviewSummary(id, o = {}) {
   const nested = nestedChanges(id, root, s.branch);
   // The root sees a nested repo as one untracked directory entry; its files are counted below instead.
   const nestedEntries = new Set(nested.flatMap((r) => [r.path, `${r.path}/`]));
-  const rootChanged = git.changedSince(root, base).filter((f) => !/^(work\/|\.claude\/|artifacts\/)/.test(f) && !nestedEntries.has(f));
+  const rootChanged = git.changedSince(root, base).filter((f) => !git.isNonProduct(f) && !nestedEntries.has(f));
   const changed = [...rootChanged, ...nested.flatMap((r) => r.changed)].sort();
   const { added, removed } = nested.reduce((sum, r) => ({ added: sum.added + r.added, removed: sum.removed + r.removed }), numstat(root, base));
   const sec = securityPaths(root);
