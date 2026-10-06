@@ -99,7 +99,7 @@ test("an ungated phase's packet has no gate line", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const withComments =(value) => BLOCK.replace("Commit: 3f9c2a1", `Comments: ${value}\nCommit: 3f9c2a1`);
+const withComments = (value) => BLOCK.replace("Commit: 3f9c2a1", `Comments: ${value}\nCommit: 3f9c2a1`);
 
 test("comment proposals render numbered and add the keep option (T-3.1)", () => {
   const { root, id } = setup();

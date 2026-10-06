@@ -14,7 +14,7 @@ export function detectTooling(root) {
 }
 
 function detectedTooling(root) {
-  const out ={ test: null, lint: null, build: null, run: null, stack: null };
+  const out = { test: null, lint: null, build: null, run: null, stack: null };
   const pkg = join(root, "package.json");
   if (existsSync(pkg)) {
     const scripts = JSON.parse(readFileSync(pkg, "utf8")).scripts ?? {};

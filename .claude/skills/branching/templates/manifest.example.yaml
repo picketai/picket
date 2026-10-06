@@ -1,5 +1,3 @@
-# Annotated example of .claude/branching/manifest.yaml
-#
 # GENERATED and SELF-HEALED by the `branching` skill — not hand-maintained.
 # Purpose: map the umbrella's nested git repos. It records repos ONLY.
 # Branch/worktree state is read live from git, never stored here.

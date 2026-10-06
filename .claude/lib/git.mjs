@@ -4,7 +4,7 @@ import { BOOKKEEPING_PREFIXES } from "./paths.mjs";
 
 function git(root, args) {
   try {
-    return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trimEnd();
   } catch {
     return null;
   }

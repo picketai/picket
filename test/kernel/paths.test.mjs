@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
 import * as paths from "../../.claude/lib/paths.mjs";
@@ -159,6 +159,30 @@ test("relative locations read as POSIX paths and absolute ones sit under the roo
   assert.equal(paths.hostPath(root, "MEMORY.md"), join(root, ".claude", "MEMORY.md"));
   assert.equal(paths.workRoot(root), join(root, "work"));
   assert.deepEqual([...paths.BOOKKEEPING_PREFIXES], ["work/", ".claude/", ".tether/"]);
+});
+
+const PROMPT_FOLDERS = [".claude/skills", ".claude/agents", ".claude/rules"];
+
+function filesUnder(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    return entry.isDirectory() ? filesUnder(path) : [path];
+  });
+}
+
+function legacyMentions(text) {
+  return paths.LEGACY_LOCATIONS.filter((location) => text.includes(location));
+}
+
+test("the legacy-path scan flags the stale template header", () => {
+  assert.deepEqual(legacyMentions("# Annotated example of .claude/branching/manifest.yaml"), [paths.LEGACY.branchingManifest]);
+  assert.deepEqual(legacyMentions("# GENERATED and SELF-HEALED by the `branching` skill"), []);
+});
+
+test("no skill, agent or rule names a legacy location (T-3.5)", () => {
+  const offenders = PROMPT_FOLDERS.flatMap((folder) => filesUnder(resolve(folder)))
+    .flatMap((file) => legacyMentions(readFileSync(file, "utf8")).map((location) => `${file}: ${location}`));
+  assert.deepEqual(offenders, []);
 });
 
 test("repoRelative expresses a path from the project root and flags the outside", () => {
