@@ -1,0 +1,1 @@
+- [Transcript facts](transcript-facts.md) — continuation message shape in subagent transcripts, transcript location, hook timing baseline caveat
