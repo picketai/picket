@@ -15,6 +15,8 @@ tether drive --hit "GET /invoices?page=2" --human   # start on a free port, hit,
 tether drive --run "npm run cli -- list" --human    # a CLI: run and capture
 ```
 
+A drive longer than one simple command goes in a script file under the OS temp folder (for example `$TEMP/tether-drive.mjs`) and runs as `tether drive --run "node <file>"`, never as inline `node -e` code. When node fails with exit 126 and `Permission denied`, the machine refused that command line: move the code into a file instead of debugging the launcher.
+
 Add one `--hit "POST /path <json>"` per request the change affects; `--start "<cmd>"` overrides the detected start script. Files the drive itself changes (a record the POST created) are restored so the tree stays yours. Read the statuses and bodies it prints; fix and re-run until they match the request. A green suite is not verification. A change with no runtime surface (a pure function, a test, docs) records `no drivable surface: <reason>` instead. Never describe a drive you did not run; the ledger shows the gap.
 
 Fix what the checks find, then stage the touch set, and only stage it:
