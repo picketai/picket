@@ -1,0 +1,8 @@
+id: 20261007-fix-plugin-packaging-review-follow-ups
+lane: order
+title: Fix plugin packaging review follow-ups
+status: open
+created: 2026-10-07T17:45:14.712Z
+updated: 2026-10-07T18:00:02.941Z
+base: f2b0c9d10bc7baf67af9a787bbe74784d6cdc30d
+run_through: 3

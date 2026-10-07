@@ -3,8 +3,8 @@ import { isDriveCommand } from "../drive-evidence.mjs";
 import { listWork, deriveState } from "../work.mjs";
 import { stateDir, statePath, STATE_FILES } from "../paths.mjs";
 import { bareAgentName } from "../agent-name.mjs";
+import { kernelVerbStart } from "../kernel-call.mjs";
 
-const KERNEL_CALL = /\b(?:harness|tether)\.mjs\b|(?:^|[\s;&|(])(?:\S*\/)?tether\s/;
 const LOGGED_COMMAND_CHARS = 200;
 
 function openWorkItem(root) {
@@ -15,8 +15,21 @@ function openWorkItem(root) {
   return { work_id: null, phase: null };
 }
 
+function segmentWords(segment) {
+  return segment
+    .trim()
+    .replace(/^[({\s]+/, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.replace(/^["']|["']$/g, ""));
+}
+
+function isKernelCall(command) {
+  return command.split(/&&|\|\||;|\|/).some((segment) => kernelVerbStart(segmentWords(segment)) !== null);
+}
+
 function commandKind(command) {
-  return !KERNEL_CALL.test(command) && isDriveCommand(command) ? "drive" : "inspect";
+  return !isKernelCall(command) && isDriveCommand(command) ? "drive" : "inspect";
 }
 
 export function observeDrive(event, { root }) {

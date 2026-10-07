@@ -1,0 +1,17 @@
+const KERNEL_SCRIPT = /(?:^|\/)(?:harness|tether)\.mjs$/i;
+const KERNEL_LAUNCHER = "tether";
+const ENV_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+export function normalizeRoot(token) {
+  if (typeof token !== "string") return token;
+  const base = token.split(/[\\/]/).pop();
+  return base.replace(/\.exe$/i, "");
+}
+
+export function kernelVerbStart(words) {
+  let i = 0;
+  while (typeof words[i] === "string" && ENV_ASSIGNMENT.test(words[i])) i++;
+  if (normalizeRoot(words[i]) === KERNEL_LAUNCHER) return i + 1;
+  if (normalizeRoot(words[i]) === "node" && KERNEL_SCRIPT.test(String(words[i + 1] ?? "").replace(/\\/g, "/"))) return i + 2;
+  return null;
+}

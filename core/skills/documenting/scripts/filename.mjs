@@ -5,14 +5,8 @@
 // Prints the derived filename stem on stdout (numbered types include the NNNNN- prefix; a stem
 // that would start with report, summary, findings or analysis gets an about- prefix).
 import { readdirSync, existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-
-// Sequence scanning is anchored to the repo root derived from this script's own
-// location (.claude/skills/documenting/scripts → four levels up) — NOT the cwd.
-// A cwd-relative scan silently resets ADR/SDR sequences to 00001 and drops plan
-// prefixes when run from a subdirectory.
-const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
+import { projectRoot } from '../../../lib/paths.mjs';
 
 function die(msg) {
   process.stderr.write(`error: ${msg}\n`);
@@ -121,28 +115,29 @@ function safe(name) {
   return BLOCKED_BASENAME.test(name) ? `about-${name}` : name;
 }
 
+const root = projectRoot();
 let out;
 if (type === 'adr') {
-  const next = nextSequence(join(REPO_ROOT, 'artifacts/adr'));
+  const next = nextSequence(join(root, 'artifacts/adr'));
   out = `${String(next).padStart(5, '0')}-${stem}`;
 } else if (type === 'design') {
   // Design records live in artifacts/plans/ but share history with legacy ADR-prefixed
   // pairs, so the sequence scans BOTH directories — a new record must never collide
   // with a legacy pair's number in either.
   const next = Math.max(
-    nextSequence(join(REPO_ROOT, 'artifacts/adr')),
-    nextSequence(join(REPO_ROOT, 'artifacts/plans')),
+    nextSequence(join(root, 'artifacts/adr')),
+    nextSequence(join(root, 'artifacts/plans')),
   );
   out = `${String(next).padStart(5, '0')}-${stem}`;
 } else if (type === 'sdr') {
-  const next = nextSequence(join(REPO_ROOT, 'artifacts/strategy/decisions'));
+  const next = nextSequence(join(root, 'artifacts/strategy/decisions'));
   out = `${String(next).padStart(5, '0')}-${stem}`;
 } else if (type === 'plan') {
   // Plans inherit the paired ADR's prefix if a matching stem exists; otherwise unprefixed.
   let prefix = '';
-  if (existsSync(join(REPO_ROOT, 'artifacts/adr'))) {
+  if (existsSync(join(root, 'artifacts/adr'))) {
     const pattern = new RegExp(`^(\\d{5})-${stem}\\.md$`);
-    for (const name of readdirSync(join(REPO_ROOT, 'artifacts/adr'))) {
+    for (const name of readdirSync(join(root, 'artifacts/adr'))) {
       const match = pattern.exec(name);
       if (match && match[1] > prefix) prefix = match[1];
     }

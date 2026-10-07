@@ -35,6 +35,7 @@ import { appendFileSync, mkdirSync, readFileSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
+import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
 
@@ -180,32 +181,8 @@ function hasHiddenExecution(rawCommand) {
   );
 }
 
-/**
- * Dispatch on the executable's basename so path-invoked tools classify the
- * same as bare names: `"/c/Program Files/dotnet/dotnet.exe" test` is
- * `dotnet test`, `C:\...\git.exe push` is `git push`. Trade-off: a
- * look-alike binary planted at another path inherits the real tool's
- * classification — acceptable because this hook guards against accidental
- * damage by the agent's own commands, not deliberately staged binaries
- * (planting one is gated by guard.write / the normal prompt first).
- */
-function normalizeRoot(token) {
-  if (typeof token !== "string") return token;
-  const base = token.split(/[\\/]/).pop();
-  return base.replace(/\.exe$/i, "");
-}
-
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
-
-const KERNEL_SCRIPT = /(?:^|\/)(?:harness|tether)\.mjs$/i;
-const KERNEL_LAUNCHER = "tether";
-
-function kernelVerbStart(seg) {
-  if (normalizeRoot(seg[0]) === KERNEL_LAUNCHER) return 1;
-  if (normalizeRoot(seg[0]) === "node" && KERNEL_SCRIPT.test(String(seg[1] ?? "").replace(/\\/g, "/"))) return 2;
-  return null;
-}
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);

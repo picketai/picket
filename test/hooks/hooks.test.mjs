@@ -356,6 +356,28 @@ test("guard.bash judges the command a tether verb would run, by launcher or by s
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.bash looks past leading env assignments to the tether verb and what it wraps", () => {
+  const { root } = project();
+  const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
+  assert.equal(decision('FOO=1 tether drive --run "rm -rf src"'), "deny");
+  assert.equal(decision('FOO=1 BAR=2 node core/bin/tether.mjs check --only "git push --force origin trunk"'), "deny");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("observe.drive counts a command as a kernel call only when a segment starts with tether", () => {
+  const { root } = project();
+  const kind = (command) => {
+    run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s10" }, root);
+    return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).kind;
+  };
+  assert.equal(kind("cd ~/src/tether && npm start"), "drive");
+  assert.equal(kind("tether next x"), "inspect");
+  assert.equal(kind("cd repo && tether check"), "inspect");
+  assert.equal(kind('API_KEY=k tether drive --hit "GET /h"'), "inspect");
+  assert.equal(kind("node core/bin/tether.mjs state x"), "inspect");
+  rmSync(root, { recursive: true, force: true });
+});
+
 for (const payload of [{ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
   test(`inject.rules prints the four rules in order, without frontmatter, on ${payload.hook_event_name}`, () => {
     const { root } = project();
