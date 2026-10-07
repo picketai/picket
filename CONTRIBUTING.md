@@ -12,6 +12,17 @@ The `## Layout` section of `README.md` maps every top-level folder. New things g
 - A hook goes in `core/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`) and is registered in `core/hooks/hooks.json`. Its logic is a handler in `core/lib/hooks/` under the same name, and the file in `core/hooks/` is a shell that passes the handler to `runHook` (`core/lib/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items` and `security-paths`.
 
+## Installing from a local checkout
+
+In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plugin straight from `core/`. To try the installed form in another project, run these there, with the path of this checkout:
+
+```sh
+claude plugin marketplace add <path to this checkout> --scope project
+claude plugin install tether@tether-dev --scope project
+```
+
+The project's `.claude/settings.json` then holds only `extraKnownMarketplaces` and `enabledPlugins`. The marketplace name `tether-dev` is provisional. To undo it, run `claude plugin uninstall tether@tether-dev --scope project` and `claude plugin marketplace remove tether-dev --scope project`. A copy stays under `~/.claude/plugins/cache/tether-dev/`, marked orphaned.
+
 ## Code
 
 Code is Node ESM in `.mjs` files. Everything under `core/` imports only Node built-ins and paths inside `core/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The one third-party parser is vendored at `core/lib/vendor/shell-quote-parse.mjs`.

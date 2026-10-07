@@ -1,0 +1,12 @@
+{
+  "name": "tether-dev",
+  "description": "Development marketplace for the Tether plugin, served from this checkout.",
+  "owner": { "name": "Vlad Apetre" },
+  "plugins": [
+    {
+      "name": "tether",
+      "source": "./core",
+      "description": "Tether: a software-development harness for Claude Code with four lanes, four agents and one kernel."
+    }
+  ]
+}

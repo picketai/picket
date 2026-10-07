@@ -31,8 +31,7 @@ core/bin/tether            the kernel CLI on the Bash tool's PATH; core/bin/teth
 core/hooks/                eleven hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
                            state and rule injection, verdict router, ledger
 .claude/rules/             harness-authoring (repository-only, never installed)
-.claude/bin/harness.mjs,   one-line forwarders into core/ until the forwarders retire
-.claude/hooks/
+.claude-plugin/            the root marketplace tether-dev (provisional name): one plugin, tether, from ./core
 .tether/config.json        project settings (tracked): security paths, sources, lane caps, commands;
                            the contract is core/lib/config.schema.json
 .tether/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml

@@ -9,8 +9,7 @@ import { codeLines } from "./kernel-sources.mjs";
 const CORE = resolve("core");
 const SETTINGS = resolve(".claude/settings.json");
 const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
-const FORWARDER_HOOKS = resolve(".claude/hooks");
-const FORWARDER_CLI = resolve(".claude/bin/harness.mjs");
+const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const LAUNCHER = "core/bin/tether";
 const EXECUTABLE_MODE = "100755";
 
@@ -51,10 +50,6 @@ function importsLeavingCore() {
       .filter((specifier) => !staysInside(CORE, file, specifier))
       .map((specifier) => `${file}: ${specifier}`),
   );
-}
-
-function onlyLine(path) {
-  return readFileSync(path, "utf8").split(/\r?\n/).filter((line) => line.trim());
 }
 
 function registeredShells(hooks) {
@@ -113,14 +108,18 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("every .claude/hooks shell and the old CLI path is one import of its core/ counterpart", () => {
-  const shells = readdirSync(FORWARDER_HOOKS).filter((file) => file.endsWith(".mjs"));
-  assert.equal(shells.length, 11);
-  for (const shell of shells) {
-    assert.deepEqual(onlyLine(join(FORWARDER_HOOKS, shell)), [`import "../../core/hooks/${shell}";`], shell);
-    assert.equal(existsSync(join(CORE, "hooks", shell)), true, shell);
-  }
-  assert.deepEqual(onlyLine(FORWARDER_CLI), ['import "../../core/bin/tether.mjs";']);
+test("the root marketplace tether-dev serves the one tether plugin from core/", () => {
+  const marketplace = readJson(MARKETPLACE);
+  assert.equal(marketplace.name, "tether-dev");
+  assert.ok(marketplace.owner?.name);
+  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [{ name: "tether", source: "./core" }]);
+});
+
+test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin/ or .claude/skills/", () => {
+  const tracked = execFileSync("git", ["ls-files", "--", ".claude/hooks", ".claude/bin/harness.mjs"], { encoding: "utf8" });
+  assert.equal(tracked.trim(), "");
+  const allow = readJson(SETTINGS).permissions.allow;
+  assert.deepEqual(allow.filter((rule) => /\.claude\/(bin|skills)\//.test(rule)), []);
 });
 
 test("the tether launcher is tracked as executable", () => {

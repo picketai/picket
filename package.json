@@ -19,7 +19,7 @@
     "bench:test": "node --test bench/test/",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
-    "harness": "node core/bin/tether.mjs",
+    "tether": "node core/bin/tether.mjs",
     "claude": "claude --plugin-dir core"
   },
   "dependencies": {

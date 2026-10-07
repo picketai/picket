@@ -367,36 +367,6 @@ for (const payload of [{ hook_event_name: "SubagentStart", agent_type: "tether:d
   });
 }
 
-const FORWARDERS = resolve(".claude/hooks");
-
-function runShell(dir, hook, payload, root) {
-  return execFileSync("node", [join(dir, hook)], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
-}
-
-test("a .claude/hooks forwarder prints byte-identical output to its core/hooks shell", () => {
-  const { root, id } = project();
-  const payloads = [
-    ["guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "rm -rf src" }, cwd: root }],
-    ["guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root }],
-    ["inject.state.mjs", { hook_event_name: "SessionStart", source: "startup", cwd: root }],
-    ["inject.rules.mjs", { hook_event_name: "SubagentStart", agent_type: "tether:developer", cwd: root }],
-  ];
-  for (const [hook, payload] of payloads) {
-    const viaCore = runShell(HOOKS, hook, payload, root);
-    assert.ok(viaCore.length > 0, `${hook} printed nothing for ${JSON.stringify(payload.tool_input ?? payload.source)}`);
-    assert.equal(runShell(FORWARDERS, hook, payload, root), viaCore, hook);
-  }
-  assert.match(runShell(HOOKS, "inject.state.mjs", payloads[2][1], root), new RegExp(id));
-  rmSync(root, { recursive: true, force: true });
-});
-
-test("the old CLI path forwards to core/bin/tether.mjs and prints the same JSON", () => {
-  const { root, id } = project();
-  const state = (bin) => execFileSync("node", [bin, "state", id, "--root", root], { encoding: "utf8" });
-  assert.equal(state(resolve(".claude/bin/harness.mjs")), state(BIN));
-  rmSync(root, { recursive: true, force: true });
-});
-
 function listTree(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
