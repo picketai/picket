@@ -4,7 +4,7 @@ description: >
   Runs the golden task suite against a harness and prints the metric table: pass@1 and
   pass^k, route agreement, cost and its variance, time to first reviewable output, stops,
   prompts, re-reads, cache hit ratio. Use when the user says "benchmark", "run the bench",
-  "baseline", "compare trunk and rework", "did this change regress", or after any edit to an
+  "baseline", "compare plugin and trunk", "did this change regress", or after any edit to an
   agent, skill, hook or CLAUDE.md. Spends real API budget: always dry-run first and quote the
   expected cost.
 user-invocable: true
@@ -14,7 +14,7 @@ user-invocable: true
 
 Paths cited here and in this skill's step files, such as `benchmarking/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
 
-`/tether:benchmarking <run|baseline|check|report> [--harness trunk|rework] [--tasks all|lane:<lane>|<id,...>] [--runs N]`
+`/tether:benchmarking <run|baseline|check|report> [--harness plugin|trunk] [--tasks all|lane:<lane>|<id,...>] [--runs N]`
 
 Everything is code under `bench/`; this skill only chooses the arguments and reads the result. Read `bench/README.md` once if the layout is new to you.
 

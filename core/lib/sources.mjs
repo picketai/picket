@@ -267,11 +267,6 @@ function choose(t, sourceName, found) {
   return { rec: { ref: t.ref, source: sourceName, path: t.path, status: "ambiguous", candidates: found.map((c) => c.label) }, bytes: null };
 }
 
-/**
- * Resolves every reference in the story against the reachable sources, reading git only. Writes
- * nothing, so a failing pin can stop `harness new` before the work item exists.
- * @returns {{ refs: object[], unmatched: string[], failures: string[], bytes: Map<string, Buffer> }}
- */
 export function resolveReferences(text, sources) {
   const reachable = sources.filter((s) => s.root);
   const placesOf = new Map(reachable.map((s) => [s.name, places(s.root)]));

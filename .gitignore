@@ -20,6 +20,7 @@ artifacts/sessions/*
 # benchmark scratch (fixture template with node_modules, per-run repos, spend log)
 bench/.cache/
 bench/.runs/
+spike/.runs/
 bench/results/spend.log
 bench/fixture/node_modules/
 bench/results/smoke*.json

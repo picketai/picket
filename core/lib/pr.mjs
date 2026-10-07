@@ -109,12 +109,6 @@ export function fetchPullRequest(root, remote, id) {
   return { ref: local, head, base: parents[0], source: parents[1] };
 }
 
-/**
- * The PAT, from the process environment first (a `setx AZDO_PAT …` user variable, or the `env`
- * block of .claude/settings.local.json that Claude Code applies to the session), then from that
- * local settings file directly, so `harness pr` also works from a plain shell. Never from a tracked
- * file, and never printed.
- */
 export function patFromEnv(env = process.env, root = process.cwd()) {
   for (const v of PAT_VARS) if (env[v]) return env[v];
   try {

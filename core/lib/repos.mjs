@@ -1,9 +1,6 @@
 // Nested repositories: product repos cloned inside the project (an umbrella), each with its own .git.
 // The root's `git diff` sees such a repo only as one untracked entry (`src/Rent/`), so the review
 // summary diffs each one in its own work tree, against the HEAD it had when the work item opened.
-//
-//   work/<id>/repos.yaml   repos: [{ path, base }], written once by `harness new`; absent when the
-//                          project has no nested repos
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse, stringify } from "./yaml-lite.mjs";

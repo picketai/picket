@@ -7,7 +7,6 @@
 //   work/<id>/phases/N.approved marker: user approved phase N
 //   work/<id>/phases/N.reviewed marker: reviewer passed phase N (checkpoint or cumulative)
 //   work/<id>/verdicts.jsonl    one line per verdict: { ts, agent, verdict, phase }
-//   work/<id>/request.md        the request as given to `harness new`, written once (optional)
 //   work/<id>/repos.yaml        each nested repo's HEAD at creation (see repos.mjs)
 //   work/<id>/story.md          the ticket's text as fetched, written once (optional)
 //   work/<id>/sources.yaml      the story's resolved references, snapshots in sources/ (sources.mjs)

@@ -142,11 +142,6 @@ function repoReport({ path, worktree, base, base_from, changed, skipped }) {
   return { path, worktree, base, base_from, files: changed.length };
 }
 
-/**
- * Each nested repo diffed in its work tree: the linked worktree on the item's branch when there is
- * one, else the repo path; against the base recorded at `harness new`, else merge-base with the
- * repo's default branch. Changed paths come back prefixed with the repo path.
- */
 function nestedChanges(id, root, branch) {
   const bases = readBases(id, root);
   return nestedRepos(root).map((repo) => {

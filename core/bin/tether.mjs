@@ -100,7 +100,6 @@ async function main(argv) {
       return 0;
     }
     case "set": {
-      // harness set <id> status=done | status=blocked blocked_reason="why" | branch=feat/x | title="..."
       if (!rest[0] || rest.length < 2) throw new Error('set needs <id> and key=value pairs (status, blocked_reason, branch, title, run_through)');
       const st = readState(rest[0], root);
       for (const kv of rest.slice(1)) {

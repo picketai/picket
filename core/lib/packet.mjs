@@ -1,8 +1,3 @@
-// The gate packet, rendered by code. The lead used to compose it from the developer's block by
-// hand, so it came out as one dense paragraph with 40-word sentences and a Decisions line that
-// wrapped three times. Now the hook saves the developer's block next to the phase markers and
-// `harness packet <id>` renders a fixed shape with a width cap: what the user sees at a stop is the
-// same every time, and the lead prints it verbatim.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ARTIFACT_BY_LANE, deriveState, projectRoot, readArtifact, workDir } from "./work.mjs";
@@ -129,10 +124,6 @@ function describeCandidates(ref, root) {
   });
 }
 
-/**
- * The lines the lead prints at a stop, for whatever `harness next` says. Empty options means no
- * decision is due and the packet is a status line.
- */
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const s = deriveState(id, root);
   const n = next(id, root);
