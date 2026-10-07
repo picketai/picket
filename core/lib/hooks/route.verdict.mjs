@@ -26,6 +26,13 @@ function keepPullRequestReview(id, verdict, text, root) {
   return `tether: ${verdict} recorded for ${id}; block saved to ${stateRel(name)}. Print it verbatim, then offer [p] post to the PR · [d] done.`;
 }
 
+const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
+
+function unsavedBlockNote(info, verdict) {
+  if (info || !DEVELOPER_VERDICTS.includes(verdict)) return "";
+  return "\nBlock not saved: it has no `## Phase <n> of <id>: <title>` heading, so the gate packet shows \"not reported\". Re-emit the block in the developer contract shape.";
+}
+
 function saveDeveloperBlock(info, id, phase, text, root) {
   if (info?.agent !== "developer" || phase == null) return;
   try {
@@ -38,10 +45,11 @@ function applyVerdict({ event, info, hints, id, verdict, text, root }) {
   const phase = info?.phase ?? hints.phase ?? undefined;
   const agent = info?.agent ?? (["approved", "rejected"].includes(verdict) ? "user" : event.agent_type ?? "lead");
   const amend = text.match(/^AMENDMENT NEEDED:.*$/m)?.[0] ?? null;
+  const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, root);
   const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined });
   const next = routed.next;
-  return `tether: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}`;
+  return `tether: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
 
 function routeTurn(event, root) {

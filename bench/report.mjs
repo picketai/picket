@@ -7,6 +7,7 @@
 //
 import { readFileSync } from "node:fs";
 import { agreement, cv, mean, passAt1, passHatK, percentile, round, stderr } from "./lib/metrics.mjs";
+import { laneMatches } from "./lib/lanes.mjs";
 
 function load(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -46,17 +47,6 @@ function taskRow(task, rs, k) {
     cache: mean(rs.map((r) => r.cache_hit_ratio).filter(Number.isFinite)),
     tokens_per_line: mean(rs.map((r) => (r.lines_added ? r.tokens_total / r.lines_added : NaN)).filter(Number.isFinite)),
   };
-}
-
-/** The trunk harness has no lane vocabulary; map its routes onto the intended lane. */
-function laneMatches(r) {
-  const lane = r.signals?.lane;
-  const want = r.lane_expected;
-  if (!lane) return false;
-  if (r.harness === "rework") return lane === want;
-  if (want === "fast") return lane === "direct" || lane === "expedited";
-  if (want === "research") return lane === "direct" || lane === "delegated";
-  return lane === "pipeline";
 }
 
 function suite(rows) {

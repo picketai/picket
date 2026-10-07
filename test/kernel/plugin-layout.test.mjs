@@ -91,7 +91,7 @@ test(".claude/ tracks no skills, agents or output styles", () => {
 });
 
 test("the manifest lists every skill folder once, in name order", () => {
-  const folders = readdirSync(join(CORE, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => `./skills/${e.name}`).sort();
+  const folders = readdirSync(join(CORE, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => `./skills/${e.name}`).sort();
   const manifest = readJson(join(CORE, ".claude-plugin", "plugin.json"));
   assert.equal(manifest.name, "tether");
   assert.deepEqual(manifest.skills, folders);

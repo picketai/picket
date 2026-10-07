@@ -48,7 +48,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../lib/comments.mjs';
+import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../../core/lib/comments.mjs';
 
 // ---------------------------------------------------------------- args
 

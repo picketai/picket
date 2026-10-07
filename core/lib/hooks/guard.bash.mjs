@@ -802,9 +802,6 @@ export function guardBash(input, { root }) {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);
     }
-    // A kernel verb that runs a command string on the agent's behalf (drive --run/--start,
-    // check --only) is a wrapper. Classify what it wraps, or the allow rule for harness.mjs
-    // becomes a bypass: `tether drive --run "rm -rf src"` must be judged as `rm -rf src`.
     for (const inner of wrappedCommands(seg)) {
       if (hasHiddenExecution(inner)) return fallThrough("wrapped-hidden-execution");
       let innerTokens;

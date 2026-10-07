@@ -46,6 +46,26 @@ test("route.verdict applies PHASE DONE from a developer block and reports the ne
   rmSync(root, { recursive: true, force: true });
 });
 
+test("route.verdict saves the block of a plugin-prefixed tether:developer", () => {
+  const { root, id } = project();
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s5", transcript_path: tp, cwd: root, agent_type: "tether:developer" }, root);
+  assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /Block not saved/);
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.block.md")), true);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("route.verdict tells a tether:developer whose block has no phase heading that it was not saved", () => {
+  const { root, id } = project();
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "Phase 1 is staged.\n\n**Checks:** tests passed\n\nPHASE DONE" }])]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s6", transcript_path: tp, cwd: root, agent_type: "tether:developer" }, root);
+  assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.match(out.hookSpecificOutput.additionalContext, /Block not saved: it has no `## Phase <n> of <id>: <title>` heading/);
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.block.md")), false);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("route.verdict reads the block a subagent handed back, not the paraphrase after it", () => {
   const { root, id } = project();
   // The lead's transcript opens with the user's request, so it holds no `work:` hint.

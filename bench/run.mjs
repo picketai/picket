@@ -3,7 +3,6 @@
 // eager-approver user, HARD grading, and one JSON record per run appended to the results file.
 //
 //   node bench/run.mjs --harness trunk --tasks all --runs 5 --out bench/results/trunk.json
-//   node bench/run.mjs --harness rework --tasks lane:fast,order-07 --runs 1 --keep
 //
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync, cpSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -18,6 +17,7 @@ import { trustWorkspace, untrustWorkspace } from "./lib/trust.mjs";
 
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(BENCH, "..");
+const HARNESSES = ["plugin", "trunk"];
 /** Errors that mean the account, not the harness, ran out: session, usage and rate limits. */
 const QUOTA = /session limit|usage limit|rate limit|quota|overloaded/i;
 
@@ -52,7 +52,7 @@ function loadTasks(filter) {
 }
 
 function defaultHarnessRoot(name) {
-  if (name === "rework") return ROOT;
+  if (name === "plugin") return ROOT;
   // trunk lives in the main checkout; this file runs from <main>/.worktrees/rework/bench
   const main = resolve(ROOT, "..", "..");
   if (existsSync(join(main, ".claude", "agents", "developer.md"))) return main;
@@ -91,7 +91,7 @@ function manifest(adapter, harnessRoot, fixtureHash, args) {
     harness: adapter.name,
     harness_root: harnessRoot,
     harness_commit: sh("git rev-parse --short HEAD", harnessRoot),
-    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .tether CLAUDE.md", harnessRoot) ? true : false,
+    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .tether core CLAUDE.md", harnessRoot) ? true : false,
     fixture_hash: fixtureHash,
     claude_version: sh("claude --version"),
     node_version: process.version,
@@ -169,7 +169,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       allowedTools: adapter.allowedTools,
       maxBudgetUsd: args.budget ?? task.budget_usd ?? 10,
       maxTurns: task.max_turns ?? 150,
-      pluginDir: adapter.pluginDir,
+      pluginDir: adapter.pluginDir?.(harnessRoot),
       model: adapter.model,
       timeoutMs,
       eventsPath,
@@ -273,6 +273,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (!HARNESSES.includes(args.harness)) throw new Error(`unknown harness ${args.harness}; use ${HARNESSES.join(" or ")}`);
   const adapter = await import(`./adapters/${args.harness}.mjs`);
   const harnessRoot = resolve(args.harnessRoot ?? defaultHarnessRoot(args.harness));
   const tasks = loadTasks(args.tasks);

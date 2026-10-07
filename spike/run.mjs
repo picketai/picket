@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { buildTemplate, materializeRun } from "../bench/lib/fixture.mjs";
 import { runClaude } from "../bench/lib/claude.mjs";
 import { trustWorkspace, untrustWorkspace } from "../bench/lib/trust.mjs";
-import * as rework from "../bench/adapters/rework.mjs";
+import * as pluginAdapter from "../bench/adapters/plugin.mjs";
 
 const SPIKE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SPIKE, "..");
@@ -182,7 +182,7 @@ async function runCheck(name) {
       cwd: repo,
       prompt: spec.prompt,
       permissionMode: "acceptEdits",
-      allowedTools: rework.allowedTools,
+      allowedTools: pluginAdapter.allowedTools,
       maxBudgetUsd: 1,
       maxTurns: 30,
       timeoutMs: 10 * 60_000,
@@ -249,8 +249,8 @@ const round1 = (n) => Math.round(n * 10) / 10;
 function timeHooks() {
   const runDir = join(SPIKE, ".runs", "9");
   const { repo } = materializeRun({ template: template(), runDir });
-  rework.install(repo, ROOT);
-  const locations = { current: join(ROOT, ".claude", "hooks"), plugin: join(SPIKE, "tether-full", "hooks") };
+  pluginAdapter.install(repo, ROOT);
+  const locations = { current: join(ROOT, ".claude", "hooks"), plugin: join(ROOT, "core", "hooks") };
   const out = join(OUT, "9.jsonl");
   mkdirSync(OUT, { recursive: true });
   rmSync(out, { force: true });
@@ -263,7 +263,7 @@ function timeHooks() {
       const samples = [];
       for (let i = 0; i < 20; i++) {
         const t = process.hrtime.bigint();
-        spawnSync("node", [join(dir, file)], { input, cwd: repo, env: { ...process.env, CLAUDE_PROJECT_DIR: repo, CLAUDE_PLUGIN_ROOT: join(SPIKE, "tether-full") }, encoding: "utf8" });
+        spawnSync("node", [join(dir, file)], { input, cwd: repo, env: { ...process.env, CLAUDE_PROJECT_DIR: repo, CLAUDE_PLUGIN_ROOT: join(ROOT, "core") }, encoding: "utf8" });
         samples.push(Number(process.hrtime.bigint() - t) / 1e6);
       }
       row[where] = { median_ms: round1(median(samples)), min_ms: round1(Math.min(...samples)), max_ms: round1(Math.max(...samples)) };

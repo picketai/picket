@@ -17,4 +17,4 @@ Code decides what code can decide. Before writing a rule in prose, ask whether `
 
 One copy of every fact. Procedure lives in the step file that uses it; the shell and SKILL.md point at it. A skill's description carries `Use when` followed by concrete trigger phrasings, at most 1024 characters. References go one hop: SKILL.md to steps/ or templates/, never further.
 
-Run `npm test` before committing. It covers the kernel, the budgets, and the bench statistics. Run `node bench/run.mjs --harness rework --tasks lane:fast --runs 1` after a contract change and compare with `node bench/report.mjs bench/results/baseline-trunk.json <new>`.
+Run `npm test` before committing. It covers the kernel, the budgets, and the bench statistics. Run `node bench/run.mjs --harness plugin --tasks lane:fast --runs 1` after a contract change and compare with `node bench/report.mjs bench/results/baseline-trunk.json <new>`.
