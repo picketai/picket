@@ -4,6 +4,7 @@ import { listWork, deriveState } from "../work.mjs";
 import { stateDir, statePath, STATE_FILES } from "../paths.mjs";
 import { bareAgentName } from "../agent-name.mjs";
 import { kernelVerbStart } from "../kernel-call.mjs";
+import { parse } from "../vendor/shell-quote-parse.mjs";
 
 const LOGGED_COMMAND_CHARS = 200;
 
@@ -15,17 +16,25 @@ function openWorkItem(root) {
   return { work_id: null, phase: null };
 }
 
-function segmentWords(segment) {
-  return segment
-    .trim()
-    .replace(/^[({\s]+/, "")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word.replace(/^["']|["']$/g, ""));
+function tokenize(command) {
+  try {
+    return parse(command);
+  } catch {
+    return [];
+  }
+}
+
+function commandSegments(command) {
+  const segments = [[]];
+  for (const token of tokenize(command)) {
+    if (typeof token === "string") segments.at(-1).push(token);
+    else if (token.op && token.op !== "glob") segments.push([]);
+  }
+  return segments.map((words) => (words[0] === "{" ? words.slice(1) : words));
 }
 
 function isKernelCall(command) {
-  return command.split(/&&|\|\||;|\|/).some((segment) => kernelVerbStart(segmentWords(segment)) !== null);
+  return commandSegments(command).some((words) => kernelVerbStart(words) !== null);
 }
 
 function commandKind(command) {

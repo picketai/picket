@@ -375,6 +375,10 @@ test("observe.drive counts a command as a kernel call only when a segment starts
   assert.equal(kind("cd repo && tether check"), "inspect");
   assert.equal(kind('API_KEY=k tether drive --hit "GET /h"'), "inspect");
   assert.equal(kind("node core/bin/tether.mjs state x"), "inspect");
+  assert.equal(kind('node "D:/My Projects/x/core/bin/tether.mjs" next x'), "inspect");
+  assert.equal(kind('"/c/Users/John Smith/.claude/plugins/tether/bin/tether" next x'), "inspect");
+  assert.equal(kind("{ tether next x; }"), "inspect");
+  assert.equal(kind('curl -s "http://127.0.0.1:8080/tether ok"'), "drive");
   rmSync(root, { recursive: true, force: true });
 });
 
