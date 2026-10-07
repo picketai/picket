@@ -79,3 +79,11 @@ test("a plugin run is graded on its own lane names, like the rework runs before 
   assert.equal(laneMatches(run("trunk", "pipeline", "order")), true);
   assert.equal(laneMatches(run("trunk", "expedited", "fast")), true);
 });
+
+test("plugin signals read the research lane from the packet and closing heading the researching skill prints", () => {
+  const packet = "▶ report ready · 20261007-pricing\n  An invoice total is the sum of lines.\n\n[a] accept   [d] deeper pass   [x] reject: <why>";
+  const closed = "## Research closed: 20261007-pricing\n\nThe pricing chain has four steps.";
+  assert.equal(plugin.signals([packet, closed], { subagents: 1 }).lane, "research");
+  assert.equal(plugin.signals([closed], { subagents: 1 }).lane, "research");
+  assert.equal(plugin.signals(["▶ outline ready · 20261007-pricing"], { subagents: 1 }).lane, "research");
+});

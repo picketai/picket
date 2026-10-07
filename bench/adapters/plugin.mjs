@@ -59,7 +59,7 @@ const LANE_HEADINGS = [
   [/^##\s+Expedited:/m, "fast"],
   [/^##\s+Order closed:/m, "order"],
   [/^##\s+Design closed:/m, "design"],
-  [/^##\s+Report:|\boutline ready\b/m, "research"],
+  [/^##\s+(Report|Research closed):|\b(outline|report) ready\b/m, "research"],
 ];
 
 export function signals(texts, summary) {
