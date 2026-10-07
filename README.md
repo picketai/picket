@@ -2,32 +2,36 @@
 
 A software-development harness for Claude Code: four lanes, four agents, one kernel, and a benchmark that measures the harness itself.
 
-Code decides what code can decide. Lane admission, the next action, phase verification, verdict routing and cost all come from `node .claude/bin/harness.mjs <verb>`; the model fills in what remains. State is the filesystem: one directory per work item under `work/<id>/`, read fresh on every call, never remembered.
+Tether ships as a Claude Code plugin in `core/`. In this repository, start every session with `claude --plugin-dir core` (`npm run claude`).
+
+Code decides what code can decide. Lane admission, the next action, phase verification, verdict routing and cost all come from `tether <verb>`; the model fills in what remains. State is the filesystem: one directory per work item under `work/<id>/`, read fresh on every call, never remembered.
 
 ## Lanes
 
 | Lane | When | Who | Gates |
 |---|---|---|---|
-| fast (`expediting`) | at most 3 files, no new surface, dependency, security path or migration | main session | tests, lint, drive, commit |
-| order (`ordering`) | a bounded feature, at most 3 phases and 5 local decisions | architect, developer, reviewer | one user gate per phase (run grants allowed), one cumulative review |
-| design (`designing`) | security path, migration, irreversible step, cross-repo contract, or more than an order holds | architect, developer, reviewer | decisions plus phase 1 first, concurrent cross-check, per-phase gates, checkpoint on long plans, cumulative review |
-| research (`researching`) | a question that needs a report | analyst | outline first, deep pass on request |
+| fast (`tether:expediting`) | at most 3 files, no new surface, dependency, security path or migration | main session | tests, lint, drive, commit |
+| order (`tether:ordering`) | a bounded feature, at most 3 phases and 5 local decisions | architect, developer, reviewer | one user gate per phase (run grants allowed), one cumulative review |
+| design (`tether:designing`) | security path, migration, irreversible step, cross-repo contract, or more than an order holds | architect, developer, reviewer | decisions plus phase 1 first, concurrent cross-check, per-phase gates, checkpoint on long plans, cumulative review |
+| research (`tether:researching`) | a question that needs a report | analyst | outline first, deep pass on request |
 
-`harness admit --text "<request>"` picks the lane deterministically from the text and a repository probe, and re-checks it against the files actually touched.
+`tether admit --text "<request>"` picks the lane deterministically from the text and a repository probe, and re-checks it against the files actually touched.
 
 ## Layout
 
 ```
 CLAUDE.md                  under 2 KB, loaded on every turn
-.claude/rules/             path-scoped rules: work-items, security-paths, prose, comments (shipped);
-                           harness-authoring (repository-only, never installed)
-.claude/agents/            analyst, architect, developer, reviewer (shells, at most 120 lines)
-.claude/skills/            lane skills, consulting, documenting, reviewing, ticketing, branching,
+core/.claude-plugin/       the plugin manifest: name tether, version, the skills list
+core/rules/                work-items, security-paths, prose, comments: injected into the lead and every agent
+core/agents/               tether:analyst, architect, developer, reviewer (shells, at most 120 lines)
+core/skills/               lane skills, consulting, documenting, reviewing, ticketing, branching,
                            understanding, proofreading, summarizing, benchmarking, resuming, inspecting
-core/bin/tether.mjs        the kernel CLI (core/bin/tether launches it); core/lib/ its modules (no runtime dependencies)
-core/hooks/                ten hooks: guards, schema lint, drive observer, stall monitor, state injection, verdict router, ledger;
-                           hooks.json is their plugin form
-.claude/bin/harness.mjs,   one-line forwarders into core/ while this repository moves to the plugin
+core/output-styles/        tether:custom, the response rules
+core/bin/tether            the kernel CLI on the Bash tool's PATH; core/bin/tether.mjs runs it; core/lib/ its modules
+core/hooks/                eleven hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
+                           state and rule injection, verdict router, ledger
+.claude/rules/             harness-authoring (repository-only, never installed)
+.claude/bin/harness.mjs,   one-line forwarders into core/ until the forwarders retire
 .claude/hooks/
 .tether/config.json        project settings (tracked): security paths, sources, lane caps, commands;
                            the contract is core/lib/config.schema.json

@@ -4,7 +4,7 @@ import { listWork, deriveState } from "../work.mjs";
 import { stateDir, statePath, STATE_FILES } from "../paths.mjs";
 import { bareAgentName } from "../agent-name.mjs";
 
-const KERNEL_CALL = /\bharness\.mjs\b/;
+const KERNEL_CALL = /\b(?:harness|tether)\.mjs\b|(?:^|[\s;&|(])(?:\S*\/)?tether\s/;
 const LOGGED_COMMAND_CHARS = 200;
 
 function openWorkItem(root) {

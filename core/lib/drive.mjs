@@ -1,10 +1,3 @@
-// harness drive: start the app on a port, wait for it, hit it, stop it, and write the evidence row
-// the developer cannot write. One allow-listed command, so a runtime check costs zero permission
-// prompts, and the drive log shows what was actually observed instead of what was claimed.
-//
-//   harness drive --hit "GET /invoices?page=2"                 # start = package.json start script
-//   harness drive --start "npm start" --port 8080 --wait /health --hit "POST /invoices {json}"
-//   harness drive --run "npm run cli -- list"                  # a CLI has no port: run and capture
 import { spawn, execSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -162,11 +155,11 @@ export async function drive(o = {}) {
   const work = o.id ? { work_id: o.id, phase: null } : currentWork(root);
   if (o.phase != null) work.phase = Number(o.phase);
   const timeoutMs = Number(o.timeoutMs ?? 20_000);
-  const row = { ts: new Date().toISOString(), kind: "drive", source: "harness drive", work_id: work.work_id, phase: work.phase };
+  const row = { ts: new Date().toISOString(), kind: "drive", source: "tether drive", work_id: work.work_id, phase: work.phase };
 
   const before = treeSnapshot(root);
-  if (o.run) assertNotDestructive(o.run, "harness drive --run");
-  if (o.start) assertNotDestructive(o.start, "harness drive --start");
+  if (o.run) assertNotDestructive(o.run, "tether drive --run");
+  if (o.start) assertNotDestructive(o.start, "tether drive --start");
 
   if (o.run) {
     const t = Date.now();
@@ -180,7 +173,7 @@ export async function drive(o = {}) {
     }
     const side = restoreSideEffects(root, before, o.keepChanges);
     const r = { ok: code === 0, mode: "run", command: o.run, exit_code: code, ms: Date.now() - t, output: String(output).slice(-4000), ...side };
-    logRow(root, { ...row, command: `harness drive --run ${o.run}`.slice(0, 200), ok: r.ok, exit_code: code });
+    logRow(root, { ...row, command: `tether drive --run ${o.run}`.slice(0, 200), ok: r.ok, exit_code: code });
     return r;
   }
 
@@ -229,7 +222,7 @@ export async function drive(o = {}) {
   Object.assign(result, restoreSideEffects(root, before, o.keepChanges));
   logRow(root, {
     ...row,
-    command: `harness drive --start "${start}" ${hits.map((h) => `--hit "${h.method} ${h.path}"`).join(" ")}`.slice(0, 200),
+    command: `tether drive --start "${start}" ${hits.map((h) => `--hit "${h.method} ${h.path}"`).join(" ")}`.slice(0, 200),
     port,
     ok: result.ok,
     hits: result.hits.map((h) => ({ method: h.method, path: h.path, status: h.status, ms: h.ms })),

@@ -1,0 +1,23 @@
+{
+  "name": "tether",
+  "version": "1.0.0-alpha.0",
+  "description": "Tether: a software-development harness for Claude Code with four lanes, four agents and one kernel.",
+  "author": { "name": "Vlad Apetre" },
+  "skills": [
+    "./skills/benchmarking",
+    "./skills/branching",
+    "./skills/consulting",
+    "./skills/designing",
+    "./skills/documenting",
+    "./skills/expediting",
+    "./skills/inspecting",
+    "./skills/ordering",
+    "./skills/proofreading",
+    "./skills/researching",
+    "./skills/resuming",
+    "./skills/reviewing",
+    "./skills/summarizing",
+    "./skills/ticketing",
+    "./skills/understanding"
+  ]
+}

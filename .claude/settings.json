@@ -13,6 +13,7 @@
       "Edit",
       "Glob",
       "Grep",
+      "Bash(tether *)",
       "Bash(node .claude/bin/harness.mjs*)",
       "Bash(node .claude/scripts/*)",
       "Bash(node .claude/skills/documenting/scripts/*)",
@@ -41,43 +42,6 @@
       "Bash(git submodule*)"
     ]
   },
-  "hooks": {
-    "SessionStart": [
-      { "hooks": [
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/inject.state.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/inject.rules.mjs"] }
-      ] }
-    ],
-    "SubagentStart": [
-      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/inject.rules.mjs"] }] }
-    ],
-    "PreToolUse": [
-      { "matcher": "Write|Edit", "hooks": [
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.scope.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.comments.mjs"] }
-      ] },
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.bash.mjs"] }] }
-    ],
-    "PostToolUse": [
-      { "matcher": "Write|Edit", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/lint.schema.mjs"] }] },
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/observe.drive.mjs"] }] },
-      { "matcher": "Read|Grep|Glob|WebFetch|WebSearch", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/monitor.context.mjs"] }] }
-    ],
-    "Stop": [
-      { "hooks": [
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.block.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/route.verdict.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/emit.ledger.mjs"] }
-      ] }
-    ],
-    "SubagentStop": [
-      { "hooks": [
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.block.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/route.verdict.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/emit.ledger.mjs"] }
-      ] }
-    ]
-  },
-  "outputStyle": "custom",
+  "outputStyle": "tether:custom",
   "disableClaudeAiConnectors": true
 }

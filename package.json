@@ -19,7 +19,8 @@
     "bench:test": "node --test bench/test/",
     "bench:dry": "node bench/run.mjs --dry --harness trunk",
     "bench:report": "node bench/report.mjs",
-    "harness": "node core/bin/tether.mjs"
+    "harness": "node core/bin/tether.mjs",
+    "claude": "claude --plugin-dir core"
   },
   "dependencies": {
     "opensrc": "^0.7.2",

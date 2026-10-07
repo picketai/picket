@@ -407,7 +407,7 @@ test("guard.scope denies a model write under the legacy state folder (T-1.4)", (
   const { root } = project();
   const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, LEGACY.stateDir, STATE_FILES.driveLog) }, cwd: root }, root);
   assert.equal(out?.hookSpecificOutput.permissionDecision, "deny");
-  assert.match(out.hookSpecificOutput.permissionDecisionReason, /harness migrate/);
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /tether migrate/);
   rmSync(root, { recursive: true, force: true });
 });
 

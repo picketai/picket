@@ -156,7 +156,7 @@ test("preflight warns about legacy state until migrate has run (T-4.3)", () => {
     writeLegacy(root, LEGACY_LEDGER, "{}\n");
     const warning = preflight(id, root).checks.find((c) => c.name === "legacy_paths");
     assert.equal(warning?.level, "warn");
-    assert.match(warning.detail, /run harness migrate/);
+    assert.match(warning.detail, /run tether migrate/);
     migrate(root);
     assert.equal(preflight(id, root).checks.some((c) => c.name === "legacy_paths"), false);
     assert.ok(statSync(statePath(root, STATE_FILES.ledger)).isFile());

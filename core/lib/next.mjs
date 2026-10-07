@@ -30,7 +30,7 @@ export function next(id, root) {
   // the user's pick, before anyone reads it.
   const ambiguous = ambiguousRefs(workDir(id, root));
   if (ambiguous.length) {
-    return { ...base, action: "resolve_sources", actor: "user", detail: `${ambiguous.length} reference(s) differ across worktrees`, options: [`[p] pick: harness source pick ${id} <ref> <label>`] };
+    return { ...base, action: "resolve_sources", actor: "user", detail: `${ambiguous.length} reference(s) differ across worktrees`, options: [`[p] pick: tether source pick ${id} <ref> <label>`] };
   }
 
   if (s.lane === "fast") {

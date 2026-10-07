@@ -81,7 +81,7 @@ export function preflight(id, root = projectRoot()) {
   add("project_map", existsSync(map) ? "ok" : "warn", existsSync(map) ? "present" : "absent; the analyst can write one");
 
   const legacy = LEGACY_LOCATIONS.filter((rel) => existsSync(legacyPath(root, rel)));
-  if (legacy.length) add("legacy_paths", "warn", `${legacy.join(", ")} still present; run harness migrate`);
+  if (legacy.length) add("legacy_paths", "warn", `${legacy.join(", ")} still present; run tether migrate`);
 
   const config = loadConfig(root);
   if (config.error) add("config", "warn", `${config.error}; using the default security paths and no sources`);

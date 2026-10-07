@@ -43,16 +43,16 @@ test("CLAUDE.md stays under the always-on budget", { skip: !existsSync(join(ROOT
 
 test("agent shells, skills, step files and rules stay within their line budgets", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const over = [];
-  for (const p of walk(join(ROOT, ".claude", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
-  for (const p of walk(join(ROOT, ".claude", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
-  for (const p of walk(join(ROOT, ".claude", "skills"), (f) => /[\\/]steps[\\/].*\.md$/.test(f))) if (lines(p) > BUDGETS.step_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.step_lines}`);
+  for (const p of walk(join(ROOT, "core", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
+  for (const p of walk(join(ROOT, "core", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
+  for (const p of walk(join(ROOT, "core", "skills"), (f) => /[\\/]steps[\\/].*\.md$/.test(f))) if (lines(p) > BUDGETS.step_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.step_lines}`);
   for (const p of RULE_FOLDERS.flatMap((dir) => walk(dir, (f) => f.endsWith(".md")))) if (lines(p) > BUDGETS.rule_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.rule_lines}`);
   assert.deepEqual(over, []);
 });
 
 test("every skill has a description with a 'Use when' trigger and one declared route", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const problems = [];
-  for (const p of walk(join(ROOT, ".claude", "skills"), (f) => f.endsWith("SKILL.md"))) {
+  for (const p of walk(join(ROOT, "core", "skills"), (f) => f.endsWith("SKILL.md"))) {
     const text = readFileSync(p, "utf8").replace(/\r\n/g, "\n");
     const fm = text.match(/^---\n([\s\S]*?)\n---/);
     if (!fm) {

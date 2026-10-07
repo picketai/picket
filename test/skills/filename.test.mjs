@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const script = fileURLToPath(new URL("../../.claude/skills/documenting/scripts/filename.mjs", import.meta.url));
+const script = fileURLToPath(new URL("../../core/skills/documenting/scripts/filename.mjs", import.meta.url));
 
 function name(kind, subject) {
   return execFileSync(process.execPath, [script, "--kind", kind, subject], { encoding: "utf8" }).trim();

@@ -54,7 +54,7 @@ test("drive starts the detected app on a free port, hits it, stops it, and logs 
   const log = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(log.length, 1);
   assert.equal(log[0].kind, "drive");
-  assert.equal(log[0].source, "harness drive");
+  assert.equal(log[0].source, "tether drive");
   assert.deepEqual(log[0].hits.map((h) => h.status), [200, 200]);
 });
 

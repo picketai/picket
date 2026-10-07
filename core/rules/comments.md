@@ -8,9 +8,9 @@ The ban covers every comment form, doc comments included: XML `<summary>`, `<rem
 
 Only these lines are exempt: machine directives (`eslint-disable`, `@ts-expect-error`, `noqa`, `#pragma`, `SuppressMessage`), licence, copyright and SPDX headers, generated-file banners, shebang and encoding lines.
 
-A request or plan that asks to "document" behaviour never licenses comments. That text goes to an external document: a change list, or an API reference through `documenting api`.
+A request or plan that asks to "document" behaviour never licenses comments. That text goes to an external document: a change list, or an API reference through `tether:documenting api`.
 
-The one exception is a why for a specific value or condition that the code cannot show. Never write it yourself. Propose it to the user with path, line and text. Only an approval recorded with `harness comment <id> --path <p> --text "<t>"` lets it past `guard.comments`, the hook that denies an edit adding a comment line.
+The one exception is a why for a specific value or condition that the code cannot show. Never write it yourself. Propose it to the user with path, line and text. Only an approval recorded with `tether comment <id> --path <p> --text "<t>"` lets it past `guard.comments`, the hook that denies an edit adding a comment line.
 
 Example: `const ROUNDING = 0.5` rounds half-up because the tariff table is published that way. No name says that, so propose `src/fee.ts:42 "half-up: the tariff table is published that way"` and write it only after the user approves.
 

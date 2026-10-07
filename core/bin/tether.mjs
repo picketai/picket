@@ -1,31 +1,6 @@
 #!/usr/bin/env node
 // The kernel CLI. Every verb prints JSON on stdout (add --pretty for an indented copy, --human for a
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
-//
-//   harness admit [--request <file>|--text "<request>"] [--touched a,b]
-//   harness new --lane <fast|order|design|research> --title "<title>" [--id <slug>] [--source <ref>] [--text "<request>"|--request <file|->] [--ticket <KEY> --story <file>]
-//   harness list
-//   harness state <id>
-//   harness set <id> status=<open|blocked|done|abandoned> [blocked_reason="<why>"] [branch=<name>] [title="<t>"]
-//   harness next <id>
-//   harness preflight <id>
-//   harness verify <id> <phase> [--no-tests]
-//   harness route <id> --verdict "<TOKEN>" --agent <name> [--phase N] [--scope cumulative|checkpoint|crosscheck] [--through N] [--reason "<why>"]
-//   harness review-summary <id> [--base <commit>]
-//   harness cost [--session <id>] [--work <id>]
-//   harness find-verdict --text "<block>"
-//   harness drive --hit "GET /path" [--hit "POST /path <json>"]... [--start "<cmd>"] [--port N] [--wait /path]
-//   harness drive --run "<cli command>"
-//   harness check [--steps test,lint,build] [--only "<command>"]
-//   harness source find <name> <substring>          tracked files across every worktree and branch
-//   harness source grep <name> <regex> [--path <p>]  matching lines, identical hits merged
-//   harness source pick <id> <ref> <label>           the user's version of an ambiguous story reference
-//   harness source add <id> <ref>                    bring in a later reference (exit 2: ambiguous or missing)
-//   harness packet <id>            the gate packet for the current stop, as text (--json for the structure)
-//   harness review-summary --range <base>..<head>
-//   harness pr <url> [--repo <path>]   resolve (root, or a nested clone under src/), fetch and summarise a pull request
-//   harness pr <url> --post <review.md> [--dry-run]   post a reviewer block back as PR threads
-//
 import { readFileSync } from "node:fs";
 import { packet } from "../lib/packet.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../lib/pr.mjs";
@@ -82,7 +57,7 @@ async function main(argv) {
       // Skills inject this line with $ARGUMENTS; an empty request must not be an error, it must say so.
       const text = opt.text === true || opt.text === "" || (!opt.text && !opt.request) ? "" : readRequest(opt, "admit");
       if (!text.trim()) {
-        out({ lane: null, reasons: ["no request text given"], signals: {} }, opt, () => "lane: (none) · re-run with the request text: harness admit --text \"<request>\"");
+        out({ lane: null, reasons: ["no request text given"], signals: {} }, opt, () => "lane: (none) · re-run with the request text: tether admit --text \"<request>\"");
         return 0;
       }
       const r = admit(text, { root, touched: opt.touched ? String(opt.touched).split(",").filter(Boolean) : [] });
@@ -293,7 +268,7 @@ async function main(argv) {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (err) => {
-    console.error(`harness: ${err.message}`);
+    console.error(`tether: ${err.message}`);
     process.exit(1);
   },
 );

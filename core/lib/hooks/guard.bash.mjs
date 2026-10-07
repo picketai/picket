@@ -708,7 +708,7 @@ function redirectSource(targets, cwds, roots) {
 }
 
 function sourceDenial(name, what) {
-  return `guard.bash: ${what} acts inside source ${name}, which is read-only; read it through \`harness source\` and the snapshots, and never write, commit or run tools there.`;
+  return `guard.bash: ${what} acts inside source ${name}, which is read-only; read it through \`tether source\` and the snapshots, and never write, commit or run tools there.`;
 }
 
 /** Protected source worktrees for this project; [] when none, so the guard behaves as before. */
@@ -804,7 +804,7 @@ export function guardBash(input, { root }) {
     }
     // A kernel verb that runs a command string on the agent's behalf (drive --run/--start,
     // check --only) is a wrapper. Classify what it wraps, or the allow rule for harness.mjs
-    // becomes a bypass: `harness drive --run "rm -rf src"` must be judged as `rm -rf src`.
+    // becomes a bypass: `tether drive --run "rm -rf src"` must be judged as `rm -rf src`.
     for (const inner of wrappedCommands(seg)) {
       if (hasHiddenExecution(inner)) return fallThrough("wrapped-hidden-execution");
       let innerTokens;
@@ -815,11 +815,11 @@ export function guardBash(input, { root }) {
       }
       const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
       if (innerSegs.some((s) => classifySegment(s, effCwd) === "deny")) {
-        return decide("deny", `guard.bash: the command wrapped in a harness verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
+        return decide("deny", `guard.bash: the command wrapped in a tether verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
       }
       if (roots.length) {
         const hit = innerSegs.map((s) => (sourceAllowed(s) ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
-        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a harness verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
+        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a tether verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
       }
     }
   }

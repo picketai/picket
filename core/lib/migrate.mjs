@@ -55,7 +55,7 @@ function configAction(root) {
   const toPath = configPath(root);
   if (existsSync(toPath)) return { skip: { from, reason: `${to} exists; keeping both, merge ${from} by hand` } };
   const legacy = readLegacyConfig(fromPath);
-  if (!legacy) return { skip: { from, reason: "not a JSON object; fix it, then run harness migrate again" } };
+  if (!legacy) return { skip: { from, reason: "not a JSON object; fix it, then run tether migrate again" } };
   return { how: "converted", from, to, fromPath, toPath, config: { version: CONFIG_VERSION, ...legacy } };
 }
 

@@ -7,7 +7,9 @@ import { execFileSync } from "node:child_process";
 const ROOT = resolve(".");
 
 const UNSCANNED_PREFIXES = ["work/", "spike/", "tmp/", "artifacts/reports/", "bench/results/"];
-const SKILL_EXAMPLES = /^\.claude\/skills\/[^/]+\/examples\//;
+const SKILL_EXAMPLES = /^core\/skills\/[^/]+\/examples\//;
+const PLUGIN_DIR = "core/";
+const PLUGIN_SKILLS_DIR = "core/skills";
 
 const ELSEWHERE = [
   {
@@ -53,10 +55,6 @@ const ELSEWHERE = [
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
   { why: "planned by SDR-00001", paths: ["rules/"] },
-  {
-    why: "moved to core/rules/ by the plugin design phase 3; agents, skills and CONTRIBUTING.md cite the new path from phase 4",
-    paths: [".claude/rules/comments.md", ".claude/rules/prose.md", ".claude/rules/work-items.md"],
-  },
   { why: "cited by SDR-00001 where it stood before the move to .claude/lib/", paths: [".claude/hooks/lib/transcript.mjs"] },
 ];
 
@@ -105,11 +103,15 @@ function isScanned(file) {
   return file.endsWith(".md") && !UNSCANNED_PREFIXES.some((p) => file.startsWith(p)) && !SKILL_EXAMPLES.test(file);
 }
 
-function resolvesFrom(file, path, listing) {
+function resolvesUnder(dir, path, listing) {
   const trailing = path.endsWith("/") ? "/" : "";
+  return listing.has(posix.normalize(posix.join(dir, path)).replace(/\/$/, "") + trailing);
+}
+
+function resolvesFrom(file, path, listing) {
+  if (file.startsWith(PLUGIN_DIR) && resolvesUnder(PLUGIN_SKILLS_DIR, path, listing)) return true;
   for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
-    const candidate = posix.normalize(posix.join(dir, path)).replace(/\/$/, "") + trailing;
-    if (listing.has(candidate)) return true;
+    if (resolvesUnder(dir, path, listing)) return true;
     if (dir === ".") return false;
   }
 }

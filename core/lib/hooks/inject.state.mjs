@@ -16,14 +16,14 @@ function openItemsPart(root) {
   const open = listOpenWork(root).map((id) => deriveState(id, root));
   if (!open.length) return null;
   const lines = open.slice(0, SHOWN_ITEMS).map((s) => openItemLine(s, root));
-  const more = open.length > SHOWN_ITEMS ? `\n- and ${open.length - SHOWN_ITEMS} more (harness list)` : "";
-  return `# Open work items\n${lines.join("\n")}${more}\nResume with /resuming <id>; never re-derive state from the conversation.`;
+  const more = open.length > SHOWN_ITEMS ? `\n- and ${open.length - SHOWN_ITEMS} more (tether list)` : "";
+  return `# Open work items\n${lines.join("\n")}${more}\nResume with /tether:resuming <id>; never re-derive state from the conversation.`;
 }
 
 function sourcesPart(root) {
   const { sources } = loadConfig(root);
   if (!sources.length) return null;
-  const lines = sources.map((s) => `- ${s.name}: ${s.root ?? `unreachable (${s.reason})`} · read-only; use harness source find|grep and the snapshots`);
+  const lines = sources.map((s) => `- ${s.name}: ${s.root ?? `unreachable (${s.reason})`} · read-only; use tether source find|grep and the snapshots`);
   return `# Sources\n${lines.join("\n")}`;
 }
 

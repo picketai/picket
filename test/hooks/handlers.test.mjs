@@ -201,7 +201,7 @@ test("guardScope denies the legacy state folder and hook state in any case, not 
       const out = guard(tool_name, rel);
       assert.equal(out?.permissionDecision, "deny", `${tool_name} ${rel}`);
       assert.match(out.permissionDecisionReason, /\.claude\/ledger\//);
-      assert.match(out.permissionDecisionReason, /harness migrate/);
+      assert.match(out.permissionDecisionReason, /tether migrate/);
     }
     assert.equal(guard("Write", ".Claude/Ledger/drive-log.jsonl")?.permissionDecision, "deny");
     assert.equal(guard("Write", ".TETHER/State/drive-log.jsonl")?.permissionDecision, "deny");

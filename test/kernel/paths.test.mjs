@@ -172,7 +172,7 @@ test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits und
   assert.equal(paths.rulesDir(), join(root, "rules"));
 });
 
-const PROMPT_FOLDERS = [".claude/skills", ".claude/agents", ".claude/rules", "core/rules"];
+const PROMPT_FOLDERS = ["core/skills", "core/agents", ".claude/rules", "core/rules"];
 
 function filesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

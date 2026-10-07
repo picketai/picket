@@ -14,17 +14,12 @@ const FORWARDER_CLI = resolve(".claude/bin/harness.mjs");
 const LAUNCHER = "core/bin/tether";
 const EXECUTABLE_MODE = "100755";
 
-const PROJECT_HOOK_PREFIX = "${CLAUDE_PROJECT_DIR}/.claude/hooks/";
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
 
-const SPECIFIER_PATTERNS = [/\bfrom\s*["']([^"']+)["']/g, /\bimport\s*\(?\s*["']([^"']+)["']/g];
+const SPECIFIER_PATTERNS = [/\bfrom\s+["']([^"']+)["']/g, /\bimport\s+["']([^"']+)["']/g, /\bimport\(\s*["']([^"']+)["']/g];
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function asPluginHooks(settingsHooks) {
-  return JSON.parse(JSON.stringify(settingsHooks).replaceAll(PROJECT_HOOK_PREFIX, PLUGIN_HOOK_PREFIX));
 }
 
 function modulesUnder(dir) {
@@ -62,14 +57,44 @@ function onlyLine(path) {
   return readFileSync(path, "utf8").split(/\r?\n/).filter((line) => line.trim());
 }
 
-test("core/hooks/hooks.json is the settings hooks block with the plugin root swapped in", () => {
-  assert.deepEqual(readJson(PLUGIN_HOOKS).hooks, asPluginHooks(readJson(SETTINGS).hooks));
+function registeredShells(hooks) {
+  const commands = Object.values(hooks).flatMap((groups) => groups.flatMap((group) => group.hooks.flatMap((hook) => hook.args ?? [])));
+  return new Set(commands.filter((arg) => arg.startsWith(PLUGIN_HOOK_PREFIX)).map((arg) => arg.slice(PLUGIN_HOOK_PREFIX.length)));
+}
+
+function shellsOnDisk() {
+  return readdirSync(join(CORE, "hooks")).filter((file) => file.endsWith(".mjs"));
+}
+
+test("core/hooks/hooks.json registers every hook shell and only shells that exist", () => {
+  const registered = registeredShells(readJson(PLUGIN_HOOKS).hooks);
+  assert.deepEqual([...registered].sort(), shellsOnDisk().sort());
 });
 
-test("the hooks parity check fails when hooks.json drops one settings entry", () => {
-  const plugin = readJson(PLUGIN_HOOKS).hooks;
-  const dropped = { ...plugin, Stop: [{ hooks: plugin.Stop[0].hooks.slice(1) }] };
-  assert.notDeepEqual(dropped, asPluginHooks(readJson(SETTINGS).hooks));
+test("the registration check notices a shell that hooks.json drops", () => {
+  const hooks = readJson(PLUGIN_HOOKS).hooks;
+  const dropped = { ...hooks, Stop: [{ hooks: hooks.Stop[0].hooks.slice(1) }], SubagentStop: [{ hooks: hooks.SubagentStop[0].hooks.slice(1) }] };
+  assert.notDeepEqual([...registeredShells(dropped)].sort(), shellsOnDisk().sort());
+});
+
+test("hooks.json registers the six events the plugin needs", () => {
+  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["PostToolUse", "PreToolUse", "SessionStart", "Stop", "SubagentStart", "SubagentStop"]);
+});
+
+test(".claude/settings.json carries no hooks, so the plugin is the only loader", () => {
+  assert.equal("hooks" in readJson(SETTINGS), false);
+});
+
+test(".claude/ tracks no skills, agents or output styles", () => {
+  const tracked = execFileSync("git", ["ls-files", "--", ".claude/skills", ".claude/agents", ".claude/output-styles"], { encoding: "utf8" });
+  assert.equal(tracked.trim(), "");
+});
+
+test("the manifest lists every skill folder once, in name order", () => {
+  const folders = readdirSync(join(CORE, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => `./skills/${e.name}`).sort();
+  const manifest = readJson(join(CORE, ".claude-plugin", "plugin.json"));
+  assert.equal(manifest.name, "tether");
+  assert.deepEqual(manifest.skills, folders);
 });
 
 test("every import under core/ is a Node built-in or a path inside core/", () => {
@@ -84,7 +109,7 @@ test("the import check flags a module that reaches outside core/ or into a packa
 });
 
 test("the import scan reads static, side-effect and dynamic imports and skips comment lines", () => {
-  const text = 'import "../../core/hooks/a.mjs";\nconst m = await import("./b.mjs");\nexport { c } from "./c.mjs";\n// import "./d.mjs";';
+  const text = 'import "../../core/hooks/a.mjs";\nconst m = await import("./b.mjs");\nexport { c } from "./c.mjs";\n// import "./d.mjs";\nspawnSync("pandoc", ["--from", "markdown"]);';
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 

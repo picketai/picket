@@ -75,7 +75,7 @@ test("an ambiguous source reference is the user's pick before the artifact is wr
   writeFileSync(join(r, "work", s.id, "sources.yaml"), intake("ambiguous"));
   const n = next(s.id, r);
   assert.deepEqual([n.action, n.actor, n.detail], ["resolve_sources", "user", "1 reference(s) differ across worktrees"]);
-  assert.deepEqual(n.options, [`[p] pick: harness source pick ${s.id} <ref> <label>`]);
+  assert.deepEqual(n.options, [`[p] pick: tether source pick ${s.id} <ref> <label>`]);
   writeState({ ...s, status: "blocked", blocked_reason: "waiting" }, r);
   assert.equal(next(s.id, r).action, "resolve_block", "a block still comes first");
   writeState({ ...s, status: "open" }, r);
