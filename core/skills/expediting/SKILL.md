@@ -18,7 +18,11 @@ Admission is computed, not felt. The lane skill you are reading runs in the main
 
 Lane check for this request:
 
-!`tether admit --text "$ARGUMENTS" --human`
+```!
+tether admit --request - --human <<'TETHER_REQUEST_END'
+$ARGUMENTS
+TETHER_REQUEST_END
+```
 
 If the line above does not say `lane: fast`, stop here and run the named lane skill instead (`tether:ordering`, `tether:designing`, `tether:researching`). Do not argue with it in prose; a forced lane is written into the request as `lane: fast`.
 

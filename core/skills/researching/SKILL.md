@@ -18,7 +18,11 @@ Runs in the main session. One analyst per work item, spawned for the outline and
 
 Lane check for this request:
 
-!`tether admit --text "$ARGUMENTS" --human`
+```!
+tether admit --request - --human <<'TETHER_REQUEST_END'
+$ARGUMENTS
+TETHER_REQUEST_END
+```
 
 `research` continues here. A change request runs its own lane.
 

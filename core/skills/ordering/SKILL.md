@@ -19,7 +19,11 @@ Runs in the main session. You are the lead: you open the work item, spawn the ar
 
 Lane check for this request:
 
-!`tether admit --text "$ARGUMENTS" --human`
+```!
+tether admit --request - --human <<'TETHER_REQUEST_END'
+$ARGUMENTS
+TETHER_REQUEST_END
+```
 
 `order` continues here. `fast` runs `tether:expediting`; `design` runs `tether:designing`; `research` runs `tether:researching`.
 

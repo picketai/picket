@@ -19,7 +19,11 @@ Runs in the main session. You are the lead: one architect, one developer, one re
 
 Lane check for this request:
 
-!`tether admit --text "$ARGUMENTS" --human`
+```!
+tether admit --request - --human <<'TETHER_REQUEST_END'
+$ARGUMENTS
+TETHER_REQUEST_END
+```
 
 `design` continues here. Other lanes run their own skill. A forced `lane: design` in the request is honoured.
 
