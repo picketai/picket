@@ -34,7 +34,7 @@ One step file at a time, each under 80 lines. `tether next <id>` tells you which
 | `implement_phase` by developer | `steps/20-phase.md`: spawn or continue the developer for phase n |
 | `approve_phase` by user | `steps/30-gate.md`: render the gate packet, stop, apply the reply with `tether route` |
 | `review_cumulative` by reviewer | `steps/40-review.md`: compute the review summary, spawn the reviewer, route the verdict |
-| `close` | `tether set <id> status=done`, print the closing block, stop |
+| `close` | `tether close <id>`, print the closing block, stop |
 | `resolve_block` | print `blocked_reason`, ask the user how to proceed, stop |
 
 ## Rules of the lane

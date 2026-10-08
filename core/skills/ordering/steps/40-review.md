@@ -30,7 +30,7 @@ Continue `reviewer` (spawn it, type `tether:reviewer`, named `reviewer` only if 
 
 Wait for it. The hook routes it:
 
-`APPROVED`: `tether next` says `close` (or the next phase after a checkpoint). On close, run `tether set <id> status=done` and print the closing block from `SKILL.md`, adding `Questions: <the reviewer's line>` when it is not `none`; stop.
+`APPROVED`: `tether next` says `close` (or the next phase after a checkpoint). On close, run `tether close <id>` and print the closing block from `SKILL.md`, adding `Questions: <the reviewer's line>` when it is not `none`; stop.
 
 `CHANGES REQUIRED`: `SendMessage` the developer with `work: <id>`, `review: <the reviewer's findings verbatim>`, `phase: <the phase each finding belongs to>`. The developer fixes and ends with `PHASE DONE`; re-run this step, continuing the same reviewer instance. On the third `CHANGES REQUIRED` for this item, stop with the options `[c] continue with a fresh developer · [d] redesign · [x] accept as is`.
 

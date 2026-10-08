@@ -28,7 +28,7 @@ Lane check for this request:
 |---|---|
 | `write_artifact` by analyst | `steps/10-outline.md`: open the work item, spawn the analyst for the outline |
 | `approve_phase` by user (outline present) | render the packet below, stop; on `d`, `steps/20-deep.md`; on `a`, close |
-| `close` | `tether set <id> status=done`, print the closing block below, stop |
+| `close` | `tether close <id>`, print the closing block below, stop |
 
 ## The packet
 

@@ -37,7 +37,7 @@ One step file at a time, each under 80 lines. The phase loop and the user gate a
 | `review_checkpoint` by reviewer | `ordering/steps/40-review.md` with `scope: checkpoint` and `phase: <n>` |
 | `review_cumulative` by reviewer | `ordering/steps/40-review.md` |
 | `resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED` | `steps/40-amend.md`: continue the architect, then resume |
-| `close` | `tether set <id> status=done`, print the closing block, stop |
+| `close` | `tether close <id>`, print the closing block, stop |
 
 ## Rules of the lane
 
