@@ -624,3 +624,13 @@ test("inject.state lists open items", () => {
   assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`${id} · order · open`));
   rmSync(root, { recursive: true, force: true });
 });
+
+test("the spawned guard.bash allows a bare tether call chained with a read-only command and traces it", () => {
+  const { root, id } = project();
+  const command = `tether next ${id}; ls work`;
+  const out = run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root);
+  assert.equal(out.hookSpecificOutput.permissionDecision, "allow");
+  const trace = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.ok(trace.some((row) => row.outcome === "allow" && String(row.command).includes(`tether next ${id}`)), JSON.stringify(trace.at(-1)));
+  rmSync(root, { recursive: true, force: true });
+});

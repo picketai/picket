@@ -182,7 +182,8 @@ function hasHiddenExecution(rawCommand) {
 }
 
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
-const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
+export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
+const BARE_KERNEL = "tether";
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);
@@ -697,13 +698,9 @@ function protectedSources(root) {
   }
 }
 
-/**
- * Classify a single command segment (array of plain string tokens,
- * operators already stripped out by splitIntoSegments).
- * Returns one of: "safe" | "deny" | "unknown"
- */
 function classifySegment(tokens, cwd = process.cwd(), depth = 0) {
   if (!tokens.length) return "unknown";
+  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return "kernel";
   const root = normalizeRoot(tokens[0]);
 
   if (root === "sed") return checkSed(tokens);
@@ -830,10 +827,11 @@ export function guardBash(input, { root }) {
     return fallThrough("background"); // backgrounded process
   }
 
-  if (classifications.every((c) => c === "safe")) {
+  const inCompound = classifications.length > 1;
+  if (classifications.every((c) => c === "safe" || (c === "kernel" && inCompound))) {
     return decide(
       "allow",
-      `guard.bash: all sub-commands are read-only/inspection commands, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`
+      `guard.bash: every sub-command is read-only/inspection or a bare tether call that wraps no command, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`
     );
   }
 

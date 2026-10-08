@@ -9,7 +9,7 @@ import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
 import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
 import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
-import { guardBash } from "../../core/lib/hooks/guard.bash.mjs";
+import { guardBash, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
 import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
@@ -235,4 +235,30 @@ test("no helper is left under .claude/hooks/lib; all four live in core/lib (T-6.
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
   for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve("core/lib", helper)), true, helper);
+});
+
+test("guardBash allows a compound of read-only pieces and bare tether calls that wrap nothing", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(decision("tether next x; cat work/x/order.md | head -40"), "allow");
+    assert.equal(decision("cd sub && tether state x 2>&1"), "allow");
+    assert.equal(decision("tether state x"), null, "a lone tether call is left to the project's allow rule");
+
+    assert.equal(decision('API_KEY=k tether drive --hit "GET /h"'), null);
+    assert.equal(decision("node core/bin/tether.mjs next x; ls"), null);
+    assert.equal(decision("/usr/local/bin/tether next x; ls"), null);
+    assert.equal(decision('tether drive --run "npm start"; ls'), null);
+
+    assert.equal(decision("tether next x > out.txt"), null);
+    assert.equal(decision('tether admit --text "$(whoami)"'), null);
+    assert.equal(decision('tether drive --run "rm -rf src"'), "deny");
+  });
+});
+
+test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
+  const executed = ["core/lib/drive.mjs", "core/lib/check.mjs"].flatMap((file) =>
+    [...readFileSync(resolve(file), "utf8").matchAll(/assertNotDestructive\(o\.\w+, "tether \w+ (--[\w-]+)"\)/g)].map((m) => m[1]),
+  );
+  assert.deepEqual(executed.sort(), ["--only", "--run", "--start"]);
+  for (const flag of executed) assert.ok(WRAPPING_FLAGS.has(flag), flag);
 });
