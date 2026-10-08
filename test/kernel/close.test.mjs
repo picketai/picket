@@ -116,6 +116,38 @@ test("a refused commit leaves the item done and staged, and the next close commi
   rmSync(root, { recursive: true, force: true });
 });
 
+test("outside a git repository close marks the item done and commits nothing", () => {
+  const root = mkdtempSync(join(tmpdir(), "tether-close-norepo-"));
+  mkdirSync(join(root, ".tether"));
+  const { id } = createWork({ lane: "order", title: "No repo", root });
+  const r = tether(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(r.json.commit, null);
+  assert.match(stateText(root, id), /status: done/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("with the tether root in a repo subfolder, a retry after a refused commit closes the item", () => {
+  const repo = mkdtempSync(join(tmpdir(), "tether-close-sub-"));
+  const root = join(repo, "sub");
+  mkdirSync(join(root, ".tether"), { recursive: true });
+  const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", ...args], { encoding: "utf8" }).trim();
+  git("init", "-q");
+  const { id } = createWork({ lane: "order", title: "Sub root", root });
+  git("add", "-A");
+  git("commit", "-q", "-m", "base");
+  const hook = join(repo, ".git", "hooks", "commit-msg");
+  writeFileSync(hook, "#!/bin/sh\nexit 1\n");
+  chmodSync(hook, 0o755);
+  assert.equal(tether(root, "close", id).code, 2);
+  rmSync(hook);
+  const retried = tether(root, "close", id);
+  assert.equal(retried.code, 0, retried.stdout);
+  assert.equal(git("log", "-1", "--format=%s"), `chore: close ${id}`);
+  assert.ok(retried.json.committed.includes(`sub/work/${id}/state.yaml`), retried.json.committed.join(", "));
+  rmSync(repo, { recursive: true, force: true });
+});
+
 test("close --human prints the commit and warns about a dirty path outside work/", () => {
   const { root, id, git } = repoWithOpenItem();
   writeFileSync(join(root, "README.md"), "changed\n");

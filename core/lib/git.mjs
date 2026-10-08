@@ -14,6 +14,15 @@ export function isRepo(root) {
   return git(root, ["rev-parse", "--is-inside-work-tree"]) === "true";
 }
 
+export function repoPrefix(root) {
+  return git(root, ["rev-parse", "--show-prefix"]) ?? "";
+}
+
+export function filesInCommit(root, rev) {
+  const out = git(root, ["show", "--name-only", "--format=", rev]) ?? "";
+  return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+}
+
 export function branch(root) {
   return git(root, ["rev-parse", "--abbrev-ref", "HEAD"]);
 }
