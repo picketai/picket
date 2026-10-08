@@ -126,3 +126,10 @@ test("the tether launcher is tracked as executable", () => {
   const entry = execFileSync("git", ["ls-files", "-s", LAUNCHER], { encoding: "utf8" });
   assert.equal(entry.split(" ")[0], EXECUTABLE_MODE);
 });
+
+test("the plugin ships a shell launcher and a cmd launcher side by side, both running tether.mjs", () => {
+  for (const launcher of [LAUNCHER, `${LAUNCHER}.cmd`]) {
+    assert.equal(existsSync(resolve(launcher)), true, launcher);
+    assert.match(readFileSync(resolve(launcher), "utf8"), /tether\.mjs/, launcher);
+  }
+});

@@ -22,6 +22,8 @@ const ELSEWHERE = [
       ".tether/state/branching.yaml",
       ".tether/state/drive-log.jsonl",
       ".tether/state/ledger.jsonl",
+      ".tether/state/scratch/",
+      ".tether/state/scratch/drive.mjs",
       ".opensrc/",
       ".worktrees/",
       "artifacts/api/",

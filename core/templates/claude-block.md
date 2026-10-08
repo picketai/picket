@@ -4,7 +4,7 @@ Four lanes, four agents, one kernel. Code decides what code can decide; the mode
 
 ## Every request
 
-1. A change request: run `tether admit --text "<request>" --human` and invoke the one lane skill it names: `tether:expediting` (fast), `tether:ordering` (order), `tether:designing` (design), `tether:researching` (research). Never load a second lane skill to compare. A plain question: answer it.
+1. A change request: in the Bash tool, run `tether admit --request - --human` with the request in a quoted heredoc, and invoke the one lane skill it names: `tether:expediting` (fast), `tether:ordering` (order), `tether:designing` (design), `tether:researching` (research). Never load a second lane skill to compare. A plain question: answer it.
 2. State lives in `work/<id>/`. Read it with `tether state <id>` and `tether next <id>`. Never remember or re-derive it. `tether route` is the only way a verdict changes state.
 3. Agents are `tether:analyst`, `tether:architect`, `tether:developer`, `tether:reviewer`. Spawn by type, named by role, continue a live instance with `SendMessage`, never respawn one. The one fresh spawn: the cumulative review gets a new reviewer, `cumulative-reviewer`.
 4. Stop only at a user gate. The gate packet is `tether next` rendered: one line what happened, one line what changed, the bracket options. Never two stops in a row.
