@@ -1,7 +1,7 @@
 id: 20261007-observe-drive-tokenizes-with-shell-quote-parser
 lane: fast
 title: observe.drive tokenizes with shell-quote parser
-status: open
+status: done
 created: 2026-10-07T20:18:50.856Z
-updated: 2026-10-07T20:18:50.886Z
+updated: 2026-10-07T20:21:17.327Z
 base: e3cff9d0c2e7b9b4c37d4f445c4eaaa20a23b6d8
