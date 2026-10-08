@@ -101,12 +101,18 @@ phases:
     files:
       - bench/adapters/plugin.mjs
       - bench/test/adapters.test.mjs
+      - core/lib/init.mjs
+      - test/kernel/init.test.mjs
     greps:
       - path: bench/adapters/plugin.mjs
         pattern: init
+      - path: core/lib/init.mjs
+        pattern: plugins/cache/
+      - path: bench/adapters/plugin.mjs
+        pattern: Read\(//
     tests: true
     drive: true
-    security: false
+    security: true
 ---
 # Design: tether init sets up a project
 
@@ -128,11 +134,13 @@ A project gets Tether today through two `claude plugin` commands and hand edits,
 **Risks:**
 - **RISK-002** A user adds a `## Every request` line of their own inside the block; the next init replaces it. Mitigation: the template's last line says the block is rewritten by `tether init` and project lines belong under `## Project facts`.
 
-### D-003 (r2): init writes four settings keys into the project's `.claude/settings.json`
-**Decision:** Infrastructural decision that changes what runs without a prompt. Init merges into `<root>/.claude/settings.json` (created if missing, other keys untouched): `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"` (the lanes continue agents with `SendMessage`, and this repository's settings already carry it); `permissions.allow` gains `Bash(tether *)` and `PowerShell(tether *)` (R-004, R-005); `permissions.ask` gains `PowerShell(tether drive *)` and `PowerShell(tether check *)`, because `guard.bash` only sees the Bash tool, so a wrapped `--run`, `--start` or `--only` command through PowerShell keeps only the kernel's `core/lib/unsafe.mjs` layer, and an ask rule wins over the allow. Arrays are unioned in place: existing entries keep their order, missing ones are appended, nothing is removed. When `permissions.deny` already names a rule init would allow, init leaves it and prints a warning. No `additionalDirectories` entry is written (D-004).
+### D-003 (r3): init writes four settings keys into the project's `.claude/settings.json`
+**Decision:** Infrastructural decision that changes what runs without a prompt. Init merges into `<root>/.claude/settings.json` (created if missing, other keys untouched): `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"` (the lanes continue agents with `SendMessage`, and this repository's settings already carry it); `permissions.allow` gains `Bash(tether *)` and `PowerShell(tether *)` (R-004, R-005), and `Read(~/.claude/plugins/cache/tether-dev/**)`, a home-relative read rule for the installed plugin, built from the marketplace name so it moves with OQ-001. The Phase 7 run showed why: 21 of its 31 prompts were Read or Grep calls on the plugin's own skill and agent files outside the project. Both premises were checked. The docs (code.claude.com/docs/en/permissions, "Read and Edit") list `~/path` as a pattern anchored at the home folder, normalised to POSIX form on Windows, and say Read rules apply, best effort, to Grep and Glob. A project-scope install writes the plugin to `~/.claude/plugins/cache/tether-dev/tether/1.0.0-alpha.0/`: that folder holds `templates/`, which Phase 1 of this record added, and its files are dated 2026-10-08 19:53, after the Phase 4 commit. The rule names no machine-specific path. `permissions.ask` gains `PowerShell(tether drive *)` and `PowerShell(tether check *)`, because `guard.bash` only sees the Bash tool, so a wrapped `--run`, `--start` or `--only` command through PowerShell keeps only the kernel's `core/lib/unsafe.mjs` layer, and an ask rule wins over the allow. Arrays are unioned in place: existing entries keep their order, missing ones are appended, nothing is removed. When `permissions.deny` already names a rule init would allow, init leaves it and prints a warning. No `additionalDirectories` entry is written (D-004).
 **Instead of:** writing into `.claude/settings.local.json`: per-machine and gitignored, so another developer who clones the project gets the plugin but none of the rules it needs.
 **Risks:**
 - **RISK-003** `PowerShell(tether *)` lets a PowerShell `tether route <id> --verdict approved` run without a prompt. Mitigation: `Bash(tether *)` already allows the same today; route checks the agent owner, and the lane gates do not change.
+- **RISK-009** The docs call applying Read rules to Grep and Glob "best effort", so some Grep calls on the plugin may still prompt. Mitigation: T-7.3 counts every Read, Grep and Glob prompt on a plugin file, and the phase stalls with them if any remain.
+- **RISK-010** The rule also opens every other version under `tether-dev/` in the cache for reading, including orphaned ones. Mitigation: these are copies of the same open plugin and hold no project data; the rule allows reads only, never edits.
 
 ### D-004 (r2): `tether` resolves in both shells; free text and scratch stay inside the project
 **Decision:** Infrastructural decision. The plugin's `bin/` is already on PATH, so the fix is a `core/bin/tether.cmd` next to the shell script (`@node "%~dp0tether.mjs" %*`). A probe (2026-10-08, PowerShell 7, no log kept; the commands below reproduce it) put two files in one folder, `tprobe` holding `#!/bin/sh` and `echo sh`, and `tprobe.cmd` holding `@echo cmd %*`, then ran `$env:PATH = "$d;$env:PATH"; (Get-Command tprobe).Source; tprobe 'a "b" $c'`. The output was `...\tether-prec-probe\tprobe.cmd`, then `cmd "a "b" $c"`: PowerShell picks the `.cmd`, and the inner double quotes reach `cmd` unescaped, so a program behind it would split the text wrongly. Free text therefore never travels as an argument through PowerShell and `cmd`. The skills already pass requests on stdin through a quoted heredoc (`--request -`), and the steps that still say "a scratchpad file" (`ordering/steps/10-order.md`, `designing/steps/10-design.md`) are changed to that. Drive scripts, the one remaining scratch file, go to `.tether/state/scratch/`, inside the working directory and already ignored. This removes the out-of-project writes behind R-014, so init writes no `additionalDirectories`.
@@ -158,8 +166,8 @@ A project gets Tether today through two `claude plugin` commands and hand edits,
 **Risks:**
 - **RISK-007** A real secret passed with `--env` shows in the transcript. Mitigation: the drive guidance says to drive with test values only, as the security-paths rule already requires for logs and artifacts.
 
-### D-008: the bench installs through `tether init --no-install`
-**Decision:** Infrastructural decision. `bench/adapters/plugin.mjs` `install()` stops copying this repository's `CLAUDE.md` and `.claude/settings.json` and runs `node <harness>/core/bin/tether.mjs init --no-install --root <repo>` instead, so the bench measures the files a user gets. One measurement run on the three tasks with the most prompts closes the record.
+### D-008 (r2): the bench installs through `tether init --no-install`
+**Decision:** Infrastructural decision. `bench/adapters/plugin.mjs` `install()` stops copying this repository's `CLAUDE.md` and `.claude/settings.json` and runs `node <harness>/core/bin/tether.mjs init --no-install --root <repo>` instead, so the bench measures the files a user gets. Bench runs load the plugin from this checkout's `core/` through `--plugin-dir`, not from the cache, so D-003's cache rule does not reach them. The adapter therefore adds a read rule for that folder to the `--allowedTools` it already passes on the command line: `Read(//<core, POSIX form>/**)`, for example `Read(//d/workspace/github/AISpec/.worktrees/framework/core/**)`. It does not use `--add-dir`, because an added working directory also accepts edits under `acceptEdits` (the bench's mode) and loads that folder's configuration; a run must never edit the harness it measures. The machine-specific path lives only on the command line, never in settings. The first measurement run (Phase 7, three tasks) is followed by one rerun of `gate-13-api-key-auth` after the read rules land.
 **Instead of:** keeping the copy: it measures this repository's settings (with `Bash(npm run *)`, `Bash(git commit *)` and the rest), not the project init writes, so the prompt rate it reports would not be the product's.
 **Risks:**
 - **RISK-008** The bench's cost baseline moves because `CLAUDE.md` changes. Mitigation: the measurement compares prompts per task first; cost is reported, not gated.
@@ -288,14 +296,18 @@ A project gets Tether today through two `claude plugin` commands and hand edits,
 **Touch set:**
 - `bench/adapters/plugin.mjs`: install runs `init --no-install`
 - `bench/test/adapters.test.mjs`: install holds init's files
-- `bench/results/plugin-init.json`: the measurement record
+- `bench/results/plugin-init.json`: the first measurement record
+- `bench/results/plugin-init-gate13.json`: the rerun record
+- `core/lib/init.mjs`: plugin cache read rule
+- `test/kernel/init.test.mjs`: the rule, merged once
 
-**Changes:** Per D-008, `install(repo, harnessRoot)` keeps the manifest check, copies `.tether/config.json` as today (for sources), creates `work/`, and runs `node <harnessRoot>/core/bin/tether.mjs init --no-install --root <repo>` instead of copying `CLAUDE.md` and `.claude/settings.json`; a non-zero exit throws with the step lines. The adapter test asserts the installed `CLAUDE.md` contains the template and the settings hold the D-003 keys and no `hooks`. Then one measured run, dry-run first: `node bench/run.mjs --harness plugin --tasks gate-13-api-key-auth,gate-14-status-migration,order-08-validation --runs 1 --budget-usd 8 --out bench/results/plugin-init.json`. Expected spend: about $12 (these tasks cost $4.02, $4.93 and $3.14 in `bench/results/plugin-core.json`), at most $24 under the per-task cap; the gate quotes this before the phase starts.
+**Changes:** Per D-008, `install(repo, harnessRoot)` keeps the manifest check, copies `.tether/config.json` as today (for sources), creates `work/`, and runs `node <harnessRoot>/core/bin/tether.mjs init --no-install --root <repo>` instead of copying `CLAUDE.md` and `.claude/settings.json`; a non-zero exit throws with the step lines. The adapter test asserts the installed `CLAUDE.md` contains the template and the settings hold the D-003 keys and no `hooks`. The first measured run (done, `bench/results/plugin-init.json`, $15.75) showed the plugin-read prompts. Per D-003 (r3), the `settings` step also appends `Read(~/.claude/plugins/cache/tether-dev/**)` to `permissions.allow`, with the marketplace name taken from the constant the marketplace step uses. Per D-008 (r2), the adapter's `allowedTools` gains `Read(//<harnessRoot>/core/**)` in POSIX form (on Windows `D:\x\y` becomes `//d/x/y`), computed at install time from the harness root. `init.test.mjs` and `adapters.test.mjs` expect the new rule wherever they list the settings keys. Then one rerun, dry-run first: `node bench/run.mjs --harness plugin --tasks gate-13-api-key-auth --runs 1 --budget-usd 8 --out bench/results/plugin-init-gate13.json`. Expected spend: about $4 (gate-13 cost $4.05 in the first run), capped at $8 per `claude -p` call; the gate quotes this before the rerun starts.
 
 **Done when:**
 - **T-7.1** `node --test bench/test/adapters.test.mjs` passes with the new install assertions.
 - **T-7.2** The dry run lists the three tasks and spends nothing; the phase block quotes the real run's total cost.
-- **T-7.3** The block quotes `node bench/report.mjs bench/results/plugin-core.json bench/results/plugin-init.json`; permission prompts per task on the three tasks average at most 4 (8.0 in `plugin-core.json`), or the block names the commands that still prompted and the phase stalls with them.
+- **T-7.3** In the rerun of `gate-13-api-key-auth` (`bench/results/plugin-init-gate13.json`), no `prompt_log` entry is a Read, Grep or Glob of a plugin file (under the checkout's `core/` or the plugin cache). The remaining groups (`for` loops, project tools without a rule, `$(...)` substitution) are listed in the block as known and not counted against the phase.
+- **T-7.6** A fresh `init` writes `Read(~/.claude/plugins/cache/tether-dev/**)` once, and a rerun leaves it once; the installed bench repo's settings hold it, and the adapter's `allowedTools` holds the `Read(//.../core/**)` rule for the harness root.
 - **T-7.4** pass@1 on the three tasks is not lower than in `plugin-core.json`.
 - **T-7.5** `npm test` passes.
 
@@ -312,3 +324,5 @@ A project gets Tether today through two `claude plugin` commands and hand edits,
 - 2026-10-08: D-004 (r2): the PowerShell probe's exact commands and output are inlined so the claim can be checked; the decision is unchanged.
 - 2026-10-08: D-005 (r2): RISK-005 says "another developer's clone" instead of "a teammate's clone"; wording only.
 - 2026-10-08: D-006 (r2): bare kernel pieces count toward an allow only in a compound of two or more; a lone tether call stays with the project rule (user ruling, phase 5 gate).
+- 2026-10-08: D-003 (r3): init also allows Read(~/.claude/plugins/cache/tether-dev/**); 21 of 31 phase 7 prompts were reads of plugin files (user ruling).
+- 2026-10-08: D-008 (r2): bench passes a read-only Read(//<checkout>/core/**) in --allowedTools, not --add-dir, which accepts edits; one gate-13 rerun follows (user ruling).

@@ -7,14 +7,20 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-test("a plugin install holds only what a project carries: CLAUDE.md, config, work/ and hookless settings", () => {
+test("a plugin install is what tether init writes: the shipped block, config, work/ and the init settings", () => {
   const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
   try {
     plugin.install(repo, resolve("."));
     for (const path of ["CLAUDE.md", ".tether/config.json", "work"]) assert.ok(existsSync(join(repo, path)), path);
+    const block = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
+    assert.ok(readFileSync(join(repo, "CLAUDE.md"), "utf8").replace(/\r\n/g, "\n").startsWith(block));
     const settings = JSON.parse(readFileSync(join(repo, ".claude", "settings.json"), "utf8"));
     assert.equal("hooks" in settings, false);
-    assert.equal(settings.outputStyle, "tether:custom");
+    assert.deepEqual(settings, {
+      env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
+      permissions: { allow: ["Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"], ask: ["PowerShell(tether drive *)", "PowerShell(tether check *)"] },
+    });
+    assert.deepEqual(JSON.parse(readFileSync(join(repo, ".tether", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".tether/config.json"), "utf8")));
     for (const path of [".claude/rules", ".claude/skills", "core"]) assert.equal(existsSync(join(repo, path)), false, path);
   } finally {
     rmSync(repo, { recursive: true, force: true });
@@ -86,4 +92,17 @@ test("plugin signals read the research lane from the packet and closing heading 
   assert.equal(plugin.signals([packet, closed], { subagents: 1 }).lane, "research");
   assert.equal(plugin.signals([closed], { subagents: 1 }).lane, "research");
   assert.equal(plugin.signals(["▶ outline ready · 20261007-pricing"], { subagents: 1 }).lane, "research");
+});
+
+test("a plugin install lets the run read the harness's core/ through an absolute read rule", () => {
+  const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
+  try {
+    plugin.install(repo, resolve("."));
+    plugin.install(repo, resolve("."));
+    const rule = plugin.absoluteReadRule(resolve("core"));
+    assert.match(rule, /^Read\(\/\/.+\/core\/\*\*\)$/);
+    assert.equal(plugin.allowedTools.filter((t) => t === rule).length, 1);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });

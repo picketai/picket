@@ -7,10 +7,10 @@ import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./paths.mj
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };
 const HEADING = /^#{1,6} /;
-const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
-const SETTINGS_ALLOW = ["Bash(tether *)", "PowerShell(tether *)"];
-const SETTINGS_ASK = ["PowerShell(tether drive *)", "PowerShell(tether check *)"];
 const MARKETPLACE_NAME = "tether-dev";
+const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
+const SETTINGS_ALLOW = ["Bash(tether *)", "PowerShell(tether *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
+const SETTINGS_ASK = ["PowerShell(tether drive *)", "PowerShell(tether check *)"];
 const PLUGIN_ID = `tether@${MARKETPLACE_NAME}`;
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";

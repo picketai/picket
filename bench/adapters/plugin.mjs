@@ -1,5 +1,6 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { filesMatching } from "../lib/grade.mjs";
 import * as trunk from "./trunk.mjs";
 
@@ -31,16 +32,30 @@ export function pluginDir(harnessRoot) {
   return join(harnessRoot, "core");
 }
 
+function runInit(repo, harnessRoot) {
+  const { CLAUDE_PROJECT_DIR, ...env } = process.env;
+  const cli = join(pluginDir(harnessRoot), "bin", "tether.mjs");
+  const r = spawnSync(process.execPath, [cli, "init", "--no-install", "--root", repo, "--human"], { encoding: "utf8", env });
+  if (r.status !== 0) throw new Error(`tether init failed (exit ${r.status}):\n${r.stdout}${r.stderr}`);
+}
+
+export function absoluteReadRule(dir) {
+  const posix = resolve(dir).replaceAll("\\", "/").replace(/^([A-Za-z]):/, (_, drive) => `/${drive.toLowerCase()}`);
+  return `Read(//${posix.replace(/^\/+/, "")}/**)`;
+}
+
+function allowPluginReads(harnessRoot) {
+  const rule = absoluteReadRule(pluginDir(harnessRoot));
+  if (!allowedTools.includes(rule)) allowedTools.push(rule);
+}
+
 export function install(repo, harnessRoot) {
   const manifest = join(pluginDir(harnessRoot), ".claude-plugin", "plugin.json");
   if (!existsSync(manifest)) throw new Error(`no plugin manifest at ${manifest}`);
-  cpSync(join(harnessRoot, "CLAUDE.md"), join(repo, "CLAUDE.md"));
   copyConfig(repo, harnessRoot);
   mkdirSync(join(repo, "work"), { recursive: true });
-  const settings = JSON.parse(readFileSync(join(harnessRoot, ".claude", "settings.json"), "utf8"));
-  delete settings.hooks;
-  mkdirSync(join(repo, ".claude"), { recursive: true });
-  writeFileSync(join(repo, ".claude", "settings.json"), JSON.stringify(settings, null, 2));
+  runInit(repo, harnessRoot);
+  allowPluginReads(harnessRoot);
 }
 
 export function gate(text, task) {

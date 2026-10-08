@@ -138,7 +138,7 @@ test("this repository's CLAUDE.md carries the shipped block verbatim, with no re
 const INIT_SETTINGS = {
   env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
   permissions: {
-    allow: ["Bash(tether *)", "PowerShell(tether *)"],
+    allow: ["Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"],
     ask: ["PowerShell(tether drive *)", "PowerShell(tether check *)"],
   },
 };
@@ -168,7 +168,7 @@ test("init keeps existing settings in value and order and appends what is missin
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
     assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env"]);
     assert.equal(settings.outputStyle, "Explanatory");
-    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(tether *)", "PowerShell(tether *)"]);
+    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"]);
     assert.deepEqual(settings.permissions.ask, INIT_SETTINGS.permissions.ask);
     assert.deepEqual(settings.env, { FOO: "1", CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" });
 
@@ -187,7 +187,7 @@ test("init does not allow a rule the project denies, and says so", () => {
     const r = runInit(root, { args: ["--human"] });
     assert.equal(r.code, 0, r.stderr);
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
-    assert.deepEqual(settings.permissions.allow, ["Bash(tether *)"]);
+    assert.deepEqual(settings.permissions.allow, ["Bash(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"]);
     assert.deepEqual(settings.permissions.deny, ["PowerShell(tether *)"]);
     const line = r.stdout.split("\n").find((l) => l.startsWith("settings: "));
     assert.match(line, /WARNING: permissions\.deny holds PowerShell\(tether \*\)/);
@@ -279,6 +279,18 @@ test("the CLI exits 2 when a step fails", () => {
     mkdirSync(join(root, ".claude"));
     writeFileSync(join(root, ".claude", "settings.json"), "{ not json");
     assert.equal(runInit(root).code, 2);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("init writes the plugin cache read rule once, and a rerun keeps it once", () => {
+  const root = gitRepo();
+  try {
+    runInit(root);
+    runInit(root);
+    const allow = JSON.parse(read(root, ".claude", "settings.json")).permissions.allow;
+    assert.equal(allow.filter((rule) => rule === "Read(~/.claude/plugins/cache/tether-dev/**)").length, 1);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

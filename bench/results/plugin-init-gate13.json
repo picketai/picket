@@ -1,0 +1,197 @@
+{
+  "manifest": {
+    "harness": "plugin",
+    "harness_root": "D:\\workspace\\github\\AISpec\\.worktrees\\framework",
+    "harness_commit": "a5dba89",
+    "harness_dirty": true,
+    "fixture_hash": "ba1d8b716475",
+    "claude_version": "2.1.294 (Claude Code)",
+    "node_version": "v20.11.1",
+    "effort_level": "high",
+    "permission_mode": "acceptEdits",
+    "allowed_tools": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git ls-files*)",
+      "Bash(git blame*)",
+      "Bash(tether *)",
+      "Read(//d/workspace/github/AISpec/.worktrees/framework/core/**)"
+    ],
+    "runs_per_task": 1,
+    "started": "2026-10-08T19:10:21.732Z"
+  },
+  "records": [
+    {
+      "task": "gate-13-api-key-auth",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-08T19:10:22.159Z",
+      "session_ids": [
+        "cb241f55-cffe-4d93-962b-e621dce1b075",
+        "cb241f55-cffe-4d93-962b-e621dce1b075"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 8,
+      "cost_usd": 3.8710580000000006,
+      "usage": {
+        "input_tokens": 16,
+        "cache_read_input_tokens": 428609,
+        "cache_creation_input_tokens": 6227,
+        "output_tokens": 1787
+      },
+      "api_ms": 596447,
+      "wall_ms": 345905,
+      "tool_calls": 68,
+      "tool_counts": {
+        "Bash": 26,
+        "Skill": 1,
+        "Read": 18,
+        "Agent": 4,
+        "Write": 7,
+        "Edit": 8,
+        "Glob": 1,
+        "Grep": 3
+      },
+      "reads": 18,
+      "unique_reads": 17,
+      "rereads": 1,
+      "subagents": 4,
+      "first_write_ms": 120973,
+      "first_tool_ms": 6082,
+      "first_reviewable_ms": 120973,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "▶ phase 1/1 done · 20261008-api-key-authentication-for-endpoints\n  Every endpoint except `GET /health` now requires a matching `x-api-key` header and returns 401 ot…\n\n  tests     passed\n  lint      passed\n  verified  `tether drive --env API_KEY=<test value> --run \"node <temp>/drive.mjs\"` → `/health` wit…\n  files     D:\\workspace\\github\\AISpec\\.worktrees\\framework\\bench\\.runs\\gate-13-api-key-auth-r1-muz…\n  gate      phase 1 touches a security path (src/auth/apiKey.ts); run grants stop here\n  decisions · drive script is in the OS temp directory because the hook blocks writes to `.tether/s…\n            · `tether drive --hit` cannot send custom headers, so the key cases needed `--run`\n            · the empty-key and missing-header checks are combined in one `isAuthorized` check, so…\n  commit    feat(auth): require x-api-key on every endpoint except GET /health (staged; approval co…\n\n[a] approve   [x] reject: <why>",
+        "## Design closed: 20261008-api-key-authentication-for-endpoints\n\nEvery endpoint except `GET /health` now requires an `x-api-key` header. The header is compared in constant time with `auth.apiKey`, which the `API_KEY` environment variable overrides. A missing, empty or wrong key gets a 401.\nPhases: 1 · decisions: 4 (0 amended) · commits be2f940..6a6eee7 · review: APPROVED\nQuestions: OQ-001 is still open. With no key configured, the server starts and refuses every request except `GET /health`; it could refuse to start instead.\n\nThe reviewer also raised two small issues that did not block approval:\n- **Line endings:** `src/main.ts` changed from Windows (CRLF) to Unix (LF) line endings, so its diff shows all 8 lines rewritten when only one changed.\n- **Config test gap:** `test/config.test.ts` reads the real `data/config.json`, so no test checks that a key set in the config file is actually read."
+      ],
+      "error": null,
+      "port": 8100,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/.worktrees/framework/bench/.runs/gate-13-api-key-auth-r1-muzwvo6g/repo && for f in src/config.ts src/http/router.ts src/http/server.ts src/http/handlers.ts src/main.ts da",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cygpath -m \"$TEMP\"",
+          "decision": "allow"
+        },
+        {
+          "tool": "Write",
+          "command": "",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 3,
+      "cache_hit_ratio": 0.9856,
+      "tokens_total": 436639,
+      "base_sha": "67d808a3b255bb3e02533a0d7daa77e274a5c2b8",
+      "changed_files": [
+        "src/auth/apiKey.ts",
+        "src/config.ts",
+        "src/http/router.ts",
+        "src/http/server.ts",
+        "src/main.ts",
+        "test/apiKey.test.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 181,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 38,
+          "failed": 0,
+          "total": 38,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "38/38 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "exists:src/auth/*.ts",
+            "ok": true,
+            "detail": "src/auth/apiKey.ts"
+          },
+          {
+            "name": "grep:src/auth/*.ts:timingSafeEqual",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/config.ts:apiKey",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/invoices.json",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-08T19:16:13.274Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/gate-13-api-key-auth-r1-muzwvo6g.jsonl"
+    }
+  ]
+}
