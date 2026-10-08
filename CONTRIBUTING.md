@@ -14,14 +14,13 @@ The `## Layout` section of `README.md` maps every top-level folder. New things g
 
 ## Installing from a local checkout
 
-In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plugin straight from `core/`. To try the installed form in another project, run these there, with the path of this checkout:
+In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plugin straight from `core/`. To set up another project, run this there, with the path of this checkout:
 
 ```sh
-claude plugin marketplace add <path to this checkout> --scope project
-claude plugin install tether@tether-dev --scope project
+node <path to this checkout>/core/bin/tether.mjs init
 ```
 
-The project's `.claude/settings.json` then holds only `extraKnownMarketplaces` and `enabledPlugins`. The marketplace name `tether-dev` is provisional. To undo it, run `claude plugin uninstall tether@tether-dev --scope project` and `claude plugin marketplace remove tether-dev --scope project`. A copy stays under `~/.claude/plugins/cache/tether-dev/`, marked orphaned.
+It writes the Tether block into `CLAUDE.md`, `.tether/config.json`, the `.tether/state/` line in `.gitignore` and the permission keys in `.claude/settings.json`, then runs `claude plugin marketplace add` and `claude plugin install tether@tether-dev` with `--scope project`. A second run changes nothing; `--no-install` skips the two `claude` commands. The marketplace name `tether-dev` is provisional. To undo it, run `claude plugin uninstall tether@tether-dev --scope project` and `claude plugin marketplace remove tether-dev --scope project`. A copy stays under `~/.claude/plugins/cache/tether-dev/`, marked orphaned.
 
 ## Code
 

@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { init, marketplaceRoot } from "../../core/lib/init.mjs";
 
 const BIN = resolve("core/bin/tether.mjs");
 const TEMPLATE = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
@@ -20,7 +21,7 @@ function gitRepo() {
 
 function runInit(cwd, { env = {}, args = [] } = {}) {
   const { CLAUDE_PROJECT_DIR, ...base } = process.env;
-  const r = spawnSync("node", [BIN, "init", ...args], { cwd, env: { ...base, ...env }, encoding: "utf8" });
+  const r = spawnSync("node", [BIN, "init", "--no-install", ...args], { cwd, env: { ...base, ...env }, encoding: "utf8" });
   return { code: r.status, json: r.stdout.trim().startsWith("{") ? JSON.parse(r.stdout) : null, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -37,7 +38,7 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
   try {
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created" });
+    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped" });
     assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
     assert.deepEqual(JSON.parse(read(root, ".tether", "config.json")), { version: 1 });
     assert.ok(read(root, ".gitignore").split("\n").includes(".tether/state/"));
@@ -54,7 +55,7 @@ test("a second init reports every step unchanged and leaves the files byte-ident
     const before = files.map((p) => read(root, p));
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged" });
+    assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "skipped", plugin: "skipped" });
     assert.deepEqual(files.map((p) => read(root, p)), before);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -201,8 +202,83 @@ test("a settings file that is not JSON fails its step, stays as is, and the othe
     writeSettings(root, "{ not json");
     const r = runInit(root);
     assert.equal(r.code, 2);
-    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed" });
+    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "skipped", plugin: "skipped" });
     assert.equal(read(root, ".claude", "settings.json"), "{ not json");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function recordingRunner(onCall = () => {}) {
+  const calls = [];
+  const exec = (command, args, options) => {
+    calls.push({ command, args, cwd: options.cwd });
+    onCall(command, args, options);
+  };
+  return { calls, exec };
+}
+
+test("init registers the marketplace, then installs the plugin, both from the project root", () => {
+  const root = gitRepo();
+  try {
+    const { calls, exec } = recordingRunner();
+    const report = init(root, { exec });
+    const checkout = marketplaceRoot();
+    assert.ok(checkout, "this checkout holds .claude-plugin/marketplace.json");
+    assert.deepEqual(calls, [
+      { command: "claude", args: ["plugin", "marketplace", "add", checkout, "--scope", "project"], cwd: root },
+      { command: "claude", args: ["plugin", "install", "tether@tether-dev", "--scope", "project"], cwd: root },
+    ]);
+    assert.equal(results(report).marketplace, "created");
+    assert.equal(results(report).plugin, "created");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("init runs no claude command when the project already knows the marketplace and the plugin", () => {
+  const root = gitRepo();
+  try {
+    mkdirSync(join(root, ".claude"));
+    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "tether-dev": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "tether@tether-dev": true } }));
+    const { calls, exec } = recordingRunner();
+    const report = init(root, { exec });
+    assert.deepEqual(calls, []);
+    assert.equal(results(report).marketplace, "unchanged");
+    assert.equal(results(report).plugin, "unchanged");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a failing claude command fails its step and the exit, and --no-install runs none", () => {
+  const root = gitRepo();
+  try {
+    const { exec } = recordingRunner((command, args) => {
+      if (args[1] === "marketplace") throw Object.assign(new Error("exit 1"), { stderr: "warming up\nmarketplace source not found\n" });
+    });
+    const report = init(root, { exec });
+    assert.equal(results(report).marketplace, "failed");
+    assert.match(report.steps.find((s) => s.name === "marketplace").detail, /^marketplace source not found; run by hand: claude plugin marketplace add/);
+    assert.equal(results(report).plugin, "created");
+    assert.equal(results(report)["claude-md"], "created");
+
+    const skipped = recordingRunner();
+    const quiet = init(root, { install: false, exec: skipped.exec });
+    assert.deepEqual(skipped.calls, []);
+    assert.equal(results(quiet).marketplace, "skipped");
+    assert.equal(results(quiet).plugin, "skipped");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the CLI exits 2 when a step fails", () => {
+  const root = gitRepo();
+  try {
+    mkdirSync(join(root, ".claude"));
+    writeFileSync(join(root, ".claude", "settings.json"), "{ not json");
+    assert.equal(runInit(root).code, 2);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

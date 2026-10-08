@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { configPath, hostPath, pluginRoot, stateRel } from "./paths.mjs";
+import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./paths.mjs";
 
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };
@@ -10,6 +10,10 @@ const HEADING = /^#{1,6} /;
 const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
 const SETTINGS_ALLOW = ["Bash(tether *)", "PowerShell(tether *)"];
 const SETTINGS_ASK = ["PowerShell(tether drive *)", "PowerShell(tether check *)"];
+const MARKETPLACE_NAME = "tether-dev";
+const PLUGIN_ID = `tether@${MARKETPLACE_NAME}`;
+const ADD_MARKETPLACE = "plugin marketplace add";
+const INSTALL_PLUGIN = "plugin install";
 
 export class InitRefused extends Error {}
 
@@ -125,9 +129,64 @@ function settingsStep(root) {
   const { merged, blocked } = mergeSettings(settings);
   const warning = blocked.length ? `WARNING: permissions.deny holds ${blocked.join(", ")}, so init did not allow it` : undefined;
   const changed = existing === null || JSON.stringify(merged) !== JSON.stringify(settings);
-  const result = changed ? writeIfChanged(path, existing, `${JSON.stringify(merged, null, 2)}
-`) : "unchanged";
+  const result = changed ? writeIfChanged(path, existing, `${JSON.stringify(merged, null, 2)}\n`) : "unchanged";
   return { name: "settings", path, result, ...(warning ? { detail: warning } : {}) };
+}
+
+export function marketplaceRoot() {
+  const candidate = dirname(pluginRoot());
+  return existsSync(join(candidate, `${HOST_DIR}-plugin`, "marketplace.json")) ? candidate : null;
+}
+
+function projectSettings(root) {
+  try {
+    return JSON.parse(readFileSync(hostPath(root, "settings.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function installCommands(market) {
+  return [
+    { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE_NAME]) },
+    { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), PLUGIN_ID, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[PLUGIN_ID]) },
+  ];
+}
+
+function byHand(market) {
+  return `run by hand: claude ${ADD_MARKETPLACE} "${market}" --scope project, then claude ${INSTALL_PLUGIN} ${PLUGIN_ID} --scope project`;
+}
+
+function lastLine(err) {
+  const text = String(err.stderr || err.stdout || err.message || err).trim();
+  return text.split(/\r?\n/).filter(Boolean).at(-1) ?? "failed";
+}
+
+function installSteps(root, { install, exec }) {
+  const path = hostPath(root, "settings.json");
+  if (!install) return ["marketplace", "plugin"].map((name) => ({ name, path, result: "skipped" }));
+  const market = marketplaceRoot();
+  if (!market) return ["marketplace", "plugin"].map((name) => ({ name, path, result: "failed", detail: "no marketplace beside the plugin" }));
+  return installCommands(market).map(({ name, args, done }) => {
+    if (done(projectSettings(root))) return { name, path, result: "unchanged" };
+    try {
+      exec("claude", args, { cwd: root });
+      return { name, path, result: "created" };
+    } catch (err) {
+      return { name, path, result: "failed", detail: `${lastLine(err)}; ${byHand(market)}` };
+    }
+  });
+}
+
+export function claudeRunner() {
+  const windows = process.platform === "win32";
+  return (command, args, { cwd }) =>
+    execFileSync(command, windows ? args.map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)) : args, {
+      cwd,
+      shell: windows,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 }
 
 const STEPS = [
@@ -137,7 +196,7 @@ const STEPS = [
   ["settings", settingsStep],
 ];
 
-export function init(root) {
+export function init(root, { install = true, exec = claudeRunner() } = {}) {
   const steps = STEPS.map(([name, step]) => {
     try {
       return step(root);
@@ -145,7 +204,7 @@ export function init(root) {
       return { name, path: null, result: "failed", detail: err.message };
     }
   });
-  return { root, steps };
+  return { root, steps: [...steps, ...installSteps(root, { install, exec })] };
 }
 
 export function renderInit(report) {

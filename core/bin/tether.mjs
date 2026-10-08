@@ -68,7 +68,7 @@ async function main(argv) {
         out({ root: null, error: err.message }, opt, (v) => `init refused · ${v.error}`);
         return 2;
       }
-      const report = init(initAt);
+      const report = init(initAt, { install: !opt["no-install"] });
       out(report, opt, renderInit);
       return report.steps.some((s) => s.result === "failed") ? 2 : 0;
     }
