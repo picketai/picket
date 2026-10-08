@@ -1,0 +1,7 @@
+id: 20261008-init-rerun-passes-when-installed-from-cache
+lane: fast
+title: Init rerun passes when installed from cache
+status: done
+created: 2026-10-08T20:23:03.854Z
+updated: 2026-10-08T20:26:44.910Z
+base: 35ffc18b3c0dcf25343c38d055450b6fce52d124

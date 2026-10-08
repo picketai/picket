@@ -251,6 +251,34 @@ test("init runs no claude command when the project already knows the marketplace
   }
 });
 
+test("installed from the cache, with no marketplace beside the plugin, a rerun reports the install unchanged", () => {
+  const root = gitRepo();
+  try {
+    mkdirSync(join(root, ".claude"));
+    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "tether-dev": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "tether@tether-dev": true } }));
+    const { calls, exec } = recordingRunner();
+    const report = init(root, { exec, market: null });
+    assert.deepEqual(calls, []);
+    assert.equal(results(report).marketplace, "unchanged");
+    assert.equal(results(report).plugin, "unchanged");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("with no marketplace beside the plugin, an uninstalled project fails both install steps without running claude", () => {
+  const root = gitRepo();
+  try {
+    const { calls, exec } = recordingRunner();
+    const report = init(root, { exec, market: null });
+    assert.deepEqual(calls, []);
+    assert.equal(results(report).marketplace, "failed");
+    assert.equal(results(report).plugin, "failed");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a failing claude command fails its step and the exit, and --no-install runs none", () => {
   const root = gitRepo();
   try {

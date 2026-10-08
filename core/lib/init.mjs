@@ -162,13 +162,12 @@ function lastLine(err) {
   return text.split(/\r?\n/).filter(Boolean).at(-1) ?? "failed";
 }
 
-function installSteps(root, { install, exec }) {
+function installSteps(root, { install, exec, market }) {
   const path = hostPath(root, "settings.json");
   if (!install) return ["marketplace", "plugin"].map((name) => ({ name, path, result: "skipped" }));
-  const market = marketplaceRoot();
-  if (!market) return ["marketplace", "plugin"].map((name) => ({ name, path, result: "failed", detail: "no marketplace beside the plugin" }));
   return installCommands(market).map(({ name, args, done }) => {
     if (done(projectSettings(root))) return { name, path, result: "unchanged" };
+    if (!market) return { name, path, result: "failed", detail: "no marketplace beside the plugin" };
     try {
       exec("claude", args, { cwd: root });
       return { name, path, result: "created" };
@@ -196,7 +195,7 @@ const STEPS = [
   ["settings", settingsStep],
 ];
 
-export function init(root, { install = true, exec = claudeRunner() } = {}) {
+export function init(root, { install = true, exec = claudeRunner(), market = marketplaceRoot() } = {}) {
   const steps = STEPS.map(([name, step]) => {
     try {
       return step(root);
@@ -204,7 +203,7 @@ export function init(root, { install = true, exec = claudeRunner() } = {}) {
       return { name, path: null, result: "failed", detail: err.message };
     }
   });
-  return { root, steps: [...steps, ...installSteps(root, { install, exec })] };
+  return { root, steps: [...steps, ...installSteps(root, { install, exec, market })] };
 }
 
 export function renderInit(report) {
