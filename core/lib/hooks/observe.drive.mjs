@@ -37,6 +37,13 @@ function isKernelCall(command) {
   return commandSegments(command).some((words) => kernelVerbStart(words) !== null);
 }
 
+const QUOTED_ENV_FLAG = /--env(\s+)(["'])([A-Za-z_][A-Za-z0-9_]*)=[^"']*\2/g;
+const ENV_FLAG = /--env(\s+)([A-Za-z_][A-Za-z0-9_]*)=(?:"[^"]*"|'[^']*'|[^\s"']*)/g;
+
+function maskEnvValues(command) {
+  return command.replace(QUOTED_ENV_FLAG, "--env$1$3=***").replace(ENV_FLAG, "--env$1$2=***");
+}
+
 function commandKind(command) {
   return !isKernelCall(command) && isDriveCommand(command) ? "drive" : "inspect";
 }
@@ -50,7 +57,7 @@ export function observeDrive(event, { root }) {
     session: event.session_id ?? null,
     agent: bareAgentName(event.agent_type),
     kind: commandKind(command),
-    command: command.replace(/\s+/g, " ").slice(0, LOGGED_COMMAND_CHARS),
+    command: maskEnvValues(command).replace(/\s+/g, " ").slice(0, LOGGED_COMMAND_CHARS),
     work_id,
     phase,
   };

@@ -153,3 +153,25 @@ test("parseHit reads method, path and body", () => {
   assert.deepEqual(parseHit('POST /x {"a": 1}'), { method: "POST", path: "/x", body: '{"a": 1}' });
   assert.equal(existsSync(BIN), true);
 });
+
+test("drive --env passes the variable to the run and logs only its name", () => {
+  const root = fixture();
+  mkdirSync(join(root, ".tether", "state", "scratch"), { recursive: true });
+  writeFileSync(join(root, ".tether", "state", "scratch", "env-probe.mjs"), 'process.exit(process.env.PROBE === "secret-probe-42" ? 0 : 1);\n');
+  const r = run(root, ["drive", "--run", "node .tether/state/scratch/env-probe.mjs", "--env", "PROBE=secret-probe-42"]);
+  assert.equal(r.code, 0, r.stderr);
+  assert.equal(r.json.ok, true);
+  const log = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8");
+  const row = JSON.parse(log.trim().split("\n").at(-1));
+  assert.deepEqual(row.env, ["PROBE"]);
+  assert.equal(log.includes("secret-probe-42"), false);
+});
+
+test("drive --env refuses a bad name or a missing equals sign with a usage error", () => {
+  const root = fixture();
+  for (const bad of ["1BAD=x", "NOEQUALS"]) {
+    const r = run(root, ["drive", "--run", "node -e 0", "--env", bad]);
+    assert.equal(r.code, 1, bad);
+    assert.match(r.stderr, /--env needs NAME=VALUE/);
+  }
+});

@@ -43,6 +43,19 @@ function out(value, opt, text) {
   else console.log(opt.pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value));
 }
 
+const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function envFromFlags(values) {
+  const env = {};
+  for (const pair of values === undefined ? [] : [].concat(values)) {
+    const eq = typeof pair === "string" ? pair.indexOf("=") : -1;
+    const name = eq > 0 ? pair.slice(0, eq) : "";
+    if (!ENV_NAME.test(name)) throw new Error(`--env needs NAME=VALUE with NAME matching ${ENV_NAME.source}, got "${pair === true ? "" : pair}"`);
+    env[name] = pair.slice(eq + 1);
+  }
+  return env;
+}
+
 function dirtyWarning(dirty) {
   return dirty.length ? `\nWARNING: uncommitted changes: ${dirty.join(", ")} (commit them or \`git checkout -- <path>\` before you print the closing block)` : "";
 }
@@ -192,8 +205,10 @@ async function main(argv) {
     }
     case "drive": {
       // Starts the app (or runs a CLI command), exercises it, stops it, and logs the evidence itself.
+      const env = envFromFlags(opt.env);
       const r = await drive({
         root,
+        env,
         run: opt.run === true ? undefined : opt.run,
         start: opt.start === true ? undefined : opt.start,
         hits: opt.hit === undefined ? [] : [].concat(opt.hit),

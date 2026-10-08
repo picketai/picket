@@ -155,7 +155,7 @@ export async function drive(o = {}) {
   const work = o.id ? { work_id: o.id, phase: null } : currentWork(root);
   if (o.phase != null) work.phase = Number(o.phase);
   const timeoutMs = Number(o.timeoutMs ?? 20_000);
-  const row = { ts: new Date().toISOString(), kind: "drive", source: "tether drive", work_id: work.work_id, phase: work.phase };
+  const row = { ts: new Date().toISOString(), kind: "drive", source: "tether drive", work_id: work.work_id, phase: work.phase, env: Object.keys(o.env ?? {}) };
 
   const before = treeSnapshot(root);
   if (o.run) assertNotDestructive(o.run, "tether drive --run");

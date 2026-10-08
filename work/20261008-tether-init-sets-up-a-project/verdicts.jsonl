@@ -11,3 +11,6 @@
 {"ts":"2026-10-08T17:56:04.397Z","agent":"reviewer","verdict":"APPROVED","phase":4,"scope":"checkpoint","through":null}
 {"ts":"2026-10-08T18:02:08.012Z","agent":"developer","verdict":"PHASE DONE","phase":5,"scope":null,"through":null}
 {"ts":"2026-10-08T18:02:31.004Z","agent":"user","verdict":"approved","phase":5,"scope":null,"through":7}
+{"ts":"2026-10-08T18:03:00.570Z","agent":"architect","verdict":"AMENDED","phase":6,"scope":null,"through":null}
+{"ts":"2026-10-08T18:06:09.821Z","agent":"developer","verdict":"PHASE DONE","phase":6,"scope":null,"through":null}
+{"ts":"2026-10-08T18:07:22.127Z","agent":"user","verdict":"approved","phase":6,"scope":null,"through":7}

@@ -634,3 +634,18 @@ test("the spawned guard.bash allows a bare tether call chained with a read-only 
   assert.ok(trace.some((row) => row.outcome === "allow" && String(row.command).includes(`tether next ${id}`)), JSON.stringify(trace.at(-1)));
   rmSync(root, { recursive: true, force: true });
 });
+
+test("observe.drive logs --env values masked, quoted or not", () => {
+  const { root } = project();
+  const logged = (command) => {
+    run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s11" }, root);
+    return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).command;
+  };
+  const plain = logged('tether drive --run "node .tether/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42');
+  assert.match(plain, /--env PROBE=\*\*\*/);
+  assert.equal(plain.includes("secret-probe-42"), false);
+  const quoted = logged(`tether drive --hit "GET /h" --env "A=two words" --env B="three more words" --env C='single quoted'`);
+  assert.match(quoted, /--env A=\*\*\* --env B=\*\*\* --env C=\*\*\*/);
+  assert.equal(/two words|three more|single quoted/.test(quoted), false);
+  rmSync(root, { recursive: true, force: true });
+});
