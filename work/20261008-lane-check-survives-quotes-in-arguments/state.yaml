@@ -1,8 +1,7 @@
 id: 20261008-lane-check-survives-quotes-in-arguments
 lane: order
 title: Lane check survives quotes in arguments
-status: open
+status: done
 created: 2026-10-08T12:32:42.360Z
-updated: 2026-10-08T12:50:11.544Z
+updated: 2026-10-08T13:00:07.813Z
 base: e954f91cc70f3c69c40b090b3aaf7525ad5ab422
-run_through: 2

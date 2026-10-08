@@ -59,7 +59,6 @@ async function main(argv) {
   const root = opt.root ?? projectRoot();
   switch (verb) {
     case "admit": {
-      // Skills inject this line with $ARGUMENTS; an empty request must not be an error, it must say so.
       const text = opt.text === true || opt.text === "" || (!opt.text && !opt.request) ? "" : readRequest(opt, "admit");
       if (!text.trim()) {
         out({ lane: null, reasons: ["no request text given"], signals: {} }, opt, () => "lane: (none) · re-run with the request text: tether admit --text \"<request>\"");

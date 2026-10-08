@@ -18,9 +18,9 @@ Admission is computed, not felt. The lane skill you are reading runs in the main
 
 Lane check for this request:
 
-If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human` with the request on stdin through a quoted heredoc.
+If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human <<'TETHER_REQUEST_END'` with the request on the lines after it and `TETHER_REQUEST_END` alone on the last line.
 
-If the line above does not say `lane: fast`, stop here and run the named lane skill instead (`tether:ordering`, `tether:designing`, `tether:researching`). Do not argue with it in prose; a forced lane is written into the request as `lane: fast`.
+If the admit answer does not say `lane: fast`, stop here and run the named lane skill instead (`tether:ordering`, `tether:designing`, `tether:researching`). Do not argue with it in prose; a forced lane is written into the request as `lane: fast`.
 
 ## Step 1: open the work item, read the touch set
 

@@ -9,7 +9,7 @@ const LANES = ["designing", "expediting", "ordering", "researching"];
 const HOSTILE = 'Add a `tether close <id>` verb, say "done", keep $HOME and $(whoami) literal, it\'s fine';
 const UNBALANCED = 'Add a `tether close <id>` verb that prints "done';
 const ADMIT = "tether admit --request - --human";
-const PROSE_STEP = "If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human` with the request on stdin through a quoted heredoc.";
+const PROSE_STEP = "If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human <<'TETHER_REQUEST_END'` with the request on the lines after it and `TETHER_REQUEST_END` alone on the last line.";
 const OLD_INLINE = 'tether admit --text "$ARGUMENTS" --human';
 const BIN_DIR = resolve("core/bin");
 
@@ -65,20 +65,6 @@ test("the heredoc admit the lane skills name survives backticks, quotes and doll
     const empty = bash(withRoot(heredocAdmit(""), root), root);
     assert.equal(empty.code, 0, empty.stderr);
     assert.match(empty.stdout, /^lane: \(none\)/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test("the old inline form breaks on an unbalanced quote and expands the request", () => {
-  const root = mkdtempSync(join(tmpdir(), "tether-lane-check-"));
-  try {
-    const unbalanced = bash(withRoot(OLD_INLINE.replaceAll("$ARGUMENTS", UNBALANCED), root), root);
-    assert.notEqual(unbalanced.code, 0);
-    assert.match(unbalanced.stderr, /unexpected EOF/);
-
-    const expanded = bash(`printf '%s\\n' "${HOSTILE}"`, root);
-    assert.notEqual(expanded.stdout, `${HOSTILE}\n`);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

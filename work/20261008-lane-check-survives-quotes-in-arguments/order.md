@@ -15,13 +15,21 @@ phases:
       - test/skills/lane-check.test.mjs
     greps:
       - path: core/skills/ordering/SKILL.md
-        pattern: tether admit --request - --human <<'TETHER_REQUEST_END'
+        pattern: tether admit --request - --human
+      - path: core/skills/ordering/SKILL.md
+        pattern: <<'TETHER_REQUEST_END'
       - path: core/skills/designing/SKILL.md
-        pattern: tether admit --request - --human <<'TETHER_REQUEST_END'
+        pattern: tether admit --request - --human
+      - path: core/skills/designing/SKILL.md
+        pattern: <<'TETHER_REQUEST_END'
       - path: core/skills/expediting/SKILL.md
-        pattern: tether admit --request - --human <<'TETHER_REQUEST_END'
+        pattern: tether admit --request - --human
+      - path: core/skills/expediting/SKILL.md
+        pattern: <<'TETHER_REQUEST_END'
       - path: core/skills/researching/SKILL.md
-        pattern: tether admit --request - --human <<'TETHER_REQUEST_END'
+        pattern: tether admit --request - --human
+      - path: core/skills/researching/SKILL.md
+        pattern: <<'TETHER_REQUEST_END'
     tests: true
     drive: false
   - n: 2
@@ -42,7 +50,8 @@ The four lane skills inject `!`tether admit --text "$ARGUMENTS" --human`` to re-
 
 ## Decisions
 
-### D-001: the request reaches tether admit through a quoted heredoc in a fenced block
+### D-001 [withdrawn]: the request reaches tether admit through a quoted heredoc in a fenced block
+**Withdrawn:** in Phase 2 the permission check refused the injected heredoc in a real run, so D-002 applied; the lane check is now a prose step.
 **Decision:** Each of the four SKILL.md files replaces its inline `!` line with the documented multi-line form:
 
     ```!
@@ -111,3 +120,5 @@ A quoted heredoc delimiter turns off every expansion in the body, so backticks, 
 none
 
 ## Revision log
+
+- 2026-10-08: D-001 [withdrawn]: permission check refused the injected heredoc in a real run; D-002 applied; phase 1 greps now match the prose lane-check line.

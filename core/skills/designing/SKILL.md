@@ -19,7 +19,7 @@ Runs in the main session. You are the lead: one architect, one developer, one re
 
 Lane check for this request:
 
-If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human` with the request on stdin through a quoted heredoc.
+If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human <<'TETHER_REQUEST_END'` with the request on the lines after it and `TETHER_REQUEST_END` alone on the last line.
 
 `design` continues here. Other lanes run their own skill. A forced `lane: design` in the request is honoured.
 

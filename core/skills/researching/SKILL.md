@@ -18,7 +18,7 @@ Runs in the main session. One analyst per work item, spawned for the outline and
 
 Lane check for this request:
 
-If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human` with the request on stdin through a quoted heredoc.
+If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human <<'TETHER_REQUEST_END'` with the request on the lines after it and `TETHER_REQUEST_END` alone on the last line.
 
 `research` continues here. A change request runs its own lane.
 
