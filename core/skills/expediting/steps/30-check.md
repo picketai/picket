@@ -29,7 +29,7 @@ Emit the `## Expedited` block from `SKILL.md`, with the commit message you propo
 
 | Reply | Do |
 |---|---|
-| `c`, `commit`, `ok`, `yes` | `git commit -m "<the proposed message>"`, then `tether set <id> status=done`; print `committed <sha>` and stop |
+| `c`, `commit`, `ok`, `yes` | `tether set <id> status=done`, `git add -- work/<id>`, then `git commit -m "<the proposed message>"`, so the closing state lands in the same commit; print `committed <sha>` and stop |
 | `x <why>`, `discard`, `reject: <why>` | leave the index as it is, print one line saying the change is staged and uncommitted, `tether set <id> status=abandoned`, stop; the user decides what to do with the working tree |
 | `k <n>`, `keep <n>` | `tether comment <id> --path <p> --text "<t>"` with proposal n's path and text, write exactly that comment at its line, re-stage, re-print the block |
 | a question | answer it, re-print the options line |
