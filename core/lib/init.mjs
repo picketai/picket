@@ -2,11 +2,14 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { configPath, pluginRoot, stateRel } from "./paths.mjs";
+import { configPath, hostPath, pluginRoot, stateRel } from "./paths.mjs";
 
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };
 const HEADING = /^#{1,6} /;
+const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
+const SETTINGS_ALLOW = ["Bash(tether *)", "PowerShell(tether *)"];
+const SETTINGS_ASK = ["PowerShell(tether drive *)", "PowerShell(tether check *)"];
 
 export class InitRefused extends Error {}
 
@@ -92,10 +95,46 @@ function gitignoreStep(root) {
   return { name: "gitignore", path, result: writeIfChanged(path, existing, `${base}${IGNORE_LINE}${eol}`) };
 }
 
+function union(existing, wanted) {
+  const list = Array.isArray(existing) ? [...existing] : [];
+  for (const rule of wanted) if (!list.includes(rule)) list.push(rule);
+  return list;
+}
+
+export function mergeSettings(settings) {
+  const merged = structuredClone(settings);
+  const permissions = { ...(merged.permissions ?? {}) };
+  const denied = Array.isArray(permissions.deny) ? permissions.deny : [];
+  const blocked = SETTINGS_ALLOW.filter((rule) => denied.includes(rule));
+  merged.env = { ...(merged.env ?? {}), ...SETTINGS_ENV };
+  permissions.allow = union(permissions.allow, SETTINGS_ALLOW.filter((rule) => !blocked.includes(rule)));
+  permissions.ask = union(permissions.ask, SETTINGS_ASK);
+  merged.permissions = permissions;
+  return { merged, blocked };
+}
+
+function settingsStep(root) {
+  const path = hostPath(root, "settings.json");
+  const existing = readOrNull(path);
+  let settings;
+  try {
+    settings = existing === null ? {} : JSON.parse(existing);
+  } catch (err) {
+    return { name: "settings", path, result: "failed", detail: `not valid JSON, left as is: ${err.message}` };
+  }
+  const { merged, blocked } = mergeSettings(settings);
+  const warning = blocked.length ? `WARNING: permissions.deny holds ${blocked.join(", ")}, so init did not allow it` : undefined;
+  const changed = existing === null || JSON.stringify(merged) !== JSON.stringify(settings);
+  const result = changed ? writeIfChanged(path, existing, `${JSON.stringify(merged, null, 2)}
+`) : "unchanged";
+  return { name: "settings", path, result, ...(warning ? { detail: warning } : {}) };
+}
+
 const STEPS = [
   ["claude-md", claudeMdStep],
   ["config", configStep],
   ["gitignore", gitignoreStep],
+  ["settings", settingsStep],
 ];
 
 export function init(root) {

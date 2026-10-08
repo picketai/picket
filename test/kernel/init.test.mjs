@@ -37,7 +37,7 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
   try {
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created" });
+    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created" });
     assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
     assert.deepEqual(JSON.parse(read(root, ".tether", "config.json")), { version: 1 });
     assert.ok(read(root, ".gitignore").split("\n").includes(".tether/state/"));
@@ -50,11 +50,12 @@ test("a second init reports every step unchanged and leaves the files byte-ident
   const root = gitRepo();
   try {
     runInit(root);
-    const before = ["CLAUDE.md", ".tether/config.json", ".gitignore"].map((p) => read(root, p));
+    const files = ["CLAUDE.md", ".tether/config.json", ".gitignore", ".claude/settings.json"];
+    const before = files.map((p) => read(root, p));
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged" });
-    assert.deepEqual(["CLAUDE.md", ".tether/config.json", ".gitignore"].map((p) => read(root, p)), before);
+    assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged" });
+    assert.deepEqual(files.map((p) => read(root, p)), before);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -131,4 +132,78 @@ test("this repository's CLAUDE.md carries the shipped block verbatim, with no re
   assert.ok(own.startsWith(TEMPLATE), "CLAUDE.md must start with core/templates/claude-block.md");
   assert.equal(TEMPLATE.includes("--plugin-dir"), false);
   assert.equal(TEMPLATE.includes("harness-authoring"), false);
+});
+
+const INIT_SETTINGS = {
+  env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
+  permissions: {
+    allow: ["Bash(tether *)", "PowerShell(tether *)"],
+    ask: ["PowerShell(tether drive *)", "PowerShell(tether check *)"],
+  },
+};
+
+function writeSettings(root, text) {
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  writeFileSync(join(root, ".claude", "settings.json"), text);
+}
+
+test("init creates .claude/settings.json with exactly the env key and the tether allow and ask rules", () => {
+  const root = gitRepo();
+  try {
+    assert.equal(runInit(root).code, 0);
+    assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")), INIT_SETTINGS);
+    assert.ok(read(root, ".claude", "settings.json").endsWith("}\n"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("init keeps existing settings in value and order and appends what is missing after them", () => {
+  const root = gitRepo();
+  try {
+    writeSettings(root, JSON.stringify({ outputStyle: "Explanatory", permissions: { allow: ["Read", "Bash(npm test*)"] }, env: { FOO: "1" } }, null, 2));
+    const r = runInit(root);
+    assert.equal(results(r.json).settings, "updated");
+    const settings = JSON.parse(read(root, ".claude", "settings.json"));
+    assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env"]);
+    assert.equal(settings.outputStyle, "Explanatory");
+    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(tether *)", "PowerShell(tether *)"]);
+    assert.deepEqual(settings.permissions.ask, INIT_SETTINGS.permissions.ask);
+    assert.deepEqual(settings.env, { FOO: "1", CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" });
+
+    const before = read(root, ".claude", "settings.json");
+    assert.equal(results(runInit(root).json).settings, "unchanged");
+    assert.equal(read(root, ".claude", "settings.json"), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("init does not allow a rule the project denies, and says so", () => {
+  const root = gitRepo();
+  try {
+    writeSettings(root, JSON.stringify({ permissions: { deny: ["PowerShell(tether *)"] } }));
+    const r = runInit(root, { args: ["--human"] });
+    assert.equal(r.code, 0, r.stderr);
+    const settings = JSON.parse(read(root, ".claude", "settings.json"));
+    assert.deepEqual(settings.permissions.allow, ["Bash(tether *)"]);
+    assert.deepEqual(settings.permissions.deny, ["PowerShell(tether *)"]);
+    const line = r.stdout.split("\n").find((l) => l.startsWith("settings: "));
+    assert.match(line, /WARNING: permissions\.deny holds PowerShell\(tether \*\)/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a settings file that is not JSON fails its step, stays as is, and the other steps still run", () => {
+  const root = gitRepo();
+  try {
+    writeSettings(root, "{ not json");
+    const r = runInit(root);
+    assert.equal(r.code, 2);
+    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed" });
+    assert.equal(read(root, ".claude", "settings.json"), "{ not json");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
