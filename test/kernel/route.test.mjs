@@ -149,6 +149,28 @@ test("bareAgentName strips only the exact tether: prefix", () => {
   assert.equal(bareAgentName(""), null);
 });
 
+test("bareAgentName resolves a teammate instance name to the role it ends in", () => {
+  assert.equal(bareAgentName("cumulative-reviewer-4"), "reviewer");
+  assert.equal(bareAgentName("cumulative-reviewer"), "reviewer");
+  assert.equal(bareAgentName("reviewer-2"), "reviewer");
+  assert.equal(bareAgentName("tether:developer"), "developer");
+  assert.equal(bareAgentName("general-purpose"), "general-purpose");
+  assert.equal(bareAgentName("lead"), "lead");
+  assert.equal(bareAgentName("reviewer-x"), "reviewer-x");
+  assert.equal(bareAgentName("other:cumulative-reviewer"), "other:cumulative-reviewer");
+});
+
+test("route accepts APPROVED from a continued cumulative reviewer known by its instance name", () => {
+  const { root, id } = setup();
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  route({ id, verdict: "approved", agent: "user", phase: 1, through: 3, root });
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 3, root });
+  const r = route({ id, verdict: "APPROVED", agent: "cumulative-reviewer-4", scope: "cumulative", root });
+  assert.equal(r.next.action, "close");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("a tether:developer may route PHASE DONE and is recorded as developer", () => {
   const { root, id } = setup();
   route({ id, verdict: "PHASE DONE", agent: "tether:developer", phase: 1, root });
