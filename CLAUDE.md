@@ -1,6 +1,6 @@
 # Tether
 
-Start every session in this repository with `claude --plugin-dir core` (or `npm run claude`): the plugin in `core/` carries the skills, agents, hooks and the `tether` CLI. Four lanes, four agents, one kernel. Code decides what code can decide; the model fills the rest.
+Four lanes, four agents, one kernel. Code decides what code can decide; the model fills the rest.
 
 ## Every request
 
@@ -12,7 +12,13 @@ Start every session in this repository with `claude --plugin-dir core` (or `npm 
 
 ## Rules
 
-`core/rules/` is injected at session start and into every agent: `prose`, `comments`, `work-items`, `security-paths`. `harness-authoring` loads by path (.claude/**, core/**).
+The plugin injects its rules at session start and into every agent: `prose`, `comments`, `work-items`, `security-paths`.
+
+`tether init` rewrites this block; project lines belong under `## Project facts`.
+
+## This repository
+
+Start every session with `npm run claude` (`claude --plugin-dir core`). `harness-authoring` loads by path (.claude/**, core/**).
 
 ## Project facts
 

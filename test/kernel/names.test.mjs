@@ -9,7 +9,7 @@ const CORE = join(ROOT, "core");
 const SKILLS_DIR = join(CORE, "skills");
 const LIB_DIR = join(CORE, "lib");
 const SKIPPED_DIRS = new Set(["examples", "vendor"]);
-const CLI_VERBS = ["admit", "new", "list", "state", "set", "close", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "comment", "packet", "pr", "source", "migrate", "check"];
+const CLI_VERBS = ["init", "admit", "new", "list", "state", "set", "close", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "comment", "packet", "pr", "source", "migrate", "check"];
 
 const SKILLS = readdirSync(SKILLS_DIR).filter((name) => statSync(join(SKILLS_DIR, name)).isDirectory());
 const SKILL_ALTERNATION = SKILLS.join("|");

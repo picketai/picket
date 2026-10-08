@@ -11,6 +11,7 @@ import { check, renderCheck } from "../lib/check.mjs";
 import { migrate, renderMigrate } from "../lib/migrate.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
 import { close } from "../lib/close.mjs";
+import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
 import { configRel } from "../lib/paths.mjs";
@@ -58,6 +59,19 @@ async function main(argv) {
   const [verb, ...rest] = pos;
   const root = opt.root ?? projectRoot();
   switch (verb) {
+    case "init": {
+      let initAt;
+      try {
+        initAt = initRoot({ root: typeof opt.root === "string" ? opt.root : undefined });
+      } catch (err) {
+        if (!(err instanceof InitRefused)) throw err;
+        out({ root: null, error: err.message }, opt, (v) => `init refused · ${v.error}`);
+        return 2;
+      }
+      const report = init(initAt);
+      out(report, opt, renderInit);
+      return report.steps.some((s) => s.result === "failed") ? 2 : 0;
+    }
     case "admit": {
       const text = opt.text === true || opt.text === "" || (!opt.text && !opt.request) ? "" : readRequest(opt, "admit");
       if (!text.trim()) {
@@ -276,7 +290,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set close next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init admit new list state set close next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
   }
 }
 
