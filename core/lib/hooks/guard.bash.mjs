@@ -36,6 +36,7 @@ import { isAbsolute, join, resolve } from "path";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
+import { maskEnvValues } from "./observe.drive.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
 
@@ -48,7 +49,7 @@ function trace(root, rawCommand, outcome) {
         ts: new Date().toISOString(),
         outcome,
         cwd: process.cwd(),
-        command: rawCommand.slice(0, TRACED_COMMAND_CHARS),
+        command: maskEnvValues(rawCommand).slice(0, TRACED_COMMAND_CHARS),
       }) + "\n"
     );
   } catch {}

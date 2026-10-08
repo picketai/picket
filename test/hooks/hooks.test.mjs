@@ -635,6 +635,16 @@ test("the spawned guard.bash allows a bare tether call chained with a read-only 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("the spawned guard.bash traces a tether drive --env value masked", () => {
+  const { root } = project();
+  const command = 'tether drive --run "node .tether/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42';
+  run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root);
+  const log = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8");
+  assert.doesNotMatch(log, /secret-probe-42/);
+  assert.match(log, /--env PROBE=\*\*\*/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("observe.drive logs --env values masked, quoted or not", () => {
   const { root } = project();
   const logged = (command) => {
