@@ -1,0 +1,8 @@
+id: 20261008-tether-close-commits-the-closing-state
+lane: order
+title: Tether close commits the closing state
+status: open
+created: 2026-10-08T12:14:06.610Z
+updated: 2026-10-08T12:23:02.381Z
+base: 2398df5368994fef532fd71af334f95cae868ef0
+run_through: 2

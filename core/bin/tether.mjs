@@ -10,6 +10,7 @@ import { drive, renderDrive } from "../lib/drive.mjs";
 import { check, renderCheck } from "../lib/check.mjs";
 import { migrate, renderMigrate } from "../lib/migrate.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
+import { close } from "../lib/close.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
 import { configRel } from "../lib/paths.mjs";
@@ -39,6 +40,10 @@ function parse(argv) {
 function out(value, opt, text) {
   if (opt.human && text) console.log(text(value));
   else console.log(opt.pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value));
+}
+
+function dirtyWarning(dirty) {
+  return dirty.length ? `\nWARNING: uncommitted changes: ${dirty.join(", ")} (commit them or \`git checkout -- <path>\` before you print the closing block)` : "";
 }
 
 /** The request from `--text "<text>"` or `--request <file|->`; a flag given without a value is an error. */
@@ -113,8 +118,20 @@ async function main(argv) {
       writeState(st, root);
       // Closing with uncommitted changes in the tree is the most common way a drive's side effect ships.
       const dirty = st.status === "done" ? (dirtyPaths(root) ?? []) : [];
-      out({ ...st, dirty, next: next(st.id, root) }, opt, (v) => `${v.id}: status ${v.status}${v.blocked_reason ? " (" + v.blocked_reason + ")" : ""} · next: ${v.next.action}${v.dirty.length ? `\nWARNING: uncommitted changes: ${v.dirty.join(", ")} (commit them or \`git checkout -- <path>\` before you print the closing block)` : ""}`);
+      out({ ...st, dirty, next: next(st.id, root) }, opt, (v) => `${v.id}: status ${v.status}${v.blocked_reason ? " (" + v.blocked_reason + ")" : ""} · next: ${v.next.action}${dirtyWarning(v.dirty)}`);
       return 0;
+    }
+    case "close": {
+      if (!rest[0]) throw new Error("close needs <id>");
+      const message = typeof opt.message === "string" ? opt.message : undefined;
+      try {
+        const r = close(rest[0], root, { message });
+        out(r, opt, (v) => `${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`);
+        return 0;
+      } catch (err) {
+        out({ id: rest[0], error: err.message }, opt, (v) => `${v.id}: not closed · ${v.error}`);
+        return 2;
+      }
     }
     case "next": {
       if (!rest[0]) throw new Error("next needs <id>");
@@ -260,7 +277,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: admit new list state set close next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
   }
 }
 
