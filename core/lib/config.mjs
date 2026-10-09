@@ -10,7 +10,7 @@ export const CONFIG_FILE = configRel();
 
 export const CONFIG_VERSION = 1;
 
-export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands"]);
+export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions"]);
 
 export const DEFAULT_LANES = Object.freeze({
   fast: Object.freeze({ max_files: 3 }),
@@ -26,6 +26,7 @@ export const CONFIG_DEFAULTS = Object.freeze({
   sources: {},
   lanes: DEFAULT_LANES,
   commands: {},
+  extensions: [],
 });
 
 function isPlainObject(value) {
@@ -117,6 +118,17 @@ function checkCommands(value, warn) {
   return commands;
 }
 
+function checkExtensions(value, warn) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    warn("extensions must be a list of extension names; no extensions enabled");
+    return [];
+  }
+  const names = value.filter((name) => typeof name === "string" && name);
+  if (names.length !== value.length) warn("extensions holds an entry that is not a name; it is dropped");
+  return names;
+}
+
 function commandProblem(name, command) {
   if (!COMMAND_NAMES.includes(name)) return `unknown key "commands.${name}"`;
   if (typeof command !== "string" || !command.trim()) return `commands.${name} must be a non-empty string; detection stands`;
@@ -136,7 +148,8 @@ export function loadConfig(root, env = process.env) {
   const sources = Object.entries(checkSourceDeclarations(raw.sources, warn)).map(([name, decl]) => resolveSource(name, decl, env));
   const lanes = checkLanes(raw.lanes, warn);
   const commands = checkCommands(raw.commands, warn);
-  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, error, warnings };
+  const extensions = checkExtensions(raw.extensions, warn);
+  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, error, warnings };
 }
 
 function resolveSource(name, decl, env) {

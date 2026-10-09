@@ -12,6 +12,7 @@ import { migrate, renderMigrate } from "../lib/migrate.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
 import { close } from "../lib/close.mjs";
 import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
+import { describeExtensions, loadExtensions, renderExtensions } from "../lib/extensions.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { next } from "../lib/next.mjs";
 import { configRel } from "../lib/paths.mjs";
@@ -72,6 +73,10 @@ async function main(argv) {
   const [verb, ...rest] = pos;
   const root = opt.root ?? projectRoot();
   switch (verb) {
+    case "extensions": {
+      out(describeExtensions(loadExtensions(root)), opt, renderExtensions);
+      return 0;
+    }
     case "init": {
       let initAt;
       try {
@@ -305,7 +310,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init admit new list state set close next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extensions admit new list state set close next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
   }
 }
 

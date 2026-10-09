@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tether extension manifest (.tether/extensions/<name>/extension.json), schema 1",
+  "description": "An extension adds content at four named points and never replaces or removes core behaviour. Any key not listed here refuses the extension. Paths are relative to the extension folder and may not leave it.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "The extension's name. Must equal its folder name under .tether/extensions/ and the entry in the config's extensions list.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
+    },
+    "version": {
+      "description": "The extension's own version, a SemVer string such as 0.1.0. Shown wherever the extension's text is injected and in preflight.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "schema": {
+      "description": "The extension-point contract this manifest is written against. Schema 1 defines rules, agents, review_steps and preflight; a Tether that does not support the number refuses the extension.",
+      "const": 1
+    },
+    "description": {
+      "description": "One line saying what the extension adds.",
+      "type": "string"
+    },
+    "rules": {
+      "description": "Markdown files whose text reaches the lead and every agent, after the core rules.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "agents": {
+      "description": "Markdown files for one role only, keyed by role. The lead gets its files at session start; each agent gets its files when it starts.",
+      "type": "object",
+      "properties": {
+        "lead": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "analyst": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "architect": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "developer": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "reviewer": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
+    "review_steps": {
+      "description": "Review checklist files the reviewer loads after the core set, from the given review size up. A security path loads all of them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "description": "The checklist file.", "type": "string", "minLength": 1 },
+          "min_size": { "description": "The smallest review size that loads this file.", "enum": ["small", "medium", "large"] }
+        },
+        "required": ["path", "min_size"],
+        "additionalProperties": false
+      }
+    },
+    "preflight": {
+      "description": "Declarative checks added to tether preflight. None runs a command.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "description": "The check's id; preflight names it ext:<extension>:<id>.", "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,39}$" },
+          "kind": { "description": "path_exists: a project-relative path exists. env_set: an environment variable is set and not empty. command_on_path: a program is found on PATH, without running it.", "enum": ["path_exists", "env_set", "command_on_path"] },
+          "value": { "description": "The path, variable name or program name the kind checks.", "type": "string", "minLength": 1 },
+          "level": { "description": "warn reports and continues; fail stops the lane like a core failure.", "enum": ["warn", "fail"] },
+          "message": { "description": "What to tell the user when the check fails.", "type": "string", "minLength": 1 }
+        },
+        "required": ["id", "kind", "value", "level", "message"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["name", "version", "schema"],
+  "additionalProperties": false
+}

@@ -88,7 +88,7 @@ test("a wrong cap type keeps the default with a warning (T-5.1)", () => {
 });
 
 test("an unknown key and a version other than 1 each give a warning (T-5.1)", () => {
-  withProject({ version: 1, extensions: {} }, (root) => assert.deepEqual(loadConfig(root, {}).warnings, ['unknown key "extensions"']));
+  withProject({ version: 1, plugins: {} }, (root) => assert.deepEqual(loadConfig(root, {}).warnings, ['unknown key "plugins"']));
   withProject({ version: 2 }, (root) => {
     const c = loadConfig(root, {});
     assert.equal(c.warnings.length, 1);
@@ -109,7 +109,7 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", () => {
 
 test("no config file is the defaults with no error and no warning", () => {
   withProject(undefined, (root) => {
-    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, error: null, warnings: [] });
+    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], error: null, warnings: [] });
   });
 });
 
@@ -134,4 +134,23 @@ test("a configured command overrides detection; a destructive one is dropped wit
     assert.match(c.warnings[0], /commands\.test dropped: .*destructive/);
     assert.equal(detectTooling(root).test, "npm test");
   });
+});
+
+test("extensions defaults to an empty list, keeps a valid list and drops a malformed one with a warning", () => {
+  withProject({ version: 1, extensions: ["acme", "local"] }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.extensions, ["acme", "local"]);
+    assert.deepEqual(config.warnings, []);
+  });
+  withProject({ version: 1, extensions: "acme" }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.extensions, []);
+    assert.match(config.warnings.join("\n"), /extensions must be a list/);
+  });
+  withProject({ version: 1, extensions: ["acme", 7] }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.extensions, ["acme"]);
+    assert.match(config.warnings.join("\n"), /not a name; it is dropped/);
+  });
+  assert.deepEqual(SCHEMA.properties.extensions.default, []);
 });
