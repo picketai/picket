@@ -9,6 +9,7 @@ import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
 import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
 import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
+import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
 import { guardBash, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
@@ -22,6 +23,7 @@ const SHELLS = [
   "guard.block.mjs",
   "guard.comments.mjs",
   "guard.scope.mjs",
+  "inject.extensions.mjs",
   "inject.rules.mjs",
   "inject.state.mjs",
   "lint.schema.mjs",
@@ -61,7 +63,7 @@ function transcript(root, entries) {
 const user = (text) => ({ type: "user", message: { role: "user", content: text } });
 const assistant = (text) => ({ type: "assistant", message: { role: "assistant", model: "claude-opus-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 100 }, content: [{ type: "text", text }] } });
 
-test("core/hooks holds hooks.json, the ten shells, README.md and no other file (T-7.1)", () => {
+test("core/hooks holds hooks.json, the hook shells, README.md and no other file (T-7.1)", () => {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -261,4 +263,76 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
   );
   assert.deepEqual(executed.sort(), ["--only", "--run", "--start"]);
   for (const flag of executed) assert.ok(WRAPPING_FLAGS.has(flag), flag);
+});
+
+function extensionProject(extensions, manifests) {
+  const root = mkdtempSync(join(tmpdir(), "tether-ext-hook-"));
+  mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
+  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions }));
+  for (const [name, { manifest, files }] of Object.entries(manifests)) {
+    const dir = join(root, ".tether", "extensions", name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "0.1.0", schema: 1, ...manifest }));
+    for (const [path, text] of Object.entries(files ?? {})) writeFileSync(join(dir, path), text);
+  }
+  return root;
+}
+
+function roleTexts(name) {
+  return {
+    manifest: { rules: ["rules.md"], agents: { lead: ["lead.md"], developer: ["developer.md"], reviewer: ["reviewer.md"] } },
+    files: { "rules.md": `${name} rule`, "lead.md": `${name} lead`, "developer.md": `${name} developer`, "reviewer.md": `${name} reviewer` },
+  };
+}
+
+function extensionText(event, root) {
+  return injectExtensions(event, { root })?.hookSpecificOutput.additionalContext ?? null;
+}
+
+test("SessionStart gets each extension's rules then its lead text, in config order", () => {
+  const root = extensionProject(["acme", "local"], { acme: roleTexts("acme"), local: roleTexts("local") });
+  try {
+    const text = extensionText({ hook_event_name: "SessionStart" }, root);
+    assert.equal(text, "## Extension acme 0.1.0\n\nacme rule\n\nacme lead\n\n## Extension local 0.1.0\n\nlocal rule\n\nlocal lead");
+    assert.equal(text.includes("developer"), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("SubagentStart gives a role its own additions and any other agent the rules only", () => {
+  const root = extensionProject(["acme"], { acme: roleTexts("acme") });
+  try {
+    assert.equal(extensionText({ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, root), "## Extension acme 0.1.0\n\nacme rule\n\nacme developer");
+    assert.equal(extensionText({ hook_event_name: "SubagentStart", agent_type: "general-purpose" }, root), "## Extension acme 0.1.0\n\nacme rule");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("extensions past 10,000 characters are left out whole and named", () => {
+  const big = (name) => ({ manifest: { rules: ["rules.md"] }, files: { "rules.md": `${name} `.padEnd(4000, "x") } });
+  const root = extensionProject(["one", "two", "three"], { one: big("one"), two: big("two"), three: big("three") });
+  try {
+    const text = extensionText({ hook_event_name: "SessionStart" }, root);
+    assert.ok(text.length <= 10_000, `${text.length}`);
+    assert.ok(text.includes("## Extension one") && text.includes("## Extension two"));
+    assert.equal(text.includes("## Extension three"), false);
+    assert.match(text.split("\n").at(-1), /left out.*: three$/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a refused extension adds one line and no text; nothing enabled or refused gives no output", () => {
+  const root = extensionProject(["broken"], { broken: { manifest: { schema: 2, rules: ["rules.md"] }, files: { "rules.md": "should not appear" } } });
+  const empty = extensionProject([], {});
+  try {
+    const text = extensionText({ hook_event_name: "SessionStart" }, root);
+    assert.equal(text, "Extension broken refused: schema 2 is not supported by this Tether (supports 1)");
+    assert.equal(injectExtensions({ hook_event_name: "SessionStart" }, { root: empty }), null);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(empty, { recursive: true, force: true });
+  }
 });

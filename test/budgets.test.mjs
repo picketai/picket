@@ -3,7 +3,8 @@
 // needs a one-line rationale next to the number.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { joinedRules } from "../core/lib/hooks/inject.rules.mjs";
@@ -107,4 +108,30 @@ test("the injected rule text fits one hook's additionalContext limit", () => {
 test("the injection budget check flags text past the limit", () => {
   assert.equal(injectionOverBudget("x".repeat(BUDGETS.inject_chars)), null);
   assert.equal(injectionOverBudget("x".repeat(BUDGETS.inject_chars + 1)), `${BUDGETS.inject_chars + 1} chars > ${BUDGETS.inject_chars}`);
+});
+
+test("inject.extensions starts cold under the budget with three extensions enabled", () => {
+  const root = mkdtempSync(join(tmpdir(), "tether-ext-budget-"));
+  try {
+    const names = ["acme", "local", "team"];
+    mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
+    writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions: names }));
+    for (const name of names) {
+      const dir = join(root, ".tether", "extensions", name);
+      mkdirSync(dir);
+      writeFileSync(join(dir, "rules.md"), `Rule text for ${name}.\n`);
+      writeFileSync(join(dir, "reviewer.md"), `Reviewer text for ${name}.\n`);
+      writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "0.1.0", schema: 1, rules: ["rules.md"], agents: { reviewer: ["reviewer.md"] } }));
+    }
+    const input = JSON.stringify({ hook_event_name: "SubagentStart", agent_type: "tether:reviewer", cwd: root });
+    let best = Infinity;
+    for (let i = 0; i < 3; i++) {
+      const t0 = Date.now();
+      execFileSync("node", [join(ROOT, "core", "hooks", "inject.extensions.mjs")], { input, stdio: ["pipe", "ignore", "ignore"], timeout: 5000, env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+      best = Math.min(best, Date.now() - t0);
+    }
+    assert.ok(best <= BUDGETS.hook_cold_ms, `inject.extensions with three extensions: ${best} ms`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

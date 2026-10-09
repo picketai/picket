@@ -659,3 +659,40 @@ test("observe.drive logs --env values masked, quoted or not", () => {
   assert.equal(/two words|three more|single quoted/.test(quoted), false);
   rmSync(root, { recursive: true, force: true });
 });
+
+function projectWithReviewerExtension() {
+  const root = mkdtempSync(join(tmpdir(), "tether-ext-spawn-"));
+  const dir = join(root, ".tether", "extensions", "acme");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions: ["acme"] }));
+  writeFileSync(join(dir, "extension.json"), JSON.stringify({ name: "acme", version: "0.2.0", schema: 1, rules: ["rules.md"], agents: { reviewer: ["reviewer.md"] } }));
+  writeFileSync(join(dir, "rules.md"), "Use pnpm, never npm.\n");
+  writeFileSync(join(dir, "reviewer.md"), "Check every endpoint against openapi.yaml.\n");
+  return root;
+}
+
+test("the spawned inject.extensions gives a tether:reviewer its addition on SubagentStart and the lead its rules on SessionStart", () => {
+  const root = projectWithReviewerExtension();
+  try {
+    const reviewer = run("inject.extensions.mjs", { hook_event_name: "SubagentStart", agent_type: "tether:reviewer", cwd: root }, root);
+    assert.equal(reviewer.hookSpecificOutput.hookEventName, "SubagentStart");
+    assert.match(reviewer.hookSpecificOutput.additionalContext, /## Extension acme 0\.2\.0\n\nUse pnpm, never npm\.\n\nCheck every endpoint against openapi\.yaml\./);
+    const lead = run("inject.extensions.mjs", { hook_event_name: "SessionStart", source: "startup", cwd: root }, root);
+    assert.equal(lead.hookSpecificOutput.additionalContext, "## Extension acme 0.2.0\n\nUse pnpm, never npm.");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the core rules hook prints the same bytes with and without an extension enabled", () => {
+  const plain = mkdtempSync(join(tmpdir(), "tether-ext-plain-"));
+  const extended = projectWithReviewerExtension();
+  try {
+    const event = (root) => ({ hook_event_name: "SubagentStart", agent_type: "tether:reviewer", cwd: root });
+    const rulesOut = (root) => execFileSync("node", [join(HOOKS, "inject.rules.mjs")], { input: JSON.stringify(event(root)), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+    assert.equal(rulesOut(extended), rulesOut(plain));
+  } finally {
+    rmSync(plain, { recursive: true, force: true });
+    rmSync(extended, { recursive: true, force: true });
+  }
+});

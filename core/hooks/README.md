@@ -6,6 +6,7 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 |---|---|---|
 | `inject.state.mjs` | SessionStart | open work items with their next action, plus `.claude/MEMORY.md` |
 | `inject.rules.mjs` | SessionStart, SubagentStart | the four rules in `rules/`, joined, for the lead and every agent |
+| `inject.extensions.mjs` | SessionStart, SubagentStart | each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension |
 | `guard.scope.mjs` | PreToolUse Write, Edit | denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `.tether/state/` except `branching.yaml`); denies an Edit on a file this transcript never read |
 | `guard.comments.mjs` | PreToolUse Write, Edit | denies an edit that adds a comment line to a code file (detector in `lib/comments.mjs`, doc comments included), unless `tether comment` recorded the user's approval for that path and text on an open or blocked item |
 | `guard.bash.mjs` | PreToolUse Bash | the command evaluator kept from the previous harness: read-only commands allowed, destructive roots denied, compound and redirected commands prompt |

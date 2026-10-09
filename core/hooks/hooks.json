@@ -3,11 +3,15 @@
     "SessionStart": [
       { "hooks": [
         { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.state.mjs"] },
-        { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.rules.mjs"] }
+        { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.rules.mjs"] },
+        { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.extensions.mjs"] }
       ] }
     ],
     "SubagentStart": [
-      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.rules.mjs"] }] }
+      { "hooks": [
+        { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.rules.mjs"] },
+        { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/inject.extensions.mjs"] }
+      ] }
     ],
     "PreToolUse": [
       { "matcher": "Write|Edit", "hooks": [
