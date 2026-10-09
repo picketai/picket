@@ -12,7 +12,7 @@ import { buildTemplate, materializeRun } from "./lib/fixture.mjs";
 import { runClaude } from "./lib/claude.mjs";
 import { grade, changedFiles, linesAdded } from "./lib/grade.mjs";
 import { addUsage, cacheHitRatio, totalTokens, round } from "./lib/metrics.mjs";
-import { nextPort, killListeners } from "./lib/ports.mjs";
+import { defaultExec, nextPort, parseNetstatListeners, runOrphans, stopProcesses } from "./lib/ports.mjs";
 import { trustWorkspace, untrustWorkspace } from "./lib/trust.mjs";
 
 const BENCH = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +49,17 @@ function loadTasks(filter) {
   if (filter === "all") return all;
   const wanted = filter.split(",").map((s) => s.trim());
   return all.filter((t) => wanted.some((w) => (w.startsWith("lane:") ? t.lane === w.slice(5) : t.id === w)));
+}
+
+function listeningPorts(pids) {
+  if (process.platform !== "win32" || !pids.length) return new Map();
+  let out = "";
+  try {
+    out = defaultExec("netstat", ["-ano", "-p", "tcp"]);
+  } catch {}
+  const ports = new Map();
+  for (const { pid, port } of parseNetstatListeners(out)) if (pids.includes(pid)) ports.set(pid, [...(ports.get(pid) ?? []), port]);
+  return ports;
 }
 
 function defaultHarnessRoot(name) {
@@ -112,6 +123,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   const eventsPath = join(runDir, "events.jsonl");
   const promptLog = join(runDir, "prompts.jsonl");
   const mcpConfigPath = join(runDir, "mcp.json");
+  const jobFile = join(runDir, "job.jsonl");
   writeFileSync(
     mcpConfigPath,
     JSON.stringify({ mcpServers: { bench: { command: "node", args: [join(BENCH, "lib", "approver-mcp.mjs")], env: { BENCH_PROMPT_LOG: promptLog } } } }),
@@ -152,8 +164,6 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   let prompt = task.prompt;
   let resume = null;
   const maxStops = task.max_stops ?? 8;
-  // The fixture honours PORT, so every run's servers bind their own port: no fight over 8080 with a
-  // leftover from an earlier run, and whatever is still listening when the run ends is ours to kill.
   const port = nextPort();
   record.port = port;
   // Untrusted workspaces get their permissions.allow ignored; the harness under test must have its own rules apply.
@@ -175,6 +185,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       eventsPath,
       approver,
       t0,
+      jobFile,
     });
     const res = r.result;
     record.rate_limits = (record.rate_limits ?? 0) + (r.summary.rateLimits ?? 0);
@@ -227,9 +238,12 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   }
   record.wall_ms = Date.now() - t0;
   untrustWorkspace(repo);
-  const orphans = killListeners(port);
-  if (orphans.length) log(`    killed ${orphans.length} server process(es) left listening on :${port}`);
-  record.orphans = orphans.length;
+  const { pids, tracked } = runOrphans({ repo, startedAt: t0, jobFile, port });
+  const ports = listeningPorts(pids);
+  const stopped = stopProcesses(pids);
+  if (stopped.length) log(`    stopped ${stopped.length} process(es) the run left behind: ${stopped.map((pid) => (ports.has(pid) ? `${pid} on :${ports.get(pid).join(",:")}` : `${pid}`)).join("; ")}`);
+  record.orphans = stopped.length;
+  record.tracked = tracked;
   // Keep what prompted, not only how often: the prompt count is a UX metric and its causes are the fix list.
   record.prompt_log = existsSync(promptLog)
     ? readFileSync(promptLog, "utf8")

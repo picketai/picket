@@ -2,6 +2,7 @@
 // and returns the result record plus the summary the metrics need.
 import { spawn, execSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 let claudeBin;
 export function resolveClaude() {
@@ -13,6 +14,13 @@ export function resolveClaude() {
 }
 
 const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
+
+export const JOB_WRAPPER = fileURLToPath(new URL("./jobwrap.ps1", import.meta.url));
+
+export function launchCommand(args, { platform = process.platform, jobFile, claude = resolveClaude() } = {}) {
+  if (platform === "win32" && jobFile) return { command: "pwsh", args: ["-NoProfile", "-File", JOB_WRAPPER, "-JobFile", jobFile, "--", claude, ...args], shell: false };
+  return { command: claude, args, shell: platform === "win32" && /\.cmd$/i.test(claude) };
+}
 
 /**
  * @param {object} o
@@ -58,11 +66,12 @@ export function runClaude(o) {
   };
 
   return new Promise((resolve) => {
-    const child = spawn(resolveClaude(), args, {
+    const launch = launchCommand(args, { jobFile: o.jobFile });
+    const child = spawn(launch.command, launch.args, {
       cwd: o.cwd,
       env: { ...process.env, CLAUDE_PROJECT_DIR: o.cwd, ...(o.env ?? {}) },
       stdio: ["pipe", "pipe", "pipe"],
-      shell: process.platform === "win32" && /\.cmd$/i.test(resolveClaude()),
+      shell: launch.shell,
       windowsHide: true,
     });
     let buf = "";
