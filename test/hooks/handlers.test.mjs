@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createWork, writeState } from "../../core/lib/work.mjs";
@@ -193,6 +193,19 @@ test("guardScope called directly guards kernel and hook state but lets the branc
     assert.equal(write(join(root, "work", s.id, "state.yaml")), "deny");
     assert.equal(write(statePath(root, STATE_FILES.ledger)), "deny");
     assert.equal(write(branchingManifestPath(root)), null);
+  });
+});
+
+test("guardScope decides the same whatever form the root and the target path take", () => {
+  withProject((root) => {
+    const s = createWork({ lane: "order", title: "Forms", root });
+    const longRoot = realpathSync.native(root);
+    const decide = (rootForm, file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: rootForm }, { root: rootForm })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(decide(root, join(longRoot, "work", s.id, "state.yaml")), "deny");
+    assert.equal(decide(longRoot, join(root, "work", s.id, "state.yaml")), "deny");
+    assert.equal(decide(root, join(longRoot, ".tether", "extensions", "acme", "extension.json")), "ask");
+    assert.equal(decide(root, join(longRoot, "src", "new", "file.ts")), null);
+    if (process.platform === "win32") assert.equal(decide(root, join(root, "Work", s.id, "State.yaml")), "deny");
   });
 });
 

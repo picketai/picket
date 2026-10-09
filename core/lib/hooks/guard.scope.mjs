@@ -1,4 +1,5 @@
-import { relative, resolve } from "node:path";
+import { realpathSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { wasRead, agentTranscript } from "../transcript.mjs";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, TETHER_DIR, configRel, stateRel } from "../paths.mjs";
@@ -16,6 +17,15 @@ function deny(reason) {
 
 function ask(reason) {
   return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: `guard.scope: ${reason}` } };
+}
+
+function realPath(path) {
+  try {
+    return realpathSync.native(path);
+  } catch {
+    const parent = dirname(path);
+    return parent === path ? path : join(realPath(parent), basename(path));
+  }
 }
 
 function samePathCase(rel) {
@@ -47,8 +57,8 @@ export function guardScope(event, { root }) {
   const filePath = event.tool_input?.file_path;
   if (!filePath) return null;
   const abs = resolve(event.cwd ?? root, filePath);
-  const rel = relative(root, abs).replaceAll("\\", "/");
-  if (KERNEL_OWNED.test(rel)) return deny(`${rel} is kernel-owned; use \`tether new\`, \`tether set\`, \`tether route\`, \`tether comment\` or \`tether source\`, never a direct write`);
+  const rel = relative(realPath(root), realPath(abs)).replaceAll("\\", "/");
+  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`tether new\`, \`tether set\`, \`tether route\`, \`tether comment\` or \`tether source\`, never a direct write`);
   if (isHookOnlyState(rel)) return deny(`${rel} is written by the hooks only`);
   if (isLegacyState(rel)) return deny(`${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`tether migrate\` moves files out of it, nothing writes into it`);
   const source = underSource(abs, sourceRoots(root));
