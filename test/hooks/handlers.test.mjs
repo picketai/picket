@@ -336,3 +336,26 @@ test("a refused extension adds one line and no text; nothing enabled or refused 
     rmSync(empty, { recursive: true, force: true });
   }
 });
+
+test("guardScope asks before an edit to extension content or the config, and keeps its denials first", () => {
+  withProject((root) => {
+    const decide = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+    const extension = decide("Write", ".tether/extensions/acme/rules/a.md");
+    assert.equal(extension.permissionDecision, "ask");
+    assert.match(extension.permissionDecisionReason, /\.tether\/extensions\/acme\/rules\/a\.md is extension content/);
+    const config = decide("Edit", ".tether/config.json");
+    assert.equal(config.permissionDecision, "ask");
+    assert.match(config.permissionDecisionReason, /\.tether\/config\.json changes what the kernel loads/);
+    assert.equal(decide("Write", ".tether/state/ledger.jsonl").permissionDecision, "deny");
+    assert.equal(decide("Write", "src/a.ts"), null);
+    if (process.platform === "win32") assert.equal(decide("Write", ".TETHER/Extensions/acme/x.md").permissionDecision, "ask");
+  });
+});
+
+test("guardBash never allows a heredoc redirect into an extension file", () => {
+  withProject((root) => {
+    const command = "cat > .tether/extensions/x/rules/a.md <<'EOF'\nUse pnpm.\nEOF";
+    const decision = guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.notEqual(decision, "allow");
+  });
+});

@@ -696,3 +696,19 @@ test("the core rules hook prints the same bytes with and without an extension en
     rmSync(extended, { recursive: true, force: true });
   }
 });
+
+test("the spawned guard.scope asks on an extension write, asks on a read config edit, and denies an unread manifest edit", () => {
+  const { root } = project();
+  mkdirSync(join(root, ".tether", "extensions", "acme"), { recursive: true });
+  writeFileSync(join(root, ".tether", "config.json"), "{}");
+  writeFileSync(join(root, ".tether", "extensions", "acme", "extension.json"), "{}");
+  const tp = transcript(root, [user("x"), assistant([tool("Read", { file_path: join(root, ".tether", "config.json") })])]);
+  const base = { hook_event_name: "PreToolUse", transcript_path: tp, cwd: root };
+  const decision = (tool_name, ...rel) => run("guard.scope.mjs", { ...base, tool_name, tool_input: { file_path: join(root, ...rel) } }, root)?.hookSpecificOutput;
+  assert.equal(decision("Write", ".tether", "extensions", "acme", "rules", "a.md").permissionDecision, "ask");
+  assert.equal(decision("Edit", ".tether", "config.json").permissionDecision, "ask");
+  const unread = decision("Edit", ".tether", "extensions", "acme", "extension.json");
+  assert.equal(unread.permissionDecision, "deny");
+  assert.match(unread.permissionDecisionReason, /read .* before editing/);
+  rmSync(root, { recursive: true, force: true });
+});

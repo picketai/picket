@@ -1,15 +1,32 @@
 import { relative, resolve } from "node:path";
 import { wasRead, agentTranscript } from "../transcript.mjs";
 import { sourceRoots, underSource } from "../source-paths.mjs";
-import { LEGACY, MODEL_WRITABLE_STATE_FILES, stateRel } from "../paths.mjs";
+import { LEGACY, MODEL_WRITABLE_STATE_FILES, TETHER_DIR, configRel, stateRel } from "../paths.mjs";
 
 const KERNEL_OWNED = /^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|comments\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/;
 const STATE_PREFIX = `${stateRel("")}/`.toLowerCase();
 const MODEL_WRITABLE_STATE = MODEL_WRITABLE_STATE_FILES.map((name) => stateRel(name).toLowerCase());
 const LEGACY_STATE_PREFIX = `${LEGACY.stateDir}/`;
+const EXTENSIONS_PREFIX = `${TETHER_DIR}/extensions/`;
+const CONFIG_REL = configRel();
 
 function deny(reason) {
   return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `guard.scope: ${reason}` } };
+}
+
+function ask(reason) {
+  return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: `guard.scope: ${reason}` } };
+}
+
+function samePathCase(rel) {
+  return process.platform === "win32" ? rel.toLowerCase() : rel;
+}
+
+function confirmationReason(rel) {
+  const path = samePathCase(rel);
+  if (path.startsWith(samePathCase(EXTENSIONS_PREFIX))) return `${rel} is extension content: its text reaches every agent or changes what the kernel loads, so the user confirms each edit`;
+  if (path === samePathCase(CONFIG_REL)) return `${rel} changes what the kernel loads (extensions, sources, security paths, commands), so the user confirms each edit`;
+  return null;
 }
 
 function isHookOnlyState(rel) {
@@ -37,5 +54,6 @@ export function guardScope(event, { root }) {
   const source = underSource(abs, sourceRoots(root));
   if (source) return deny(`${filePath} is inside source ${source}, which is read-only; read it through \`tether source\` and the snapshots`);
   if (editsUnreadFile(event, abs)) return deny(`read ${rel} with the Read tool before editing it; the file may have changed since you last saw it`);
-  return null;
+  const confirm = confirmationReason(rel);
+  return confirm ? ask(confirm) : null;
 }
