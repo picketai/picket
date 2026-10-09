@@ -106,7 +106,7 @@ function loadReviewStep(root, dir, step) {
   return { path: readText(root, dir, step.path).path, min_size: step.min_size };
 }
 
-function checkPreflight(check) {
+function checkPreflight(root, check) {
   if (!check || typeof check !== "object") refuse("a preflight check must be an object");
   const unknown = Object.keys(check).filter((key) => !PREFLIGHT_KEYS.includes(key));
   if (unknown.length) refuse(`preflight check has unknown key "${unknown[0]}"`);
@@ -115,6 +115,7 @@ function checkPreflight(check) {
   if (typeof check.value !== "string" || !check.value) refuse(`preflight ${check.id} needs a non-empty value`);
   if (!PREFLIGHT_LEVELS.includes(check.level)) refuse(`preflight ${check.id} level must be warn or fail`);
   if (typeof check.message !== "string" || !check.message) refuse(`preflight ${check.id} needs a message`);
+  if (check.kind === "path_exists" && (isAbsolute(check.value) || /^\.\.(?:[\\/]|$)/.test(relative(root, resolve(root, check.value))))) refuse(`preflight ${check.id} path ${check.value} leaves the project`);
   return { id: check.id, kind: check.kind, value: check.value, level: check.level, message: check.message };
 }
 
@@ -132,7 +133,7 @@ function loadOne(root, name) {
     rules: list(manifest.rules, "rules").map((listed) => readText(root, dir, listed)),
     agents: loadAgents(root, dir, manifest.agents),
     review_steps: list(manifest.review_steps, "review_steps").map((step) => loadReviewStep(root, dir, step)),
-    preflight: list(manifest.preflight, "preflight").map(checkPreflight),
+    preflight: list(manifest.preflight, "preflight").map((check) => checkPreflight(root, check)),
   };
 }
 

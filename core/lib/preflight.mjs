@@ -1,13 +1,14 @@
 // Pre-flight without a model: are the inputs there, is the tree sane, what tooling exists.
 // Each check is ok | warn | fail. One fail stops; warns are shown and work proceeds.
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { delimiter, join, resolve } from "node:path";
 import { protectionScope } from "./source-paths.mjs";
 import { deriveState, projectRoot } from "./work.mjs";
 import * as git from "./git.mjs";
 import { loadConfig } from "./config.mjs";
 import { listWorktrees } from "./sources.mjs";
 import { LEGACY_LOCATIONS, hostPath, legacyPath } from "./paths.mjs";
+import { loadExtensions } from "./extensions.mjs";
 
 export function detectTooling(root) {
   return { ...detectedTooling(root), ...loadConfig(root).commands };
@@ -42,6 +43,38 @@ function scopeText({ kind, paths }) {
   return kind === "folder"
     ? `it lies in this project's repository, so the guards protect that folder only (${paths[0]})`
     : `the guards protect its whole repository and worktrees: ${paths.join(", ")}`;
+}
+
+function isFile(path) {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+export function onPath(program, env = process.env) {
+  const pathVar = Object.entries(env).find(([key]) => key.toUpperCase() === "PATH")?.[1] ?? "";
+  const extensions = process.platform === "win32" ? ["", ...(env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean)] : [""];
+  return pathVar.split(delimiter).filter(Boolean).some((dir) => extensions.some((ext) => isFile(join(dir, program + ext)) || isFile(join(dir, program + ext.toLowerCase()))));
+}
+
+const EXTENSION_CHECKS = {
+  path_exists: (value, root) => existsSync(resolve(root, value)),
+  env_set: (value) => Boolean(process.env[value]),
+  command_on_path: (value) => onPath(value),
+};
+
+function addExtensionChecks(root, add) {
+  const { enabled, refused } = loadExtensions(root);
+  add("extensions", "ok", enabled.length ? enabled.map((e) => `${e.name}@${e.version}`).join(", ") : "none");
+  for (const r of refused) add(`ext:${r.name}`, "fail", `refused: ${r.reason}`);
+  for (const e of enabled) {
+    for (const check of e.preflight) {
+      const passed = EXTENSION_CHECKS[check.kind](check.value, root);
+      add(`ext:${e.name}:${check.id}`, passed ? "ok" : check.level, passed ? `${check.kind} ${check.value}` : check.message);
+    }
+  }
 }
 
 export function preflight(id, root = projectRoot()) {
@@ -94,6 +127,8 @@ export function preflight(id, root = projectRoot()) {
     else if (!(scope = protectionScope(source.root, root)).topLevel) add(`source:${source.name}`, "warn", `${source.root} is not a repository top level; ${scopeText(scope)}`);
     else add(`source:${source.name}`, "ok", `${source.root} · ${trees.length} worktree${trees.length === 1 ? "" : "s"}`);
   }
+
+  addExtensionChecks(root, add);
 
   const ok = !checks.some((c) => c.level === "fail");
   return { ok, checks, tooling, state: s };
