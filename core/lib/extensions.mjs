@@ -1,7 +1,7 @@
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig } from "./config.mjs";
-import { TETHER_DIR } from "./paths.mjs";
+import { TETHER_DIR, configPath } from "./paths.mjs";
 import { VERDICTS } from "./route.mjs";
 
 export const SUPPORTED_SCHEMAS = Object.freeze([1]);
@@ -163,6 +163,36 @@ export function loadExtensions(root) {
   }
   const unlisted = folderNames(root).filter((name) => !seen.has(name));
   return { enabled, refused, unlisted };
+}
+
+const SCAFFOLD_VERSION = "0.1.0";
+
+function readRawConfig(root) {
+  const file = configPath(root);
+  if (!existsSync(file)) return { version: 1 };
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync(file, "utf8"));
+  } catch (err) {
+    throw new Error(`${file} is not valid JSON (${err.message}); fix it before adding an extension`);
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`${file} is not a JSON object; fix it before adding an extension`);
+  return raw;
+}
+
+export function scaffoldExtension(root, name) {
+  if (typeof name !== "string" || !NAME.test(name)) throw new Error(`extension name "${name ?? ""}" must match ${NAME.source}`);
+  const dir = join(extensionsDir(root), name);
+  if (existsSync(dir)) throw new Error(`${dir} already exists`);
+  const config = readRawConfig(root);
+  const listed = Array.isArray(config.extensions) ? config.extensions : [];
+  if (listed.includes(name)) throw new Error(`${name} is already listed in extensions`);
+  mkdirSync(dir, { recursive: true });
+  const manifest = { name, version: SCAFFOLD_VERSION, schema: SUPPORTED_SCHEMAS.at(-1), rules: [] };
+  writeFileSync(join(dir, MANIFEST_FILE), `${JSON.stringify(manifest, null, 2)}\n`);
+  config.extensions = [...listed, name];
+  writeFileSync(configPath(root), `${JSON.stringify(config, null, 2)}\n`);
+  return { name, dir, manifest: join(dir, MANIFEST_FILE), extensions: config.extensions };
 }
 
 export function describeExtensions(report) {
