@@ -9,6 +9,7 @@ import { loadConfig, securityPaths } from "./config.mjs";
 import { liveDrift } from "./sources.mjs";
 import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
+import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
 
 export const SIZE = Object.freeze({ small: { files: 3, lines: 50 }, medium: { files: 10, lines: 400 } });
 
@@ -34,6 +35,15 @@ export function sizeClass(files, lines) {
   if (files <= SIZE.small.files && lines <= SIZE.small.lines) return "small";
   if (files <= SIZE.medium.files && lines <= SIZE.medium.lines) return "medium";
   return "large";
+}
+
+export function extensionSteps(root, size, securityPath) {
+  const rank = REVIEW_SIZES.indexOf(size);
+  return loadExtensions(root).enabled.flatMap((extension) =>
+    extension.review_steps
+      .filter((step) => securityPath || REVIEW_SIZES.indexOf(step.min_size) <= rank)
+      .map((step) => ({ extension: extension.name, path: step.path })),
+  );
 }
 
 export function detectFrameworks(root) {
@@ -88,16 +98,19 @@ export function reviewSummaryRange(root, base, head) {
   } catch {}
   const { added, removed } = numstat(root, base, head);
   const sec = securityPaths(root);
+  const size = sizeClass(changed.length, added + removed);
+  const securityPath = changed.some((f) => sec.some((p) => f.startsWith(p)));
   return {
     base,
     head,
-    size: sizeClass(changed.length, added + removed),
+    size,
     changed_files: changed,
     lines_added: added,
     lines_removed: removed,
     frameworks: detectFrameworks(root),
     concerns: detectConcerns(root, changed),
-    security_path: changed.some((f) => sec.some((p) => f.startsWith(p))),
+    security_path: securityPath,
+    extension_steps: extensionSteps(root, size, securityPath),
   };
 }
 
@@ -118,17 +131,20 @@ export function reviewSummary(id, o = {}) {
   const changed = [...rootChanged, ...nested.flatMap((r) => r.changed)].sort();
   const { added, removed } = nested.reduce((sum, r) => ({ added: sum.added + r.added, removed: sum.removed + r.removed }), numstat(root, base));
   const sec = securityPaths(root);
+  const size = sizeClass(changed.length, added + removed);
+  const securityPath = changed.some((f) => sec.some((p) => f.startsWith(p)));
   return {
     work_id: id,
     base,
     request: existsSync(join(root, "work", id, "request.md")) ? `work/${id}/request.md` : null,
-    size: sizeClass(changed.length, added + removed),
+    size,
     changed_files: changed,
     lines_added: added,
     lines_removed: removed,
     frameworks: detectFrameworks(root),
     concerns: detectConcerns(root, changed),
-    security_path: changed.some((f) => sec.some((p) => f.startsWith(p))),
+    security_path: securityPath,
+    extension_steps: extensionSteps(root, size, securityPath),
     phases: s.phase_count,
     repos: nested.filter((r) => r.skipped || r.changed.length).map(repoReport),
     // Each snapshot against its live version: snapshot_sha256, live_sha256, moved (and why).

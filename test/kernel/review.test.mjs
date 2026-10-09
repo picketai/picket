@@ -112,3 +112,71 @@ test("a project without nested repos writes no repos.yaml and reports repos []",
   assert.deepEqual(r.sources, [], "no sources.yaml, no drift entries (T-5.5)");
   rmSync(root, { recursive: true, force: true });
 });
+
+function extensionRepo(stepsByExtension) {
+  const root = mkdtempSync(join(tmpdir(), "tether-review-ext-"));
+  git(root, "init", "-q", "-b", "trunk");
+  mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
+  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions: Object.keys(stepsByExtension) }));
+  for (const [name, steps] of Object.entries(stepsByExtension)) {
+    const dir = join(root, ".tether", "extensions", name);
+    mkdirSync(join(dir, "review"), { recursive: true });
+    for (const [file] of steps) writeFileSync(join(dir, "review", file), `| ${file} | check |\n`);
+    writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "0.1.0", schema: 1, review_steps: steps.map(([file, min_size]) => ({ path: `review/${file}`, min_size })) }));
+  }
+  commitFile(root, "README.md", "base\n", "base");
+  return root;
+}
+
+function changeFiles(root, count, dir = "src") {
+  mkdirSync(join(root, dir), { recursive: true });
+  for (let i = 0; i < count; i++) writeFileSync(join(root, dir, `f${i}.ts`), "export const x = 1;\n");
+}
+
+const STEPS = { acme: [["small.md", "small"], ["medium.md", "medium"]], local: [["large.md", "large"]] };
+const stepPaths = (summary) => summary.extension_steps.map((s) => `${s.extension}:${s.path}`);
+
+test("extension review steps load from their min_size up, in config order across extensions", () => {
+  const root = extensionRepo(STEPS);
+  try {
+    const id = createWork({ lane: "order", title: "Steps", root }).id;
+    changeFiles(root, 1);
+    assert.equal(reviewSummary(id, { root }).size, "small");
+    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.tether/extensions/acme/review/small.md"]);
+    changeFiles(root, 6);
+    assert.equal(reviewSummary(id, { root }).size, "medium");
+    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.tether/extensions/acme/review/small.md", "acme:.tether/extensions/acme/review/medium.md"]);
+    changeFiles(root, 12);
+    assert.equal(reviewSummary(id, { root }).size, "large");
+    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.tether/extensions/acme/review/small.md", "acme:.tether/extensions/acme/review/medium.md", "local:.tether/extensions/local/review/large.md"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a small change on a security path loads every extension review step", () => {
+  const root = extensionRepo(STEPS);
+  try {
+    const id = createWork({ lane: "design", title: "Auth", root }).id;
+    changeFiles(root, 1, "src/auth");
+    const summary = reviewSummary(id, { root });
+    assert.equal(summary.size, "small");
+    assert.equal(summary.security_path, true);
+    assert.equal(summary.extension_steps.length, 3);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("with no extension enabled, extension_steps is empty and the summary keeps every other field", () => {
+  const root = extensionRepo({});
+  try {
+    const id = createWork({ lane: "order", title: "Plain", root }).id;
+    changeFiles(root, 2);
+    const summary = reviewSummary(id, { root });
+    assert.deepEqual(summary.extension_steps, []);
+    assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

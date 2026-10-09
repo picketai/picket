@@ -24,7 +24,7 @@ Reference for the reviewer: what the kernel hands you, which checklist to open, 
 The kernel computes size and detection before you run. It passes one JSON object:
 
 ```json
-{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."] }
+{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."], "extension_steps": [{ "extension": "acme", "path": ".tether/extensions/acme/review/api.md" }] }
 ```
 
 Field meaning:
@@ -34,6 +34,7 @@ Field meaning:
 - `concerns`: detected architecture concerns, already tie-broken. Load exactly what is listed.
 - `security_path`: true when any changed file sits under a CLAUDE.md `## Security paths` entry.
 - `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
+- `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
 
 Summary missing or a field absent: ask for it and stop. Do not fall back to your own detection.
 
@@ -48,6 +49,8 @@ A cross-check request carries no summary because there is no diff. Load `steps/6
 | large | the medium set with `20-patterns-core.md` in full |
 
 `security_path: true` overrides size: load `20-patterns-core.md` in full and `30-patterns-security.md`, and read every changed security-path file in full, whatever the size. `30-patterns-security.md` sits on every row because a 2-file, 40-line change can hardcode a secret as easily as a large one.
+
+After the row's set, load every file in `extension_steps`. Extension rows use the same shape and severities; they may add findings and never waive a core row.
 
 Every checklist row has the same shape: id, check, fail condition, severity. Run each row against the changed files; a row whose target construct does not appear is skipped silently.
 
