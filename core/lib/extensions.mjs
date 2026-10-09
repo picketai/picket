@@ -71,6 +71,7 @@ function confinedFile(root, dir, listed) {
   const target = resolve(dir, listed);
   if (!inside(target, dir)) refuse(`path ${listed} leaves the extension folder`);
   if (!existsSync(target)) refuse(`path ${listed} does not exist`);
+  if (isDirectory(target)) refuse(`path ${listed} is a folder, not a file`);
   if (!inside(realpathSync(target), realpathSync(dir))) refuse(`path ${listed} resolves outside the extension folder`);
   return { file: target, path: posix(relative(root, target)) };
 }
