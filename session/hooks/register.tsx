@@ -54,7 +54,7 @@ const session = atom({ plugin: 'picket-session', key: 'session' } as const, {
   frame: 0,
 } as Session)
 
-const view = atom({ plugin: 'picket-session', key: 'view' } as const, {
+const VIEW_DEFAULTS: View = {
   isCompact: false,
   closedGroups: [],
   tab: 'active',
@@ -62,7 +62,14 @@ const view = atom({ plugin: 'picket-session', key: 'view' } as const, {
   confirmId: null,
   sessionsOffset: 0,
   agentsOffset: 0,
-} as View)
+}
+
+const view = atom({ plugin: 'picket-session', key: 'view' } as const, VIEW_DEFAULTS)
+
+const readView = async ($: EngineInterface): Promise<View> => ({ ...VIEW_DEFAULTS, ...(await read($, view)) })
+
+const updateView = ($: EngineInterface, change: (current: View) => View): Promise<View> =>
+  update($, view, current => change({ ...VIEW_DEFAULTS, ...current }))
 
 const sessions = atom({ plugin: 'picket-session', key: 'sessions' } as const, {
   entries: [],
@@ -171,7 +178,7 @@ const toggleArchived = async ($: EngineInterface, id: string) => {
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 const deleteSession = async ($: EngineInterface, entry: SessionEntry) => {
-  await update($, view, current => ({ ...current, confirmId: null }))
+  await updateView($, current => ({ ...current, confirmId: null }))
   if (entry.isCurrent || entry.isLive || !SESSION_ID.test(entry.id)) {
     $.ui.toast('Only a closed session can be deleted.')
     return
@@ -217,7 +224,7 @@ const appendName = async ($: EngineInterface, path: string, id: string, name: st
 
 const rename = async ($: EngineInterface, entry: SessionEntry, value: string) => {
   const name = value.trim()
-  await update($, view, current => ({ ...current, renamingId: null }))
+  await updateView($, current => ({ ...current, renamingId: null }))
   if (name === '' || name === entry.title) {
     return
   }
@@ -399,7 +406,7 @@ export const register: Register = on => {
     const { topRows } = layout(e.bodyRows)
     const row = e.pointer?.row
     const isOverSessions = row !== undefined && row < PADDING + topRows
-    await update($, view, current =>
+    await updateView($, current =>
       isOverSessions
         ? { ...current, sessionsOffset: Math.max(0, Math.min(current.sessionsOffset + e.by, limits.sessions)) }
         : { ...current, agentsOffset: Math.max(0, Math.min(current.agentsOffset + e.by, limits.agents)) },
@@ -413,7 +420,7 @@ export const register: Register = on => {
     const Input = 'Input' in elements ? elements.Input : null
     const Raster = 'Raster' in elements ? elements.Raster : null
     const s = await read($, session)
-    const v = await read($, view)
+    const v = await readView($)
     const all = ordered(s.agents)
     const grouped = groupAgents(all)
     const width = Math.max(20, e.props.bodyColumns - 2 * PADDING)
@@ -512,7 +519,7 @@ export const register: Register = on => {
     const sessionWindow = shown.slice(sessionsOffset, sessionsOffset + sessionRows)
     const cardRows = v.isCompact ? 1 : CARD_ROWS
     const toggleGroup = (group: AgentGroup) =>
-      update($, view, current => ({
+      updateView($, current => ({
         ...current,
         closedGroups: current.closedGroups.includes(group)
           ? current.closedGroups.filter(one => one !== group)
@@ -550,7 +557,7 @@ export const register: Register = on => {
       <Button
         key={`tab-${key}`}
         plain
-        onPress={() => update($, view, current => ({ ...current, tab: key, confirmId: null }))}
+        onPress={() => updateView($, current => ({ ...current, tab: key, confirmId: null }))}
       >
         <Text backgroundColor={v.tab === key ? TAB_BACKGROUND : undefined} bold={v.tab === key} dimColor={v.tab !== key}>
           {` ${label} `}
@@ -566,7 +573,7 @@ export const register: Register = on => {
           <Button
             key={`ask-delete-${entry.id}`}
             plain
-            onPress={() => update($, view, current => ({ ...current, confirmId: entry.id }))}
+            onPress={() => updateView($, current => ({ ...current, confirmId: entry.id }))}
           >
             <Text color="error">⊘</Text>
           </Button>
@@ -577,7 +584,7 @@ export const register: Register = on => {
             key={`rename-button-${entry.id}`}
             plain
             label="✎"
-            onPress={() => update($, view, current => ({ ...current, renamingId: entry.id }))}
+            onPress={() => updateView($, current => ({ ...current, renamingId: entry.id }))}
           />
           <Text> </Text>
           {entry.isCurrent ? (
@@ -610,7 +617,7 @@ export const register: Register = on => {
               <Button
                 key={`cancel-${entry.id}`}
                 plain
-                onPress={() => update($, view, current => ({ ...current, confirmId: null }))}
+                onPress={() => updateView($, current => ({ ...current, confirmId: null }))}
               >
                 <Text dimColor>Cancel</Text>
               </Button>
@@ -690,7 +697,7 @@ export const register: Register = on => {
               <Button
                 key="collapse"
                 plain
-                onPress={() => update($, view, current => ({ ...current, isCompact: !current.isCompact }))}
+                onPress={() => updateView($, current => ({ ...current, isCompact: !current.isCompact }))}
               >
                 <Text dimColor>{v.isCompact ? 'Expand' : 'Collapse'}</Text>
               </Button>
