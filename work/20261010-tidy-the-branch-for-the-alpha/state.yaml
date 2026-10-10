@@ -1,8 +1,8 @@
 id: 20261010-tidy-the-branch-for-the-alpha
 lane: order
 title: Tidy the branch for the alpha
-status: open
+status: done
 created: 2026-10-10T12:18:29.373Z
-updated: 2026-10-10T12:28:50.363Z
+updated: 2026-10-10T12:33:46.898Z
 base: fa734f56904c8e3c3768165add38f075c9e0b5e1
 run_through: 2
