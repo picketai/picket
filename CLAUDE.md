@@ -24,4 +24,4 @@ Start every session with `npm run claude` (`claude --plugin-dir core`). `harness
 
 One-liners every agent needs and none should rediscover.
 
-- Sources (read-only repos such as `analysis`) are declared in `.tether/config.json`; each root comes from its env var, set in the `env` block of `.claude/settings.local.json`. Reach them with `tether source find|grep` and the work item's snapshots; nothing writes under a source.
+- Sources (read-only repos such as `analysis`) are declared in `.picket/config.json`; each root comes from its env var, set in the `env` block of `.claude/settings.local.json`. Reach them with `tether source find|grep` and the work item's snapshots; nothing writes under a source.

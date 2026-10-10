@@ -19,7 +19,7 @@ export function isRepositoryOnly(src, hostDir) {
   return REPOSITORY_ONLY.includes(rel);
 }
 
-const CONFIG_FILE = [".tether", "config.json"];
+const CONFIG_FILE = [".picket", "config.json"];
 
 export function copyConfig(repo, harnessRoot) {
   const config = join(harnessRoot, ...CONFIG_FILE);

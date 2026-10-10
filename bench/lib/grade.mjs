@@ -117,7 +117,7 @@ export function grade({ repo, task, hiddenDir, adapter, base = "HEAD" }) {
   return { pass, own, hidden, checks };
 }
 
-export const HARNESS_DIRS = Object.freeze([".claude/", ".tether/"]);
+export const HARNESS_DIRS = Object.freeze([".claude/", ".picket/"]);
 
 export function isHarnessFile(path) {
   return HARNESS_DIRS.some((dir) => path.startsWith(dir));

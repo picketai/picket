@@ -156,9 +156,9 @@ test("parseHit reads method, path and body", () => {
 
 test("drive --env passes the variable to the run and logs only its name", () => {
   const root = fixture();
-  mkdirSync(join(root, ".tether", "state", "scratch"), { recursive: true });
-  writeFileSync(join(root, ".tether", "state", "scratch", "env-probe.mjs"), 'process.exit(process.env.PROBE === "secret-probe-42" ? 0 : 1);\n');
-  const r = run(root, ["drive", "--run", "node .tether/state/scratch/env-probe.mjs", "--env", "PROBE=secret-probe-42"]);
+  mkdirSync(join(root, ".picket", "state", "scratch"), { recursive: true });
+  writeFileSync(join(root, ".picket", "state", "scratch", "env-probe.mjs"), 'process.exit(process.env.PROBE === "secret-probe-42" ? 0 : 1);\n');
+  const r = run(root, ["drive", "--run", "node .picket/state/scratch/env-probe.mjs", "--env", "PROBE=secret-probe-42"]);
   assert.equal(r.code, 0, r.stderr);
   assert.equal(r.json.ok, true);
   const log = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8");

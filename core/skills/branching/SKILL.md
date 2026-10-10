@@ -20,7 +20,7 @@ Scope: one branch per repo per feature, one worktree per (repo, branch). The bra
 
 ## Manifest
 
-`.tether/state/branching.yaml` maps each nested repo (immediate children of `scan_root`, default `src`) to `path`, `git_dir` and `default_branch`. It records repos only; branches and worktrees are read live from git. On every invocation: absent → scan and write it; present → validate every entry (`path` is a work tree, `git_dir` resolves) and detect new children; any broken or new entry → rescan, rewrite, report `added/removed/repaired`.
+`.picket/state/branching.yaml` maps each nested repo (immediate children of `scan_root`, default `src`) to `path`, `git_dir` and `default_branch`. It records repos only; branches and worktrees are read live from git. On every invocation: absent → scan and write it; present → validate every entry (`path` is a work tree, `git_dir` resolves) and detect new children; any broken or new entry → rescan, rewrite, report `added/removed/repaired`.
 
 Scan is read-only: for each child with a `.git` entry or a passing `git rev-parse --git-dir`, record `git -C <dir> rev-parse --absolute-git-dir` and the default branch by cascade: `symbolic-ref --short refs/remotes/origin/HEAD` minus `origin/`; else the current branch unless detached; else `main` or `master` if present; else `init.defaultBranch`. Deeper nesting: note it and ask before widening.
 

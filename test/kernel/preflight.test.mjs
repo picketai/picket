@@ -11,10 +11,10 @@ const BIN = resolve("core/bin/tether.mjs");
 
 function project(extensions, manifests) {
   const root = mkdtempSync(join(tmpdir(), "tether-preflight-"));
-  mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
-  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions }));
+  mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions }));
   for (const [name, preflight] of Object.entries(manifests)) {
-    const dir = join(root, ".tether", "extensions", name);
+    const dir = join(root, ".picket", "extensions", name);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "1.2.0", schema: 1, preflight }));
   }
@@ -85,8 +85,8 @@ test("command_on_path finds a program without starting it and reports a missing 
 test("a refused extension fails preflight with its reason, an unlisted folder adds nothing, and the extensions line names versions", () => {
   const { root, id } = project(["acme", "future"], { acme: [], future: [] });
   try {
-    writeFileSync(join(root, ".tether", "extensions", "future", "extension.json"), JSON.stringify({ name: "future", version: "2.0.0", schema: 2 }));
-    mkdirSync(join(root, ".tether", "extensions", "stray"));
+    writeFileSync(join(root, ".picket", "extensions", "future", "extension.json"), JSON.stringify({ name: "future", version: "2.0.0", schema: 2 }));
+    mkdirSync(join(root, ".picket", "extensions", "stray"));
     const r = preflightCli(root, id);
     assert.equal(r.code, 2);
     assert.equal(r.json.ok, false);

@@ -476,7 +476,7 @@ test("guard.bash sinks test logs into the new state folder only (T-4.4)", () => 
   const { root } = project();
   writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
-  assert.equal(stateRel("phase-1.log"), ".tether/state/phase-1.log");
+  assert.equal(stateRel("phase-1.log"), ".picket/state/phase-1.log");
   assert.equal(decision(`npm test > ${stateRel("phase-1.log")} 2>&1`), "allow");
   assert.equal(decision(`npm test > ${LEGACY.stateDir}/x.log`), null);
   rmSync(root, { recursive: true, force: true });
@@ -637,7 +637,7 @@ test("the spawned guard.bash allows a bare tether call chained with a read-only 
 
 test("the spawned guard.bash traces a tether drive --env value masked", () => {
   const { root } = project();
-  const command = 'tether drive --run "node .tether/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42';
+  const command = 'tether drive --run "node .picket/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42';
   run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root);
   const log = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8");
   assert.doesNotMatch(log, /secret-probe-42/);
@@ -651,7 +651,7 @@ test("observe.drive logs --env values masked, quoted or not", () => {
     run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s11" }, root);
     return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).command;
   };
-  const plain = logged('tether drive --run "node .tether/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42');
+  const plain = logged('tether drive --run "node .picket/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42');
   assert.match(plain, /--env PROBE=\*\*\*/);
   assert.equal(plain.includes("secret-probe-42"), false);
   const quoted = logged(`tether drive --hit "GET /h" --env "A=two words" --env B="three more words" --env C='single quoted'`);
@@ -662,9 +662,9 @@ test("observe.drive logs --env values masked, quoted or not", () => {
 
 function projectWithReviewerExtension() {
   const root = mkdtempSync(join(tmpdir(), "tether-ext-spawn-"));
-  const dir = join(root, ".tether", "extensions", "acme");
+  const dir = join(root, ".picket", "extensions", "acme");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions: ["acme"] }));
+  writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions: ["acme"] }));
   writeFileSync(join(dir, "extension.json"), JSON.stringify({ name: "acme", version: "0.2.0", schema: 1, rules: ["rules.md"], agents: { reviewer: ["reviewer.md"] } }));
   writeFileSync(join(dir, "rules.md"), "Use pnpm, never npm.\n");
   writeFileSync(join(dir, "reviewer.md"), "Check every endpoint against openapi.yaml.\n");
@@ -699,15 +699,15 @@ test("the core rules hook prints the same bytes with and without an extension en
 
 test("the spawned guard.scope asks on an extension write, asks on a read config edit, and denies an unread manifest edit", () => {
   const { root } = project();
-  mkdirSync(join(root, ".tether", "extensions", "acme"), { recursive: true });
-  writeFileSync(join(root, ".tether", "config.json"), "{}");
-  writeFileSync(join(root, ".tether", "extensions", "acme", "extension.json"), "{}");
-  const tp = transcript(root, [user("x"), assistant([tool("Read", { file_path: join(root, ".tether", "config.json") })])]);
+  mkdirSync(join(root, ".picket", "extensions", "acme"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), "{}");
+  writeFileSync(join(root, ".picket", "extensions", "acme", "extension.json"), "{}");
+  const tp = transcript(root, [user("x"), assistant([tool("Read", { file_path: join(root, ".picket", "config.json") })])]);
   const base = { hook_event_name: "PreToolUse", transcript_path: tp, cwd: root };
   const decision = (tool_name, ...rel) => run("guard.scope.mjs", { ...base, tool_name, tool_input: { file_path: join(root, ...rel) } }, root)?.hookSpecificOutput;
-  assert.equal(decision("Write", ".tether", "extensions", "acme", "rules", "a.md").permissionDecision, "ask");
-  assert.equal(decision("Edit", ".tether", "config.json").permissionDecision, "ask");
-  const unread = decision("Edit", ".tether", "extensions", "acme", "extension.json");
+  assert.equal(decision("Write", ".picket", "extensions", "acme", "rules", "a.md").permissionDecision, "ask");
+  assert.equal(decision("Edit", ".picket", "config.json").permissionDecision, "ask");
+  const unread = decision("Edit", ".picket", "extensions", "acme", "extension.json");
   assert.equal(unread.permissionDecision, "deny");
   assert.match(unread.permissionDecisionReason, /read .* before editing/);
   rmSync(root, { recursive: true, force: true });

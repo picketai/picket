@@ -40,8 +40,8 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
     assert.equal(r.code, 0, r.stderr);
     assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped" });
     assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
-    assert.deepEqual(JSON.parse(read(root, ".tether", "config.json")), { version: 1 });
-    assert.ok(read(root, ".gitignore").split("\n").includes(".tether/state/"));
+    assert.deepEqual(JSON.parse(read(root, ".picket", "config.json")), { version: 1 });
+    assert.ok(read(root, ".gitignore").split("\n").includes(".picket/state/"));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -51,7 +51,7 @@ test("a second init reports every step unchanged and leaves the files byte-ident
   const root = gitRepo();
   try {
     runInit(root);
-    const files = ["CLAUDE.md", ".tether/config.json", ".gitignore", ".claude/settings.json"];
+    const files = ["CLAUDE.md", ".picket/config.json", ".gitignore", ".claude/settings.json"];
     const before = files.map((p) => read(root, p));
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
@@ -92,15 +92,15 @@ test("init appends the block to a CLAUDE.md without one, and a rerun keeps it", 
 test("init leaves an existing config and an ignore file that already holds the state line", () => {
   const root = gitRepo();
   try {
-    mkdirSync(join(root, ".tether"));
+    mkdirSync(join(root, ".picket"));
     const config = JSON.stringify({ version: 1, sources: { analysis: { env: "SRC_ANALYSIS" } } }, null, 2) + "\n";
-    writeFileSync(join(root, ".tether", "config.json"), config);
-    writeFileSync(join(root, ".gitignore"), "node_modules/\n.tether/state/\n");
+    writeFileSync(join(root, ".picket", "config.json"), config);
+    writeFileSync(join(root, ".gitignore"), "node_modules/\n.picket/state/\n");
     const r = runInit(root);
     assert.equal(results(r.json).config, "unchanged");
     assert.equal(results(r.json).gitignore, "unchanged");
-    assert.equal(read(root, ".tether", "config.json"), config);
-    assert.equal(read(root, ".gitignore"), "node_modules/\n.tether/state/\n");
+    assert.equal(read(root, ".picket", "config.json"), config);
+    assert.equal(read(root, ".gitignore"), "node_modules/\n.picket/state/\n");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

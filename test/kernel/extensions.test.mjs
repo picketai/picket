@@ -12,13 +12,13 @@ const EXTENSIONS_MODULE = resolve("core/lib/extensions.mjs");
 
 function project(extensions) {
   const root = mkdtempSync(join(tmpdir(), "tether-ext-"));
-  mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
-  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions }));
+  mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions }));
   return root;
 }
 
 function extension(root, folder, manifest, files = {}) {
-  const dir = join(root, ".tether", "extensions", folder);
+  const dir = join(root, ".picket", "extensions", folder);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "extension.json"), JSON.stringify(manifest));
   for (const [path, text] of Object.entries(files)) {
@@ -45,9 +45,9 @@ test("listed extensions load in config order with their texts; a folder not list
     const { enabled, refused, unlisted } = loadExtensions(root);
     assert.deepEqual(refused, []);
     assert.deepEqual(enabled.map((e) => e.name), ["acme", "local"]);
-    assert.deepEqual(enabled[0].rules, [{ path: ".tether/extensions/acme/rules/style.md", text: "Use pnpm, never npm.\n" }]);
+    assert.deepEqual(enabled[0].rules, [{ path: ".picket/extensions/acme/rules/style.md", text: "Use pnpm, never npm.\n" }]);
     assert.equal(enabled[0].agents.reviewer[0].text, "Check the OpenAPI file.\n");
-    assert.deepEqual(enabled[0].review_steps, [{ path: ".tether/extensions/acme/review/api.md", min_size: "medium" }]);
+    assert.deepEqual(enabled[0].review_steps, [{ path: ".picket/extensions/acme/review/api.md", min_size: "medium" }]);
     assert.equal(enabled[0].preflight[0].id, "docker");
     assert.equal(enabled[1].rules[0].text, "Ports start at 8100.\n");
     assert.deepEqual(unlisted, ["stray"]);
@@ -159,15 +159,15 @@ function cli(root, ...args) {
 test("extension new writes the manifest and appends the name, keeping the other config keys", () => {
   const root = mkdtempSync(join(tmpdir(), "tether-ext-new-"));
   try {
-    mkdirSync(join(root, ".tether"));
-    writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "SRC" } }, extensions: ["acme"] }));
+    mkdirSync(join(root, ".picket"));
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "SRC" } }, extensions: ["acme"] }));
     extension(root, "acme", valid("acme"));
     const r = cli(root, "extension", "new", "local");
     assert.equal(r.code, 0, r.stderr);
-    const manifest = readFileSync(join(root, ".tether", "extensions", "local", "extension.json"), "utf8");
+    const manifest = readFileSync(join(root, ".picket", "extensions", "local", "extension.json"), "utf8");
     assert.deepEqual(JSON.parse(manifest), { name: "local", version: "0.1.0", schema: 1, rules: [] });
     assert.ok(manifest.endsWith("}\n"));
-    const config = JSON.parse(readFileSync(join(root, ".tether", "config.json"), "utf8"));
+    const config = JSON.parse(readFileSync(join(root, ".picket", "config.json"), "utf8"));
     assert.deepEqual(config.extensions, ["acme", "local"]);
     assert.deepEqual(config.sources, { analysis: { env: "SRC" } });
     assert.match(cli(root, "extensions", "--human").stdout, /^enabled  local 0\.1\.0 \(schema 1\)/m);
@@ -180,7 +180,7 @@ test("extension new refuses a bad name or a repeat and writes nothing", () => {
   const root = mkdtempSync(join(tmpdir(), "tether-ext-new-"));
   try {
     assert.equal(cli(root, "extension", "new", "local").code, 0);
-    const config = readFileSync(join(root, ".tether", "config.json"), "utf8");
+    const config = readFileSync(join(root, ".picket", "config.json"), "utf8");
     for (const name of ["Local", "../x"]) {
       const r = cli(root, "extension", "new", name);
       assert.equal(r.code, 1, name);
@@ -189,8 +189,8 @@ test("extension new refuses a bad name or a repeat and writes nothing", () => {
     const again = cli(root, "extension", "new", "local");
     assert.equal(again.code, 1);
     assert.match(again.stderr, /already exists/);
-    assert.equal(readFileSync(join(root, ".tether", "config.json"), "utf8"), config);
-    assert.deepEqual(readdirSync(join(root, ".tether", "extensions")), ["local"]);
+    assert.equal(readFileSync(join(root, ".picket", "config.json"), "utf8"), config);
+    assert.deepEqual(readdirSync(join(root, ".picket", "extensions")), ["local"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -200,7 +200,7 @@ test("extension new creates the config with version 1 and the one name when none
   const root = mkdtempSync(join(tmpdir(), "tether-ext-new-"));
   try {
     assert.equal(cli(root, "extension", "new", "local").code, 0);
-    assert.deepEqual(JSON.parse(readFileSync(join(root, ".tether", "config.json"), "utf8")), { version: 1, extensions: ["local"] });
+    assert.deepEqual(JSON.parse(readFileSync(join(root, ".picket", "config.json"), "utf8")), { version: 1, extensions: ["local"] });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

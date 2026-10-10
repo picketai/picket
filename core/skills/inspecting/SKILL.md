@@ -36,4 +36,4 @@ Verdicts: <last three, oldest first>
 
 3. Answer the specific question the user asked in one more line if the render does not already; never restate the artifact.
 
-The ledger is `.tether/state/ledger.jsonl`, written by the hooks; this skill only reads what `tether cost` computes from it. An empty ledger means no turn has completed in this project since the hooks were installed.
+The ledger is `.picket/state/ledger.jsonl`, written by the hooks; this skill only reads what `tether cost` computes from it. An empty ledger means no turn has completed in this project since the hooks were installed.

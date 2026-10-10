@@ -6,4 +6,4 @@ The reviewer loads the full security checklist (`tether:reviewing` steps 30) at 
 
 Never log, echo, or write to an artifact any secret, key, token or password value; name the variable, not the value. Compare secrets in constant time. Fail closed: a missing or malformed credential is a denial, not a pass.
 
-Projects extend the path list in `.tether/config.json` under `security_paths`; the kernel reads that file.
+Projects extend the path list in `.picket/config.json` under `security_paths`; the kernel reads that file.

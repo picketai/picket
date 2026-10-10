@@ -11,7 +11,7 @@ const IDENTITY = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_
 
 function repoWithOpenItem() {
   const root = mkdtempSync(join(tmpdir(), "tether-close-"));
-  mkdirSync(join(root, ".tether"));
+  mkdirSync(join(root, ".picket"));
   const git = (...args) => execFileSync("git", ["-C", root, "-c", "user.email=t@t", "-c", "user.name=t", ...args], { encoding: "utf8" }).trim();
   git("init", "-q");
   writeFileSync(join(root, "README.md"), "base\n");
@@ -118,7 +118,7 @@ test("a refused commit leaves the item done and staged, and the next close commi
 
 test("outside a git repository close marks the item done and commits nothing", () => {
   const root = mkdtempSync(join(tmpdir(), "tether-close-norepo-"));
-  mkdirSync(join(root, ".tether"));
+  mkdirSync(join(root, ".picket"));
   const { id } = createWork({ lane: "order", title: "No repo", root });
   const r = tether(root, "close", id);
   assert.equal(r.code, 0, r.stdout);
@@ -130,7 +130,7 @@ test("outside a git repository close marks the item done and commits nothing", (
 test("with the tether root in a repo subfolder, a retry after a refused commit closes the item", () => {
   const repo = mkdtempSync(join(tmpdir(), "tether-close-sub-"));
   const root = join(repo, "sub");
-  mkdirSync(join(root, ".tether"), { recursive: true });
+  mkdirSync(join(root, ".picket"), { recursive: true });
   const git = (...args) => execFileSync("git", ["-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", ...args], { encoding: "utf8" }).trim();
   git("init", "-q");
   const { id } = createWork({ lane: "order", title: "Sub root", root });

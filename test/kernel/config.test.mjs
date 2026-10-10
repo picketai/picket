@@ -30,7 +30,7 @@ function withProject(config, fn) {
 test("paths.mjs is the only file under core/lib whose code names the config file (T-2.4)", () => {
   const configName = new RegExp(`(?<![\\w.-])${basename(configRel()).replaceAll(".", "\\.")}`);
   assert.equal(configName.test('const f = "tsconfig.json";'), false);
-  assert.equal(configName.test('const f = ".tether/config.json";'), true);
+  assert.equal(configName.test('const f = ".picket/config.json";'), true);
   const lib = resolve("core/lib");
   const naming = readdirSync(lib)
     .filter((f) => f.endsWith(".mjs") && codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));

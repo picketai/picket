@@ -3,11 +3,11 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const HOST_DIR = ".claude";
-export const TETHER_DIR = ".tether";
+export const PICKET_DIR = ".picket";
 export const WORK_DIR = "work";
 
-const STATE_REL = `${TETHER_DIR}/state`;
-const CONFIG_REL = `${TETHER_DIR}/config.json`;
+const STATE_REL = `${PICKET_DIR}/state`;
+const CONFIG_REL = `${PICKET_DIR}/config.json`;
 
 export const STATE_FILES = Object.freeze({
   ledger: "ledger.jsonl",
@@ -28,9 +28,9 @@ export const LEGACY = Object.freeze({
 
 export const LEGACY_LOCATIONS = Object.freeze([LEGACY.stateDir, LEGACY.branchingManifest, LEGACY.config]);
 
-export const BOOKKEEPING_PREFIXES = Object.freeze([`${WORK_DIR}/`, `${HOST_DIR}/`, `${TETHER_DIR}/`]);
+export const BOOKKEEPING_PREFIXES = Object.freeze([`${WORK_DIR}/`, `${HOST_DIR}/`, `${PICKET_DIR}/`]);
 
-const ROOT_MARKERS = [TETHER_DIR, HOST_DIR];
+const ROOT_MARKERS = [PICKET_DIR, HOST_DIR];
 
 function posixJoin(...segments) {
   return segments.filter((s) => s !== "").join("/");

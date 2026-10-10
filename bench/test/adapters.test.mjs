@@ -11,7 +11,7 @@ test("a plugin install is what tether init writes: the shipped block, config, wo
   const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
   try {
     plugin.install(repo, resolve("."));
-    for (const path of ["CLAUDE.md", ".tether/config.json", "work"]) assert.ok(existsSync(join(repo, path)), path);
+    for (const path of ["CLAUDE.md", ".picket/config.json", "work"]) assert.ok(existsSync(join(repo, path)), path);
     const block = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
     assert.ok(readFileSync(join(repo, "CLAUDE.md"), "utf8").replace(/\r\n/g, "\n").startsWith(block));
     const settings = JSON.parse(readFileSync(join(repo, ".claude", "settings.json"), "utf8"));
@@ -20,7 +20,7 @@ test("a plugin install is what tether init writes: the shipped block, config, wo
       env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
       permissions: { allow: ["Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"], ask: ["PowerShell(tether drive *)", "PowerShell(tether check *)"] },
     });
-    assert.deepEqual(JSON.parse(readFileSync(join(repo, ".tether", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".tether/config.json"), "utf8")));
+    assert.deepEqual(JSON.parse(readFileSync(join(repo, ".picket", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".picket/config.json"), "utf8")));
     for (const path of [".claude/rules", ".claude/skills", "core"]) assert.equal(existsSync(join(repo, path)), false, path);
   } finally {
     rmSync(repo, { recursive: true, force: true });

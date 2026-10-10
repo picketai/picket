@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tether project configuration (.tether/config.json)",
+  "title": "Tether project configuration (.picket/config.json)",
   "type": "object",
   "properties": {
     "version": {
@@ -70,7 +70,7 @@
       "default": {}
     },
     "extensions": {
-      "description": "Enabled extensions, by folder name under .tether/extensions/, in load and injection order. An extension not listed here is ignored.",
+      "description": "Enabled extensions, by folder name under .picket/extensions/, in load and injection order. An extension not listed here is ignored.",
       "type": "array",
       "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,39}$" },
       "default": []

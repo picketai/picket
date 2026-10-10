@@ -114,10 +114,10 @@ test("inject.extensions starts cold under the budget with three extensions enabl
   const root = mkdtempSync(join(tmpdir(), "tether-ext-budget-"));
   try {
     const names = ["acme", "local", "team"];
-    mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
-    writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions: names }));
+    mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions: names }));
     for (const name of names) {
-      const dir = join(root, ".tether", "extensions", name);
+      const dir = join(root, ".picket", "extensions", name);
       mkdirSync(dir);
       writeFileSync(join(dir, "rules.md"), `Rule text for ${name}.\n`);
       writeFileSync(join(dir, "reviewer.md"), `Reviewer text for ${name}.\n`);

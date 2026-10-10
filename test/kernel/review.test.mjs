@@ -116,10 +116,10 @@ test("a project without nested repos writes no repos.yaml and reports repos []",
 function extensionRepo(stepsByExtension) {
   const root = mkdtempSync(join(tmpdir(), "tether-review-ext-"));
   git(root, "init", "-q", "-b", "trunk");
-  mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
-  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions: Object.keys(stepsByExtension) }));
+  mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions: Object.keys(stepsByExtension) }));
   for (const [name, steps] of Object.entries(stepsByExtension)) {
-    const dir = join(root, ".tether", "extensions", name);
+    const dir = join(root, ".picket", "extensions", name);
     mkdirSync(join(dir, "review"), { recursive: true });
     for (const [file] of steps) writeFileSync(join(dir, "review", file), `| ${file} | check |\n`);
     writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "0.1.0", schema: 1, review_steps: steps.map(([file, min_size]) => ({ path: `review/${file}`, min_size })) }));
@@ -142,13 +142,13 @@ test("extension review steps load from their min_size up, in config order across
     const id = createWork({ lane: "order", title: "Steps", root }).id;
     changeFiles(root, 1);
     assert.equal(reviewSummary(id, { root }).size, "small");
-    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.tether/extensions/acme/review/small.md"]);
+    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.picket/extensions/acme/review/small.md"]);
     changeFiles(root, 6);
     assert.equal(reviewSummary(id, { root }).size, "medium");
-    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.tether/extensions/acme/review/small.md", "acme:.tether/extensions/acme/review/medium.md"]);
+    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.picket/extensions/acme/review/small.md", "acme:.picket/extensions/acme/review/medium.md"]);
     changeFiles(root, 12);
     assert.equal(reviewSummary(id, { root }).size, "large");
-    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.tether/extensions/acme/review/small.md", "acme:.tether/extensions/acme/review/medium.md", "local:.tether/extensions/local/review/large.md"]);
+    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.picket/extensions/acme/review/small.md", "acme:.picket/extensions/acme/review/medium.md", "local:.picket/extensions/local/review/large.md"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

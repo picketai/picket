@@ -29,7 +29,7 @@ test("names that do not start with a blocked word are unchanged", () => {
 
 function installedProject() {
   const root = mkdtempSync(join(tmpdir(), "tether-filename-"));
-  mkdirSync(join(root, ".tether"));
+  mkdirSync(join(root, ".picket"));
   mkdirSync(join(root, "src"));
   mkdirSync(join(root, "artifacts", "strategy", "decisions"), { recursive: true });
   writeFileSync(join(root, "artifacts", "strategy", "decisions", "00003-x.md"), "# x\n");

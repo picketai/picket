@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tether extension manifest (.tether/extensions/<name>/extension.json), schema 1",
+  "title": "Tether extension manifest (.picket/extensions/<name>/extension.json), schema 1",
   "description": "An extension adds content at four named points and never replaces or removes core behaviour. Any key not listed here refuses the extension. Paths are relative to the extension folder and may not leave it.",
   "type": "object",
   "properties": {
     "name": {
-      "description": "The extension's name. Must equal its folder name under .tether/extensions/ and the entry in the config's extensions list.",
+      "description": "The extension's name. Must equal its folder name under .picket/extensions/ and the entry in the config's extensions list.",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
     },

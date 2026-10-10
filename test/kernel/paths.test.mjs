@@ -71,7 +71,7 @@ const withoutProjectDirEnv = (fn) => withProjectDirEnv(undefined, fn);
 
 function hasMarkedAncestor(dir) {
   for (let d = dir; ; d = dirname(d)) {
-    if ([paths.TETHER_DIR, paths.HOST_DIR].some((m) => existsSync(join(d, m)))) return true;
+    if ([paths.PICKET_DIR, paths.HOST_DIR].some((m) => existsSync(join(d, m)))) return true;
     if (dirname(d) === d) return false;
   }
 }
@@ -95,7 +95,7 @@ test("projectRoot honours CLAUDE_PROJECT_DIR first (T-1.3)", () => {
   }
 });
 
-for (const marker of [paths.TETHER_DIR, paths.HOST_DIR]) {
+for (const marker of [paths.PICKET_DIR, paths.HOST_DIR]) {
   test(`projectRoot returns the nearest ancestor holding ${marker} (T-1.3)`, () => {
     const root = mkdtempSync(join(tmpdir(), "harness-paths-"));
     try {
@@ -128,8 +128,8 @@ test("paths exports locations only", () => {
     "LEGACY",
     "LEGACY_LOCATIONS",
     "MODEL_WRITABLE_STATE_FILES",
+    "PICKET_DIR",
     "STATE_FILES",
-    "TETHER_DIR",
     "WORK_DIR",
     "branchingManifestPath",
     "configPath",
@@ -150,18 +150,18 @@ test("paths exports locations only", () => {
 
 test("relative locations read as POSIX paths and absolute ones sit under the root", () => {
   const root = resolve("some-root");
-  assert.equal(paths.stateRel("ledger.jsonl"), ".tether/state/ledger.jsonl");
-  assert.equal(paths.statePath(root, paths.STATE_FILES.ledger), join(root, ".tether", "state", "ledger.jsonl"));
+  assert.equal(paths.stateRel("ledger.jsonl"), ".picket/state/ledger.jsonl");
+  assert.equal(paths.statePath(root, paths.STATE_FILES.ledger), join(root, ".picket", "state", "ledger.jsonl"));
   assert.equal(paths.STATE_FILES.guardLog, "guard.log");
-  assert.equal(paths.configRel(), ".tether/config.json");
-  assert.equal(paths.configPath(root), join(root, ".tether", "config.json"));
-  assert.equal(paths.branchingManifestPath(root), join(root, ".tether", "state", "branching.yaml"));
+  assert.equal(paths.configRel(), ".picket/config.json");
+  assert.equal(paths.configPath(root), join(root, ".picket", "config.json"));
+  assert.equal(paths.branchingManifestPath(root), join(root, ".picket", "state", "branching.yaml"));
   assert.equal(paths.legacyPath(root, paths.LEGACY.branchingManifest), join(root, ".claude", "branching", "manifest.yaml"));
   assert.deepEqual([...paths.LEGACY_LOCATIONS], [".claude/ledger", ".claude/branching/manifest.yaml", ".claude/harness.json"]);
   assert.equal(paths.hostRel("MEMORY.md"), ".claude/MEMORY.md");
   assert.equal(paths.hostPath(root, "MEMORY.md"), join(root, ".claude", "MEMORY.md"));
   assert.equal(paths.workRoot(root), join(root, "work"));
-  assert.deepEqual([...paths.BOOKKEEPING_PREFIXES], ["work/", ".claude/", ".tether/"]);
+  assert.deepEqual([...paths.BOOKKEEPING_PREFIXES], ["work/", ".claude/", ".picket/"]);
 });
 
 test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits under it", () => {

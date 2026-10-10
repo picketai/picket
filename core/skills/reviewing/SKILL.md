@@ -24,7 +24,7 @@ Reference for the reviewer: what the kernel hands you, which checklist to open, 
 The kernel computes size and detection before you run. It passes one JSON object:
 
 ```json
-{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."], "extension_steps": [{ "extension": "acme", "path": ".tether/extensions/acme/review/api.md" }] }
+{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."], "extension_steps": [{ "extension": "acme", "path": ".picket/extensions/acme/review/api.md" }] }
 ```
 
 Field meaning:
@@ -102,9 +102,9 @@ The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. 
 The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Rent` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
 
 1. `tether pr <url> --human` (the JSON form goes to the reviewer; keep the `repo_root` it names). It fetches `refs/pull/<id>/merge`, computes base and head, the review summary over that range, and the PR's title and description (Azure DevOps: a PAT in `AZDO_PAT`, set once with `setx AZDO_PAT <token>` or in the `env` block of the untracked `.claude/settings.local.json`, never in a tracked file; GitHub: the `gh` CLI). A missing PAT is reported, not fatal: the review runs code-only. Any other error: print it and stop.
-2. Spawn the reviewer once (type `tether:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/steps/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.tether/state/pr-<id>.review.md`.
+2. Spawn the reviewer once (type `tether:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/steps/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
 3. Print the reviewer's block verbatim, then one options line: `[p] post to the PR   [d] done`. Nothing is written to the PR before `p`. When the block says `Alignment: N/A (no description)`, add one line under it: the PR carried no intent to check the diff against, so half the review is missing; a two-line description in the PR template restores it. Before `p`, check the finding line numbers against the file at head once (`git -C <repo_root> show <head>:<path> | sed -n '<line>,+3p'`); a wrong anchor puts the thread on the wrong code, and the first two live reviews were both off.
-4. On `p`: `tether pr <url> --post .tether/state/pr-<id>.review.md --dry-run --human` shows what would go; print it and ask once more with `[y] post   [n] keep local`; on `y`, the same command without `--dry-run`. Azure DevOps only; on GitHub, tell the user to use `gh pr review`.
+4. On `p`: `tether pr <url> --post .picket/state/pr-<id>.review.md --dry-run --human` shows what would go; print it and ask once more with `[y] post   [n] keep local`; on `y`, the same command without `--dry-run`. Azure DevOps only; on GitHub, tell the user to use `gh pr review`.
 
 ## Layout
 

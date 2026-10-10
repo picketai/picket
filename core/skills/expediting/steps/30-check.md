@@ -6,7 +6,7 @@ Tests and lint, one command, no permission prompt:
 tether check --human
 ```
 
-It runs the detected test and lint commands, logs to `.tether/state/check-*.log`, prints the failing tail only and stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself.
+It runs the detected test and lint commands, logs to `.picket/state/check-*.log`, prints the failing tail only and stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself.
 
 Drive the changed flow through its real entry point when the change touches one. One command does the whole loop and costs no permission prompt:
 
@@ -15,7 +15,7 @@ tether drive --hit "GET /invoices?page=2" --human   # start on a free port, hit,
 tether drive --run "npm run cli -- list" --human    # a CLI: run and capture
 ```
 
-A drive longer than one simple command goes in a script file under `.tether/state/scratch/` (for example `.tether/state/scratch/drive.mjs`) and runs as `tether drive --run "node <file>"`, never as inline `node -e` code. When node fails with exit 126 and `Permission denied`, the machine refused that command line: move the code into a file instead of debugging the launcher. Set variables with `--env NAME=VALUE`, one flag per variable, and test values only; never write `NAME=value tether ...`, which the permission check refuses and which would log the value.
+A drive longer than one simple command goes in a script file under `.picket/state/scratch/` (for example `.picket/state/scratch/drive.mjs`) and runs as `tether drive --run "node <file>"`, never as inline `node -e` code. When node fails with exit 126 and `Permission denied`, the machine refused that command line: move the code into a file instead of debugging the launcher. Set variables with `--env NAME=VALUE`, one flag per variable, and test values only; never write `NAME=value tether ...`, which the permission check refuses and which would log the value.
 
 Add one `--hit "POST /path <json>"` per request the change affects; `--start "<cmd>"` overrides the detected start script. Files the drive itself changes (a record the POST created) are restored so the tree stays yours. Read the statuses and bodies it prints; fix and re-run until they match the request. A green suite is not verification. A change with no runtime surface (a pure function, a test, docs) records `no drivable surface: <reason>` instead. Never describe a drive you did not run; the ledger shows the gap.
 

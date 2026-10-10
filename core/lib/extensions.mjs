@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig } from "./config.mjs";
-import { TETHER_DIR, configPath } from "./paths.mjs";
+import { PICKET_DIR, configPath } from "./paths.mjs";
 import { VERDICTS } from "./route.mjs";
 
 export const SUPPORTED_SCHEMAS = Object.freeze([1]);
@@ -24,7 +24,7 @@ function refuse(reason) {
 }
 
 export function extensionsDir(root) {
-  return join(root, TETHER_DIR, "extensions");
+  return join(root, PICKET_DIR, "extensions");
 }
 
 function isDirectory(path) {

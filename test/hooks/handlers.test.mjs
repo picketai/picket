@@ -203,7 +203,7 @@ test("guardScope decides the same whatever form the root and the target path tak
     const decide = (rootForm, file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: rootForm }, { root: rootForm })?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decide(root, join(longRoot, "work", s.id, "state.yaml")), "deny");
     assert.equal(decide(longRoot, join(root, "work", s.id, "state.yaml")), "deny");
-    assert.equal(decide(root, join(longRoot, ".tether", "extensions", "acme", "extension.json")), "ask");
+    assert.equal(decide(root, join(longRoot, ".picket", "extensions", "acme", "extension.json")), "ask");
     assert.equal(decide(root, join(longRoot, "src", "new", "file.ts")), null);
     if (process.platform === "win32") assert.equal(decide(root, join(root, "Work", s.id, "State.yaml")), "deny");
   });
@@ -219,9 +219,9 @@ test("guardScope denies the legacy state folder and hook state in any case, not 
       assert.match(out.permissionDecisionReason, /tether migrate/);
     }
     assert.equal(guard("Write", ".Claude/Ledger/drive-log.jsonl")?.permissionDecision, "deny");
-    assert.equal(guard("Write", ".TETHER/State/drive-log.jsonl")?.permissionDecision, "deny");
-    assert.equal(guard("Write", ".tether/state/branching.yaml"), null);
-    assert.equal(guard("Write", ".Tether/State/Branching.yaml"), null);
+    assert.equal(guard("Write", ".PICKET/State/drive-log.jsonl")?.permissionDecision, "deny");
+    assert.equal(guard("Write", ".picket/state/branching.yaml"), null);
+    assert.equal(guard("Write", ".Picket/State/Branching.yaml"), null);
     assert.equal(guard("Write", ".claude/ledger-notes.md"), null);
   });
 });
@@ -280,10 +280,10 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
 
 function extensionProject(extensions, manifests) {
   const root = mkdtempSync(join(tmpdir(), "tether-ext-hook-"));
-  mkdirSync(join(root, ".tether", "extensions"), { recursive: true });
-  writeFileSync(join(root, ".tether", "config.json"), JSON.stringify({ version: 1, extensions }));
+  mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions }));
   for (const [name, { manifest, files }] of Object.entries(manifests)) {
-    const dir = join(root, ".tether", "extensions", name);
+    const dir = join(root, ".picket", "extensions", name);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "0.1.0", schema: 1, ...manifest }));
     for (const [path, text] of Object.entries(files ?? {})) writeFileSync(join(dir, path), text);
@@ -353,22 +353,32 @@ test("a refused extension adds one line and no text; nothing enabled or refused 
 test("guardScope asks before an edit to extension content or the config, and keeps its denials first", () => {
   withProject((root) => {
     const decide = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
-    const extension = decide("Write", ".tether/extensions/acme/rules/a.md");
+    const extension = decide("Write", ".picket/extensions/acme/rules/a.md");
     assert.equal(extension.permissionDecision, "ask");
-    assert.match(extension.permissionDecisionReason, /\.tether\/extensions\/acme\/rules\/a\.md is extension content/);
-    const config = decide("Edit", ".tether/config.json");
+    assert.match(extension.permissionDecisionReason, /\.picket\/extensions\/acme\/rules\/a\.md is extension content/);
+    const config = decide("Edit", ".picket/config.json");
     assert.equal(config.permissionDecision, "ask");
-    assert.match(config.permissionDecisionReason, /\.tether\/config\.json changes what the kernel loads/);
-    assert.equal(decide("Write", ".tether/state/ledger.jsonl").permissionDecision, "deny");
+    assert.match(config.permissionDecisionReason, /\.picket\/config\.json changes what the kernel loads/);
+    assert.equal(decide("Write", ".picket/state/ledger.jsonl").permissionDecision, "deny");
     assert.equal(decide("Write", "src/a.ts"), null);
-    if (process.platform === "win32") assert.equal(decide("Write", ".TETHER/Extensions/acme/x.md").permissionDecision, "ask");
+    if (process.platform === "win32") assert.equal(decide("Write", ".PICKET/Extensions/acme/x.md").permissionDecision, "ask");
   });
 });
 
 test("guardBash never allows a heredoc redirect into an extension file", () => {
   withProject((root) => {
-    const command = "cat > .tether/extensions/x/rules/a.md <<'EOF'\nUse pnpm.\nEOF";
+    const command = "cat > .picket/extensions/x/rules/a.md <<'EOF'\nUse pnpm.\nEOF";
     const decision = guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
     assert.notEqual(decision, "allow");
+  });
+});
+
+test("guardScope asks for the moved config and extensions, keeps .picket/state hook-only, and has no rule for any other folder", () => {
+  withProject((root) => {
+    const decide = (rel) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+    assert.equal(decide(".picket/config.json").permissionDecision, "ask");
+    assert.equal(decide(".picket/extensions/a/rules/r.md").permissionDecision, "ask");
+    assert.equal(decide(".picket/state/ledger.jsonl").permissionDecision, "deny");
+    assert.equal(decide("notes/config.json"), null);
   });
 });

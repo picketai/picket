@@ -102,7 +102,7 @@ function manifest(adapter, harnessRoot, fixtureHash, args) {
     harness: adapter.name,
     harness_root: harnessRoot,
     harness_commit: sh("git rev-parse --short HEAD", harnessRoot),
-    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .tether core CLAUDE.md", harnessRoot) ? true : false,
+    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .picket core CLAUDE.md", harnessRoot) ? true : false,
     fixture_hash: fixtureHash,
     claude_version: sh("claude --version"),
     node_version: process.version,
@@ -263,7 +263,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   record.cache_hit_ratio = round(cacheHitRatio(record.usage), 4);
   record.tokens_total = totalTokens(record.usage);
   record.base_sha = base;
-  record.changed_files = changedFiles(repo, base).filter((f) => !/^(test\/hidden\/|\.claude\/|\.tether\/|artifacts\/|work\/|\.bench-vitest\.json)/.test(f));
+  record.changed_files = changedFiles(repo, base).filter((f) => !/^(test\/hidden\/|\.claude\/|\.picket\/|artifacts\/|work\/|\.bench-vitest\.json)/.test(f));
   record.lines_added = linesAdded(repo, base);
   record.signals = adapter.signals(record.texts, record);
   record.grade = grade({ repo, task, hiddenDir: join(BENCH, "hidden", task.id), adapter, base });

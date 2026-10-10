@@ -2,13 +2,13 @@ import { realpathSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { wasRead, agentTranscript } from "../transcript.mjs";
 import { sourceRoots, underSource } from "../source-paths.mjs";
-import { LEGACY, MODEL_WRITABLE_STATE_FILES, TETHER_DIR, configRel, stateRel } from "../paths.mjs";
+import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../paths.mjs";
 
 const KERNEL_OWNED = /^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|comments\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/;
 const STATE_PREFIX = `${stateRel("")}/`.toLowerCase();
 const MODEL_WRITABLE_STATE = MODEL_WRITABLE_STATE_FILES.map((name) => stateRel(name).toLowerCase());
 const LEGACY_STATE_PREFIX = `${LEGACY.stateDir}/`;
-const EXTENSIONS_PREFIX = `${TETHER_DIR}/extensions/`;
+const EXTENSIONS_PREFIX = `${PICKET_DIR}/extensions/`;
 const CONFIG_REL = configRel();
 
 function deny(reason) {
