@@ -6,7 +6,7 @@ Do NOT reproduce this in output unless the user is actually working on stock ava
 ---
 
 **Issue Type:** Bug
-**Input provided by:** QA Engineer (Michaela V.) — discovered during regression testing of sprint 14 that the stock availability endpoint returns stale data when the same book is requested within 60 seconds of a status change.
+**Input provided by:** QA Engineer (Dana K.) — discovered during regression testing of sprint 14 that the stock availability endpoint returns stale data when the same book is requested within 60 seconds of a status change.
 **Priority:** High — affects all consumers of the availability endpoint; could lead to overselling the last copy in production
 **Severity:** Major — incorrect data returned but system does not crash; an order can still proceed on stale result
 **Labels:** `bug`, `orders`, `caching`, `staging`

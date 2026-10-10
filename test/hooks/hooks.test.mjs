@@ -321,11 +321,11 @@ test("guard.bash denies mutating commands in a source and keeps its reads allowe
 
 test("route.verdict keeps a pull request review in the ledger instead of routing it", () => {
   const { root } = project();
-  const block = "## Review: pr-7287 · pr\n\nApproved: the diff does what the description says.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
+  const block = "## Review: pr-412 · pr\n\nApproved: the diff does what the description says.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
   const tp = transcript(root, [user("scope: pr"), assistant([{ type: "text", text: block }])]);
   const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "reviewer" }, root);
-  assert.match(out.hookSpecificOutput.additionalContext, /APPROVED recorded for pr-7287/);
-  assert.equal(readFileSync(statePath(root, "pr-7287.review.md"), "utf8").trim(), block);
+  assert.match(out.hookSpecificOutput.additionalContext, /APPROVED recorded for pr-412/);
+  assert.equal(readFileSync(statePath(root, "pr-412.review.md"), "utf8").trim(), block);
   rmSync(root, { recursive: true, force: true });
 });
 

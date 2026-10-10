@@ -140,11 +140,11 @@ test("emitLedger called directly appends one v2 row to the ledger (T-6.3)", () =
 
 test("routeVerdict on a pull request review keeps the block and names its state path (T-6.3)", () => {
   withProject((root) => {
-    const block = "## Review: pr-7287 · pr\n\nApproved.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
+    const block = "## Review: pr-412 · pr\n\nApproved.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
     const tp = transcript(root, [user("scope: pr"), assistant(block)]);
     const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "reviewer" }, { root });
-    assert.ok(out.hookSpecificOutput.additionalContext.includes(stateRel("pr-7287.review.md")));
-    assert.equal(existsSync(statePath(root, "pr-7287.review.md")), true);
+    assert.ok(out.hookSpecificOutput.additionalContext.includes(stateRel("pr-412.review.md")));
+    assert.equal(existsSync(statePath(root, "pr-412.review.md")), true);
     assert.equal(routeVerdict({ stop_hook_active: true }, { root }), null);
   });
 });
