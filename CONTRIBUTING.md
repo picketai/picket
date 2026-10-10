@@ -50,6 +50,14 @@ After a work item closes, its state lands in its own commit: `chore(work): close
 
 Agents never commit. The developer stages a phase and proposes a message, and the user's approval commits it (`core/rules/work-items.md`).
 
+## Releasing
+
+A release starts on `trunk` with a clean tree. Run `npm version prerelease --preid alpha`: it bumps the version in `package.json` and in the plugin manifest (through `.github/scripts/release.mjs`), commits both and tags the commit `v<version>`. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux, checks that the tag matches `package.json` and sits on `trunk`, and publishes under the `alpha` dist-tag. npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
+
+The workflow publishes through npm trusted publishing, so it needs a one-time setup on npmjs.com after the first version was published by hand. Open the package settings of `@picketai/picket` and add a trusted publisher for GitHub Actions with organization `picketai`, repository `picket`, workflow file `release.yml` and no environment.
+
+To check a release before tagging, start the `release` workflow by hand from the Actions tab. It runs the same tests on Linux and ends with `npm publish --dry-run`, which publishes nothing.
+
 ## Folders outside the product
 
 `work/` holds one dated folder per work item and `artifacts/` holds dated reports and decision records; both are records of their time, so the Markdown path test does not check them.
