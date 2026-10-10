@@ -37,7 +37,7 @@
 //   node .claude/scripts/lint.craft.mjs --rules comments   # comments | tests | both (default)
 //   node .claude/scripts/lint.craft.mjs --strict           # candidates also set exit 1
 //   node .claude/scripts/lint.craft.mjs --json             # machine-readable
-//   node .claude/scripts/lint.craft.mjs -C src/Rent        # run against a nested repo
+//   node .claude/scripts/lint.craft.mjs -C src/Orders      # run against a nested repo
 //
 // Exit: 0 clean · 1 errors present (or candidates under --strict) · 2 bad usage.
 //
