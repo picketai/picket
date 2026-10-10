@@ -3,17 +3,17 @@
 Open the item (skip when a `--id` from an escalating lane already exists):
 
 ```
-tether new --lane order --title "<six-word title>" --text "<the request, verbatim>"
-tether preflight <id> --human
+picket new --lane order --title "<six-word title>" --text "<the request, verbatim>"
+picket preflight <id> --human
 ```
 
 The kernel saves the request as `work/<id>/request.md`, which the cumulative review traces against. A request with quotes or newlines goes on stdin through a quoted heredoc with `--request -` instead.
 
-A request that names a Jira key (`RENT-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file under `.picket/state/scratch/`, and add `--ticket <KEY> --story <file>` to `tether new`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
+A request that names a Jira key (`RENT-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file under `.picket/state/scratch/`, and add `--ticket <KEY> --story <file>` to `picket new`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
 
 Preflight `fail` lines stop you here; print them and ask. `warn` lines are passed to the architect verbatim.
 
-When `tether next <id>` says `resolve_sources`, this is the opening gate: print `tether packet <id>` verbatim and stop. Apply each reply with `tether source pick <id> <ref> <label>`, then continue below. Add `sources: work/<id>/sources.yaml` to the architect's message when that file exists.
+When `picket next <id>` says `resolve_sources`, this is the opening gate: print `picket packet <id>` verbatim and stop. Apply each reply with `picket source pick <id> <ref> <label>`, then continue below. Add `sources: work/<id>/sources.yaml` to the architect's message when that file exists.
 
 Spawn the architect once (type `tether:architect`), named `architect`, with this message followed by the Architect section below pasted verbatim (it is in your context already; pasting it saves the architect a round trip):
 
@@ -25,7 +25,7 @@ preflight: <the warn lines, or none>
 step: ordering/steps/10-order.md, architect section follows
 ```
 
-Wait for `ARTIFACT WRITTEN`. The hook records it; `tether next <id>` now says `implement_phase`. Continue to `steps/20-phase.md` in the same turn. If the architect answers `exceeds order caps`, run `tether set <id> status=abandoned` and start `tether:designing` with the same request.
+Wait for `ARTIFACT WRITTEN`. The hook records it; `picket next <id>` now says `implement_phase`. Continue to `steps/20-phase.md` in the same turn. If the architect answers `exceeds order caps`, run `picket set <id> status=abandoned` and start `tether:designing` with the same request.
 
 ## Architect section
 

@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-test("a plugin install is what tether init writes: the shipped block, config, work/ and the init settings", () => {
+test("a plugin install is what picket init writes: the shipped block, config, work/ and the init settings", () => {
   const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
   try {
     plugin.install(repo, resolve("."));
@@ -18,7 +18,7 @@ test("a plugin install is what tether init writes: the shipped block, config, wo
     assert.equal("hooks" in settings, false);
     assert.deepEqual(settings, {
       env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
-      permissions: { allow: ["Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"], ask: ["PowerShell(tether drive *)", "PowerShell(tether check *)"] },
+      permissions: { allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/tether-dev/**)"], ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"] },
     });
     assert.deepEqual(JSON.parse(readFileSync(join(repo, ".picket", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".picket/config.json"), "utf8")));
     for (const path of [".claude/rules", ".claude/skills", "core"]) assert.equal(existsSync(join(repo, path)), false, path);
@@ -38,9 +38,9 @@ test("a plugin install refuses a root without the plugin manifest", () => {
   }
 });
 
-test("the plugin loads from core/ and may call the tether CLI", () => {
+test("the plugin loads from core/ and may call the picket CLI", () => {
   assert.equal(plugin.pluginDir(resolve(".")), join(resolve("."), "core"));
-  assert.ok(plugin.allowedTools.includes("Bash(tether *)"));
+  assert.ok(plugin.allowedTools.includes("Bash(picket *)"));
 });
 
 test("only harness-authoring is repository-only", () => {

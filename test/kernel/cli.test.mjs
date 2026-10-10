@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 
 function run(root, args) {
   const out = execFileSync("node", [BIN, ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });

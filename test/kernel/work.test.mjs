@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../core/lib/work.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 
 function tempRoot() {
   const root = mkdtempSync(join(tmpdir(), "harness-work-"));

@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { portOpen, parseHit } from "../../core/lib/drive.mjs";
 import { statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 
 function run(root, args, env = {}) {
   try {
@@ -54,7 +54,7 @@ test("drive starts the detected app on a free port, hits it, stops it, and logs 
   const log = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(log.length, 1);
   assert.equal(log[0].kind, "drive");
-  assert.equal(log[0].source, "tether drive");
+  assert.equal(log[0].source, "picket drive");
   assert.deepEqual(log[0].hits.map((h) => h.status), [200, 200]);
 });
 

@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createWork } from "../../core/lib/work.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 const IDENTITY = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
 function repoWithOpenItem() {

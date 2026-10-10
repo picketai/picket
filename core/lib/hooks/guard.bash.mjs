@@ -184,7 +184,7 @@ function hasHiddenExecution(rawCommand) {
 
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
-const BARE_KERNEL = "tether";
+const BARE_KERNELS = ["picket", "tether"];
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);
@@ -687,7 +687,7 @@ function redirectSource(targets, cwds, roots) {
 }
 
 function sourceDenial(name, what) {
-  return `guard.bash: ${what} acts inside source ${name}, which is read-only; read it through \`tether source\` and the snapshots, and never write, commit or run tools there.`;
+  return `guard.bash: ${what} acts inside source ${name}, which is read-only; read it through \`picket source\` and the snapshots, and never write, commit or run tools there.`;
 }
 
 /** Protected source worktrees for this project; [] when none, so the guard behaves as before. */
@@ -701,7 +701,7 @@ function protectedSources(root) {
 
 function classifySegment(tokens, cwd = process.cwd(), depth = 0) {
   if (!tokens.length) return "unknown";
-  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return "kernel";
+  if (BARE_KERNELS.includes(tokens[0]) && !wrappedCommands(tokens).length) return "kernel";
   const root = normalizeRoot(tokens[0]);
 
   if (root === "sed") return checkSed(tokens);
@@ -787,11 +787,11 @@ export function guardBash(input, { root }) {
       }
       const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
       if (innerSegs.some((s) => classifySegment(s, effCwd) === "deny")) {
-        return decide("deny", `guard.bash: the command wrapped in a tether verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
+        return decide("deny", `guard.bash: the command wrapped in a picket verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
       }
       if (roots.length) {
         const hit = innerSegs.map((s) => (sourceAllowed(s) ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
-        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a tether verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
+        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a picket verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
       }
     }
   }
@@ -832,7 +832,7 @@ export function guardBash(input, { root }) {
   if (classifications.every((c) => c === "safe" || (c === "kernel" && inCompound))) {
     return decide(
       "allow",
-      `guard.bash: every sub-command is read-only/inspection or a bare tether call that wraps no command, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`
+      `guard.bash: every sub-command is read-only/inspection or a bare picket call that wraps no command, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`
     );
   }
 

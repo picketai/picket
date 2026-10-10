@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { init, marketplaceRoot } from "../../core/lib/init.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 const TEMPLATE = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
 
 function tempDir(prefix = "tether-init-") {
@@ -138,8 +138,8 @@ test("this repository's CLAUDE.md carries the shipped block verbatim, with no re
 const INIT_SETTINGS = {
   env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
   permissions: {
-    allow: ["Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"],
-    ask: ["PowerShell(tether drive *)", "PowerShell(tether check *)"],
+    allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/tether-dev/**)"],
+    ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
   },
 };
 
@@ -148,7 +148,7 @@ function writeSettings(root, text) {
   writeFileSync(join(root, ".claude", "settings.json"), text);
 }
 
-test("init creates .claude/settings.json with exactly the env key and the tether allow and ask rules", () => {
+test("init creates .claude/settings.json with exactly the env key and the picket allow and ask rules", () => {
   const root = gitRepo();
   try {
     assert.equal(runInit(root).code, 0);
@@ -168,7 +168,7 @@ test("init keeps existing settings in value and order and appends what is missin
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
     assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env"]);
     assert.equal(settings.outputStyle, "Explanatory");
-    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(tether *)", "PowerShell(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"]);
+    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/tether-dev/**)"]);
     assert.deepEqual(settings.permissions.ask, INIT_SETTINGS.permissions.ask);
     assert.deepEqual(settings.env, { FOO: "1", CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" });
 
@@ -183,14 +183,14 @@ test("init keeps existing settings in value and order and appends what is missin
 test("init does not allow a rule the project denies, and says so", () => {
   const root = gitRepo();
   try {
-    writeSettings(root, JSON.stringify({ permissions: { deny: ["PowerShell(tether *)"] } }));
+    writeSettings(root, JSON.stringify({ permissions: { deny: ["PowerShell(picket *)"] } }));
     const r = runInit(root, { args: ["--human"] });
     assert.equal(r.code, 0, r.stderr);
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
-    assert.deepEqual(settings.permissions.allow, ["Bash(tether *)", "Read(~/.claude/plugins/cache/tether-dev/**)"]);
-    assert.deepEqual(settings.permissions.deny, ["PowerShell(tether *)"]);
+    assert.deepEqual(settings.permissions.allow, ["Bash(picket *)", "Read(~/.claude/plugins/cache/tether-dev/**)"]);
+    assert.deepEqual(settings.permissions.deny, ["PowerShell(picket *)"]);
     const line = r.stdout.split("\n").find((l) => l.startsWith("settings: "));
-    assert.match(line, /WARNING: permissions\.deny holds PowerShell\(tether \*\)/);
+    assert.match(line, /WARNING: permissions\.deny holds PowerShell\(picket \*\)/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

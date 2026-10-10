@@ -18,7 +18,7 @@ export function check(o = {}) {
   const root = o.root ?? projectRoot();
   const tooling = detectTooling(root);
   const wanted = o.steps?.length ? o.steps : ["test", "lint"];
-  if (o.only) assertNotDestructive(o.only, "tether check --only");
+  if (o.only) assertNotDestructive(o.only, "picket check --only");
   const plan = o.only ? [{ name: "command", command: o.only }] : ORDER.filter((s) => wanted.includes(s)).map((s) => ({ name: s, command: tooling[s] }));
   mkdirSync(stateDir(root), { recursive: true });
   const steps = [];

@@ -13,6 +13,7 @@
       "Edit",
       "Glob",
       "Grep",
+      "Bash(picket *)",
       "Bash(tether *)",
       "Bash(node .claude/scripts/*)",
       "Bash(node bench/*)",

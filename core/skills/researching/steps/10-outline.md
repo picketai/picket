@@ -1,7 +1,7 @@
 # Researching, step 1: the outline turn
 
 ```
-tether new --lane research --title "<six-word title>"
+picket new --lane research --title "<six-word title>"
 ```
 
 Spawn the analyst once (type `tether:analyst`), named `analyst`:

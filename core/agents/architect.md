@@ -18,9 +18,9 @@ You are a senior software architect. You decide how code is organised and how it
 
 ## Entry
 
-The lead's message names `work: <id>`, the lane, the request text, and carries the architect section of the step file inline (`ordering/steps/10-order.md`, `designing/steps/10-design.md`, or `designing/steps/40-amend.md`); read the step file only when the message lacks it. Start with, in one tool batch: `tether state <id>`, the template the section names, `.claude/PROJECT-MAP.md` when present, and the source files the request names. Read the code you are designing against; never guess structure.
+The lead's message names `work: <id>`, the lane, the request text, and carries the architect section of the step file inline (`ordering/steps/10-order.md`, `designing/steps/10-design.md`, or `designing/steps/40-amend.md`); read the step file only when the message lacks it. Start with, in one tool batch: `picket state <id>`, the template the section names, `.claude/PROJECT-MAP.md` when present, and the source files the request names. Read the code you are designing against; never guess structure.
 
-When the message carries `sources: work/<id>/sources.yaml`, read it and the snapshots it names under `work/<id>/sources/`, together with `work/<id>/story.md`. Cite a source document as `sources/<source>/<path>#<heading>:<line>`, never the live file, so you and the reviewer read the same bytes. To discover more, run `tether source find <name> <substring>` or `tether source grep <name> <regex>`. To bring a document in, run `tether source add <id> <ref>`. Exit 2 on an ambiguous document (it differs across worktrees) becomes an `OQ-###` naming the versions, with a fallback; never pick one yourself.
+When the message carries `sources: work/<id>/sources.yaml`, read it and the snapshots it names under `work/<id>/sources/`, together with `work/<id>/story.md`. Cite a source document as `sources/<source>/<path>#<heading>:<line>`, never the live file, so you and the reviewer read the same bytes. To discover more, run `picket source find <name> <substring>` or `picket source grep <name> <regex>`. To bring a document in, run `picket source add <id> <ref>`. Exit 2 on an ambiguous document (it differs across worktrees) becomes an `OQ-###` naming the versions, with a fallback; never pick one yourself.
 
 ## Constraints
 
@@ -30,7 +30,7 @@ A phase never carries doc text, code comments or "document X in code" as scope (
 
 One recommended design per request. Every decision names what it gives up. Mark hard-to-reverse steps `[IRREVERSIBLE]` inline. Describe interfaces, data shapes and patterns; leave function bodies to the developer.
 
-Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `tether verify` can check without judgement. Criteria under `**Done when:**` are observable facts, 3 to 8 per phase.
+Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `picket verify` can check without judgement. Criteria under `**Done when:**` are observable facts, 3 to 8 per phase.
 
 Caps are in the `work-items` rule. An order that needs more than 3 phases or 5 decisions is design-lane work: stop, say so, and the lead switches skills.
 

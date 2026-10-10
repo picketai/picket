@@ -143,7 +143,7 @@ test("guard.scope keeps the comment approvals kernel-owned (T-1.5)", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 const lines = (...rows) => rows.join("\n");
 
 function commentEdit(root, path, old_string, new_string) {
@@ -348,19 +348,19 @@ test("guard.bash judges the command a harness verb would run, so the allow rule 
 test("guard.bash judges the command a tether verb would run, by launcher or by script", () => {
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
-  assert.equal(decision('tether drive --run "rm -rf src"'), "deny");
-  assert.equal(decision('node core/bin/tether.mjs check --only "git push --force origin trunk"'), "deny");
-  assert.equal(decision('core/bin/tether drive --start "sudo node server.mjs" --hit /health'), "deny");
-  assert.equal(decision('tether drive --run "npm run cli -- list"'), null);
-  assert.equal(decision("tether state x"), null);
+  assert.equal(decision('picket drive --run "rm -rf src"'), "deny");
+  assert.equal(decision('node core/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
+  assert.equal(decision('core/bin/picket drive --start "sudo node server.mjs" --hit /health'), "deny");
+  assert.equal(decision('picket drive --run "npm run cli -- list"'), null);
+  assert.equal(decision("picket state x"), null);
   rmSync(root, { recursive: true, force: true });
 });
 
 test("guard.bash looks past leading env assignments to the tether verb and what it wraps", () => {
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
-  assert.equal(decision('FOO=1 tether drive --run "rm -rf src"'), "deny");
-  assert.equal(decision('FOO=1 BAR=2 node core/bin/tether.mjs check --only "git push --force origin trunk"'), "deny");
+  assert.equal(decision('FOO=1 picket drive --run "rm -rf src"'), "deny");
+  assert.equal(decision('FOO=1 BAR=2 node core/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -371,13 +371,13 @@ test("observe.drive counts a command as a kernel call only when a segment starts
     return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).kind;
   };
   assert.equal(kind("cd ~/src/tether && npm start"), "drive");
-  assert.equal(kind("tether next x"), "inspect");
-  assert.equal(kind("cd repo && tether check"), "inspect");
-  assert.equal(kind('API_KEY=k tether drive --hit "GET /h"'), "inspect");
-  assert.equal(kind("node core/bin/tether.mjs state x"), "inspect");
-  assert.equal(kind('node "D:/My Projects/x/core/bin/tether.mjs" next x'), "inspect");
+  assert.equal(kind("picket next x"), "inspect");
+  assert.equal(kind("cd repo && picket check"), "inspect");
+  assert.equal(kind('API_KEY=k picket drive --hit "GET /h"'), "inspect");
+  assert.equal(kind("node core/bin/picket.mjs state x"), "inspect");
+  assert.equal(kind('node "D:/My Projects/x/core/bin/picket.mjs" next x'), "inspect");
   assert.equal(kind('"/c/Users/John Smith/.claude/plugins/tether/bin/tether" next x'), "inspect");
-  assert.equal(kind("{ tether next x; }"), "inspect");
+  assert.equal(kind("{ picket next x; }"), "inspect");
   assert.equal(kind('curl -s "http://127.0.0.1:8080/tether ok"'), "drive");
   rmSync(root, { recursive: true, force: true });
 });
@@ -423,7 +423,7 @@ test("guard.scope denies a model write under the legacy state folder (T-1.4)", (
   const { root } = project();
   const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, LEGACY.stateDir, STATE_FILES.driveLog) }, cwd: root }, root);
   assert.equal(out?.hookSpecificOutput.permissionDecision, "deny");
-  assert.match(out.hookSpecificOutput.permissionDecisionReason, /tether migrate/);
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /picket migrate/);
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -627,17 +627,17 @@ test("inject.state lists open items", () => {
 
 test("the spawned guard.bash allows a bare tether call chained with a read-only command and traces it", () => {
   const { root, id } = project();
-  const command = `tether next ${id}; ls work`;
+  const command = `picket next ${id}; ls work`;
   const out = run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root);
   assert.equal(out.hookSpecificOutput.permissionDecision, "allow");
   const trace = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
-  assert.ok(trace.some((row) => row.outcome === "allow" && String(row.command).includes(`tether next ${id}`)), JSON.stringify(trace.at(-1)));
+  assert.ok(trace.some((row) => row.outcome === "allow" && String(row.command).includes(`picket next ${id}`)), JSON.stringify(trace.at(-1)));
   rmSync(root, { recursive: true, force: true });
 });
 
-test("the spawned guard.bash traces a tether drive --env value masked", () => {
+test("the spawned guard.bash traces a picket drive --env value masked", () => {
   const { root } = project();
-  const command = 'tether drive --run "node .picket/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42';
+  const command = 'picket drive --run "node .picket/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42';
   run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root);
   const log = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8");
   assert.doesNotMatch(log, /secret-probe-42/);
@@ -651,10 +651,10 @@ test("observe.drive logs --env values masked, quoted or not", () => {
     run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s11" }, root);
     return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).command;
   };
-  const plain = logged('tether drive --run "node .picket/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42');
+  const plain = logged('picket drive --run "node .picket/state/scratch/env-probe.mjs" --env PROBE=secret-probe-42');
   assert.match(plain, /--env PROBE=\*\*\*/);
   assert.equal(plain.includes("secret-probe-42"), false);
-  const quoted = logged(`tether drive --hit "GET /h" --env "A=two words" --env B="three more words" --env C='single quoted'`);
+  const quoted = logged(`picket drive --hit "GET /h" --env "A=two words" --env B="three more words" --env C='single quoted'`);
   assert.match(quoted, /--env A=\*\*\* --env B=\*\*\* --env C=\*\*\*/);
   assert.equal(/two words|three more|single quoted/.test(quoted), false);
   rmSync(root, { recursive: true, force: true });
@@ -710,5 +710,17 @@ test("the spawned guard.scope asks on an extension write, asks on a read config 
   const unread = decision("Edit", ".picket", "extensions", "acme", "extension.json");
   assert.equal(unread.permissionDecision, "deny");
   assert.match(unread.permissionDecisionReason, /read .* before editing/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("observe.drive counts both picket and the tether alias as kernel calls", () => {
+  const { root } = project();
+  const kind = (command) => {
+    run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s12" }, root);
+    return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).kind;
+  };
+  assert.equal(kind("picket next x"), "inspect");
+  assert.equal(kind("tether next x"), "inspect");
+  assert.equal(kind("node core/bin/tether.mjs state x"), "inspect");
   rmSync(root, { recursive: true, force: true });
 });

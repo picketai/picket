@@ -34,9 +34,9 @@ export function pluginDir(harnessRoot) {
 
 function runInit(repo, harnessRoot) {
   const { CLAUDE_PROJECT_DIR, ...env } = process.env;
-  const cli = join(pluginDir(harnessRoot), "bin", "tether.mjs");
+  const cli = join(pluginDir(harnessRoot), "bin", "picket.mjs");
   const r = spawnSync(process.execPath, [cli, "init", "--no-install", "--root", repo, "--human"], { encoding: "utf8", env });
-  if (r.status !== 0) throw new Error(`tether init failed (exit ${r.status}):\n${r.stdout}${r.stderr}`);
+  if (r.status !== 0) throw new Error(`picket init failed (exit ${r.status}):\n${r.stdout}${r.stderr}`);
 }
 
 export function absoluteReadRule(dir) {
@@ -91,4 +91,4 @@ export function reportFiles(repo) {
   return [...filesMatching(repo, "work/*/research.md"), ...filesMatching(repo, "artifacts/reports/*.md")];
 }
 
-export const allowedTools = [...trunk.allowedTools, "Bash(tether *)"];
+export const allowedTools = [...trunk.allowedTools, "Bash(picket *)"];

@@ -16,16 +16,16 @@ Paths cited here and in this skill's step files, such as `inspecting/SKILL.md`, 
 
 Work items:
 
-!`tether list --human`
+!`picket list --human`
 
 Cost, this project:
 
-!`tether cost --human`
+!`picket cost --human`
 
 ## Steps
 
-1. With no id: print the two lines above, then for each `open` item one line from `tether next <id> --human`. Stop.
-2. With an id: `tether state <id>` and `tether next <id> --human`, plus `tether cost --work <id> --human`. Render:
+1. With no id: print the two lines above, then for each `open` item one line from `picket next <id> --human`. Stop.
+2. With an id: `picket state <id>` and `picket next <id> --human`, plus `picket cost --work <id> --human`. Render:
 
 ```
 ▶ <id> · <lane> · <status> · phases <approved>/<total>
@@ -36,4 +36,4 @@ Verdicts: <last three, oldest first>
 
 3. Answer the specific question the user asked in one more line if the render does not already; never restate the artifact.
 
-The ledger is `.picket/state/ledger.jsonl`, written by the hooks; this skill only reads what `tether cost` computes from it. An empty ledger means no turn has completed in this project since the hooks were installed.
+The ledger is `.picket/state/ledger.jsonl`, written by the hooks; this skill only reads what `picket cost` computes from it. An empty ledger means no turn has completed in this project since the hooks were installed.

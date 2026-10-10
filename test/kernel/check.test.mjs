@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { statePath } from "../../core/lib/paths.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 
 function run(root, args) {
   try {

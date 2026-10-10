@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import { loadExtensions, MANIFEST_KEYS, SUPPORTED_SCHEMAS } from "../../core/lib/extensions.mjs";
 import { codeLines } from "./kernel-sources.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 const EXTENSIONS_MODULE = resolve("core/lib/extensions.mjs");
 
 function project(extensions) {
@@ -134,7 +134,7 @@ test("no module reachable from routing, gates, next or the guards imports the ex
   assert.equal(reachable(["a"], (f) => planted[f]).has("loader"), true, "an import added two hops away is found");
 });
 
-test("tether extensions --human lists enabled, refused and unlisted extensions with reasons", () => {
+test("picket extensions --human lists enabled, refused and unlisted extensions with reasons", () => {
   const root = project(["acme", "ghost", "future"]);
   try {
     extension(root, "acme", valid("acme", { rules: ["r.md"] }), { "r.md": "Use pnpm.\n" });

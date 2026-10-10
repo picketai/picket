@@ -1,1 +1,1 @@
-@node "%~dp0tether.mjs" %*
+@node "%~dp0picket.mjs" %*

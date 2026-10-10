@@ -155,11 +155,11 @@ export async function drive(o = {}) {
   const work = o.id ? { work_id: o.id, phase: null } : currentWork(root);
   if (o.phase != null) work.phase = Number(o.phase);
   const timeoutMs = Number(o.timeoutMs ?? 20_000);
-  const row = { ts: new Date().toISOString(), kind: "drive", source: "tether drive", work_id: work.work_id, phase: work.phase, env: Object.keys(o.env ?? {}) };
+  const row = { ts: new Date().toISOString(), kind: "drive", source: "picket drive", work_id: work.work_id, phase: work.phase, env: Object.keys(o.env ?? {}) };
 
   const before = treeSnapshot(root);
-  if (o.run) assertNotDestructive(o.run, "tether drive --run");
-  if (o.start) assertNotDestructive(o.start, "tether drive --start");
+  if (o.run) assertNotDestructive(o.run, "picket drive --run");
+  if (o.start) assertNotDestructive(o.start, "picket drive --start");
 
   if (o.run) {
     const t = Date.now();
@@ -173,7 +173,7 @@ export async function drive(o = {}) {
     }
     const side = restoreSideEffects(root, before, o.keepChanges);
     const r = { ok: code === 0, mode: "run", command: o.run, exit_code: code, ms: Date.now() - t, output: String(output).slice(-4000), ...side };
-    logRow(root, { ...row, command: `tether drive --run ${o.run}`.slice(0, 200), ok: r.ok, exit_code: code });
+    logRow(root, { ...row, command: `picket drive --run ${o.run}`.slice(0, 200), ok: r.ok, exit_code: code });
     return r;
   }
 
@@ -222,7 +222,7 @@ export async function drive(o = {}) {
   Object.assign(result, restoreSideEffects(root, before, o.keepChanges));
   logRow(root, {
     ...row,
-    command: `tether drive --start "${start}" ${hits.map((h) => `--hit "${h.method} ${h.path}"`).join(" ")}`.slice(0, 200),
+    command: `picket drive --start "${start}" ${hits.map((h) => `--hit "${h.method} ${h.path}"`).join(" ")}`.slice(0, 200),
     port,
     ok: result.ok,
     hits: result.hits.map((h) => ({ method: h.method, path: h.path, status: h.status, ms: h.ms })),

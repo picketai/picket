@@ -9,7 +9,7 @@ phase: <the phase the finding cites, if any>
 step: designing/steps/40-amend.md (architect section below)
 ```
 
-Wait for `AMENDED`. Then `tether set <id> status=open`, and `tether next` resumes the lane: a re-check of the changed decisions by the same reviewer (`scope: crosscheck`, `delta: D-00x`) when the amendment came from the cross-check, or straight back to the developer when it came from a review. Batch user rulings that arrive at gates ("make it injectable", "merge those two ports") into one amendment message, not one per ruling.
+Wait for `AMENDED`. Then `picket set <id> status=open`, and `picket next` resumes the lane: a re-check of the changed decisions by the same reviewer (`scope: crosscheck`, `delta: D-00x`) when the amendment came from the cross-check, or straight back to the developer when it came from a review. Batch user rulings that arrive at gates ("make it injectable", "merge those two ports") into one amendment message, not one per ruling.
 
 Three amendment rounds on one item stop the lane with `[c] continue · [d] redesign · [x] abandon`.
 

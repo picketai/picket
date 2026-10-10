@@ -1,5 +1,5 @@
 {
-  "name": "aispec",
+  "name": "@picketai/picket",
   "version": "1.0.0",
   "description": "",
   "homepage": "https://github.com/vladapetre/AISpec#readme",
@@ -13,6 +13,9 @@
   "license": "ISC",
   "author": "",
   "type": "commonjs",
+  "bin": {
+    "picket": "core/bin/picket.mjs"
+  },
   "scripts": {
     "test": "node --test --test-concurrency=1 test/ bench/test/",
     "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
@@ -20,7 +23,7 @@
     "bench:integration": "node --test bench/integration/",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
-    "tether": "node core/bin/tether.mjs",
+    "picket": "node core/bin/picket.mjs",
     "claude": "claude --plugin-dir core"
   },
   "dependencies": {

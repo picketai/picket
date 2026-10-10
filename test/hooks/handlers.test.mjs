@@ -216,7 +216,7 @@ test("guardScope denies the legacy state folder and hook state in any case, not 
       const out = guard(tool_name, rel);
       assert.equal(out?.permissionDecision, "deny", `${tool_name} ${rel}`);
       assert.match(out.permissionDecisionReason, /\.claude\/ledger\//);
-      assert.match(out.permissionDecisionReason, /tether migrate/);
+      assert.match(out.permissionDecisionReason, /picket migrate/);
     }
     assert.equal(guard("Write", ".Claude/Ledger/drive-log.jsonl")?.permissionDecision, "deny");
     assert.equal(guard("Write", ".PICKET/State/drive-log.jsonl")?.permissionDecision, "deny");
@@ -255,24 +255,24 @@ test("no helper is left under .claude/hooks/lib; all four live in core/lib (T-6.
 test("guardBash allows a compound of read-only pieces and bare tether calls that wrap nothing", () => {
   withProject((root) => {
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
-    assert.equal(decision("tether next x; cat work/x/order.md | head -40"), "allow");
-    assert.equal(decision("cd sub && tether state x 2>&1"), "allow");
-    assert.equal(decision("tether state x"), null, "a lone tether call is left to the project's allow rule");
+    assert.equal(decision("picket next x; cat work/x/order.md | head -40"), "allow");
+    assert.equal(decision("cd sub && picket state x 2>&1"), "allow");
+    assert.equal(decision("picket state x"), null, "a lone tether call is left to the project's allow rule");
 
-    assert.equal(decision('API_KEY=k tether drive --hit "GET /h"'), null);
-    assert.equal(decision("node core/bin/tether.mjs next x; ls"), null);
-    assert.equal(decision("/usr/local/bin/tether next x; ls"), null);
-    assert.equal(decision('tether drive --run "npm start"; ls'), null);
+    assert.equal(decision('API_KEY=k picket drive --hit "GET /h"'), null);
+    assert.equal(decision("node core/bin/picket.mjs next x; ls"), null);
+    assert.equal(decision("/usr/local/bin/picket next x; ls"), null);
+    assert.equal(decision('picket drive --run "npm start"; ls'), null);
 
-    assert.equal(decision("tether next x > out.txt"), null);
-    assert.equal(decision('tether admit --text "$(whoami)"'), null);
-    assert.equal(decision('tether drive --run "rm -rf src"'), "deny");
+    assert.equal(decision("picket next x > out.txt"), null);
+    assert.equal(decision('picket admit --text "$(whoami)"'), null);
+    assert.equal(decision('picket drive --run "rm -rf src"'), "deny");
   });
 });
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
   const executed = ["core/lib/drive.mjs", "core/lib/check.mjs"].flatMap((file) =>
-    [...readFileSync(resolve(file), "utf8").matchAll(/assertNotDestructive\(o\.\w+, "tether \w+ (--[\w-]+)"\)/g)].map((m) => m[1]),
+    [...readFileSync(resolve(file), "utf8").matchAll(/assertNotDestructive\(o\.\w+, "picket \w+ (--[\w-]+)"\)/g)].map((m) => m[1]),
   );
   assert.deepEqual(executed.sort(), ["--only", "--run", "--start"]);
   for (const flag of executed) assert.ok(WRAPPING_FLAGS.has(flag), flag);
@@ -380,5 +380,16 @@ test("guardScope asks for the moved config and extensions, keeps .picket/state h
     assert.equal(decide(".picket/extensions/a/rules/r.md").permissionDecision, "ask");
     assert.equal(decide(".picket/state/ledger.jsonl").permissionDecision, "deny");
     assert.equal(decide("notes/config.json"), null);
+  });
+});
+
+test("guardBash treats picket and its tether alias alike: bare calls ride a compound, a wrapped rm is denied", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(decision("picket next x; ls work"), "allow");
+    assert.equal(decision("tether next x; ls work"), "allow");
+    assert.equal(decision('picket drive --run "rm -rf src"'), "deny");
+    assert.equal(decision('tether drive --run "rm -rf src"'), "deny");
+    assert.equal(decision('node core/bin/tether.mjs check --only "git push --force origin trunk"'), "deny");
   });
 });

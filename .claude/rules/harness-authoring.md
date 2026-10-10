@@ -13,7 +13,7 @@ Budgets are tests, not guidance (`test/budgets.test.mjs`): CLAUDE.md at most 204
 
 Names: agents are `analyst`, `architect`, `developer`, `reviewer`. Skills are verbs ending in `-ing` (`tether:ordering`, `tether:consulting`, `tether:benchmarking`). Verdict tokens are the closed list in CLAUDE.md; add one only in `core/lib/route.mjs` first.
 
-Code decides what code can decide. Before writing a rule in prose, ask whether `tether` can compute it: lane admission, next action, must_haves, verdict routing, cost. A rule that can be a function is a function with a test, and the prose says only "run the verb".
+Code decides what code can decide. Before writing a rule in prose, ask whether `picket` can compute it: lane admission, next action, must_haves, verdict routing, cost. A rule that can be a function is a function with a test, and the prose says only "run the verb".
 
 One copy of every fact. Procedure lives in the step file that uses it; the shell and SKILL.md point at it. A skill's description carries `Use when` followed by concrete trigger phrasings, at most 1024 characters. References go one hop: SKILL.md to steps/ or templates/, never further.
 

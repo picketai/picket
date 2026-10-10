@@ -23,7 +23,7 @@ function keepPullRequestReview(id, verdict, text, root) {
   const name = `${id}.review.md`;
   mkdirSync(stateDir(root), { recursive: true });
   writeFileSync(statePath(root, name), text.trim() + "\n");
-  return `tether: ${verdict} recorded for ${id}; block saved to ${stateRel(name)}. Print it verbatim, then offer [p] post to the PR · [d] done.`;
+  return `picket: ${verdict} recorded for ${id}; block saved to ${stateRel(name)}. Print it verbatim, then offer [p] post to the PR · [d] done.`;
 }
 
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
@@ -49,7 +49,7 @@ function applyVerdict({ event, info, hints, id, verdict, text, root }) {
   saveDeveloperBlock(info, id, phase, text, root);
   const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined });
   const next = routed.next;
-  return `tether: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
+  return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
 
 function routeTurn(event, root) {
@@ -67,7 +67,7 @@ function outcome(event, root) {
   try {
     return routeTurn(event, root);
   } catch (err) {
-    return `tether: verdict not applied (${err.message}). Run \`tether next <id>\` yourself.`;
+    return `picket: verdict not applied (${err.message}). Run \`picket next <id>\` yourself.`;
   }
 }
 

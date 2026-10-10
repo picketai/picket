@@ -9,7 +9,7 @@ import { parse as parseYaml } from "../../core/lib/yaml-lite.mjs";
 import { canonicalPath, sourceRoots, underSource } from "../../core/lib/source-paths.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 const HOOKS = resolve("core/hooks");
 
 function git(dir, ...args) {

@@ -58,11 +58,11 @@ export function guardScope(event, { root }) {
   if (!filePath) return null;
   const abs = resolve(event.cwd ?? root, filePath);
   const rel = relative(realPath(root), realPath(abs)).replaceAll("\\", "/");
-  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`tether new\`, \`tether set\`, \`tether route\`, \`tether comment\` or \`tether source\`, never a direct write`);
+  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`picket new\`, \`picket set\`, \`picket route\`, \`picket comment\` or \`picket source\`, never a direct write`);
   if (isHookOnlyState(rel)) return deny(`${rel} is written by the hooks only`);
-  if (isLegacyState(rel)) return deny(`${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`tether migrate\` moves files out of it, nothing writes into it`);
+  if (isLegacyState(rel)) return deny(`${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`);
   const source = underSource(abs, sourceRoots(root));
-  if (source) return deny(`${filePath} is inside source ${source}, which is read-only; read it through \`tether source\` and the snapshots`);
+  if (source) return deny(`${filePath} is inside source ${source}, which is read-only; read it through \`picket source\` and the snapshots`);
   if (editsUnreadFile(event, abs)) return deny(`read ${rel} with the Read tool before editing it; the file may have changed since you last saw it`);
   const confirm = confirmationReason(rel);
   return confirm ? ask(confirm) : null;

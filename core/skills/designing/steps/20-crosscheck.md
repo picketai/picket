@@ -1,6 +1,6 @@
 # Designing, step 2: phase 1 and the cross-check start together
 
-`tether next <id>` said `implement_phase` with `phase: 1`. Two spawns in the same tool block, so neither waits for the other:
+`picket next <id>` said `implement_phase` with `phase: 1`. Two spawns in the same tool block, so neither waits for the other:
 
 Developer (type `tether:developer`), named `developer`, as in `ordering/steps/20-phase.md` with `artifact: work/<id>/design.md`.
 
@@ -21,4 +21,4 @@ Both results arrive as notifications. Handle them in whichever order they land:
 
 `PHASE DONE` before either verdict: hold the gate packet until the cross-check verdict lands (at most one turn). A packet rendered on a record that then drifts costs the user a stop and a reversal.
 
-From phase 2 on, the lane uses the order lane's phase and gate steps unchanged. `tether next` inserts `review_checkpoint` before the phase after the midpoint of plans with 6 or more phases; run it as `ordering/steps/40-review.md` with `scope: checkpoint` and `phase: <n>`, and continue the same reviewer instance.
+From phase 2 on, the lane uses the order lane's phase and gate steps unchanged. `picket next` inserts `review_checkpoint` before the phase after the midpoint of plans with 6 or more phases; run it as `ordering/steps/40-review.md` with `scope: checkpoint` and `phase: <n>`, and continue the same reviewer instance.

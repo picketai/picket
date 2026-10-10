@@ -4,7 +4,7 @@ description: >
   The research lane: a question about code, documents, data or tickets that needs a report,
   not a change. The analyst returns an outline in one turn (summary, section headings, the
   sources it will read) so the user can redirect, then a deep pass fills it. Use when
-  `tether admit` answers `research`, or when the user says "how does X work", "explain",
+  `picket admit` answers `research`, or when the user says "how does X work", "explain",
   "map the flow", "write a report on", "before we touch this I need to understand", or "no
   code changes". A plain question with a one-paragraph answer needs no lane: answer it.
 user-invocable: true
@@ -18,24 +18,24 @@ Runs in the main session. One analyst per work item, spawned for the outline and
 
 Lane check for this request:
 
-If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human <<'TETHER_REQUEST_END'` with the request on the lines after it and `TETHER_REQUEST_END` alone on the last line.
+If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.
 
 `research` continues here. A change request runs its own lane.
 
 ## Steps
 
-| `tether next` says | Read |
+| `picket next` says | Read |
 |---|---|
 | `write_artifact` by analyst | `steps/10-outline.md`: open the work item, spawn the analyst for the outline |
 | `approve_phase` by user (outline present) | render the packet below, stop; on `d`, `steps/20-deep.md`; on `a`, close |
-| `close` | `tether close <id>`, print the closing block below, stop |
+| `close` | `picket close <id>`, print the closing block below, stop |
 
 ## The packet
 
 Rendered by code from the report on disk; print it verbatim and nothing else:
 
 ```
-tether packet <id>
+picket packet <id>
 ```
 
 ```

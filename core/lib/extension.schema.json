@@ -53,7 +53,7 @@
       }
     },
     "preflight": {
-      "description": "Declarative checks added to tether preflight. None runs a command.",
+      "description": "Declarative checks added to picket preflight. None runs a command.",
       "type": "array",
       "items": {
         "type": "object",

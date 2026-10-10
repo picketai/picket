@@ -28,4 +28,4 @@
    - Hydrate only `-` lines: `git -C <worktree> submodule update --init --recursive`, shown for confirmation, then report each submodule path and commit.
    - Say the disk cost once: each worktree gets its own submodule clone under `<repo>/.git/worktrees/<safe_dir>/modules/<sub>`; worktrees share the superproject's history, not their submodules'.
 
-For NEW, RESUME and INTO alike, record the worktree path(s) in the work item (`tether set <id> branch=<branch>`) so later phases resume in place.
+For NEW, RESUME and INTO alike, record the worktree path(s) in the work item (`picket set <id> branch=<branch>`) so later phases resume in place.

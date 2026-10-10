@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import { createWork } from "../../core/lib/work.mjs";
 import { onPath } from "../../core/lib/preflight.mjs";
 
-const BIN = resolve("core/bin/tether.mjs");
+const BIN = resolve("core/bin/picket.mjs");
 
 function project(extensions, manifests) {
   const root = mkdtempSync(join(tmpdir(), "tether-preflight-"));

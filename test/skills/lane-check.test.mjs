@@ -6,11 +6,11 @@ import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const LANES = ["designing", "expediting", "ordering", "researching"];
-const HOSTILE = 'Add a `tether close <id>` verb, say "done", keep $HOME and $(whoami) literal, it\'s fine';
-const UNBALANCED = 'Add a `tether close <id>` verb that prints "done';
-const ADMIT = "tether admit --request - --human";
-const PROSE_STEP = "If this conversation has no `tether admit` answer for the request yet, run `tether admit --request - --human <<'TETHER_REQUEST_END'` with the request on the lines after it and `TETHER_REQUEST_END` alone on the last line.";
-const OLD_INLINE = 'tether admit --text "$ARGUMENTS" --human';
+const HOSTILE = 'Add a `picket close <id>` verb, say "done", keep $HOME and $(whoami) literal, it\'s fine';
+const UNBALANCED = 'Add a `picket close <id>` verb that prints "done';
+const ADMIT = "picket admit --request - --human";
+const PROSE_STEP = "If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.";
+const OLD_INLINE = 'picket admit --text "$ARGUMENTS" --human';
 const BIN_DIR = resolve("core/bin");
 
 function skillText(lane) {
@@ -18,7 +18,7 @@ function skillText(lane) {
 }
 
 function heredocAdmit(request) {
-  return `${ADMIT} <<'TETHER_REQUEST_END'\n${request}\nTETHER_REQUEST_END`;
+  return `${ADMIT} <<'PICKET_REQUEST_END'\n${request}\nPICKET_REQUEST_END`;
 }
 
 function envWithTetherOnPath() {
@@ -35,7 +35,7 @@ function bash(script, root) {
 }
 
 function withRoot(command, root) {
-  return command.replace(/tether admit (--\S+ ?)*--human/, (m) => `${m} --root "${root.replaceAll("\\", "/")}"`);
+  return command.replace(/picket admit (--\S+ ?)*--human/, (m) => `${m} --root "${root.replaceAll("\\", "/")}"`);
 }
 
 for (const lane of LANES) {
