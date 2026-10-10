@@ -11,6 +11,18 @@ export function syncPluginVersion(manifestText, version) {
   return manifestText.replace(VERSION_VALUE, `$1${version}$2`);
 }
 
+export function checkTag(refName, version) {
+  if (refName !== `v${version}`) throw new Error(`tag ${refName} does not match package.json version ${version} (expected v${version})`);
+}
+
+export function distTag(version) {
+  const prerelease = version.split("+")[0].split("-").slice(1).join("-");
+  if (!prerelease) return "latest";
+  const identifier = prerelease.split(".")[0];
+  if (!/^[a-z]+$/.test(identifier)) throw new Error(`version ${version} has prerelease identifier "${identifier}"; a dist-tag needs lowercase letters such as alpha`);
+  return identifier;
+}
+
 function packageVersion(root) {
   return JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
 }
@@ -18,6 +30,12 @@ function packageVersion(root) {
 function syncVersion(root) {
   const manifest = join(root, PLUGIN_MANIFEST);
   writeFileSync(manifest, syncPluginVersion(readFileSync(manifest, "utf8"), packageVersion(root)));
+}
+
+function printDistTag(root, refName) {
+  const version = packageVersion(root);
+  if (refName) checkTag(refName, version);
+  console.log(distTag(version));
 }
 
 function rootOption(args) {
@@ -30,8 +48,10 @@ function main(args) {
   switch (verb) {
     case "sync-version":
       return syncVersion(rootOption(rest));
+    case "dist-tag":
+      return printDistTag(process.cwd(), rest[0]);
     default:
-      throw new Error(`unknown verb: ${verb ?? "(none)"}; expected sync-version`);
+      throw new Error(`unknown verb: ${verb ?? "(none)"}; expected sync-version or dist-tag`);
   }
 }
 

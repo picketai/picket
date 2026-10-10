@@ -1,0 +1,68 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Upgrade npm for trusted publishing
+        run: |
+          npm install -g npm@11
+          npm --version
+
+      - name: Git identity for the tests
+        run: |
+          git config --global user.name release-bot
+          git config --global user.email release-bot@users.noreply.github.com
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Choose the dist-tag
+        id: dist
+        env:
+          REF: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          tag=$(node .github/scripts/release.mjs dist-tag "$REF")
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Tagged commit is on trunk
+        if: github.ref_type == 'tag'
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/trunk
+
+      - name: Publish
+        if: github.ref_type == 'tag'
+        env:
+          DIST_TAG: ${{ steps.dist.outputs.tag }}
+        run: npm publish --access public --tag "$DIST_TAG"
+
+      - name: Publish dry run
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DIST_TAG: ${{ steps.dist.outputs.tag }}
+        run: npm publish --dry-run --access public --tag "$DIST_TAG"

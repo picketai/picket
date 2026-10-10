@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { syncPluginVersion } from "../.github/scripts/release.mjs";
+import { checkTag, distTag, syncPluginVersion } from "../.github/scripts/release.mjs";
 
 const SCRIPT = resolve(".github/scripts/release.mjs");
 const MANIFEST = '{\n  "name": "picket",\n  "version": "1.0.0-alpha.1",\n  "author": { "name": "Vlad Apetre" },\n  "skills": ["./skills/a"]\n}\n';
@@ -29,6 +29,19 @@ test("syncPluginVersion changes the version value and keeps every other byte", (
 test("syncPluginVersion refuses a manifest without exactly one version value", () => {
   assert.throws(() => syncPluginVersion('{ "name": "picket" }', "1.0.0"), /holds 0 version values/);
   assert.throws(() => syncPluginVersion('{ "version": "1", "nested": { "version": "2" } }', "1.0.0"), /holds 2 version values/);
+});
+
+test("distTag is latest for a stable version and the prerelease identifier otherwise", () => {
+  assert.equal(distTag("1.2.0"), "latest");
+  assert.equal(distTag("1.0.0-beta.3"), "beta");
+  assert.equal(distTag("1.0.0-alpha.2"), "alpha");
+  assert.throws(() => distTag("1.0.0-0"), /prerelease identifier "0"/);
+});
+
+test("checkTag accepts only the v-prefixed package version", () => {
+  assert.doesNotThrow(() => checkTag("v1.0.0-alpha.1", "1.0.0-alpha.1"));
+  assert.throws(() => checkTag("1.0.0-alpha.1", "1.0.0-alpha.1"), /expected v1\.0\.0-alpha\.1/);
+  assert.throws(() => checkTag("v1.0.0-alpha.9", "1.0.0-alpha.1"), /v1\.0\.0-alpha\.9 does not match package\.json version 1\.0\.0-alpha\.1/);
 });
 
 test("sync-version rewrites the plugin manifest from package.json, and fails in one stderr line", () => {
