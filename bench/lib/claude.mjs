@@ -1,6 +1,6 @@
 // Runs one `claude -p` invocation in stream-json mode, stamps every event with a wall-clock time,
 // and returns the result record plus the summary the metrics need.
-import { spawn, execSync } from "node:child_process";
+import { spawn, execSync, execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -16,6 +16,19 @@ export function resolveClaude() {
 const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 
 export const JOB_WRAPPER = fileURLToPath(new URL("./jobwrap.ps1", import.meta.url));
+
+function quietExec(command, args) {
+  execFileSync(command, args, { stdio: "ignore", windowsHide: true });
+}
+
+export function stopTree(child, { platform = process.platform, exec = quietExec } = {}) {
+  if (platform !== "win32") return child.kill();
+  try {
+    exec("taskkill", ["/PID", String(child.pid), "/T", "/F"]);
+  } catch {
+    child.kill();
+  }
+}
 
 export function launchCommand(args, { platform = process.platform, jobFile, claude = resolveClaude() } = {}) {
   if (platform === "win32" && jobFile) return { command: "pwsh", args: ["-NoProfile", "-File", JOB_WRAPPER, "-JobFile", jobFile, "--", claude, ...args], shell: false };
@@ -80,7 +93,7 @@ export function runClaude(o) {
     const timer = o.timeoutMs
       ? setTimeout(() => {
           stderr += `\n[bench] timeout after ${o.timeoutMs} ms, killing`;
-          child.kill();
+          stopTree(child);
         }, o.timeoutMs)
       : null;
 

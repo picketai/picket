@@ -1,0 +1,7 @@
+id: 20261010-bench-timeout-stops-the-whole-tree
+lane: fast
+title: Bench timeout stops the whole tree
+status: done
+created: 2026-10-10T09:38:31.505Z
+updated: 2026-10-10T09:50:02.346Z
+base: 3af97c61831c65a0ddbf08a067598437336ed06f
