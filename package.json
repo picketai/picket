@@ -17,6 +17,7 @@
     "test": "node --test --test-concurrency=1 test/ bench/test/",
     "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
     "bench:test": "node --test bench/test/",
+    "bench:integration": "node --test bench/integration/",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
     "tether": "node core/bin/tether.mjs",
