@@ -1,2 +1,2 @@
 - [Transcript facts](transcript-facts.md) — continuation message shape in subagent transcripts, transcript location, hook timing baseline caveat
-- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details checks, install needs a known marketplace, lint.schema heading trap
+- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap
