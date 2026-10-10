@@ -8,7 +8,7 @@ description: >
   lands and an APPROVED or CHANGES REQUIRED verdict is due, when the user says "review
   this phase", "review the diff", or "run an alignment check", or when CROSS_CHECK_REQUESTED
   or /cross-check asks whether a design record's decisions and phases agree (ALIGNED or
-  DRIFT DETECTED). `/tether:reviewing <pull request URL>` reviews a pull request on Azure DevOps
+  DRIFT DETECTED). `/picket:reviewing <pull request URL>` reviews a pull request on Azure DevOps
   (Server or Services) or GitHub from the local clone, and posts the findings back only when asked.
 user-invocable: true
 ---
@@ -97,12 +97,12 @@ Story rows (`S-N`, cumulative only, `steps/15-traced.md`) differ in one way: FAI
 
 The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. Any Critical or Major row gives `DRIFT DETECTED`; Minor rows are recorded and do not block.
 
-## Pull request mode (`/tether:reviewing <url>`, lead only)
+## Pull request mode (`/picket:reviewing <url>`, lead only)
 
 The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Rent` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
 
 1. `picket pr <url> --human` (the JSON form goes to the reviewer; keep the `repo_root` it names). It fetches `refs/pull/<id>/merge`, computes base and head, the review summary over that range, and the PR's title and description (Azure DevOps: a PAT in `AZDO_PAT`, set once with `setx AZDO_PAT <token>` or in the `env` block of the untracked `.claude/settings.local.json`, never in a tracked file; GitHub: the `gh` CLI). A missing PAT is reported, not fatal: the review runs code-only. Any other error: print it and stop.
-2. Spawn the reviewer once (type `tether:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/steps/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
+2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/steps/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
 3. Print the reviewer's block verbatim, then one options line: `[p] post to the PR   [d] done`. Nothing is written to the PR before `p`. When the block says `Alignment: N/A (no description)`, add one line under it: the PR carried no intent to check the diff against, so half the review is missing; a two-line description in the PR template restores it. Before `p`, check the finding line numbers against the file at head once (`git -C <repo_root> show <head>:<path> | sed -n '<line>,+3p'`); a wrong anchor puts the thread on the wrong code, and the first two live reviews were both off.
 4. On `p`: `picket pr <url> --post .picket/state/pr-<id>.review.md --dry-run --human` shows what would go; print it and ask once more with `[y] post   [n] keep local`; on `y`, the same command without `--dry-run`. Azure DevOps only; on GitHub, tell the user to use `gh pr review`.
 

@@ -7,7 +7,7 @@ description: >
   sub-repo of an umbrella), fills it from the branch's commits and the work item's record and
   verdicts, ticks the checklist items the evidence supports, and counts characters mechanically
   before delivering. Use when the user says "write the PR description", "summarize this
-  branch", "PR body", or `/tether:summarizing [branch or repo hint]`. User-invoked only: the PR
+  branch", "PR body", or `/picket:summarizing [branch or repo hint]`. User-invoked only: the PR
   description is written when the user decides the branch is done.
 user-invocable: true
 ---

@@ -6,7 +6,7 @@ description: >
   template under templates/<provider>/. Use when the user says "write a ticket", "log a bug",
   "make a Jira item", "pull JIRA-123", "update that story", "draft an epic", or mentions Jira,
   tickets, backlog items, issues or sprint work. Pulls are autonomous; every create, edit,
-  transition or comment is shown for confirmation first. `/tether:ticketing [--pull|--create|--update]
+  transition or comment is shown for confirmation first. `/picket:ticketing [--pull|--create|--update]
   [--story|--change|--bug|--debt|--spike|--epic] <text or key>`.
 user-invocable: true
 ---

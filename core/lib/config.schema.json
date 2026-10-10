@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tether project configuration (.picket/config.json)",
+  "title": "Picket project configuration (.picket/config.json)",
   "type": "object",
   "properties": {
     "version": {

@@ -58,7 +58,7 @@ test("new surfaces land in order, security and migrations in design, questions i
   rmSync(root, { recursive: true, force: true });
 });
 
-const SPIKE_REQUEST = "Tether plugin spike: a research work item whose throwaway code lives only under `spike/`. Question: can a Claude Code plugin carry Tether? Check that a version bump arrives with one update command.";
+const SPIKE_REQUEST = "Picket plugin spike: a research work item whose throwaway code lives only under `spike/`. Question: can a Claude Code plugin carry Picket? Check that a version bump arrives with one update command.";
 
 test("a request that calls itself a research work item lands in research despite a bump (T-2.1)", () => {
   const root = repo();

@@ -6,8 +6,8 @@ description: >
   hydrated on the way in and released on the way out. Use when the user says "start a branch",
   "spin up a worktree", "resume work on <branch>", "set up branches for this feature", "list
   my worktrees", or "tear down the worktree for <branch>". Needs an explicit branch name and
-  never invents one. `/tether:branching <branch>`, `/tether:branching <branch> --into <branch|path> [--from
-  <base>]` (branch inside an existing worktree), `/tether:branching --list [branch]`, `/tether:branching --remove
+  never invents one. `/picket:branching <branch>`, `/picket:branching <branch> --into <branch|path> [--from
+  <base>]` (branch inside an existing worktree), `/picket:branching --list [branch]`, `/picket:branching --remove
   <branch>`. The developer reads it at a work item's first phase when the project has nested repos.
 user-invocable: true
 ---
@@ -45,4 +45,4 @@ Runtime collisions between worktrees (ports, a shared dev database) are out of s
 
 ## Report
 
-Manifest state (created, healed, unchanged); then per repo: resumed or created worktree with path and base, submodules hydrated or left alone; for INTO, the worktree path, new branch, base, displaced branch and the switch-back command `/tether:branching <displaced> --into <branch>`; or the listing; or what was removed, which rung cleared it, which submodules were released first, and that the branch ref itself still exists.
+Manifest state (created, healed, unchanged); then per repo: resumed or created worktree with path and base, submodules hydrated or left alone; for INTO, the worktree path, new branch, base, displaced branch and the switch-back command `/picket:branching <displaced> --into <branch>`; or the listing; or what was removed, which rung cleared it, which submodules were released first, and that the branch ref itself still exists.

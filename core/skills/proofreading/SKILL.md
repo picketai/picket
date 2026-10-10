@@ -7,7 +7,7 @@ description: >
   internal consistency and facts, clarity for the named audience, house style, completeness
   and safety to send. Use when the user says "proofread this", "check this before I send it",
   "is this clear?", "polish this email", "review this doc for typos", or hands over prose whose
-  next reader is outside the project. `/tether:proofreading <path or pasted text>`.
+  next reader is outside the project. `/picket:proofreading <path or pasted text>`.
 user-invocable: true
 ---
 

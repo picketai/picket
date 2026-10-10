@@ -61,7 +61,7 @@ function checkHeader(manifest, name) {
   if (typeof manifest.name !== "string" || !NAME.test(manifest.name)) refuse(`name must match ${NAME.source}`);
   if (manifest.name !== name) refuse(`name "${manifest.name}" differs from its folder "${name}"`);
   if (typeof manifest.version !== "string" || !SEMVER.test(manifest.version)) refuse(`version ${JSON.stringify(manifest.version)} is not a SemVer string`);
-  if (!SUPPORTED_SCHEMAS.includes(manifest.schema)) refuse(`schema ${JSON.stringify(manifest.schema)} is not supported by this Tether (supports ${SUPPORTED_SCHEMAS.join(", ")})`);
+  if (!SUPPORTED_SCHEMAS.includes(manifest.schema)) refuse(`schema ${JSON.stringify(manifest.schema)} is not supported by this Picket (supports ${SUPPORTED_SCHEMAS.join(", ")})`);
   if (manifest.description !== undefined && typeof manifest.description !== "string") refuse("description must be a string");
 }
 

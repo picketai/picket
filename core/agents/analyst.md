@@ -7,7 +7,7 @@ description: >
   skill; continued for the deep pass and for delta reports on the same sources.
 tools: Read, Write, Bash, Glob, Grep, WebFetch, WebSearch, SendMessage, mcp__atlassian__getAccessibleAtlassianResources, mcp__atlassian__discover, mcp__atlassian__executeRead, mcp__atlassian__executeWrite, mcp__atlassian__getJiraIssue, mcp__atlassian__searchJiraIssuesUsingJql, mcp__atlassian__createJiraIssue, mcp__atlassian__editJiraIssue, mcp__atlassian__transitionJiraIssue, mcp__atlassian__addOrEditJiraIssueComment
 skills:
-  - tether:documenting
+  - picket:documenting
 model: sonnet
 effort: medium
 memory: project

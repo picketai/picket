@@ -14,7 +14,7 @@ user-invocable: true
 
 Paths cited here and in this skill's step files, such as `benchmarking/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
 
-`/tether:benchmarking <run|baseline|check|report> [--harness plugin|trunk] [--tasks all|lane:<lane>|<id,...>] [--runs N]`
+`/picket:benchmarking <run|baseline|check|report> [--harness plugin|trunk] [--tasks all|lane:<lane>|<id,...>] [--runs N]`
 
 Everything is code under `bench/`; this skill only chooses the arguments and reads the result. Read `bench/README.md` once if the layout is new to you.
 

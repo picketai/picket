@@ -48,7 +48,7 @@ Report Cm1 as one aggregated Major finding listing each `path:line` and the text
 
 ## Test scope
 
-The developer writes unit tests and, conditionally, architecture tests; every other kind needs an explicit unlock (the `tether:developer` agent). Judge only tests the diff adds.
+The developer writes unit tests and, conditionally, architecture tests; every other kind needs an explicit unlock (the `picket:developer` agent). Judge only tests the diff adds.
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|

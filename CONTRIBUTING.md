@@ -1,8 +1,8 @@
-# Contributing to Tether
+# Contributing to Picket
 
 These are the conventions for changing this repository. Facts that already live elsewhere are linked, not copied: the folder map is in `README.md`, the always-on writing and comment rules are in `core/rules/`, and the prompt size budgets are in `test/budgets.test.mjs`.
 
-Name the product Tether in any text a user reads. "Harness" is the internal word for the mechanism and stays in design talk among the people building it (`.claude/MEMORY.md`, `## Language`).
+Name the product Picket in any text a user reads. "Harness" is the internal word for the mechanism and stays in design talk among the people building it (`.claude/MEMORY.md`, `## Language`).
 
 ## Layout
 
@@ -17,10 +17,10 @@ The `## Layout` section of `README.md` maps every top-level folder. New things g
 In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plugin straight from `core/`. To set up another project, run this there, with the path of this checkout:
 
 ```sh
-node <path to this checkout>/core/bin/tether.mjs init
+node <path to this checkout>/core/bin/picket.mjs init
 ```
 
-It writes the Tether block into `CLAUDE.md`, `.tether/config.json`, the `.tether/state/` line in `.gitignore` and the permission keys in `.claude/settings.json`, then runs `claude plugin marketplace add` and `claude plugin install tether@tether-dev` with `--scope project`. A second run changes nothing; `--no-install` skips the two `claude` commands. The marketplace name `tether-dev` is provisional. To undo it, run `claude plugin uninstall tether@tether-dev --scope project` and `claude plugin marketplace remove tether-dev --scope project`. A copy stays under `~/.claude/plugins/cache/tether-dev/`, marked orphaned.
+It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore` and the permission keys in `.claude/settings.json`, then runs `claude plugin marketplace add` and `claude plugin install picket@picket-dev` with `--scope project`. A second run changes nothing; `--no-install` skips the two `claude` commands. The marketplace name `picket-dev` is provisional. To undo it, run `claude plugin uninstall picket@picket-dev --scope project` and `claude plugin marketplace remove picket-dev --scope project`. A copy stays under `~/.claude/plugins/cache/picket-dev/`, marked orphaned.
 
 ## Code
 

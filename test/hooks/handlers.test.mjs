@@ -99,7 +99,7 @@ function headingOrder(text) {
   return RULE_HEADINGS.map((heading) => text.indexOf(`${heading}\n`));
 }
 
-for (const event of [{ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
+for (const event of [{ hook_event_name: "SubagentStart", agent_type: "picket:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
   test(`injectRules returns the four rules in order for ${event.hook_event_name}`, () => {
     const out = injectRules(event);
     assert.equal(out.hookSpecificOutput.hookEventName, event.hook_event_name);
@@ -316,7 +316,7 @@ test("SessionStart gets each extension's rules then its lead text, in config ord
 test("SubagentStart gives a role its own additions and any other agent the rules only", () => {
   const root = extensionProject(["acme"], { acme: roleTexts("acme") });
   try {
-    assert.equal(extensionText({ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, root), "## Extension acme 0.1.0\n\nacme rule\n\nacme developer");
+    assert.equal(extensionText({ hook_event_name: "SubagentStart", agent_type: "picket:developer" }, root), "## Extension acme 0.1.0\n\nacme rule\n\nacme developer");
     assert.equal(extensionText({ hook_event_name: "SubagentStart", agent_type: "general-purpose" }, root), "## Extension acme 0.1.0\n\nacme rule");
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -342,7 +342,7 @@ test("a refused extension adds one line and no text; nothing enabled or refused 
   const empty = extensionProject([], {});
   try {
     const text = extensionText({ hook_event_name: "SessionStart" }, root);
-    assert.equal(text, "Extension broken refused: schema 2 is not supported by this Tether (supports 1)");
+    assert.equal(text, "Extension broken refused: schema 2 is not supported by this Picket (supports 1)");
     assert.equal(injectExtensions({ hook_event_name: "SessionStart" }, { root: empty }), null);
   } finally {
     rmSync(root, { recursive: true, force: true });

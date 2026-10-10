@@ -10,7 +10,7 @@ It prints `{ size, frameworks, concerns, security_path, changed_files, base, req
 
 ## Cumulative: a fresh reviewer
 
-Spawn a new reviewer instance (type `tether:reviewer`) named `cumulative-reviewer`, with model `opus`. Never continue the instance that ran the cross-check or a checkpoint: its context holds the plan and its earlier verdicts, and that anchors it on the architect's reading of the story. Its message opens with the fixed sentence, then the fields:
+Spawn a new reviewer instance (type `picket:reviewer`) named `cumulative-reviewer`, with model `opus`. Never continue the instance that ran the cross-check or a checkpoint: its context holds the plan and its earlier verdicts, and that anchors it on the architect's reading of the story. Its message opens with the fixed sentence, then the fields:
 
 ```
 You are reviewing a change you did not write. You have no context beyond what is below.
@@ -24,7 +24,7 @@ Re-reviews continue `cumulative-reviewer` by `SendMessage`, so its prior finding
 
 ## Checkpoint: the same reviewer
 
-Continue `reviewer` (spawn it, type `tether:reviewer`, named `reviewer` only if none exists for this item) with `work: <id>`, `scope: checkpoint`, `phase: <n>`, `summary: <the JSON, verbatim>`, `step: reviewing/steps/10-alignment.md`.
+Continue `reviewer` (spawn it, type `picket:reviewer`, named `reviewer` only if none exists for this item) with `work: <id>`, `scope: checkpoint`, `phase: <n>`, `summary: <the JSON, verbatim>`, `step: reviewing/steps/10-alignment.md`.
 
 ## The verdict
 

@@ -7,7 +7,7 @@ description: >
   when asked. Use when the user asks "should we", "which approach", "build or buy", "where
   does this boundary go", "is this a separate context", "what is the strategy for", or wants
   a thinking partner before any design. Tactical questions (how to structure this module)
-  go to `tether:ordering` or `tether:designing`.
+  go to `picket:ordering` or `picket:designing`.
 user-invocable: true
 ---
 
@@ -28,9 +28,9 @@ Runs in the main session, no spawn: a conversation through a teammate costs a re
 
 Recommend one direction and lead with it. Alternatives are a list; the argument between them is prose. Every alternative names its DDD or industry pattern when one fits, what it gains, what it gives up, and any `[IRREVERSIBLE]` consequence.
 
-A term the user uses that conflicts with `.claude/MEMORY.md`, or two words for one concept, is surfaced in the reply and resolved before the recommendation; a non-trivial resolved term or decision is written to `.claude/MEMORY.md` at once (`tether:understanding` carries the capture format).
+A term the user uses that conflicts with `.claude/MEMORY.md`, or two words for one concept, is surfaced in the reply and resolved before the recommendation; a non-trivial resolved term or decision is written to `.claude/MEMORY.md` at once (`picket:understanding` carries the capture format).
 
-A purely tactical question is redirected in one line: "This is tactical: `tether:ordering` or `tether:designing` will handle it." Do not answer it here.
+A purely tactical question is redirected in one line: "This is tactical: `picket:ordering` or `picket:designing` will handle it." Do not answer it here.
 
 ## Output
 

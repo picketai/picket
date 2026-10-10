@@ -7,7 +7,7 @@ description: >
   and designing skills.
 tools: Read, Edit, Write, Bash, Glob, Grep, SendMessage
 skills:
-  - tether:documenting
+  - picket:documenting
 model: opus
 effort: high
 memory: project

@@ -4,7 +4,7 @@
 picket new --lane research --title "<six-word title>"
 ```
 
-Spawn the analyst once (type `tether:analyst`), named `analyst`:
+Spawn the analyst once (type `picket:analyst`), named `analyst`:
 
 ```
 work: <id>

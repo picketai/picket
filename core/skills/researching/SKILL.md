@@ -61,4 +61,4 @@ Report: work/<id>/research.md · findings: <n> · architect review: <yes: R-00x 
 
 ## Rules of the lane
 
-The analyst writes `work/<id>/research.md` only and never proposes designs; a finding that needs a decision is flagged `[ARCHITECT REVIEW NEEDED]` and the lead offers `tether:ordering` or `tether:designing` in the closing line. Ticket pulls are part of ingestion; any ticket write is surfaced for the user's confirmation before it happens.
+The analyst writes `work/<id>/research.md` only and never proposes designs; a finding that needs a decision is flagged `[ARCHITECT REVIEW NEEDED]` and the lead offers `picket:ordering` or `picket:designing` in the closing line. Ticket pulls are part of ingestion; any ticket write is surfaced for the user's confirmation before it happens.

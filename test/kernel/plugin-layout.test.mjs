@@ -89,7 +89,7 @@ test(".claude/ tracks no skills, agents or output styles", () => {
 test("the manifest lists every skill folder once, in name order", () => {
   const folders = readdirSync(join(CORE, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => `./skills/${e.name}`).sort();
   const manifest = readJson(join(CORE, ".claude-plugin", "plugin.json"));
-  assert.equal(manifest.name, "tether");
+  assert.equal(manifest.name, "picket");
   assert.deepEqual(manifest.skills, folders);
 });
 
@@ -109,11 +109,11 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace tether-dev serves the one tether plugin from core/", () => {
+test("the root marketplace picket-dev serves the one picket plugin from core/", () => {
   const marketplace = readJson(MARKETPLACE);
-  assert.equal(marketplace.name, "tether-dev");
+  assert.equal(marketplace.name, "picket-dev");
   assert.ok(marketplace.owner?.name);
-  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [{ name: "tether", source: "./core" }]);
+  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [{ name: "picket", source: "./core" }]);
 });
 
 test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin/ or .claude/skills/", () => {

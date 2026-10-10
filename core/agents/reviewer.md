@@ -7,7 +7,7 @@ description: >
   skills; continued for re-reviews so prior findings stay in context.
 tools: Read, Bash, Glob, Grep, SendMessage
 skills:
-  - tether:reviewing
+  - picket:reviewing
 model: sonnet
 effort: medium
 memory: project

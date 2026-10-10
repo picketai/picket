@@ -123,7 +123,7 @@ test("inject.extensions starts cold under the budget with three extensions enabl
       writeFileSync(join(dir, "reviewer.md"), `Reviewer text for ${name}.\n`);
       writeFileSync(join(dir, "extension.json"), JSON.stringify({ name, version: "0.1.0", schema: 1, rules: ["rules.md"], agents: { reviewer: ["reviewer.md"] } }));
     }
-    const input = JSON.stringify({ hook_event_name: "SubagentStart", agent_type: "tether:reviewer", cwd: root });
+    const input = JSON.stringify({ hook_event_name: "SubagentStart", agent_type: "picket:reviewer", cwd: root });
     let best = Infinity;
     for (let i = 0; i < 3; i++) {
       const t0 = Date.now();

@@ -46,20 +46,20 @@ test("route.verdict applies PHASE DONE from a developer block and reports the ne
   rmSync(root, { recursive: true, force: true });
 });
 
-test("route.verdict saves the block of a plugin-prefixed tether:developer", () => {
+test("route.verdict saves the block of a plugin-prefixed picket:developer", () => {
   const { root, id } = project();
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
-  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s5", transcript_path: tp, cwd: root, agent_type: "tether:developer" }, root);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s5", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, root);
   assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
   assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /Block not saved/);
   assert.equal(existsSync(join(root, "work", id, "phases", "1.block.md")), true);
   rmSync(root, { recursive: true, force: true });
 });
 
-test("route.verdict tells a tether:developer whose block has no phase heading that it was not saved", () => {
+test("route.verdict tells a picket:developer whose block has no phase heading that it was not saved", () => {
   const { root, id } = project();
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "Phase 1 is staged.\n\n**Checks:** tests passed\n\nPHASE DONE" }])]);
-  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s6", transcript_path: tp, cwd: root, agent_type: "tether:developer" }, root);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s6", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, root);
   assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
   assert.match(out.hookSpecificOutput.additionalContext, /Block not saved: it has no `## Phase <n> of <id>: <title>` heading/);
   assert.equal(existsSync(join(root, "work", id, "phases", "1.block.md")), false);
@@ -382,7 +382,7 @@ test("observe.drive counts a command as a kernel call only when a segment starts
   rmSync(root, { recursive: true, force: true });
 });
 
-for (const payload of [{ hook_event_name: "SubagentStart", agent_type: "tether:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
+for (const payload of [{ hook_event_name: "SubagentStart", agent_type: "picket:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
   test(`inject.rules prints the four rules in order, without frontmatter, on ${payload.hook_event_name}`, () => {
     const { root } = project();
     const text = run("inject.rules.mjs", { ...payload, cwd: root }, root).hookSpecificOutput.additionalContext;
@@ -577,10 +577,10 @@ test("emit.ledger appends a v2 row and observe.drive tags commands with the open
   rmSync(root, { recursive: true, force: true });
 });
 
-test("route.verdict applies PHASE DONE from a tether:developer whose block has no phase heading", () => {
+test("route.verdict applies PHASE DONE from a picket:developer whose block has no phase heading", () => {
   const { root, id } = project();
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "Done.\n\nPHASE DONE" }])]);
-  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s7", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "tether:developer" }, root);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: "s7", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "picket:developer" }, root);
   assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`PHASE DONE applied to ${id} phase 1`));
   assert.equal(deriveState(id, root).phases[0].done, true);
   rmSync(root, { recursive: true, force: true });
@@ -590,18 +590,18 @@ test("emit.ledger records tether-prefixed agents under their bare names", () => 
   const { root, id } = project();
   const ledger = () => readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   const own = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "ok" }])]);
-  run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s8", transcript_path: own, agent_transcript_path: own, cwd: root, agent_type: "tether:developer" }, root);
+  run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s8", transcript_path: own, agent_transcript_path: own, cwd: root, agent_type: "picket:developer" }, root);
   assert.equal(ledger().at(-1).agent, "developer");
 
-  const spawning = transcript(root, [user("build it"), assistant([tool("Agent", { subagent_type: "tether:architect", description: "Write the order" })])]);
+  const spawning = transcript(root, [user("build it"), assistant([tool("Agent", { subagent_type: "picket:architect", description: "Write the order" })])]);
   run("emit.ledger.mjs", { hook_event_name: "SubagentStop", session_id: "s8", transcript_path: spawning, agent_transcript_path: spawning, cwd: root }, root);
   assert.equal(ledger().at(-1).agent, "architect");
   rmSync(root, { recursive: true, force: true });
 });
 
-test("observe.drive records a tether:developer as developer", () => {
+test("observe.drive records a picket:developer as developer", () => {
   const { root } = project();
-  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "curl -s http://127.0.0.1:8080/health" }, cwd: root, session_id: "s9", agent_type: "tether:developer" }, root);
+  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "curl -s http://127.0.0.1:8080/health" }, cwd: root, session_id: "s9", agent_type: "picket:developer" }, root);
   const drives = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.equal(drives.at(-1).agent, "developer");
   rmSync(root, { recursive: true, force: true });
@@ -671,10 +671,10 @@ function projectWithReviewerExtension() {
   return root;
 }
 
-test("the spawned inject.extensions gives a tether:reviewer its addition on SubagentStart and the lead its rules on SessionStart", () => {
+test("the spawned inject.extensions gives a picket:reviewer its addition on SubagentStart and the lead its rules on SessionStart", () => {
   const root = projectWithReviewerExtension();
   try {
-    const reviewer = run("inject.extensions.mjs", { hook_event_name: "SubagentStart", agent_type: "tether:reviewer", cwd: root }, root);
+    const reviewer = run("inject.extensions.mjs", { hook_event_name: "SubagentStart", agent_type: "picket:reviewer", cwd: root }, root);
     assert.equal(reviewer.hookSpecificOutput.hookEventName, "SubagentStart");
     assert.match(reviewer.hookSpecificOutput.additionalContext, /## Extension acme 0\.2\.0\n\nUse pnpm, never npm\.\n\nCheck every endpoint against openapi\.yaml\./);
     const lead = run("inject.extensions.mjs", { hook_event_name: "SessionStart", source: "startup", cwd: root }, root);
@@ -688,7 +688,7 @@ test("the core rules hook prints the same bytes with and without an extension en
   const plain = mkdtempSync(join(tmpdir(), "tether-ext-plain-"));
   const extended = projectWithReviewerExtension();
   try {
-    const event = (root) => ({ hook_event_name: "SubagentStart", agent_type: "tether:reviewer", cwd: root });
+    const event = (root) => ({ hook_event_name: "SubagentStart", agent_type: "picket:reviewer", cwd: root });
     const rulesOut = (root) => execFileSync("node", [join(HOOKS, "inject.rules.mjs")], { input: JSON.stringify(event(root)), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
     assert.equal(rulesOut(extended), rulesOut(plain));
   } finally {
@@ -723,4 +723,15 @@ test("observe.drive counts both picket and the tether alias as kernel calls", ()
   assert.equal(kind("tether next x"), "inspect");
   assert.equal(kind("node core/bin/tether.mjs state x"), "inspect");
   rmSync(root, { recursive: true, force: true });
+});
+
+test("route.verdict applies a PHASE DONE from a picket:developer and from a tether:developer", () => {
+  for (const agent_type of ["picket:developer", "tether:developer"]) {
+    const { root, id } = project();
+    const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
+    const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: `s-${agent_type}`, transcript_path: tp, cwd: root, agent_type }, root);
+    assert.match(out.hookSpecificOutput.additionalContext, /^picket: PHASE DONE applied/, agent_type);
+    assert.equal(deriveState(id, root).phases[0].done, true, agent_type);
+    rmSync(root, { recursive: true, force: true });
+  }
 });

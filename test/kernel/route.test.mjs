@@ -140,8 +140,8 @@ test("wrong owner is refused, rejection clears the run grant, drift blocks", () 
   rmSync(root, { recursive: true, force: true });
 });
 
-test("bareAgentName strips only the exact tether: prefix", () => {
-  assert.equal(bareAgentName("tether:analyst"), "analyst");
+test("bareAgentName strips only the exact picket: prefix", () => {
+  assert.equal(bareAgentName("picket:analyst"), "analyst");
   assert.equal(bareAgentName("analyst"), "analyst");
   assert.equal(bareAgentName("other:developer"), "other:developer");
   assert.equal(bareAgentName("tetherx:developer"), "tetherx:developer");
@@ -153,7 +153,7 @@ test("bareAgentName resolves a teammate instance name to the role it ends in", (
   assert.equal(bareAgentName("cumulative-reviewer-4"), "reviewer");
   assert.equal(bareAgentName("cumulative-reviewer"), "reviewer");
   assert.equal(bareAgentName("reviewer-2"), "reviewer");
-  assert.equal(bareAgentName("tether:developer"), "developer");
+  assert.equal(bareAgentName("picket:developer"), "developer");
   assert.equal(bareAgentName("general-purpose"), "general-purpose");
   assert.equal(bareAgentName("lead"), "lead");
   assert.equal(bareAgentName("reviewer-x"), "reviewer-x");
@@ -171,9 +171,9 @@ test("route accepts APPROVED from a continued cumulative reviewer known by its i
   rmSync(root, { recursive: true, force: true });
 });
 
-test("a tether:developer may route PHASE DONE and is recorded as developer", () => {
+test("a picket:developer may route PHASE DONE and is recorded as developer", () => {
   const { root, id } = setup();
-  route({ id, verdict: "PHASE DONE", agent: "tether:developer", phase: 1, root });
+  route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 1, root });
   assert.equal(existsSync(join(root, "work", id, "phases", "1.done")), true);
   assert.equal(deriveState(id, root).verdicts.at(-1).agent, "developer");
   rmSync(root, { recursive: true, force: true });
@@ -183,5 +183,14 @@ test("another plugin's developer may not route PHASE DONE", () => {
   const { root, id } = setup();
   assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "other:developer", phase: 1, root }), /not other:developer/);
   assert.equal(existsSync(join(root, "work", id, "phases", "1.done")), false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("until phase 4 of the rename, the tether: prefix still names the same agents", () => {
+  assert.equal(bareAgentName("tether:developer"), "developer");
+  assert.equal(bareAgentName("picket:developer"), "developer");
+  const { root, id } = setup();
+  route({ id, verdict: "PHASE DONE", agent: "tether:developer", phase: 1, root });
+  assert.equal(deriveState(id, root).verdicts.at(-1).agent, "developer");
   rmSync(root, { recursive: true, force: true });
 });

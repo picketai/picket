@@ -41,6 +41,6 @@
       "Bash(git submodule*)"
     ]
   },
-  "outputStyle": "tether:custom",
+  "outputStyle": "picket:custom",
   "disableClaudeAiConnectors": true
 }

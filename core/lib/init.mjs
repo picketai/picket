@@ -7,11 +7,11 @@ import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./paths.mj
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };
 const HEADING = /^#{1,6} /;
-const MARKETPLACE_NAME = "tether-dev";
+const MARKETPLACE_NAME = "picket-dev";
 const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
 const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
 const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
-const PLUGIN_ID = `tether@${MARKETPLACE_NAME}`;
+const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";
 
@@ -55,7 +55,7 @@ function templateHeadings(template) {
 export function mergeClaudeBlock(existing, template) {
   if (existing === null) return `${template}\n## Project facts\n`;
   const lines = lf(existing).split("\n");
-  const start = lines.findIndex((line) => line === "# Tether");
+  const start = lines.findIndex((line) => line === "# Picket");
   if (start === -1) return `${lf(existing).replace(/\n*$/, "\n")}\n${template}`;
   const own = templateHeadings(template);
   let end = start + 1;

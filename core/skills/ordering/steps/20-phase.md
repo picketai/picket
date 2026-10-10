@@ -1,6 +1,6 @@
 # Ordering, step 2: implement phase n
 
-`picket next <id>` said `implement_phase` with `phase: n`. Spawn the developer (type `tether:developer`) once per work item, named `developer`; every later phase is a `SendMessage` to that same instance.
+`picket next <id>` said `implement_phase` with `phase: n`. Spawn the developer (type `picket:developer`) once per work item, named `developer`; every later phase is a `SendMessage` to that same instance.
 
 First phase message, followed by the Developer section below pasted verbatim (it is in your context; pasting it saves the developer a round trip):
 

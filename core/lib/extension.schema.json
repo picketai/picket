@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tether extension manifest (.picket/extensions/<name>/extension.json), schema 1",
+  "title": "Picket extension manifest (.picket/extensions/<name>/extension.json), schema 1",
   "description": "An extension adds content at four named points and never replaces or removes core behaviour. Any key not listed here refuses the extension. Paths are relative to the extension folder and may not leave it.",
   "type": "object",
   "properties": {
@@ -15,7 +15,7 @@
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
     },
     "schema": {
-      "description": "The extension-point contract this manifest is written against. Schema 1 defines rules, agents, review_steps and preflight; a Tether that does not support the number refuses the extension.",
+      "description": "The extension-point contract this manifest is written against. Schema 1 defines rules, agents, review_steps and preflight; a Picket that does not support the number refuses the extension.",
       "const": 1
     },
     "description": {

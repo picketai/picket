@@ -6,7 +6,7 @@ description: >
   developer, with a user gate after each phase, a run offer, and one cumulative review at the
   end. No cross-check. Use when `picket admit` answers `order`, or when the user asks for a
   new endpoint, module, handler or capability that fits in a few phases and crosses no
-  security path, schema or repo boundary. Escalates to `tether:designing` when the order outgrows
+  security path, schema or repo boundary. Escalates to `picket:designing` when the order outgrows
   its caps.
 user-invocable: true
 ---
@@ -21,7 +21,7 @@ Lane check for this request:
 
 If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.
 
-`order` continues here. `fast` runs `tether:expediting`; `design` runs `tether:designing`; `research` runs `tether:researching`.
+`order` continues here. `fast` runs `picket:expediting`; `design` runs `picket:designing`; `research` runs `picket:researching`.
 
 ## Steps
 

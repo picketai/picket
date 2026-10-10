@@ -2,9 +2,9 @@
 
 `picket next <id>` said `implement_phase` with `phase: 1`. Two spawns in the same tool block, so neither waits for the other:
 
-Developer (type `tether:developer`), named `developer`, as in `ordering/steps/20-phase.md` with `artifact: work/<id>/design.md`.
+Developer (type `picket:developer`), named `developer`, as in `ordering/steps/20-phase.md` with `artifact: work/<id>/design.md`.
 
-Reviewer (type `tether:reviewer`), named `reviewer`, in the background:
+Reviewer (type `picket:reviewer`), named `reviewer`, in the background:
 
 ```
 work: <id>

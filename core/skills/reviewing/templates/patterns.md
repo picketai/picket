@@ -67,7 +67,7 @@ The developer's charter: comments are **scarce** and carry **WHY**. A comment th
 
 ## Test scope
 
-The developer authors **unit** tests and, conditionally, **architecture** tests. Every other kind is off unless explicitly unlocked — the binding rules, including what counts as an unlock, are the `tether:developer` agent. Judge tests the diff **adds**; a pre-existing suite of any kind is not a finding.
+The developer authors **unit** tests and, conditionally, **architecture** tests. Every other kind is off unless explicitly unlocked — the binding rules, including what counts as an unlock, are the `picket:developer` agent. Judge tests the diff **adds**; a pre-existing suite of any kind is not a finding.
 
 | # | Check | Fail condition | Severity |
 |---|-------|----------------|----------|

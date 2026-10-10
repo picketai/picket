@@ -7,7 +7,7 @@ description: >
   the reviewer cross-checks the record concurrently, every phase takes a user gate, a
   checkpoint review runs at the midpoint of long plans, and one cumulative review closes it.
   Use when `picket admit` answers `design`, when a security-paths rule fires, or when
-  `tether:ordering` reports that the order exceeds its caps.
+  `picket:ordering` reports that the order exceeds its caps.
 user-invocable: true
 ---
 

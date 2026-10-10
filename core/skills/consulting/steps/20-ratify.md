@@ -11,6 +11,6 @@ Only on the user's word ("ratify", "write it up", "make it an SDR"). Pick the ar
 
 Derive the filename with `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/filename.mjs" --kind <sdr|charter|context-map> "<subject>"`. Read the template, fill every required section from the discussion (no new reasoning at this step; a gap in the discussion is a gap to go back and close), strip every placeholder, write the file.
 
-An SDR that leaves tactical work behind adds one line per item under `## Tactical follow-up` flagged `[TACTICAL DESIGN NEEDED]`; the lead offers `tether:designing` for each.
+An SDR that leaves tactical work behind adds one line per item under `## Tactical follow-up` flagged `[TACTICAL DESIGN NEEDED]`; the lead offers `picket:designing` for each.
 
 Reply with the path, the binding constraints the record names, and the `[IRREVERSIBLE]` items, three lines at most.

@@ -20,7 +20,7 @@ Lane check for this request:
 
 If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.
 
-If the admit answer does not say `lane: fast`, stop here and run the named lane skill instead (`tether:ordering`, `tether:designing`, `tether:researching`). Do not argue with it in prose; a forced lane is written into the request as `lane: fast`.
+If the admit answer does not say `lane: fast`, stop here and run the named lane skill instead (`picket:ordering`, `picket:designing`, `picket:researching`). Do not argue with it in prose; a forced lane is written into the request as `lane: fast`.
 
 ## Step 1: open the work item, read the touch set
 

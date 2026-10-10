@@ -11,7 +11,7 @@ A request that names a Jira key (`RENT-123`): fetch it with `getJiraIssue` (`vie
 
 When `picket next <id>` says `resolve_sources`, this is the opening gate: print `picket packet <id>` verbatim and stop. Apply each reply with `picket source pick <id> <ref> <label>`, then spawn the architect, adding `sources: work/<id>/sources.yaml` to its message when that file exists.
 
-Preflight `fail` lines stop you; print them and ask. Spawn the architect once (type `tether:architect`), named `architect`, with this message followed by the Architect section below pasted verbatim (it is in your context already; pasting it saves the architect a round trip):
+Preflight `fail` lines stop you; print them and ask. Spawn the architect once (type `picket:architect`), named `architect`, with this message followed by the Architect section below pasted verbatim (it is in your context already; pasting it saves the architect a round trip):
 
 ```
 work: <id>
@@ -34,6 +34,6 @@ Write `work/<id>/design.md` in two saves, because the developer starts on the fi
 
 Decisions: at most eight `### D-###`. Each names the choice, the constraint it satisfies, `**Instead of:**` the strongest alternative with the reason it lost, `**Risks:**` as `RISK-###` with a mitigation. Mark `[IRREVERSIBLE]` inline where a step cannot be undone (a migration that drops data, a published contract, a deleted branch). Use tactical DDD vocabulary where the design touches domain logic or persistence; say "infrastructural decision" where it does not.
 
-Verify every premise about existing schema, data, legacy behaviour or a third-party contract by reading the source or the live schema before a phase rests on it; otherwise record it as `OQ-###` with a fallback and keep the dependent criterion out of phase 1. A strategic question the design cannot settle (a boundary move, a build-or-buy choice) is an `OQ-###` flagged `[STRATEGIC]`; the lead takes it to `tether:consulting`.
+Verify every premise about existing schema, data, legacy behaviour or a third-party contract by reading the source or the live schema before a phase rests on it; otherwise record it as `OQ-###` with a fallback and keep the dependent criterion out of phase 1. A strategic question the design cannot settle (a boundary move, a build-or-buy choice) is an `OQ-###` flagged `[STRATEGIC]`; the lead takes it to `picket:consulting`.
 
 End with the architect output block and `ARTIFACT WRITTEN` after the second save.

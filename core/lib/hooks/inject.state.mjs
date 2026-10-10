@@ -17,7 +17,7 @@ function openItemsPart(root) {
   if (!open.length) return null;
   const lines = open.slice(0, SHOWN_ITEMS).map((s) => openItemLine(s, root));
   const more = open.length > SHOWN_ITEMS ? `\n- and ${open.length - SHOWN_ITEMS} more (picket list)` : "";
-  return `# Open work items\n${lines.join("\n")}${more}\nResume with /tether:resuming <id>; never re-derive state from the conversation.`;
+  return `# Open work items\n${lines.join("\n")}${more}\nResume with /picket:resuming <id>; never re-derive state from the conversation.`;
 }
 
 function sourcesPart(root) {

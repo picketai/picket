@@ -7,7 +7,7 @@ description: >
   rule, the confidence markers and the Word export. Use when the user says "write a report",
   "document this", "draft the order", "write a charter", "map the contexts", "add a glossary
   entry", "document the API", or when an agent must produce one of these from a discussion.
-  Auto-loaded on the analyst and architect; `/tether:documenting <kind> <subject>` standalone.
+  Auto-loaded on the analyst and architect; `/picket:documenting <kind> <subject>` standalone.
 user-invocable: true
 ---
 
@@ -48,4 +48,4 @@ Only `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/export.mjs" --input
 
 ## Standalone
 
-`/tether:documenting <kind> <subject> [--export]`: derive the filename, read the template, write the document, run the export when asked, reply with the path in one line.
+`/picket:documenting <kind> <subject> [--export]`: derive the filename, read the template, write the document, run the export when asked, reply with the path in one line.
