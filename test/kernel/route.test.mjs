@@ -144,7 +144,7 @@ test("bareAgentName strips only the exact picket: prefix", () => {
   assert.equal(bareAgentName("picket:analyst"), "analyst");
   assert.equal(bareAgentName("analyst"), "analyst");
   assert.equal(bareAgentName("other:developer"), "other:developer");
-  assert.equal(bareAgentName("tetherx:developer"), "tetherx:developer");
+  assert.equal(bareAgentName("picketx:developer"), "picketx:developer");
   assert.equal(bareAgentName(undefined), null);
   assert.equal(bareAgentName(""), null);
 });
@@ -183,14 +183,5 @@ test("another plugin's developer may not route PHASE DONE", () => {
   const { root, id } = setup();
   assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "other:developer", phase: 1, root }), /not other:developer/);
   assert.equal(existsSync(join(root, "work", id, "phases", "1.done")), false);
-  rmSync(root, { recursive: true, force: true });
-});
-
-test("until phase 4 of the rename, the tether: prefix still names the same agents", () => {
-  assert.equal(bareAgentName("tether:developer"), "developer");
-  assert.equal(bareAgentName("picket:developer"), "developer");
-  const { root, id } = setup();
-  route({ id, verdict: "PHASE DONE", agent: "tether:developer", phase: 1, root });
-  assert.equal(deriveState(id, root).verdicts.at(-1).agent, "developer");
   rmSync(root, { recursive: true, force: true });
 });

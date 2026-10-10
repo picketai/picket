@@ -345,7 +345,7 @@ test("guard.bash judges the command a harness verb would run, so the allow rule 
   rmSync(root, { recursive: true, force: true });
 });
 
-test("guard.bash judges the command a tether verb would run, by launcher or by script", () => {
+test("guard.bash judges the command a picket verb would run, by launcher or by script", () => {
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
   assert.equal(decision('picket drive --run "rm -rf src"'), "deny");
@@ -356,7 +356,7 @@ test("guard.bash judges the command a tether verb would run, by launcher or by s
   rmSync(root, { recursive: true, force: true });
 });
 
-test("guard.bash looks past leading env assignments to the tether verb and what it wraps", () => {
+test("guard.bash looks past leading env assignments to the picket verb and what it wraps", () => {
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
   assert.equal(decision('FOO=1 picket drive --run "rm -rf src"'), "deny");
@@ -364,21 +364,21 @@ test("guard.bash looks past leading env assignments to the tether verb and what 
   rmSync(root, { recursive: true, force: true });
 });
 
-test("observe.drive counts a command as a kernel call only when a segment starts with tether", () => {
+test("observe.drive counts a command as a kernel call only when a segment starts with picket", () => {
   const { root } = project();
   const kind = (command) => {
     run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s10" }, root);
     return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).kind;
   };
-  assert.equal(kind("cd ~/src/tether && npm start"), "drive");
+  assert.equal(kind("cd ~/src/picket && npm start"), "drive");
   assert.equal(kind("picket next x"), "inspect");
   assert.equal(kind("cd repo && picket check"), "inspect");
   assert.equal(kind('API_KEY=k picket drive --hit "GET /h"'), "inspect");
   assert.equal(kind("node core/bin/picket.mjs state x"), "inspect");
   assert.equal(kind('node "D:/My Projects/x/core/bin/picket.mjs" next x'), "inspect");
-  assert.equal(kind('"/c/Users/John Smith/.claude/plugins/tether/bin/tether" next x'), "inspect");
+  assert.equal(kind('"/c/Users/John Smith/.claude/plugins/picket/bin/picket" next x'), "inspect");
   assert.equal(kind("{ picket next x; }"), "inspect");
-  assert.equal(kind('curl -s "http://127.0.0.1:8080/tether ok"'), "drive");
+  assert.equal(kind('curl -s "http://127.0.0.1:8080/picket ok"'), "drive");
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -586,7 +586,7 @@ test("route.verdict applies PHASE DONE from a picket:developer whose block has n
   rmSync(root, { recursive: true, force: true });
 });
 
-test("emit.ledger records tether-prefixed agents under their bare names", () => {
+test("emit.ledger records picket-prefixed agents under their bare names", () => {
   const { root, id } = project();
   const ledger = () => readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   const own = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "ok" }])]);
@@ -625,7 +625,7 @@ test("inject.state lists open items", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test("the spawned guard.bash allows a bare tether call chained with a read-only command and traces it", () => {
+test("the spawned guard.bash allows a bare picket call chained with a read-only command and traces it", () => {
   const { root, id } = project();
   const command = `picket next ${id}; ls work`;
   const out = run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root);
@@ -661,7 +661,7 @@ test("observe.drive logs --env values masked, quoted or not", () => {
 });
 
 function projectWithReviewerExtension() {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-spawn-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-spawn-"));
   const dir = join(root, ".picket", "extensions", "acme");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions: ["acme"] }));
@@ -685,7 +685,7 @@ test("the spawned inject.extensions gives a picket:reviewer its addition on Suba
 });
 
 test("the core rules hook prints the same bytes with and without an extension enabled", () => {
-  const plain = mkdtempSync(join(tmpdir(), "tether-ext-plain-"));
+  const plain = mkdtempSync(join(tmpdir(), "picket-ext-plain-"));
   const extended = projectWithReviewerExtension();
   try {
     const event = (root) => ({ hook_event_name: "SubagentStart", agent_type: "picket:reviewer", cwd: root });
@@ -713,25 +713,12 @@ test("the spawned guard.scope asks on an extension write, asks on a read config 
   rmSync(root, { recursive: true, force: true });
 });
 
-test("observe.drive counts both picket and the tether alias as kernel calls", () => {
-  const { root } = project();
-  const kind = (command) => {
-    run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s12" }, root);
-    return readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1).kind;
-  };
-  assert.equal(kind("picket next x"), "inspect");
-  assert.equal(kind("tether next x"), "inspect");
-  assert.equal(kind("node core/bin/tether.mjs state x"), "inspect");
+test("route.verdict applies a PHASE DONE from a picket:developer", () => {
+  const agent_type = "picket:developer";
+  const { root, id } = project();
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
+  const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: `s-${agent_type}`, transcript_path: tp, cwd: root, agent_type }, root);
+  assert.match(out.hookSpecificOutput.additionalContext, /^picket: PHASE DONE applied/);
+  assert.equal(deriveState(id, root).phases[0].done, true);
   rmSync(root, { recursive: true, force: true });
-});
-
-test("route.verdict applies a PHASE DONE from a picket:developer and from a tether:developer", () => {
-  for (const agent_type of ["picket:developer", "tether:developer"]) {
-    const { root, id } = project();
-    const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
-    const out = run("route.verdict.mjs", { hook_event_name: "SubagentStop", session_id: `s-${agent_type}`, transcript_path: tp, cwd: root, agent_type }, root);
-    assert.match(out.hookSpecificOutput.additionalContext, /^picket: PHASE DONE applied/, agent_type);
-    assert.equal(deriveState(id, root).phases[0].done, true, agent_type);
-    rmSync(root, { recursive: true, force: true });
-  }
 });

@@ -1,5 +1,5 @@
-const KERNEL_SCRIPT = /(?:^|\/)(?:harness|tether|picket)\.mjs$/i;
-const KERNEL_LAUNCHERS = ["picket", "tether"];
+const KERNEL_SCRIPT = /(?:^|\/)(?:harness|picket)\.mjs$/i;
+const KERNEL_LAUNCHERS = ["picket"];
 const ENV_ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 
 export function normalizeRoot(token) {

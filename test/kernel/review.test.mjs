@@ -114,7 +114,7 @@ test("a project without nested repos writes no repos.yaml and reports repos []",
 });
 
 function extensionRepo(stepsByExtension) {
-  const root = mkdtempSync(join(tmpdir(), "tether-review-ext-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-review-ext-"));
   git(root, "init", "-q", "-b", "trunk");
   mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
   writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions: Object.keys(stepsByExtension) }));

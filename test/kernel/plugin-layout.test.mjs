@@ -11,7 +11,6 @@ const SETTINGS = resolve(".claude/settings.json");
 const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const LAUNCHER = "core/bin/picket";
-const ALIAS_LAUNCHER = "core/bin/tether";
 const EXECUTABLE_MODE = "100755";
 
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
@@ -123,17 +122,14 @@ test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin
   assert.deepEqual(allow.filter((rule) => /\.claude\/(bin|skills)\//.test(rule)), []);
 });
 
-test("the picket launcher and its tether alias are tracked as executable", () => {
-  for (const launcher of [LAUNCHER, ALIAS_LAUNCHER]) {
-    const entry = execFileSync("git", ["ls-files", "-s", launcher], { encoding: "utf8" });
-    assert.equal(entry.split(" ")[0], EXECUTABLE_MODE, launcher);
-  }
+test("the picket launcher is tracked as executable", () => {
+  const entry = execFileSync("git", ["ls-files", "-s", LAUNCHER], { encoding: "utf8" });
+  assert.equal(entry.split(" ")[0], EXECUTABLE_MODE);
 });
 
-test("the plugin ships picket and its tether alias as shell and cmd launchers, all running picket.mjs", () => {
-  for (const launcher of [LAUNCHER, `${LAUNCHER}.cmd`, ALIAS_LAUNCHER, `${ALIAS_LAUNCHER}.cmd`]) {
+test("the plugin ships picket as shell and cmd launchers, both running picket.mjs", () => {
+  for (const launcher of [LAUNCHER, `${LAUNCHER}.cmd`]) {
     assert.equal(existsSync(resolve(launcher)), true, launcher);
     assert.match(readFileSync(resolve(launcher), "utf8"), /picket\.mjs/, launcher);
   }
-  assert.equal(readFileSync(resolve("core/bin/tether.mjs"), "utf8").trim(), 'import "./picket.mjs";');
 });

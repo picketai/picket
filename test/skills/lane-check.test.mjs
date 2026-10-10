@@ -21,7 +21,7 @@ function heredocAdmit(request) {
   return `${ADMIT} <<'PICKET_REQUEST_END'\n${request}\nPICKET_REQUEST_END`;
 }
 
-function envWithTetherOnPath() {
+function envWithPicketOnPath() {
   const env = { ...process.env };
   const key = Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
   env[key] = `${BIN_DIR}${delimiter}${env[key] ?? ""}`;
@@ -30,7 +30,7 @@ function envWithTetherOnPath() {
 }
 
 function bash(script, root) {
-  const r = spawnSync("bash", ["-c", script], { cwd: root, env: envWithTetherOnPath(), encoding: "utf8" });
+  const r = spawnSync("bash", ["-c", script], { cwd: root, env: envWithPicketOnPath(), encoding: "utf8" });
   return { code: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -49,7 +49,7 @@ for (const lane of LANES) {
 }
 
 test("the heredoc admit the lane skills name survives backticks, quotes and dollar signs", () => {
-  const root = mkdtempSync(join(tmpdir(), "tether-lane-check-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-lane-check-"));
   try {
     const hostile = bash(withRoot(heredocAdmit(HOSTILE), root), root);
     assert.equal(hostile.code, 0, hostile.stderr);

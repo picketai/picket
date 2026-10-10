@@ -226,9 +226,24 @@ phases:
       - test/kernel/route.test.mjs
       - test/kernel/plugin-layout.test.mjs
       - test/skills/lane-check.test.mjs
+      - .claude/MEMORY.md
+      - core/agents/developer.md
+      - core/skills/expediting/steps/30-check.md
+      - test/hooks/hooks.test.mjs
+      - test/budgets.test.mjs
+      - test/kernel/close.test.mjs
+      - test/kernel/extensions.test.mjs
+      - test/kernel/init.test.mjs
+      - test/kernel/preflight.test.mjs
+      - test/kernel/review.test.mjs
+      - test/skills/filename.test.mjs
     greps:
       - path: test/names-picket.test.mjs
         pattern: superseded
+      - path: core/agents/developer.md
+        pattern: "NAME=value picket"
+      - path: core/skills/expediting/steps/30-check.md
+        pattern: "NAME=value picket"
     tests: true
     drive: true
     security: true
@@ -278,14 +293,14 @@ The `.gitignore` line `.tether/state/` becomes `.picket/state/`.
 Every `tether:<skill>`, `tether:<agent>` and `tether:custom` in skills, agents, rules, templates, hooks, CLAUDE.md, README.md, CONTRIBUTING.md and `.claude/settings.json` (`outputStyle`) becomes `picket:`. `agent-name.mjs` strips `picket:`, and also `tether:` during the window only, so the agents the old session spawns still route; Phase 4 deletes that. `init`'s marketplace constant becomes `picket-dev`, its plugin id `picket@picket-dev`, its cache read rule `Read(~/.claude/plugins/cache/picket-dev/**)`, and its block heading `# Picket`. It does not recognise the old heading: this repository's `CLAUDE.md` block is rewritten by hand from the template in Phase 3. `.claude/agent-memory/tether-<role>/` folders move to `picket-<role>/` with `git mv`, so the agents keep their memory after the restart, and their notes are edited so they no longer name the old word. The glossary and current Decisions lines in `.claude/MEMORY.md` name Picket. Superseded lines are records and keep their words. `extension.schema.json` has no `$id`, so only its title and descriptions change, and `SUPPORTED_SCHEMAS` stays `[1]`.
 **Instead of:** keeping the plugin name `tether` and changing only the visible words: the `tether:` prefix is typed by users in every slash command, and SDR-00001 RISK-003 says the plugin name freezes at the first outside install, which has not happened yet.
 
-### D-005 (r3): only records keep the old name, and `harness` stays
+### D-005 (r4): only records keep the old name, and `harness` stays
 **Decision:** Infrastructural decision. Only records keep their text as written:
 - work items under `work/` and the git history;
 - `artifacts/` (the SDRs and reports, with `00001-tether-ships-claude-code-plugin.md` keeping its file name);
 - `bench/results/` and `spike/`;
 - superseded lines in `.claude/MEMORY.md`.
 
-No code, test, doc or setting outside them names the old word after Phase 4. Records are also outside the Markdown path check: from Phase 4, `test/markdown-paths.test.mjs` skips `artifacts/` and the superseded lines of `.claude/MEMORY.md`, so a record may cite a path that no longer exists. Until then, its one `ELSEWHERE` entry lists the old `.tether/` paths those files cite. The internal `harness` names stay: `.claude/rules/harness-authoring.md`, `--harness plugin|trunk`, `harnessRoot`, `HARNESS_SOURCE_ANALYSIS`, the bench's `harness` manifest field, and `harness.mjs` in `KERNEL_SCRIPT`. They are internal per the glossary, and renaming `--harness` would split the bench's result history. Phase 4 adds `test/names-picket.test.mjs`. It fails when any tracked file contains the old word, case-insensitive, unless the file is under one of the four record folders, or the line is a superseded line in `.claude/MEMORY.md` (a line holding `[superseded`). Those are the only exceptions. The test file itself necessarily names the word it forbids, and it is skipped by its own path; OQ-002 asks the user to confirm that.
+No code, test, doc or setting outside them names the old word after Phase 4. That includes test-only identifiers (temp-dir prefixes, helper names, probe variable names). A current line that cites a record whose file name holds the old word cites it by number (`SDR 00001`), and a current decision describes the names it rejected instead of quoting them. Records are also outside the Markdown path check: from Phase 4, `test/markdown-paths.test.mjs` skips `artifacts/` and the superseded lines of `.claude/MEMORY.md`, so a record may cite a path that no longer exists. Until then, its one `ELSEWHERE` entry lists the old `.tether/` paths those files cite. The internal `harness` names stay: `.claude/rules/harness-authoring.md`, `--harness plugin|trunk`, `harnessRoot`, `HARNESS_SOURCE_ANALYSIS`, the bench's `harness` manifest field, and `harness.mjs` in `KERNEL_SCRIPT`. They are internal per the glossary, and renaming `--harness` would split the bench's result history. Phase 4 adds `test/names-picket.test.mjs`. It fails when any tracked file contains the old word, case-insensitive, unless the file is under one of the four record folders, or the line is a superseded line in `.claude/MEMORY.md` (a line holding `[superseded`). Those are the only exceptions. The test file itself necessarily names the word it forbids, and it is skipped by its own path; OQ-002 asks the user to confirm that.
 **Instead of:** renaming every occurrence including history: rewriting closed work items breaks their traces against `request.md` and their commit messages, and the request keeps them as written.
 
 ## Scope
@@ -407,8 +422,14 @@ No code, test, doc or setting outside them names the old word after Phase 4. Rec
 - `test/names-picket.test.mjs`: records only, no allowlist
 - `test/markdown-paths.test.mjs`: drop the old-paths entry, skip records
 - `test/hooks/handlers.test.mjs`, `test/kernel/names.test.mjs`, `test/kernel/route.test.mjs`, `test/kernel/plugin-layout.test.mjs`, `test/skills/lane-check.test.mjs`: window-era cases that name the old word, deleted
+- `.claude/MEMORY.md`: line 36 and line 42, reworded (below)
+- `core/agents/developer.md:38`, `core/skills/expediting/steps/30-check.md:18`: `NAME=value tether ...` becomes `NAME=value picket ...`
+- `test/hooks/hooks.test.mjs`: names renamed, two window-era cases cut (below)
+- `test/budgets.test.mjs`, `test/kernel/close.test.mjs`, `test/kernel/extensions.test.mjs`, `test/kernel/init.test.mjs`, `test/kernel/preflight.test.mjs`, `test/kernel/review.test.mjs`, `test/skills/filename.test.mjs`: test-only identifiers renamed
 
-**Changes:** Per D-001 and D-005 (r2), run in the restarted session only. Delete every alias the window added, and delete the window-era test cases instead of turning them into tests that the old name no longer works, because such tests would name the old word themselves. `names-picket.test.mjs` runs `git ls-files` and reads each text file. It fails on any line holding the old word, case-insensitive, with three exceptions: a file under `work/`, `artifacts/`, `bench/results/` or `spike/`; a line in `.claude/MEMORY.md` that holds `[superseded`; and the test's own file (OQ-002). Nothing else is exempt. In `test/markdown-paths.test.mjs`, delete the `ELSEWHERE` entry for the old `.tether/` paths and add `artifacts/` and superseded `.claude/MEMORY.md` lines to what the scan skips; by now Phase 3 has rewritten CONTRIBUTING.md and the current lines of `.claude/MEMORY.md`.
+**Changes:** Per D-001 and D-005 (r4), run in the restarted session only. Delete every alias the window added, and delete the window-era test cases instead of turning them into tests that the old name no longer works, because such tests would name the old word themselves. `names-picket.test.mjs` runs `git ls-files` and reads each text file. It fails on any line holding the old word, case-insensitive, with three exceptions: a file under `work/`, `artifacts/`, `bench/results/` or `spike/`; a line in `.claude/MEMORY.md` that holds `[superseded`; and the test's own file (OQ-002). Nothing else is exempt. In `test/markdown-paths.test.mjs`, delete the `ELSEWHERE` entry for the old `.tether/` paths and add `artifacts/` and superseded `.claude/MEMORY.md` lines to what the scan skips; by now Phase 3 has rewritten CONTRIBUTING.md and the current lines of `.claude/MEMORY.md`.
+
+Phase 3 left four current lines naming the old word, and eight test files that Phase 2's `tether <verb>` grep never matched; this phase fixes them so the test can pass, with no exemption. In `.claude/MEMORY.md`, line 36 (the Picket decision) stays current and gets no `[superseded` marker; replace "Chosen over `tether-code` and Hitch: `@tetherai` and `hitch` are taken" with "Chosen over keeping the old name and over Hitch: the old name's npm scope and `hitch` are taken", and "The rename from Tether lands" with "The rename lands". Line 42 replaces "SDR: `artifacts/strategy/decisions/00001-tether-ships-claude-code-plugin.md`" with "SDR 00001.", the form lines 43 to 46 already use. In `test/hooks/hooks.test.mjs`, rename the word to `picket` in test titles and in the strings at lines 373, 379 and 381 (each keeps its expected kind), and in the `tether-ext-` prefixes; delete the test "observe.drive counts both picket and the tether alias" and drop the `tether:developer` case and its title words from the `route.verdict` test. In the seven other test files, rename temp-dir prefixes (`tether-` to `picket-`), the `close.test.mjs` helper `tether(` to `picket(` and its line 130 title, and in `preflight.test.mjs` `TETHER_PROBE_*` to `PICKET_PROBE_*` and `tether-spy-prog` to `picket-spy-prog`. No assertion changes beyond the two window-era cuts.
 
 **Done when:**
 - **T-4.1** Drive: `tether` no longer resolves in Git Bash or PowerShell with only `core/bin` on PATH, and `picket next 20261010-rename-tether-to-picket --human` still answers.
@@ -418,6 +439,7 @@ No code, test, doc or setting outside them names the old word after Phase 4. Rec
 - **T-4.5** `node bench/run.mjs --harness plugin --tasks fast-01-pagination --dry` lists the task and spends nothing.
 - **T-4.6** `test/markdown-paths.test.mjs` holds no `.tether` literal, skips `artifacts/` and superseded `.claude/MEMORY.md` lines, and still fails on a missing path cited from `core/` or README.md.
 - **T-4.7** `npm test` passes.
+- **T-4.8** `.claude/MEMORY.md` line 36 holds no `[superseded` and names neither `tether-code` nor `@tetherai`, line 42 ends with `SDR 00001.`, and `git grep -n "NAME=value tether" -- core` prints nothing.
 
 ## Open questions
 
@@ -432,3 +454,4 @@ No code, test, doc or setting outside them names the old word after Phase 4. Rec
 - 2026-10-10: D-005 (r2): only records keep the old name; the Phase 4 test has no allowlist beyond records and superseded MEMORY lines (user ruling).
 - 2026-10-10: D-001 (r3): RISK-001 relies on the Phase 3 block's Decisions line shown by the packet (T-3.8); the lead spawns nothing between the Phase 3 commit and restart.
 - 2026-10-10: D-005 (r3): one `.tether` ELSEWHERE entry allowed until Phase 4, which then skips records in the path check; T-1.5 reworded, pre-move count unprovable (user ruling).
+- 2026-10-10: D-005 (r4): current lines cite `SDR 00001` by number, test identifiers count; Phase 4 gains MEMORY.md, two docs, eight test files (user ruling, Phase 4 stall).

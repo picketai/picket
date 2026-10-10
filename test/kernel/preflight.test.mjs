@@ -10,7 +10,7 @@ import { onPath } from "../../core/lib/preflight.mjs";
 const BIN = resolve("core/bin/picket.mjs");
 
 function project(extensions, manifests) {
-  const root = mkdtempSync(join(tmpdir(), "tether-preflight-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-preflight-"));
   mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
   writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions }));
   for (const [name, preflight] of Object.entries(manifests)) {
@@ -51,9 +51,9 @@ test("path_exists passes for a present file, fails at its level with its message
 });
 
 test("env_set passes for a set variable and takes the entry's level for an unset one", () => {
-  const { root, id } = project(["acme"], { acme: [check("key", "env_set", "TETHER_PROBE_KEY", "warn"), check("other", "env_set", "TETHER_PROBE_UNSET", "warn")] });
+  const { root, id } = project(["acme"], { acme: [check("key", "env_set", "PICKET_PROBE_KEY", "warn"), check("other", "env_set", "PICKET_PROBE_UNSET", "warn")] });
   try {
-    const r = preflightCli(root, id, { TETHER_PROBE_KEY: "set" });
+    const r = preflightCli(root, id, { PICKET_PROBE_KEY: "set" });
     assert.equal(r.byName["ext:acme:key"].level, "ok");
     assert.equal(r.byName["ext:acme:other"].level, "warn");
     assert.equal(r.json.ok, true);
@@ -63,12 +63,12 @@ test("env_set passes for a set variable and takes the entry's level for an unset
 });
 
 test("command_on_path finds a program without starting it and reports a missing one at its level", () => {
-  const { root, id } = project(["acme"], { acme: [check("node", "command_on_path", "node"), check("spy", "command_on_path", "tether-spy-prog"), check("none", "command_on_path", "nosuchprogram-xyz", "warn")] });
-  const bin = mkdtempSync(join(tmpdir(), "tether-spy-"));
+  const { root, id } = project(["acme"], { acme: [check("node", "command_on_path", "node"), check("spy", "command_on_path", "picket-spy-prog"), check("none", "command_on_path", "nosuchprogram-xyz", "warn")] });
+  const bin = mkdtempSync(join(tmpdir(), "picket-spy-"));
   const marker = join(bin, "ran.txt");
   try {
-    writeFileSync(join(bin, "tether-spy-prog"), `#!/bin/sh\necho ran > "${marker.replaceAll("\\", "/")}"\n`, { mode: 0o755 });
-    writeFileSync(join(bin, "tether-spy-prog.cmd"), `@echo ran > "${marker}"\r\n`);
+    writeFileSync(join(bin, "picket-spy-prog"), `#!/bin/sh\necho ran > "${marker.replaceAll("\\", "/")}"\n`, { mode: 0o755 });
+    writeFileSync(join(bin, "picket-spy-prog.cmd"), `@echo ran > "${marker}"\r\n`);
     const pathKey = Object.keys(process.env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
     const r = preflightCli(root, id, { [pathKey]: `${bin}${delimiter}${process.env[pathKey]}` });
     assert.equal(r.byName["ext:acme:node"].level, "ok");

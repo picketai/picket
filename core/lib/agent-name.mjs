@@ -1,4 +1,4 @@
-const PLUGIN_PREFIXES = ["picket:", "tether:"];
+const PLUGIN_PREFIXES = ["picket:"];
 const INSTANCE_NAME = /^(?:[a-z0-9]+-)*(analyst|architect|developer|reviewer)(?:-\d+)?$/;
 
 export function bareAgentName(type) {

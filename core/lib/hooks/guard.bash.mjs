@@ -184,7 +184,7 @@ function hasHiddenExecution(rawCommand) {
 
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
-const BARE_KERNELS = ["picket", "tether"];
+const BARE_KERNELS = ["picket"];
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);

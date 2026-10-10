@@ -6,7 +6,9 @@ import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(".");
 
-const UNSCANNED_PREFIXES = ["work/", "spike/", "tmp/", "artifacts/reports/", "bench/results/"];
+const UNSCANNED_PREFIXES = ["work/", "spike/", "tmp/", "artifacts/", "bench/results/"];
+const PROJECT_MEMORY = ".claude/MEMORY.md";
+const SUPERSEDED = "[superseded";
 const SKILL_EXAMPLES = /^core\/skills\/[^/]+\/examples\//;
 const PLUGIN_DIR = "core/";
 const PLUGIN_SKILLS_DIR = "core/skills";
@@ -32,7 +34,6 @@ const ELSEWHERE = [
     ],
   },
   { why: "relative to a work item or a git remote", paths: ["phases/", "origin/"] },
-  { why: "the project folder before the rename to .picket/: records keep it (D-005 of 20261010-rename-tether-to-picket), and CONTRIBUTING.md and .claude/MEMORY.md change in its phase 3", paths: [".tether/", ".tether/config.json", ".tether/state/"] },
   {
     why: "the layout of a host project, not this repository",
     paths: [
@@ -57,9 +58,7 @@ const ELSEWHERE = [
     ],
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
-  { why: "planned by SDR-00001", paths: ["rules/"] },
-  { why: "cited by SDR-00001 where it stood before the move to .claude/lib/", paths: [".claude/hooks/lib/transcript.mjs"] },
-];
+  { why: "planned by SDR-00001", paths: ["rules/"] },];
 
 const NOT_A_PATH_CHAR = /[\s<>*{}[\]$~|"'=(),…]/;
 const ABSOLUTE_OR_REMOTE = /^(\/|\.\.\/|[A-Za-z]:|[A-Za-z][A-Za-z0-9+.-]*:\/\/)/;
@@ -119,10 +118,18 @@ function resolvesFrom(file, path, listing) {
   }
 }
 
+function currentText(file, markdown) {
+  if (file !== PROJECT_MEMORY) return markdown;
+  return markdown
+    .split(/\r?\n/)
+    .filter((line) => !line.includes(SUPERSEDED))
+    .join("\n");
+}
+
 function citations(listing) {
   const all = [];
   for (const file of [...listing.files].filter(isScanned).sort()) {
-    for (const path of citedPaths(readFileSync(join(ROOT, file), "utf8"))) all.push({ file, path });
+    for (const path of citedPaths(currentText(file, readFileSync(join(ROOT, file), "utf8")))) all.push({ file, path });
   }
   return all;
 }
@@ -140,6 +147,23 @@ test("a backticked span is a path candidate only when it looks like a repository
 
 test("spans inside fenced blocks are not cited", () => {
   assert.deepEqual(citedPaths("see `a/b.md`\n```\n`c/d.md`\n```\nand `e/f.md`"), ["a/b.md", "e/f.md"]);
+});
+
+test("records are not scanned: artifacts/ and the superseded lines of the project memory", () => {
+  assert.equal(isScanned("artifacts/strategy/decisions/00001-a.md"), false);
+  assert.equal(isScanned("core/skills/ordering/SKILL.md"), true);
+  assert.equal(isScanned("README.md"), true);
+  const memory = "- old `gone/a.md` [superseded 2026-10-10 by B]\n- current `kept/b.md`";
+  assert.deepEqual(citedPaths(currentText(PROJECT_MEMORY, memory)), ["kept/b.md"]);
+  assert.deepEqual(citedPaths(currentText("README.md", memory)), ["gone/a.md", "kept/b.md"]);
+});
+
+test("a missing path cited from core/ or README.md is a miss", () => {
+  const listing = repositoryListing();
+  for (const file of ["core/skills/ordering/SKILL.md", "README.md"]) {
+    const [path] = citedPaths("see `core/lib/no-such-module.mjs`");
+    assert.equal(resolvesFrom(file, path, listing) || elsewhere.has(path), false, file);
+  }
 });
 
 test("every path cited in the scanned Markdown exists in the repository or is listed as elsewhere", () => {

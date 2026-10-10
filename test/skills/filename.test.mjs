@@ -28,7 +28,7 @@ test("names that do not start with a blocked word are unchanged", () => {
 });
 
 function installedProject() {
-  const root = mkdtempSync(join(tmpdir(), "tether-filename-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-filename-"));
   mkdirSync(join(root, ".picket"));
   mkdirSync(join(root, "src"));
   mkdirSync(join(root, "artifacts", "strategy", "decisions"), { recursive: true });
@@ -54,7 +54,7 @@ test("SDR numbering continues from the project the command runs in, at its root 
 
 test("SDR numbering follows CLAUDE_PROJECT_DIR from an unrelated folder", () => {
   const root = installedProject();
-  const elsewhere = mkdtempSync(join(tmpdir(), "tether-elsewhere-"));
+  const elsewhere = mkdtempSync(join(tmpdir(), "picket-elsewhere-"));
   try {
     assert.equal(sdrName(elsewhere, root), "00004-pricing");
   } finally {

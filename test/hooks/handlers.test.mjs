@@ -252,12 +252,12 @@ test("no helper is left under .claude/hooks/lib; all four live in core/lib (T-6.
   for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve("core/lib", helper)), true, helper);
 });
 
-test("guardBash allows a compound of read-only pieces and bare tether calls that wrap nothing", () => {
+test("guardBash allows a compound of read-only pieces and bare picket calls that wrap nothing", () => {
   withProject((root) => {
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("picket next x; cat work/x/order.md | head -40"), "allow");
     assert.equal(decision("cd sub && picket state x 2>&1"), "allow");
-    assert.equal(decision("picket state x"), null, "a lone tether call is left to the project's allow rule");
+    assert.equal(decision("picket state x"), null, "a lone picket call is left to the project's allow rule");
 
     assert.equal(decision('API_KEY=k picket drive --hit "GET /h"'), null);
     assert.equal(decision("node core/bin/picket.mjs next x; ls"), null);
@@ -279,7 +279,7 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
 });
 
 function extensionProject(extensions, manifests) {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-hook-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-hook-"));
   mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
   writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions }));
   for (const [name, { manifest, files }] of Object.entries(manifests)) {
@@ -380,16 +380,5 @@ test("guardScope asks for the moved config and extensions, keeps .picket/state h
     assert.equal(decide(".picket/extensions/a/rules/r.md").permissionDecision, "ask");
     assert.equal(decide(".picket/state/ledger.jsonl").permissionDecision, "deny");
     assert.equal(decide("notes/config.json"), null);
-  });
-});
-
-test("guardBash treats picket and its tether alias alike: bare calls ride a compound, a wrapped rm is denied", () => {
-  withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
-    assert.equal(decision("picket next x; ls work"), "allow");
-    assert.equal(decision("tether next x; ls work"), "allow");
-    assert.equal(decision('picket drive --run "rm -rf src"'), "deny");
-    assert.equal(decision('tether drive --run "rm -rf src"'), "deny");
-    assert.equal(decision('node core/bin/tether.mjs check --only "git push --force origin trunk"'), "deny");
   });
 });

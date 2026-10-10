@@ -16,14 +16,12 @@ const SKILL_ALTERNATION = SKILLS.join("|");
 
 const OLD_CLI = { name: "old CLI path", pattern: /node \.claude\/bin\/harness\.mjs/ };
 const HARNESS_VERB = { name: "harness verb", pattern: new RegExp(`\\bharness (?:${CLI_VERBS.join("|")})\\b`) };
-const TETHER_VERB = { name: "tether verb", pattern: new RegExp(`\\btether (?:${CLI_VERBS.join("|")})\\b`) };
 const HOST_PROMPT_PATH = { name: "host skill or agent path", pattern: /\.claude\/(?:skills|agents)\// };
 const SLASH_SKILL = { name: "unprefixed slash skill", pattern: new RegExp(`(?:^|[\\s(\`"'])\\/(?:${SKILL_ALTERNATION})\\b`, "m") };
 const BACKTICKED_SKILL = { name: "unprefixed skill in backticks", pattern: new RegExp(`\`(?:${SKILL_ALTERNATION})(?=[\`\\s])`) };
 
-const OLD_PREFIX = { name: "old tether: prefix", pattern: /\btether:[a-z]/ };
-const MARKDOWN_CHECKS = [OLD_CLI, HARNESS_VERB, TETHER_VERB, OLD_PREFIX, HOST_PROMPT_PATH, SLASH_SKILL, BACKTICKED_SKILL];
-const LIB_CHECKS = [OLD_CLI, HARNESS_VERB, TETHER_VERB, HOST_PROMPT_PATH, SLASH_SKILL];
+const MARKDOWN_CHECKS = [OLD_CLI, HARNESS_VERB, HOST_PROMPT_PATH, SLASH_SKILL, BACKTICKED_SKILL];
+const LIB_CHECKS = [OLD_CLI, HARNESS_VERB, HOST_PROMPT_PATH, SLASH_SKILL];
 
 function filesUnder(dir, suffix) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -65,14 +63,10 @@ test("the Markdown scan flags each old name form", () => {
   assert.equal(markdownViolations("Read `.claude/skills/ordering/steps/20-phase.md`.").length, 1);
   assert.equal(markdownViolations("Use `picket:designing`, then /picket:ordering and `picket next <id>`.").length, 0);
   assert.equal(markdownViolations("Read `ordering/steps/20-phase.md` relative to the skills folder.").length, 0);
-  assert.equal(markdownViolations("Run `tether next <id>` after the gate.").length, 1);
-  assert.equal(markdownViolations("Load `tether:ordering` first.").length, 1);
   assert.equal(markdownViolations("Load `picket:ordering` first.").length, 0);
 });
 
 test("the kernel scan flags a harness verb in a string and skips comment lines", () => {
   assert.equal(libViolations('const hint = "run harness route <id>";').length, 1);
   assert.equal(libViolations("// harness route is the old name").length, 0);
-  assert.equal(libViolations('const hint = "run picket route <id>";').length, 0);
-  assert.equal(libViolations('const hint = "run tether route <id>";').length, 1);
-});
+  assert.equal(libViolations('const hint = "run picket route <id>";').length, 0);});

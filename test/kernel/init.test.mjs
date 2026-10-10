@@ -9,7 +9,7 @@ import { init, marketplaceRoot } from "../../core/lib/init.mjs";
 const BIN = resolve("core/bin/picket.mjs");
 const TEMPLATE = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
 
-function tempDir(prefix = "tether-init-") {
+function tempDir(prefix = "picket-init-") {
   return mkdtempSync(join(tmpdir(), prefix));
 }
 

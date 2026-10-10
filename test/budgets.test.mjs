@@ -111,7 +111,7 @@ test("the injection budget check flags text past the limit", () => {
 });
 
 test("inject.extensions starts cold under the budget with three extensions enabled", () => {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-budget-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-budget-"));
   try {
     const names = ["acme", "local", "team"];
     mkdirSync(join(root, ".picket", "extensions"), { recursive: true });

@@ -11,7 +11,7 @@ const BIN = resolve("core/bin/picket.mjs");
 const EXTENSIONS_MODULE = resolve("core/lib/extensions.mjs");
 
 function project(extensions) {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-"));
   mkdirSync(join(root, ".picket", "extensions"), { recursive: true });
   writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, extensions }));
   return root;
@@ -157,7 +157,7 @@ function cli(root, ...args) {
 }
 
 test("extension new writes the manifest and appends the name, keeping the other config keys", () => {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-new-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-new-"));
   try {
     mkdirSync(join(root, ".picket"));
     writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "SRC" } }, extensions: ["acme"] }));
@@ -177,7 +177,7 @@ test("extension new writes the manifest and appends the name, keeping the other 
 });
 
 test("extension new refuses a bad name or a repeat and writes nothing", () => {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-new-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-new-"));
   try {
     assert.equal(cli(root, "extension", "new", "local").code, 0);
     const config = readFileSync(join(root, ".picket", "config.json"), "utf8");
@@ -197,7 +197,7 @@ test("extension new refuses a bad name or a repeat and writes nothing", () => {
 });
 
 test("extension new creates the config with version 1 and the one name when none exists", () => {
-  const root = mkdtempSync(join(tmpdir(), "tether-ext-new-"));
+  const root = mkdtempSync(join(tmpdir(), "picket-ext-new-"));
   try {
     assert.equal(cli(root, "extension", "new", "local").code, 0);
     assert.deepEqual(JSON.parse(readFileSync(join(root, ".picket", "config.json"), "utf8")), { version: 1, extensions: ["local"] });
