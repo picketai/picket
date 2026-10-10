@@ -1,7 +1,7 @@
 ---
 name: benchmarking
 description: >
-  Runs the golden task suite against a harness and prints the metric table: pass@1 and
+  Runs the golden task suite against the plugin or trunk build and prints the metric table: pass@1 and
   pass^k, route agreement, cost and its variance, time to first reviewable output, stops,
   prompts, re-reads, cache hit ratio. Use when the user says "benchmark", "run the bench",
   "baseline", "compare plugin and trunk", "did this change regress", or after any edit to an
@@ -32,9 +32,9 @@ Everything is code under `bench/`; this skill only chooses the arguments and rea
 
 1. Dry-run and quote the cost before spending: fast tasks run about 2 dollars each, order tasks 10 to 15, design tasks 20 to 25, and every gate stop pays the prompt cache again (about 0.75 dollars). State the total and wait for the user's go unless they already gave one.
 2. Run in the background (`run_in_background`) and keep working; the results file fills as runs finish. Check `bench/results/spend.log` when the user asks.
-3. Records that failed on an API or session limit are not harness results: drop them with a one-line node script before reporting, and re-run those tasks.
+3. Records that failed on an API or session limit are not Picket results: drop them with a one-line node script before reporting, and re-run those tasks.
 4. Report with the table, then two sentences: what moved, and whether `check` passes.
 
 ## Reading the table
 
-`lane ok` says whether the harness routed the task where the bench intended; `route agree` says whether it made the same choice every run. TTFR is the first write or the first stop, whichever came first. `tok/line` is every token type divided by lines the run added outside `work/` and `.claude/`; a research task has none.
+`lane ok` says whether Picket routed the task where the bench intended; `route agree` says whether it made the same choice every run. TTFR is the first write or the first stop, whichever came first. `tok/line` is every token type divided by lines the run added outside `work/` and `.claude/`; a research task has none.

@@ -131,7 +131,7 @@ CHANGES REQUIRED`;
   const threads = buildThreads(block);
   assert.equal(threads.length, 4);
   assert.deepEqual(threads[3].threadContext, { filePath: "/Rent/Core/Handler.cs", rightFileStart: { line: 113, offset: 1 }, rightFileEnd: { line: 165, offset: 1 } });
-  assert.match(threads[0].comments[0].content, /CHANGES REQUIRED/);
+  assert.ok(threads[0].comments[0].content.startsWith("**Picket review: CHANGES REQUIRED**"), threads[0].comments[0].content);
   assert.equal(threads[0].status, 1, "active while changes are required");
   assert.deepEqual(threads[1].threadContext, { filePath: "/src/http/handlers.ts", rightFileStart: { line: 42, offset: 1 }, rightFileEnd: { line: 42, offset: 1 } });
   assert.equal(threads[2].threadContext, undefined, "a finding without a line is a general comment");

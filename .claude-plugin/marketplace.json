@@ -6,7 +6,7 @@
     {
       "name": "picket",
       "source": "./core",
-      "description": "Picket: a software-development harness for Claude Code with four lanes, four agents and one kernel."
+      "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel."
     }
   ]
 }

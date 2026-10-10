@@ -1,7 +1,7 @@
 ---
 name: documenting
 description: >
-  Template registry for every structured document the harness writes: work orders, design
+  Template registry for every structured document Picket writes: work orders, design
   records, analysis reports, bounded-context charters, context maps, strategic decision
   records, glossary entries and REST API references. Carries the filename rule, the audience
   rule, the confidence markers and the Word export. Use when the user says "write a report",

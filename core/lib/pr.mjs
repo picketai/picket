@@ -171,7 +171,7 @@ export function buildThreads(reviewText) {
   const headline = lines.find((l) => l.trim() && !l.startsWith("## ")) ?? "";
   const findings = parseFindings(reviewText);
   const counts = findings.reduce((c, f) => ((c[f.severity] = (c[f.severity] ?? 0) + 1), c), {});
-  const summary = `**Harness review: ${verdict}**\n\n${headline.trim()}\n\nFindings: ${Object.entries(counts).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(", ") || "none"}.`;
+  const summary = `**Picket review: ${verdict}**\n\n${headline.trim()}\n\nFindings: ${Object.entries(counts).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(", ") || "none"}.`;
   const threads = [{ comments: [{ parentCommentId: 0, content: summary, commentType: 1 }], status: verdict === "APPROVED" ? 2 : 1 }];
   for (const f of findings) {
     const t = { comments: [{ parentCommentId: 0, content: `**[${f.severity}]** ${f.text}`, commentType: 1 }], status: 1 };
