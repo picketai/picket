@@ -99,7 +99,7 @@ The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. 
 
 ## Pull request mode (`/picket:reviewing <url>`, lead only)
 
-The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Rent` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
+The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Orders` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
 
 1. `picket pr <url> --human` (the JSON form goes to the reviewer; keep the `repo_root` it names). It fetches `refs/pull/<id>/merge`, computes base and head, the review summary over that range, and the PR's title and description (Azure DevOps: a PAT in `AZDO_PAT`, set once with `setx AZDO_PAT <token>` or in the `env` block of the untracked `.claude/settings.local.json`, never in a tracked file; GitHub: the `gh` CLI). A missing PAT is reported, not fatal: the review runs code-only. Any other error: print it and stop.
 2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/steps/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.

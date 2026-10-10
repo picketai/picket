@@ -3,7 +3,7 @@
 Use this scaffold for every `--epic` issue. An epic groups stories, tasks and spikes under one business outcome; it is never implemented directly. Follow the structure exactly. Omit no required section.
 
 **Summary naming convention:** `[Module/Area] <outcome-shaped theme>`
-_Example: `[Rentals] Replace the legacy reservation handshake`_
+_Example: `[Orders] Replace the legacy order handshake`_
 
 ---
 
@@ -11,14 +11,14 @@ _Example: `[Rentals] Replace the legacy reservation handshake`_
 **Input provided by:** [Stakeholder / Product Manager / Programme Lead] — [one sentence describing what they requested and why]
 **Priority:** [Critical / High / Medium / Low] — [one-sentence justification]
 **Target release / quarter:** [Release name, quarter, or `REQUIRES INPUT: confirm the target window`]
-**Labels:** `epic`, [module label e.g. `rentals`, `logistics`, `payments`]
+**Labels:** `epic`, [module label e.g. `orders`, `logistics`, `payments`]
 
 ---
 
 ### Goal
 
 > One paragraph, outcome-shaped rather than activity-shaped. State the business capability that exists when this epic closes, and what is impossible or painful today without it.
-> Weak: "Refactor the reservation module." Strong: "Back-office agents can confirm a rental without the legacy handshake, cutting confirmation from 40 seconds to under 5."
+> Weak: "Refactor the order module." Strong: "Support agents can confirm a book order without the legacy handshake, cutting confirmation from 40 seconds to under 5."
 
 ### Business Context
 

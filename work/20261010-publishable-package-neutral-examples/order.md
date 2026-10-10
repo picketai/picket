@@ -62,7 +62,16 @@ phases:
       - test/kernel/review.test.mjs
       - test/kernel/sources.test.mjs
       - test/markdown-paths.test.mjs
+      - core/lib/pr.mjs
+      - core/lib/repos.mjs
+      - core/skills/documenting/scripts/filename.mjs
     greps:
+      - path: core/lib/pr.mjs
+        pattern: 'Shop/_git/Orders/pullrequest/412'
+      - path: core/lib/repos.mjs
+        pattern: 'src/Orders/'
+      - path: core/skills/documenting/scripts/filename.mjs
+        pattern: 'book-orders/confirm'
       - path: test/kernel/packet.test.mjs
         pattern: 'STOCK\.RESERVED_QTY'
       - path: test/kernel/sources.test.mjs
@@ -109,17 +118,17 @@ phases:
 The money example in `core/output-styles/custom.md` (monthly rent at 7%) is everyday housing rent, not the client's domain, so it stays.
 **Instead of:** neutral placeholders such as `Foo` and `src/App`: the gate packet and the Jira examples teach through concrete detail, and placeholders would remove it.
 
-### D-004: comment lines naming the client wait for the user's approval
-**Decision:** Nine existing comment lines name the client's repository or domain (OQ-001 lists them). The `comments` rule forbids rewording a comment without an approval recorded through `picket comment`, so no phase edits them. OQ-001 carries the proposed text, ready to approve. Once the user approves, the lead records each approval and the developer writes exactly that text in the phase then open.
+### D-004 (r2): comment lines naming the client change only with the user's approval
+**Decision:** Nine existing comment lines name the client's repository or domain (OQ-001 lists them). The `comments` rule forbids rewording a comment without an approval recorded through `picket comment`. The user approved all nine and the approvals are recorded. Phase 3 writes eight of them exactly as recorded: the six in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs`, and the two in its test files. `.claude/scripts/lint.craft.mjs:40` is outside this order; the lead changes it in a fast change after the close.
 **Instead of:** deleting the lines: the rule allows deletion only for a stale comment, and these still describe true behaviour.
 **Risks:**
-- **RISK-002** Until OQ-001 is approved, `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` ship the client's repository name in comments. Mitigation: OQ-001 is raised at the first gate, before the package is published.
+- **RISK-002** Until Phase 3 lands, `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` ship the client's repository name in comments. Mitigation: publish only after Phase 3 is approved.
 - **RISK-003** Client names stay in git history and in the records of the public repository; the request keeps both as they are. Mitigation: none in this order. A history rewrite would be a separate, irreversible decision for the user.
 
 ## Scope
 
 **In:** `package.json`, `package-lock.json`, `LICENSE`, the plugin version; client names in shipped skill text and in test fixtures.
-**Out:** records and git history; the nine comment lines (OQ-001); publishing to npm; `.claude/MEMORY.md:3` ("repository still named AISpec") and the `D:/workspace/github/AISpec/...` paths in `core/skills/branching/templates/manifest.example.yaml`, which are not client names.
+**Out:** records and git history; `.claude/scripts/lint.craft.mjs:40` (a fast change after the close, D-004); publishing to npm; `.claude/MEMORY.md:3` ("repository still named AISpec") and the `D:/workspace/github/AISpec/...` paths in `core/skills/branching/templates/manifest.example.yaml`, which are not client names.
 
 ## Phase 1: A package npm can publish
 
@@ -174,7 +183,7 @@ Make the dependency changes with the two npm commands in D-002. `LICENSE` is the
 - the id line;
 - the headline "The nightly stock sync can no longer write RESERVED_QTY on either cycle.";
 - the same tests, lint and verified lines;
-- three file names, then `+6 more`;
+- two file names, then `+7 more`, which is what the packet prints within 100 columns;
 - two decisions;
 - the commit line;
 - the options line.
@@ -182,9 +191,9 @@ Make the dependency changes with the two npm commands in D-002. `LICENSE` is the
 Each ticketing example and `api.md` keeps every heading, table column and section order. Only domain words change, and sentences are rewritten where a literal swap would read wrong. Example: "Confirm reservation endpoint returns 500 when vehicle type is RTF and voucher is absent" becomes "Confirm order endpoint returns 500 when delivery type is PICKUP and voucher is absent". Sentry, SignalR and other generic tools may stay.
 
 **Done when:**
-- **T-2.1** `git grep -n -I -i -E "TANKINHOUD|WAGENS|telematic|LowFuel|rc-7287|RENT-[0-9]|reservation|rental|vehicle|bestelbon|b2a|assistance compan|licence plate|\brent\b|\bfleet\b" -- core` prints only the comment lines in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` that OQ-001 lists (none once they are approved and written), plus the one `rent` line in `core/output-styles/custom.md`.
+- **T-2.1** `git grep -n -I -i -E "TANKINHOUD|WAGENS|telematic|LowFuel|rc-7287|RENT-[0-9]|reservation|rental|vehicle|bestelbon|b2a|assistance compan|licence plate|\brent\b|\bfleet\b" -- core` prints only the six OQ-001 comment lines in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` (Phase 3 rewrites them), plus the one `rent` line in `core/output-styles/custom.md`.
 - **T-2.2** `git diff -U0 -- core/skills | grep -E '^[-+]#'` prints nothing: no heading changed.
-- **T-2.3** The `30-gate.md` example shows `20260914-shop-412-stop-sync-write`, `StockSyncColumnEvaluator.cs` and `RunStockSyncCommandHandler.cs`, and every line in it is at most 100 characters.
+- **T-2.3** The `30-gate.md` example shows `20260914-shop-412-stop-sync-write` and the files line `StockSyncColumnEvaluator.cs, StockSyncColumnChanges.cs, +7 more`, and every line in it is at most 100 characters.
 - **T-2.4** `npm test` passes, including `test/markdown-paths.test.mjs`.
 
 ## Phase 3: Neutral fixtures in the tests
@@ -195,6 +204,9 @@ Each ticketing example and `api.md` keeps every heading, table column and sectio
 - `test/kernel/review.test.mjs`: nested repo `src/Orders`, branches
 - `test/kernel/sources.test.mjs`: `orders/` documents, `SHOP-1`
 - `test/markdown-paths.test.mjs`: the `src/Rent` non-path span
+- `core/lib/pr.mjs`: approved comment lines 15 to 17 and 48
+- `core/lib/repos.mjs`: approved comment line 2
+- `core/skills/documenting/scripts/filename.mjs`: approved comment line 40
 
 **Changes:** Apply the D-003 mapping to string literals and identifiers only. Every assertion keeps its meaning and its counts.
 
@@ -202,17 +214,18 @@ In `packet.test.mjs`, the headline still stops at the colon with `…`. The file
 
 In `pr.test.mjs`, the URL shapes stay: server, services and legacy hosts, with the collection, project, repository and PR number in the same positions. The finding texts get bookshop sentences, for example "the gift-wrap path skips the guard. A cancelled order still starts a shipment."
 
-The two comment lines (`pr.test.mjs:84`, `review.test.mjs:22`) are in OQ-001 and change only on approval.
+Per D-004 (r2), replace the eight approved comment lines (OQ-001, all but `.claude/scripts/lint.craft.mjs:40`) with exactly the text recorded in `work/20261010-publishable-package-neutral-examples/comments.jsonl`; no other comment changes.
 
 **Done when:**
-- **T-3.1** The T-2.1 grep run over `test` prints only `test/kernel/pr.test.mjs:84` and `test/kernel/review.test.mjs:22` (none once OQ-001's texts are written).
+- **T-3.1** The T-2.1 grep run over `core test` prints only the `rent` line in `core/output-styles/custom.md`.
 - **T-3.2** `packet.test.mjs` asserts the headline `  The nightly stock sync can no longer write STOCK.RESERVED_QTY on either cycle…` and the files line `StockSyncColumnEvaluator.cs, StockSyncColumnChanges.cs, +8 more`.
 - **T-3.3** `grep -c '^test(' <file>` gives the same count before and after for each of the five files: no test was added or removed.
 - **T-3.4** `npm test` passes.
+- **T-3.5** Each of the eight comment lines equals its recorded text in `comments.jsonl` character for character, and `guard.comments` allowed every edit.
 
 ## Open questions
 
-- **OQ-001** Approve these replacements for the nine comment lines that name the client (D-004)? Owner: user, at the first gate. Fallback: the lines stay unchanged, and T-2.1 and T-3.1 list them as the only remaining hits.
+- **OQ-001** Approve these replacements for the nine comment lines that name the client (D-004)? Owner: user. Resolved 2026-10-10: all nine approved and recorded with `picket comment`; Phase 3 writes eight, and `.claude/scripts/lint.craft.mjs:40` waits for a fast change after the close.
   - `core/lib/pr.mjs:15`: ` * Azure DevOps Server:   https://tfs.corp.local/tfs/DefaultCollection/Shop/_git/Orders/pullrequest/412`
   - `core/lib/pr.mjs:16`: ` * Azure DevOps Services: https://dev.azure.com/org/Shop/_git/Orders/pullrequest/412`
   - `core/lib/pr.mjs:17`: ` * Legacy Services:       https://org.visualstudio.com/Shop/_git/Orders/pullrequest/412`
@@ -224,3 +237,5 @@ The two comment lines (`pr.test.mjs:84`, `review.test.mjs:22`) are in OQ-001 and
   - `test/kernel/review.test.mjs:22`: `/** A project root (its own repo) with one nested product repo at src/Orders on branch main. */`
 
 ## Revision log
+
+- 2026-10-10: D-004 (r2): approved comment texts written in Phase 3, lint.craft.mjs left to a later fast change; T-2.3 matches the packet's two names and `+7 more` (user ruling).

@@ -3,7 +3,7 @@
 Use this scaffold for every `--change` issue. Follow the structure exactly. Omit no required section.
 
 **Summary naming convention:** `[CR] [Module/Area]: Change [what] from [current state] to [desired state]`
-_Example: `[CR] [Rentals] Change reservation type selection from manual input to dropdown with predefined values`_
+_Example: `[CR] [Orders] Change delivery type selection from manual input to dropdown with predefined values`_
 
 ---
 

@@ -25,20 +25,20 @@ These rules are strictly enforced: they are the substance of this artifact type,
 
 These govern the prose style. They ensure external integrators receive documentation that is self-explanatory, domain-meaningful, and free of implementation details.
 
-**Endpoint summary line.** Every endpoint opens with a sentence stating: (a) the primary actor ("the authenticated assistance company", "the caller"), (b) the action performed, (c) the immediate return value, and (d) any sequencing constraint. Use an em-dash to introduce the sequencing clause when present.
-> ✅ "Creates a new rental car request on behalf of the authenticated assistance company and returns the assigned file number (`bestelbon`). This is a registration-only operation: no reservation is created and no notifications are sent until `/confirm` is called."
-> ❌ "Creates a rental order."
+**Endpoint summary line.** Every endpoint opens with a sentence stating: (a) the primary actor ("the authenticated partner store", "the caller"), (b) the action performed, (c) the immediate return value, and (d) any sequencing constraint. Use an em-dash to introduce the sequencing clause when present.
+> ✅ "Creates a new book order request on behalf of the authenticated partner store and returns the assigned order number (`orderNumber`). This is a registration-only operation: no order is placed and no notifications are sent until `/confirm` is called."
+> ❌ "Creates a book order."
 
 **Authentication prose.** Always explain *why* the token matters (what it identifies and what it scopes), not just that it is required. For multi-tenant APIs, state company/tenant scoping explicitly.
 > ✅ "The key identifies your company and scopes all data access to your company's records."
 > ❌ "All requests must include a valid Bearer token issued by the authentication service."
 
-**Request intro.** Name the semantic groupings of the payload (e.g. "incident details, customer and vehicle information, the product code") rather than a generic "Describes every input the caller must provide."
+**Request intro.** Name the semantic groupings of the payload (e.g. "delivery details, customer and book information, the product code") rather than a generic "Describes every input the caller must provide."
 
-**Business Rules prose.** Use `**bold**` for key identifiers. State the triggering condition explicitly ("If the licence plate is linked to an active contract…"). Explain downstream consequences of bad data where relevant ("A zero coordinate silently breaks all downstream distance calculations and is always rejected.").
+**Business Rules prose.** Use `**bold**` for key identifiers. State the triggering condition explicitly ("If the ISBN is linked to an open order…"). Explain downstream consequences of bad data where relevant ("A zero coordinate silently breaks all downstream distance calculations and is always rejected.").
 
 **Error meanings.** Include the specific condition that triggers the status, not just the HTTP status name.
-> ✅ `409`: "A rental request already exists for this licence plate or `bestelbon`"
+> ✅ `409`: "An order request already exists for this ISBN or `orderNumber`"
 > ❌ `409`: "Conflict"
 
 **Caller perspective.** Write consistently from the integrator's point of view ("your company", "the caller", "the authenticated user"). Describe observable behaviour, never "the system does X".
@@ -54,19 +54,19 @@ This style of API serves multiple independent companies (tenants). Never leak co
 - **Technical fields and flags:** document explicitly and precisely, covering names, types, allowed values, error messages, and filtering mechanics. These are the same for all callers and safe to publish.
 - **Eligibility and activation:** never state whether a feature is "enabled", "configured", or "available" for a specific company. Defer to "your specific organisational settings" or "when this feature is active for your setup".
 - **Do not describe the conditions** under which a feature becomes active. State only that eligibility is managed by the system and validated at confirmation time.
-- **UI-purpose flags** (e.g. `isPrivilegeCar`, `isPreferredBrand`) are display hints; note explicitly that the booking outcome is validated by the system during confirmation, not by the caller reading the flag.
+- **UI-purpose flags** (e.g. `isStaffPick`, `isPreferredPublisher`) are display hints; note explicitly that the order outcome is validated by the system during confirmation, not by the caller reading the flag.
 
-> ✅ "Whether this feature is active and which brands qualify is determined by your specific organisational settings."
-> ❌ "Brand priority is a product-level feature and must be explicitly enabled in the product configuration before it has any effect."
+> ✅ "Whether this feature is active and which publishers qualify is determined by your specific organisational settings."
+> ❌ "Publisher priority is a product-level feature and must be explicitly enabled in the product configuration before it has any effect."
 
 ### Resource design (when designing or documenting new endpoints)
 
 - **First-class resources get their own top-level path.** A resource produced by another but with its own identity and lifecycle is addressed at its own top-level path, not nested under its creator.
-  > ✅ `POST /api/b2a/reservations/{bestelbon}` ❌ `POST /api/b2a/rental-orders/{bestelbon}/confirm`
+  > ✅ `POST /api/partners/orders/{orderNumber}` ❌ `POST /api/partners/order-requests/{orderNumber}/confirm`
 - **Use HTTP methods for lifecycle operations:** Create → `POST`, Retrieve → `GET`, Cancel/delete → `DELETE`, Update a field → `PATCH`.
 - **Verb sub-resources only for imperative actions** that cannot be expressed as CRUD on a named field; the verb is the final path segment with `POST`.
-  > ✅ `POST /api/b2a/reservations/{bestelbon}/extend` ❌ `POST /.../send-email` (flat verb, no resource scoping)
-- **A shared business key threads through related resources** (e.g. `bestelbon` as the path parameter for every resource it identifies). Do not introduce a second identifier unless the resource genuinely requires independent addressing.
+  > ✅ `POST /api/partners/orders/{orderNumber}/extend` ❌ `POST /.../send-email` (flat verb, no resource scoping)
+- **A shared business key threads through related resources** (e.g. `orderNumber` as the path parameter for every resource it identifies). Do not introduce a second identifier unless the resource genuinely requires independent addressing.
 - **Never name a resource with a verb**: resource segments are nouns; verbs belong in action sub-resources or HTTP methods.
 
 ### Enums

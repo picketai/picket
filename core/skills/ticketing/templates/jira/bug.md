@@ -3,7 +3,7 @@
 Use this scaffold for every `--bug` issue. Follow the structure exactly. Omit no required section.
 
 **Summary naming convention:** `[BUG] [Module/Area]: [Concise description of the failure — what breaks and in what context]`
-_Example: `[BUG] [Rentals] Confirm reservation endpoint returns 500 when vehicle type is RTF and voucher is absent`_
+_Example: `[BUG] [Orders] Confirm order endpoint returns 500 when delivery type is PICKUP and voucher is absent`_
 
 ---
 

@@ -6,96 +6,96 @@ Do NOT reproduce this in output unless the user is actually working on SignalR b
 ---
 
 **Issue Type:** Task
-**Input provided by:** Principal Engineer (Architecture Review, March 2026) — identified during a performance audit that the `LogisticsHub` (SignalR) broadcasts vehicle position updates to ALL connected clients on each GPS ping, regardless of whether the client is currently viewing the relevant vehicle. This creates unnecessary bandwidth and processing load that scales linearly with fleet size.
-**Priority:** High — already causing degraded WebSocket performance at 150+ concurrent connections; fleet size is growing 20% quarter-over-quarter
-**Labels:** `technical-debt`, `performance`, `realtime`, `logistics`
+**Input provided by:** Principal Engineer (Architecture Review, March 2026) — identified during a performance audit that the `StockHub` (SignalR) broadcasts book stock-level updates to ALL connected clients on each stock change, regardless of whether the client is currently viewing the relevant book. This creates unnecessary bandwidth and processing load that scales linearly with catalogue size.
+**Priority:** High — already causing degraded WebSocket performance at 150+ concurrent connections; the catalogue is growing 20% quarter-over-quarter
+**Labels:** `technical-debt`, `performance`, `realtime`, `inventory`
 
 ---
 
 ### Business Context
 
-The `Rent.WebRealtime` service broadcasts live GPS position updates to back-office users via SignalR. Every time a vehicle transmits a GPS ping (approximately every 30 seconds per active vehicle), the server broadcasts the update to every connected back-office client — regardless of whether that client is looking at a map or a vehicle list that includes that specific vehicle.
+The `Shop.WebRealtime` service broadcasts live stock levels to support agents via SignalR. Every time a book's stock changes (approximately every 30 seconds per actively selling title), the server broadcasts the update to every connected support client — regardless of whether that client is looking at a stock dashboard or a book list that includes that specific title.
 
-At the current fleet size of ~180 active vehicles and ~40 concurrent connections during peak hours, each GPS tick generates up to 7,200 WebSocket messages per minute. As the fleet grows, this number grows proportionally. Load testing at 300 vehicles and 80 concurrent users shows SignalR hub CPU usage spiking to 85% and average message delivery latency increasing from 120ms to 650ms — crossing the user-perceived lag threshold.
+At the current size of ~180 actively selling titles and ~40 concurrent connections during peak hours, each stock tick generates up to 7,200 WebSocket messages per minute. As the catalogue grows, this number grows proportionally. Load testing at 300 titles and 80 concurrent users shows SignalR hub CPU usage spiking to 85% and average message delivery latency increasing from 120ms to 650ms — crossing the user-perceived lag threshold.
 
-This was an acceptable simplification at launch (35 vehicles, <10 concurrent users) but is now actively degrading the map experience for dispatchers and approaching a service availability risk.
+This was an acceptable simplification at launch (35 titles, <10 concurrent users) but is now actively degrading the stock dashboard for store staff and approaching a service availability risk.
 
 ### Risk of NOT Doing This
 
-- **Incident risk:** At projected fleet size (~280 vehicles, Q3 2026), the hub will be saturated during peak hours. Expected outcome: connection drops and supervisor map view becoming unusable — the primary operational tool for dispatch.
-- **Velocity impact:** Every new feature that touches the realtime layer (planned: driver alerts, route deviation notifications) must work around the broadcast model, adding complexity to each implementation.
-- **Cost of delay:** The problem compounds with fleet growth — rearchitecting at 300 vehicles will require a larger migration effort than at 180 vehicles. Every sprint of delay adds technical surface area.
-- **Security / compliance risk:** None directly, but broadcasting all vehicle positions to all connected users means a user with limited access (e.g., managing only one sub-fleet) currently receives position data for all vehicles — a data access control gap.
+- **Incident risk:** At projected catalogue size (~280 actively selling titles, Q3 2026), the hub will be saturated during peak hours. Expected outcome: connection drops and the stock dashboard becoming unusable — the primary operational tool for store staff.
+- **Velocity impact:** Every new feature that touches the realtime layer (planned: low-stock alerts, shipment delay notifications) must work around the broadcast model, adding complexity to each implementation.
+- **Cost of delay:** The problem compounds with catalogue growth — rearchitecting at 300 titles will require a larger migration effort than at 180 titles. Every sprint of delay adds technical surface area.
+- **Security / compliance risk:** None directly, but broadcasting all stock levels to all connected users means a user with limited access (e.g., managing only one partner store) currently receives stock data for every store — a data access control gap.
 
 ### Current State
 
-`Rent.WebRealtime/Hubs/LogisticsHub.cs` — hub broadcasts all position updates to the `"map-updates"` group, which all authenticated clients are added to on connection:
+`Shop.WebRealtime/Hubs/StockHub.cs` — hub broadcasts all stock updates to the `"stock-updates"` group, which all authenticated clients are added to on connection:
 
 ```csharp
-// LogisticsHub.cs — current (problematic)
+// StockHub.cs — current (problematic)
 public override async Task OnConnectedAsync()
 {
-    await Groups.AddToGroupAsync(Context.ConnectionId, "map-updates");
+    await Groups.AddToGroupAsync(Context.ConnectionId, "stock-updates");
     await base.OnConnectedAsync();
 }
 ```
 
-`Rent.WebRealtime/Consumers/VehiclePositionUpdatedConsumer.cs` — MassTransit consumer publishes to the single group:
+`Shop.WebRealtime/Consumers/StockLevelChangedConsumer.cs` — MassTransit consumer publishes to the single group:
 
 ```csharp
-await _hubContext.Clients.Group("map-updates").SendAsync("PositionUpdated", positionDto);
+await _hubContext.Clients.Group("stock-updates").SendAsync("StockChanged", stockDto);
 ```
 
 **Key locations:**
 
-- `Rent/Rent/Rent.WebRealtime/Hubs/LogisticsHub.cs` — hub connection management (broadcast to all)
-- `Rent/Rent/Rent.WebRealtime/Consumers/VehiclePositionUpdatedConsumer.cs` — consumes GPS events and broadcasts
-- `src/DriverPlatformWebapp/src/features/map/useVehiclePositions.ts` — client-side hook that receives all updates
+- `Shop/Shop/Shop.WebRealtime/Hubs/StockHub.cs` — hub connection management (broadcast to all)
+- `Shop/Shop/Shop.WebRealtime/Consumers/StockLevelChangedConsumer.cs` — consumes stock events and broadcasts
+- `src/StoreWebapp/src/features/stock/useStockLevels.ts` — client-side hook that receives all updates
 
 ### Desired State
 
-Clients subscribe to specific vehicle groups on demand. The hub manages per-vehicle groups (`vehicle-{vehicleId}`). Clients subscribe when they open a vehicle on the map and unsubscribe when they close it. The consumer publishes only to the relevant vehicle group.
+Clients subscribe to specific book groups on demand. The hub manages per-book groups (`book-{bookId}`). Clients subscribe when they open a book on the dashboard and unsubscribe when they close it. The consumer publishes only to the relevant book group.
 
-- Hub exposes `SubscribeToVehicle(vehicleId)` and `UnsubscribeFromVehicle(vehicleId)` methods
-- Consumer broadcasts to `vehicle-{vehicleId}` group instead of `"map-updates"`
+- Hub exposes `SubscribeToBook(bookId)` and `UnsubscribeFromBook(bookId)` methods
+- Consumer broadcasts to `book-{bookId}` group instead of `"stock-updates"`
 - Client subscribes on mount and unsubscribes on unmount
-- A client watching 10 vehicles receives exactly 10× the update volume of a client watching 1 vehicle — linear scaling per user intent, not per fleet size
+- A client watching 10 books receives exactly 10× the update volume of a client watching 1 book — linear scaling per user intent, not per catalogue size
 
 ### Proposed Approach
 
-1. Add `SubscribeToVehicle` / `UnsubscribeFromVehicle` hub methods that add/remove the connection from `vehicle-{vehicleId}` groups
-2. Update `VehiclePositionUpdatedConsumer` to publish to `vehicle-{vehicleId}` instead of `"map-updates"`
-3. Remove the `OnConnectedAsync` auto-enrollment in `"map-updates"`
-4. Update `useVehiclePositions` hook to call the new hub methods
-5. Remove the now-unused `"map-updates"` group
+1. Add `SubscribeToBook` / `UnsubscribeFromBook` hub methods that add/remove the connection from `book-{bookId}` groups
+2. Update `StockLevelChangedConsumer` to publish to `book-{bookId}` instead of `"stock-updates"`
+3. Remove the `OnConnectedAsync` auto-enrollment in `"stock-updates"`
+4. Update `useStockLevels` hook to call the new hub methods
+5. Remove the now-unused `"stock-updates"` group
 
 ### Constraints & Risks
 
-- The client-side hook `useVehiclePositions` must be updated atomically with the server change — a phased rollout is not feasible without a temporary compatibility shim
+- The client-side hook `useStockLevels` must be updated atomically with the server change — a phased rollout is not feasible without a temporary compatibility shim
 - Subscription management must handle reconnect scenarios (SignalR auto-reconnect must re-subscribe to groups)
-- Load test before and after to confirm the improvement — target: P95 latency < 200ms at 300 vehicles / 80 connections
+- Load test before and after to confirm the improvement — target: P95 latency < 200ms at 300 titles / 80 connections
 
 ### Acceptance Criteria
 
-- [ ] **AC1 — Selective broadcast:** Given 5 vehicles are transmitting GPS pings and a connected client has subscribed to 2 of them, when the hub delivers updates, then the client receives exactly 2 updates per ping cycle — not 5.
-- [ ] **AC2 — Subscribe/unsubscribe methods:** The hub exposes `SubscribeToVehicle(string vehicleId)` and `UnsubscribeFromVehicle(string vehicleId)` methods callable from the client.
-- [ ] **AC3 — No regression in map behaviour:** The map view displays live position updates for all subscribed vehicles with the same visual behaviour as before this change.
+- [ ] **AC1 — Selective broadcast:** Given 5 books are changing stock and a connected client has subscribed to 2 of them, when the hub delivers updates, then the client receives exactly 2 updates per stock cycle — not 5.
+- [ ] **AC2 — Subscribe/unsubscribe methods:** The hub exposes `SubscribeToBook(string bookId)` and `UnsubscribeFromBook(string bookId)` methods callable from the client.
+- [ ] **AC3 — No regression in dashboard behaviour:** The stock dashboard displays live stock levels for all subscribed books with the same visual behaviour as before this change.
 - [ ] **AC4 — Reconnect resilience:** Given a client reconnects after a connection drop, when the SignalR connection is re-established, then subscriptions are restored automatically (no manual page reload required).
-- [ ] **AC5 — Architecture compliance:** `dotnet test Rent.Architecture.Tests` passes with no new violations.
-- [ ] **AC6 — Performance:** Load test at 300 vehicles / 80 concurrent connections shows P95 hub message delivery latency ≤ 200ms.
+- [ ] **AC5 — Architecture compliance:** `dotnet test Shop.Architecture.Tests` passes with no new violations.
+- [ ] **AC6 — Performance:** Load test at 300 titles / 80 concurrent connections shows P95 hub message delivery latency ≤ 200ms.
 
 ### Out of Scope
 
 - Server-side push notifications (Expo) are not affected by this change
-- Subscribing to vehicle-level telemetry beyond GPS position (fuel level, door state) — separate story
-- Fixing the data access control gap (all vehicles visible to all users) — separate security story
+- Subscribing to book-level data beyond stock level (price, reviews) — separate story
+- Fixing the data access control gap (all stores visible to all users) — separate security story
 
 ### Dependencies
 
 | Dependency                                           | Type     | Status | Notes                       |
 | ---------------------------------------------------- | -------- | ------ | --------------------------- |
-| `useVehiclePositions` hook refactor (client)         | Blocking | Open   | Must be done in same sprint |
-| Load testing environment with 300-vehicle simulation | Blocking | Open   | Coordinate with DevOps      |
+| `useStockLevels` hook refactor (client)              | Blocking | Open   | Must be done in same sprint |
+| Load testing environment with 300-title simulation   | Blocking | Open   | Coordinate with DevOps      |
 
 ### Definition of Done
 

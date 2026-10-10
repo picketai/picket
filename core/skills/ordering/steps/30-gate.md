@@ -11,15 +11,15 @@ picket packet <id>
 Print its output verbatim, as plain lines, nothing before it and nothing after it: no summary of the plan, no restatement of the contract, no advice on which option to pick. It looks like this:
 
 ```
-▶ phase 1/2 done · 20260914-rc-7287-stop-poll-write
-  The telematics poll can no longer write TANKINHOUD on either cycle.
+▶ phase 1/2 done · 20260914-shop-412-stop-sync-write
+  The nightly stock sync can no longer write RESERVED_QTY on either cycle.
 
   tests     passed (374/374)
   lint      none detected
   verified  no drivable surface (background worker); HandleAsync driven against an InMemory context
-  files     CarTelematicsColumnEvaluator.cs, CarTelematicsColumnChanges.cs, RunTelematicsPollCommandHandler.cs, +6 more
+  files     StockSyncColumnEvaluator.cs, StockSyncColumnChanges.cs, +7 more
   decisions · followed the Changes paragraph over T-1.1's grep list where they contradict
-            · re-seeded three LowFuel tests that computed litres from the deleted write
+            · re-seeded three LowStock tests that computed units from the deleted write
   commit    3f9c2a1
 
 [a] approve   [r] run through 2   [x] reject: <why>

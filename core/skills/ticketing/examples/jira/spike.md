@@ -7,7 +7,7 @@ Do NOT reproduce this in output unless the user is actually working on MassTrans
 
 **Issue Type:** Task
 **Input provided by:** Architect (Tech Radar session, March 2026) — raised concern that the current MassTransit + RabbitMQ message broker setup has no dead-letter queue strategy and no observability beyond Sentry errors; before implementing the next generation of event-driven features, the team needs a clear decision on message durability and replay capabilities.
-**Priority:** High — three upcoming features (driver alerts, billing automation, route deviation) all depend on reliable event delivery; building them on an unvalidated foundation creates compounding risk
+**Priority:** High — three upcoming features (low-stock alerts, billing automation, shipment delay) all depend on reliable event delivery; building them on an unvalidated foundation creates compounding risk
 **Story Points:** 0 — SPIKE: time-boxed at 3 days. Output is an analysis report and ADR draft.
 **Timebox:** 3 days (by 2026-03-21)
 **Labels:** `spike`, `analysis`, `messaging`, `infrastructure`
@@ -16,9 +16,9 @@ Do NOT reproduce this in output unless the user is actually working on MassTrans
 
 ### Business Context
 
-The `Rent.WebApi` and `Rent.WebRealtime` services communicate via MassTransit on RabbitMQ. This works well for the current load (< 50 events/minute) but the architecture was designed and deployed in 2024 without a formal decision on message durability, dead-letter handling, or observability. The team has been aware of this gap but has deferred the decision because existing features are not critically dependent on guaranteed delivery.
+The `Shop.WebApi` and `Shop.WebRealtime` services communicate via MassTransit on RabbitMQ. This works well for the current load (< 50 events/minute) but the architecture was designed and deployed in 2024 without a formal decision on message durability, dead-letter handling, or observability. The team has been aware of this gap but has deferred the decision because existing features are not critically dependent on guaranteed delivery.
 
-This changes in Q2 2026. Three upcoming features on the roadmap — real-time driver alerts (safety-critical), billing event automation (financial accuracy), and route deviation notifications (operational) — all require reliable, ordered, and observable event delivery. Designing these features without a clear understanding of the broker's capabilities and limitations risks building on a brittle foundation that will require expensive rework when the first production message loss event occurs.
+This changes in Q2 2026. Three upcoming features on the roadmap — real-time low-stock alerts (sales-critical), billing event automation (financial accuracy), and shipment delay notifications (operational) — all require reliable, ordered, and observable event delivery. Designing these features without a clear understanding of the broker's capabilities and limitations risks building on a brittle foundation that will require expensive rework when the first production message loss event occurs.
 
 This SPIKE will produce a definitive, evidence-backed recommendation that the architecture group can use to make a binding decision before sprint planning for Q2 begins.
 
@@ -38,13 +38,13 @@ The team must decide: given the current MassTransit + RabbitMQ setup, what chang
 
 5. **Ordering guarantees:** Do any of the Q2 features require ordered message delivery? If so, does the current setup support it, and at what cost (throughput trade-off)?
 
-6. **Volume projections:** At projected Q2 event volume (~500 events/minute at peak from driver alert + billing triggers combined), does the current single-node RabbitMQ deployment have sufficient capacity, or does a cluster/scaling decision need to be made in parallel?
+6. **Volume projections:** At projected Q2 event volume (~500 events/minute at peak from low-stock alert + billing triggers combined), does the current single-node RabbitMQ deployment have sufficient capacity, or does a cluster/scaling decision need to be made in parallel?
 
 ### Investigation Scope
 
 #### In Scope
 
-- Audit of current MassTransit configuration in `Rent.Infrastructure/Messaging/`
+- Audit of current MassTransit configuration in `Shop.Infrastructure/Messaging/`
 - Hands-on testing in the staging RabbitMQ instance (dead-letter, retry, persistence)
 - Review of MassTransit documentation for outbox pattern (v8.x)
 - Review of RabbitMQ management plugin and available metrics
@@ -80,7 +80,7 @@ The team must decide: given the current MassTransit + RabbitMQ setup, what chang
 
 ### Assumptions
 
-- The existing `Rent.Messaging` submodule message contracts will not change as a result of this SPIKE
+- The existing `Shop.Messaging` submodule message contracts will not change as a result of this SPIKE
 - RabbitMQ management plugin is already enabled on the staging instance (verify on day 1; escalate to DevOps if not)
 - The Q2 feature roadmap is stable enough that the research questions above reflect the actual delivery requirements
 
@@ -90,7 +90,7 @@ The team must decide: given the current MassTransit + RabbitMQ setup, what chang
 | -------------------------------------------- | ------------- | ----------- | ---------------------------------------------- |
 | RabbitMQ staging instance admin access       | Blocking      | Open        | Request from DevOps before SPIKE starts        |
 | MassTransit v8 outbox documentation          | Informational | Available   | See MassTransit docs — persistence/saga        |
-| Q2 feature specs (driver alerts, billing)    | Informational | In Progress | Needed to validate volume projections in RQ6   |
+| Q2 feature specs (stock alerts, billing)     | Informational | In Progress | Needed to validate volume projections in RQ6   |
 
 ### Definition of Done
 

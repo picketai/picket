@@ -3,7 +3,7 @@
 Use this scaffold for every `--story` issue. Follow the structure exactly. Omit no required section.
 
 **Summary naming convention:** `[Module/Area] As a [role], I want to [action] so that [benefit]`
-_Example: `[Rentals] As a back-office agent, I want to confirm a rental order so that the reservation is created in the legacy system`_
+_Example: `[Orders] As a support agent, I want to confirm a book order so that the order is created in the legacy system`_
 
 ---
 
@@ -11,7 +11,7 @@ _Example: `[Rentals] As a back-office agent, I want to confirm a rental order so
 **Input provided by:** [Stakeholder / Product Manager / Business Analyst] — [one sentence describing what they requested and why]
 **Priority:** [Critical / High / Medium / Low] — [one-sentence justification]
 **Epic Link:** [Epic name or key, or `REQUIRES INPUT: confirm which epic this belongs to`]
-**Labels:** `new-feature`, [module label e.g. `rentals`, `logistics`, `payments`]
+**Labels:** `new-feature`, [module label e.g. `orders`, `logistics`, `payments`]
 
 ---
 
