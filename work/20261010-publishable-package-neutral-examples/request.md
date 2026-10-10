@@ -1,0 +1,4 @@
+Make the package publishable for 1.0.0-alpha.1 and remove client examples from the public repository.
+1. package.json: homepage, bugs and repository URLs point to https://github.com/picketai/picket; version 1.0.0-alpha.1 (core/.claude-plugin/plugin.json too); fill description and author (Vlad Apetre); license MIT with a LICENSE file (copyright Vlad Apetre); add a "files" field so npm ships only the product (core/ and what the bin and plugin need, plus README and LICENSE); remove the unused shell-quote dependency (the kernel vendors it in core/lib/vendor/); move opensrc to devDependencies.
+2. Rename the client-project examples (WAGENS.TANKINHOUD, the telematics poll, and any other names from that client project) in tracked files outside the records, such as core/skills/ordering/steps/30-gate.md and test/kernel/packet.test.mjs, to neutral invented examples.
+The user chose MIT and asked to rename the client examples in this change.

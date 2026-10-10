@@ -1,0 +1,9 @@
+{"ts":"2026-10-10T13:40:58.232Z","path":"core/lib/pr.mjs","text":" * Azure DevOps Server:   https://tfs.corp.local/tfs/DefaultCollection/Shop/_git/Orders/pullrequest/412"}
+{"ts":"2026-10-10T13:40:58.394Z","path":"core/lib/pr.mjs","text":" * Azure DevOps Services: https://dev.azure.com/org/Shop/_git/Orders/pullrequest/412"}
+{"ts":"2026-10-10T13:40:58.558Z","path":"core/lib/pr.mjs","text":" * Legacy Services:       https://org.visualstudio.com/Shop/_git/Orders/pullrequest/412"}
+{"ts":"2026-10-10T13:40:58.696Z","path":"core/lib/pr.mjs","text":" * down (an umbrella with `src/Orders` as its own clone is the common shape here). Returns the repo"}
+{"ts":"2026-10-10T13:40:58.836Z","path":"core/lib/repos.mjs","text":"// The root's `git diff` sees such a repo only as one untracked entry (`src/Orders/`), so the review"}
+{"ts":"2026-10-10T13:40:59.004Z","path":"core/skills/documenting/scripts/filename.mjs","text":"// API subjects are usually an endpoint path (e.g. \"POST /v1/book-orders/confirm\")."}
+{"ts":"2026-10-10T13:40:59.143Z","path":".claude/scripts/lint.craft.mjs","text":"//   node .claude/scripts/lint.craft.mjs -C src/Orders      # run against a nested repo"}
+{"ts":"2026-10-10T13:40:59.274Z","path":"test/kernel/pr.test.mjs","text":"  // an umbrella whose src/Orders is the clone: the kernel finds the nested repository on its own"}
+{"ts":"2026-10-10T13:40:59.449Z","path":"test/kernel/review.test.mjs","text":"/** A project root (its own repo) with one nested product repo at src/Orders on branch main. */"}

@@ -10,6 +10,7 @@ const CORE = resolve("core");
 const SETTINGS = resolve(".claude/settings.json");
 const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
+const PACKAGE = resolve("package.json");
 const LAUNCHER = "core/bin/picket";
 const EXECUTABLE_MODE = "100755";
 
@@ -120,6 +121,14 @@ test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin
   assert.equal(tracked.trim(), "");
   const allow = readJson(SETTINGS).permissions.allow;
   assert.deepEqual(allow.filter((rule) => /\.claude\/(bin|skills)\//.test(rule)), []);
+});
+
+test("the npm package ships the plugin and its marketplace at the plugin's version, with no runtime dependencies", () => {
+  const pkg = readJson(PACKAGE);
+  assert.equal(pkg.version, readJson(join(CORE, ".claude-plugin", "plugin.json")).version);
+  assert.ok(pkg.files.includes("core/"), "files ships core/");
+  assert.ok(pkg.files.includes(".claude-plugin/marketplace.json"), "files ships the marketplace init looks for beside core/");
+  assert.equal("dependencies" in pkg, false);
 });
 
 test("the picket launcher is tracked as executable", () => {

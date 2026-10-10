@@ -1,21 +1,27 @@
 {
   "name": "@picketai/picket",
-  "version": "1.0.0",
-  "description": "",
-  "homepage": "https://github.com/vladapetre/AISpec#readme",
+  "version": "1.0.0-alpha.1",
+  "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel.",
+  "homepage": "https://github.com/picketai/picket#readme",
   "bugs": {
-    "url": "https://github.com/vladapetre/AISpec/issues"
+    "url": "https://github.com/picketai/picket/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vladapetre/AISpec.git"
+    "url": "git+https://github.com/picketai/picket.git"
   },
-  "license": "ISC",
-  "author": "",
+  "license": "MIT",
+  "author": "Vlad Apetre",
   "type": "commonjs",
   "bin": {
     "picket": "core/bin/picket.mjs"
   },
+  "files": [
+    "core/",
+    ".claude-plugin/marketplace.json",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "test": "node --test --test-concurrency=1 test/ bench/test/",
     "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
@@ -26,8 +32,7 @@
     "picket": "node core/bin/picket.mjs",
     "claude": "claude --plugin-dir core"
   },
-  "dependencies": {
-    "opensrc": "^0.7.2",
-    "shell-quote": "^1.10.0"
+  "devDependencies": {
+    "opensrc": "^0.7.2"
   }
 }
