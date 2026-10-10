@@ -32,7 +32,8 @@ _Avoid_: agent team member
 
 ## Decisions
 
-- **Product name Tether, project TetherAI** (2026-10-02): plugin and CLI are `tether`, state lives in `.tether/`. npm, repository and organization names are settled at the alpha (2026-10-04); npm `tether` is taken, so expect a scope. Report: https://claude.ai/artifact/QyPJqATUoenwE4Cdc3R5km
+- **Product name Tether, project TetherAI** [superseded 2026-10-10 by Picket] (2026-10-02): plugin and CLI are `tether`, state lives in `.tether/`. npm, repository and organization names are settled at the alpha (2026-10-04); npm `tether` is taken, so expect a scope. Report: https://claude.ai/artifact/QyPJqATUoenwE4Cdc3R5km
+- **Product name Picket, project PicketAI** (2026-10-10): the npm package is `@picketai/picket`, the GitHub organization and repository `picketai/picket`, the command `picket`. Chosen over `tether-code` and Hitch: `@tetherai` and `hitch` are taken, `hitch-cli` is a rival AI coding tool, and `@picketai`, `picketai` and GitHub `picketai` were all free on 2026-10-10. The rename from Tether lands before the alpha tag.
 - **Packaging is a mix: one core, a Claude Code plugin, a CLI, and `tether init`** (2026-10-02): a bare plugin cannot carry rules, CLAUDE.md or permissions, and a bare installer CLI leaves copies that drift. The plugin folder is `core/` itself, no build step (2026-10-04).
 - **Claude Code only until the alpha** (2026-10-04): other hosts are revisited after the alpha; the only multi-host preparation kept is one paths module and hooks as thin shells over kernel verbs, which pay for themselves in tests anyway.
 - **Customization through extensions with a manifest, not an anonymous override folder** (2026-10-04): `.tether/extensions/<name>/extension.json`, enabled and ordered by `.tether/config.json`; chosen for maintainability (identity, version, compatibility check). Project-local only in the alpha; installing from a git URL comes later.
