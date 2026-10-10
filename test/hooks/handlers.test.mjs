@@ -373,6 +373,28 @@ test("guardBash never allows a heredoc redirect into an extension file", () => {
   });
 });
 
+test("guardBash reads each line as its own command and a heredoc body as data", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(decision("ls\nrm -rf x"), "deny");
+    assert.equal(decision("echo hi\ngit push"), "deny");
+    assert.equal(decision("ls # note\nrm -rf x"), "deny");
+    assert.equal(decision("ls \\\n  -la"), "allow");
+    assert.equal(decision("echo \"<<'X'\"\ngit push\nX"), "deny");
+    assert.equal(decision("echo $'a\\'b'\nrm -rf x"), "deny");
+
+    assert.equal(decision("picket admit --request - --human <<'END'\nShip it; git push origin trunk | npm publish\nEND"), null);
+    assert.equal(decision("cat <<'END'\nnotes; rm -rf src\nEND\nls"), "allow");
+    assert.equal(decision("cat <<-'END'\n\tnotes; rm -rf src\n\tEND\nls"), "allow");
+    assert.equal(decision("cat <<'END'\n`code` and $(text)\nEND"), "allow");
+    assert.equal(decision("cat <<'END'\nnotes\nEND\nrm -rf x"), "deny");
+
+    assert.equal(decision("cat <<END\n$(whoami)\nEND"), null);
+    assert.equal(decision("cat <<'END'\nno terminator; git push"), null);
+    assert.equal(decision("bash <<'END'\ngit push\nEND"), null);
+  });
+});
+
 test("guardScope asks for the moved config and extensions, keeps .picket/state hook-only, and has no rule for any other folder", () => {
   withProject((root) => {
     const decide = (rel) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;

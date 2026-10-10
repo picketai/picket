@@ -182,6 +182,73 @@ function hasHiddenExecution(rawCommand) {
   );
 }
 
+const HEREDOC_START = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"`\\]+)(?=[\s;&|<>()]|$))/;
+const WORD_BREAK = /[\s;&|()]/;
+
+function quotedEnd(raw, i) {
+  const ansi = raw[i] === "$";
+  const quote = raw[ansi ? i + 1 : i];
+  const escapes = ansi || quote === '"';
+  for (let j = ansi ? i + 2 : i + 1; j < raw.length; j++) {
+    if (escapes && raw[j] === "\\") j++;
+    else if (raw[j] === quote) return j + 1;
+  }
+  return raw.length;
+}
+
+function readHeredocBody(raw, start, { delimiter, stripTabs }) {
+  for (let i = start; i < raw.length; ) {
+    const end = raw.indexOf("\n", i);
+    const next = end === -1 ? raw.length : end + 1;
+    const line = raw.slice(i, end === -1 ? raw.length : end);
+    if ((stripTabs ? line.replace(/^\t+/, "") : line) === delimiter) return { body: raw.slice(start, i), next };
+    i = next;
+  }
+  return null;
+}
+
+function shellText(raw) {
+  let command = "";
+  let expanded = "";
+  const pending = [];
+  let i = 0;
+  while (i < raw.length) {
+    const ch = raw[i];
+    if (ch === "'" || ch === '"' || (ch === "$" && raw[i + 1] === "'")) {
+      const end = quotedEnd(raw, i);
+      command += raw.slice(i, end);
+      i = end;
+    } else if (ch === "\\") {
+      if (raw[i + 1] !== "\n") command += raw.slice(i, i + 2);
+      i += 2;
+    } else if (ch === "#" && (i === 0 || WORD_BREAK.test(raw[i - 1]))) {
+      const end = raw.indexOf("\n", i);
+      i = end === -1 ? raw.length : end;
+    } else if (raw.startsWith("<<<", i)) {
+      command += "<<<";
+      i += 3;
+    } else if (raw.startsWith("<<", i) && HEREDOC_START.test(raw.slice(i))) {
+      const [token, dash, single, double, bare] = HEREDOC_START.exec(raw.slice(i));
+      pending.push({ delimiter: single ?? double ?? bare, stripTabs: dash === "-", expands: bare !== undefined && !token.includes("\\") });
+      command += token;
+      i += token.length;
+    } else if (ch === "\n") {
+      command += " ; ";
+      i++;
+      for (const heredoc of pending.splice(0)) {
+        const read = readHeredocBody(raw, i, heredoc);
+        if (!read) return null;
+        if (heredoc.expands) expanded += read.body;
+        i = read.next;
+      }
+    } else {
+      command += ch;
+      i++;
+    }
+  }
+  return pending.length ? null : { command, expanded };
+}
+
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 const BARE_KERNEL = "picket";
@@ -750,11 +817,13 @@ export function guardBash(input, { root }) {
   // 1. Anything with command/process substitution is never auto-allowed.
   //    (We still let deny-patterns inside it be caught below if parsing
   //    succeeds, but we never auto-approve.)
-  const hiddenExecution = hasHiddenExecution(rawCommand);
+  const text = shellText(rawCommand);
+  if (!text) return fallThrough("unterminated-heredoc");
+  const hiddenExecution = hasHiddenExecution(text.command) || hasHiddenExecution(text.expanded);
 
   let tokens;
   try {
-    tokens = parse(rawCommand);
+    tokens = parse(text.command);
   } catch {
     // Unparsable -> don't guess, let the normal prompt handle it.
     return fallThrough("unparsable");
@@ -779,9 +848,11 @@ export function guardBash(input, { root }) {
     }
     for (const inner of wrappedCommands(seg)) {
       if (hasHiddenExecution(inner)) return fallThrough("wrapped-hidden-execution");
+      const innerText = shellText(inner);
+      if (!innerText) return fallThrough("wrapped-unparsable");
       let innerTokens;
       try {
-        innerTokens = parse(inner);
+        innerTokens = parse(innerText.command);
       } catch {
         return fallThrough("wrapped-unparsable");
       }
