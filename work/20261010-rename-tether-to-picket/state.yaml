@@ -1,7 +1,7 @@
 id: 20261010-rename-tether-to-picket
 lane: design
 title: Rename Tether to Picket
-status: open
+status: done
 created: 2026-10-10T10:18:07.431Z
-updated: 2026-10-10T11:26:48.450Z
+updated: 2026-10-10T11:30:34.529Z
 base: 8576f03a0d51a3311d67b619c8a6d254b53ef78c
