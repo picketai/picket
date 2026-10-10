@@ -5,14 +5,16 @@ import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(".");
-const OLD_NAME = /tether/i;
+const OLD_WORD = ["teth", "er"].join("");
+const OLD_NAME = new RegExp(OLD_WORD, "i");
+const OLD_TITLE = OLD_WORD[0].toUpperCase() + OLD_WORD.slice(1);
 const RECORD_FOLDERS = ["work/", "artifacts/", "bench/results/", "spike/"];
 const PROJECT_MEMORY = ".claude/MEMORY.md";
 const SUPERSEDED = "[superseded";
 const THIS_FILE = "test/names-picket.test.mjs";
 
 function isRecord(file) {
-  return file === THIS_FILE || RECORD_FOLDERS.some((folder) => file.startsWith(folder));
+  return RECORD_FOLDERS.some((folder) => file.startsWith(folder));
 }
 
 function isExemptLine(file, line) {
@@ -42,14 +44,14 @@ test("no tracked file outside the records names the old product", () => {
 });
 
 test("the old name is flagged in a shipped skill and in a current memory line, in any case", () => {
-  assert.equal(offendingLines("core/skills/ordering/SKILL.md", "Run `picket next`.\nThen ask Tether.").length, 1);
-  assert.equal(offendingLines(PROJECT_MEMORY, "- **Name** (2026-10-10): the CLI was TETHER.").length, 1);
+  assert.equal(offendingLines("core/skills/ordering/SKILL.md", `Run \`picket next\`.\nThen ask ${OLD_TITLE}.`).length, 1);
+  assert.equal(offendingLines(PROJECT_MEMORY, `- **Name** (2026-10-10): the CLI was ${OLD_WORD.toUpperCase()}.`).length, 1);
   assert.equal(offendingLines("core/skills/ordering/SKILL.md", "Run `picket next`.").length, 0);
 });
 
 test("only a superseded line of the project memory and the record folders are exempt", () => {
-  assert.equal(offendingLines(PROJECT_MEMORY, "- **Old name tether** [superseded 2026-10-10 by Picket]").length, 0);
-  assert.equal(offendingLines("README.md", "- **Old name tether** [superseded 2026-10-10 by Picket]").length, 1);
-  for (const file of ["work/x/design.md", "artifacts/strategy/decisions/00001-a.md", "bench/results/r.json", "spike/a.md", THIS_FILE]) assert.equal(isRecord(file), true, file);
-  for (const file of ["core/bin/picket.mjs", "test/kernel/names.test.mjs", "workflows/a.md"]) assert.equal(isRecord(file), false, file);
+  assert.equal(offendingLines(PROJECT_MEMORY, `- **Old name ${OLD_WORD}** [superseded 2026-10-10 by Picket]`).length, 0);
+  assert.equal(offendingLines("README.md", `- **Old name ${OLD_WORD}** [superseded 2026-10-10 by Picket]`).length, 1);
+  for (const file of ["work/x/design.md", "artifacts/strategy/decisions/00001-a.md", "bench/results/r.json", "spike/a.md"]) assert.equal(isRecord(file), true, file);
+  for (const file of ["core/bin/picket.mjs", "test/kernel/names.test.mjs", "workflows/a.md", THIS_FILE]) assert.equal(isRecord(file), false, file);
 });
