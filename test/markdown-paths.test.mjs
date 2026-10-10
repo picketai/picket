@@ -46,7 +46,6 @@ const ELSEWHERE = [
       "Infrastructure/",
       "Presentation/",
       "Shared/",
-      "docs/",
       "src/",
       "src/auth.ts",
       "src/auth/",
