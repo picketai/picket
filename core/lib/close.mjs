@@ -1,7 +1,13 @@
 import { commitStaged, dirtyPaths, filesInCommit, isRepo, repoPrefix, stagedFiles } from "./git.mjs";
+import { next } from "./next.mjs";
 import { readState, writeState } from "./work.mjs";
 
-export class CloseRefused extends Error {}
+export class CloseRefused extends Error {
+  constructor(message, pending) {
+    super(message);
+    if (pending) this.next = pending;
+  }
+}
 
 export function defaultCloseMessage(id) {
   return `chore: close ${id}`;
@@ -21,8 +27,23 @@ function markDone(id, root) {
   writeState(state, root);
 }
 
+function nextAllowsClose(lane, pending) {
+  if (pending.action === "close") return true;
+  return lane === "research" && pending.action === "approve_phase" && pending.actor === "user";
+}
+
+function refuseUnlessClosable(id, root) {
+  const state = readState(id, root);
+  if (state.status === "abandoned") throw new CloseRefused(`${id} is abandoned; only an open, blocked or done item closes`);
+  if (state.status === "done") return;
+  const pending = next(id, root);
+  if (nextAllowsClose(state.lane, pending)) return;
+  const { action, actor, phase, detail } = pending;
+  throw new CloseRefused(`next is ${action}, not close`, { action, actor, phase, detail });
+}
+
 export function close(id, root, { message } = {}) {
-  if (readState(id, root).status === "abandoned") throw new CloseRefused(`${id} is abandoned; only an open, blocked or done item closes`);
+  refuseUnlessClosable(id, root);
   const commitMessage = message ?? defaultCloseMessage(id);
   if (!isRepo(root)) {
     markDone(id, root);

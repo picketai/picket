@@ -166,7 +166,11 @@ async function main(argv) {
         out(r, opt, (v) => `${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`);
         return 0;
       } catch (err) {
-        out({ id: rest[0], error: err.message }, opt, (v) => `${v.id}: not closed · ${v.error}`);
+        if (!err.next) {
+          out({ id: rest[0], error: err.message }, opt, (v) => `${v.id}: not closed · ${v.error}`);
+          return 2;
+        }
+        out({ id: rest[0], error: err.message, next: err.next }, opt, (v) => `${v.id}: not closed · next: ${v.next.action} · ${v.next.actor ?? "-"} · ${v.next.detail}`);
         return 2;
       }
     }
