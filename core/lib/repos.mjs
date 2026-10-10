@@ -1,5 +1,5 @@
 // Nested repositories: product repos cloned inside the project (an umbrella), each with its own .git.
-// The root's `git diff` sees such a repo only as one untracked entry (`src/Rent/`), so the review
+// The root's `git diff` sees such a repo only as one untracked entry (`src/Orders/`), so the review
 // summary diffs each one in its own work tree, against the HEAD it had when the work item opened.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

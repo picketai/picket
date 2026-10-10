@@ -8,15 +8,15 @@ import { packet, parseBlock, saveBlock, cut, WIDTH } from "../../core/lib/packet
 import { writeConfig } from "./config-fixture.mjs";
 
 // The block the user's screenshot came from, in the developer's contract shape.
-const BLOCK = `## Phase 1 of X: Stop the poll write
+const BLOCK = `## Phase 1 of X: Stop the sync write
 
-The telematics poll can no longer write WAGENS.TANKINHOUD on either cycle: the column left the evaluator, the diff record and the applier, so no diff the poll can produce reaches Car.TankSize.
+The nightly stock sync can no longer write STOCK.RESERVED_QTY on either cycle: the column left the evaluator, the diff record and the applier, so no diff the sync can produce reaches Product.ReservedQty.
 
-Files: CarTelematicsColumnEvaluator.cs, CarTelematicsColumnChanges.cs, RunTelematicsPollCommandHandler.cs, ICarRepository.cs (+6 more)
-Tests: passed (374/374 Rent.Fleet.Tests)
+Files: StockSyncColumnEvaluator.cs, StockSyncColumnChanges.cs, RunStockSyncCommandHandler.cs, IProductRepository.cs (+6 more)
+Tests: passed (374/374 Shop.Inventory.Tests)
 Lint: none detected
-Verified: no drivable surface (background poll worker, no HTTP or CLI entry point); behaviour driven through HandleAsync against a real EF InMemory RentDbContext
-Decisions: followed the Changes paragraph over T-1.1's grep list where they contradict (a third TankSize hit at RunTelematicsPollCommandHandler.cs:422, removed by Phase 2); re-seeded three LowFuel tests that computed expected litres from the deleted write; turned the applier commit-boundary test into a regression guard
+Verified: no drivable surface (background sync worker, no HTTP or CLI entry point); behaviour driven through HandleAsync against a real EF InMemory ShopDbContext
+Decisions: followed the Changes paragraph over T-1.1's grep list where they contradict (a third ReservedQty hit at RunStockSyncCommandHandler.cs:422, removed by Phase 2); re-seeded three LowStock tests that computed expected units from the deleted write; turned the applier commit-boundary test into a regression guard
 Commit: 3f9c2a1
 
 PHASE DONE`;
@@ -24,16 +24,16 @@ PHASE DONE`;
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-packet-"));
   mkdirSync(join(root, ".claude"));
-  const s = createWork({ lane: "order", title: "Stop poll write", root });
+  const s = createWork({ lane: "order", title: "Stop sync write", root });
   writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: Stop the write\n\nt\n\n## Phase 2: Remove the column\n\nt\n");
   return { root, id: s.id };
 }
 
 test("parseBlock reads the developer block into fields", () => {
   const b = parseBlock(BLOCK);
-  assert.equal(b.title, "Phase 1 of X: Stop the poll write");
-  assert.match(b.headline, /^The telematics poll can no longer write/);
-  assert.equal(b.fields.tests, "passed (374/374 Rent.Fleet.Tests)");
+  assert.equal(b.title, "Phase 1 of X: Stop the sync write");
+  assert.match(b.headline, /^The nightly stock sync can no longer write/);
+  assert.equal(b.fields.tests, "passed (374/374 Shop.Inventory.Tests)");
   assert.equal(b.fields.commit, "3f9c2a1");
   assert.equal(b.verdict, "PHASE DONE");
 });
@@ -44,10 +44,10 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   saveBlock(id, 1, BLOCK, root);
   const { lines, text } = packet(id, root);
   assert.equal(lines[0], `▶ phase 1/2 done · ${id}`);
-  assert.equal(lines[1], "  The telematics poll can no longer write WAGENS.TANKINHOUD on either cycle…", "the claim survives, the explanation after the colon goes");
+  assert.equal(lines[1], "  The nightly stock sync can no longer write STOCK.RESERVED_QTY on either cycle…", "the claim survives, the explanation after the colon goes");
   for (const l of lines) assert.ok(l.length <= WIDTH, `line over ${WIDTH} chars: ${l}`);
-  assert.match(text, /^  tests {5}passed \(374\/374 Rent\.Fleet\.Tests\)$/m);
-  assert.match(text, /^  files {5}CarTelematicsColumnEvaluator\.cs, CarTelematicsColumnChanges\.cs, \+8 more$/m, "whole paths only, the rest counted");
+  assert.match(text, /^  tests {5}passed \(374\/374 Shop\.Inventory\.Tests\)$/m);
+  assert.match(text, /^  files {5}StockSyncColumnEvaluator\.cs, StockSyncColumnChanges\.cs, \+8 more$/m, "whole paths only, the rest counted");
   assert.equal(lines.filter((l) => /^ {12}· /.test(l) || /^  decisions/.test(l)).length, 3, "three decisions, one per line");
   assert.match(text, /^  commit {4}3f9c2a1 \(staged; approval commits it\)$/m);
   assert.equal(lines.at(-1), "[a] approve   [r] run through 2   [x] reject: <why>");

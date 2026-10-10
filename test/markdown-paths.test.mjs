@@ -140,7 +140,7 @@ test("a backticked span is a path candidate only when it looks like a repository
   assert.equal(pathCandidate(".claude/lib/admit.mjs:18"), ".claude/lib/admit.mjs");
   assert.equal(pathCandidate(".claude/rules/"), ".claude/rules/");
   assert.equal(pathCandidate(".claude/agents/assets/detectors.yaml#test_authoring_policy"), ".claude/agents/assets/detectors.yaml");
-  for (const span of ["work/<id>/", "work/**", "tok/line", "src/Rent", "SKILL.md", "https://x.y/a.md", "/etc/hosts.conf", "../up/a.md", "C:/x/a.md", "npm test", "a/b.md, c/d.md"]) {
+  for (const span of ["work/<id>/", "work/**", "tok/line", "src/Orders", "SKILL.md", "https://x.y/a.md", "/etc/hosts.conf", "../up/a.md", "C:/x/a.md", "npm test", "a/b.md, c/d.md"]) {
     assert.equal(pathCandidate(span), null, span);
   }
 });

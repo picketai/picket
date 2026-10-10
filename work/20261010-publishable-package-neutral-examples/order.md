@@ -65,6 +65,8 @@ phases:
       - core/lib/pr.mjs
       - core/lib/repos.mjs
       - core/skills/documenting/scripts/filename.mjs
+      - core/lib/comments.mjs
+      - test/kernel/comments.test.mjs
     greps:
       - path: core/lib/pr.mjs
         pattern: 'Shop/_git/Orders/pullrequest/412'
@@ -118,8 +120,8 @@ phases:
 The money example in `core/output-styles/custom.md` (monthly rent at 7%) is everyday housing rent, not the client's domain, so it stays.
 **Instead of:** neutral placeholders such as `Foo` and `src/App`: the gate packet and the Jira examples teach through concrete detail, and placeholders would remove it.
 
-### D-004 (r2): comment lines naming the client change only with the user's approval
-**Decision:** Nine existing comment lines name the client's repository or domain (OQ-001 lists them). The `comments` rule forbids rewording a comment without an approval recorded through `picket comment`. The user approved all nine and the approvals are recorded. Phase 3 writes eight of them exactly as recorded: the six in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs`, and the two in its test files. `.claude/scripts/lint.craft.mjs:40` is outside this order; the lead changes it in a fast change after the close.
+### D-004 (r3): comment lines naming the client change only with the user's approval
+**Decision:** Nine existing comment lines name the client's repository or domain (OQ-001 lists them). The `comments` rule forbids rewording a comment without an approval recorded through `picket comment`. The user approved all nine and the approvals are recorded. Phase 3 writes eight of them exactly as recorded: the six in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs`, and the two in its test files. `.claude/scripts/lint.craft.mjs:40` is outside this order; the lead changes it in a fast change after the close. The approval for `test/kernel/review.test.mjs:22` is a one-line `/** ... */` comment, and `guard.comments` can never match one: `normalise()` in `core/lib/comments.mjs` strips the leading `/**` from the recorded text but keeps the trailing ` */`, while the body taken from the edit has neither. Phase 3 fixes `normalise()` to also strip a trailing block-comment closer (`*/`), so a recorded `/** text */` matches the added line. The approval stays in `comments.jsonl` as recorded.
 **Instead of:** deleting the lines: the rule allows deletion only for a stale comment, and these still describe true behaviour.
 **Risks:**
 - **RISK-002** Until Phase 3 lands, `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` ship the client's repository name in comments. Mitigation: publish only after Phase 3 is approved.
@@ -128,7 +130,7 @@ The money example in `core/output-styles/custom.md` (monthly rent at 7%) is ever
 ## Scope
 
 **In:** `package.json`, `package-lock.json`, `LICENSE`, the plugin version; client names in shipped skill text and in test fixtures.
-**Out:** records and git history; `.claude/scripts/lint.craft.mjs:40` (a fast change after the close, D-004); publishing to npm; `.claude/MEMORY.md:3` ("repository still named AISpec") and the `D:/workspace/github/AISpec/...` paths in `core/skills/branching/templates/manifest.example.yaml`, which are not client names.
+**Out:** records and git history; `.claude/scripts/lint.craft.mjs:40` and the `pr-7287` review ids in `test/hooks/*.test.mjs` (a fast change after the close, D-004); publishing to npm; `.claude/MEMORY.md:3` ("repository still named AISpec") and the `D:/workspace/github/AISpec/...` paths in `core/skills/branching/templates/manifest.example.yaml`, which are not client names.
 
 ## Phase 1: A package npm can publish
 
@@ -207,6 +209,8 @@ Each ticketing example and `api.md` keeps every heading, table column and sectio
 - `core/lib/pr.mjs`: approved comment lines 15 to 17 and 48
 - `core/lib/repos.mjs`: approved comment line 2
 - `core/skills/documenting/scripts/filename.mjs`: approved comment line 40
+- `core/lib/comments.mjs`: `normalise()` strips a trailing `*/`
+- `test/kernel/comments.test.mjs`: one-line block approval matches
 
 **Changes:** Apply the D-003 mapping to string literals and identifiers only. Every assertion keeps its meaning and its counts.
 
@@ -214,14 +218,15 @@ In `packet.test.mjs`, the headline still stops at the colon with `…`. The file
 
 In `pr.test.mjs`, the URL shapes stay: server, services and legacy hosts, with the collection, project, repository and PR number in the same positions. The finding texts get bookshop sentences, for example "the gift-wrap path skips the guard. A cancelled order still starts a shipment."
 
-Per D-004 (r2), replace the eight approved comment lines (OQ-001, all but `.claude/scripts/lint.craft.mjs:40`) with exactly the text recorded in `work/20261010-publishable-package-neutral-examples/comments.jsonl`; no other comment changes.
+Per D-004 (r3), replace the eight approved comment lines (OQ-001, all but `.claude/scripts/lint.craft.mjs:40`) with exactly the text recorded in `work/20261010-publishable-package-neutral-examples/comments.jsonl`; no other comment changes. First, `normalise()` in `core/lib/comments.mjs` also removes a trailing block-comment closer (`*/` with the whitespace before it), so both sides of the approval match reduce to the same body. Add one test to `test/kernel/comments.test.mjs`: a recorded `/** text */` approval matches the added one-line `/** text */` comment, and `normalise("/** doc */")` returns `"doc"`.
 
 **Done when:**
 - **T-3.1** The T-2.1 grep run over `core test` prints only the `rent` line in `core/output-styles/custom.md`.
 - **T-3.2** `packet.test.mjs` asserts the headline `  The nightly stock sync can no longer write STOCK.RESERVED_QTY on either cycle…` and the files line `StockSyncColumnEvaluator.cs, StockSyncColumnChanges.cs, +8 more`.
-- **T-3.3** `grep -c '^test(' <file>` gives the same count before and after for each of the five files: no test was added or removed.
+- **T-3.3** `grep -c '^test(' <file>` gives the same count before and after for each of the five fixture test files: no test was added or removed there.
 - **T-3.4** `npm test` passes.
 - **T-3.5** Each of the eight comment lines equals its recorded text in `comments.jsonl` character for character, and `guard.comments` allowed every edit.
+- **T-3.6** `test/kernel/comments.test.mjs` has a test that a recorded `/** text */` approval matches the added one-line comment; it fails with the old `normalise()` and passes with the new one, and the existing `normalise` assertions still pass.
 
 ## Open questions
 
@@ -239,3 +244,4 @@ Per D-004 (r2), replace the eight approved comment lines (OQ-001, all but `.clau
 ## Revision log
 
 - 2026-10-10: D-004 (r2): approved comment texts written in Phase 3, lint.craft.mjs left to a later fast change; T-2.3 matches the packet's two names and `+7 more` (user ruling).
+- 2026-10-10: D-004 (r3): Phase 3 fixes `normalise()` to strip a trailing `*/`, since one-line block comment approvals never matched; adds a test (user ruling, Phase 3 stall).

@@ -67,6 +67,12 @@ test("normalise strips the token, collapses whitespace and trims", () => {
   assert.equal(normalise("## banner"), "banner");
 });
 
+test("a recorded one-line block comment approval matches the comment it approves", () => {
+  const approval = "/** A nested product repo at src/Orders on branch main. */";
+  assert.equal(normalise("/** doc */"), "doc");
+  assert.deepEqual(addedComments({ ext: ".mjs", before: "", after: approval }), [normalise(approval)]);
+});
+
 test("addedComments is a multiset difference, so kept and moved comments never count", () => {
   const before = lines("// keep", "const a = 1;", "// keep", "// moved");
   const after = lines("// moved", "// keep", "const a = 2;", "// keep", "// keep", "// new one");

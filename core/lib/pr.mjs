@@ -12,9 +12,9 @@ import { hostPath } from "./paths.mjs";
 export const PAT_VARS = ["AZDO_PAT", "AZURE_DEVOPS_EXT_PAT"];
 
 /**
- * Azure DevOps Server:   https://tfs.corp.local/tfs/DefaultCollection/Fleet/_git/Rent/pullrequest/7287
- * Azure DevOps Services: https://dev.azure.com/org/Fleet/_git/Rent/pullrequest/7287
- * Legacy Services:       https://org.visualstudio.com/Fleet/_git/Rent/pullrequest/7287
+ * Azure DevOps Server:   https://tfs.corp.local/tfs/DefaultCollection/Shop/_git/Orders/pullrequest/412
+ * Azure DevOps Services: https://dev.azure.com/org/Shop/_git/Orders/pullrequest/412
+ * Legacy Services:       https://org.visualstudio.com/Shop/_git/Orders/pullrequest/412
  * GitHub:                https://github.com/owner/repo/pull/42
  */
 export function parsePullRequestUrl(raw) {
@@ -45,7 +45,7 @@ function git(root, args, opts = {}) {
 
 /**
  * Where the PR's repository is checked out: the root itself, or a nested repo one or two levels
- * down (an umbrella with `src/Rent` as its own clone is the common shape here). Returns the repo
+ * down (an umbrella with `src/Orders` as its own clone is the common shape here). Returns the repo
  * path and the remote name, or null with the reason.
  */
 export function locateRepo(root, pr) {

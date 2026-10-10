@@ -37,7 +37,7 @@ if (!TYPES.includes(type)) die(`type must be one of ${TYPES.join(', ')}, order, 
 
 let subject = subjectArg;
 
-// API subjects are usually an endpoint path (e.g. "POST /v1/rental-orders/confirm").
+// API subjects are usually an endpoint path (e.g. "POST /v1/book-orders/confirm").
 // Strip a leading HTTP method so it does not pollute the stem.
 if (type === 'api') {
   subject = subject.replace(/^\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/i, '').trim();

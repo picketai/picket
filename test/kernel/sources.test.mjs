@@ -153,7 +153,7 @@ test("a root inside this project protects that folder only; a subfolder of anoth
 function openWithStory(root, story, sourceRoot) {
   const file = join(root, "story.txt");
   writeFileSync(file, story);
-  return cli(root, ["new", "--lane", "order", "--title", "Fees", "--ticket", "RENT-1", "--story", file], sourceRoot);
+  return cli(root, ["new", "--lane", "order", "--title", "Fees", "--ticket", "SHOP-1", "--story", file], sourceRoot);
 }
 
 function readYaml(root, id) {
@@ -162,21 +162,21 @@ function readYaml(root, id) {
 
 test("a document only in the main worktree resolves single, and the snapshot is its bytes (T-4.1, T-4.6)", () => {
   const { base, main } = tempSource();
-  mkdirSync(join(main, "docs", "rent"));
-  writeFileSync(join(main, "docs", "rent", "pricing.md"), "# Rent pricing\n");
+  mkdirSync(join(main, "docs", "orders"));
+  writeFileSync(join(main, "docs", "orders", "pricing.md"), "# Order pricing\n");
   git(main, "add", "-A");
-  git(main, "commit", "-q", "-m", "rent pricing");
-  writeFileSync(join(main, "docs", "rent", "pricing.md"), "# Rent pricing\n\nDraft: weekend rate.\n");
+  git(main, "commit", "-q", "-m", "order pricing");
+  writeFileSync(join(main, "docs", "orders", "pricing.md"), "# Order pricing\n\nDraft: weekend rate.\n");
   const root = tempProject();
-  const r = openWithStory(root, "As a renter I pay what `docs/rent/pricing.md` says.\n", main);
+  const r = openWithStory(root, "As a customer I pay what `docs/orders/pricing.md` says.\n", main);
   assert.equal(r.code, 0, r.err);
   const { id, source } = JSON.parse(r.out);
-  assert.equal(source, "RENT-1");
-  assert.equal(readFileSync(join(root, "work", id, "story.md"), "utf8"), "As a renter I pay what `docs/rent/pricing.md` says.\n");
+  assert.equal(source, "SHOP-1");
+  assert.equal(readFileSync(join(root, "work", id, "story.md"), "utf8"), "As a customer I pay what `docs/orders/pricing.md` says.\n");
   const [ref] = readYaml(root, id).refs;
-  assert.deepEqual([ref.ref, ref.status, ref.chosen_by, ref.branch, ref.dirty], ["docs/rent/pricing.md", "resolved", "single", "main", true]);
+  assert.deepEqual([ref.ref, ref.status, ref.chosen_by, ref.branch, ref.dirty], ["docs/orders/pricing.md", "resolved", "single", "main", true]);
   assert.equal(ref.commit, git(main, "rev-parse", "HEAD"), "a dirty copy records the worktree's HEAD");
-  assert.deepEqual(readFileSync(join(root, "work", id, ref.snapshot)), readFileSync(join(main, "docs", "rent", "pricing.md")));
+  assert.deepEqual(readFileSync(join(root, "work", id, ref.snapshot)), readFileSync(join(main, "docs", "orders", "pricing.md")));
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });
@@ -253,17 +253,17 @@ test("tokens strip punctuation and line suffixes, read pins, refuse dot segments
 });
 
 test("a #fragment and a markdown link target resolve their path; an unshaped path goes to unmatched", () => {
-  assert.deepEqual(tokens("See [late fees](./docs/rent/late%2Dfees.md), docs/rent/fees.md#late-fees and docs/rent/fees.md?v=2."), [
-    { ref: "docs/rent/late-fees.md", source: null, path: "docs/rent/late-fees.md", anchor: null, pin: null },
-    { ref: "docs/rent/fees.md", source: null, path: "docs/rent/fees.md", anchor: "late-fees", pin: null },
+  assert.deepEqual(tokens("See [late fees](./docs/orders/late%2Dfees.md), docs/orders/fees.md#late-fees and docs/orders/fees.md?v=2."), [
+    { ref: "docs/orders/late-fees.md", source: null, path: "docs/orders/late-fees.md", anchor: null, pin: null },
+    { ref: "docs/orders/fees.md", source: null, path: "docs/orders/fees.md", anchor: "late-fees", pin: null },
   ]);
   const { base, main } = tempSource();
-  mkdirSync(join(main, "docs", "rent"));
-  writeFileSync(join(main, "docs", "rent", "fees.md"), "# Fees\n");
+  mkdirSync(join(main, "docs", "orders"));
+  writeFileSync(join(main, "docs", "orders", "fees.md"), "# Fees\n");
   const root = tempProject();
-  const r = openWithStory(root, "Per [fees](docs/rent/fees.md) and docs/rent/fees.md#late-fees; also docs/ré/x.md.", main);
+  const r = openWithStory(root, "Per [fees](docs/orders/fees.md) and docs/orders/fees.md#late-fees; also docs/ré/x.md.", main);
   const record = readYaml(root, JSON.parse(r.out).id);
-  assert.deepEqual(record.refs.map((x) => [x.ref, x.anchor]), [["docs/rent/fees.md", "late-fees"]]);
+  assert.deepEqual(record.refs.map((x) => [x.ref, x.anchor]), [["docs/orders/fees.md", "late-fees"]]);
   assert.deepEqual(record.unmatched, ["docs/ré/x.md"]);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });

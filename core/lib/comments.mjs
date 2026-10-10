@@ -76,7 +76,7 @@ export function commentOf(text, lang) {
 }
 
 export function normalise(body) {
-  return body.replace(/^[\s/!*#]+/, "").replace(/\s+/g, " ").trim();
+  return body.replace(/^[\s/!*#]+/, "").replace(/\s*\*\/\s*$/, "").replace(/\s+/g, " ").trim();
 }
 
 function isDirective(text) {
