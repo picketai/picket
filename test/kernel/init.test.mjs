@@ -38,7 +38,7 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
   try {
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped" });
+    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped", status: "skipped" });
     assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
     assert.deepEqual(JSON.parse(read(root, ".picket", "config.json")), { version: 1 });
     assert.ok(read(root, ".gitignore").split("\n").includes(".picket/state/"));
@@ -55,7 +55,7 @@ test("a second init reports every step unchanged and leaves the files byte-ident
     const before = files.map((p) => read(root, p));
     const r = runInit(root);
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "skipped", plugin: "skipped" });
+    assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "skipped", plugin: "skipped", status: "skipped" });
     assert.deepEqual(files.map((p) => read(root, p)), before);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -202,7 +202,7 @@ test("a settings file that is not JSON fails its step, stays as is, and the othe
     writeSettings(root, "{ not json");
     const r = runInit(root);
     assert.equal(r.code, 2);
-    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "skipped", plugin: "skipped" });
+    assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "skipped", plugin: "skipped", status: "skipped" });
     assert.equal(read(root, ".claude", "settings.json"), "{ not json");
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -218,7 +218,7 @@ function recordingRunner(onCall = () => {}) {
   return { calls, exec };
 }
 
-test("init registers the marketplace, then installs the plugin, both from the project root", () => {
+test("init registers the marketplace, then installs picket and picket-status, all from the project root", () => {
   const root = gitRepo();
   try {
     const { calls, exec } = recordingRunner();
@@ -228,24 +228,47 @@ test("init registers the marketplace, then installs the plugin, both from the pr
     assert.deepEqual(calls, [
       { command: "claude", args: ["plugin", "marketplace", "add", checkout, "--scope", "project"], cwd: root },
       { command: "claude", args: ["plugin", "install", "picket@picketai", "--scope", "project"], cwd: root },
+      { command: "claude", args: ["plugin", "install", "picket-status@picketai", "--scope", "project"], cwd: root },
     ]);
     assert.equal(results(report).marketplace, "created");
     assert.equal(results(report).plugin, "created");
+    assert.equal(results(report).status, "created");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("init runs no claude command when the project already knows the marketplace and the plugin", () => {
+const KNOWN_MARKETPLACE = { picketai: { source: { source: "directory", path: "x" } } };
+
+function installedSettings(root, enabledPlugins) {
+  mkdirSync(join(root, ".claude"));
+  writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: KNOWN_MARKETPLACE, enabledPlugins }));
+}
+
+test("init runs no claude command when the project already knows the marketplace and both plugins", () => {
   const root = gitRepo();
   try {
-    mkdirSync(join(root, ".claude"));
-    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "picketai": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "picket@picketai": true } }));
+    installedSettings(root, { "picket@picketai": true, "picket-status@picketai": true });
     const { calls, exec } = recordingRunner();
     const report = init(root, { exec });
     assert.deepEqual(calls, []);
     assert.equal(results(report).marketplace, "unchanged");
     assert.equal(results(report).plugin, "unchanged");
+    assert.equal(results(report).status, "unchanged");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("init leaves a disabled picket-status disabled and runs no claude command for it", () => {
+  const root = gitRepo();
+  try {
+    installedSettings(root, { "picket@picketai": true, "picket-status@picketai": false });
+    const { calls, exec } = recordingRunner();
+    const report = init(root, { exec });
+    assert.deepEqual(calls, []);
+    assert.equal(results(report).status, "unchanged");
+    assert.equal(JSON.parse(read(root, ".claude", "settings.json")).enabledPlugins["picket-status@picketai"], false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -254,19 +277,19 @@ test("init runs no claude command when the project already knows the marketplace
 test("installed from the cache, with no marketplace beside the plugin, a rerun reports the install unchanged", () => {
   const root = gitRepo();
   try {
-    mkdirSync(join(root, ".claude"));
-    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "picketai": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "picket@picketai": true } }));
+    installedSettings(root, { "picket@picketai": true, "picket-status@picketai": true });
     const { calls, exec } = recordingRunner();
     const report = init(root, { exec, market: null });
     assert.deepEqual(calls, []);
     assert.equal(results(report).marketplace, "unchanged");
     assert.equal(results(report).plugin, "unchanged");
+    assert.equal(results(report).status, "unchanged");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("with no marketplace beside the plugin, an uninstalled project fails both install steps without running claude", () => {
+test("with no marketplace beside the plugin, an uninstalled project fails all three install steps without running claude", () => {
   const root = gitRepo();
   try {
     const { calls, exec } = recordingRunner();
@@ -274,6 +297,7 @@ test("with no marketplace beside the plugin, an uninstalled project fails both i
     assert.deepEqual(calls, []);
     assert.equal(results(report).marketplace, "failed");
     assert.equal(results(report).plugin, "failed");
+    assert.equal(results(report).status, "failed");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -287,8 +311,11 @@ test("a failing claude command fails its step and the exit, and --no-install run
     });
     const report = init(root, { exec });
     assert.equal(results(report).marketplace, "failed");
-    assert.match(report.steps.find((s) => s.name === "marketplace").detail, /^marketplace source not found; run by hand: claude plugin marketplace add/);
+    const detail = report.steps.find((s) => s.name === "marketplace").detail;
+    assert.match(detail, /^marketplace source not found; run by hand: claude plugin marketplace add/);
+    assert.match(detail, /then claude plugin install picket@picketai --scope project, then claude plugin install picket-status@picketai --scope project$/);
     assert.equal(results(report).plugin, "created");
+    assert.equal(results(report).status, "created");
     assert.equal(results(report)["claude-md"], "created");
 
     const skipped = recordingRunner();
@@ -296,6 +323,7 @@ test("a failing claude command fails its step and the exit, and --no-install run
     assert.deepEqual(skipped.calls, []);
     assert.equal(results(quiet).marketplace, "skipped");
     assert.equal(results(quiet).plugin, "skipped");
+    assert.equal(results(quiet).status, "skipped");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

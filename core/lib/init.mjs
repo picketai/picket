@@ -12,6 +12,7 @@ const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
 const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
 const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
 const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
+const STATUS_PLUGIN_ID = `picket-status@${MARKETPLACE_NAME}`;
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";
 
@@ -150,11 +151,15 @@ function installCommands(market) {
   return [
     { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE_NAME]) },
     { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), PLUGIN_ID, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[PLUGIN_ID]) },
+    { name: "status", args: [...INSTALL_PLUGIN.split(" "), STATUS_PLUGIN_ID, "--scope", "project"], done: (s) => STATUS_PLUGIN_ID in (s.enabledPlugins ?? {}) },
   ];
 }
 
+const INSTALL_STEP_NAMES = installCommands(null).map(({ name }) => name);
+
 function byHand(market) {
-  return `run by hand: claude ${ADD_MARKETPLACE} "${market}" --scope project, then claude ${INSTALL_PLUGIN} ${PLUGIN_ID} --scope project`;
+  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${PLUGIN_ID}`, `${INSTALL_PLUGIN} ${STATUS_PLUGIN_ID}`];
+  return `run by hand: ${commands.map((command) => `claude ${command} --scope project`).join(", then ")}`;
 }
 
 function lastLine(err) {
@@ -164,7 +169,7 @@ function lastLine(err) {
 
 function installSteps(root, { install, exec, market }) {
   const path = hostPath(root, "settings.json");
-  if (!install) return ["marketplace", "plugin"].map((name) => ({ name, path, result: "skipped" }));
+  if (!install) return INSTALL_STEP_NAMES.map((name) => ({ name, path, result: "skipped" }));
   return installCommands(market).map(({ name, args, done }) => {
     if (done(projectSettings(root))) return { name, path, result: "unchanged" };
     if (!market) return { name, path, result: "failed", detail: "no marketplace beside the plugin" };
