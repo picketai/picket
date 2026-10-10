@@ -1,2 +1,0 @@
-tether-probe
-tether-probe\probe_note.md

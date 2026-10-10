@@ -46,4 +46,4 @@ test/                      kernel, hook and budget tests: npm test
 
 ## Status
 
-PLAN.md carries the plan, the research it rests on, the status table and the head-to-head against trunk (section 4.2, clean run of 2026-09-14); `bench/results/comparison-clean.md` is the full report. Headline: 14 of 14 tasks pass against trunk's 13, every task on its intended lane against 57%, cost per task $2.97 against $3.37 at equal wall time, first reviewable output 96 s against 130 s, 0.4 permission prompts per task against 3.1, cache 97% against 91%. The research lane is the one lane that costs more (outline gate).
+`artifacts/reports/rework-plan-2026-09-07.md` carries the plan, the research it rests on, the status table and the head-to-head against trunk (section 4.2, clean run of 2026-09-14); `bench/results/comparison-clean.md` is the full report. Headline: 14 of 14 tasks pass against trunk's 13, every task on its intended lane against 57%, cost per task $2.97 against $3.37 at equal wall time, first reviewable output 96 s against 130 s, 0.4 permission prompts per task against 3.1, cache 97% against 91%. The research lane is the one lane that costs more (outline gate).

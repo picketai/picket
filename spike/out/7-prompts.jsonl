@@ -1,2 +1,0 @@
-{"t":1791113089643,"tool":"Bash","command":"tether next demo","decision":"allow"}
-{"t":1791113090769,"tool":"PowerShell","command":"node \"D:/workspace/github/AISpec/.worktrees/framework/spike/tether/bin/tether.mjs\" next demo","decision":"allow"}

@@ -38,7 +38,7 @@ A test never depends on a gitignored file. A fresh clone must pass, so a test th
 
 Prose follows `core/rules/prose.md`: no em or en dashes, short paragraphs, plain English.
 
-Every backticked span in a scanned Markdown file that looks like a repository path must exist in a fresh checkout, resolved from the citing file's folder or any folder above it, or, for a file under `core/`, from `core/skills/`, the folder a skill path is relative to. `test/markdown-paths.test.mjs` enforces this. It skips fenced blocks, spans with placeholders such as `<id>` or globs, and Markdown under `work/`, `spike/`, `tmp/`, `artifacts/reports/`, `bench/results/` and the examples folder of each skill.
+Every backticked span in a scanned Markdown file that looks like a repository path must exist in a fresh checkout, resolved from the citing file's folder or any folder above it, or, for a file under `core/`, from `core/skills/`, the folder a skill path is relative to. `test/markdown-paths.test.mjs` enforces this. It skips fenced blocks, spans with placeholders such as `<id>` or globs, and Markdown under `work/`, `artifacts/`, `bench/results/` and the examples folder of each skill.
 
 A path that is correct but cannot exist here (created at run time, machine-local, or part of a host project's layout) goes in the `ELSEWHERE` list of that test, inside the group whose `why` fits, or a new group with its own `why`. The same test fails when an `ELSEWHERE` path is no longer cited or starts to exist, so the list stays short.
 
@@ -52,4 +52,4 @@ Agents never commit. The developer stages a phase and proposes a message, and th
 
 ## Folders outside the product
 
-`spike/` holds experiments and is deleted before the alpha. `tmp/` is scratch space for notes. `work/` holds one dated folder per work item and `artifacts/reports/` holds dated research reports; both are records of their time, so the Markdown path test does not check them.
+`work/` holds one dated folder per work item and `artifacts/` holds dated reports and decision records; both are records of their time, so the Markdown path test does not check them.

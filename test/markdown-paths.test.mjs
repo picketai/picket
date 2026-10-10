@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(".");
 
-const UNSCANNED_PREFIXES = ["work/", "spike/", "tmp/", "artifacts/", "bench/results/"];
+const UNSCANNED_PREFIXES = ["work/", "artifacts/", "bench/results/"];
 const PROJECT_MEMORY = ".claude/MEMORY.md";
 const SUPERSEDED = "[superseded";
 const SKILL_EXAMPLES = /^core\/skills\/[^/]+\/examples\//;
@@ -26,7 +26,6 @@ const ELSEWHERE = [
       ".picket/state/ledger.jsonl",
       ".picket/state/scratch/",
       ".picket/state/scratch/drive.mjs",
-      ".opensrc/",
       ".worktrees/",
       "artifacts/api/",
       "bench/.runs/",
