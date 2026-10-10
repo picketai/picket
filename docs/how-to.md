@@ -49,8 +49,8 @@ picket init
 2. Creates `.picket/config.json` with `{ "version": 1 }`.
 3. Adds `.picket/state/` to `.gitignore`. That folder holds logs and runtime state that never belong in git.
 4. Adds permission rules to `.claude/settings.json`: `Bash(picket *)` and `PowerShell(picket *)` so the kernel runs without a prompt, and read access to the plugin cache. If your `permissions.deny` already blocks one of them, `init` leaves it out and says so.
-5. Registers the marketplace `picket-dev` (the folder of the npm package) with project scope.
-6. Installs the plugin `picket@picket-dev` with project scope.
+5. Registers the marketplace `picketai` (the folder of the npm package) with project scope.
+6. Installs the plugin `picket@picketai` with project scope.
 
 Running `init` again is safe: it changes only what is missing. To write the files but skip the two `claude` commands, use `picket init --no-install`; it then prints the two commands to run by hand.
 
@@ -243,8 +243,8 @@ This creates the manifest `.picket/extensions/<name>/extension.json`, here with 
 
 ```sh
 npm update -g @picketai/picket
-claude plugin marketplace update picket-dev
-claude plugin update picket@picket-dev --scope project
+claude plugin marketplace update picketai
+claude plugin update picket@picketai --scope project
 ```
 
 Restart Claude Code to load the new version. Run `picket init` in each project afterwards: it is safe to repeat and adds any setting a new version needs.
@@ -252,17 +252,17 @@ Restart Claude Code to load the new version. Run `picket init` in each project a
 ## Removing Picket from a project
 
 ```sh
-claude plugin uninstall picket@picket-dev --scope project
-claude plugin marketplace remove picket-dev --scope project
+claude plugin uninstall picket@picketai --scope project
+claude plugin marketplace remove picketai --scope project
 ```
 
-Then delete the Picket block from `CLAUDE.md`, the `picket` permission rules from `.claude/settings.json`, and the `.picket/` folder if you no longer want its settings. Keep `work/` if you want the history of past work items. A copy of the plugin stays in `~/.claude/plugins/cache/picket-dev/`, marked orphaned, until Claude Code cleans it up.
+Then delete the Picket block from `CLAUDE.md`, the `picket` permission rules from `.claude/settings.json`, and the `.picket/` folder if you no longer want its settings. Keep `work/` if you want the history of past work items. A copy of the plugin stays in `~/.claude/plugins/cache/picketai/`, marked orphaned, until Claude Code cleans it up.
 
 To remove the command from your machine: `npm uninstall -g @picketai/picket`.
 
 ## Troubleshooting
 
-**`/picket:inspecting` is an unknown command.** The plugin is not enabled for this project. Run `claude plugin list` and look for `picket@picket-dev`. If it is missing, run `picket init` again in the project root and restart Claude Code.
+**`/picket:inspecting` is an unknown command.** The plugin is not enabled for this project. Run `claude plugin list` and look for `picket@picketai`. If it is missing, run `picket init` again in the project root and restart Claude Code.
 
 **`picket: command not found`.** The global npm folder is not on your `PATH`. `npm prefix -g` prints it; add its `bin` folder (on Windows, the folder itself) to `PATH` and open a new terminal.
 

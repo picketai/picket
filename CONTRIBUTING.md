@@ -20,7 +20,7 @@ In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plug
 node <path to this checkout>/core/bin/picket.mjs init
 ```
 
-It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore` and the permission keys in `.claude/settings.json`, then runs `claude plugin marketplace add` and `claude plugin install picket@picket-dev` with `--scope project`. A second run changes nothing; `--no-install` skips the two `claude` commands. The marketplace name `picket-dev` is provisional. To undo it, run `claude plugin uninstall picket@picket-dev --scope project` and `claude plugin marketplace remove picket-dev --scope project`. A copy stays under `~/.claude/plugins/cache/picket-dev/`, marked orphaned.
+It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore` and the permission keys in `.claude/settings.json`, then runs `claude plugin marketplace add` and `claude plugin install picket@picketai` with `--scope project`. A second run changes nothing; `--no-install` skips the two `claude` commands. To undo it, run `claude plugin uninstall picket@picketai --scope project` and `claude plugin marketplace remove picketai --scope project`. A copy stays under `~/.claude/plugins/cache/picketai/`, marked orphaned.
 
 ## Code
 

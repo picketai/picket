@@ -18,7 +18,7 @@ test("a plugin install is what picket init writes: the shipped block, config, wo
     assert.equal("hooks" in settings, false);
     assert.deepEqual(settings, {
       env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
-      permissions: { allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picket-dev/**)"], ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"] },
+      permissions: { allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"], ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"] },
     });
     assert.deepEqual(JSON.parse(readFileSync(join(repo, ".picket", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".picket/config.json"), "utf8")));
     for (const path of [".claude/rules", ".claude/skills", "core"]) assert.equal(existsSync(join(repo, path)), false, path);

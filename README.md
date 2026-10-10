@@ -33,7 +33,7 @@ core/bin/picket            the kernel CLI on the Bash tool's PATH; core/bin/pick
 core/hooks/                eleven hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
                            state and rule injection, verdict router, ledger
 .claude/rules/             harness-authoring (repository-only, never installed)
-.claude-plugin/            the root marketplace picket-dev (provisional name): one plugin, picket, from ./core
+.claude-plugin/            the root marketplace picketai: one plugin, picket, from ./core
 .picket/config.json        project settings (tracked): security paths, sources, lane caps, commands;
                            the contract is core/lib/config.schema.json
 .picket/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml

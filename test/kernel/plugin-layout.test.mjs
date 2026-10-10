@@ -109,9 +109,9 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picket-dev serves the one picket plugin from core/", () => {
+test("the root marketplace picketai serves the one picket plugin from core/", () => {
   const marketplace = readJson(MARKETPLACE);
-  assert.equal(marketplace.name, "picket-dev");
+  assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
   assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [{ name: "picket", source: "./core" }]);
 });

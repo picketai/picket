@@ -138,7 +138,7 @@ test("this repository's CLAUDE.md carries the shipped block verbatim, with no re
 const INIT_SETTINGS = {
   env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
   permissions: {
-    allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picket-dev/**)"],
+    allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"],
     ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
   },
 };
@@ -168,7 +168,7 @@ test("init keeps existing settings in value and order and appends what is missin
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
     assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env"]);
     assert.equal(settings.outputStyle, "Explanatory");
-    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picket-dev/**)"]);
+    assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"]);
     assert.deepEqual(settings.permissions.ask, INIT_SETTINGS.permissions.ask);
     assert.deepEqual(settings.env, { FOO: "1", CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" });
 
@@ -187,7 +187,7 @@ test("init does not allow a rule the project denies, and says so", () => {
     const r = runInit(root, { args: ["--human"] });
     assert.equal(r.code, 0, r.stderr);
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
-    assert.deepEqual(settings.permissions.allow, ["Bash(picket *)", "Read(~/.claude/plugins/cache/picket-dev/**)"]);
+    assert.deepEqual(settings.permissions.allow, ["Bash(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"]);
     assert.deepEqual(settings.permissions.deny, ["PowerShell(picket *)"]);
     const line = r.stdout.split("\n").find((l) => l.startsWith("settings: "));
     assert.match(line, /WARNING: permissions\.deny holds PowerShell\(picket \*\)/);
@@ -227,7 +227,7 @@ test("init registers the marketplace, then installs the plugin, both from the pr
     assert.ok(checkout, "this checkout holds .claude-plugin/marketplace.json");
     assert.deepEqual(calls, [
       { command: "claude", args: ["plugin", "marketplace", "add", checkout, "--scope", "project"], cwd: root },
-      { command: "claude", args: ["plugin", "install", "picket@picket-dev", "--scope", "project"], cwd: root },
+      { command: "claude", args: ["plugin", "install", "picket@picketai", "--scope", "project"], cwd: root },
     ]);
     assert.equal(results(report).marketplace, "created");
     assert.equal(results(report).plugin, "created");
@@ -240,7 +240,7 @@ test("init runs no claude command when the project already knows the marketplace
   const root = gitRepo();
   try {
     mkdirSync(join(root, ".claude"));
-    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "picket-dev": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "picket@picket-dev": true } }));
+    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "picketai": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "picket@picketai": true } }));
     const { calls, exec } = recordingRunner();
     const report = init(root, { exec });
     assert.deepEqual(calls, []);
@@ -255,7 +255,7 @@ test("installed from the cache, with no marketplace beside the plugin, a rerun r
   const root = gitRepo();
   try {
     mkdirSync(join(root, ".claude"));
-    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "picket-dev": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "picket@picket-dev": true } }));
+    writeFileSync(join(root, ".claude", "settings.json"), JSON.stringify({ extraKnownMarketplaces: { "picketai": { source: { source: "directory", path: "x" } } }, enabledPlugins: { "picket@picketai": true } }));
     const { calls, exec } = recordingRunner();
     const report = init(root, { exec, market: null });
     assert.deepEqual(calls, []);
@@ -318,7 +318,7 @@ test("init writes the plugin cache read rule once, and a rerun keeps it once", (
     runInit(root);
     runInit(root);
     const allow = JSON.parse(read(root, ".claude", "settings.json")).permissions.allow;
-    assert.equal(allow.filter((rule) => rule === "Read(~/.claude/plugins/cache/picket-dev/**)").length, 1);
+    assert.equal(allow.filter((rule) => rule === "Read(~/.claude/plugins/cache/picketai/**)").length, 1);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

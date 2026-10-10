@@ -1,5 +1,5 @@
 {
-  "name": "picket-dev",
+  "name": "picketai",
   "description": "Development marketplace for the Picket plugin, served from this checkout.",
   "owner": { "name": "Vlad Apetre" },
   "plugins": [
