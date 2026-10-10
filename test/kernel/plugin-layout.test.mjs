@@ -11,8 +11,7 @@ const SETTINGS = resolve(".claude/settings.json");
 const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const PACKAGE = resolve("package.json");
-const STATUS_MANIFEST = resolve("status/.claude-plugin/plugin.json");
-const STATUS_FILES = ["status/.claude-plugin/plugin.json", "status/hooks/", "status/types/"];
+const MOD_FOLDERS = ["status", "session"];
 const LAUNCHER = "core/bin/picket";
 const EXECUTABLE_MODE = "100755";
 
@@ -111,13 +110,14 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picketai serves picket from core/ and picket-status from status/", () => {
+test("the root marketplace picketai serves picket from core/, picket-status from status/ and picket-session from session/", () => {
   const marketplace = readJson(MARKETPLACE);
   assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
   assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [
     { name: "picket", source: "./core" },
     { name: "picket-status", source: "./status" },
+    { name: "picket-session", source: "./session" },
   ]);
 });
 
@@ -136,11 +136,13 @@ test("the npm package ships the plugin and its marketplace at the plugin's versi
   assert.equal("dependencies" in pkg, false);
 });
 
-test("the npm package ships the picket-status sources at the package version, without generated files", () => {
+test("the npm package ships each mod's sources at the package version, without generated files", () => {
   const pkg = readJson(PACKAGE);
-  for (const entry of STATUS_FILES) assert.ok(pkg.files.includes(entry), `files ships ${entry}`);
-  assert.equal(pkg.files.includes("status/"), false, "files names status/ sources, not the folder an engine writes into");
-  assert.equal(readJson(STATUS_MANIFEST).version, pkg.version);
+  for (const folder of MOD_FOLDERS) {
+    for (const entry of [`${folder}/.claude-plugin/plugin.json`, `${folder}/hooks/`, `${folder}/types/`]) assert.ok(pkg.files.includes(entry), `files ships ${entry}`);
+    assert.equal(pkg.files.includes(`${folder}/`), false, `files names ${folder}/ sources, not the folder an engine writes into`);
+    assert.equal(readJson(resolve(folder, ".claude-plugin", "plugin.json")).version, pkg.version, `${folder} manifest version`);
+  }
 });
 
 test("the picket launcher is tracked as executable", () => {

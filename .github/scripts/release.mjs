@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PLUGIN_MANIFESTS = ["core/.claude-plugin/plugin.json", "status/.claude-plugin/plugin.json"];
+const PLUGIN_MANIFESTS = ["core/.claude-plugin/plugin.json", "status/.claude-plugin/plugin.json", "session/.claude-plugin/plugin.json"];
 const VERSION_VALUE = /("version"\s*:\s*")[^"]*(")/g;
 
 export function syncPluginVersion(manifestText, version, manifestPath = "the plugin manifest") {

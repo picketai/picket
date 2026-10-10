@@ -43,3 +43,4 @@ work/*/sources/
 tmp/
 
 status/tsconfig.json
+session/tsconfig.json

@@ -12,6 +12,11 @@
       "name": "picket-status",
       "source": "./status",
       "description": "Model, thinking, skill, rate-limit windows, context and cache in one band"
+    },
+    {
+      "name": "picket-session",
+      "source": "./session",
+      "description": "Sessions of this project and every agent of this one, in a docked sidebar"
     }
   ]
 }
