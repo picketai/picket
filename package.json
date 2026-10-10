@@ -19,12 +19,16 @@
   "files": [
     "core/",
     ".claude-plugin/marketplace.json",
+    "status/.claude-plugin/plugin.json",
+    "status/hooks/",
+    "status/types/",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
     "test": "node scripts/test.mjs",
-    "version": "node .github/scripts/release.mjs sync-version && git add core/.claude-plugin/plugin.json",
+    "version": "node .github/scripts/release.mjs sync-version && git add core/.claude-plugin/plugin.json status/.claude-plugin/plugin.json",
+    "test:status": "claude plugin validate --strict status && claude plugin test status",
     "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
     "bench:test": "node --test bench/test/",
     "bench:integration": "node --test bench/integration/",

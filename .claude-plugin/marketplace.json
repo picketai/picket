@@ -7,6 +7,11 @@
       "name": "picket",
       "source": "./core",
       "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel."
+    },
+    {
+      "name": "picket-status",
+      "source": "./status",
+      "description": "Model, thinking, skill, rate-limit windows, context and cache in one band"
     }
   ]
 }

@@ -2,12 +2,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PLUGIN_MANIFEST = "core/.claude-plugin/plugin.json";
+const PLUGIN_MANIFESTS = ["core/.claude-plugin/plugin.json", "status/.claude-plugin/plugin.json"];
 const VERSION_VALUE = /("version"\s*:\s*")[^"]*(")/g;
 
-export function syncPluginVersion(manifestText, version) {
+export function syncPluginVersion(manifestText, version, manifestPath = "the plugin manifest") {
   const found = manifestText.match(VERSION_VALUE)?.length ?? 0;
-  if (found !== 1) throw new Error(`${PLUGIN_MANIFEST} holds ${found} version values; expected exactly one`);
+  if (found !== 1) throw new Error(`${manifestPath} holds ${found} version values; expected exactly one`);
   return manifestText.replace(VERSION_VALUE, `$1${version}$2`);
 }
 
@@ -28,8 +28,12 @@ function packageVersion(root) {
 }
 
 function syncVersion(root) {
-  const manifest = join(root, PLUGIN_MANIFEST);
-  writeFileSync(manifest, syncPluginVersion(readFileSync(manifest, "utf8"), packageVersion(root)));
+  const version = packageVersion(root);
+  const synced = PLUGIN_MANIFESTS.map((manifestPath) => {
+    const file = join(root, manifestPath);
+    return { file, text: syncPluginVersion(readFileSync(file, "utf8"), version, manifestPath) };
+  });
+  for (const { file, text } of synced) writeFileSync(file, text);
 }
 
 function printDistTag(root, refName) {

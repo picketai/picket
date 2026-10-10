@@ -41,3 +41,5 @@ work/*/sources/
 .claude/settings.local.json
 
 tmp/
+
+status/tsconfig.json

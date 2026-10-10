@@ -11,6 +11,8 @@ const SETTINGS = resolve(".claude/settings.json");
 const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const PACKAGE = resolve("package.json");
+const STATUS_MANIFEST = resolve("status/.claude-plugin/plugin.json");
+const STATUS_FILES = ["status/.claude-plugin/plugin.json", "status/hooks/", "status/types/"];
 const LAUNCHER = "core/bin/picket";
 const EXECUTABLE_MODE = "100755";
 
@@ -109,11 +111,14 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picketai serves the one picket plugin from core/", () => {
+test("the root marketplace picketai serves picket from core/ and picket-status from status/", () => {
   const marketplace = readJson(MARKETPLACE);
   assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
-  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [{ name: "picket", source: "./core" }]);
+  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [
+    { name: "picket", source: "./core" },
+    { name: "picket-status", source: "./status" },
+  ]);
 });
 
 test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin/ or .claude/skills/", () => {
@@ -129,6 +134,13 @@ test("the npm package ships the plugin and its marketplace at the plugin's versi
   assert.ok(pkg.files.includes("core/"), "files ships core/");
   assert.ok(pkg.files.includes(".claude-plugin/marketplace.json"), "files ships the marketplace init looks for beside core/");
   assert.equal("dependencies" in pkg, false);
+});
+
+test("the npm package ships the picket-status sources at the package version, without generated files", () => {
+  const pkg = readJson(PACKAGE);
+  for (const entry of STATUS_FILES) assert.ok(pkg.files.includes(entry), `files ships ${entry}`);
+  assert.equal(pkg.files.includes("status/"), false, "files names status/ sources, not the folder an engine writes into");
+  assert.equal(readJson(STATUS_MANIFEST).version, pkg.version);
 });
 
 test("the picket launcher is tracked as executable", () => {

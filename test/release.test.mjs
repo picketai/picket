@@ -8,12 +8,19 @@ import { checkTag, distTag, syncPluginVersion } from "../.github/scripts/release
 
 const SCRIPT = resolve(".github/scripts/release.mjs");
 const MANIFEST = '{\n  "name": "picket",\n  "version": "1.0.0-alpha.1",\n  "author": { "name": "Vlad Apetre" },\n  "skills": ["./skills/a"]\n}\n';
+const STATUS_MANIFEST = '{\n  "name": "picket-status",\n  "version": "1.0.0-alpha.1",\n  "types": "./types/index.d.ts"\n}\n';
 
-function project(manifest, version) {
+function manifestPath(root, plugin) {
+  return join(root, plugin, ".claude-plugin", "plugin.json");
+}
+
+function project(manifest, version, statusManifest = STATUS_MANIFEST) {
   const root = mkdtempSync(join(tmpdir(), "picket-release-"));
-  mkdirSync(join(root, "core", ".claude-plugin"), { recursive: true });
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "@picketai/picket", version }));
-  writeFileSync(join(root, "core", ".claude-plugin", "plugin.json"), manifest);
+  for (const [plugin, text] of [["core", manifest], ["status", statusManifest]]) {
+    mkdirSync(join(root, plugin, ".claude-plugin"), { recursive: true });
+    writeFileSync(manifestPath(root, plugin), text);
+  }
   return root;
 }
 
@@ -44,18 +51,31 @@ test("checkTag accepts only the v-prefixed package version", () => {
   assert.throws(() => checkTag("v1.0.0-alpha.9", "1.0.0-alpha.1"), /v1\.0\.0-alpha\.9 does not match package\.json version 1\.0\.0-alpha\.1/);
 });
 
-test("sync-version rewrites the plugin manifest from package.json, and fails in one stderr line", () => {
-  const ok = project(MANIFEST, "1.0.0-alpha.2");
+test("sync-version rewrites both plugin manifests from package.json, and fails in one stderr line", () => {
+  const ok = project(MANIFEST, "9.9.9");
   const twice = project('{ "version": "1", "nested": { "version": "2" } }', "1.0.0-alpha.2");
   try {
     const r = syncVersionCli(ok);
     assert.equal(r.status, 0, r.stderr);
-    assert.match(readFileSync(join(ok, "core", ".claude-plugin", "plugin.json"), "utf8"), /"version": "1\.0\.0-alpha\.2"/);
+    assert.equal(readFileSync(manifestPath(ok, "core"), "utf8"), MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
+    assert.equal(readFileSync(manifestPath(ok, "status"), "utf8"), STATUS_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
     const bad = syncVersionCli(twice);
     assert.equal(bad.status, 1);
     assert.equal(bad.stderr.trim().split("\n").length, 1, bad.stderr);
   } finally {
     rmSync(ok, { recursive: true, force: true });
     rmSync(twice, { recursive: true, force: true });
+  }
+});
+
+test("sync-version writes neither manifest when the status manifest is malformed", () => {
+  const root = project(MANIFEST, "9.9.9", '{ "name": "picket-status" }');
+  try {
+    const r = syncVersionCli(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /status\/\.claude-plugin\/plugin\.json holds 0 version values/);
+    assert.equal(readFileSync(manifestPath(root, "core"), "utf8"), MANIFEST);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
