@@ -26,16 +26,24 @@
       "Bash(git rev-parse*)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git worktree list*)"
+      "Bash(git worktree list*)",
+      "PowerShell(picket *)",
+      "Read(~/.claude/plugins/cache/picketai/**)"
     ],
     "ask": [
       "Bash(rm *)",
       "Bash(git branch*)",
       "Bash(git worktree add*)",
       "Bash(git worktree remove*)",
-      "Bash(git submodule*)"
+      "Bash(git submodule*)",
+      "PowerShell(picket drive *)",
+      "PowerShell(picket check *)"
     ]
   },
-  "outputStyle": "picket:custom",
-  "disableClaudeAiConnectors": true
+  "disableClaudeAiConnectors": true,
+  "enabledPlugins": {
+    "picket@picketai": true,
+    "picket-status@picketai": true
+  },
+  "outputStyle": "picket:custom"
 }
