@@ -5,8 +5,6 @@
 //              ccstatusline renders context, cost, cache and model better than we can, and an
 //              empty segment is hidden rather than printed.
 // Reads Claude Code's status-line JSON on stdin and the newest open work item from disk.
-// Wired through ccstatusline's custom-command widget (see .claude/ccstatusline.json):
-//   "statusLine": { "command": "npx -y ccstatusline@latest --config .claude/ccstatusline.json" }
 // Standalone, with no ccstatusline in the picture, still works:
 //   "statusLine": { "command": "node .claude/bin/statusline.mjs" }
 import { readFileSync } from "node:fs";

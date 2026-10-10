@@ -1,0 +1,1 @@
+Remove the ccstatusline statusLine entry from the project's .claude/settings.json; the status-bar mod replaces it. User chose to remove it now. Leave .claude/ccstatusline.json unless the order decides otherwise.
