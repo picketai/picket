@@ -1,8 +1,7 @@
 id: 20261010-tag-push-publishes-to-npm
 lane: design
 title: Tag push publishes to npm
-status: open
+status: done
 created: 2026-10-10T14:33:57.705Z
-updated: 2026-10-10T14:45:07.101Z
+updated: 2026-10-10T14:55:26.046Z
 base: 0e0bc4d89c89a212a9b7e4cbc5cbcd7dd403797c
-run_through: 3
