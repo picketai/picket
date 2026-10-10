@@ -184,7 +184,7 @@ function hasHiddenExecution(rawCommand) {
 
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
-const BARE_KERNELS = ["picket"];
+const BARE_KERNEL = "picket";
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);
@@ -701,7 +701,7 @@ function protectedSources(root) {
 
 function classifySegment(tokens, cwd = process.cwd(), depth = 0) {
   if (!tokens.length) return "unknown";
-  if (BARE_KERNELS.includes(tokens[0]) && !wrappedCommands(tokens).length) return "kernel";
+  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return "kernel";
   const root = normalizeRoot(tokens[0]);
 
   if (root === "sed") return checkSed(tokens);

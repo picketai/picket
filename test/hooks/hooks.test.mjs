@@ -411,6 +411,13 @@ test("guard.bash traces into the project root's state folder and writes nothing 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.scope lets a model write a drive script under the state scratch folder", () => {
+  const { root } = project();
+  const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: statePath(root, "scratch/drive.mjs") }, cwd: root }, root);
+  assert.equal(out?.hookSpecificOutput?.permissionDecision, undefined);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("guard.scope denies a model write under the state folder (T-2.2)", () => {
   const { root } = project();
   const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: statePath(root, STATE_FILES.ledger) }, cwd: root }, root);

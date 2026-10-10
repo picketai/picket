@@ -69,4 +69,5 @@ test("the Markdown scan flags each old name form", () => {
 test("the kernel scan flags a harness verb in a string and skips comment lines", () => {
   assert.equal(libViolations('const hint = "run harness route <id>";').length, 1);
   assert.equal(libViolations("// harness route is the old name").length, 0);
-  assert.equal(libViolations('const hint = "run picket route <id>";').length, 0);});
+  assert.equal(libViolations('const hint = "run picket route <id>";').length, 0);
+});

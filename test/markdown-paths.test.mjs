@@ -58,7 +58,8 @@ const ELSEWHERE = [
     ],
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
-  { why: "planned by SDR-00001", paths: ["rules/"] },];
+  { why: "planned by SDR-00001", paths: ["rules/"] },
+];
 
 const NOT_A_PATH_CHAR = /[\s<>*{}[\]$~|"'=(),…]/;
 const ABSOLUTE_OR_REMOTE = /^(\/|\.\.\/|[A-Za-z]:|[A-Za-z][A-Za-z0-9+.-]*:\/\/)/;

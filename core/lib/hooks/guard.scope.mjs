@@ -7,6 +7,7 @@ import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } f
 const KERNEL_OWNED = /^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|comments\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/;
 const STATE_PREFIX = `${stateRel("")}/`.toLowerCase();
 const MODEL_WRITABLE_STATE = MODEL_WRITABLE_STATE_FILES.map((name) => stateRel(name).toLowerCase());
+const SCRATCH_PREFIX = `${stateRel("scratch")}/`.toLowerCase();
 const LEGACY_STATE_PREFIX = `${LEGACY.stateDir}/`;
 const EXTENSIONS_PREFIX = `${PICKET_DIR}/extensions/`;
 const CONFIG_REL = configRel();
@@ -41,7 +42,7 @@ function confirmationReason(rel) {
 
 function isHookOnlyState(rel) {
   const path = rel.toLowerCase();
-  return path.startsWith(STATE_PREFIX) && !MODEL_WRITABLE_STATE.includes(path);
+  return path.startsWith(STATE_PREFIX) && !path.startsWith(SCRATCH_PREFIX) && !MODEL_WRITABLE_STATE.includes(path);
 }
 
 function isLegacyState(rel) {
