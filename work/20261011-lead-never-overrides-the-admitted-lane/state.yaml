@@ -1,8 +1,8 @@
 id: 20261011-lead-never-overrides-the-admitted-lane
 lane: order
 title: Lead never overrides the admitted lane
-status: open
+status: done
 created: 2026-10-11T16:37:42.504Z
-updated: 2026-10-11T16:46:55.920Z
+updated: 2026-10-11T16:51:30.730Z
 base: a74460a9fb63c589d8466f722993378a6e7ddf6c
 run_through: 2
