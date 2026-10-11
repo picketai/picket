@@ -1,7 +1,7 @@
 id: 20261011-remove-personal-user-paths-from-tracked-files
 lane: design
 title: Remove personal user paths from tracked files
-status: open
+status: done
 created: 2026-10-11T15:51:05.883Z
-updated: 2026-10-11T15:59:39.658Z
+updated: 2026-10-11T16:09:07.207Z
 base: 31d47d9fe2a1c33b0abcfa2cd1060dc6bfd32838
