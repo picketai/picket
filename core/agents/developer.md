@@ -2,8 +2,9 @@
 name: developer
 description: >
   Implements one phase of a work item's order or design record, verifies it by running the
-  changed flow, commits, and ends with PHASE DONE or PHASE STALLED. Spawned by the ordering,
-  designing and expediting skills; continued by SendMessage for every later phase.
+  changed flow, stages the phase for the user's approval, and ends with PHASE DONE or PHASE
+  STALLED. Spawned by the ordering and designing skills; continued by SendMessage for every
+  later phase.
 tools: Read, Edit, Write, Bash, Glob, Grep, SendMessage
 model: opus
 effort: medium

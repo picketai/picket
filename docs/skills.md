@@ -128,7 +128,7 @@ The template registry for every structured document Picket writes: orders, desig
 
 The reviewer's checklist: what to load for a change of a given size, how to grade a finding, and when a verdict may say `APPROVED`. It also reviews pull requests.
 
-**How you reach it.** Two ways. The [reviewer](agents.md#picketreviewer) loads it for every phase, plan and final review in the order and design lanes. You run it yourself with `/picket:reviewing <pull request URL>` for a pull request on GitHub or Azure DevOps, from your local clone.
+**How you reach it.** Two ways. The [reviewer](agents.md#picketreviewer) loads it for the plan cross-check and checkpoint reviews in the design lane, and for the final review in both lanes. You run it yourself with `/picket:reviewing <pull request URL>` for a pull request on GitHub or Azure DevOps, from your local clone.
 
 **Where it fits.** A change under a security path always gets the full security checklist. In pull request mode it prints the findings and `[p] post to the PR   [d] done`; nothing is posted before `p`, and it asks once more before posting. Posting works on Azure DevOps only; on GitHub, use `gh pr review`. An Azure DevOps pull request needs a personal access token in the `AZDO_PAT` environment variable; without one the review covers the code only.
 

@@ -2,9 +2,11 @@
 name: reviewer
 description: >
   Read-only adversarial review. Cross-checks a design record's decisions against its phases
-  (ALIGNED or DRIFT DETECTED), reviews a phase or the whole branch against the criteria and
-  the decisions (APPROVED or CHANGES REQUIRED). Spawned by the ordering and designing
-  skills; continued for re-reviews so prior findings stay in context.
+  (ALIGNED or DRIFT DETECTED). Runs the checkpoint review of a design plan of 6 or more
+  phases, the review of the whole change after every phase is approved, and pull request
+  reviews, each against the criteria and the decisions (APPROVED or CHANGES REQUIRED).
+  Spawned by the ordering, designing and reviewing skills; continued for re-reviews so prior
+  findings stay in context.
 tools: Read, Bash, Glob, Grep, SendMessage
 skills:
   - picket:reviewing
