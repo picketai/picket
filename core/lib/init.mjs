@@ -13,11 +13,6 @@ const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST
 const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
 const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
 const STATUS_PLUGIN_ID = `picket-status@${MARKETPLACE_NAME}`;
-const SESSION_PLUGIN_ID = `picket-session@${MARKETPLACE_NAME}`;
-const MOD_PLUGINS = [
-  { name: "status", id: STATUS_PLUGIN_ID },
-  { name: "session", id: SESSION_PLUGIN_ID },
-];
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";
 
@@ -156,14 +151,14 @@ function installCommands(market) {
   return [
     { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE_NAME]) },
     { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), PLUGIN_ID, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[PLUGIN_ID]) },
-    ...MOD_PLUGINS.map(({ name, id }) => ({ name, args: [...INSTALL_PLUGIN.split(" "), id, "--scope", "project"], done: (s) => id in (s.enabledPlugins ?? {}) })),
+    { name: "status", args: [...INSTALL_PLUGIN.split(" "), STATUS_PLUGIN_ID, "--scope", "project"], done: (s) => STATUS_PLUGIN_ID in (s.enabledPlugins ?? {}) },
   ];
 }
 
 const INSTALL_STEP_NAMES = installCommands(null).map(({ name }) => name);
 
 function byHand(market) {
-  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${PLUGIN_ID}`, ...MOD_PLUGINS.map(({ id }) => `${INSTALL_PLUGIN} ${id}`)];
+  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${PLUGIN_ID}`, `${INSTALL_PLUGIN} ${STATUS_PLUGIN_ID}`];
   return `run by hand: ${commands.map((command) => `claude ${command} --scope project`).join(", then ")}`;
 }
 
