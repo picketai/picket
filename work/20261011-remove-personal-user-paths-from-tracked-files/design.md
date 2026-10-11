@@ -23,39 +23,39 @@ phases:
       - work/20261008-project-extensions-with-manifests/phases/5.block.md
     greps:
       - path: artifacts/reports/aispec-toolkit-remaining-cost-token-analysis.md
-        pattern: '^(?![\s\S]*vlad[.]apetre)'
+        pattern: '^(?![\s\S]*<user>)'
         flags: i
       - path: artifacts/reports/aispec-toolkit-remaining-cost-token-analysis.md
         pattern: '`~/\.claude/skills/jira-items/SKILL\.md`'
       - path: bench/results/rework-before-hookfix.json
-        pattern: '^(?![\s\S]*vlad[.]apetre)'
+        pattern: '^(?![\s\S]*<user>)'
         flags: i
       - path: bench/results/rework-clean-raw.json
-        pattern: '^(?![\s\S]*vlad[.]apetre)'
+        pattern: '^(?![\s\S]*<user>)'
         flags: i
       - path: bench/results/baseline-trunk.json
-        pattern: '^(?![\s\S]*VLAD~1[.]APE)'
+        pattern: '^(?![\s\S]*<SHORT>~1[.]APE)'
         flags: i
       - path: bench/results/rework-2026-10-02.json
-        pattern: '^(?![\s\S]*VLAD~1[.]APE)'
+        pattern: '^(?![\s\S]*<SHORT>~1[.]APE)'
         flags: i
       - path: bench/results/rework.json
-        pattern: '^(?![\s\S]*VLAD~1[.]APE)'
+        pattern: '^(?![\s\S]*<SHORT>~1[.]APE)'
         flags: i
       - path: work/20261010-ship-picket-session-mod-with-picket-init/order.md
         pattern: '~/\.claude/dev-mods/de97e3bc-8880-46d8-ace6-e34748490980/picket-session'
       - path: work/20261010-ship-picket-status-mod-with-picket-init/order.md
         pattern: '~/\.claude/dev-mods/8201c917-9661-457e-8cfd-c7e258af389f/picket-status'
       - path: core/lib/source-paths.mjs
-        pattern: '^(?![\s\S]*VLAD~1[.]APE)'
+        pattern: '^(?![\s\S]*<SHORT>~1[.]APE)'
         flags: i
       - path: core/lib/source-paths.mjs
         pattern: 'Windows 8\.3 short names \(`RUNNER~1`\) resolved,'
       - path: work/20261008-project-extensions-with-manifests/phases/5.block.md
-        pattern: '^(?![\s\S]*(vlad[.]apetre|VLAD~1[.]APE))'
+        pattern: '^(?![\s\S]*(<user>|<SHORT>~1[.]APE))'
         flags: i
       - path: work/20261011-remove-personal-user-paths-from-tracked-files/request.md
-        pattern: '^(?![\s\S]*vlad[.]apetre)'
+        pattern: '^(?![\s\S]*<user>)'
         flags: i
     tests: true
     drive: false
@@ -129,8 +129,8 @@ Eight tracked record files spell out the author's Windows home folder, either as
 **Changes:** On each listed line, replace the user folder prefix and the rest of that path as D-001 says, with the Edit tool after a Read of the line range (the bench files are long, so read with `offset` and `limit`). Nothing else on the line changes. In the two `order.md` files, the `sources:` entry on line 7 becomes `~/.claude/dev-mods/<uuid>/picket-<name>` and the backslash path in the `**Changes:**` line becomes `~/.claude/dev-mods/<uuid>/picket-<name>/`. Those edits re-run `lint.schema` over the closed orders; if it blocks on content that predates this change, stop with a block instead of fixing other lines. In `core/lib/source-paths.mjs`, replace line 12 with the approved text in D-004. Do not write the four kernel-owned files; stage them as they are, with the eight records and `core/lib/source-paths.mjs`.
 
 **Done when:**
-- **T-1.1** `git grep -nIi 'vlad[.]apetre'` prints nothing.
-- **T-1.2** `git grep -nIi 'VLAD~1[.]APE'` prints nothing.
+- **T-1.1** `git grep -nIi '<user>'` prints nothing.
+- **T-1.2** `git grep -nIi '<SHORT>~1[.]APE'` prints nothing.
 - **T-1.3** `node -e` running `JSON.parse` on each of the five `bench/results` files in the touch set exits 0 for all five.
 - **T-1.4** Report line 222 contains `` `~/.claude/skills/jira-items/SKILL.md` ``, and `bench/results/rework-clean-raw.json` lines 398 and 1191 end their hint with `in ~/.claude.json.`
 - **T-1.5** `git diff --cached --numstat` lists the twelve tracked touch set files (eight records, `core/lib/source-paths.mjs`, three kernel-owned files), each with equal added and removed counts; any other staged path is under `work/20261011-remove-personal-user-paths-from-tracked-files/`.
