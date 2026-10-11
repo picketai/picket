@@ -44,8 +44,27 @@ export function mentionedPaths(text, root) {
   return [...found].sort();
 }
 
-function touchesSecurity(paths, text, securityPaths) {
-  return paths.some((p) => securityPaths.some((s) => p.startsWith(s))) || securityPaths.some((s) => text.includes(s)) || SECURITY.test(withoutNonCredentialTokens(text));
+function normalisePath(p) {
+  return p.replace(/\\/g, "/").replace(/^(\.\/)+/, "");
+}
+
+export function securityPathHits(paths, securityPaths) {
+  const hits = paths.map(normalisePath).filter((p) => securityPaths.some((s) => p.startsWith(s)));
+  return [...new Set(hits)].sort();
+}
+
+function touchesSecurity(pathHits, text, securityPaths) {
+  return pathHits.length > 0 || securityPaths.some((s) => text.includes(s)) || SECURITY.test(withoutNonCredentialTokens(text));
+}
+
+function forcedResult(forced, signals) {
+  const reasons = [`lane forced by request (lane: ${forced})`];
+  const hits = signals.security_path_hits;
+  if ((forced === "fast" || forced === "order") && hits.length) {
+    reasons.push(`a security path wins over the forced lane: ${hits.join(", ")}`);
+    return { lane: "design", reasons, signals };
+  }
+  return { lane: forced, reasons, signals };
 }
 
 function withoutNonCredentialTokens(text) {
@@ -74,13 +93,15 @@ export function admit(text, o = {}) {
   const touched = o.touched ?? [];
   const reasons = [];
   const declaredResearch = DECLARED_RESEARCH.test(text);
+  const pathHits = securityPathHits([...paths, ...touched], securityPaths);
   const signals = {
     forced: forced ?? null,
     mentioned_paths: paths,
     touched: touched.length,
     declared_research: declaredResearch,
     research: (declaredResearch || (RESEARCH.test(text) && !SMALL_CHANGE.test(text))) && !NEW_SURFACE.test(text),
-    security: touchesSecurity([...paths, ...touched], text, securityPaths),
+    security: touchesSecurity(pathHits, text, securityPaths),
+    security_path_hits: pathHits,
     migration: MIGRATION.test(text),
     irreversible: IRREVERSIBLE.test(text),
     new_dependency: NEW_DEPENDENCY.test(text),
@@ -90,7 +111,7 @@ export function admit(text, o = {}) {
     small_change: SMALL_CHANGE.test(text),
   };
 
-  if (forced) return { lane: forced, reasons: [`lane forced by request (lane: ${forced})`], signals };
+  if (forced) return forcedResult(forced, signals);
 
   if (signals.research && !signals.new_surface) {
     reasons.push("the request asks a question and changes no code");

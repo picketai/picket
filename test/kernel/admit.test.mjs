@@ -9,7 +9,7 @@ import { writeConfig } from "./config-fixture.mjs";
 function repo() {
   const root = mkdtempSync(join(tmpdir(), "harness-admit-"));
   mkdirSync(join(root, ".claude"));
-  for (const p of ["src/http/handlers.ts", "src/http/server.ts", "src/config.ts", "src/domain/money.ts", "src/domain/pricing.ts", "data/config.json", ".claude/settings.json"]) {
+  for (const p of ["src/http/handlers.ts", "src/http/server.ts", "src/config.ts", "src/domain/money.ts", "src/domain/pricing.ts", "src/auth/login.ts", "data/config.json", ".claude/settings.json"]) {
     mkdirSync(join(root, p, ".."), { recursive: true });
     writeFileSync(join(root, p), "");
   }
@@ -207,5 +207,69 @@ test("an explicit lane wins and a recheck escalates on overrun", () => {
   assert.equal(r.lane, "order");
   const ok = recheck("fast", "Fix the pagination offset in the list handler.", ["src/http/handlers.ts"], { root });
   assert.equal(ok.escalate, false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+const LOGIN_TYPO = "lane: fast. Fix the typo in the login helper.";
+const OVERRIDE_REASONS = ["lane forced by request (lane: fast)", "a security path wins over the forced lane: src/auth/login.ts"];
+
+test("a touched or mentioned security path overrides a forced fast or order lane (T-1.1)", () => {
+  const root = repo();
+  const r = admit(LOGIN_TYPO, { root, touched: ["src/auth/login.ts"] });
+  assert.equal(r.lane, "design");
+  assert.equal(r.signals.forced, "fast");
+  assert.deepEqual(r.signals.security_path_hits, ["src/auth/login.ts"]);
+  assert.deepEqual(r.reasons, OVERRIDE_REASONS);
+  assert.equal(admit("lane: order. Fix the typo in the login helper.", { root, touched: ["src/auth/login.ts"] }).lane, "design");
+  assert.equal(admit("lane: fast. Fix the typo in src/auth/login.ts.", { root }).lane, "design");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a recheck with a security path in the touch set escalates a forced fast lane (T-1.2)", () => {
+  const root = repo();
+  const r = recheck("fast", LOGIN_TYPO, ["src/auth/login.ts"], { root });
+  assert.equal(r.escalate, true);
+  assert.equal(r.lane, "design");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a security word or a mentioned security directory does not override a forced lane (T-1.3)", () => {
+  const root = repo();
+  const word = admit("lane: fast. Fix the permission prompt wording in src/config.ts.", { root });
+  assert.equal(word.lane, "fast");
+  assert.equal(word.signals.security, true);
+  assert.deepEqual(word.signals.security_path_hits, []);
+  const dir = admit("lane: fast. Name src/auth/ in the docs table.", { root });
+  assert.equal(dir.lane, "fast");
+  assert.deepEqual(dir.signals.security_path_hits, []);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("backslash and dot-slash touched paths match a security path (T-1.4)", () => {
+  const root = repo();
+  for (const p of ["src\\auth\\login.ts", "./src/auth/login.ts"]) {
+    const forced = admit(LOGIN_TYPO, { root, touched: [p] });
+    assert.equal(forced.lane, "design", p);
+    assert.deepEqual(forced.signals.security_path_hits, ["src/auth/login.ts"], p);
+    assert.equal(admit("Fix the typo in the login helper.", { root, touched: [p] }).signals.security, true, p);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a forced design or research lane holds with a security path touched (T-1.5)", () => {
+  const root = repo();
+  const design = admit("lane: design. Fix the typo in the login helper.", { root, touched: ["src/auth/login.ts"] });
+  assert.equal(design.lane, "design");
+  assert.deepEqual(design.reasons, ["lane forced by request (lane: design)"]);
+  assert.equal(admit("lane: research. Explain the login helper.", { root, touched: ["src/auth/login.ts"] }).lane, "research");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a configured security path overrides a forced fast lane (T-1.7)", () => {
+  const root = repo();
+  writeConfig(root, { version: 1, security_paths: ["lib/secure/"] });
+  const r = admit("lane: fast. Fix the typo.", { root, touched: ["lib/secure/keys.ts"] });
+  assert.equal(r.lane, "design");
+  assert.deepEqual(r.signals.security_path_hits, ["lib/secure/keys.ts"]);
   rmSync(root, { recursive: true, force: true });
 });
