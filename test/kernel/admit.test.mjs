@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { admit, recheck, mentionedPaths } from "../../core/lib/admit.mjs";
+import { admit, recheck, mentionedPaths, forcedLane } from "../../core/lib/admit.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function repo() {
@@ -175,6 +175,27 @@ test("a request naming .claude/settings.json without backticks lands in fast", (
   const r = admit("Drop the stale keys from .claude/settings.json", { root });
   assert.equal(r.lane, "fast");
   assert.ok(r.signals.mentioned_paths.includes(".claude/settings.json"));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a quoted or backticked lane directive is a mention and forces nothing", () => {
+  assert.equal(forcedLane("lane: design. Rename a variable."), "design");
+  assert.equal(forcedLane("Rename the helper.\nlane: fast"), "fast");
+  assert.equal(forcedLane("Don't touch the tests. lane: order. It's small."), "order");
+  for (const p of [
+    "Say that only the user overrides it with `lane: fast`.",
+    'The docs tell users to write "lane: design" on its own line.',
+    "The docs tell users to write 'lane: research' on its own line.",
+    "The docs tell users to write “lane: order” on its own line.",
+    "Show the override:\n```\nlane: fast\n```",
+  ]) assert.equal(forcedLane(p), undefined, p);
+});
+
+test("a request quoting the directive keeps its computed lane", () => {
+  const root = repo();
+  const r = admit("Add an endpoint GET /lanes that documents the `lane: fast` override.", { root });
+  assert.equal(r.lane, "order");
+  assert.equal(r.signals.forced, null);
   rmSync(root, { recursive: true, force: true });
 });
 

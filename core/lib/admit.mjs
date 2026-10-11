@@ -27,6 +27,12 @@ const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
+const FORCED_LANE = /\blane:\s*(fast|order|design|research)\b/i;
+const QUOTED = /`[^`]*`|"[^"\n]*"|“[^”\n]*”|(?<!\w)'[^'\n]*'(?!\w)/g;
+
+export function forcedLane(text) {
+  return text.replace(QUOTED, " ").match(FORCED_LANE)?.[1]?.toLowerCase();
+}
 
 /** Backticked repo-relative paths mentioned in the text that exist on disk. */
 export function mentionedPaths(text, root) {
@@ -63,7 +69,7 @@ export function admit(text, o = {}) {
   const config = loadConfig(root);
   const securityPaths = config.security_paths;
   const maxFastFiles = config.lanes.fast.max_files;
-  const forced = text.match(/\blane:\s*(fast|order|design|research)\b/i)?.[1]?.toLowerCase();
+  const forced = forcedLane(text);
   const paths = mentionedPaths(text, root);
   const touched = o.touched ?? [];
   const reasons = [];
