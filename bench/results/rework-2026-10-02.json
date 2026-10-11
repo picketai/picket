@@ -579,7 +579,7 @@
         },
         {
           "tool": "PowerShell",
-          "command": "$s = \"C:\\Users\\VLAD~1.APE\\AppData\\Local\\Temp\\claude\\D--workspace-github-AISpec-bench--runs-fast-04-listen-error-log-r1-muqrx2lm-repo\\4d777428-71f9-4aee-ac67-9b033f5c055c\\scratchpad\\busy.mjs\"\n@'\nimport",
+          "command": "$s = \"~/AppData/Local/Temp/claude/D--workspace-github-AISpec-bench--runs-fast-04-listen-error-log-r1-muqrx2lm-repo/4d777428-71f9-4aee-ac67-9b033f5c055c/scratchpad/busy.mjs\"\n@'\nimport",
           "decision": "allow"
         },
         {

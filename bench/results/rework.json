@@ -2434,7 +2434,7 @@
       "prompt_log": [
         {
           "tool": "Bash",
-          "command": "git diff -- data/invoices.json | head -40 && echo \"---- HEAD version:\" && git show HEAD:data/invoices.json > \"C:/Users/VLAD~1.APE/AppData/Local/Temp/claude/invoices-head.json\" && wc -l \"C:/Users/VL",
+          "command": "git diff -- data/invoices.json | head -40 && echo \"---- HEAD version:\" && git show HEAD:data/invoices.json > \"~/AppData/Local/Temp/claude/invoices-head.json\" && wc -l \"C:/Users/VL",
           "decision": "allow"
         },
         {

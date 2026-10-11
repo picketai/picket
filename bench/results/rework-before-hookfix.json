@@ -93,12 +93,12 @@
       "prompt_log": [
         {
           "tool": "Bash",
-          "command": "ls -lt \"C:/Users/vlad.apetre/.claude/projects/\"*/*.jsonl 2>/dev/null | head -5",
+          "command": "ls -lt \"~/.claude/projects/\"*/*.jsonl 2>/dev/null | head -5",
           "decision": "allow"
         },
         {
           "tool": "Bash",
-          "command": "T=\"C:/Users/vlad.apetre/.claude/projects/D--workspace-github-AISpec--worktrees-rework-bench--runs-order-09-csv-export-r1-mtwulvz9-repo/925b61b0-972a-450b-8041-9530092950cb/subagents\"; ls -lt \"$T\"; n",
+          "command": "T=\"~/.claude/projects/D--workspace-github-AISpec--worktrees-rework-bench--runs-order-09-csv-export-r1-mtwulvz9-repo/925b61b0-972a-450b-8041-9530092950cb/subagents\"; ls -lt \"$T\"; n",
           "decision": "allow"
         }
       ],

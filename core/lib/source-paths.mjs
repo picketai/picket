@@ -9,7 +9,7 @@ import { loadConfig } from "./config.mjs";
 const WIN = process.platform === "win32";
 
 /**
- * One spelling per location: symlinks and Windows 8.3 short names (`VLAD~1.APE`) resolved,
+ * One spelling per location: symlinks and Windows 8.3 short names (`RUNNER~1`) resolved,
  * forward slashes, lowercase on Windows. A path that does not exist yet (a Write target) is
  * canonicalised through its nearest existing ancestor.
  */

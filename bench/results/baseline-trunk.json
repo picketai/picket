@@ -1579,12 +1579,12 @@
         },
         {
           "tool": "Bash",
-          "command": "SCRATCH=\"C:/Users/VLAD~1.APE/AppData/Local/Temp/claude/D--workspace-github-AISpec--worktrees-rework-bench--runs-gate-14-status-migration-r1-mtwvqayd-repo/eb257b10-d550-4494-83aa-0c95690490f5/sc",
+          "command": "SCRATCH=\"~/AppData/Local/Temp/claude/D--workspace-github-AISpec--worktrees-rework-bench--runs-gate-14-status-migration-r1-mtwvqayd-repo/eb257b10-d550-4494-83aa-0c95690490f5/sc",
           "decision": "allow"
         },
         {
           "tool": "Bash",
-          "command": "PORT=8137 LEDGER_FILE=\"C:/Users/VLAD~1.APE/AppData/Local/Temp/claude/D--workspace-github-AISpec--worktrees-rework-bench--runs-gate-14-status-migration-r1-mtwvqayd-repo/eb257b10-d550-4494-83aa-0",
+          "command": "PORT=8137 LEDGER_FILE=\"~/AppData/Local/Temp/claude/D--workspace-github-AISpec--worktrees-rework-bench--runs-gate-14-status-migration-r1-mtwvqayd-repo/eb257b10-d550-4494-83aa-0",
           "decision": "allow"
         },
         {
