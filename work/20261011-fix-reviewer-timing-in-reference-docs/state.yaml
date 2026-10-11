@@ -1,7 +1,7 @@
 id: 20261011-fix-reviewer-timing-in-reference-docs
 lane: order
 title: Fix reviewer timing in reference docs
-status: open
+status: done
 created: 2026-10-11T15:20:26.358Z
-updated: 2026-10-11T15:20:26.375Z
+updated: 2026-10-11T15:33:12.498Z
 base: 1bc2fca9fe599e445579fae16b12e3cbeaad3316
