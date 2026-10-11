@@ -1,2 +1,3 @@
 - [Transcript facts](transcript-facts.md) — continuation message shape in subagent transcripts, transcript location, hook timing baseline caveat
 - [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap
+- [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; edit frontmatter with Edit, not sed

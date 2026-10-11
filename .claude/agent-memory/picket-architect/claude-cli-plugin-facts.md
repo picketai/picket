@@ -18,6 +18,7 @@ Verified 2026-10-10 on Claude Code 2.1.296 (function-hooks mods, early access):
 - `claude plugin test <dir>` runs `*.test.ts(x)` importing `claude-code/testing`; Node cannot run them. It needs no generated `<plugin>/.claude-plugin/types/` or `tsconfig.json`.
 - `validate --strict` fails a manifest with no `author` (warning promoted to error).
 - The release CI runner has no Claude Code CLI, so mod tests stay outside `npm test`.
+- `claude plugin test` can refuse with "hooks modules are turned off in this process: the rollout switch was saved off" (seen 2026-10-10 from a subagent shell, even on `status/` that passed earlier that day). `validate --strict` still works. Never write a criterion that needs `plugin test` without an open question naming this fallback.
 
 Design-record trap: the lint.schema PostToolUse hook runs after every edit of design.md and flags frontmatter phases with no `## Phase N` heading. When adding phases in a second save, write the body headings first (or in the same Edit), then the frontmatter entries.
 
