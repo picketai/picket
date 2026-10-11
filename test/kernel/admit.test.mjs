@@ -9,7 +9,7 @@ import { writeConfig } from "./config-fixture.mjs";
 function repo() {
   const root = mkdtempSync(join(tmpdir(), "harness-admit-"));
   mkdirSync(join(root, ".claude"));
-  for (const p of ["src/http/handlers.ts", "src/http/server.ts", "src/config.ts", "src/domain/money.ts", "src/domain/pricing.ts", "data/config.json"]) {
+  for (const p of ["src/http/handlers.ts", "src/http/server.ts", "src/config.ts", "src/domain/money.ts", "src/domain/pricing.ts", "data/config.json", ".claude/settings.json"]) {
     mkdirSync(join(root, p, ".."), { recursive: true });
     writeFileSync(join(root, p), "");
   }
@@ -133,6 +133,48 @@ test("cached tokens in a cost table with no credential context are not a securit
   const root = repo();
   const p = "Show cached tokens per agent in the cost table.";
   assert.equal(admit(p, { root }).signals.security, false, p);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("the order fallback names the facts that decided it", () => {
+  const root = repo();
+  const r = admit("Improve the invoice list page", { root });
+  assert.equal(r.lane, "order");
+  assert.deepEqual(r.reasons, ["no small-change word and no file named; order is the default"]);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("removing keys, lines, entries, settings or hooks is a small change", () => {
+  const root = repo();
+  for (const p of ["Remove the broken hooks", "Delete three keys from the JSON file", "Fix or remove the broken hooks"]) {
+    const r = admit(p, { root });
+    assert.equal(r.lane, "fast", p);
+    assert.equal(r.signals.small_change, true, p);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("removing a module stays in order and deleting records stays in design", () => {
+  const root = repo();
+  assert.equal(admit("Remove the billing module", { root }).lane, "order");
+  assert.equal(admit("Remove the two stale broken hooks", { root }).signals.small_change, false);
+  assert.equal(admit("Delete the records older than a year", { root }).lane, "design");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("mentionedPaths finds an unbackticked dot-directory path that exists", () => {
+  const root = repo();
+  assert.deepEqual(mentionedPaths("Edit .claude/settings.json.", root), [".claude/settings.json"]);
+  assert.deepEqual(mentionedPaths("Edit .claude/nope.json", root), []);
+  assert.deepEqual(mentionedPaths("Edit core/.claude/settings.json", root), []);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a request naming .claude/settings.json without backticks lands in fast", () => {
+  const root = repo();
+  const r = admit("Drop the stale keys from .claude/settings.json", { root });
+  assert.equal(r.lane, "fast");
+  assert.ok(r.signals.mentioned_paths.includes(".claude/settings.json"));
   rmSync(root, { recursive: true, force: true });
 });
 

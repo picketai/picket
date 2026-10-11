@@ -23,7 +23,7 @@ const NEW_DEPENDENCY = /\b(add|install|introduce) (a |the |an )?(new )?(dependen
 const CROSS_CONTEXT = /\b(other (service|repo|repository|context)|second repo|both repos|contract change|breaking change|public api)\b/i;
 const NEW_SURFACE = /\b(add(ed)? (an? )?(new )?(endpoint|route|module|command|worker|handler|middleware|layer|feature)|new (endpoint|route|module|feature|capability))\b/i;
 const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|options?|strategy|should we)\b/i;
-const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak)\b/i;
+const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak|(remov(e|es|ing)|delet(e|es|ing))(\s+[\w'-]+){0,3}\s+(keys?|lines?|entry|entries|settings?|hooks?))\b/i;
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
@@ -31,8 +31,8 @@ const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|
 /** Backticked repo-relative paths mentioned in the text that exist on disk. */
 export function mentionedPaths(text, root) {
   const found = new Set();
-  for (const m of text.matchAll(/`([A-Za-z0-9_./-]+\.[A-Za-z0-9]+)`|\b((?:src|test|tests|data|scripts|lib|app)\/[A-Za-z0-9_./-]+)\b/g)) {
-    const p = (m[1] ?? m[2]).replace(/:\d+(:\d+)?$/, "");
+  for (const m of text.matchAll(/`([A-Za-z0-9_./-]+\.[A-Za-z0-9]+)`|\b((?:src|test|tests|data|scripts|lib|app)\/[A-Za-z0-9_./-]+)\b|(?<![\w/.-])(\.[A-Za-z0-9_-]+\/[A-Za-z0-9_./-]*[A-Za-z0-9_-])/g)) {
+    const p = (m[1] ?? m[2] ?? m[3]).replace(/:\d+(:\d+)?$/, "");
     if (existsSync(join(root, p))) found.add(p);
   }
   return [...found].sort();
@@ -111,7 +111,7 @@ export function admit(text, o = {}) {
   if (signals.new_surface) reasons.push("adds a new surface (endpoint, module, or handler)");
   if (signals.design_question) reasons.push("carries a design question");
   if (fileCount > maxFastFiles) reasons.push(`touches ${fileCount} files, more than the fast cap of ${maxFastFiles}`);
-  if (!reasons.length) reasons.push("not plainly small and not a heavy-lane trigger");
+  if (!reasons.length) reasons.push("no small-change word and no file named; order is the default");
   return { lane: "order", reasons, signals };
 }
 
