@@ -8,7 +8,7 @@ This guide is for a developer installing the alpha in their own project. It cove
 
 Picket has three parts that install together.
 
-The **plugin** carries four agents (analyst, architect, developer, reviewer), the skills that drive them, the hooks that guard every tool call, and the response style. Everything it adds is named `picket:<name>`, for example `picket:ordering` or `picket:developer`.
+The **plugin** carries four agents (analyst, architect, developer, reviewer), the skills that drive them, the hooks that guard every tool call, and the response style. Everything it adds is named `picket:<name>`, for example `picket:ordering` or `picket:developer`. [The agents](agents.md) reference says what each agent does and when it runs.
 
 The **`picket` command** is the kernel. It decides everything that code can decide: which lane a request takes, what the next step is, whether a phase is verified, and how a verdict changes state. The agents call it; you can call it too.
 

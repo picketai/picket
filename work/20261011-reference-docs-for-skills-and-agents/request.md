@@ -1,0 +1,1 @@
+th same way we did a how to document, i want documents describing what each skill and agent does -> it does not need to be as extensive, but it should be enough that a new user understands how and where one is used

@@ -2,7 +2,7 @@
 
 Picket is a software-development workflow for Claude Code: four lanes, four agents, one kernel, and a benchmark that measures Picket itself.
 
-To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md).
+To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md). [The agents](docs/agents.md) reference says what each agent does and when it runs.
 
 Picket ships as a Claude Code plugin in `core/`. In this repository, start every session with `claude --plugin-dir core` (`npm run claude`).
 
