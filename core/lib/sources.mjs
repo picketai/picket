@@ -9,7 +9,7 @@
 //
 //   work/<id>/sources.yaml              refs: [...], unmatched: [...]
 //   work/<id>/sources/<source>/<path>   the raw bytes of each resolved document
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -95,7 +95,7 @@ export function candidates(source, path, where = places(source.root)) {
     let dirty = false;
     if (p.kind === "worktree") {
       const file = join(p.worktree, path);
-      if (!existsSync(file)) continue;
+      if (!statSync(file, { throwIfNoEntry: false })?.isFile()) continue;
       bytes = readFileSync(file);
       dirty = Boolean(git(p.worktree, ["status", "--porcelain", "--", path])?.trim());
     } else {

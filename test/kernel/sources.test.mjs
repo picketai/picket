@@ -181,6 +181,20 @@ test("a document only in the main worktree resolves single, and the snapshot is 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a story naming a folder opens the work item and resolves only the files it names", () => {
+  const { base, main, source } = tempSource();
+  mkdirSync(join(main, "src", "DriverPlatformWebapp"), { recursive: true });
+  assert.deepEqual(candidates(source, "src/DriverPlatformWebapp"), []);
+  const root = tempProject();
+  const r = openWithStory(root, "The webapp lives in `src/DriverPlatformWebapp`, priced by `docs/pricing.md`.\n", main);
+  assert.equal(r.code, 0, r.err);
+  const { refs, unmatched } = readYaml(root, JSON.parse(r.out).id);
+  assert.deepEqual(refs.map((ref) => ref.path), ["docs/pricing.md"]);
+  assert.deepEqual(unmatched, []);
+  rmSync(base, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("CRLF in the main worktree and LF on a branch are identical, and the main worktree wins (T-4.2)", () => {
   const { base, main } = tempSource();
   writeFileSync(join(main, "docs", "pricing.md"), "# Pricing\r\n\r\nThe daily rate is 10.\r\n");
