@@ -352,7 +352,9 @@ test("guard.bash judges the command a picket verb would run, by launcher or by s
   assert.equal(decision('node core/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
   assert.equal(decision('core/bin/picket drive --start "sudo node server.mjs" --hit /health'), "deny");
   assert.equal(decision('picket drive --run "npm run cli -- list"'), null);
-  assert.equal(decision("picket state x"), null);
+  assert.equal(decision("picket state x"), "allow");
+  assert.equal(JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1)).outcome, "allow");
+  assert.equal(decision("picket route x --verdict APPROVED --agent user"), null);
   rmSync(root, { recursive: true, force: true });
 });
 

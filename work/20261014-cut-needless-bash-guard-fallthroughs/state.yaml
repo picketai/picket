@@ -3,5 +3,6 @@ lane: design
 title: Cut needless Bash guard fallthroughs
 status: open
 created: 2026-10-14T14:27:54.190Z
-updated: 2026-10-14T14:48:17.433Z
+updated: 2026-10-14T16:50:11.230Z
 base: d49bf162030ca55acd32fbf4893a1b72c16511ca
+run_through: 4

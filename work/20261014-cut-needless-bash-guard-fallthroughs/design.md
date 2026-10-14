@@ -74,8 +74,8 @@ phases:
 
 ## Decisions
 
-### D-001: a redirect into /dev/null is a discard, not a write
-**Decision:** Infrastructural decision. In `splitIntoSegments`, a `>`, `>>` or `>&` whose target is exactly the string `/dev/null` sets no write flag and adds no redirect target; the target token is consumed as today. `&>` and `&>>` are not operators to the vendored tokenizer (it emits `&` then `>`, so `ls x &>/dev/null` reads today as a backgrounded `ls` plus a redirect); `shellText`, which already scans the raw text quote-aware, rewrites an unquoted `&>` that directly follows a non-`&`, non-`>` character to `>&` and `&>>` to `>>`. Bash gives `>&word` the same meaning as `&>word`, and the guard already treats `>&` with a non-digit target as a write to that target. Example: `ls x >/dev/null 2>&1` becomes allowed; `ls x &> out.log` still falls through as `write-redirect` with target `out.log`; `ls x & >/dev/null` (with a space) still falls through as `background`.
+### D-001 (r2): a redirect into /dev/null is a discard, not a write
+**Decision:** Infrastructural decision. In `splitIntoSegments`, a `>`, `>>` or `>&` whose target is exactly the string `/dev/null` sets no write flag and adds no redirect target; the target token is consumed as today. `&>` and `&>>` are not operators to the vendored tokenizer (it emits `&` then `>`, so `ls x &>/dev/null` reads today as a backgrounded `ls` plus a redirect); `shellText`, which already scans the raw text quote-aware, rewrites an unquoted `&>` that directly follows a non-`&`, non-`>` character to `>` and `&>>` to `>>`. The guard only needs the target, and `>` and `>>` always treat it as a file. Rewriting to `>&` instead would be unsafe: `ls x &>2` becomes `ls x >&2`, which the guard reads as descriptor duplication and allows, while bash writes a file named `2`. Example: `ls x >/dev/null 2>&1` becomes allowed; `ls x &> out.log` still falls through as `write-redirect` with target `out.log`; `ls x & >/dev/null` (with a space) still falls through as `background`.
 **Instead of:** treating every `/dev/*` target, or Windows `NUL`, as a discard: `/dev/sda` and `/dev/tcp/host/port` write or connect, and `nul` under Git Bash is a device on some setups and a file on others; one exact string fails closed on everything else.
 **Risks:**
 - **RISK-001** The `&>` rewrite fires inside a quoted string such as `grep "a&>b" f`. Mitigation: the rewrite lives in the unquoted branch of `shellText`, after the quote branch, and a test pins `grep "a&>b" f` to `allow`.
@@ -202,3 +202,4 @@ phases:
 
 ## Revision log
 - 2026-10-14: D-003 (r2): `source` joins KERNEL_OTHER_VERBS; new KERNEL_READ_SUBVERBS lists `source find|grep`; Phase 2 and T-2.4 follow; r1 left `source` in neither set.
+- 2026-10-14: D-001 (r2): `&>` rewrites to `>`, not `>&`; `>&2` would read `ls x &>2` as fd duplication and allow a write to file `2`. Matches approved commit 165978a.

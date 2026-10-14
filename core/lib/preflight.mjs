@@ -1,6 +1,6 @@
 // Pre-flight without a model: are the inputs there, is the tree sane, what tooling exists.
 // Each check is ok | warn | fail. One fail stops; warns are shown and work proceeds.
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { delimiter, join, resolve } from "node:path";
 import { protectionScope } from "./source-paths.mjs";
 import { deriveState, projectRoot } from "./work.mjs";
@@ -9,34 +9,9 @@ import { loadConfig } from "./config.mjs";
 import { listWorktrees } from "./sources.mjs";
 import { LEGACY_LOCATIONS, hostPath, legacyPath } from "./paths.mjs";
 import { loadExtensions } from "./extensions.mjs";
+import { detectTooling } from "./tooling.mjs";
 
-export function detectTooling(root) {
-  return { ...detectedTooling(root), ...loadConfig(root).commands };
-}
-
-function detectedTooling(root) {
-  const out = { test: null, lint: null, build: null, run: null, stack: null };
-  const pkg = join(root, "package.json");
-  if (existsSync(pkg)) {
-    const scripts = JSON.parse(readFileSync(pkg, "utf8")).scripts ?? {};
-    out.stack = "node";
-    if (scripts.test && !/no test specified/.test(scripts.test)) out.test = "npm test";
-    if (scripts.lint) out.lint = "npm run lint";
-    if (scripts.build) out.build = "npm run build";
-    if (scripts.start) out.run = "npm start";
-  }
-  const sln = ["*.sln"].some(() => existsSync(join(root, "Directory.Build.props")) || existsSync(join(root, "global.json")));
-  if (!out.stack && sln) {
-    out.stack = "dotnet";
-    out.test = "dotnet test";
-    out.build = "dotnet build";
-  }
-  if (!out.stack && (existsSync(join(root, "pyproject.toml")) || existsSync(join(root, "pytest.ini")))) {
-    out.stack = "python";
-    out.test = "pytest";
-  }
-  return out;
-}
+export { detectTooling };
 
 /** What the guards protect for a root that is not a top level, so the user can see the effect. */
 function scopeText({ kind, paths }) {

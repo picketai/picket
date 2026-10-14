@@ -37,6 +37,7 @@ import { sourceRoots, underSource } from "../source-paths.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
 import { maskEnvValues } from "./observe.drive.mjs";
+import { detectTooling } from "../tooling.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
 
@@ -257,6 +258,9 @@ function shellText(raw) {
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 const BARE_KERNEL = "picket";
+export const KERNEL_READ_VERBS = new Set(["state", "next", "packet", "list", "review-summary", "cost", "preflight", "extensions", "admit", "find-verdict", "verify"]);
+export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "route", "drive", "comment", "pr", "migrate", "check", "source"]);
+export const KERNEL_READ_SUBVERBS = { source: ["find", "grep"] };
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);
@@ -567,14 +571,17 @@ function resolvePackageScript(scriptName, cwd, depth = 0) {
   if (!scriptName || depth > 3) return "unknown"; // guard against cycles
   const scriptBody = readPackageScript(scriptName, cwd);
   if (!scriptBody) return "unknown";
+  return classifyCommandText(scriptBody, cwd, depth);
+}
 
+function classifyCommandText(text, cwd, depth) {
   let innerTokens;
   try {
-    innerTokens = parse(scriptBody);
+    innerTokens = parse(text);
   } catch {
     return "unknown";
   }
-  if (hasHiddenExecution(scriptBody)) return "unknown";
+  if (hasHiddenExecution(text)) return "unknown";
 
   const { segments, sawWriteRedirect, sawBackground } = splitIntoSegments(innerTokens);
   if (!segments.length) return "unknown";
@@ -777,9 +784,30 @@ function protectedSources(root) {
   }
 }
 
-function classifySegment(tokens, cwd = process.cwd(), depth = 0) {
+function verifyRunsNoProjectCode(tokens, hookRoot, depth) {
+  const words = tokens.filter((t) => typeof t === "string");
+  if (words.includes("--no-tests")) return true;
+  if (!hookRoot || words.some((t) => t === "--root" || t.startsWith("--root="))) return false;
+  let testCommand;
+  try {
+    testCommand = detectTooling(hookRoot).test;
+  } catch {
+    return false;
+  }
+  return !testCommand || classifyCommandText(testCommand, hookRoot, depth) === "safe";
+}
+
+function classifyKernelCall(tokens, hookRoot, depth) {
+  const [, verb, subverb] = tokens;
+  if (verb === "verify") return verifyRunsNoProjectCode(tokens, hookRoot, depth) ? "safe" : "kernel";
+  if (KERNEL_READ_VERBS.has(verb)) return "safe";
+  if (Object.hasOwn(KERNEL_READ_SUBVERBS, verb) && KERNEL_READ_SUBVERBS[verb].includes(subverb)) return "safe";
+  return "kernel";
+}
+
+function classifySegment(tokens, cwd = process.cwd(), depth = 0, hookRoot = null) {
   if (!tokens.length) return "unknown";
-  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return "kernel";
+  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return classifyKernelCall(tokens, hookRoot, depth);
   const root = normalizeRoot(tokens[0]);
 
   if (root === "sed") return checkSed(tokens);
@@ -852,7 +880,7 @@ export function guardBash(input, { root }) {
   for (const seg of segments) {
     const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
     if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
-    classifications.push(hit ? "safe" : classifySegment(seg, effCwd));
+    classifications.push(hit ? "safe" : classifySegment(seg, effCwd, 0, root));
     if (normalizeRoot(seg[0]) === "cd") {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);

@@ -11,7 +11,7 @@ import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
 import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
 import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
-import { guardBash, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
+import { guardBash, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
 import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
@@ -258,7 +258,8 @@ test("guardBash allows a compound of read-only pieces and bare picket calls that
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("picket next x; cat work/x/order.md | head -40"), "allow");
     assert.equal(decision("cd sub && picket state x 2>&1"), "allow");
-    assert.equal(decision("picket state x"), null, "a lone picket call is left to the project's allow rule");
+    assert.equal(decision("picket state x"), "allow", "a lone read-only picket call stands alone");
+    assert.equal(decision("picket route x --verdict APPROVED --agent user"), null, "a lone mutating picket call is left to the project's allow rule");
 
     assert.equal(decision('API_KEY=k picket drive --hit "GET /h"'), null);
     assert.equal(decision("node core/bin/picket.mjs next x; ls"), null);
@@ -277,6 +278,48 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
   );
   assert.deepEqual(executed.sort(), ["--only", "--run", "--start"]);
   for (const flag of executed) assert.ok(WRAPPING_FLAGS.has(flag), flag);
+});
+
+test("every picket verb is placed in exactly one of the read and other verb sets", () => {
+  const verbs = readFileSync(resolve("core/bin/picket.mjs"), "utf8").match(/Verbs: ([\w -]+)/)[1].trim().split(/\s+/);
+  assert.ok(verbs.length > 10, verbs.join(" "));
+  for (const verb of verbs) {
+    assert.ok(
+      KERNEL_READ_VERBS.has(verb) !== KERNEL_OTHER_VERBS.has(verb),
+      `picket ${verb} must be in exactly one set: KERNEL_READ_VERBS only when it writes nothing and runs no project code, KERNEL_OTHER_VERBS otherwise`,
+    );
+  }
+  for (const verb of Object.keys(KERNEL_READ_SUBVERBS)) assert.ok(KERNEL_OTHER_VERBS.has(verb), `${verb} has read sub-verbs, so it belongs in KERNEL_OTHER_VERBS`);
+  assert.ok(KERNEL_OTHER_VERBS.has("source"));
+});
+
+test("guardBash allows a lone read-only picket verb and leaves a mutating one to the allow rule", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+
+    for (const command of ["picket verify 20261012-touring-deleteorder-blank-input-returns-500 1", "picket state x", "picket next x", "picket packet x", "picket review-summary x", "picket source grep analysis foo", "picket source find analysis Foo", "picket verify x 1 2>&1 | tail -20"]) {
+      assert.equal(decision(command), "allow", command);
+    }
+
+    for (const command of ["picket route x --verdict APPROVED --agent user", "picket set x status=done", "picket new --lane fast --title t", "picket source add x ref", "picket source pick x", "picket source", "picket pr https://h/pr/1 --post f.md", "picket constructor x", 'picket drive --run "node .picket/state/scratch/drive-x.mjs" 2>&1 | tail -20']) {
+      assert.equal(decision(command), null, command);
+    }
+    assert.equal(decision("picket next x; ls"), "allow");
+  });
+});
+
+test("guardBash allows a lone picket verify only when the test command it would run is itself safe", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "node scripts/test.mjs" } }));
+    assert.equal(decision("picket verify x 1"), null);
+    assert.equal(decision(`picket verify x 1 --root ${join(root, "other")}`), null);
+    assert.equal(decision("picket verify x 1 --no-tests"), "allow");
+
+    mkdirSync(join(root, ".picket"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, commands: { test: "dotnet test" } }));
+    assert.equal(decision("picket verify x 1"), "allow");
+  });
 });
 
 function extensionProject(extensions, manifests) {
@@ -384,7 +427,8 @@ test("guardBash reads each line as its own command and a heredoc body as data", 
     assert.equal(decision("echo \"<<'X'\"\ngit push\nX"), "deny");
     assert.equal(decision("echo $'a\\'b'\nrm -rf x"), "deny");
 
-    assert.equal(decision("picket admit --request - --human <<'END'\nShip it; git push origin trunk | npm publish\nEND"), null);
+    assert.equal(decision("picket admit --request - --human <<'END'\nShip it; git push origin trunk | npm publish\nEND"), "allow");
+    assert.equal(decision("picket route x --verdict APPROVED --agent user <<'END'\nShip it\nEND"), null);
     assert.equal(decision("cat <<'END'\nnotes; rm -rf src\nEND\nls"), "allow");
     assert.equal(decision("cat <<-'END'\n\tnotes; rm -rf src\n\tEND\nls"), "allow");
     assert.equal(decision("cat <<'END'\n`code` and $(text)\nEND"), "allow");
