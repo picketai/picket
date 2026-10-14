@@ -464,6 +464,61 @@ test("guardBash treats a redirect into /dev/null as a discard and splits command
   });
 });
 
+test("guardBash classifies each $(...) body and lets its output reach only inert roots", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const lastOutcome = () => JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1)).outcome;
+
+    for (const command of ['grep -rn "Headers" $(grep -rln "class AuthorizeApiKey" --include=*.cs . | grep -v /obj/) | head', 'cat "$(git rev-parse --show-toplevel)/package.json"', "grep '$(x)' f", 'echo "$(echo "$(ls)")"']) {
+      assert.equal(decision(command), "allow", command);
+    }
+
+    for (const command of ["echo $(rm -rf x)", "ls $(git push)", 'cat "$(echo ")"; rm -rf x)"']) {
+      assert.equal(decision(command), "deny", command);
+    }
+
+    for (const command of ["echo $(curl -s u)", "echo $(echo x > f)", "$(git rev-parse --show-toplevel)/x", "$(echo x)/ls", "find . $(grep -l a b)", "rg $(echo x) y", 'cd "$(git rev-parse --show-toplevel)" && ls']) {
+      assert.equal(decision(command), null, command);
+    }
+
+    for (const command of ["echo `ls`", "diff <(ls a) <(ls b)", "echo $((1+2))", "echo $(echo $(echo $(ls)))", "cat <<END\n$(whoami)\nEND", "echo $(ls"]) {
+      assert.equal(decision(command), null, command);
+      assert.equal(lastOutcome(), "fallthrough:hidden-execution", command);
+    }
+  });
+});
+
+test("guardBash judges a $(...) body against the sources, in the directory it runs in", () => {
+  withProject((root) => {
+    const source = join(root, "analysis");
+    execFileSync("git", ["init", "-q", source]);
+    mkdirSync(join(root, ".picket"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "PICKET_TEST_SOURCE_ANALYSIS" } } }));
+    process.env.PICKET_TEST_SOURCE_ANALYSIS = source;
+    try {
+      const outcome = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+      const src = source.replaceAll("\\", "/");
+      const direct = outcome(`echo $(git -C "${src}" tag v1)`);
+      assert.equal(direct?.permissionDecision, "deny");
+      assert.match(direct.permissionDecisionReason, /inside source analysis, which is read-only/);
+      assert.equal(outcome(`cd "${src}" && cat $(git tag v1)`)?.permissionDecision, "deny");
+      assert.equal(outcome(`cat "$(git -C "${src}" rev-parse --show-toplevel)/README.md"`)?.permissionDecision, "allow");
+    } finally {
+      delete process.env.PICKET_TEST_SOURCE_ANALYSIS;
+    }
+  });
+});
+
+test("the spawned guard.bash hook allows a grep over the files a substitution lists", () => {
+  withProject((root) => {
+    const command = 'grep -rn "Headers" $(grep -rln "class AuthorizeApiKey" --include=*.cs . | grep -v /obj/) | head';
+    const out = execFileSync("node", [join(HOOKS, "guard.bash.mjs")], { input: JSON.stringify({ tool_input: { command } }), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+    assert.equal(JSON.parse(out).hookSpecificOutput.permissionDecision, "allow");
+    const rows = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(rows.map((r) => r.outcome), ["allow"]);
+  });
+});
+
 test("the spawned guard.bash hook allows a stderr discard and traces the allow", () => {
   withProject((root) => {
     const out = execFileSync("node", [join(HOOKS, "guard.bash.mjs")], { input: JSON.stringify({ tool_input: { command: "ls x 2>/dev/null" } }), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });

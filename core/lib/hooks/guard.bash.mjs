@@ -255,6 +255,100 @@ function shellText(raw) {
   return pending.length ? null : { command, expanded };
 }
 
+const SUBSTITUTION_WORD = "__picket_substitution__";
+const MAX_SUBSTITUTION_DEPTH = 2;
+const INERT_ROOTS = new Set(["cat", "head", "tail", "wc", "ls", "dir", "grep", "echo", "printf", "stat", "diff", "pwd"]);
+
+function opensSingleQuote(command, i) {
+  return command[i] === "'" || command.startsWith("$'", i);
+}
+
+function outsideSingleQuotes(command) {
+  let out = "";
+  let inDouble = false;
+  for (let i = 0; i < command.length; ) {
+    if (command[i] === "\\") {
+      out += command.slice(i, i + 2);
+      i += 2;
+    } else if (!inDouble && opensSingleQuote(command, i)) {
+      i = quotedEnd(command, i);
+    } else {
+      if (command[i] === '"') inDouble = !inDouble;
+      out += command[i++];
+    }
+  }
+  return out;
+}
+
+function closingParen(command, start) {
+  let open = 1;
+  for (let i = start; i < command.length; i++) {
+    const ch = command[i];
+    if (ch === "\\") i++;
+    else if (ch === '"' || opensSingleQuote(command, i)) i = quotedEnd(command, i) - 1;
+    else if (ch === "(") open++;
+    else if (ch === ")" && --open === 0) return i;
+  }
+  return -1;
+}
+
+function evaluateSubstitution(command, start, ctx) {
+  const close = closingParen(command, start + 2);
+  if (close === -1) return null;
+  const body = command.slice(start + 2, close);
+  return { body, close, result: evaluateCommand(body, { ...ctx, depth: ctx.depth + 1 }) };
+}
+
+function substituteCommands(command, ctx) {
+  const bodies = [];
+  if (ctx.depth >= MAX_SUBSTITUTION_DEPTH) return { command, bodies };
+  let out = "";
+  let inDouble = false;
+  for (let i = 0; i < command.length; ) {
+    if (command[i] === "\\") {
+      out += command.slice(i, i + 2);
+      i += 2;
+      continue;
+    }
+    if (!inDouble && opensSingleQuote(command, i)) {
+      const end = quotedEnd(command, i);
+      out += command.slice(i, end);
+      i = end;
+      continue;
+    }
+    const substitution = command.startsWith("$(", i) && command[i + 2] !== "(" ? evaluateSubstitution(command, i, ctx) : null;
+    if (substitution?.result.decision === "deny") return { command, bodies, denial: substitution.result };
+    if (substitution?.result.decision === "allow") {
+      bodies.push(substitution.body);
+      out += SUBSTITUTION_WORD;
+      i = substitution.close + 1;
+      continue;
+    }
+    if (command[i] === '"') inDouble = !inDouble;
+    out += command[i++];
+  }
+  return { command: out, bodies };
+}
+
+function recheckBodies(bodies, cwd, ctx) {
+  if (!cwd) return fallThrough("hidden-execution");
+  for (const body of bodies) {
+    const result = evaluateCommand(body, { ...ctx, cwd, depth: ctx.depth + 1 });
+    if (result.decision !== "allow") return result;
+  }
+  return null;
+}
+
+function carriesSubstitution(token) {
+  return typeof token === "string" && token.includes(SUBSTITUTION_WORD);
+}
+
+function withSubstitutedOutput(seg, plain) {
+  if (plain === "deny" || !seg.some(carriesSubstitution)) return plain;
+  if (carriesSubstitution(seg[0])) return "unknown";
+  return plain === "safe" && INERT_ROOTS.has(normalizeRoot(seg[0])) ? "safe" : "unknown";
+}
+
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 const BARE_KERNEL = "picket";
@@ -845,24 +939,32 @@ export function guardBash(input, { root }) {
   if (typeof rawCommand !== "string" || !rawCommand.trim()) {
     return outcomes(root, "").fallThrough("no-command");
   }
-  const { decide, fallThrough } = outcomes(root, rawCommand);
-  if (!parse) return fallThrough("no-tokenizer");
+  const outcome = outcomes(root, rawCommand);
+  if (!parse) return outcome.fallThrough("no-tokenizer");
 
   // Claude Code's hook payload typically includes the session's working
   // directory - use it so package.json resolution looks in the right
   // place; fall back to this process's cwd if it's absent.
   const cwd = typeof input?.cwd === "string" ? input.cwd : process.cwd();
 
-  // 1. Anything with command/process substitution is never auto-allowed.
-  //    (We still let deny-patterns inside it be caught below if parsing
-  //    succeeds, but we never auto-approve.)
-  const text = shellText(rawCommand);
+  const { decision, reason } = evaluateCommand(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0 });
+  return decision ? outcome.decide(decision, reason) : outcome.fallThrough(reason);
+}
+
+const decide = (decision, reason) => ({ decision, reason });
+const fallThrough = (reason) => ({ decision: null, reason });
+
+function evaluateCommand(command, ctx) {
+  const { cwd, root, sources: roots, depth } = ctx;
+  const text = shellText(command);
   if (!text) return fallThrough("unterminated-heredoc");
-  const hiddenExecution = hasHiddenExecution(text.command) || hasHiddenExecution(text.expanded);
+  const substituted = substituteCommands(text.command, ctx);
+  if (substituted.denial) return substituted.denial;
+  const hiddenExecution = hasHiddenExecution(outsideSingleQuotes(substituted.command)) || hasHiddenExecution(text.expanded);
 
   let tokens;
   try {
-    tokens = parse(text.command);
+    tokens = parse(substituted.command);
   } catch {
     // Unparsable -> don't guess, let the normal prompt handle it.
     return fallThrough("unparsable");
@@ -873,14 +975,16 @@ export function guardBash(input, { root }) {
 
   if (!segments.length) return fallThrough("no-segments");
 
-  const roots = protectedSources(root);
   const classifications = [];
   const cwdsSeen = [cwd];
   let effCwd = cwd;
   for (const seg of segments) {
     const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
     if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
-    classifications.push(hit ? "safe" : classifySegment(seg, effCwd, 0, root));
+    const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, ctx) : null;
+    if (unallowed?.decision === "deny") return unallowed;
+    const plain = hit ? "safe" : classifySegment(seg, effCwd, 0, root);
+    classifications.push(unallowed ? "unknown" : withSubstitutedOutput(seg, plain));
     if (normalizeRoot(seg[0]) === "cd") {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);
@@ -926,7 +1030,7 @@ export function guardBash(input, { root }) {
   if (sawWriteRedirect) {
     // Every target must be the sanctioned log sink; one stray target and the
     // whole command goes to the human, since a chained command writes both.
-    const hasVarExpansion = /\$(?!\?)/.test(rawCommand);
+    const hasVarExpansion = /\$(?!\?)/.test(command);
     const allSinks =
       !hasVarExpansion &&
       redirectTargets.length > 0 &&
