@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -392,6 +393,39 @@ test("guardBash reads each line as its own command and a heredoc body as data", 
     assert.equal(decision("cat <<END\n$(whoami)\nEND"), null);
     assert.equal(decision("cat <<'END'\nno terminator; git push"), null);
     assert.equal(decision("bash <<'END'\ngit push\nEND"), null);
+  });
+});
+
+test("guardBash treats a redirect into /dev/null as a discard and splits commands at |& and ;;", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const lastOutcome = () => JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1)).outcome;
+
+    for (const command of ["ls x 2>/dev/null", "grep -n a f >/dev/null", "ls x &>/dev/null", "ls x >/dev/null 2>&1", "ls x &>>/dev/null", "ls .claude/settings.local.json 2>/dev/null && grep -n 'hooks' .claude/settings.local.json"]) {
+      assert.equal(decision(command), "allow", command);
+    }
+
+    for (const command of ["echo x > out.txt", "echo x 2>/dev/null > out.txt", "ls x &> out.log", "ls x &>> out.log", "echo x > /dev/sda", "ls x &>2", "ls x > /dev/null/x"]) {
+      assert.equal(decision(command), null, command);
+      assert.equal(lastOutcome(), "fallthrough:write-redirect", command);
+    }
+
+    assert.equal(decision("ls x & >/dev/null"), null);
+    assert.equal(lastOutcome(), "fallthrough:background");
+    assert.equal(decision('grep "a&>b" f'), "allow");
+
+    assert.equal(decision("cat x |& rm -rf y"), "deny");
+    assert.equal(decision("ls |& head"), "allow");
+    assert.equal(decision("cat x ;; rm -rf y"), "deny");
+  });
+});
+
+test("the spawned guard.bash hook allows a stderr discard and traces the allow", () => {
+  withProject((root) => {
+    const out = execFileSync("node", [join(HOOKS, "guard.bash.mjs")], { input: JSON.stringify({ tool_input: { command: "ls x 2>/dev/null" } }), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+    assert.equal(JSON.parse(out).hookSpecificOutput.permissionDecision, "allow");
+    const rows = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(rows.map((r) => r.outcome), ["allow"]);
   });
 });
 

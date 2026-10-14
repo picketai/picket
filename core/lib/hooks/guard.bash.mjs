@@ -127,7 +127,8 @@ const WORKTREE_DIR = ".worktrees";
 
 // Redirection operators that write to disk - never auto-allow these,
 // since "cat foo" is safe but "cat foo > important_file" is not.
-const WRITE_REDIRECT_OPS = new Set([">", ">>", "&>", "&>>"]);
+const WRITE_REDIRECT_OPS = new Set([">", ">>"]);
+const DISCARD_TARGET = "/dev/null";
 
 const LOG_SINK_DIR = stateRel("");
 
@@ -232,6 +233,10 @@ function shellText(raw) {
       pending.push({ delimiter: single ?? double ?? bare, stripTabs: dash === "-", expands: bare !== undefined && !token.includes("\\") });
       command += token;
       i += token.length;
+    } else if (raw.startsWith("&>", i) && !/[&>]/.test(raw[i - 1] ?? "")) {
+      const append = raw[i + 2] === ">";
+      command += append ? ">>" : ">";
+      i += append ? 3 : 2;
     } else if (ch === "\n") {
       command += " ; ";
       i++;
@@ -271,7 +276,7 @@ function wrappedCommands(seg) {
  * staying simple.
  */
 function splitIntoSegments(tokens) {
-  const CHAIN_OPS = new Set(["&&", "||", ";", "|"]);
+  const CHAIN_OPS = new Set(["&&", "||", ";", "|", "|&", ";;"]);
   const segments = [];
   let current = [];
   let sawWriteRedirect = false;
@@ -290,6 +295,8 @@ function splitIntoSegments(tokens) {
         const next = tokens[i + 1];
         if (typeof next === "string" && /^\d+$/.test(next)) {
           i++; // swallow the fd number so it doesn't pollute segment args
+        } else if (next === DISCARD_TARGET) {
+          i++;
         } else {
           sawWriteRedirect = true;
           if (typeof next === "string") {
@@ -309,8 +316,12 @@ function splitIntoSegments(tokens) {
         continue;
       }
       if (WRITE_REDIRECT_OPS.has(tok.op)) {
-        sawWriteRedirect = true;
         const target = tokens[i + 1];
+        if (target === DISCARD_TARGET) {
+          i++;
+          continue;
+        }
+        sawWriteRedirect = true;
         if (typeof target === "string") {
           redirectTargets.push(target);
           i++; // the target is a filename, not an argument to the command

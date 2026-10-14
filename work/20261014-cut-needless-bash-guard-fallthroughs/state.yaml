@@ -1,0 +1,7 @@
+id: 20261014-cut-needless-bash-guard-fallthroughs
+lane: design
+title: Cut needless Bash guard fallthroughs
+status: open
+created: 2026-10-14T14:27:54.190Z
+updated: 2026-10-14T14:48:17.433Z
+base: d49bf162030ca55acd32fbf4893a1b72c16511ca
