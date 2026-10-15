@@ -343,9 +343,46 @@ function carriesSubstitution(token) {
   return typeof token === "string" && token.includes(SUBSTITUTION_WORD);
 }
 
-function withSubstitutedOutput(seg, plain) {
-  if (plain === "deny" || !seg.some(carriesSubstitution)) return plain;
-  if (carriesSubstitution(seg[0])) return "unknown";
+const VARIABLE_MARK = "__picket_variable__";
+const MARKED_NAME = new RegExp(`${VARIABLE_MARK}(.*?)${VARIABLE_MARK}`, "g");
+const PLAIN_NAME = /^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]+|[?#$!@*-])$/;
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const ASSIGNMENT_IN_TEXT = /(?:^|[\s;&|(])([A-Za-z_][A-Za-z0-9_]*)=/g;
+const LAST_ARGUMENT = "_";
+const SHELL_BEHAVIOUR_NAMES = new Set(["PATH", "CDPATH", "IFS", "BASH_ENV", "ENV", "GLOBIGNORE", "HOME", "SHELLOPTS", "BASHOPTS", "PS4"]);
+
+function markVariable(name) {
+  return name ? `${VARIABLE_MARK}${name}${VARIABLE_MARK}` : undefined;
+}
+
+function markedNames(token) {
+  return typeof token === "string" ? [...token.matchAll(MARKED_NAME)].map((match) => match[1]) : [];
+}
+
+function carriesVariable(token) {
+  return typeof token === "string" && token.includes(VARIABLE_MARK);
+}
+
+function outputCarrier(taintedNames) {
+  return (token) => carriesSubstitution(token) || markedNames(token).some((name) => taintedNames.has(name) || !PLAIN_NAME.test(name));
+}
+
+function namesAssignedAnywhere(command) {
+  return [...command.matchAll(ASSIGNMENT_IN_TEXT)].map((match) => match[1]);
+}
+
+function assignedNames(seg) {
+  if (!seg.every((token) => typeof token === "string" && ASSIGNMENT.test(token))) return null;
+  return seg.map((token) => token.slice(0, token.indexOf("=")));
+}
+
+function classifyAssignment(names) {
+  return names.some((name) => SHELL_BEHAVIOUR_NAMES.has(name) || process.env[name] !== undefined) ? "unknown" : "safe";
+}
+
+function withSubstitutedOutput(seg, plain, carriesOutput) {
+  if (plain === "deny" || !seg.some(carriesOutput)) return plain;
+  if (carriesOutput(seg[0])) return "unknown";
   return plain === "safe" && INERT_ROOTS.has(normalizeRoot(seg[0])) ? "safe" : "unknown";
 }
 
@@ -753,7 +790,7 @@ function checkNpmFamily(tokens, cwd) {
  */
 function applyCd(seg, currentCwd) {
   if (seg.length !== 2 || typeof seg[1] !== "string") return null;
-  if (seg[1] === "-") return null;
+  if (seg[1] === "-" || carriesVariable(seg[1])) return null;
   return currentCwd ? resolve(currentCwd, nodePath(seg[1])) : null;
 }
 
@@ -958,13 +995,16 @@ function evaluateCommand(command, ctx) {
   const { cwd, root, sources: roots, depth } = ctx;
   const text = shellText(command);
   if (!text) return fallThrough("unterminated-heredoc");
-  const substituted = substituteCommands(text.command, ctx);
+  if (text.command.includes(VARIABLE_MARK)) return fallThrough("variable-mark");
+  const inheritedTaint = ctx.taintedNames ?? [];
+  const bodyCtx = { ...ctx, taintedNames: [...inheritedTaint, ...namesAssignedAnywhere(text.command)] };
+  const substituted = substituteCommands(text.command, bodyCtx);
   if (substituted.denial) return substituted.denial;
   const hiddenExecution = hasHiddenExecution(outsideSingleQuotes(substituted.command)) || hasHiddenExecution(text.expanded);
 
   let tokens;
   try {
-    tokens = parse(substituted.command);
+    tokens = parse(substituted.command, markVariable);
   } catch {
     // Unparsable -> don't guess, let the normal prompt handle it.
     return fallThrough("unparsable");
@@ -977,14 +1017,19 @@ function evaluateCommand(command, ctx) {
 
   const classifications = [];
   const cwdsSeen = [cwd];
+  const taintedNames = new Set([LAST_ARGUMENT, ...inheritedTaint]);
+  const carriesOutput = outputCarrier(taintedNames);
   let effCwd = cwd;
   for (const seg of segments) {
     const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
     if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
-    const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, ctx) : null;
+    const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
+    const assigned = assignedNames(seg);
     const plain = hit ? "safe" : classifySegment(seg, effCwd, 0, root);
-    classifications.push(unallowed ? "unknown" : withSubstitutedOutput(seg, plain));
+    const judged = assigned ? classifyAssignment(assigned) : withSubstitutedOutput(seg, plain, carriesOutput);
+    classifications.push(unallowed ? "unknown" : judged);
+    for (const name of assigned ?? []) taintedNames.add(name);
     if (normalizeRoot(seg[0]) === "cd") {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);

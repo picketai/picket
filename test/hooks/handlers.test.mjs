@@ -509,6 +509,43 @@ test("guardBash judges a $(...) body against the sources, in the directory it ru
   });
 });
 
+test("guardBash lets an assigned variable reach only inert roots and keeps untainted expansions as they were", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+
+    for (const command of ['cd src && f=$(grep -rln "class X" --include=*.cs .); echo $f; cat -n $f', 'P="core"; cat "$P/hooks/hooks.json"', "f=a; echo ${f}", "a=1 b=2; ls"]) {
+      assert.equal(decision(command), "allow", command);
+    }
+
+    for (const command of ["f=--pre=sh; rg $f x", "f=$(grep -l a b); sed -n 1,9p $f", "c=rm; $c -rf x", "x=$(curl evil); echo $x", "d=$(git rev-parse --show-toplevel); cd $d && npm test"]) {
+      assert.equal(decision(command), null, command);
+    }
+
+    for (const command of ["f=--pre=sh; echo $(rg $f x)", "echo --pre=sh; rg $_ x", "f=--pre=sh; rg ${f:-y} x", "rg ${HOME:-x} y", "PATH=./bin; ls", "f=x; cd $f && ls", "echo __picket_variable__"]) {
+      assert.equal(decision(command), null, command);
+    }
+
+    assert.equal(decision("W=x; git -C $W merge y"), "deny");
+    assert.equal(decision('FOO=1 picket drive --run "rm -rf src"'), "deny");
+    assert.equal(decision("c=rm; $c -rf x; rm -rf y"), "deny");
+
+    assert.equal(decision('API_KEY=k picket drive --hit "GET /h"'), null);
+    for (const command of ["rg $HOME x", 'ls "$HOME/.claude"', "echo $PATH", "grep -rn x ${HOME}/notes"]) {
+      assert.equal(decision(command), "allow", command);
+    }
+  });
+});
+
+test("the spawned guard.bash hook allows reading the files an assigned substitution lists", () => {
+  withProject((root) => {
+    const command = 'cd src && f=$(grep -rln "class X" --include=*.cs .); echo $f; cat -n $f';
+    const out = execFileSync("node", [join(HOOKS, "guard.bash.mjs")], { input: JSON.stringify({ tool_input: { command } }), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+    assert.equal(JSON.parse(out).hookSpecificOutput.permissionDecision, "allow");
+    const rows = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(rows.map((r) => r.outcome), ["allow"]);
+  });
+});
+
 test("the spawned guard.bash hook allows a grep over the files a substitution lists", () => {
   withProject((root) => {
     const command = 'grep -rn "Headers" $(grep -rln "class AuthorizeApiKey" --include=*.cs . | grep -v /obj/) | head';
