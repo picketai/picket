@@ -280,6 +280,35 @@ function outsideSingleQuotes(command) {
   return out;
 }
 
+const PLAIN_PARAMETER_CHAR = /^[A-Za-z0-9_:\-./+= ]$/;
+
+function hasOpaqueQuotedParameter(command) {
+  let inDouble = false;
+  for (let i = 0; i < command.length; i++) {
+    if (command[i] === "\\") i++;
+    else if (!inDouble && opensSingleQuote(command, i)) i = quotedEnd(command, i) - 1;
+    else if (command[i] === '"') inDouble = !inDouble;
+    else if (inDouble && command.startsWith("${", i)) {
+      const close = plainParameterEnd(command, i + 2);
+      if (close < 0) return true;
+      i = close;
+    }
+  }
+  return false;
+}
+
+function plainParameterEnd(command, start) {
+  for (let i = start; i < command.length; i++) {
+    if (command[i] === "}") return i;
+    if (command.startsWith("${", i)) {
+      const close = plainParameterEnd(command, i + 2);
+      if (close < 0) return -1;
+      i = close;
+    } else if (!PLAIN_PARAMETER_CHAR.test(command[i])) return -1;
+  }
+  return -1;
+}
+
 function closingParen(command, start) {
   let open = 1;
   for (let i = start; i < command.length; i++) {
@@ -915,10 +944,16 @@ function protectedSources(root) {
   }
 }
 
-function verifyRunsNoProjectCode(tokens, hookRoot, depth) {
+function sameDirectory(a, b) {
+  const norm = (dir) => resolve(dir).replaceAll("\\", "/").replace(/\/$/, "");
+  return process.platform === "win32" ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+}
+
+function verifyRunsNoProjectCode(tokens, cwd, hookRoot, depth) {
   const words = tokens.filter((t) => typeof t === "string");
   if (words.includes("--no-tests")) return true;
-  if (!hookRoot || words.some((t) => t === "--root" || t.startsWith("--root="))) return false;
+  if (!hookRoot || !cwd || !sameDirectory(cwd, hookRoot)) return false;
+  if (words.some((t) => t === "--root" || t.startsWith("--root="))) return false;
   let testCommand;
   try {
     testCommand = detectTooling(hookRoot).test;
@@ -928,9 +963,9 @@ function verifyRunsNoProjectCode(tokens, hookRoot, depth) {
   return !testCommand || classifyCommandText(testCommand, hookRoot, depth) === "safe";
 }
 
-function classifyKernelCall(tokens, hookRoot, depth) {
+function classifyKernelCall(tokens, cwd, hookRoot, depth) {
   const [, verb, subverb] = tokens;
-  if (verb === "verify") return verifyRunsNoProjectCode(tokens, hookRoot, depth) ? "safe" : "kernel";
+  if (verb === "verify") return verifyRunsNoProjectCode(tokens, cwd, hookRoot, depth) ? "safe" : "unknown";
   if (KERNEL_READ_VERBS.has(verb)) return "safe";
   if (Object.hasOwn(KERNEL_READ_SUBVERBS, verb) && KERNEL_READ_SUBVERBS[verb].includes(subverb)) return "safe";
   return "kernel";
@@ -938,7 +973,7 @@ function classifyKernelCall(tokens, hookRoot, depth) {
 
 function classifySegment(tokens, cwd = process.cwd(), depth = 0, hookRoot = null) {
   if (!tokens.length) return "unknown";
-  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return classifyKernelCall(tokens, hookRoot, depth);
+  if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return classifyKernelCall(tokens, cwd, hookRoot, depth);
   const root = normalizeRoot(tokens[0]);
 
   if (root === "sed") return checkSed(tokens);
@@ -996,6 +1031,7 @@ function evaluateCommand(command, ctx) {
   const text = shellText(command);
   if (!text) return fallThrough("unterminated-heredoc");
   if (text.command.includes(VARIABLE_MARK)) return fallThrough("variable-mark");
+  if (hasOpaqueQuotedParameter(text.command)) return fallThrough("hidden-execution");
   const inheritedTaint = ctx.taintedNames ?? [];
   const bodyCtx = { ...ctx, taintedNames: [...inheritedTaint, ...namesAssignedAnywhere(text.command)] };
   const substituted = substituteCommands(text.command, bodyCtx);

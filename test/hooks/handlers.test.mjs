@@ -311,8 +311,17 @@ test("guardBash allows a lone read-only picket verb and leaves a mutating one to
 test("guardBash allows a lone picket verify only when the test command it would run is itself safe", () => {
   withProject((root) => {
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decisionIn = (cwd, command) => guardBash({ tool_input: { command }, cwd }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    assert.equal(decision("picket verify x 1"), "allow");
+    assert.equal(decisionIn(join(root, "..", "other"), "picket verify x 1"), null);
+    assert.equal(decisionIn(join(root, "sub"), "picket verify x 1"), null);
+    assert.equal(decisionIn(join(root, "..", "other"), "picket verify x 1 --no-tests"), "allow");
+
     writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "node scripts/test.mjs" } }));
     assert.equal(decision("picket verify x 1"), null);
+    assert.equal(decision("cd sub && picket verify x 1"), null);
+    assert.equal(decision("picket next x; picket verify x 1"), null);
+    assert.equal(decision("cd sub && picket verify x 1 --no-tests"), "allow");
     assert.equal(decision(`picket verify x 1 --root ${join(root, "other")}`), null);
     assert.equal(decision("picket verify x 1 --no-tests"), "allow");
 
@@ -481,7 +490,26 @@ test("guardBash classifies each $(...) body and lets its output reach only inert
       assert.equal(decision(command), null, command);
     }
 
-    for (const command of ["echo `ls`", "diff <(ls a) <(ls b)", "echo $((1+2))", "echo $(echo $(echo $(ls)))", "cat <<END\n$(whoami)\nEND", "echo $(ls"]) {
+    assert.equal(decision('cat "${HOME}/x" "${X:-a}" "${X:-${Y}}" "${X:-${Y:-${Z}}}" "${X:-a/b.c}"'), "allow");
+    const opaqueParameters = [
+      `echo "\${X:-$(echo })"'"}" $(rm -rf ~) "'"`,
+      `echo "\${X:-\`echo }\`}"'"}" $(rm -rf ~) "'"`,
+      'echo "${X:-(}" $(rm -rf ~)',
+      'echo "${X:-\\}}" $(rm -rf ~)',
+      'echo "${X:-a" $(rm -rf ~)',
+    ];
+    for (const command of opaqueParameters) {
+      assert.equal(decision(command), null, command);
+      assert.equal(lastOutcome(), "fallthrough:hidden-execution", command);
+    }
+    for (const nested of ["${Y}", "${Y:-${Z}}", "${Y:-${Z:-${W}}}"]) {
+      for (const hidden of ["$(rm -rf ~)", "`rm -rf ~`"]) {
+        const command = `echo "\${X:-${nested}"'"}" ${hidden} "'"`;
+        assert.equal(decision(command), null, command);
+        assert.equal(lastOutcome(), "fallthrough:hidden-execution", command);
+      }
+    }
+    for (const command of ["echo `ls`", "diff <(ls a) <(ls b)", "echo $((1+2))", "echo $(echo $(echo $(ls)))", "cat <<END\n$(whoami)\nEND", "echo $(ls", `echo "\${X:-"'"}" $(rm -rf ~) "'"`, `echo "\${X:-"'"}" \`rm -rf ~\` "'"`, 'echo "${X:-"}"}" $(rm -rf ~)']) {
       assert.equal(decision(command), null, command);
       assert.equal(lastOutcome(), "fallthrough:hidden-execution", command);
     }
