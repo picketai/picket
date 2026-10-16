@@ -17,6 +17,11 @@
       "name": "picket-session",
       "source": "./session",
       "description": "Sessions of this project and every agent of this one, in a docked sidebar"
+    },
+    {
+      "name": "picket-markdown",
+      "source": "./markdown",
+      "description": "Click a markdown file path in a reply to read it, read-only, in a pane beside the transcript"
     }
   ]
 }

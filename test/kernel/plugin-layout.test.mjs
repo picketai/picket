@@ -11,7 +11,7 @@ const SETTINGS = resolve(".claude/settings.json");
 const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const PACKAGE = resolve("package.json");
-const MOD_FOLDERS = ["status", "session"];
+const MOD_FOLDERS = ["status", "session", "markdown"];
 const LAUNCHER = "core/bin/picket";
 const EXECUTABLE_MODE = "100755";
 
@@ -110,7 +110,7 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picketai serves picket from core/, picket-status from status/ and picket-session from session/", () => {
+test("the root marketplace picketai serves picket from core/, picket-status from status/, picket-session from session/ and picket-markdown from markdown/", () => {
   const marketplace = readJson(MARKETPLACE);
   assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
@@ -118,6 +118,7 @@ test("the root marketplace picketai serves picket from core/, picket-status from
     { name: "picket", source: "./core" },
     { name: "picket-status", source: "./status" },
     { name: "picket-session", source: "./session" },
+    { name: "picket-markdown", source: "./markdown" },
   ]);
 });
 

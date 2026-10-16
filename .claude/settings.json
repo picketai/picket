@@ -43,7 +43,8 @@
   "disableClaudeAiConnectors": true,
   "enabledPlugins": {
     "picket@picketai": true,
-    "picket-status@picketai": true
+    "picket-status@picketai": true,
+    "picket-markdown@picketai": true
   },
   "outputStyle": "picket:custom"
 }
