@@ -27,7 +27,8 @@ core/.claude-plugin/       the plugin manifest: name picket, version, the skills
 core/rules/                work-items, security-paths, prose, comments: injected into the lead and every agent
 core/agents/               picket:analyst, architect, developer, reviewer (shells, at most 120 lines)
 core/skills/               lane skills, consulting, documenting, reviewing, ticketing, branching,
-                           understanding, proofreading, summarizing, benchmarking, resuming, inspecting
+                           understanding, proofreading, explaining, summarizing, benchmarking, resuming,
+                           inspecting
 core/output-styles/        picket:custom, the response rules
 core/bin/picket            the kernel CLI on the Bash tool's PATH; core/bin/picket.mjs runs it; core/lib/ its modules
 core/hooks/                eleven hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,

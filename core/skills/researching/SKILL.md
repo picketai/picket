@@ -4,9 +4,10 @@ description: >
   The research lane: a question about code, documents, data or tickets that needs a report,
   not a change. The analyst returns an outline in one turn (summary, section headings, the
   sources it will read) so the user can redirect, then a deep pass fills it. Use when
-  `picket admit` answers `research`, or when the user says "how does X work", "explain",
-  "map the flow", "write a report on", "before we touch this I need to understand", or "no
-  code changes". A plain question with a one-paragraph answer needs no lane: answer it.
+  `picket admit` answers `research`, or when the user says "how does X work", "map the flow",
+  "write a report on", "before we touch this I need to understand", or "no code changes". A
+  plain question with a one-paragraph answer needs no lane: answer it. One scenario explained
+  with worked data, step by step, goes to `picket:explaining`.
 user-invocable: true
 ---
 

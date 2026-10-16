@@ -13,6 +13,7 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 | `picket:consulting` | command | think a strategic question through | `/picket:consulting` |
 | `picket:understanding` | command | stress-test a plan by questions | `/picket:understanding <plan, design, or idea>` |
 | `picket:proofreading` | command | proofread text for outside readers | `/picket:proofreading <path or pasted text>` |
+| `picket:explaining` | command | walk one scenario or concept with real data, start to end | `/picket:explaining <scenario or concept>` |
 | `picket:ticketing` | command | pull, draft or update Jira tickets | `/picket:ticketing ...` |
 | `picket:summarizing` | command | fill the pull request template | `/picket:summarizing [branch or repo hint]` |
 | `picket:branching` | command | worktrees across nested repositories | `/picket:branching <branch>` |
@@ -91,6 +92,14 @@ Proofreads a document whose next reader is outside the team (a README, a release
 **How you reach it.** `/picket:proofreading <path or pasted text>`, or "proofread this", "check this before I send it", "is this clear?".
 
 **Where it fits.** It runs in the main session. It first names the audience, purpose and surface, then makes five passes and returns a table of findings, each quoted and graded from L0 (a plain error) to L3 (a claim it cannot verify, which it asks about and never fixes). It ends with `READY TO SEND` or `NEEDS FIXES`. Nothing changes until you say "apply".
+
+## picket:explaining
+
+Explains one scenario the way a customer or a QA tester would go through the application, with real or relevant data, and shows how each value changes from the first step to the last. It also explains a general concept outside the project, such as "what is an ETag", with the same kind of worked example.
+
+**How you reach it.** `/picket:explaining <scenario or concept>`, or "explain with an example", "walk me through", "show me with real data", "what happens to the data when", "explain the concept of", "explain X simply".
+
+**Where it fits.** It runs in the main session with no agent and writes no file; the answer is in the reply. It has two modes. Codebase mode, the default, takes data from what you gave, the work item's snapshots, test fixtures and configuration, the code and a pulled ticket, in that order, and may run a read-only command to capture real output. Concept mode reads reliable web sources (official documentation, standards such as IETF RFCs, peer-reviewed papers), cites each rule by URL, and lists every page it read; a fact found only on a blog or forum stays `[ASSUMED]`. The answer has a starting data table, numbered steps with the code location and the values in and out, and an end state table. Every value is marked `[VERIFIED]` with its source, `[INFERRED]` or `[ASSUMED]`, and a value nobody could find is listed under "Not known" instead of being made up. When a scenario needs more than 12 files read or 5 pages fetched, it offers the research lane, which keeps a report on disk.
 
 ## picket:ticketing
 
