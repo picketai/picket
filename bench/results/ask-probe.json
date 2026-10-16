@@ -1,0 +1,106 @@
+{
+  "claude_version": "2.1.301 (Claude Code)",
+  "ran_at": "2026-10-16T19:02:18.652Z",
+  "cells": [
+    {
+      "mode": "manual",
+      "scenario": "ask",
+      "hook_permission_mode": "default",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "acceptEdits",
+      "scenario": "ask",
+      "hook_permission_mode": "acceptEdits",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "auto",
+      "scenario": "ask",
+      "hook_permission_mode": "auto",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "bypassPermissions",
+      "scenario": "ask",
+      "hook_permission_mode": "bypassPermissions",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "dontAsk",
+      "scenario": "ask",
+      "hook_permission_mode": "dontAsk",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "manual",
+      "scenario": "ask+rule",
+      "hook_permission_mode": "default",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "auto",
+      "scenario": "ask+rule",
+      "hook_permission_mode": "auto",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    },
+    {
+      "mode": "manual",
+      "scenario": "ask+fail",
+      "hook_permission_mode": "default",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUseFailure"
+      ],
+      "has_tool_use_id": true,
+      "error": null
+    }
+  ],
+  "interactive": {
+    "auto_dialog": null,
+    "bang_hooked": null
+  }
+}

@@ -48,7 +48,7 @@ export function launchCommand(args, { platform = process.platform, jobFile, clau
  * @param {string} [o.eventsPath]   JSONL file that receives every stamped event
  * @param {number} [o.t0]           wall-clock origin for relative timestamps
  */
-export function runClaude(o) {
+export function claudeArgs(o) {
   const args = ["-p", "--output-format", "stream-json", "--verbose"];
   if (o.resume) args.push("--resume", o.resume);
   if (o.permissionMode) args.push("--permission-mode", o.permissionMode);
@@ -57,11 +57,17 @@ export function runClaude(o) {
   if (o.maxTurns) args.push("--max-turns", String(o.maxTurns));
   if (o.pluginDir) args.push("--plugin-dir", o.pluginDir);
   if (o.model) args.push("--model", o.model);
+  if (o.settingSources) args.push("--setting-sources", o.settingSources);
   if (o.approver) {
     // The scripted user's approve button: every prompt goes to the bench MCP server, which allows
     // and logs it. `--strict-mcp-config` keeps the fixture's own MCP servers out of the session.
     args.push("--mcp-config", o.approver.configPath, "--strict-mcp-config", "--permission-prompt-tool", "mcp__bench__approve");
   }
+  return args;
+}
+
+export function runClaude(o) {
+  const args = claudeArgs(o);
 
   const t0 = o.t0 ?? Date.now();
   const started = Date.now();

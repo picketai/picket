@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { stopTree } from "../lib/claude.mjs";
+import { claudeArgs, stopTree } from "../lib/claude.mjs";
+
+test("settingSources passes --setting-sources with its value, and is absent when unset", () => {
+  const args = claudeArgs({ settingSources: "project,local" });
+  assert.deepEqual(args.slice(args.indexOf("--setting-sources"), args.indexOf("--setting-sources") + 2), ["--setting-sources", "project,local"]);
+  assert.equal(claudeArgs({}).includes("--setting-sources"), false);
+});
 
 function fakeChild() {
   const child = { pid: 4242, killed: 0, kill: () => child.killed++ };

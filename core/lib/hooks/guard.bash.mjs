@@ -400,13 +400,18 @@ function namesAssignedAnywhere(command) {
   return [...command.matchAll(ASSIGNMENT_IN_TEXT)].map((match) => match[1]);
 }
 
-function assignedNames(seg) {
-  if (!seg.every((token) => typeof token === "string" && ASSIGNMENT.test(token))) return null;
-  return seg.map((token) => token.slice(0, token.indexOf("=")));
+function splitAssignments(seg) {
+  const firstCommandToken = seg.findIndex((token) => typeof token !== "string" || !ASSIGNMENT.test(token));
+  const split = firstCommandToken === -1 ? seg.length : firstCommandToken;
+  return { names: seg.slice(0, split).map((token) => token.slice(0, token.indexOf("="))), command: seg.slice(split) };
 }
 
 function classifyAssignment(names) {
   return names.some((name) => SHELL_BEHAVIOUR_NAMES.has(name) || process.env[name] !== undefined) ? "unknown" : "safe";
+}
+
+function classifyPrefixedCommand(commandClass) {
+  return commandClass === "deny" ? "deny" : "unknown";
 }
 
 function withSubstitutedOutput(seg, plain, carriesOutput) {
@@ -1061,11 +1066,16 @@ function evaluateCommand(command, ctx) {
     if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
     const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
-    const assigned = assignedNames(seg);
-    const plain = hit ? "safe" : classifySegment(seg, effCwd, 0, root);
-    const judged = assigned ? classifyAssignment(assigned) : withSubstitutedOutput(seg, plain, carriesOutput);
+    const { names: prefixNames, command: commandPart } = splitAssignments(seg);
+    const onlyAssignments = !commandPart.length;
+    const plain = hit ? "safe" : classifySegment(commandPart, effCwd, 0, root);
+    const judged = onlyAssignments
+      ? classifyAssignment(prefixNames)
+      : prefixNames.length
+        ? classifyPrefixedCommand(plain)
+        : withSubstitutedOutput(seg, plain, carriesOutput);
     classifications.push(unallowed ? "unknown" : judged);
-    for (const name of assigned ?? []) taintedNames.add(name);
+    if (onlyAssignments) for (const name of prefixNames) taintedNames.add(name);
     if (normalizeRoot(seg[0]) === "cd") {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);

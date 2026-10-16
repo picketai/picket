@@ -564,6 +564,21 @@ test("guardBash lets an assigned variable reach only inert roots and keeps untai
   });
 });
 
+test("guardBash judges a command behind leading assignments as deny when it denies and never better than unknown", () => {
+  withProject((root) => {
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+
+    for (const command of ["FOO=1 git push origin v1", "FOO=1 rm -rf src", 'PICKET_ESCALATE="x" git push origin v1', "A=1 B=2 sudo ls", "FOO=1 ls; FOO=1 git reset --hard"]) {
+      assert.equal(decision(command), "deny", command);
+    }
+    for (const command of ["FOO=1 git status", "PATH=/x ls", "GIT_EXTERNAL_DIFF=x git diff", "FOO=1 picket state x", "ls && FOO=1 cat a"]) {
+      assert.equal(decision(command), null, command);
+    }
+    assert.equal(decision('FOO=1 picket drive --run "rm -rf src"'), "deny");
+    assert.equal(decision("a=1 b=2; ls"), "allow");
+  });
+});
+
 test("the spawned guard.bash hook allows reading the files an assigned substitution lists", () => {
   withProject((root) => {
     const command = 'cd src && f=$(grep -rln "class X" --include=*.cs .); echo $f; cat -n $f';
