@@ -1,16 +1,8 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, SessionRateLimit } from 'claude-code'
+import type { Register, SessionUsage } from 'claude-code'
 
-import type { Bar } from '../types'
-import { bar, compactTokens, levelColor, pack, prettyModel, untilReset } from './format'
-
-type Piece = { text: string; color?: string; bold?: boolean }
-type Segment = { label: string; pieces: Piece[] }
-
-const SEPARATOR = ' | '
-
-const widthOf = (segment: Segment) =>
-  segment.label.length + 2 + segment.pieces.reduce((sum, piece) => sum + piece.text.length, 0)
+import type { Bar, CacheTtl } from '../types'
+import { rows, sessionLine } from './band'
 
 const EMPTY: Bar = {
   model: null,
@@ -22,21 +14,36 @@ const EMPTY: Bar = {
   contextPercent: null,
   limits: [],
   now: 0,
+  cost: null,
+  compactAt: null,
+  lastRequestAt: null,
+  cacheTtl: null,
+  ttlSource: null,
 }
 
 const state = atom({ plugin: 'picket-status', key: 'bar' } as const, EMPTY)
 
-const CONTEXT_BAR_WIDTH = 10
+const compactAtOf = (usage: SessionUsage): number =>
+  usage.context.breakdown?.autoCompactThreshold ?? usage.context.breakdown?.rawMaxTokens ?? usage.context.window
 
-const windowOf = (limits: SessionRateLimit[], kind: string) =>
-  limits.find(limit => limit.kind === kind)
+type CacheSplit = { ephemeral_1h_input_tokens: number; ephemeral_5m_input_tokens: number } | null | undefined
+
+const ttlOfSplit = (split: CacheSplit): CacheTtl | null => {
+  if (!split) {
+    return null
+  }
+  if (split.ephemeral_1h_input_tokens > 0) {
+    return '1h'
+  }
+  return split.ephemeral_5m_input_tokens > 0 ? '5m' : null
+}
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     const [model, usage, now] = await Promise.all([
       $.session.model(),
-      $.session.usage(),
+      $.session.usage({ breakdown: 'summary' }),
       $.clock.now(),
     ])
     await update($, state, s => ({
@@ -46,6 +53,8 @@ export const register: Register = on => {
       contextWindow: usage.context.window,
       contextPercent: usage.context.percent ?? null,
       limits: usage.rateLimits,
+      cost: usage.cost?.usd ?? null,
+      compactAt: compactAtOf(usage),
       now,
     }))
     $.clock.every(30_000, async () => {
@@ -58,11 +67,17 @@ export const register: Register = on => {
   on('turn.step', async function* ($, e, next) {
     const result = yield* next(e)
     if (e.agentId === undefined) {
+      const [before, now] = await Promise.all([read($, state), $.clock.now()])
+      const compactAt =
+        before.model === e.model ? before.compactAt : compactAtOf(await $.session.usage({ breakdown: 'summary' }))
       await update($, state, s => ({
         ...s,
         model: e.model,
         effort: e.effort === undefined ? null : String(e.effort),
         cacheRead: result.usage?.cache_read_input_tokens ?? s.cacheRead,
+        lastRequestAt: now,
+        compactAt,
+        now,
       }))
     }
     return result
@@ -70,6 +85,26 @@ export const register: Register = on => {
 
   on('tool.call', { tool: 'Skill' }, async ($, e, next) => {
     await update($, state, s => ({ ...s, skill: e.skill }))
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
+    const called = await next(e)
+    const split = called.result && 'usage' in called.result ? called.result.usage.cache_creation : null
+    const learned = ttlOfSplit(split)
+    if (learned !== null) {
+      await update($, state, s => (s.ttlSource === 'switch' ? s : { ...s, cacheTtl: learned, ttlSource: 'agent' }))
+    }
+    return called
+  }).catch(($, e, next) => next(e))
+
+  on('classic.PreModelSwitch', async ($, e, next) => {
+    await update($, state, s => ({ ...s, cacheTtl: e.cache_ttl, ttlSource: 'switch' }))
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('classic.PostModelSwitch', async ($, e, next) => {
+    await update($, state, s => ({ ...s, cacheTtl: e.cache_ttl, ttlSource: 'switch' }))
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -81,6 +116,7 @@ export const register: Register = on => {
       contextWindow: e.context.window,
       contextPercent: e.context.percent ?? s.contextPercent,
       limits: e.rateLimits.length > 0 ? e.rateLimits : s.limits,
+      cost: e.cost?.usd ?? s.cost,
       now,
     }))
     return next(e)
@@ -92,61 +128,17 @@ export const register: Register = on => {
     }
     const { Box, Text } = $.ui.resolve(e)
     const s = await read($, state)
-    const session = windowOf(s.limits, 'five_hour')
-    const weekly = windowOf(s.limits, 'seven_day')
-    const percent = s.contextPercent ?? 0
-    const used = (window: SessionRateLimit | undefined): Piece =>
-      window
-        ? { text: `${window.percentUsed.toFixed(1)}%`, color: levelColor(window.percentUsed) }
-        : { text: 'n/a', color: 'inactive' }
-    const resetIn = (window: SessionRateLimit | undefined): Piece => ({
-      text: window ? untilReset(window.resetsAt, s.now) : 'n/a',
-      color: 'suggestion',
-    })
-    const tokens = `${s.contextTokens === null ? '0' : compactTokens(s.contextTokens)}/${
-      s.contextWindow === null ? '?' : compactTokens(s.contextWindow)
-    } (${percent}%)`
-
-    const segments: Segment[] = [
-      { label: 'Model', pieces: [{ text: s.model ? prettyModel(s.model) : '...', color: 'claude', bold: true }] },
-      { label: 'Thinking', pieces: [{ text: s.effort ?? 'default', color: 'remember' }] },
-      { label: 'Skill', pieces: [{ text: s.skill ?? 'none', color: 'ide' }] },
-      { label: 'Session', pieces: [used(session)] },
-      { label: 'Reset', pieces: [resetIn(session)] },
-      { label: 'Weekly', pieces: [used(weekly)] },
-      { label: 'Weekly Reset', pieces: [resetIn(weekly)] },
-      {
-        label: 'Context',
-        pieces: [
-          { text: `[${bar(percent, CONTEXT_BAR_WIDTH)}]`, color: levelColor(percent) },
-          { text: ` ${tokens}` },
-        ],
-      },
-      { label: 'Cached', pieces: [{ text: s.cacheRead === null ? 'n/a' : compactTokens(s.cacheRead), color: 'success' }] },
-    ]
-    const rows = pack(segments.map(widthOf), e.props.bodyColumns, SEPARATOR.length)
+    const drawn = rows(sessionLine(s), e.props.bodyColumns)
 
     return (
       <Box flexDirection="column" paddingTop={1}>
-        {rows.map(row => (
-          <Text key={row.join('-')} wrap="truncate-end">
-            {row.map((index, position) => {
-              const segment = segments[index]
-              if (segment === undefined) {
-                return null
-              }
-              return (
-                <Text key={segment.label}>
-                  {position > 0 ? <Text dimColor>{SEPARATOR}</Text> : null}
-                  <Text color="subtle">{segment.label}: </Text>
-                  {segment.pieces.map(piece => (
-                    <Text key={piece.text} color={piece.color} bold={piece.bold}>
-                      {piece.text}
-                    </Text>
-                  ))}
-                </Text>
-              )
-            })}
+        {drawn.map((row, rowIndex) => (
+          <Text key={`row:${rowIndex}`} wrap="truncate-end">
+            {row.map((piece, pieceIndex) => (
+              <Text key={`piece:${pieceIndex}`} color={piece.color} bold={piece.bold} dimColor={piece.dim}>
+                {piece.text}
+              </Text>
+            ))}
           </Text>
         ))}
       </Box>

@@ -1,5 +1,11 @@
 export type Limit = { kind: string; percentUsed: number; resetsAt?: string }
 
+export type Piece = { text: string; color?: string; bold?: boolean; dim?: boolean }
+
+export type Line = { left: Piece[]; right: Piece[] }
+
+export type CacheTtl = '5m' | '1h'
+
 export type Bar = {
   model: string | null
   effort: string | null
@@ -10,6 +16,11 @@ export type Bar = {
   contextPercent: number | null
   limits: Limit[]
   now: number
+  cost: number | null
+  compactAt: number | null
+  lastRequestAt: number | null
+  cacheTtl: CacheTtl | null
+  ttlSource: 'switch' | 'agent' | null
 }
 
 declare module 'claude-code' {

@@ -1,3 +1,5 @@
+import type { Bar, CacheTtl, Piece } from '../types'
+
 const FAMILY = /^claude-(opus|sonnet|haiku|fable)-(\d+)-(\d+)/
 
 export const prettyModel = (id: string): string => {
@@ -28,9 +30,9 @@ export const untilReset = (resetsAt: string | undefined, now: number): string =>
   const hours = Math.floor((minutes % 1440) / 60)
   const rest = minutes % 60
   if (days > 0) {
-    return `${days}d ${hours}hr`
+    return `${days}d${hours}h`
   }
-  return hours > 0 ? `${hours}hr ${rest}m` : `${rest}m`
+  return hours > 0 ? `${hours}h${rest}m` : `${rest}m`
 }
 
 export const bar = (percent: number, width: number): string => {
@@ -38,26 +40,26 @@ export const bar = (percent: number, width: number): string => {
   return '█'.repeat(filled) + '░'.repeat(width - filled)
 }
 
-export const pack = (widths: number[], columns: number, separator: number): number[][] => {
-  const rows: number[][] = []
-  let row: number[] = []
-  let used = 0
-  widths.forEach((width, index) => {
-    const needed = row.length === 0 ? width : used + separator + width
-    if (row.length > 0 && needed > columns) {
-      rows.push(row)
-      row = [index]
-      used = width
-      return
-    }
-    row.push(index)
-    used = needed
-  })
-  if (row.length > 0) {
-    rows.push(row)
-  }
-  return rows
-}
-
 export const levelColor =(percent: number): string =>
   percent >= 90 ? 'error' : percent >= 70 ? 'warning' : 'success'
+
+export const contextColor = (tokens: number, compactAt: number): string => {
+  const share = tokens / compactAt
+  return share >= 0.85 ? 'error' : share >= 0.65 ? 'warning' : 'success'
+}
+
+const MINUTE = 60_000
+
+const TTL_MS: Record<CacheTtl, number> = { '5m': 5 * MINUTE, '1h': 60 * MINUTE }
+
+export const cacheLeft = (state: Bar, now: number): Piece | null => {
+  if (state.lastRequestAt === null) {
+    return null
+  }
+  const left = TTL_MS[state.cacheTtl ?? '5m'] - (now - state.lastRequestAt)
+  if (left <= 0) {
+    return { text: 'cold', color: 'error', bold: true }
+  }
+  const text = `◷ ${state.cacheTtl === null ? '~' : ''}${Math.ceil(left / MINUTE)}m`
+  return left < 5 * MINUTE ? { text, color: 'warning' } : { text, dim: true }
+}
