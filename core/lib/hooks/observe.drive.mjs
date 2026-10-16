@@ -8,7 +8,7 @@ import { parse } from "../vendor/shell-quote-parse.mjs";
 
 const LOGGED_COMMAND_CHARS = 200;
 
-function openWorkItem(root) {
+export function openWorkItem(root) {
   for (const id of listWork(root).reverse()) {
     const s = deriveState(id, root);
     if (s.status === "open") return { work_id: id, phase: s.current_phase };

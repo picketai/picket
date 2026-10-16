@@ -1,6 +1,7 @@
 // Pre-flight without a model: are the inputs there, is the tree sane, what tooling exists.
 // Each check is ok | warn | fail. One fail stops; warns are shown and work proceeds.
 import { existsSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { protectionScope } from "./source-paths.mjs";
 import { deriveState, projectRoot } from "./work.mjs";
@@ -10,6 +11,7 @@ import { listWorktrees } from "./sources.mjs";
 import { LEGACY_LOCATIONS, hostPath, legacyPath } from "./paths.mjs";
 import { loadExtensions } from "./extensions.mjs";
 import { detectTooling } from "./tooling.mjs";
+import { escalationAllowRules } from "./saved-rules.mjs";
 
 export { detectTooling };
 
@@ -52,7 +54,7 @@ function addExtensionChecks(root, add) {
   }
 }
 
-export function preflight(id, root = projectRoot()) {
+export function preflight(id, root = projectRoot(), home = homedir()) {
   const checks = [];
   const add = (name, level, detail = "") => checks.push({ name, level, detail });
 
@@ -90,6 +92,9 @@ export function preflight(id, root = projectRoot()) {
 
   const legacy = LEGACY_LOCATIONS.filter((rel) => existsSync(legacyPath(root, rel)));
   if (legacy.length) add("legacy_paths", "warn", `${legacy.join(", ")} still present; run picket migrate`);
+
+  const savedRules = escalationAllowRules({ root, home });
+  add("saved_rules", savedRules.length ? "warn" : "ok", savedRules.length ? savedRules.map(({ rule, file }) => `${rule} in ${file}`).join("; ") : "none");
 
   const config = loadConfig(root);
   if (config.error) add("config", "warn", `${config.error}; using the default security paths and no sources`);

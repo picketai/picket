@@ -98,6 +98,26 @@ test("a refused extension fails preflight with its reason, an unlisted folder ad
   }
 });
 
+test("preflight warns with each saved allow rule that could approve an escalation, and is ok with none", () => {
+  const { root, id } = project([], {});
+  const home = mkdtempSync(join(tmpdir(), "picket-preflight-home-"));
+  try {
+    const homeEnv = { HOME: home, USERPROFILE: home };
+    assert.deepEqual(preflightCli(root, id, homeEnv).byName.saved_rules, { name: "saved_rules", level: "ok", detail: "none" });
+    mkdirSync(join(root, ".claude"), { recursive: true });
+    writeFileSync(join(root, ".claude", "settings.local.json"), JSON.stringify({ permissions: { allow: ["Bash(*)", "Bash(git status)"] } }));
+    const saved = preflightCli(root, id, homeEnv).byName.saved_rules;
+    assert.equal(saved.level, "warn");
+    assert.equal(saved.detail, `Bash(*) in ${join(root, ".claude", "settings.local.json")}`);
+    const { CLAUDE_PROJECT_DIR, ...base } = process.env;
+    const human = spawnSync("node", [BIN, "preflight", id, "--root", root, "--human"], { encoding: "utf8", env: { ...base, ...homeEnv } }).stdout;
+    assert.match(human, /^warn saved_rules: Bash\(\*\) in /m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test("with no extension the preflight carries one extensions line saying none", () => {
   const { root, id } = project([], {});
   try {

@@ -13,6 +13,7 @@ import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.m
 import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
 import { guardBash, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
+import { ASKING_MODES } from "../../core/lib/escalation.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
 import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
 
@@ -576,6 +577,151 @@ test("guardBash judges a command behind leading assignments as deny when it deni
     }
     assert.equal(decision('FOO=1 picket drive --run "rm -rf src"'), "deny");
     assert.equal(decision("a=1 b=2; ls"), "allow");
+  });
+});
+
+const PUSH = "git push origin v1.0.0-alpha.2";
+const ESCALATED_PUSH = `PICKET_ESCALATE="you asked me to push the release tag" ${PUSH}`;
+
+function withEscalationProject(fn) {
+  withProject((root) => {
+    const home = mkdtempSync(join(tmpdir(), "harness-home-"));
+    try {
+      const judge = (command, extra = {}) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s1", permission_mode: "default", ...extra }, { root, home })?.hookSpecificOutput ?? null;
+      const escalationRows = () => (existsSync(statePath(root, STATE_FILES.ledger)) ? readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.event === "escalation") : []);
+      fn({ root, home, judge, escalationRows });
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+}
+
+test("ASKING_MODES holds the hook modes in which the probe saw a hook ask reach the prompt tool, auto only once the dialog is confirmed", () => {
+  const record = JSON.parse(readFileSync(resolve("bench/results/ask-probe.json"), "utf8"));
+  const proven = record.cells
+    .filter((cell) => cell.scenario === "ask" && cell.prompt_tool_called && !cell.error)
+    .filter((cell) => cell.mode !== "auto" || record.interactive?.auto_dialog === "shown")
+    .map((cell) => cell.hook_permission_mode);
+  assert.deepEqual([...ASKING_MODES].sort(), [...new Set(proven)].sort());
+});
+
+test("a marked destructive command asks in a proven mode, quoting the reason, and never allows", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    const asked = judge(ESCALATED_PUSH, { agent_type: "picket:developer" });
+    assert.equal(asked.permissionDecision, "ask");
+    assert.match(asked.permissionDecisionReason, /escalation by developer: "you asked me to push the release tag"\. Approving runs this one command once; nothing carries over\./);
+    assert.match(judge(ESCALATED_PUSH).permissionDecisionReason, /escalation by main:/);
+    for (const mode of [undefined, "auto", "plan", "default", "acceptEdits", "bypassPermissions", "dontAsk"]) {
+      for (const command of [ESCALATED_PUSH, "PICKET_ESCALATE=x ls", "PICKET_ESCALATE=x git status"]) {
+        assert.notEqual(judge(command, { permission_mode: mode })?.permissionDecision, "allow", `${mode} ${command}`);
+      }
+    }
+    const rows = escalationRows();
+    assert.equal(rows[0].outcome, "ask");
+    assert.equal(rows[0].why, null);
+    assert.equal(rows[0].command, PUSH);
+    assert.equal(rows[0].reason, "you asked me to push the release tag");
+    assert.equal(rows[0].agent, "developer");
+    assert.equal(rows[0].session, "s1");
+    assert.match(rows[0].key, /^[0-9a-f]{64}$/);
+  });
+});
+
+test("a marked push in an absent or unlisted permission mode denies with the mode and the user's own route", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    for (const permission_mode of [undefined, "auto", "plan"]) {
+      const out = judge(ESCALATED_PUSH, { permission_mode });
+      assert.equal(out.permissionDecision, "deny");
+      assert.match(out.permissionDecisionReason, new RegExp(`permission mode ${permission_mode ?? "unknown"}`));
+      assert.ok(out.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`), out.permissionDecisionReason);
+    }
+    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["denied", "mode"], ["denied", "mode"], ["denied", "mode"]]);
+  });
+});
+
+test("a marker that is not one command alone with a literal reason denies with the shape cause", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    const shapes = [
+      "PICKET_ESCALATE=x git push && ls",
+      "FOO=1 PICKET_ESCALATE=x git push",
+      'PICKET_ESCALATE="$HOME" git push',
+      "PICKET_ESCALATE= git push",
+      "PICKET_ESCALATE=x; git push",
+      "PICKET_ESCALATE=x git push > out.txt",
+      "PICKET_ESCALATE=\"`whoami`\" git push",
+      `PICKET_ESCALATE="${"y".repeat(201)}" git push`,
+    ];
+    for (const command of shapes) {
+      const out = judge(command);
+      assert.equal(out?.permissionDecision, "deny", command);
+      assert.match(out.permissionDecisionReason, /escalate one command, alone/, command);
+      assert.match(out.permissionDecisionReason, /run it yourself: ! /, command);
+    }
+    assert.equal(escalationRows().length, shapes.length);
+    assert.ok(escalationRows().every((r) => r.outcome === "denied" && r.why === "shape"));
+    for (const command of [`PICKET_ESCALATE='it'"'"'s the tag' git push`, 'PICKET_ESCALATE="say \\"go\\"" git push']) {
+      assert.equal(judge(command)?.permissionDecision, "ask", command);
+    }
+    assert.equal(escalationRows().at(-1).reason, 'say "go"');
+  });
+});
+
+test("a marker on a command that does not deny falls through and records nothing; an unmarked command records nothing", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    assert.equal(judge("PICKET_ESCALATE=x ls"), null);
+    assert.equal(judge(PUSH).permissionDecision, "deny");
+    assert.match(judge(PUSH).permissionDecisionReason, /run it alone as `PICKET_ESCALATE="<why>" <command>`/);
+    assert.equal(judge("ls").permissionDecision, "allow");
+    assert.deepEqual(escalationRows(), []);
+  });
+});
+
+test("the marker never reaches the source deny or the wrapped picket verb deny", () => {
+  withEscalationProject(({ root, judge, escalationRows }) => {
+    const source = join(root, "analysis");
+    execFileSync("git", ["init", "-q", source]);
+    mkdirSync(join(root, ".picket"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "PICKET_TEST_SOURCE_ANALYSIS" } } }));
+    process.env.PICKET_TEST_SOURCE_ANALYSIS = source;
+    try {
+      const inSource = judge(`PICKET_ESCALATE=x git -C "${source.replaceAll("\\", "/")}" push`);
+      assert.equal(inSource.permissionDecision, "deny");
+      assert.match(inSource.permissionDecisionReason, /inside source analysis, which is read-only/);
+      const wrapped = judge('PICKET_ESCALATE=x picket drive --run "rm -rf src"');
+      assert.equal(wrapped.permissionDecision, "deny");
+      assert.match(wrapped.permissionDecisionReason, /the command wrapped in a picket verb/);
+      assert.deepEqual(escalationRows(), []);
+    } finally {
+      delete process.env.PICKET_TEST_SOURCE_ANALYSIS;
+    }
+  });
+});
+
+test("a saved allow rule that could approve the marked command turns the escalation into a deny naming the rule and its file", () => {
+  for (const rule of ["Bash(*)", "Bash(PICKET_ESCALATE=*)"]) {
+    withEscalationProject(({ root, judge, escalationRows }) => {
+      mkdirSync(join(root, ".claude"), { recursive: true });
+      const file = join(root, ".claude", "settings.local.json");
+      writeFileSync(file, JSON.stringify({ permissions: { allow: [rule] } }));
+      const out = judge(ESCALATED_PUSH);
+      assert.equal(out.permissionDecision, "deny", rule);
+      assert.ok(out.permissionDecisionReason.includes(`${rule} in ${file}`), out.permissionDecisionReason);
+      assert.ok(out.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`));
+      assert.deepEqual(escalationRows().map((r) => r.why), ["saved_rule"]);
+    });
+  }
+});
+
+test("the spawned guard.bash hook prints the ask for a marked push", () => {
+  withProject((root) => {
+    const home = mkdtempSync(join(tmpdir(), "harness-home-"));
+    try {
+      const event = { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, cwd: root, session_id: "s1", permission_mode: "default" };
+      const out = execFileSync("node", [join(HOOKS, "guard.bash.mjs")], { input: JSON.stringify(event), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root, HOME: home, USERPROFILE: home } });
+      assert.equal(JSON.parse(out).hookSpecificOutput.permissionDecision, "ask");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 

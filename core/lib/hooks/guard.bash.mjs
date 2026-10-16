@@ -32,12 +32,16 @@
  */
 
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
+import { homedir } from "os";
 import { isAbsolute, join, resolve } from "path";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
-import { maskEnvValues } from "./observe.drive.mjs";
+import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
 import { detectTooling } from "../tooling.mjs";
+import { bareAgentName } from "../agent-name.mjs";
+import { ASKING_MODES, carriesMarker, escalationMarker, leadingAssignments, recordEscalation, withoutMarker } from "../escalation.mjs";
+import { escalationAllowRules } from "../saved-rules.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
 
@@ -153,7 +157,7 @@ function outcomes(root, rawCommand) {
     return {
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
-        permissionDecision: decision, // "allow" | "deny"
+        permissionDecision: decision,
         permissionDecisionReason: reason,
       },
     };
@@ -375,7 +379,6 @@ function carriesSubstitution(token) {
 const VARIABLE_MARK = "__picket_variable__";
 const MARKED_NAME = new RegExp(`${VARIABLE_MARK}(.*?)${VARIABLE_MARK}`, "g");
 const PLAIN_NAME = /^(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]+|[?#$!@*-])$/;
-const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const ASSIGNMENT_IN_TEXT = /(?:^|[\s;&|(])([A-Za-z_][A-Za-z0-9_]*)=/g;
 const LAST_ARGUMENT = "_";
 const SHELL_BEHAVIOUR_NAMES = new Set(["PATH", "CDPATH", "IFS", "BASH_ENV", "ENV", "GLOBIGNORE", "HOME", "SHELLOPTS", "BASHOPTS", "PS4"]);
@@ -398,12 +401,6 @@ function outputCarrier(taintedNames) {
 
 function namesAssignedAnywhere(command) {
   return [...command.matchAll(ASSIGNMENT_IN_TEXT)].map((match) => match[1]);
-}
-
-function splitAssignments(seg) {
-  const firstCommandToken = seg.findIndex((token) => typeof token !== "string" || !ASSIGNMENT.test(token));
-  const split = firstCommandToken === -1 ? seg.length : firstCommandToken;
-  return { names: seg.slice(0, split).map((token) => token.slice(0, token.indexOf("="))), command: seg.slice(split) };
 }
 
 function classifyAssignment(names) {
@@ -1011,7 +1008,7 @@ function classifySegment(tokens, cwd = process.cwd(), depth = 0, hookRoot = null
 // Main
 // ---------------------------------------------------------------------
 
-export function guardBash(input, { root }) {
+export function guardBash(input, { root, home = homedir() }) {
   const rawCommand = input?.tool_input?.command;
   if (typeof rawCommand !== "string" || !rawCommand.trim()) {
     return outcomes(root, "").fallThrough("no-command");
@@ -1024,12 +1021,52 @@ export function guardBash(input, { root }) {
   // place; fall back to this process's cwd if it's absent.
   const cwd = typeof input?.cwd === "string" ? input.cwd : process.cwd();
 
-  const { decision, reason } = evaluateCommand(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0 });
+  const escalation = { mode: input?.permission_mode ?? null, session: input?.session_id ?? null, agent: bareAgentName(input?.agent_type), home };
+  const { decision, reason } = evaluateCommand(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0, escalation });
   return decision ? outcome.decide(decision, reason) : outcome.fallThrough(reason);
 }
 
 const decide = (decision, reason) => ({ decision, reason });
 const fallThrough = (reason) => ({ decision: null, reason });
+
+const ESCALATE_HINT = 'If the user asked for this action in this session or the work cannot continue without it, run it alone as `PICKET_ESCALATE="<why>" <command>` and the user decides in the dialog.';
+
+function isOpaqueWord(value) {
+  return value.includes(VARIABLE_MARK) || value.includes(SUBSTITUTION_WORD);
+}
+
+function readEscalation(segments, { hiddenExecution, sawWriteRedirect, sawBackground }) {
+  if (segments.length !== 1 || hiddenExecution || sawWriteRedirect || sawBackground) return { shapeProblem: "escalate one command, alone", reason: null };
+  const marker = escalationMarker(segments[0], { isOpaque: isOpaqueWord });
+  return marker.invalid ? { shapeProblem: `escalate one command, alone: ${marker.invalid}`, reason: null } : { shapeProblem: null, reason: marker.reason };
+}
+
+function escalationVerdict({ shapeProblem, commandClass, mode, savedRules }) {
+  if (shapeProblem) return { outcome: "denied", why: "shape", cause: shapeProblem };
+  if (commandClass !== "deny") return null;
+  if (!ASKING_MODES.has(mode)) return { outcome: "denied", why: "mode", cause: `escalation is off in permission mode ${mode ?? "unknown"}, where the dialog is not proven` };
+  if (savedRules.length) {
+    const { rule, file } = savedRules[0];
+    return { outcome: "denied", why: "saved_rule", cause: `the saved allow rule ${rule} in ${file} could approve it without a dialog; remove the rule` };
+  }
+  return { outcome: "ask", why: null };
+}
+
+function judgeEscalation(rawCommand, segments, classifications, flags, ctx) {
+  const { root, escalation } = ctx;
+  const command = maskEnvValues(withoutMarker(rawCommand));
+  const { shapeProblem, reason: rawReason } = readEscalation(segments, flags);
+  const commandClass = classifications[0];
+  const needsRules = !shapeProblem && commandClass === "deny" && ASKING_MODES.has(escalation.mode);
+  const verdict = escalationVerdict({ shapeProblem, commandClass, mode: escalation.mode, savedRules: needsRules ? escalationAllowRules({ root, home: escalation.home }) : [] });
+  if (!verdict) return fallThrough("escalation-not-destructive");
+  const reason = rawReason === null ? null : maskEnvValues(rawReason);
+  recordEscalation(root, { session: escalation.session, outcome: verdict.outcome, why: verdict.why, command, reason, agent: escalation.agent, work_id: openWorkItem(root).work_id });
+  if (verdict.outcome === "ask") {
+    return decide("ask", `guard.bash: escalation by ${escalation.agent ?? "main"}: "${reason}". Approving runs this one command once; nothing carries over.`);
+  }
+  return decide("deny", `guard.bash: ${verdict.cause}; run it yourself: ! ${command}`);
+}
 
 function evaluateCommand(command, ctx) {
   const { cwd, root, sources: roots, depth } = ctx;
@@ -1066,7 +1103,8 @@ function evaluateCommand(command, ctx) {
     if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
     const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
-    const { names: prefixNames, command: commandPart } = splitAssignments(seg);
+    const { assignments, command: commandPart } = leadingAssignments(seg);
+    const prefixNames = assignments.map(({ name }) => name);
     const onlyAssignments = !commandPart.length;
     const plain = hit ? "safe" : classifySegment(commandPart, effCwd, 0, root);
     const judged = onlyAssignments
@@ -1107,10 +1145,14 @@ function evaluateCommand(command, ctx) {
     if (hit) return decide("deny", sourceDenial(hit, "a write redirect"));
   }
 
+  if (ctx.depth === 0 && ctx.escalation && segments.some(carriesMarker)) {
+    return judgeEscalation(command, segments, classifications, { hiddenExecution, sawWriteRedirect, sawBackground }, ctx);
+  }
+
   if (classifications.includes("deny")) {
     return decide(
       "deny",
-      "guard.bash: command contains a destructive sub-command (e.g. rm, sudo, git push/reset/rebase/checkout/merge/clean)."
+      `guard.bash: command contains a destructive sub-command (e.g. rm, sudo, git push/reset/rebase/checkout/merge/clean). ${ESCALATE_HINT}`
     );
   }
 
