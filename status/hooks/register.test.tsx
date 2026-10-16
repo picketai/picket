@@ -216,7 +216,7 @@ const agentWorld = (on: On, roster: AgentInfo[]) => {
 
 const shows = async ($: Engine, text: string) => (await (await band($)).find({ type: 'Text', text })) !== undefined
 
-test('a spawned agent idles with its last job time and works again from a message', async ($, on) => {
+test('a spawned agent leaves the band when idle and works again from a message', async ($, on) => {
   const roster = [developer()]
   const clock = agentWorld(on, roster)
   await $.session.start(START)
@@ -224,7 +224,8 @@ test('a spawned agent idles with its last job time and works again from a messag
 
   roster[0] = { ...developer(), status: 'idle' }
   await $.turn.complete({ answer: '', durationMs: 250_000, isAborted: false, turnId: 't1', agentId: 'a1', reason: 'answer' })
-  expect(await shows($, 'developer idle (4m10s)')).toBe(true)
+  expect(await (await band($)).find({ type: 'Text', text: /^⚇/ })).toBeUndefined()
+  expect(await shows($, 'Opus 5.5')).toBe(true)
 
   await clock.advance(60_000)
   roster[0] = developer()

@@ -46,7 +46,6 @@ export type AgentRow = {
   status: string
   startedAt: number
   idleAt: number | null
-  lastJobMs: number | null
 }
 
 declare module 'claude-code' {

@@ -43,7 +43,6 @@ const syncRoster = async ($: EngineInterface): Promise<number> => {
           status: info.status,
           startedAt: seen?.startedAt ?? now,
           idleAt: seen?.idleAt ?? null,
-          lastJobMs: seen?.lastJobMs ?? null,
         }
       }),
   )
@@ -220,7 +219,7 @@ export const register: Register = on => {
     const completed = await next(e)
     const now = await syncRoster($)
     if (e.agentId !== undefined) {
-      await stamp($, row => row.id === e.agentId, { idleAt: now, lastJobMs: e.durationMs })
+      await stamp($, row => row.id === e.agentId, { idleAt: now })
     }
     return completed
   }).catch(($, e, next) => next(e))

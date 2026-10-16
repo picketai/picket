@@ -43,7 +43,7 @@ const limitPart = (label: string, limit: Limit | undefined, now: number): Piece[
   return [
     head,
     { text: `${Math.round(limit.percentUsed)}%`, color: levelColor(limit.percentUsed) },
-    { text: ` ↻${untilReset(limit.resetsAt, now)}`, dim: true },
+    { text: ` (${untilReset(limit.resetsAt, now)})`, dim: true },
   ]
 }
 
@@ -124,31 +124,28 @@ export const agentState = (row: AgentRow, all: AgentRow[], work: Work | null): A
   return row.idleAt !== null && row.idleAt === latestIdle ? 'waiting' : 'idle'
 }
 
-const agentPieces = (row: AgentRow, all: AgentRow[], work: Work | null, now: number): Piece[] => {
-  switch (agentState(row, all, work)) {
-    case 'working':
-      return [
+const agentPieces = (row: AgentRow, state: Exclude<AgentState, 'idle'>, now: number): Piece[] =>
+  state === 'working'
+    ? [
         { text: `${row.name} ` },
         { text: 'working', color: 'ide', bold: true },
         { text: ` (${elapsed(now - row.startedAt)})`, color: 'ide' },
       ]
-    case 'waiting':
-      return [
+    : [
         { text: `${row.name} ` },
         { text: 'waiting', color: 'warning', bold: true },
         { text: ` (${minutes(now - (row.idleAt ?? now))})`, color: 'warning' },
       ]
-    case 'idle':
-      return [{ text: `${row.name} idle${row.lastJobMs === null ? '' : ` (${elapsed(row.lastJobMs)})`}`, dim: true }]
-  }
-}
 
 export const agentsLine = (all: AgentRow[], work: Work | null, now: number): Line | null => {
   const live = all.filter(row => !isEnded(row.status))
-  if (live.length === 0) {
+  const agents = live.flatMap(row => {
+    const state = agentState(row, live, work)
+    return state === 'idle' ? [] : [agentPieces(row, state, now)]
+  })
+  if (agents.length === 0) {
     return null
   }
-  const agents = live.map(row => agentPieces(row, live, work, now))
   return { left: [{ text: '⚇ ', color: 'permission' }, ...joined(agents, DOT)], right: [] }
 }
 

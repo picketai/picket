@@ -47,15 +47,17 @@ describe('band', () => {
     expect(narrow.map(text)).toEqual([text(line.left), text(line.right)])
     expect(rows({ left: line.left, right: [] }, 10)).toEqual([line.left])
   })
-
   test('the session line reads the canvas figures', async () => {
     const line = sessionLine(CANVAS)
     expect(text(line.left)).toBe('◆ Opus 5.5 · high · picket:ordering')
     expect(text(line.right)).toBe(
-      '5h 42% ↻2h14m   7d 71% ↻3d6h   ctx [███░░░░░░░] 62k/200.0k (31%)   cache 48k ◷ 52m   $4.12',
+      '5h 42% (2h14m)   7d 71% (3d6h)   ctx [███░░░░░░░] 62k/200.0k (31%)   cache 48k ◷ 52m   $4.12',
     )
     expect(line.left[1]).toEqual({ text: 'Opus 5.5', color: 'claude', bold: true })
     expect(line.right.find(piece => piece.text.startsWith('['))?.color).toBe('success')
+    expect(line.right.find(piece => piece.text === ' (2h14m)')?.dim).toBe(true)
+    const unknownReset = { ...CANVAS, limits: [{ kind: 'five_hour', percentUsed: 42 }] }
+    expect(text(sessionLine(unknownReset).right).startsWith('5h 42% (?)   7d n/a')).toBe(true)
   })
 
   test('the cache part warns while unlearned and runs cold past its ttl', async () => {
@@ -122,38 +124,36 @@ const agent = (name: string, status: string, clocks: Partial<AgentRow> = {}): Ag
   status,
   startedAt: NOW,
   idleAt: null,
-  lastJobMs: null,
   ...clocks,
 })
 
 describe('agents line', () => {
-  test('a working agent shows its time since start, an idle one its last job', async () => {
+  test('a working agent shows its time since start and an idle one is not drawn', async () => {
     const line = agentsLine(
-      [agent('developer', 'running', { startedAt: NOW - 192_000 }), agent('architect', 'idle', { lastJobMs: 250_000 })],
+      [agent('developer', 'running', { startedAt: NOW - 192_000 }), agent('architect', 'idle', { idleAt: NOW })],
       null,
       NOW,
     )
-    expect(text(line?.left ?? [])).toBe('⚇ developer working (3m12s) · architect idle (4m10s)')
+    expect(text(line?.left ?? [])).toBe('⚇ developer working (3m12s)')
     expect(line?.left.find(piece => piece.text === 'working')).toEqual({ text: 'working', color: 'ide', bold: true })
     expect(line?.right).toEqual([])
   })
 
   test('the idle agent whose verdict the user is answering waits', async () => {
-    const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE, lastJobMs: 250_000 })
+    const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE })
     const gate = { ...WORK, actor: 'user', by: 'developer' }
     const waiting = agentsLine([developer], gate, NOW)
     expect(text(waiting?.left ?? [])).toBe('⚇ developer waiting (6m)')
     expect(waiting?.left.find(piece => piece.text === 'waiting')?.color).toBe('warning')
-    expect(text(agentsLine([developer], { ...gate, by: 'reviewer' }, NOW)?.left ?? [])).toBe('⚇ developer idle (4m10s)')
+    expect(agentsLine([developer], { ...gate, by: 'reviewer' }, NOW)).toBe(null)
 
     const earlier = { ...developer, id: 'id-old', name: 'developer-old', idleAt: NOW - 20 * MINUTE }
-    expect(text(agentsLine([earlier, developer], gate, NOW)?.left ?? [])).toBe(
-      '⚇ developer-old idle (4m10s) · developer waiting (6m)',
-    )
+    expect(text(agentsLine([earlier, developer], gate, NOW)?.left ?? [])).toBe('⚇ developer waiting (6m)')
   })
 
-  test('no live agent means no agents line', async () => {
+  test('no working or waiting agent means no agents line', async () => {
     expect(agentsLine([], null, NOW)).toBe(null)
     expect(agentsLine([agent('a', 'completed'), agent('b', 'failed'), agent('c', 'killed')], null, NOW)).toBe(null)
+    expect(agentsLine([agent('a', 'idle'), agent('b', 'idle')], null, NOW)).toBe(null)
   })
 })
