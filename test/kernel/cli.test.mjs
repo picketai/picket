@@ -78,6 +78,21 @@ test("comment records an approval and needs both --path and --text (T-1.4)", () 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("next --latest prints the newest open item with the fixed key set; next alone exits 1", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
+  mkdirSync(join(root, ".claude"));
+  assert.equal(run(root, ["next", "--latest"]).action, "none");
+  const { id } = run(root, ["new", "--lane", "order", "--title", "Summary endpoint"]);
+  const n = run(root, ["next", "--latest"]);
+  assert.equal(n.id, id);
+  assert.deepEqual(
+    Object.keys(n).sort(),
+    ["id", "lane", "status", "phase", "options", "own_gate", "action", "actor", "detail", "title", "phases_approved", "phase_count", "blocked_reason", "since", "by"].sort(),
+  );
+  assert.throws(() => execFileSync("node", [BIN, "next", "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && /next needs <id> or --latest/.test(err.stderr));
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("usage errors exit 1 with a message on stderr", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));

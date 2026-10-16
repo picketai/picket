@@ -1,7 +1,7 @@
 // The single next action for a work item, computed from derived state. Never stored.
 // Every branch returns { action, actor, phase, detail, options } where `options` is the bracket menu
 // the gate packet shows the user (empty when no user decision is due).
-import { deriveState, workDir } from "./work.mjs";
+import { deriveState, listOpenWork, workDir } from "./work.mjs";
 import { ambiguousRefs } from "./sources.mjs";
 import { ownGate } from "./gate.mjs";
 
@@ -77,5 +77,28 @@ export function next(id, root) {
     detail: own_gate ? `${awaiting}; it ${own_gate.reason}` : awaiting,
     options: ["[a] approve", runOffer, "[x] reject: <why>"].filter(Boolean),
     own_gate,
+  };
+}
+
+function sinceOf(s) {
+  const ts = s.last_verdict?.ts;
+  return ts && ts > s.updated ? ts : s.updated;
+}
+
+export function latest(root) {
+  const open = listOpenWork(root).map((id) => deriveState(id, root));
+  if (!open.length) return { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] };
+  const newest = open.reduce((best, s) => {
+    const order = sinceOf(s).localeCompare(sinceOf(best)) || s.id.localeCompare(best.id);
+    return order > 0 ? s : best;
+  });
+  return {
+    ...next(newest.id, root),
+    title: newest.title,
+    phases_approved: newest.phases_approved,
+    phase_count: newest.phase_count,
+    blocked_reason: newest.blocked_reason ?? null,
+    since: sinceOf(newest),
+    by: newest.last_verdict?.agent ?? null,
   };
 }

@@ -14,7 +14,7 @@ import { close } from "../lib/close.mjs";
 import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../lib/extensions.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
-import { next } from "../lib/next.mjs";
+import { latest, next } from "../lib/next.mjs";
 import { configRel } from "../lib/paths.mjs";
 import { preflight } from "../lib/preflight.mjs";
 import { verify } from "../lib/verify.mjs";
@@ -175,7 +175,11 @@ async function main(argv) {
       }
     }
     case "next": {
-      if (!rest[0]) throw new Error("next needs <id>");
+      if (!rest[0] && opt.latest) {
+        out(latest(root), opt, (v) => (v.id ? `${v.id}: ${v.action} · ${v.actor ?? "-"} · ${v.detail}` : "(no open work item)"));
+        return 0;
+      }
+      if (!rest[0]) throw new Error("next needs <id> or --latest");
       out(next(rest[0], root), opt, (v) => `${v.action} · ${v.actor ?? "-"}${v.phase ? ` · phase ${v.phase}` : ""} · ${v.detail}${v.options.length ? ` · ${v.options.join(" · ")}` : ""}`);
       return 0;
     }

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork, setMarker, writeState, appendVerdict } from "../../core/lib/work.mjs";
-import { next } from "../../core/lib/next.mjs";
+import { createWork, setMarker, writeState, appendVerdict, readState } from "../../core/lib/work.mjs";
+import { latest, next } from "../../core/lib/next.mjs";
 
 function root() {
   const r = mkdtempSync(join(tmpdir(), "harness-next-"));
@@ -149,5 +149,55 @@ test("design lane inserts a checkpoint at the midpoint of a long plan", () => {
   assert.deepEqual([n.action, n.actor, n.phase], ["review_checkpoint", "reviewer", 3]);
   setMarker(s.id, 3, "reviewed", r);
   assert.deepEqual([next(s.id, r).action, next(s.id, r).phase], ["implement_phase", 4]);
+  rmSync(r, { recursive: true, force: true });
+});
+
+const LATER = "2099-01-01T00:00:00.000Z";
+
+test("latest picks the item touched last, counting its verdicts, not only state.updated", () => {
+  const r = root();
+  const older = createWork({ lane: "order", title: "Older", root: r });
+  const newer = createWork({ lane: "order", title: "Newer", root: r });
+  assert.ok(readState(older.id, r).updated <= readState(newer.id, r).updated);
+  appendVerdict(older.id, { ts: LATER, agent: "architect", verdict: "ARTIFACT WRITTEN" }, r);
+  const n = latest(r);
+  assert.deepEqual([n.id, n.since, n.by], [older.id, LATER, "architect"]);
+  rmSync(r, { recursive: true, force: true });
+});
+
+test("latest skips done and abandoned items and answers a blocked one with its reason", () => {
+  const r = root();
+  const blocked = createWork({ lane: "order", title: "Blocked", root: r });
+  writeState({ ...blocked, status: "blocked", blocked_reason: "phase 2 stalled" }, r);
+  const done = createWork({ lane: "order", title: "Done", root: r });
+  const abandoned = createWork({ lane: "order", title: "Gone", root: r });
+  appendVerdict(done.id, { ts: LATER, agent: "lead", verdict: "APPROVED" }, r);
+  appendVerdict(abandoned.id, { ts: LATER, agent: "lead", verdict: "APPROVED" }, r);
+  writeState({ ...done, status: "done" }, r);
+  writeState({ ...abandoned, status: "abandoned" }, r);
+  const n = latest(r);
+  assert.deepEqual([n.id, n.action, n.blocked_reason, n.by], [blocked.id, "resolve_block", "phase 2 stalled", null]);
+  rmSync(r, { recursive: true, force: true });
+});
+
+test("latest after a developer's PHASE DONE asks the user and carries the phase counts", () => {
+  const r = root();
+  const s = createWork({ lane: "order", title: "Csv", root: r });
+  artifact(r, s.id, "order.md", ["Module", "Route"]);
+  setMarker(s.id, 1, "done", r);
+  setMarker(s.id, 1, "approved", r);
+  setMarker(s.id, 2, "done", r);
+  appendVerdict(s.id, { ts: LATER, agent: "developer", verdict: "PHASE DONE", phase: 2 }, r);
+  const n = latest(r);
+  assert.deepEqual(
+    [n.action, n.actor, n.phase, n.by, n.since, n.phases_approved, n.phase_count, n.title, n.blocked_reason],
+    ["approve_phase", "user", 2, "developer", LATER, 1, 2, "Csv", null],
+  );
+  rmSync(r, { recursive: true, force: true });
+});
+
+test("latest with no open item answers none", () => {
+  const r = root();
+  assert.deepEqual(latest(r), { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] });
   rmSync(r, { recursive: true, force: true });
 });
