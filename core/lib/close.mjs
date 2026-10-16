@@ -1,6 +1,7 @@
 import { commitStaged, dirtyPaths, filesInCommit, isRepo, repoPrefix, stagedFiles } from "./git.mjs";
 import { next } from "./next.mjs";
 import { readState, writeState } from "./work.mjs";
+import { readLeft } from "./leave.mjs";
 
 export class CloseRefused extends Error {
   constructor(message, pending) {
@@ -47,10 +48,10 @@ export function close(id, root, { message } = {}) {
   const commitMessage = message ?? defaultCloseMessage(id);
   if (!isRepo(root)) {
     markDone(id, root);
-    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], dirty: [] };
+    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], dirty: [], left: readLeft(id, root) };
   }
   if (message === undefined) refuseForeignStaged(id, root);
   markDone(id, root);
   const commit = commitStaged(root, commitMessage, [`work/${id}`]);
-  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], dirty: dirtyPaths(root) };
+  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], dirty: dirtyPaths(root), left: readLeft(id, root) };
 }

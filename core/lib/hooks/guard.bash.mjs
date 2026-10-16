@@ -422,7 +422,7 @@ function withSubstitutedOutput(seg, plain, carriesOutput) {
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 const BARE_KERNEL = "picket";
 export const KERNEL_READ_VERBS = new Set(["state", "next", "packet", "list", "review-summary", "cost", "preflight", "extensions", "admit", "find-verdict", "verify"]);
-export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "route", "drive", "comment", "pr", "migrate", "check", "source"]);
+export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "leave", "route", "drive", "comment", "pr", "migrate", "check", "source"]);
 export const KERNEL_READ_SUBVERBS = { source: ["find", "grep"] };
 
 function wrappedCommands(seg) {
@@ -1030,7 +1030,7 @@ export function guardBash(input, { root, home = homedir() }) {
 const decide = (decision, reason) => ({ decision, reason });
 const fallThrough = (reason) => ({ decision: null, reason });
 
-const ESCALATE_HINT = 'If the user asked for this action in this session or the work cannot continue without it, run it alone as `PICKET_ESCALATE="<why>" <command>` and the user decides in the dialog.';
+const ESCALATE_HINT = 'If the user asked for this action in this session or the work cannot continue without it, run it alone as `PICKET_ESCALATE="<why>" <command>` and the user decides in the dialog. Cleanup after the work is never escalated: record it with `picket leave <id> --command "<command>"` and it is listed when the item closes.';
 
 function isOpaqueWord(value) {
   return value.includes(VARIABLE_MARK) || value.includes(SUBSTITUTION_WORD);

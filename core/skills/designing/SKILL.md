@@ -57,4 +57,5 @@ Three `DRIFT DETECTED` rounds or three cumulative `CHANGES REQUIRED` rounds are 
 <one sentence: what shipped>
 Phases: <n> · decisions: <n> (<k> amended) · commits <first>..<last> · review: APPROVED
 Questions: <the cumulative reviewer's Questions line; omit this line when it says none>
+Left for you: <picket close's left lines; omit when there are none>
 ```

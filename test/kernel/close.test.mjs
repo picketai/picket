@@ -53,6 +53,32 @@ test("close commits the closing state with the untracked review marker under cho
   rmSync(root, { recursive: true, force: true });
 });
 
+test("leave records a command for the user, close lists it, and a closed item refuses another", () => {
+  const { root, id, git } = repoWithOpenItem();
+  const left = picket(root, "leave", id, "--command", "git worktree remove .worktrees/x", "--why", "cleanup");
+  assert.equal(left.code, 0, left.stdout);
+  const rows = readFileSync(join(root, "work", id, "left.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(rows.map(({ command, why }) => ({ command, why })), [{ command: "git worktree remove .worktrees/x", why: "cleanup" }]);
+  assert.equal(picket(root, "leave", id, "--command", "").code, 1);
+  assert.equal(picket(root, "leave", id).code, 1);
+  assert.equal(picket(root, "leave", id, "--command", "x".repeat(301)).code, 1);
+
+  const closed = picket(root, "close", id, "--human");
+  assert.equal(closed.code, 0, closed.stdout);
+  assert.match(closed.stdout, /^left for you: git worktree remove \.worktrees\/x \(cleanup\)$/m);
+  assert.ok(git("show", "--name-only", "--format=", "HEAD").split("\n").includes(`work/${id}/left.jsonl`));
+  assert.equal(picket(root, "leave", id, "--command", "git push origin v1").code, 1);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("close with nothing left prints no left line and returns an empty list", () => {
+  const { root, id } = repoWithOpenItem();
+  const closed = picket(root, "close", id, "--human");
+  assert.equal(closed.code, 0, closed.stdout);
+  assert.doesNotMatch(closed.stdout, /left for you/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("close refuses a staged path outside the work item and writes nothing", () => {
   const { root, id, git } = repoWithOpenItem();
   stageSource(root, git);

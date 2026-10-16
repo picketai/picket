@@ -29,7 +29,7 @@ Emit the `## Expedited` block from `SKILL.md`, with the commit message you propo
 
 | Reply | Do |
 |---|---|
-| `c`, `commit`, `ok`, `yes` | `picket close <id> --message "<the proposed message>"`, which commits the staged change and the closing state together; print `committed <sha>` and stop |
+| `c`, `commit`, `ok`, `yes` | `picket close <id> --message "<the proposed message>"`, which commits the staged change and the closing state together; print `committed <sha>`, then each `left for you:` line close printed, and stop |
 | `x <why>`, `discard`, `reject: <why>` | leave the index as it is, print one line saying the change is staged and uncommitted, `picket set <id> status=abandoned`, stop; the user decides what to do with the working tree |
 | `k <n>`, `keep <n>` | `picket comment <id> --path <p> --text "<t>"` with proposal n's path and text, write exactly that comment at its line, re-stage, re-print the block |
 | a question | answer it, re-print the options line |

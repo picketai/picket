@@ -194,6 +194,7 @@ test("guardScope called directly guards kernel and hook state but lets the branc
     const s = createWork({ lane: "order", title: "Scope", root });
     const write = (file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(write(join(root, "work", s.id, "state.yaml")), "deny");
+    assert.equal(write(join(root, "work", s.id, "left.jsonl")), "deny");
     assert.equal(write(statePath(root, STATE_FILES.ledger)), "deny");
     assert.equal(write(branchingManifestPath(root)), null);
   });
@@ -672,6 +673,8 @@ test("a marker on a command that does not deny falls through and records nothing
     assert.equal(judge("PICKET_ESCALATE=x ls"), null);
     assert.equal(judge(PUSH).permissionDecision, "deny");
     assert.match(judge(PUSH).permissionDecisionReason, /run it alone as `PICKET_ESCALATE="<why>" <command>`/);
+    assert.match(judge(PUSH).permissionDecisionReason, /never escalated: record it with `picket leave <id> --command "<command>"`/);
+    assert.notEqual(judge('picket leave x --command "git push origin v1"')?.permissionDecision, "deny");
     assert.equal(judge("ls").permissionDecision, "allow");
     assert.deepEqual(escalationRows(), []);
   });

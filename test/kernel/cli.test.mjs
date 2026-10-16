@@ -12,6 +12,21 @@ function run(root, args) {
   return JSON.parse(out);
 }
 
+test("picket leave answers JSON with the recorded entry and close returns it under left", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
+  try {
+    mkdirSync(join(root, ".claude"));
+    const { id } = run(root, ["new", "--lane", "fast", "--title", "Leave probe"]);
+    const entry = run(root, ["leave", id, "--command", "git branch -D old-feature"]);
+    assert.equal(entry.command, "git branch -D old-feature");
+    assert.equal(entry.why, null);
+    assert.match(entry.ts, /^\d{4}-\d{2}-\d{2}T/);
+    assert.deepEqual(run(root, ["close", id]).left.map((r) => r.command), ["git branch -D old-feature"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("the CLI walks a work item end to end and speaks JSON", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));

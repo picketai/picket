@@ -11,6 +11,7 @@ import { check, renderCheck } from "../lib/check.mjs";
 import { migrate, renderMigrate } from "../lib/migrate.mjs";
 import { dirtyPaths } from "../lib/git.mjs";
 import { close } from "../lib/close.mjs";
+import { leave, leftLine } from "../lib/leave.mjs";
 import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../lib/extensions.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
@@ -163,7 +164,7 @@ async function main(argv) {
       const message = typeof opt.message === "string" ? opt.message : undefined;
       try {
         const r = close(rest[0], root, { message });
-        out(r, opt, (v) => `${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`);
+        out(r, opt, (v) => [`${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`, ...v.left.map(leftLine)].join("\n"));
         return 0;
       } catch (err) {
         if (!err.next) {
@@ -173,6 +174,12 @@ async function main(argv) {
         out({ id: rest[0], error: err.message, next: err.next }, opt, (v) => `${v.id}: not closed · next: ${v.next.action} · ${v.next.actor ?? "-"} · ${v.next.detail}`);
         return 2;
       }
+    }
+    case "leave": {
+      if (!rest[0]) throw new Error('leave needs <id> --command "<command>"');
+      const entry = leave(rest[0], root, { command: opt.command, why: opt.why });
+      out(entry, opt, leftLine);
+      return 0;
     }
     case "next": {
       if (!rest[0] && opt.latest) {
@@ -324,7 +331,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
   }
 }
 
