@@ -40,7 +40,8 @@ import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
 import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
 import { detectTooling } from "../tooling.mjs";
 import { bareAgentName } from "../agent-name.mjs";
-import { ASKING_MODES, carriesMarker, escalationMarker, leadingAssignments, recordEscalation, withoutMarker } from "../escalation.mjs";
+import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, recordEscalation, withoutMarker } from "../escalation.mjs";
+import { readLedger } from "../cost.mjs";
 import { escalationAllowRules } from "../saved-rules.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
@@ -1041,7 +1042,7 @@ function readEscalation(segments, { hiddenExecution, sawWriteRedirect, sawBackgr
   return marker.invalid ? { shapeProblem: `escalate one command, alone: ${marker.invalid}`, reason: null } : { shapeProblem: null, reason: marker.reason };
 }
 
-function escalationVerdict({ shapeProblem, commandClass, mode, savedRules }) {
+function escalationVerdict({ shapeProblem, commandClass, mode, savedRules, refusedBefore }) {
   if (shapeProblem) return { outcome: "denied", why: "shape", cause: shapeProblem };
   if (commandClass !== "deny") return null;
   if (!ASKING_MODES.has(mode)) return { outcome: "denied", why: "mode", cause: `escalation is off in permission mode ${mode ?? "unknown"}, where the dialog is not proven` };
@@ -1049,6 +1050,7 @@ function escalationVerdict({ shapeProblem, commandClass, mode, savedRules }) {
     const { rule, file } = savedRules[0];
     return { outcome: "denied", why: "saved_rule", cause: `the saved allow rule ${rule} in ${file} could approve it without a dialog; remove the rule` };
   }
+  if (refusedBefore) return { outcome: "denied", why: "refused_before", cause: "the earlier ask for this command in this session did not run (refused, interrupted or failed), so it is not asked again" };
   return { outcome: "ask", why: null };
 }
 
@@ -1057,8 +1059,10 @@ function judgeEscalation(rawCommand, segments, classifications, flags, ctx) {
   const command = maskEnvValues(withoutMarker(rawCommand));
   const { shapeProblem, reason: rawReason } = readEscalation(segments, flags);
   const commandClass = classifications[0];
-  const needsRules = !shapeProblem && commandClass === "deny" && ASKING_MODES.has(escalation.mode);
-  const verdict = escalationVerdict({ shapeProblem, commandClass, mode: escalation.mode, savedRules: needsRules ? escalationAllowRules({ root, home: escalation.home }) : [] });
+  const passedMode = !shapeProblem && commandClass === "deny" && ASKING_MODES.has(escalation.mode);
+  const savedRules = passedMode ? escalationAllowRules({ root, home: escalation.home }) : [];
+  const refusedBefore = passedMode && !savedRules.length && notRunBefore(readLedger(root), escalation.session, commandKey(command));
+  const verdict = escalationVerdict({ shapeProblem, commandClass, mode: escalation.mode, savedRules, refusedBefore });
   if (!verdict) return fallThrough("escalation-not-destructive");
   const reason = rawReason === null ? null : maskEnvValues(rawReason);
   recordEscalation(root, { session: escalation.session, outcome: verdict.outcome, why: verdict.why, command, reason, agent: escalation.agent, work_id: openWorkItem(root).work_id });

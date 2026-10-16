@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { projectRoot } from "./work.mjs";
 import { statePath, STATE_FILES } from "./paths.mjs";
+import { notRunAsks } from "./escalation.mjs";
 
 export function readLedger(root = projectRoot()) {
   const p = statePath(root, STATE_FILES.ledger);
@@ -29,10 +30,26 @@ export function cacheHitRatio(u) {
   return d ? u.cache_read_input_tokens / d : null;
 }
 
+const TURN_EVENTS = new Set(["stop", "subagent_stop", "gate"]);
+const RECENT_ESCALATIONS = 5;
+
+function summarizeEscalations(rows) {
+  const escalations = rows.filter((r) => r.event === "escalation");
+  const count = (outcome) => escalations.filter((r) => r.outcome === outcome).length;
+  return {
+    asked: count("ask"),
+    ran: count("ran"),
+    not_run: notRunAsks(escalations).length,
+    denied: count("denied"),
+    recent: escalations.slice(-RECENT_ESCALATIONS),
+  };
+}
+
 export function summarize(rows, { session = null, work_id = null } = {}) {
-  let rs = rows;
-  if (session) rs = rs.filter((r) => r.session === session);
-  if (work_id) rs = rs.filter((r) => r.work_id === work_id);
+  let scoped = rows;
+  if (session) scoped = scoped.filter((r) => r.session === session);
+  if (work_id) scoped = scoped.filter((r) => r.work_id === work_id);
+  const rs = scoped.filter((r) => TURN_EVENTS.has(r.event));
   const usage = sumUsage(rs);
   const tokens = usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens + usage.output_tokens;
   const lines = rs.reduce((a, r) => a + (r.lines_added ?? 0), 0);
@@ -64,6 +81,7 @@ export function summarize(rows, { session = null, work_id = null } = {}) {
     turns: rs.length,
     first_reviewable_ms: ttfr.length ? ttfr : [],
     by_agent: byAgent,
+    escalations: summarizeEscalations(scoped),
   };
 }
 

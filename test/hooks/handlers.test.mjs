@@ -14,6 +14,7 @@ import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
 import { guardBash, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
 import { ASKING_MODES } from "../../core/lib/escalation.mjs";
+import { observeDrive } from "../../core/lib/hooks/observe.drive.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
 import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
 
@@ -610,10 +611,10 @@ test("a marked destructive command asks in a proven mode, quoting the reason, an
     const asked = judge(ESCALATED_PUSH, { agent_type: "picket:developer" });
     assert.equal(asked.permissionDecision, "ask");
     assert.match(asked.permissionDecisionReason, /escalation by developer: "you asked me to push the release tag"\. Approving runs this one command once; nothing carries over\./);
-    assert.match(judge(ESCALATED_PUSH).permissionDecisionReason, /escalation by main:/);
+    assert.match(judge(ESCALATED_PUSH, { session_id: "s2" }).permissionDecisionReason, /escalation by main:/);
     for (const mode of [undefined, "auto", "plan", "default", "acceptEdits", "bypassPermissions", "dontAsk"]) {
       for (const command of [ESCALATED_PUSH, "PICKET_ESCALATE=x ls", "PICKET_ESCALATE=x git status"]) {
-        assert.notEqual(judge(command, { permission_mode: mode })?.permissionDecision, "allow", `${mode} ${command}`);
+        assert.notEqual(judge(command, { permission_mode: mode, session_id: `mode-${mode}` })?.permissionDecision, "allow", `${mode} ${command}`);
       }
     }
     const rows = escalationRows();
@@ -659,8 +660,8 @@ test("a marker that is not one command alone with a literal reason denies with t
     }
     assert.equal(escalationRows().length, shapes.length);
     assert.ok(escalationRows().every((r) => r.outcome === "denied" && r.why === "shape"));
-    for (const command of [`PICKET_ESCALATE='it'"'"'s the tag' git push`, 'PICKET_ESCALATE="say \\"go\\"" git push']) {
-      assert.equal(judge(command)?.permissionDecision, "ask", command);
+    for (const [index, command] of [`PICKET_ESCALATE='it'"'"'s the tag' git push`, 'PICKET_ESCALATE="say \\"go\\"" git push'].entries()) {
+      assert.equal(judge(command, { session_id: `quotes-${index}` })?.permissionDecision, "ask", command);
     }
     assert.equal(escalationRows().at(-1).reason, 'say "go"');
   });
@@ -710,6 +711,30 @@ test("a saved allow rule that could approve the marked command turns the escalat
       assert.deepEqual(escalationRows().map((r) => r.why), ["saved_rule"]);
     });
   }
+});
+
+test("an ask that never ran is not asked again in its session; one that ran gets a fresh ask; another session starts clean", () => {
+  withEscalationProject(({ root, judge, escalationRows }) => {
+    const ran = (command, session_id = "s1") => observeDrive({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, session_id }, { root });
+    assert.equal(judge(ESCALATED_PUSH).permissionDecision, "ask");
+    const refused = judge(`PICKET_ESCALATE="a better reason this time" ${PUSH}`);
+    assert.equal(refused.permissionDecision, "deny");
+    assert.match(refused.permissionDecisionReason, /did not run \(refused, interrupted or failed\)/);
+    assert.ok(refused.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`));
+    assert.equal(judge(ESCALATED_PUSH, { session_id: "s2" }).permissionDecision, "ask");
+    assert.equal(judge("PICKET_ESCALATE=x git push origin other-tag").permissionDecision, "ask");
+
+    withEscalationProject(({ root: fresh, judge: freshJudge, escalationRows: freshRows }) => {
+      assert.equal(freshJudge(ESCALATED_PUSH).permissionDecision, "ask");
+      observeDrive({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, session_id: "s1" }, { root: fresh });
+      const again = freshJudge(`PICKET_ESCALATE="push it again" ${PUSH}`);
+      assert.equal(again.permissionDecision, "ask");
+      assert.deepEqual(freshRows().map((r) => r.outcome), ["ask", "ran", "ask"]);
+    });
+
+    ran("ls");
+    assert.deepEqual(escalationRows().map((r) => [r.session, r.outcome, r.why]), [["s1", "ask", null], ["s1", "denied", "refused_before"], ["s2", "ask", null], ["s1", "ask", null]]);
+  });
 });
 
 test("the spawned guard.bash hook prints the ask for a marked push", () => {

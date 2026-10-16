@@ -654,6 +654,23 @@ test("the spawned guard.bash traces a picket drive --env value masked", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test("observe.drive appends one ran escalation row for a marked command and none for an unmarked one", () => {
+  const { root } = project();
+  const ledgerRows = () => (existsSync(statePath(root, STATE_FILES.ledger)) ? readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
+  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root, session_id: "s12" }, root);
+  assert.deepEqual(ledgerRows(), []);
+  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: 'PICKET_ESCALATE="you asked for the tag" git push origin v1' }, cwd: root, session_id: "s12", agent_type: "picket:developer" }, root);
+  const rows = ledgerRows();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].event, "escalation");
+  assert.equal(rows[0].outcome, "ran");
+  assert.equal(rows[0].command, "git push origin v1");
+  assert.equal(rows[0].reason, "you asked for the tag");
+  assert.equal(rows[0].agent, "developer");
+  assert.equal(rows[0].session, "s12");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("observe.drive logs --env values masked, quoted or not", () => {
   const { root } = project();
   const logged = (command) => {

@@ -47,6 +47,25 @@ export function commandKey(command) {
   return createHash("sha256").update(withoutMarker(command).replace(/\s+/g, " ")).digest("hex");
 }
 
+function isEscalation(row) {
+  return row?.event === "escalation";
+}
+
+function ranAfter(rows, index) {
+  const { session, key } = rows[index];
+  return rows.slice(index + 1).some((row) => isEscalation(row) && row.outcome === "ran" && row.session === session && row.key === key);
+}
+
+export function notRunAsks(rows) {
+  const escalations = rows.filter(isEscalation);
+  return escalations.filter((row, index) => row.outcome === "ask" && !ranAfter(escalations, index));
+}
+
+export function notRunBefore(rows, session, key) {
+  const latestAsk = rows.findLastIndex((row) => isEscalation(row) && row.outcome === "ask" && row.session === session && row.key === key);
+  return latestAsk !== -1 && !ranAfter(rows, latestAsk);
+}
+
 export function recordEscalation(root, row) {
   const entry = {
     v: 2,
