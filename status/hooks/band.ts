@@ -1,5 +1,16 @@
-import type { Bar, Limit, Line, Piece, Work } from '../types'
-import { bar, cacheLeft, compactTokens, contextColor, levelColor, prettyModel, stepText, untilReset } from './format'
+import type { AgentRow, Bar, Limit, Line, Piece, Work } from '../types'
+import {
+  bar,
+  cacheLeft,
+  compactTokens,
+  contextColor,
+  elapsed,
+  levelColor,
+  minutes,
+  prettyModel,
+  stepText,
+  untilReset,
+} from './format'
 
 const GAP = 2
 const PART_GAP: Piece = { text: '   ' }
@@ -21,8 +32,8 @@ export const rows = (line: Line, columns: number): Piece[][] => {
   return [line.left, line.right]
 }
 
-const joinParts = (parts: Piece[][]): Piece[] =>
-  parts.flatMap((part, index) => (index === 0 ? part : [PART_GAP, ...part]))
+const joined = (parts: Piece[][], separator: Piece): Piece[] =>
+  parts.flatMap((part, index) => (index === 0 ? part : [separator, ...part]))
 
 const limitPart = (label: string, limit: Limit | undefined, now: number): Piece[] => {
   const head: Piece = { text: `${label} `, color: 'inactive' }
@@ -78,7 +89,7 @@ export const sessionLine = (state: Bar): Line => {
       DOT,
       { text: state.skill ?? 'none', color: 'ide' },
     ],
-    right: joinParts(parts.filter(part => part.length > 0)),
+    right: joined(parts.filter(part => part.length > 0), PART_GAP),
   }
 }
 
@@ -90,6 +101,55 @@ const progress = (work: Work): Piece[] => {
     index < work.phases_approved ? { text: '●', color: 'ide' } : { text: '○', color: 'subtle' },
   )
   return [{ text: '  ' }, ...dots, { text: ` ${work.phases_approved}/${work.phase_count}`, color: 'inactive' }]
+}
+
+const WORKING = new Set(['running', 'pending', 'waiting'])
+
+const ENDED = new Set(['completed', 'failed', 'killed'])
+
+export const isWorking = (status: string): boolean => WORKING.has(status)
+
+export const isEnded = (status: string): boolean => ENDED.has(status)
+
+export type AgentState = 'working' | 'waiting' | 'idle'
+
+export const agentState = (row: AgentRow, all: AgentRow[], work: Work | null): AgentState => {
+  if (isWorking(row.status)) {
+    return 'working'
+  }
+  if (work?.actor !== 'user' || work.by !== row.role) {
+    return 'idle'
+  }
+  const latestIdle = Math.max(...all.filter(other => other.role === row.role).map(other => other.idleAt ?? -Infinity))
+  return row.idleAt !== null && row.idleAt === latestIdle ? 'waiting' : 'idle'
+}
+
+const agentPieces = (row: AgentRow, all: AgentRow[], work: Work | null, now: number): Piece[] => {
+  switch (agentState(row, all, work)) {
+    case 'working':
+      return [
+        { text: `${row.name} ` },
+        { text: 'working', color: 'ide', bold: true },
+        { text: ` (${elapsed(now - row.startedAt)})`, color: 'ide' },
+      ]
+    case 'waiting':
+      return [
+        { text: `${row.name} ` },
+        { text: 'waiting', color: 'warning', bold: true },
+        { text: ` (${minutes(now - (row.idleAt ?? now))})`, color: 'warning' },
+      ]
+    case 'idle':
+      return [{ text: `${row.name} idle${row.lastJobMs === null ? '' : ` (${elapsed(row.lastJobMs)})`}`, dim: true }]
+  }
+}
+
+export const agentsLine = (all: AgentRow[], work: Work | null, now: number): Line | null => {
+  const live = all.filter(row => !isEnded(row.status))
+  if (live.length === 0) {
+    return null
+  }
+  const agents = live.map(row => agentPieces(row, live, work, now))
+  return { left: [{ text: '⚇ ', color: 'permission' }, ...joined(agents, DOT)], right: [] }
 }
 
 export const workLine = (work: Work | null, now: number): Line | null => {

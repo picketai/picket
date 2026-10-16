@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { Bar, Piece, Work } from '../types'
-import { rows, sessionLine, widthOf, workLine } from './band'
+import type { AgentRow, Bar, Piece, Work } from '../types'
+import { agentsLine, rows, sessionLine, widthOf, workLine } from './band'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 const MINUTE = 60_000
@@ -112,5 +112,48 @@ describe('work line', () => {
     expect(workLine(blocked, NOW)?.right).toEqual([
       { text: 'blocked: phase 2 stalled, 3 tests fail ◀', color: 'error', bold: true },
     ])
+  })
+})
+
+const agent = (name: string, status: string, clocks: Partial<AgentRow> = {}): AgentRow => ({
+  id: `id-${name}`,
+  name,
+  role: name,
+  status,
+  startedAt: NOW,
+  idleAt: null,
+  lastJobMs: null,
+  ...clocks,
+})
+
+describe('agents line', () => {
+  test('a working agent shows its time since start, an idle one its last job', async () => {
+    const line = agentsLine(
+      [agent('developer', 'running', { startedAt: NOW - 192_000 }), agent('architect', 'idle', { lastJobMs: 250_000 })],
+      null,
+      NOW,
+    )
+    expect(text(line?.left ?? [])).toBe('⚇ developer working (3m12s) · architect idle (4m10s)')
+    expect(line?.left.find(piece => piece.text === 'working')).toEqual({ text: 'working', color: 'ide', bold: true })
+    expect(line?.right).toEqual([])
+  })
+
+  test('the idle agent whose verdict the user is answering waits', async () => {
+    const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE, lastJobMs: 250_000 })
+    const gate = { ...WORK, actor: 'user', by: 'developer' }
+    const waiting = agentsLine([developer], gate, NOW)
+    expect(text(waiting?.left ?? [])).toBe('⚇ developer waiting (6m)')
+    expect(waiting?.left.find(piece => piece.text === 'waiting')?.color).toBe('warning')
+    expect(text(agentsLine([developer], { ...gate, by: 'reviewer' }, NOW)?.left ?? [])).toBe('⚇ developer idle (4m10s)')
+
+    const earlier = { ...developer, id: 'id-old', name: 'developer-old', idleAt: NOW - 20 * MINUTE }
+    expect(text(agentsLine([earlier, developer], gate, NOW)?.left ?? [])).toBe(
+      '⚇ developer-old idle (4m10s) · developer waiting (6m)',
+    )
+  })
+
+  test('no live agent means no agents line', async () => {
+    expect(agentsLine([], null, NOW)).toBe(null)
+    expect(agentsLine([agent('a', 'completed'), agent('b', 'failed'), agent('c', 'killed')], null, NOW)).toBe(null)
   })
 })

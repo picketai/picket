@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ProcessRunResult, Register, SessionUsage } from 'claude-code'
 
-import type { Bar, CacheTtl, Work } from '../types'
-import { rows, sessionLine, workLine } from './band'
+import type { AgentRow, Bar, CacheTtl, Work } from '../types'
+import { agentsLine, isEnded, isWorking, rows, sessionLine, workLine } from './band'
 
 const EMPTY: Bar = {
   model: null,
@@ -24,6 +24,34 @@ const EMPTY: Bar = {
 const state = atom({ plugin: 'picket-status', key: 'bar' } as const, EMPTY)
 
 const work = atom({ plugin: 'picket-status', key: 'work' } as const, null as Work | null)
+
+const agents = atom({ plugin: 'picket-status', key: 'agents' } as const, [] as AgentRow[])
+
+const roleOf = (type: string) => type.replace(/^picket:/, '')
+
+const syncRoster = async ($: EngineInterface): Promise<number> => {
+  const [listed, now] = await Promise.all([$.agent.list(), $.clock.now()])
+  await update($, agents, known =>
+    listed
+      .filter(info => !isEnded(info.status))
+      .map(info => {
+        const seen = known.find(row => row.id === info.id)
+        return {
+          id: info.id,
+          name: info.name ?? info.type,
+          role: roleOf(info.type),
+          status: info.status,
+          startedAt: seen?.startedAt ?? now,
+          idleAt: seen?.idleAt ?? null,
+          lastJobMs: seen?.lastJobMs ?? null,
+        }
+      }),
+  )
+  return now
+}
+
+const stamp = ($: EngineInterface, matches: (row: AgentRow) => boolean, clocks: Partial<AgentRow>) =>
+  update($, agents, known => known.map(row => (matches(row) ? { ...row, ...clocks } : row)))
 
 const LAUNCHERS: readonly (readonly string[])[] = [['picket'], ['cmd', '/c', 'picket']]
 
@@ -109,6 +137,14 @@ export const register: Register = on => {
       await update($, state, s => ({ ...s, now: tick }))
       await refreshWork($)
     })
+    await syncRoster($)
+    $.clock.every(5_000, async () => {
+      const tick = await syncRoster($)
+      const known = await read($, agents)
+      if (known.some(row => isWorking(row.status))) {
+        await update($, state, s => ({ ...s, now: tick }))
+      }
+    })
     return started
   })
 
@@ -164,6 +200,31 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  on('agent.spawn', async ($, e, next) => {
+    const spawned = await next(e)
+    const now = await syncRoster($)
+    if (spawned.agentId !== undefined) {
+      await stamp($, row => row.id === spawned.agentId, { startedAt: now })
+    }
+    return spawned
+  }).catch(($, e, next) => next(e))
+
+  on('session.send', async ($, e, next) => {
+    const sent = await next(e)
+    const now = await syncRoster($)
+    await stamp($, row => row.name === e.to || row.id === e.to, { startedAt: now })
+    return sent
+  }).catch(($, e, next) => next(e))
+
+  on('turn.complete', async ($, e, next) => {
+    const completed = await next(e)
+    const now = await syncRoster($)
+    if (e.agentId !== undefined) {
+      await stamp($, row => row.id === e.agentId, { idleAt: now, lastJobMs: e.durationMs })
+    }
+    return completed
+  }).catch(($, e, next) => next(e))
+
   on('session.measure', async ($, e, next) => {
     const now = await $.clock.now()
     await update($, state, s => ({
@@ -183,8 +244,10 @@ export const register: Register = on => {
       return next(e)
     }
     const { Box, Text } = $.ui.resolve(e)
-    const [s, latest] = await Promise.all([read($, state), read($, work)])
-    const lines = [workLine(latest, s.now), sessionLine(s)].filter(line => line !== null)
+    const [s, latest, roster] = await Promise.all([read($, state), read($, work), read($, agents)])
+    const lines = [workLine(latest, s.now), agentsLine(roster, latest, s.now), sessionLine(s)].filter(
+      line => line !== null,
+    )
     const drawn = lines.flatMap(line => rows(line, e.props.bodyColumns))
 
     return (

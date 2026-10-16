@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
-import type { On } from 'claude-code'
+import type { AgentInfo, On } from 'claude-code'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 
@@ -13,8 +13,9 @@ const USAGE = {
   cost: { usd: 1.5 },
 }
 
-const world = (on: On) => {
-  mock.clock(on, { now: NOW })
+const world = (on: On, roster: AgentInfo[] = []) => {
+  const clock = mock.clock(on, { now: NOW })
+  on('agent.list', () => ({ value: roster }))
   on('session.model', () => ({ value: 'claude-opus-5-5' }))
   on('session.usage', () => ({ value: USAGE }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -22,6 +23,7 @@ const world = (on: On) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
   })
+  return clock
 }
 
 const band = ($: Engine, hasSurvey = false) =>
@@ -183,4 +185,62 @@ test('the band yields to a survey and otherwise draws label-free rows', async ($
   expect(await drawn.find({ type: 'Text', text: 'Model:' })).toBeUndefined()
   expect(await drawn.find({ type: 'Text', text: ' | ' })).toBeUndefined()
   expect(await drawn.find({ type: 'Text', text: 'engine' })).toBeUndefined()
+})
+
+const developer = (): AgentInfo => ({
+  id: 'a1',
+  type: 'picket:developer',
+  name: 'developer',
+  status: 'running',
+  description: 'implement phase 1',
+})
+
+const SPAWN = {
+  tool_use_id: 'tu1',
+  prompt: 'implement phase 1',
+  description: 'implement phase 1',
+  subagentType: 'picket:developer',
+  provider: { plugin: 'test', tier: 'user' },
+  parentModel: 'claude-opus-5-5',
+  background: true,
+  fork: false,
+} as const
+
+const agentWorld = (on: On, roster: AgentInfo[]) => {
+  const clock = world(on, roster)
+  on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
+  on('turn.complete', () => ({ text: '' }))
+  on('session.send', () => ({ isDelivered: true }))
+  return clock
+}
+
+const shows = async ($: Engine, text: string) => (await (await band($)).find({ type: 'Text', text })) !== undefined
+
+test('a spawned agent idles with its last job time and works again from a message', async ($, on) => {
+  const roster = [developer()]
+  const clock = agentWorld(on, roster)
+  await $.session.start(START)
+  await $.agent.spawn(SPAWN)
+
+  roster[0] = { ...developer(), status: 'idle' }
+  await $.turn.complete({ answer: '', durationMs: 250_000, isAborted: false, turnId: 't1', agentId: 'a1', reason: 'answer' })
+  expect(await shows($, 'developer idle (4m10s)')).toBe(true)
+
+  await clock.advance(60_000)
+  roster[0] = developer()
+  await $.session.send({ to: 'developer', text: 'phase 2', origin: { kind: 'model' } })
+  expect(await shows($, ' (0s)')).toBe(true)
+  await clock.advance(5_000)
+  expect(await shows($, ' (5s)')).toBe(true)
+})
+
+test('a working agent clock moves with the five second timer', async ($, on) => {
+  const clock = agentWorld(on, [developer()])
+  await $.session.start(START)
+  await clock.advance(3_000)
+  await $.agent.spawn(SPAWN)
+  await clock.advance(192_000)
+  expect(await shows($, ' (3m12s)')).toBe(true)
+  await clock.advance(5_000)
+  expect(await shows($, ' (3m17s)')).toBe(true)
 })

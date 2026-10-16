@@ -39,8 +39,18 @@ export type Work = {
   by: string | null
 }
 
+export type AgentRow = {
+  id: string
+  name: string
+  role: string
+  status: string
+  startedAt: number
+  idleAt: number | null
+  lastJobMs: number | null
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    'picket-status': { bar: Bar; work: Work | null }
+    'picket-status': { bar: Bar; work: Work | null; agents: AgentRow[] }
   }
 }

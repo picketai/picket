@@ -64,6 +64,17 @@ export const cacheLeft = (state: Bar, now: number): Piece | null => {
   return left < 5 * MINUTE ? { text, color: 'warning' } : { text, dim: true }
 }
 
+export const elapsed = (ms: number): string => {
+  const seconds = Math.max(0, Math.floor(ms / 1000))
+  if (seconds < 60) {
+    return `${seconds}s`
+  }
+  if (seconds < 3600) {
+    return `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, '0')}s`
+  }
+  return minutes(ms)
+}
+
 export const minutes = (ms: number): string => {
   const whole = Math.max(0, Math.floor(ms / MINUTE))
   const hours = Math.floor(whole / 60)
