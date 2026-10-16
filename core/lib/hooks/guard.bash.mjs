@@ -1054,6 +1054,24 @@ function escalationVerdict({ shapeProblem, commandClass, mode, savedRules, refus
   return { outcome: "ask", why: null };
 }
 
+function logEscalation(command, rawReason, ctx, { outcome, why }) {
+  const { root, escalation } = ctx;
+  const reason = rawReason === null ? null : maskEnvValues(rawReason);
+  recordEscalation(root, { session: escalation.session, outcome, why, command, reason, agent: escalation.agent, work_id: openWorkItem(root).work_id });
+  return reason;
+}
+
+function markerReason(segments) {
+  if (segments.length !== 1) return null;
+  const marker = escalationMarker(segments[0], { isOpaque: isOpaqueWord });
+  return marker && !marker.invalid ? marker.reason : null;
+}
+
+function refusalLogger(rawCommand, segments, ctx) {
+  if (!(ctx.depth === 0 && ctx.escalation && segments.some(carriesMarker))) return () => {};
+  return (why) => logEscalation(maskEnvValues(withoutMarker(rawCommand)), markerReason(segments), ctx, { outcome: "denied", why });
+}
+
 function judgeEscalation(rawCommand, segments, classifications, flags, ctx) {
   const { root, escalation } = ctx;
   const command = maskEnvValues(withoutMarker(rawCommand));
@@ -1064,8 +1082,7 @@ function judgeEscalation(rawCommand, segments, classifications, flags, ctx) {
   const refusedBefore = passedMode && !savedRules.length && notRunBefore(readLedger(root), escalation.session, commandKey(command));
   const verdict = escalationVerdict({ shapeProblem, commandClass, mode: escalation.mode, savedRules, refusedBefore });
   if (!verdict) return fallThrough("escalation-not-destructive");
-  const reason = rawReason === null ? null : maskEnvValues(rawReason);
-  recordEscalation(root, { session: escalation.session, outcome: verdict.outcome, why: verdict.why, command, reason, agent: escalation.agent, work_id: openWorkItem(root).work_id });
+  const reason = logEscalation(command, rawReason, ctx, verdict);
   if (verdict.outcome === "ask") {
     return decide("ask", `guard.bash: escalation by ${escalation.agent ?? "main"}: "${reason}". Approving runs this one command once; nothing carries over.`);
   }
@@ -1097,6 +1114,11 @@ function evaluateCommand(command, ctx) {
 
   if (!segments.length) return fallThrough("no-segments");
 
+  const logRefusal = refusalLogger(command, segments, ctx);
+  const refuse = (why, reason) => {
+    logRefusal(why);
+    return decide("deny", reason);
+  };
   const classifications = [];
   const cwdsSeen = [cwd];
   const taintedNames = new Set([LAST_ARGUMENT, ...inheritedTaint]);
@@ -1104,7 +1126,7 @@ function evaluateCommand(command, ctx) {
   let effCwd = cwd;
   for (const seg of segments) {
     const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
-    if (hit && !sourceAllowed(seg)) return decide("deny", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
+    if (hit && !sourceAllowed(seg)) return refuse("source", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
     const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
     const { assignments, command: commandPart } = leadingAssignments(seg);
@@ -1133,12 +1155,12 @@ function evaluateCommand(command, ctx) {
         return fallThrough("wrapped-unparsable");
       }
       const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
-      if (innerSegs.some((s) => classifySegment(s, effCwd) === "deny")) {
-        return decide("deny", `guard.bash: the command wrapped in a picket verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
+      if (innerSegs.some((s) => classifySegment(leadingAssignments(s).command, effCwd) === "deny")) {
+        return refuse("wrapped_verb", `guard.bash: the command wrapped in a picket verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
       }
       if (roots.length) {
         const hit = innerSegs.map((s) => (sourceAllowed(s) ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
-        if (hit) return decide("deny", sourceDenial(hit, `the command wrapped in a picket verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
+        if (hit) return refuse("source", sourceDenial(hit, `the command wrapped in a picket verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
       }
     }
   }
@@ -1146,7 +1168,7 @@ function evaluateCommand(command, ctx) {
   // A write redirect into a source denies even behind a read-only command: `echo x > <source>/a.md`.
   if (roots.length && sawWriteRedirect) {
     const hit = redirectSource(redirectTargets, cwdsSeen, roots);
-    if (hit) return decide("deny", sourceDenial(hit, "a write redirect"));
+    if (hit) return refuse("source", sourceDenial(hit, "a write redirect"));
   }
 
   if (ctx.depth === 0 && ctx.escalation && segments.some(carriesMarker)) {

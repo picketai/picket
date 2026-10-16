@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import { createWork, deriveState, setMarker } from "../../core/lib/work.mjs";
 import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
 import { writeConfig } from "../kernel/config-fixture.mjs";
+import { recordEscalation } from "../../core/lib/escalation.mjs";
 
 const HOOKS = resolve("core/hooks");
 
@@ -654,20 +655,59 @@ test("the spawned guard.bash traces a picket drive --env value masked", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test("observe.drive appends one ran escalation row for a marked command and none for an unmarked one", () => {
+const MARKED_PUSH = 'PICKET_ESCALATE="you asked for the tag" git push origin v1';
+
+function ledgerRows(root) {
+  const path = statePath(root, STATE_FILES.ledger);
+  return existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l)) : [];
+}
+
+function driveLogRows(root) {
+  const path = statePath(root, STATE_FILES.driveLog);
+  return existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").filter(Boolean) : [];
+}
+
+function asked(root, session) {
+  recordEscalation(root, { session, outcome: "ask", command: "git push origin v1", reason: "you asked for the tag" });
+}
+
+test("observe.drive appends one ran escalation row for an asked marked command, and none for an unmarked or never asked one", () => {
   const { root } = project();
-  const ledgerRows = () => (existsSync(statePath(root, STATE_FILES.ledger)) ? readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []);
-  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root, session_id: "s12" }, root);
-  assert.deepEqual(ledgerRows(), []);
-  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: 'PICKET_ESCALATE="you asked for the tag" git push origin v1' }, cwd: root, session_id: "s12", agent_type: "picket:developer" }, root);
-  const rows = ledgerRows();
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].event, "escalation");
-  assert.equal(rows[0].outcome, "ran");
-  assert.equal(rows[0].command, "git push origin v1");
-  assert.equal(rows[0].reason, "you asked for the tag");
-  assert.equal(rows[0].agent, "developer");
-  assert.equal(rows[0].session, "s12");
+  const post = (command, extra = {}) => run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s12", ...extra }, root);
+  post("git status");
+  post("PICKET_ESCALATE=x ls");
+  post(MARKED_PUSH);
+  assert.deepEqual(ledgerRows(root), []);
+  asked(root, "s12");
+  post(MARKED_PUSH, { agent_type: "picket:developer" });
+  post(MARKED_PUSH);
+  const rows = ledgerRows(root);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[1].event, "escalation");
+  assert.equal(rows[1].outcome, "ran");
+  assert.equal(rows[1].why, null);
+  assert.equal(rows[1].command, "git push origin v1");
+  assert.equal(rows[1].reason, "you asked for the tag");
+  assert.equal(rows[1].agent, "developer");
+  assert.equal(rows[1].session, "s12");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("observe.drive is registered for PostToolUseFailure on Bash and records a failed escalation as ran, with no drive-log row", () => {
+  const hooks = JSON.parse(readFileSync(resolve("core/hooks/hooks.json"), "utf8")).hooks;
+  const failure = hooks.PostToolUseFailure.find((entry) => entry.matcher === "Bash");
+  assert.ok(failure.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/observe.drive.mjs"))));
+
+  const { root } = project();
+  const fail = (command) => run("observe.drive.mjs", { hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s13" }, root);
+  fail("ls missing-dir");
+  assert.deepEqual(ledgerRows(root), []);
+  assert.deepEqual(driveLogRows(root), []);
+  asked(root, "s13");
+  fail(MARKED_PUSH);
+  const rows = ledgerRows(root);
+  assert.deepEqual(rows.map((r) => [r.outcome, r.why]), [["ask", null], ["ran", "failed"]]);
+  assert.deepEqual(driveLogRows(root), []);
   rmSync(root, { recursive: true, force: true });
 });
 

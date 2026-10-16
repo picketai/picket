@@ -680,6 +680,25 @@ test("a marker on a command that does not deny falls through and records nothing
   });
 });
 
+test("an approved escalation that failed counts as ran, so the next one asks fresh", () => {
+  withEscalationProject(({ root, judge, escalationRows }) => {
+    assert.equal(judge(ESCALATED_PUSH).permissionDecision, "ask");
+    observeDrive({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, session_id: "s1" }, { root });
+    assert.equal(judge(`PICKET_ESCALATE="the remote is fixed now" ${PUSH}`).permissionDecision, "ask");
+    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["ask", null], ["ran", "failed"], ["ask", null]]);
+  });
+});
+
+test("a command wrapped in a picket verb is judged past its leading assignments", () => {
+  withEscalationProject(({ judge }) => {
+    for (const command of ['picket drive --run "FOO=1 git push"', 'picket drive --run "PICKET_ESCALATE=x git push"']) {
+      const out = judge(command);
+      assert.equal(out?.permissionDecision, "deny", command);
+      assert.match(out.permissionDecisionReason, /the command wrapped in a picket verb/, command);
+    }
+  });
+});
+
 test("the marker never reaches the source deny or the wrapped picket verb deny", () => {
   withEscalationProject(({ root, judge, escalationRows }) => {
     const source = join(root, "analysis");
@@ -694,7 +713,9 @@ test("the marker never reaches the source deny or the wrapped picket verb deny",
       const wrapped = judge('PICKET_ESCALATE=x picket drive --run "rm -rf src"');
       assert.equal(wrapped.permissionDecision, "deny");
       assert.match(wrapped.permissionDecisionReason, /the command wrapped in a picket verb/);
-      assert.deepEqual(escalationRows(), []);
+      assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why, r.reason]), [["denied", "source", "x"], ["denied", "wrapped_verb", "x"]]);
+      judge(`git -C "${source.replaceAll("\\", "/")}" push`);
+      assert.equal(escalationRows().length, 2);
     } finally {
       delete process.env.PICKET_TEST_SOURCE_ANALYSIS;
     }

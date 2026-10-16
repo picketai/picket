@@ -25,6 +25,9 @@
       { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/observe.drive.mjs"] }] },
       { "matcher": "Read|Grep|Glob|WebFetch|WebSearch", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/monitor.context.mjs"] }] }
     ],
+    "PostToolUseFailure": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/observe.drive.mjs"] }] }
+    ],
     "Stop": [
       { "hooks": [
         { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.block.mjs"] },

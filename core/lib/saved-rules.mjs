@@ -18,11 +18,21 @@ function allowRules(file) {
   }
 }
 
+const MARKED_PREFIX = `${MARKER}=`;
+const LEGACY_PREFIX_SUFFIX = ":*";
+
+function literalPrefix(pattern) {
+  if (pattern.endsWith(LEGACY_PREFIX_SUFFIX)) return pattern.slice(0, -LEGACY_PREFIX_SUFFIX.length);
+  return pattern.includes("*") ? pattern.slice(0, pattern.indexOf("*")) : null;
+}
+
 export function couldMatchEscalation(rule) {
   const match = rule.trim().match(BASH_RULE);
   if (!match) return false;
   const pattern = match[1];
-  return pattern === undefined || pattern.startsWith("*") || pattern.includes(MARKER);
+  if (pattern === undefined || pattern.startsWith("*") || pattern.includes(MARKER)) return true;
+  const prefix = literalPrefix(pattern);
+  return prefix !== null && (MARKED_PREFIX.startsWith(prefix) || prefix.startsWith(MARKED_PREFIX));
 }
 
 export function escalationAllowRules({ root, home = homedir() }) {

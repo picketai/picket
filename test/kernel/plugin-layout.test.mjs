@@ -74,8 +74,8 @@ test("the registration check notices a shell that hooks.json drops", () => {
   assert.notDeepEqual([...registeredShells(dropped)].sort(), shellsOnDisk().sort());
 });
 
-test("hooks.json registers the six events the plugin needs", () => {
-  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["PostToolUse", "PreToolUse", "SessionStart", "Stop", "SubagentStart", "SubagentStop"]);
+test("hooks.json registers the seven events the plugin needs", () => {
+  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionStart", "Stop", "SubagentStart", "SubagentStop"]);
 });
 
 test(".claude/settings.json carries no hooks, so the plugin is the only loader", () => {

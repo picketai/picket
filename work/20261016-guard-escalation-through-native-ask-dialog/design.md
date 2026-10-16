@@ -62,6 +62,18 @@ phases:
     tests: true
     drive: true
     security: true
+  - n: 5
+    files: [core/hooks/hooks.json, core/lib/hooks/observe.drive.mjs, test/hooks/hooks.test.mjs]
+    greps:
+      - path: core/hooks/hooks.json
+        pattern: '"PostToolUseFailure"'
+      - path: core/lib/hooks/observe.drive.mjs
+        pattern: "PostToolUseFailure"
+      - path: test/hooks/hooks.test.mjs
+        pattern: "PostToolUseFailure"
+    tests: true
+    drive: true
+    security: true
 ---
 # Design: Guard escalation through native ask dialog
 
@@ -102,12 +114,12 @@ phases:
 - **RISK-006** Escalation rows inflate the turn count. Mitigation: `summarize` filters by event, tested with mixed rows.
 - **RISK-007** Reading the ledger (664 KB here today) slows the hook. Mitigation: only a marked command reads it; the cold-start budget test covers the hook.
 
-### D-005: "Not run" inference and the second escalation
+### D-005 (r2): "Not run" inference and the second escalation
 
-**Decision:** The command key is the sha256 of the command with the marker assignment removed and whitespace collapsed, so the same command with a new reason has the same key. Before answering `ask`, the guard finds the latest earlier `ask` row with the same session and key; when no `ran` row with that session and key follows it, the guard denies with `why: "refused_before"` and the `!` route. Each `ask` is fresh: an earlier `ran` row never allows anything. The scope is one session; a new session starts clean. The limit, stated in the deny reason and in picket:inspecting as `not run`, never `refused`: a PreToolUse hook never sees the dialog's answer, so refusal is inferred. An approved command that fails reads as not run unless a failure event exists (OQ-003), an interrupt reads as refused, and two identical escalations in one parallel batch deny the second. All three err toward deny.
+**Decision:** The command key is the sha256 of the command with the marker assignment removed and whitespace collapsed, so the same command with a new reason has the same key. Before answering `ask`, the guard finds the latest earlier `ask` row with the same session and key; when no `ran` row with that session and key follows it, the guard denies with `why: "refused_before"` and the `!` route. Each `ask` is fresh: an earlier `ran` row never allows anything. The scope is one session; a new session starts clean. An approved command that exits non-zero fires `PostToolUseFailure`, not `PostToolUse` (probe cell `ask+fail` in `bench/results/ask-probe.json`: `post_events: ["PostToolUseFailure"]`). observe.drive is registered for that event on Bash and appends the `ran` row with `why: "failed"`, so `notRunBefore` and the cost counts need no change. For a failure event it writes no drive-log row, so a failed command never counts as drive evidence. The limit, stated in the deny reason and in picket:inspecting as `not run`, never `refused`: a PreToolUse hook never sees the dialog's answer, so refusal is inferred. An interrupt reads as refused, and two identical escalations in one parallel batch deny the second. Both err toward deny.
 **Instead of:** joining on `tool_use_id`: exact for parallel batches, but the field is unverified and the key join answers the same for sequential calls. The model reporting the refusal lost outright: it can forge it.
 **Risks:**
-- **RISK-008** A push the user approved but the remote rejected cannot be escalated again this session. Mitigation: the deny names `! <command>`; if OQ-003 finds a failure event, observe records it as `ran`.
+- **RISK-008** A push the user approved but the remote rejected cannot be escalated again this session. Mitigation: the `PostToolUseFailure` wiring records it as `ran` with `why: "failed"`, so the next escalation asks fresh (phase 5).
 
 ### D-006: Housekeeping is recorded, never escalated
 
@@ -265,11 +277,31 @@ phases:
 - **T-4.5** `guardBash` does not deny `picket leave x --command "git push origin v1"`, and the verb-set test passes with `leave` in `KERNEL_OTHER_VERBS`.
 - **T-4.6** The three lane SKILL.md closing blocks contain `Left for you:`; `npm test` passes, budgets included.
 
+## Phase 5: A failed escalated command counts as ran
+
+**Touch set:**
+- `core/hooks/hooks.json`: `PostToolUseFailure` entry, Bash matcher, `observe.drive.mjs` (beside the `PostToolUse` entry at `:25`)
+- `core/lib/hooks/observe.drive.mjs`: branch on `hook_event_name` (`:59` to `:77`)
+- `test/hooks/hooks.test.mjs`: failure cases beside the ran-row test (`:657`)
+- `core/lib/escalation.mjs`: read; `recordEscalation` already carries `why`, `ranAfter` (`:54`) needs no change
+
+**Changes:**
+- `hooks.json` gains `"PostToolUseFailure": [{ "matcher": "Bash", "hooks": [<the same observe.drive.mjs command entry as PostToolUse>] }]`.
+- `observeDrive` reads `event.hook_event_name`. For `PostToolUseFailure` it skips the drive-log row and, for a marked command, appends the escalation row with `outcome: "ran"` and `why: "failed"`. For `PostToolUse` it behaves exactly as today.
+
+**Done when:**
+- **T-5.1** `core/hooks/hooks.json` registers `observe.drive.mjs` for `PostToolUseFailure` with matcher `Bash`, and a test asserts it.
+- **T-5.2** Piping a `PostToolUseFailure` event for a marked command into `node core/hooks/observe.drive.mjs` appends one ledger row with `outcome: "ran"` and `why: "failed"`, and no drive-log row.
+- **T-5.3** A `PostToolUseFailure` event for an unmarked command appends neither a ledger row nor a drive-log row.
+- **T-5.4** After an `ask` row followed by that failed `ran` row, the same marked command gets a fresh `ask` from `guardBash`, not the `refused_before` deny.
+- **T-5.5** `npm test` passes.
+
 ## Open questions
 
 - **OQ-001** Does a hook `ask` reach the user in auto mode (headless cell plus the interactive confirm), does the hook input carry `permission_mode`, and does a `!` command pass through PreToolUse hooks? Owner: developer runs the probe in phase 1; the user answers the two interactive steps at the phase 1 gate. Fallback: `auto` stays out of `ASKING_MODES`, so an escalation in auto mode denies with the `!` route; a missing `permission_mode` denies; if `!` is hooked, the deny text says "run it in your own terminal" instead.
 - **OQ-002** Does a hook `ask` override a saved allow rule that matches the command? Owner: developer (the `ask+rule` cells). Fallback: none needed for safety, because D-003 (b) denies whenever such a rule exists; the answer goes into the record and the preflight warn wording.
-- **OQ-003** Does PostToolUse or PostToolUseFailure fire for a Bash command that exits non-zero? Owner: developer (the `ask+fail` cell). Fallback: an approved command that fails reads as not run (D-005). If PostToolUseFailure fires, an amendment to phase 3 wires observe.drive to it before phase 3 starts.
+- **OQ-003** Does PostToolUse or PostToolUseFailure fire for a Bash command that exits non-zero? Answered by the `ask+fail` cell: only `PostToolUseFailure` fires. D-005 (r2) and phase 5 wire observe.drive to it.
 - **OQ-004** `picket doctor` does not exist. Is the preflight `saved_rules` check enough, or does the user want a standalone verb? Owner: user. Fallback: preflight only (D-007).
 
 ## Revision log
+- 2026-10-17: D-005 (r2): failed escalated commands record `ran` via PostToolUseFailure; new phase 5; OQ-003 answered by the probe, cumulative review F-1

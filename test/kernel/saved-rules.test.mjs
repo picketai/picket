@@ -11,10 +11,10 @@ function settings(dir, file, allow) {
 }
 
 test("a saved rule could match an escalation when it allows every Bash command, starts with a wildcard, or names the marker", () => {
-  for (const rule of ["Bash", "Bash(*)", "Bash(* push)", "Bash(*:*)", "Bash(PICKET_ESCALATE=*)", " Bash(PICKET_ESCALATE=x git push) "]) {
+  for (const rule of ["Bash", "Bash(*)", "Bash(* push)", "Bash(*:*)", "Bash(PICKET_ESCALATE=*)", " Bash(PICKET_ESCALATE=x git push) ", "Bash(PICKET_*)", "Bash(P*)", "Bash(PICK:*)", "Bash(PICKET_ESCALATE=x *)"]) {
     assert.equal(couldMatchEscalation(rule), true, rule);
   }
-  for (const rule of ["Bash(git push *)", "Bash(git commit *)", "Bash()", "Read(*)", "WebFetch", "Bashful(*)"]) {
+  for (const rule of ["Bash(git push *)", "Bash(git commit *)", "Bash()", "Read(*)", "WebFetch", "Bashful(*)", "Bash(PX*)", "Bash(npm:*)", "Bash(PICKET_X*)"]) {
     assert.equal(couldMatchEscalation(rule), false, rule);
   }
 });
