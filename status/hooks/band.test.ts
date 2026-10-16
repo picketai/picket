@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { Bar, Piece } from '../types'
-import { rows, sessionLine, widthOf } from './band'
+import type { Bar, Piece, Work } from '../types'
+import { rows, sessionLine, widthOf, workLine } from './band'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 const MINUTE = 60_000
@@ -68,5 +68,49 @@ describe('band', () => {
 
     const fresh = { ...CANVAS, lastRequestAt: null, cost: null, limits: [] }
     expect(text(sessionLine(fresh).right)).toBe('5h n/a   7d n/a   ctx [███░░░░░░░] 62k/200.0k (31%)   cache 48k')
+  })
+})
+
+const WORK: Work = {
+  id: '20261016-ship-picket-markdown-mod-with-picket-init',
+  lane: 'order',
+  title: 'Ship picket-markdown mod with picket init',
+  status: 'open',
+  action: 'approve_phase',
+  actor: 'user',
+  phase: 1,
+  detail: 'phase 1 of 2 is done and awaits your decision',
+  phases_approved: 1,
+  phase_count: 2,
+  blocked_reason: null,
+  since: new Date(NOW - 6 * MINUTE).toISOString(),
+  by: 'developer',
+}
+
+describe('work line', () => {
+  test('the left part reads lane, title and approved phase dots', async () => {
+    const line = workLine(WORK, NOW)
+    expect(text(line?.left ?? [])).toBe('▶ order  Ship picket-markdown mod with picket init  ●○ 1/2')
+    expect(line?.left.filter(piece => piece.text === '●').map(piece => piece.color)).toEqual(['ide'])
+    expect(line?.left.filter(piece => piece.text === '○').map(piece => piece.color)).toEqual(['subtle'])
+    expect(text(workLine({ ...WORK, phase_count: 0, phases_approved: 0 }, NOW)?.left ?? [])).toBe(
+      '▶ order  Ship picket-markdown mod with picket init',
+    )
+    expect(workLine(null, NOW)).toBe(null)
+  })
+
+  test('a user gate reads as your step with the minutes waited', async () => {
+    const right = workLine(WORK, NOW)?.right ?? []
+    expect(text(right)).toBe('you approve phase 1 ◀ 6m')
+    expect(right[0]).toEqual({ text: 'you approve phase 1 ◀', color: 'warning', bold: true })
+  })
+
+  test('an agent step reads as its actor at work, a block as the reason', async () => {
+    const implementing = { ...WORK, action: 'implement_phase', actor: 'developer', phase: 2 }
+    expect(workLine(implementing, NOW)?.right).toEqual([{ text: 'developer implements phase 2 ⋯', color: 'permission' }])
+    const blocked = { ...WORK, status: 'blocked', action: 'resolve_block', blocked_reason: 'phase 2 stalled, 3 tests fail' }
+    expect(workLine(blocked, NOW)?.right).toEqual([
+      { text: 'blocked: phase 2 stalled, 3 tests fail ◀', color: 'error', bold: true },
+    ])
   })
 })

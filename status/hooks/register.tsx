@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, SessionUsage } from 'claude-code'
+import type { EngineInterface, ProcessRunResult, Register, SessionUsage } from 'claude-code'
 
-import type { Bar, CacheTtl } from '../types'
-import { rows, sessionLine } from './band'
+import type { Bar, CacheTtl, Work } from '../types'
+import { rows, sessionLine, workLine } from './band'
 
 const EMPTY: Bar = {
   model: null,
@@ -22,6 +22,51 @@ const EMPTY: Bar = {
 }
 
 const state = atom({ plugin: 'picket-status', key: 'bar' } as const, EMPTY)
+
+const work = atom({ plugin: 'picket-status', key: 'work' } as const, null as Work | null)
+
+const LAUNCHERS: readonly (readonly string[])[] = [['picket'], ['cmd', '/c', 'picket']]
+
+const runner = { launchers: LAUNCHERS, isBusy: false }
+
+const runLatest = async ($: EngineInterface): Promise<ProcessRunResult | null> => {
+  for (const launcher of runner.launchers) {
+    try {
+      const result = await $.process.run([...launcher, 'next', '--latest'], { timeoutMs: 10_000 })
+      runner.launchers = [launcher]
+      return result
+    } catch {
+      continue
+    }
+  }
+  runner.launchers = []
+  return null
+}
+
+const parseWork = (result: ProcessRunResult | null): Work | null => {
+  if (result === null || result.exitCode !== 0) {
+    return null
+  }
+  try {
+    const answer = JSON.parse(result.stdout) as Work
+    return answer.action === 'none' || answer.id === null ? null : answer
+  } catch {
+    return null
+  }
+}
+
+const refreshWork = async ($: EngineInterface) => {
+  if (runner.isBusy || runner.launchers.length === 0) {
+    return
+  }
+  runner.isBusy = true
+  try {
+    const latest = parseWork(await runLatest($))
+    await update($, work, () => latest)
+  } finally {
+    runner.isBusy = false
+  }
+}
 
 const compactAtOf = (usage: SessionUsage): number =>
   usage.context.breakdown?.autoCompactThreshold ?? usage.context.breakdown?.rawMaxTokens ?? usage.context.window
@@ -57,9 +102,12 @@ export const register: Register = on => {
       compactAt: compactAtOf(usage),
       now,
     }))
+    runner.launchers = LAUNCHERS
+    await refreshWork($)
     $.clock.every(30_000, async () => {
       const tick = await $.clock.now()
       await update($, state, s => ({ ...s, now: tick }))
+      await refreshWork($)
     })
     return started
   })
@@ -86,6 +134,14 @@ export const register: Register = on => {
   on('tool.call', { tool: 'Skill' }, async ($, e, next) => {
     await update($, state, s => ({ ...s, skill: e.skill }))
     return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const called = await next(e)
+    if (/\bpicket\b/.test(e.command)) {
+      await refreshWork($)
+    }
+    return called
   }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
@@ -127,8 +183,9 @@ export const register: Register = on => {
       return next(e)
     }
     const { Box, Text } = $.ui.resolve(e)
-    const s = await read($, state)
-    const drawn = rows(sessionLine(s), e.props.bodyColumns)
+    const [s, latest] = await Promise.all([read($, state), read($, work)])
+    const lines = [workLine(latest, s.now), sessionLine(s)].filter(line => line !== null)
+    const drawn = lines.flatMap(line => rows(line, e.props.bodyColumns))
 
     return (
       <Box flexDirection="column" paddingTop={1}>

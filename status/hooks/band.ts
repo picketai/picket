@@ -1,5 +1,5 @@
-import type { Bar, Limit, Line, Piece } from '../types'
-import { bar, cacheLeft, compactTokens, contextColor, levelColor, prettyModel, untilReset } from './format'
+import type { Bar, Limit, Line, Piece, Work } from '../types'
+import { bar, cacheLeft, compactTokens, contextColor, levelColor, prettyModel, stepText, untilReset } from './format'
 
 const GAP = 2
 const PART_GAP: Piece = { text: '   ' }
@@ -79,5 +79,30 @@ export const sessionLine = (state: Bar): Line => {
       { text: state.skill ?? 'none', color: 'ide' },
     ],
     right: joinParts(parts.filter(part => part.length > 0)),
+  }
+}
+
+const progress = (work: Work): Piece[] => {
+  if (work.phase_count === 0) {
+    return []
+  }
+  const dots = Array.from({ length: work.phase_count }, (_, index): Piece =>
+    index < work.phases_approved ? { text: '●', color: 'ide' } : { text: '○', color: 'subtle' },
+  )
+  return [{ text: '  ' }, ...dots, { text: ` ${work.phases_approved}/${work.phase_count}`, color: 'inactive' }]
+}
+
+export const workLine = (work: Work | null, now: number): Line | null => {
+  if (work === null) {
+    return null
+  }
+  return {
+    left: [
+      { text: `▶ ${work.lane}`, color: 'permission' },
+      { text: '  ' },
+      { text: work.title, bold: true },
+      ...progress(work),
+    ],
+    right: stepText(work, now),
   }
 }

@@ -23,8 +23,24 @@ export type Bar = {
   ttlSource: 'switch' | 'agent' | null
 }
 
+export type Work = {
+  id: string
+  lane: string
+  title: string
+  status: string
+  action: string
+  actor: string | null
+  phase: number | null
+  detail: string
+  phases_approved: number
+  phase_count: number
+  blocked_reason: string | null
+  since: string
+  by: string | null
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    'picket-status': { bar: Bar }
+    'picket-status': { bar: Bar; work: Work | null }
   }
 }

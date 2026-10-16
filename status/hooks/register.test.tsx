@@ -4,6 +4,8 @@ import type { On } from 'claude-code'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 
+const START = { cwd: 'D:/repo', surface: 'terminal', isInteractive: true } as const
+
 const USAGE = {
   startedAt: NOW,
   context: { tokens: 62_000, window: 200_000, percent: 31 },
@@ -73,7 +75,7 @@ test('a model switch teaches the cache ttl and an agent result never overrides i
   on('classic.PostModelSwitch', () => ({}))
   on('tool.call', () => ({ result: agentResult({ ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 10 }) }))
 
-  await $.session.start({ cwd: 'D:/repo', surface: 'terminal', isInteractive: true })
+  await $.session.start(START)
   await step($)
   expect(await (await band($)).find({ type: 'Text', text: '◷ ~5m' })).toBeDefined()
 
@@ -96,9 +98,81 @@ test('a model switch teaches the cache ttl and an agent result never overrides i
   expect(await after.find({ type: 'Text', text: /~/ })).toBeUndefined()
 })
 
+const LATEST = {
+  id: '20261016-ship',
+  lane: 'order',
+  status: 'open',
+  phase: 1,
+  options: [],
+  own_gate: null,
+  action: 'implement_phase',
+  actor: 'developer',
+  detail: 'phase 1 of 2',
+  title: 'Ship picket-markdown mod with picket init',
+  phases_approved: 0,
+  phase_count: 2,
+  blocked_reason: null,
+  since: new Date(NOW).toISOString(),
+  by: null,
+}
+
+const exited = (exitCode: number, stdout: string) => ({
+  value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false },
+})
+
+const isLatest = (argv: readonly string[]) => argv.slice(-2).join(' ') === 'next --latest'
+
+test('a picket command in Bash refreshes the work line and other commands do not', async ($, on) => {
+  world(on)
+  const runs: (readonly string[])[] = []
+  on('process.run', ($, e) => {
+    runs.push(e.argv)
+    return exited(0, JSON.stringify(LATEST))
+  })
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+
+  await $.session.start(START)
+  expect(runs.filter(isLatest).length).toBe(1)
+  await $.tool.call({ tool: 'Bash', command: 'picket route x --verdict approved' })
+  expect(runs.filter(isLatest).length).toBe(2)
+  await $.tool.call({ tool: 'Bash', command: 'git status' })
+  expect(runs.filter(isLatest).length).toBe(2)
+})
+
+test('a picket that cannot start is retried through cmd and the work line draws', async ($, on) => {
+  world(on)
+  const runs: (readonly string[])[] = []
+  on('process.run', ($, e) => {
+    runs.push(e.argv)
+    return e.argv[0] === 'picket' ? { deny: 'ENOENT' } : exited(0, JSON.stringify(LATEST))
+  })
+
+  await $.session.start(START)
+  expect(runs).toEqual([
+    ['picket', 'next', '--latest'],
+    ['cmd', '/c', 'picket', 'next', '--latest'],
+  ])
+  expect(await (await band($)).find({ type: 'Text', text: /^▶ order/ })).toBeDefined()
+})
+
+test('a failed, unreadable or empty answer hides the work line and keeps the session line', async ($, on) => {
+  world(on)
+  const answers = [exited(1, ''), exited(0, 'not json'), exited(0, JSON.stringify({ ...LATEST, id: null, action: 'none' }))]
+  let answer = answers[0]
+  on('process.run', () => answer ?? exited(1, ''))
+
+  for (const next of answers) {
+    answer = next
+    await $.session.start(START)
+    const drawn = await band($)
+    expect(await drawn.find({ type: 'Text', text: /^▶/ })).toBeUndefined()
+    expect(await drawn.find({ type: 'Text', text: 'Opus 5.5' })).toBeDefined()
+  }
+})
+
 test('the band yields to a survey and otherwise draws label-free rows', async ($, on) => {
   world(on)
-  await $.session.start({ cwd: 'D:/repo', surface: 'terminal', isInteractive: true })
+  await $.session.start(START)
 
   const survey = await band($, true)
   expect((await survey.find({ type: 'Text' }))?.text).toBe('engine')
