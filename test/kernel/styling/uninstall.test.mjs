@@ -80,15 +80,28 @@ test("all and yes remove every item and return both settings files to their byte
   });
 });
 
-test("1,3 removes only those items and keeps the rest with their backups; no keeps the font (T-8.2)", async () => {
-  await withInstalled({ answers: ["1,3", "no"] }, async (host) => {
+test("2,4 removes only those entries and keeps the rest with their backups; no keeps the font (T-8.2)", async () => {
+  await withInstalled({ answers: ["2,4", "no"] }, async (host) => {
     const report = await uninstall(host, { components: COMPONENTS });
-    assert.equal(results(report)["theme-file"], "removed");
     assert.notEqual(results(report)["windows-terminal-scheme@stable"], "kept");
+    assert.equal(results(report)["statusline-icons"], "removed");
     assert.equal(results(report).font, "kept");
     const left = JSON.parse(readFileSync(manifestPath(host.home), "utf8")).items;
-    assert.deepEqual(left.map((item) => item.id), ["theme-setting", "font", "windows-terminal-defaults@stable", "statusline-icons", "statusline"]);
+    assert.deepEqual(left.map((item) => item.id), ["theme-file", "theme-setting", "font", "windows-terminal-defaults@stable", "statusline"]);
     for (const item of left.filter((recorded) => recorded.backup)) assert.ok(existsSync(item.backup), item.backup);
+  });
+});
+
+test("the listing shows both theme items as one Claude Code theme entry, and choosing it removes both (T-9.3)", async () => {
+  await withInstalled({ answers: ["1", "no"] }, async (host) => {
+    const report = await uninstall(host, { components: COMPONENTS });
+    const lines = host.questions[0].split("\n").filter((text) => /^\s+\d+\. /.test(text));
+    assert.equal(lines.filter((text) => text.includes("Claude Code theme")).length, 1);
+    assert.ok(!lines.some((text) => /\d+\. theme-(file|setting)/.test(text)), lines.join("\n"));
+    assert.equal(lines.length, 5);
+    assert.equal(results(report)["theme-file"], "removed");
+    assert.notEqual(results(report)["theme-setting"], "kept");
+    assert.notEqual(JSON.parse(read(host, SETTINGS)).theme, "custom:picketai");
   });
 });
 
@@ -113,7 +126,7 @@ test("an answer that is not a selection is asked once more and then keeps everyt
 });
 
 test("removing the status line after a user edit puts the old line back and keeps the edit (T-8.4)", async () => {
-  await withInstalled({ answers: ["6", "no"] }, async (host) => {
+  await withInstalled({ answers: ["5", "no"] }, async (host) => {
     writeHomeFile(host.home, SETTINGS, JSON.stringify({ ...JSON.parse(read(host, SETTINGS)), env: { A: "1" } }));
     await uninstall(host, { components: COMPONENTS });
     const settings = JSON.parse(read(host, SETTINGS));

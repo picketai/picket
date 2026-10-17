@@ -154,7 +154,7 @@ function plan(host, manifest, { family, run }) {
   return [...(existing === null ? [profileChange(state, family)] : []), ...(isDefault ? [] : [defaultChange(state, run)])];
 }
 
-function unapply(item, host) {
+function undo(item, host) {
   const { uuid } = item.data;
   if (item.data.part === "default") {
     if (unquote(dconfRead(host, DEFAULT)) !== uuid) return { result: "kept", detail: "the default profile was changed after setup" };
@@ -164,6 +164,19 @@ function unapply(item, host) {
   dconfResetDir(host, profilePath(uuid));
   removeFromList(host, LIST, uuid, item.previous.list, [BUILT_IN_PROFILE]);
   return { result: "removed" };
+}
+
+function byHand(item) {
+  if (item.backup) return `dconf load ${BASE} < ${item.backup}`;
+  return item.previous.default === null ? `dconf reset ${DEFAULT}` : `dconf write ${DEFAULT} "${item.previous.default}"`;
+}
+
+function unapply(item, host) {
+  try {
+    return undo(item, host);
+  } catch (err) {
+    throw Object.assign(new Error(err.message), { manual: `run ${byHand(item)}` });
+  }
 }
 
 export const gnomeTerminal = { id: WRITER, name: "GNOME Terminal", plan, unapply };

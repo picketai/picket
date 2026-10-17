@@ -69,29 +69,49 @@ export function backupFile(host, path, component) {
   return target;
 }
 
-function removeEdited(item, host, component) {
-  if (existsSync(item.path) && sha256File(item.path) === item.sha256) {
-    copyFileSync(item.backup, item.path);
-    return { result: "restored" };
-  }
+export function keepCopy(host, path, id) {
+  const target = join(picketHome(host.home), "kept", stampOf(host), `${id}-${basename(path)}`);
+  mkdirSync(dirname(target), { recursive: true });
+  copyFileSync(path, target);
+  return target;
+}
+
+function unapplied(item, host, component) {
   return component.unapply(item, host) ?? { result: "removed" };
 }
 
-function removeCreated(item) {
-  if (!existsSync(item.path)) return { result: "removed" };
-  if (sha256File(item.path) === item.sha256) {
-    rmSync(item.path);
-    return { result: "removed" };
-  }
-  return { result: "kept", detail: "changed after setup", manual: `remove ${item.path} by hand if you no longer want it` };
+function unchanged(item) {
+  return existsSync(item.path) && sha256File(item.path) === item.sha256;
 }
+
+function removeEdited(item, host, component) {
+  if (!unchanged(item)) return unapplied(item, host, component);
+  copyFileSync(item.backup, item.path);
+  return { result: "restored" };
+}
+
+function removeCreated(item, host, component) {
+  if (!existsSync(item.path)) return { result: "removed" };
+  if (!unchanged(item)) return unapplied(item, host, component);
+  rmSync(item.path);
+  return { result: "removed" };
+}
+
+const REMOVERS = { created: removeCreated, edited: removeEdited, external: unapplied };
 
 function removeItem(item, host, components) {
   const component = components.find((c) => c.name === item.component);
-  if (item.kind === "created") return removeCreated(item);
   if (!component) throw new Error(`no component named ${item.component} to remove it`);
-  if (item.kind === "edited") return removeEdited(item, host, component);
-  return component.unapply(item, host) ?? { result: "removed" };
+  const reason = component.blocks?.(item, host) ?? null;
+  if (reason !== null) return { result: "kept", detail: reason, blocked: true };
+  return REMOVERS[item.kind](item, host, component);
+}
+
+function fallbackStep(item) {
+  if (item.path && item.backup) return `put ${item.backup} back at ${item.path} by hand`;
+  if (item.path) return `check ${item.path} by hand`;
+  if (item.backup) return `the state before setup is saved in ${item.backup}`;
+  return `check ${item.id} by hand`;
 }
 
 function finish(host, manifest) {
@@ -108,12 +128,12 @@ export function removeItems(host, manifest, ids, components) {
   for (const item of [...manifest.items].reverse()) {
     if (!ids.includes(item.id)) continue;
     try {
-      outcomes.push({ id: item.id, ...removeItem(item, host, components) });
-      manifest.items = manifest.items.filter((kept) => kept !== item);
+      const { blocked, ...outcome } = removeItem(item, host, components);
+      outcomes.push({ id: item.id, ...outcome });
+      if (!blocked) manifest.items = manifest.items.filter((kept) => kept !== item);
       finish(host, manifest);
     } catch (err) {
-      const fallback = item.backup ? `restore ${item.path} from ${item.backup} by hand` : `check ${item.path ?? item.id} by hand`;
-      outcomes.push({ id: item.id, result: "failed", detail: err.message, manual: err.manual ?? fallback });
+      outcomes.push({ id: item.id, result: "failed", detail: err.message, manual: err.manual ?? fallbackStep(item) });
       finish(host, manifest);
     }
   }

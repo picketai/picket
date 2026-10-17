@@ -6,29 +6,43 @@ const FONT_QUESTION = "Remove JetBrainsMono Nerd Font Mono? Other apps may use i
 const PICKET_ITSELF = "to remove Picket itself, run by hand: claude plugin uninstall picket@picketai, then npm uninstall -g @picketai/picket";
 const RESTART = "your terminal, so it drops the PicketAI scheme and font";
 const SELECTION = /^\d+(\s*,\s*\d+)*$/;
+const THEME_IDS = ["theme-file", "theme-setting"];
 
-function listing(items) {
+function pathsOf(items) {
+  const paths = items.flatMap((item) => (item.path ? [item.path] : []));
+  return paths.length ? ` (${paths.join(", ")})` : "";
+}
+
+function entriesOf(items) {
+  const theme = items.filter((item) => THEME_IDS.includes(item.id));
+  const entries = items.filter((item) => !THEME_IDS.includes(item.id)).map((item) => ({ label: `${item.id}${pathsOf([item])}`, ids: [item.id] }));
+  const themeEntry = theme.length ? [{ label: `Claude Code theme${pathsOf(theme)}`, ids: theme.map((item) => item.id) }] : [];
+  return [...themeEntry, ...entries];
+}
+
+function listing(entries) {
   return [
     "Picket installed these styling items:",
-    ...items.map((item, i) => `  ${i + 1}. ${item.id}${item.path ? ` (${item.path})` : ""}`),
+    ...entries.map((entry, i) => `  ${i + 1}. ${entry.label}`),
     "Remove which? all, none, or numbers such as 1,3",
   ].join("\n");
 }
 
-function selected(answer, items) {
+function selected(answer, entries) {
   const text = answer.trim().toLowerCase();
-  if (text === "all") return items.map((item) => item.id);
+  if (text === "all") return entries.flatMap((entry) => entry.ids);
   if (text === "none" || text === "") return [];
   if (!SELECTION.test(text)) return null;
   const numbers = text.split(",").map(Number);
-  if (numbers.some((n) => n < 1 || n > items.length)) return null;
-  return numbers.map((n) => items[n - 1].id);
+  if (numbers.some((n) => n < 1 || n > entries.length)) return null;
+  return numbers.flatMap((n) => entries[n - 1].ids);
 }
 
 async function chooseItems(host, items) {
-  if (items.length === 0) return [];
+  const entries = entriesOf(items);
+  if (entries.length === 0) return [];
   for (let attempt = 0; attempt < 2; attempt++) {
-    const chosen = selected(await host.ask(listing(items), { fallback: "none" }), items);
+    const chosen = selected(await host.ask(listing(entries), { fallback: "none" }), entries);
     if (chosen !== null) return chosen;
   }
   return [];

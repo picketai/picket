@@ -24,7 +24,7 @@ It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket
 
 ## Code
 
-Code is Node ESM in `.mjs` files. Everything under `core/` imports only Node built-ins and paths inside `core/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The one third-party parser is vendored at `core/lib/vendor/shell-quote-parse.mjs`.
+Code is Node ESM in `.mjs` files. Everything under `core/` imports only Node built-ins and paths inside `core/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `core/lib/vendor/shell-quote-parse.mjs` for shell commands and `core/lib/vendor/jsonc-parser.mjs` for JSON with comments.
 
 Comments follow `core/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 

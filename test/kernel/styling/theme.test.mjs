@@ -2,9 +2,28 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { manifestPath } from "../../../core/lib/styling/manifest.mjs";
+import { manifestPath, readManifest, removeItems } from "../../../core/lib/styling/manifest.mjs";
 import { setupTerminal } from "../../../core/lib/styling/setup.mjs";
+import { theme } from "../../../core/lib/styling/theme.mjs";
 import { fakeHost, homeFiles, writeHomeFile } from "./host-fixture.mjs";
+
+test("the theme copy is kept while PicketAI is still the theme setting, and goes once the setting does (T-9.2)", async () => {
+  const host = fakeHost({});
+  try {
+    await setupTerminal(host, { yes: true, only: ["theme"] });
+    const manifest = readManifest(host);
+    const [blocked] = removeItems(host, manifest, ["theme-file"], [theme]);
+    assert.equal(blocked.result, "kept");
+    assert.match(blocked.detail, /\/theme/);
+    assert.ok(existsSync(join(host.home, ".claude", "themes", "picketai.json")));
+    assert.deepEqual(readManifest(host).items.map((item) => item.id), ["theme-file", "theme-setting"]);
+    const outcomes = removeItems(host, readManifest(host), ["theme-setting", "theme-file"], [theme]);
+    assert.deepEqual(outcomes.map((outcome) => outcome.result), ["removed", "removed"]);
+    assert.equal(existsSync(join(host.home, ".claude", "themes", "picketai.json")), false);
+  } finally {
+    host.dispose();
+  }
+});
 
 const SOURCE = "core/themes/picketai.json";
 const COPY = ".claude/themes/picketai.json";

@@ -1,4 +1,5 @@
-import { backupFile, backupsDir, emptyManifest, ManifestError, manifestPath, readManifest, removeItems, writeManifest } from "./manifest.mjs";
+import { existsSync } from "node:fs";
+import { backupFile, backupsDir, emptyManifest, keepCopy, ManifestError, manifestPath, readManifest, removeItems, sha256File, writeManifest } from "./manifest.mjs";
 import { statuslineSetting } from "./statusline-setting.mjs";
 import { fontComponent } from "./font.mjs";
 import { terminalComponent } from "./terminal.mjs";
@@ -54,18 +55,24 @@ function recordItem(manifest, item) {
   manifest.items = existing ? manifest.items.map((recorded) => (recorded === existing ? next : recorded)) : [...manifest.items, next];
 }
 
+function editedSinceSetup(existing) {
+  return Boolean(existing?.path && existing.sha256 && existsSync(existing.path) && sha256File(existing.path) !== existing.sha256);
+}
+
 async function applyEntry(host, manifest, { change }, yes) {
   if (change.question && !(await confirmed(host, change.question, yes))) return line(change.id, change.summary, "skipped");
   const existing = manifest.items.find((recorded) => recorded.id === change.id);
   const backup = (path) => (existing ? existing.backup : backupFile(host, path, change.id));
+  const copy = editedSinceSetup(existing) ? keepCopy(host, existing.path, change.id) : null;
+  const copyNote = copy ? `your edited ${existing.path} is saved at ${copy}` : undefined;
   try {
     const item = await change.apply(host, backup);
     if (item === null) return line(change.id, change.summary, "skipped", "not needed after the earlier changes");
     recordItem(manifest, item);
     writeManifest(host, manifest);
-    return line(change.id, change.summary, "applied");
+    return { ...line(change.id, change.summary, "applied", copyNote), manual: copyNote };
   } catch (err) {
-    return { ...line(change.id, change.summary, "failed", err.message), ...(err.manual ? { manual: err.manual } : {}) };
+    return { ...line(change.id, change.summary, "failed", err.message), manual: [err.manual, copyNote].filter(Boolean).join("; ") || undefined };
   }
 }
 
@@ -90,10 +97,10 @@ async function install(host, manifest, components, { dryRun, yes }) {
   const restart = [];
   const manual = [...noteSteps];
   for (const entry of entries) {
-    const { manual: failedManual, ...result } = await applyEntry(host, manifest, entry, yes);
+    const { manual: entryManual, ...result } = await applyEntry(host, manifest, entry, yes);
     changes.push(result);
     const { change } = entry;
-    if (failedManual) manual.push(failedManual);
+    if (entryManual) manual.push(entryManual);
     if (result.result === "applied" && change.restart) restart.push(change.restart);
     if (result.result === "applied" && change.manual) manual.push(change.manual);
     if (result.result === "skipped" && change.manualIfSkipped) manual.push(change.manualIfSkipped);

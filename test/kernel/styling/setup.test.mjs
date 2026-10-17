@@ -5,9 +5,14 @@ import { join } from "node:path";
 import { STATUS_LINE } from "../../../core/lib/init.mjs";
 import { manifestPath } from "../../../core/lib/styling/manifest.mjs";
 import { renderReport, setupTerminal } from "../../../core/lib/styling/setup.mjs";
-import { fakeHost, homeFiles, writeHomeFile } from "./host-fixture.mjs";
+import { statuslineSetting } from "../../../core/lib/styling/statusline-setting.mjs";
+import { terminalComponent } from "../../../core/lib/styling/terminal.mjs";
+import { theme } from "../../../core/lib/styling/theme.mjs";
+import { exited, fakeExec, fakeHost, homeFiles, textsOf, writeHomeFile } from "./host-fixture.mjs";
 
 const SETTINGS = ".claude/settings.json";
+const KONSOLERC = ".config/konsolerc";
+const THEME_COPY = ".claude/themes/picketai.json";
 const CUSTOM = '{"model":"x","statusLine":{"type":"command","command":"my-line"}}';
 
 function setupStatusline(host, options) {
@@ -157,5 +162,40 @@ test("a second setup after the user replaced the line keeps the first backup and
     assert.equal(second.length, 1);
     assert.equal(second[0].backup, first.backup);
     assert.deepEqual(second[0].previous, first.previous);
+  });
+});
+
+test("revert takes only Picket's keys out of files setup created and the user then edited (T-9.1)", async () => {
+  const exec = fakeExec({ "fc-list": () => exited(0, "JetBrainsMono Nerd Font Mono\n") });
+  await withHost({ platform: "linux", env: { KONSOLE_VERSION: "230804" }, exec }, async (host) => {
+    await setupTerminal(host, { yes: true, components: [theme, terminalComponent(), statuslineSetting] });
+    writeHomeFile(host.home, SETTINGS, JSON.stringify({ ...JSON.parse(read(host, SETTINGS)), userKey: 1 }));
+    writeHomeFile(host.home, ".picketai/config.json", JSON.stringify({ ...JSON.parse(read(host, ".picketai/config.json")), user: true }));
+    writeHomeFile(host.home, KONSOLERC, `${read(host, KONSOLERC)}\n[Other]\nKey=1\n`);
+    const report = await setupTerminal(host, { revert: true, yes: true, components: [theme, terminalComponent(), statuslineSetting] });
+    assert.ok(report.changes.every((change) => change.result === "removed"), JSON.stringify(report.changes));
+    assert.deepEqual(JSON.parse(read(host, SETTINGS)), { userKey: 1 });
+    assert.deepEqual(JSON.parse(read(host, ".picketai/config.json")), { user: true });
+    assert.ok(!read(host, KONSOLERC).includes("DefaultProfile"), read(host, KONSOLERC));
+    assert.ok(read(host, KONSOLERC).includes("[Other]\nKey=1"));
+    for (const path of [SETTINGS, ".picketai/config.json", KONSOLERC].map((rel) => join(host.home, ...rel.split("/")))) {
+      assert.ok(!report.manual.some((step) => step.includes(path)), path);
+    }
+    assert.ok(!textsOf(report).some((text) => text.includes("undefined")));
+  });
+});
+
+test("re-applying over a file the user edited keeps a copy of the edit that revert never deletes (T-9.4)", async () => {
+  await withHost({ answers: ["yes", "yes"] }, async (host) => {
+    await setupTerminal(host, { yes: true, only: ["theme"] });
+    writeHomeFile(host.home, THEME_COPY, '{"name":"Edited"}');
+    const report = await setupTerminal(host, { only: ["theme"] });
+    assert.ok(host.questions.some((question) => question.startsWith("Replace ")), host.questions.join("\n"));
+    const kept = homeFiles(host.home).filter((path) => /^\.picketai\/kept\/\d{8}T\d{6}Z\/theme-file-picketai\.json$/.test(path));
+    assert.equal(kept.length, 1);
+    assert.equal(read(host, kept[0]), '{"name":"Edited"}');
+    assert.ok(textsOf(report).some((text) => text.includes(join(host.home, ...kept[0].split("/")))), textsOf(report).join("\n"));
+    await setupTerminal(host, { revert: true, yes: true });
+    assert.equal(read(host, kept[0]), '{"name":"Edited"}');
   });
 });

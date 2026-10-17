@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setupTerminal } from "../../../core/lib/styling/setup.mjs";
 import { terminalComponent } from "../../../core/lib/styling/terminal.mjs";
-import { exited, fakeDconf, fakeExec, fakeHost, homeFiles, writeHomeFile } from "./host-fixture.mjs";
+import { exited, fakeDconf, fakeExec, fakeHost, homeFiles, textsOf, writeHomeFile } from "./host-fixture.mjs";
 
 const FAMILY = "JetBrainsMono Nerd Font Mono";
 const TERMINAL_ONLY = [terminalComponent()];
@@ -177,6 +177,34 @@ test("a second run changes nothing for Konsole, GNOME Terminal and Ptyxis (T-6.6
       assert.deepEqual((await setup(host)).changes, []);
     });
   }
+});
+
+test("a konsolerc setup created keeps the user's later lines on revert and loses only DefaultProfile (T-9.1)", async () => {
+  await withHost(konsoleHost({}), async (host) => {
+    await setup(host);
+    writeHomeFile(host.home, KONSOLERC, `${read(host, KONSOLERC)}\n[MainWindow]\nState=1\n`);
+    const report = await revert(host);
+    assert.equal(Object.fromEntries(report.changes.map((change) => [change.id, change.result]))["konsole-default"], "removed");
+    assert.ok(!read(host, KONSOLERC).includes("DefaultProfile"));
+    assert.ok(read(host, KONSOLERC).includes("[MainWindow]\nState=1"));
+    assert.ok(!textsOf(report).some((text) => text.includes("undefined")));
+  });
+});
+
+test("a failed dconf reset leaves a manual step that loads the saved dump (T-9.5)", async () => {
+  const dconf = gnomeDconf();
+  let failing = false;
+  const run = (args) => (failing && args[0] === "reset" ? exited(1) : dconf.run(args));
+  await withHost({ env: { GNOME_TERMINAL_SCREEN: "1" }, exec: fakeExec({ dconf: run }) }, async (host) => {
+    await setup(host);
+    const manifest = JSON.parse(read(host, ".picketai/styling-manifest.json"));
+    const dump = manifest.items.find((item) => item.id === "gnome-terminal-profile").backup;
+    failing = true;
+    const report = await revert(host);
+    const step = report.manual.find((text) => text.includes("dconf load"));
+    assert.ok(step?.includes(dump), report.manual.join("\n"));
+    assert.ok(!textsOf(report).some((text) => text.includes("undefined")), textsOf(report).join("\n"));
+  });
 });
 
 test("without dconf GNOME Terminal and Ptyxis report a manual step and write nothing (T-6.6)", async () => {

@@ -111,7 +111,7 @@ function plan(host) {
 
 function unapplySetting(item) {
   const settings = readJson(item.path, readText(item.path));
-  if (settings.theme !== THEME_VALUE) return { result: "kept", detail: `theme now reads "${settings.theme}"` };
+  if (settings.theme !== THEME_VALUE) return { result: "kept", detail: "theme was changed after setup" };
   const restored = { ...settings };
   if ("theme" in item.previous) restored.theme = item.previous.theme;
   else delete restored.theme;
@@ -124,4 +124,17 @@ function unapply(item) {
   return { result: "kept", detail: "changed after setup", manual: `remove ${item.path} by hand if you no longer want it` };
 }
 
-export const theme = { name: NAME, plan, unapply };
+function activeSetting(host) {
+  try {
+    return readJson(settingsPath(host), readText(settingsPath(host))).theme;
+  } catch {
+    return undefined;
+  }
+}
+
+function blocks(item, host) {
+  if (item.id !== "theme-file" || activeSetting(host) !== THEME_VALUE) return null;
+  return `PicketAI is still your Claude Code theme: run /theme and pick ${themeInEffect(host, {})}, or remove the theme setting together with the file`;
+}
+
+export const theme = { name: NAME, plan, unapply, blocks };

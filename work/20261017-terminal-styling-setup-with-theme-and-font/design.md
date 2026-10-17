@@ -136,6 +136,27 @@ phases:
     tests: true
     drive: true
     security: false
+  - n: 9
+    files: [core/lib/styling/manifest.mjs, core/lib/styling/setup.mjs, core/lib/styling/uninstall.mjs, core/lib/styling/theme.mjs, core/lib/styling/terminals/gnome-terminal.mjs, test/kernel/styling/setup.test.mjs, test/kernel/styling/theme.test.mjs, test/kernel/styling/uninstall.test.mjs, test/kernel/styling/linux-terminals.test.mjs, docs/how-to.md, CONTRIBUTING.md]
+    greps:
+      - path: core/lib/styling/manifest.mjs
+        pattern: '\bblocks\b'
+      - path: core/lib/styling/manifest.mjs
+        pattern: '^(?![\s\S]*restore \$\{item\.path\} from \$\{item\.backup\})'
+        flags: i
+      - path: core/lib/styling/theme.mjs
+        pattern: '\bblocks\b'
+      - path: core/lib/styling/terminals/gnome-terminal.mjs
+        pattern: 'dconf load'
+      - path: CONTRIBUTING.md
+        pattern: 'core/lib/vendor/jsonc-parser\.mjs'
+      - path: docs/how-to.md
+        pattern: 'picket setup-terminal'
+      - path: docs/how-to.md
+        pattern: 'picket uninstall'
+    tests: true
+    drive: true
+    security: false
 ---
 # Design: Terminal styling setup with theme and font
 
@@ -145,8 +166,8 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 
 ## Decisions
 
-### D-001: Status line rows are a left group and a right group, laid out wide or narrow
-**Decision:** Infrastructural decision. A `Piece` is `{ text, color?, bg?, bold? }`, where `color` and `bg` name palette entries (`claude`, `text`, `muted`, `dim`, `success`, `warning`, `error`, `dark`, `barText`, `barEmpty`) whose hex values come from the new `core/lib/styling/palette.mjs`. A `Row` is `{ left: Piece[], right: Piece[] }`. Fields inside a group join with a ` · ` piece in `dim` (#6B6158); groups on the right side join with three plain spaces. `layout(facts, { columns, icons })` builds the rows. Line 1 is the brand on the left and `<folder> · <branch>` on the right. Wide (2 rows) puts `<model> · <effort> · <skill>` left and the 5h, 7d, context, cache and cost groups right. Narrow (3 rows) puts the 5h and 7d groups right of line 2, then the context bar left and cache and cost right on line 3. Wide is chosen only when `columns` is a positive integer and every wide row fits `2 + width(left) + 3 + width(right) <= columns - EDGE_COLUMNS`. Otherwise the layout is narrow at that width, or at 80 when the width is unknown. A row prints as two spaces, the left group, padding, and the right group ending at column `columns - EDGE_COLUMNS`. A row that does not fit gets three spaces between its groups and is clipped by the terminal. A missing fact drops its field or group (no `n/a`, `?` or `...`), and an empty row is dropped. The context group is a text bar ` <used>/<window> <pct>% `: the first `round(pct / 100 × length)` characters have the fill colour as `bg` with `dark` text, the rest `barEmpty` (#2E2620) behind `barText` (#E9C9A0). The fill colour comes from the existing `contextColor` against `0.83 × window`, bold when it is `error`. `compactTokens` gives whole k when the value rounds below 100k, one decimal k below 1M, and one decimal M from there (`46000` reads `46k`, `200000` reads `200.0k`). Widths are display columns from `displayWidth(text)`: 0 for combining marks, ZWJ and variation selectors, 2 for East Asian Wide and Fullwidth ranges and emoji, 1 otherwise, including Nerd Font private-use code points, `⎇` and `◷`. `icons` is `plain` or `nerd` and only swaps pieces as the spec's icon table says. Example: the fixture's wide row 2 needs 113 cells, so 115 columns prints 2 rows and 114 prints 3.
+### D-001 (r3): Status line rows are a left group and a right group, laid out wide or narrow
+**Decision:** Infrastructural decision. A `Piece` is `{ text, color?, bg?, bold? }`, where `color` and `bg` name palette entries (`claude`, `text`, `muted`, `dim`, `success`, `warning`, `error`, `dark`, `barText`, `barEmpty`) whose hex values come from the new `core/lib/styling/palette.mjs`. A `Row` is `{ left: Piece[], right: Piece[] }`. Fields inside a group join with a ` · ` piece in `dim` (#6B6158); groups on the right side join with three plain spaces. `layout(facts, { columns, icons })` builds the rows. Line 1 is the brand on the left and `<folder> · <branch>` on the right. Wide (2 rows) puts `<model> · <effort> · <skill>` left and the 5h, 7d, context, cache and cost groups right. Narrow (3 rows) puts the 5h and 7d groups right of line 2, then the context bar left and cache and cost right on line 3. Wide is chosen only when `columns` is a positive integer and every wide row fits `2 + width(left) + 3 + width(right) <= columns - EDGE_COLUMNS`. Otherwise the layout is narrow at that width, or at 80 when the width is unknown. A row prints as two spaces, the left group, padding, and the right group ending at column `columns - EDGE_COLUMNS`. A row that does not fit gets three spaces between its groups and is clipped by the terminal. A missing fact drops its field or group (no `n/a`, `?` or `...`), and an empty row is dropped. The context group is a text bar ` <used>/<window> <pct>% `: the first `round(pct / 100 × length)` characters have the fill colour as `bg` with `dark` text, the rest `barEmpty` (#2E2620) behind `barText` (#E9C9A0). The fill colour comes from the existing `contextColor` against `0.83 × window`, bold when it is `error`. `<used>` is `context_window.total_input_tokens`, which the status line docs define as the tokens now in the context window from the most recent API response, cache reads and writes included; `<pct>` is `used_percentage`. `compactTokens` gives whole k when the value rounds below 100k, one decimal k below 1M, and one decimal M from there (`46000` reads `46k`, `200000` reads `200.0k`). Widths are display columns from `displayWidth(text)`: 0 for combining marks, ZWJ and variation selectors, 2 for East Asian Wide and Fullwidth ranges and emoji, 1 otherwise, including Nerd Font private-use code points, `⎇` and `◷`. `icons` is `plain` or `nerd` and only swaps pieces as the spec's icon table says. Example: the fixture's wide row 2 needs 113 cells, so 115 columns prints 2 rows and 114 prints 3.
 **Instead of:** the staged greedy wrap joined by `│`: the spec removes the bars and the `◆` and pushes the right group to the edge, and a fixed choice of 2 or 3 rows is easier to predict than a wrap.
 **Risks:**
 - **RISK-001** Claude Code's own row spacing clips a row that ends at `columns - 2`. Mitigation: `EDGE_COLUMNS` keeps 2 cells free, as the open item settled; OQ-002 covers the width source.
@@ -165,15 +186,15 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 **Risks:**
 - **RISK-005** The fake host drifts from the real `reg`, `dconf`, `gsettings` and `defaults`. Mitigation: tests assert exact argument lists, and every OS effect is in the manual checklist (OQ-008).
 
-### D-004: Revert restores a backup only when the file is still as Picket left it
-**Decision:** Infrastructural decision. `~/.picketai/styling-manifest.json` is `{ version: 1, created, updated, items: Item[] }` with `Item = { id, component, kind: "edited" | "created" | "external", path?, backup?, sha256?, previous?, data?, installedAt }`. Before Picket edits an existing file it copies it to `~/.picketai/backups/<YYYYMMDDTHHMMSSZ>/<component>-<basename>`, and after writing it stores the SHA-256 of the new content. Removal per item: `edited` with a matching hash restores the backup byte for byte; `edited` with a different hash calls the component's `unapply`, which removes only Picket's entries and puts back the `previous` values, so later user edits survive; `created` deletes the file when the hash matches, else keeps it and lists a manual step; `external` (registry, dconf, gsettings, `defaults`, brew) always goes through `unapply`. A second setup over an existing item keeps its first `backup` and `previous`, so revert always reaches the pre-setup state. The manifest is rewritten after each item, and it is deleted together with the backup folders it names only when no item is left. A font item carries `data.preexisting`, and a preexisting font is never removed. Manifest version 1 lives on users' machines once released and every later version must read it [IRREVERSIBLE].
+### D-004 (r2): Revert restores a backup only when the file is still as Picket left it
+**Decision:** Infrastructural decision. `~/.picketai/styling-manifest.json` is `{ version: 1, created, updated, items: Item[] }` with `Item = { id, component, kind: "edited" | "created" | "external", path?, backup?, sha256?, previous?, data?, installedAt }`. Before Picket edits an existing file it copies it to `~/.picketai/backups/<YYYYMMDDTHHMMSSZ>/<component>-<basename>`, and after writing it stores the SHA-256 of the new content. Removal per item: `edited` with a matching hash restores the backup byte for byte; `created` with a matching hash deletes the file; `edited` or `created` with a different hash calls the component's `unapply`, which removes only Picket's entries and puts back the `previous` values, so later user edits survive; `external` (registry, dconf, gsettings, `defaults`, brew) always goes through `unapply`. Picket's entries are keys inside a shared file (`statusLine` and `theme` in `settings.json`, `statusline.icons` in `config.json`, `DefaultProfile` in `konsolerc`), or a whole file only Picket writes (the theme copy, the Konsole colorscheme and profile, the Ptyxis palette, `PicketAI.terminal`). An `unapply` of a changed whole file keeps it with a manual step naming only that file, and no manual step ever asks the user to delete a file that holds user keys. Before any removal, a component may refuse it through an optional `blocks(item, host): string | null`. The theme refuses to delete its copy while user settings still read `custom:picketai`, and the outcome is `kept` with that reason. A second setup over an existing item keeps its first `backup` and `previous`, so revert always reaches the pre-setup state. When the file changed since Picket's last write, the second setup first copies it to `~/.picketai/kept/<stamp>/<id>-<basename>`, a folder Picket never deletes, and the report names the copy. A failed removal's manual step names only paths that exist in the item; a `dconf` item names its dump and the `dconf load` command that restores it. The manifest is rewritten after each item, and it is deleted together with the backup folders it names only when no item is left. A font item carries `data.preexisting`, and a preexisting font is never removed. Manifest version 1 lives on users' machines once released and every later version must read it [IRREVERSIBLE].
 **Instead of:** always restoring the backup: it would wipe settings the user changed after setup, which the spec forbids.
 **Risks:**
 - **RISK-006** A program that rewrites its own settings (Windows Terminal reformats `settings.json` when the user saves in its UI) changes the hash without a real edit, so revert removes entries instead of restoring the exact file. Mitigation: the removal path still leaves a correct file; the exact-restore tests use an untouched file.
 - **RISK-007** The manifest is missing or broken. Mitigation: revert and uninstall stop with a message naming `~/.picketai/backups/`; nothing is removed by guess.
 
-### D-005: Questions are asked only on a terminal, and silence keeps everything
-**Decision:** Infrastructural decision. `realHost().interactive` is `process.stdin.isTTY && process.stdout.isTTY`; `ask` then reads with `node:readline/promises`, and otherwise returns its `fallback` without reading. The setup fallback is "no": nothing is written, and the plan ends with "run this in a terminal or pass --yes". A change that replaces user data (a custom `statusLine`, a theme file Picket did not write, the terminal's default scheme or profile) asks its own question after the overall yes, fallback "no". `--yes` answers yes to every setup question. `picket uninstall` is a new verb. It lists the manifest items numbered and takes `all`, `none` or a list such as `1,3` (fallback `none`). It asks about a Picket-installed font on its own line (fallback keep) and never offers a preexisting font. It removes the chosen items through D-004, goes on past failures, and prints what was removed, kept and left with manual steps. It ends with the commands that remove the plugin and package (`claude plugin uninstall picket@picketai`, `npm uninstall -g @picketai/picket`) without running them. `picket setup-terminal --revert` is the same removal over every item behind one confirmation, so `uninstall --yes` equals `setup-terminal --revert --yes`. The verb names `setup-terminal` and `uninstall` are a published CLI contract once released [IRREVERSIBLE]; a rename keeps an alias.
+### D-005 (r2): Questions are asked only on a terminal, and silence keeps everything
+**Decision:** Infrastructural decision. `realHost().interactive` is `process.stdin.isTTY && process.stdout.isTTY`; `ask` then reads with `node:readline/promises`, and otherwise returns its `fallback` without reading. The setup fallback is "no": nothing is written, and the plan ends with "run this in a terminal or pass --yes". A change that replaces user data (a custom `statusLine`, a theme file Picket did not write, the terminal's default scheme or profile) asks its own question after the overall yes, fallback "no". `--yes` answers yes to every setup question. `picket uninstall` is a new verb. It lists the manifest items numbered and takes `all`, `none` or a list such as `1,3` (fallback `none`). Linked items share one number: `theme-file` and `theme-setting` are listed once as `Claude Code theme`, so the theme file is never chosen without the setting that selects it. It asks about a Picket-installed font on its own line (fallback keep) and never offers a preexisting font. It removes the chosen items through D-004, goes on past failures, and prints what was removed, kept and left with manual steps. It ends with the commands that remove the plugin and package (`claude plugin uninstall picket@picketai`, `npm uninstall -g @picketai/picket`) without running them. `picket setup-terminal --revert` is the same removal over every item behind one confirmation, so `uninstall --yes` equals `setup-terminal --revert --yes`. The verb names `setup-terminal` and `uninstall` are a published CLI contract once released [IRREVERSIBLE]; a rename keeps an alias.
 **Instead of:** a plugin removal hook: I found no uninstall event for Claude Code plugins that I could verify, and npm 7 and later do not run `uninstall` scripts (OQ-007).
 **Risks:**
 - **RISK-008** Users run the verb through Claude Code's `!` prefix, which is not a TTY, and only see the plan. Mitigation: the plan's last line says to run it in a terminal or pass `--yes`.
@@ -441,6 +462,44 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 - **T-8.6** A fake `reg delete` that fails leaves the font item in the manifest with a `manual` step while the other chosen items are removed, and the CLI exits 2.
 - **T-8.7** `cli.test.mjs` shows `picket uninstall` with non-TTY stdin and a temp home holding a manifest exits 0, removes nothing and prints `claude plugin uninstall picket@picketai`; `uninstall` is in `Verbs:` and `KERNEL_OTHER_VERBS`; `npm test` passes.
 
+## Phase 9: Review fixes
+
+**Touch set:**
+- `core/lib/styling/manifest.mjs`: changed `created` goes through `unapply`, `blocks`, manual text
+- `core/lib/styling/setup.mjs`: keep a copy before re-apply
+- `core/lib/styling/uninstall.mjs`: one entry for both theme items
+- `core/lib/styling/theme.mjs`: `blocks` for the theme copy
+- `core/lib/styling/terminals/gnome-terminal.mjs`: failure manual with `dconf load`
+- `test/kernel/styling/setup.test.mjs`: changed created files, re-apply copy
+- `test/kernel/styling/theme.test.mjs`: blocked theme copy
+- `test/kernel/styling/uninstall.test.mjs`: linked theme entry
+- `test/kernel/styling/linux-terminals.test.mjs`: `konsolerc` and dconf failure cases
+- `docs/how-to.md`: terminal styling section, removal line
+- `CONTRIBUTING.md`: line 27, both vendored parsers
+- `core/lib/styling/statusline-setting.mjs`: read only; `unapply` already keys-only
+- `core/lib/styling/terminal.mjs`: read only; icons `unapply` already keys-only
+- `core/lib/styling/terminals/konsole.mjs`: read only; `konsolerc` `unapply` already keys-only
+- `docs/setup-terminal-checklist.md`: read only; the manual checklist (OQ-008)
+
+**Changes:**
+- `manifest.mjs` per D-004 (r2): `removeCreated` deletes on a matching hash and otherwise calls `component.unapply(item, host)`; `removeItem` first calls `component.blocks?.(item, host)`, and a reason gives `{ result: "kept", detail }` with the item left in the manifest. The failure fallback names `item.path` only when it is set: with only `backup` it reads `the state before setup is saved in <backup>`; with neither, `check <id> by hand`. An `err.manual` from the component still wins.
+- `theme.mjs`: `blocks(item, host)` returns, for `theme-file`, a reason naming `/theme` and the previous theme while `<home>/.claude/settings.json` reads `custom:picketai`, else null.
+- `gnome-terminal.mjs`: an `unapply` failure throws with `manual` `dconf load /org/gnome/terminal/legacy/profiles:/ < <backup>`.
+- `setup.mjs` `applyEntry`: when an existing item's file exists with a hash other than `existing.sha256`, copy it to `<home>/.picketai/kept/<stamp>/<id>-<basename>` before `apply`; the change line's detail and the report's `manual` name the copy. Picket never deletes `kept/`.
+- `uninstall.mjs` per D-005 (r2): the listing shows `theme-file` and `theme-setting` as one entry `Claude Code theme` with both paths; choosing it selects whichever of the two ids are in the manifest.
+- `docs/how-to.md`: a `## Terminal styling` section before `## Updating`. It says what `picket setup-terminal` installs and lists its flags. It notes that setup asks before writing and needs a real terminal or `--yes`, and that the manifest is `~/.picketai/styling-manifest.json` with backups beside it. It covers `--revert`, and points to `docs/setup-terminal-checklist.md` for contributors. `## Removing Picket from a project` gains a first step: run `picket uninstall` to remove the styling.
+- `CONTRIBUTING.md:27`: names both vendored parsers, `core/lib/vendor/shell-quote-parse.mjs` and `core/lib/vendor/jsonc-parser.mjs`.
+
+**Done when:**
+- **T-9.1** After setup creates `.claude/settings.json` (status line and theme setting), `.picketai/config.json` (icons) and `konsolerc`, and the test adds a user key to each, `--revert --yes` leaves each file with the user key and without Picket's key, every outcome is `removed`, and no `manual` names any of the three paths.
+- **T-9.2** `theme.test.mjs`: removing `theme-file` alone through `removeItems` while settings read `custom:picketai` gives `kept` with a detail containing `/theme`, the copy stays, and the item stays in the manifest; after `theme-setting` is removed, the copy is deleted.
+- **T-9.3** `uninstall.test.mjs`: after a full setup, the listing has one numbered line containing `Claude Code theme` and no separate `theme-file` or `theme-setting` line; choosing that number removes both items, and settings no longer read `custom:picketai`.
+- **T-9.4** A second setup over a theme copy the test edited asks `Replace <path>?`; on `yes` the edited bytes are at `.picketai/kept/<stamp>/theme-file-picketai.json`, the report names that path, and the file is still there after `--revert --yes`.
+- **T-9.5** A fake `dconf reset` that fails gives a `manual` containing `dconf load` and the dump path, and no `manual` or `detail` produced anywhere in `test/kernel/styling/` contains `undefined`.
+- **T-9.6** [withdrawn] S-7 needs no change: the docs define `total_input_tokens` as the tokens now in the window (D-001 (r3)).
+- **T-9.7** `CONTRIBUTING.md` names `core/lib/vendor/jsonc-parser.mjs`; `docs/how-to.md` names `picket setup-terminal`, `--revert`, `~/.picketai/styling-manifest.json` and `picket uninstall`; `npm test` passes, `test/markdown-paths.test.mjs` included.
+- **T-9.8** Driven with `HOME` and `USERPROFILE` at a temp home: `picket setup-terminal --yes --theme-only --statusline-only`, a hand edit adding a key to `.claude/settings.json`, then `picket uninstall --yes`, leaves that key and no `statusLine` or `theme`, exit 0.
+
 ## Open questions
 
 - **OQ-001** [resolved 2026-10-17] Themes are `~/.claude/themes/<slug>.json` or a plugin's `themes/` folder (2.1.118); every spec token is documented; settings key `theme` takes `custom:<slug>`. Applied in D-006 (r2).
@@ -450,9 +509,13 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 - **OQ-005** [resolved 2026-10-17] Ptyxis reads `<data dir>/org.gnome.Ptyxis/palettes/<id>.palette`, sets `PTYXIS_VERSION`, and keeps font keys app-wide; Konsole under Qt 6 reads the ten-field `Font=` string. Applied in D-008 (r2) and phase 6.
 - **OQ-006** Terminal.app: the PostScript name of the Mono font (`JetBrainsMonoNFM-Regular` assumed) and whether a running Terminal picks up `defaults write` before a restart. Owner: user, on a Mac, in the phase 7 live check. Fallback: the assumed name; the report asks for a Terminal restart.
 - **OQ-007** [resolved 2026-10-17] Claude Code has no plugin install, disable or uninstall hook event; D-005 stands with `picket uninstall` as the only entry point.
-- **OQ-008** The spec's manual test checklist (Windows 11 with Windows Terminal, macOS Terminal.app, Ubuntu GNOME Terminal and Ptyxis, KDE Konsole), README text for the two verbs, and `CONTRIBUTING.md:27` ("The one third-party parser is vendored"), which phase 5 makes stale, are documents and not phase scope. Owner: lead, through `picket:documenting` after phase 8. Fallback: no phase writes them.
-- **OQ-009** The spec's "well under 100 ms" runtime is below Node's own start on Windows (about 90 ms here). Owner: user. Fallback: the D-002 caches and lazy imports, accepting the Node floor.
+- **OQ-008** [resolved 2026-10-17] The checklist is `docs/setup-terminal-checklist.md`, with the OQ-006 PostScript name check under macOS. The README documents no verbs, so the user text goes to `docs/how-to.md`; that and `CONTRIBUTING.md:27` are phase 9.
+- **OQ-009** [open] The spec's "well under 100 ms" runtime is below Node's own start on Windows (about 90 ms here). Owner: user. Fallback: the D-002 caches and lazy imports, accepting the Node floor.
 
 ## Revision log
 - 2026-10-17: D-006 (r2): plugin ships `core/themes/picketai.json`; setup copies it and sets user `theme` to `custom:picketai`; docs confirm plugin themes and the key.
 - 2026-10-17: D-008 (r2): Ptyxis marker is `PTYXIS_VERSION`; app-wide Ptyxis font keys get their own question; OQ-005 answered from Ptyxis source.
+- 2026-10-17: D-004 (r2): changed created files go through `unapply`; `blocks` guards removal; re-apply keeps a copy; review S-13 and two minors; fixed in phase 9.
+- 2026-10-17: D-005 (r2): uninstall lists both theme items as one entry; review S-14 found the file removable alone; fixed in phase 9.
+- 2026-10-17: D-001 (r2): context used comes from `current_usage`, never `total_input_tokens`; review S-7; right under either docs reading; fixed in phase 9.
+- 2026-10-17: D-001 (r3): back to `total_input_tokens`; the docs define it as the tokens now in the window; S-7 dropped from phase 9.

@@ -36,6 +36,10 @@ export function fakeHost({ platform = "linux", files = {}, env = {}, answers = [
   return host;
 }
 
+export function textsOf(report) {
+  return [...report.changes.flatMap((change) => (change.detail ? [change.detail] : [])), ...report.manual];
+}
+
 export function notFound(command) {
   return { status: null, stdout: "", stderr: `${command}: not found` };
 }

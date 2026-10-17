@@ -239,6 +239,28 @@ picket extension new house-style
 
 This creates the manifest `.picket/extensions/<name>/extension.json`, here with `house-style` as the name, and enables the extension in the config. List your Markdown files in its `rules`, `agents`, `review_steps` or `preflight` keys. `picket extensions` shows what is loaded. An extension cannot change the verdicts, the gates, the guards or the budgets.
 
+## Terminal styling
+
+`picket setup-terminal` gives Claude Code and your terminal the PicketAI look. It installs four things: the PicketAI Claude Code theme, the JetBrainsMono Nerd Font Mono font (a pinned release, checked against its SHA-256), a PicketAI colour scheme and font in your terminal (Windows Terminal, Terminal.app, GNOME Terminal, Ptyxis or Konsole; other terminals get the colours to set by hand), and Picket's status line in `~/.claude/settings.json`.
+
+```sh
+picket setup-terminal
+```
+
+Flags:
+
+- `--dry-run` prints the plan and writes nothing.
+- `--theme-only`, `--font-only`, `--terminal-only` and `--statusline-only` pick one part; combine them to pick several.
+- `--yes` answers yes to every question.
+- `--revert` undoes everything setup did.
+- `--json` prints the report as JSON.
+
+Setup shows its plan and asks before it writes anything, and it asks again before it replaces something of yours, such as your own status line or your terminal's default profile. It reads answers only in a real terminal. Through Claude Code's `!` prefix it prints the plan and stops, so run it in a terminal window or pass `--yes`.
+
+Every change is recorded in `~/.picketai/styling-manifest.json`, and every file setup edits is first copied under `~/.picketai/backups/`. `picket setup-terminal --revert` restores a file Picket edited when you have not touched it since. When you have, it takes out only Picket's keys, so your later edits stay. A font that was installed before setup is never removed.
+
+Contributors who change setup or uninstall run the manual checklist in `docs/setup-terminal-checklist.md` on each platform.
+
 ## Updating
 
 ```sh
@@ -251,7 +273,10 @@ Restart Claude Code to load the new version. Run `picket init` in each project a
 
 ## Removing Picket from a project
 
+If you ran `picket setup-terminal`, run `picket uninstall` first. It lists the styling items, asks which to remove (and asks about the font on its own), and keeps everything when you answer nothing.
+
 ```sh
+picket uninstall
 claude plugin uninstall picket@picketai --scope project
 claude plugin marketplace remove picketai --scope project
 ```
