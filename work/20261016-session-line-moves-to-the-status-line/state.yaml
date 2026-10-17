@@ -1,0 +1,8 @@
+id: 20261016-session-line-moves-to-the-status-line
+lane: design
+title: Session line moves to the status line
+status: open
+created: 2026-10-16T21:14:37.956Z
+updated: 2026-10-17T06:23:47.271Z
+base: f67c4e0249251351884883be36f1b32081ee1c2b
+run_through: 4

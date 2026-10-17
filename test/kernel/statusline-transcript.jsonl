@@ -1,0 +1,6 @@
+{"type":"user","message":{"role":"user","content":"design the status line"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01","name":"Skill","input":{"skill":"picket:designing"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01","content":"loaded"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_02","name":"Skill","input":{"skill":"picket:ordering"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_02","content":"loaded"}]}}
+{"type":"api-request-shape","tools":[{"name":"Skill","description":"Load a skill"}]}
