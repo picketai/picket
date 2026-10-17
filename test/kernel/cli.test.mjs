@@ -229,6 +229,55 @@ test("uninstall --yes exits 2 when a chosen removal fails (T-8.6)", () => {
   });
 });
 
+const USAGE_LINE = "usage: picket <verb> [args] [--pretty | --human]";
+const VERBS_NAMED = ["init", "admit", "new", "next", "verify", "route", "drive", "check", "statusline", "setup-terminal", "uninstall", "source"];
+
+function picket(args, options = {}) {
+  return spawnSync("node", [BIN, ...args], { encoding: "utf8", ...options });
+}
+
+function assertUsage(result) {
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.equal(result.stdout.split("\n")[0], USAGE_LINE);
+  for (const verb of VERBS_NAMED) assert.match(result.stdout, new RegExp(`\\b${verb}\\b`), verb);
+}
+
+test("--version prints the plugin manifest version alone, also outside any project", () => {
+  const outside = mkdtempSync(join(tmpdir(), "picket-outside-"));
+  try {
+    const expected = `${JSON.parse(readFileSync(resolve("core/.claude-plugin/plugin.json"), "utf8")).version}\n`;
+    for (const cwd of [process.cwd(), outside]) {
+      const result = picket(["--version"], { cwd });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout, expected);
+      assert.equal(result.stderr, "");
+    }
+  } finally {
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test("--help, help and a bare picket print the usage block on stdout and exit 0", () => {
+  for (const args of [["--help"], ["help"], []]) assertUsage(picket(args));
+});
+
+test("--help after a verb or before one prints the usage without running the verb", () => {
+  const next = picket(["next", "--help"]);
+  const before = picket(["--help", "next"]);
+  assertUsage(next);
+  assert.equal(before.stdout, next.stdout);
+  assert.equal(before.status, 0);
+});
+
+test("an unknown verb names the same verb list the usage block prints", () => {
+  const result = picket(["bogus"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /unknown verb "bogus"/);
+  const listed = picket(["--help"]).stdout.match(/^verbs: (.+)$/m)[1];
+  assert.ok(result.stderr.includes(`Verbs: ${listed}`), result.stderr);
+});
+
 test("usage errors exit 1 with a message on stderr", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));

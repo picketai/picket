@@ -351,7 +351,8 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
 });
 
 test("every picket verb is placed in exactly one of the read and other verb sets", () => {
-  const verbs = readFileSync(resolve("core/bin/picket.mjs"), "utf8").match(/Verbs: ([\w -]+)/)[1].trim().split(/\s+/);
+  const list = readFileSync(resolve("core/bin/picket.mjs"), "utf8").match(/^const VERBS = \[([^\]]+)\];$/m)[1];
+  const verbs = [...list.matchAll(/"([\w-]+)"/g)].map((m) => m[1]);
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const verb of verbs) {
     assert.ok(

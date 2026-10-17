@@ -116,6 +116,10 @@ export function pluginRoot() {
   return dirname(dirname(fileURLToPath(import.meta.url)));
 }
 
+export function pluginManifestPath() {
+  return join(pluginRoot(), ".claude-plugin", "plugin.json");
+}
+
 export function rulesDir() {
   return join(pluginRoot(), "rules");
 }

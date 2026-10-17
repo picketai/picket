@@ -137,6 +137,7 @@ test("paths exports locations only", () => {
     "hostPath",
     "hostRel",
     "legacyPath",
+    "pluginManifestPath",
     "pluginRoot",
     "projectRoot",
     "repoRelative",
@@ -170,6 +171,11 @@ test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits und
   assert.equal(existsSync(join(root, "lib", "paths.mjs")), true);
   assert.equal(existsSync(join(root, "rules", "prose.md")), true);
   assert.equal(paths.rulesDir(), join(root, "rules"));
+});
+
+test("pluginManifestPath names the plugin manifest the marketplace serves", () => {
+  assert.equal(paths.pluginManifestPath(), resolve("core", ".claude-plugin", "plugin.json"));
+  assert.equal(existsSync(paths.pluginManifestPath()), true);
 });
 
 const PROMPT_FOLDERS = ["core/skills", "core/agents", ".claude/rules", "core/rules"];

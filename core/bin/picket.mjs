@@ -19,7 +19,7 @@ import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../lib/extensions.mjs";
 import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { latest, next } from "../lib/next.mjs";
-import { configRel } from "../lib/paths.mjs";
+import { configRel, pluginManifestPath } from "../lib/paths.mjs";
 import { preflight } from "../lib/preflight.mjs";
 import { verify } from "../lib/verify.mjs";
 import { route, findVerdict } from "../lib/route.mjs";
@@ -89,9 +89,27 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
+const VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "leave", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+
+function usage() {
+  return ["usage: picket <verb> [args] [--pretty | --human]", "", `verbs: ${VERBS.join(" ")}`, "", "picket --version   print the installed version"].join("\n");
+}
+
+function installedVersion() {
+  return JSON.parse(readFileSync(pluginManifestPath(), "utf8")).version;
+}
+
 async function main(argv) {
   const { pos, opt } = parse(argv);
   const [verb, ...rest] = pos;
+  if ("version" in opt) {
+    console.log(installedVersion());
+    return 0;
+  }
+  if ("help" in opt || verb === "help" || verb === undefined) {
+    console.log(usage());
+    return 0;
+  }
   const root = opt.root ?? projectRoot();
   switch (verb) {
     case "extension": {
@@ -376,7 +394,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet statusline setup-terminal uninstall pr source`);
+      throw new Error(`unknown verb "${verb}". Verbs: ${VERBS.join(" ")}`);
   }
 }
 
