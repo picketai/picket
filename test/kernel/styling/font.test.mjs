@@ -84,6 +84,20 @@ test("on Windows only the Mono files land in the user font folder, each register
   });
 });
 
+test("a failed reg add rolls back the values already added and the files, leaving nothing behind", async () => {
+  const registry = fakeRegistry();
+  let adds = 0;
+  const reg = (args) => (args[0] === "add" && ++adds === 2 ? exited(1) : registry.run(args));
+  await withHost({ platform: "win32", exec: fakeExec({ reg }) }, async (host) => {
+    const report = await setupFont(host);
+    assert.equal(report.changes[0].result, "failed");
+    assert.match(report.changes[0].detail, /reg add/);
+    assert.equal(registry.keys.get(FONTS_KEY).size, 0);
+    assert.deepEqual(listed(fontDir(host)), []);
+    assert.equal(existsSync(manifestPath(host.home)), false);
+  });
+});
+
 test("on Linux the files land in $XDG_DATA_HOME/fonts followed by fc-cache -f (T-4.2)", async () => {
   await withHost({ platform: "linux", exec: linuxExec() }, async (host) => {
     host.env.XDG_DATA_HOME = join(host.home, "xdg");

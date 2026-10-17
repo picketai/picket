@@ -1,9 +1,10 @@
 import { backupFile, backupsDir, emptyManifest, ManifestError, manifestPath, readManifest, removeItems, writeManifest } from "./manifest.mjs";
 import { statuslineSetting } from "./statusline-setting.mjs";
 import { fontComponent } from "./font.mjs";
+import { terminalComponent } from "./terminal.mjs";
 import { theme } from "./theme.mjs";
 
-export const COMPONENTS = [theme, fontComponent(), statuslineSetting];
+export const COMPONENTS = [theme, fontComponent(), terminalComponent(), statuslineSetting];
 const YES_NO = { choices: ["yes", "no"], fallback: "no" };
 const NOT_INTERACTIVE = "nothing was written: run this in a terminal or pass --yes to apply it";
 
@@ -20,7 +21,8 @@ function planOf(host, components, manifest) {
   const failures = [];
   for (const component of components) {
     try {
-      for (const change of component.plan(host, manifest)) entries.push({ component, change });
+      const planned = entries.map((entry) => entry.change);
+      for (const change of component.plan(host, manifest, planned)) entries.push({ component, change });
     } catch (err) {
       failures.push(line(component.name, `plan the ${component.name} change`, "failed", err.message));
     }
@@ -52,12 +54,14 @@ function recordItem(manifest, item) {
   manifest.items = existing ? manifest.items.map((recorded) => (recorded === existing ? next : recorded)) : [...manifest.items, next];
 }
 
-async function applyEntry(host, manifest, { component, change }, yes) {
+async function applyEntry(host, manifest, { change }, yes) {
   if (change.question && !(await confirmed(host, change.question, yes))) return line(change.id, change.summary, "skipped");
   const existing = manifest.items.find((recorded) => recorded.id === change.id);
-  const backup = (path) => (existing ? existing.backup : backupFile(host, path, component.name));
+  const backup = (path) => (existing ? existing.backup : backupFile(host, path, change.id));
   try {
-    recordItem(manifest, await change.apply(host, backup));
+    const item = await change.apply(host, backup);
+    if (item === null) return line(change.id, change.summary, "skipped", "not needed after the earlier changes");
+    recordItem(manifest, item);
     writeManifest(host, manifest);
     return line(change.id, change.summary, "applied");
   } catch (err) {
@@ -65,17 +69,26 @@ async function applyEntry(host, manifest, { component, change }, yes) {
   }
 }
 
+function isNote(change) {
+  return typeof change.apply !== "function";
+}
+
 async function install(host, manifest, components, { dryRun, yes }) {
-  const { entries, failures } = planOf(host, components, manifest);
+  const planOutcome = planOf(host, components, manifest);
+  const notes = planOutcome.entries.filter(({ change }) => isNote(change)).map(({ change }) => change);
+  const entries = planOutcome.entries.filter(({ change }) => !isNote(change));
+  const upfront = [...planOutcome.failures, ...notes.map((change) => line(change.id, change.summary, "manual"))];
+  const noteSteps = notes.map((change) => change.manual);
   const planned = entries.map(({ change }) => line(change.id, change.summary, "planned"));
-  if (entries.length === 0 || dryRun) return report([...failures, ...planned]);
+  if (entries.length === 0 || dryRun) return report([...upfront, ...planned], { manual: noteSteps });
   const summaries = entries.map(({ change }) => change.summary);
   if (!(await confirmed(host, question("Picket will make these changes:", summaries), yes))) {
-    return declined(host, [...failures, ...planned.map((change) => ({ ...change, result: "declined" }))]);
+    const result = declined(host, [...upfront, ...planned.map((change) => ({ ...change, result: "declined" }))]);
+    return { ...result, manual: [...noteSteps, ...result.manual] };
   }
-  const changes = [...failures];
+  const changes = [...upfront];
   const restart = [];
-  const manual = [];
+  const manual = [...noteSteps];
   for (const entry of entries) {
     const { manual: failedManual, ...result } = await applyEntry(host, manifest, entry, yes);
     changes.push(result);
@@ -125,6 +138,6 @@ export async function setupTerminal(host, { only = null, dryRun = false, yes = f
 export function renderReport(report) {
   const lines = report.changes.length === 0 ? ["Nothing to change."] : report.changes.map((change) => `${change.result.padEnd(9)} ${change.id}: ${change.summary}${change.detail ? ` · ${change.detail}` : ""}`);
   if (report.restart.length > 0) lines.push(`Restart: ${report.restart.join(", ")}`);
-  if (report.manual.length > 0) lines.push("Manual steps:", ...report.manual.map((step) => `  - ${step}`));
+  if (report.manual.length > 0) lines.push("Manual steps:", ...report.manual.map((step) => `  - ${step.replaceAll("\n", "\n    ")}`));
   return lines.join("\n");
 }

@@ -89,7 +89,7 @@ test("a different theme file stays on no, and on yes is backed up, replaced and 
   await withHost({ files: { [COPY]: theirs }, answers: ["yes", "yes", "no"] }, async (host) => {
     assert.equal(results(await setupTheme(host))["theme-file"], "applied");
     assert.ok(bytes(host, COPY).equals(readFileSync(SOURCE)));
-    assert.ok(homeFiles(host.home).some((path) => /^\.picketai\/backups\/\d{8}T\d{6}Z\/theme-picketai\.json$/.test(path)));
+    assert.ok(homeFiles(host.home).some((path) => /^\.picketai\/backups\/\d{8}T\d{6}Z\/theme-file-picketai\.json$/.test(path)));
     assert.equal(results(await revert(host))["theme-file"], "restored");
     assert.equal(bytes(host, COPY).toString("utf8"), theirs);
   });

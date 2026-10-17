@@ -124,12 +124,22 @@ function unpack(zip, pin, target) {
 function register(host, pin, files) {
   if (usesFontconfig(host)) host.exec("fc-cache", ["-f"]);
   if (host.platform !== "win32") return [];
-  return files.map((path) => {
+  const added = [];
+  for (const path of files) {
     const name = registryName(pin.family, path.split(/[\\/]/).pop());
     const run = host.exec("reg", ["add", USER_FONTS_KEY, "/v", name, "/t", "REG_SZ", "/d", path, "/f"]);
-    if (!succeeded(run)) throw new Error(`reg add for ${name} failed: ${run.stderr.trim()}`);
-    return name;
-  });
+    if (!succeeded(run)) {
+      const left = added.filter((done) => !succeeded(deleteValue(host, done)));
+      const leftText = left.length ? `; remove these values by hand: ${left.join(", ")}` : "";
+      throw new Error(`reg add for ${name} failed: ${run.stderr.trim()}${leftText}`);
+    }
+    added.push(name);
+  }
+  return added;
+}
+
+function deleteValue(host, name) {
+  return host.exec("reg", ["delete", USER_FONTS_KEY, "/v", name, "/f"]);
 }
 
 async function installFiles(host, pin) {
@@ -192,7 +202,7 @@ function deleted(path) {
 
 function removeFiles(host, item) {
   const files = item.data.files.filter((path) => !deleted(path));
-  const registry = item.data.registry.filter((name) => !succeeded(host.exec("reg", ["delete", USER_FONTS_KEY, "/v", name, "/f"])));
+  const registry = item.data.registry.filter((name) => !succeeded(deleteValue(host, name)));
   if (usesFontconfig(host)) host.exec("fc-cache", ["-f"]);
   item.data.files = files;
   item.data.registry = registry;
