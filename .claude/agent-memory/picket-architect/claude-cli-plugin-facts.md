@@ -20,6 +20,8 @@ Verified 2026-10-10 on Claude Code 2.1.296 (function-hooks mods, early access):
 - The release CI runner has no Claude Code CLI, so mod tests stay outside `npm test`.
 - `claude plugin test` can refuse with "hooks modules are turned off in this process: the rollout switch was saved off" (seen 2026-10-10 from a subagent shell, even on `status/` that passed earlier that day). `validate --strict` still works. Never write a criterion that needs `plugin test` without an open question naming this fallback.
 
+Seen in `claude --help` on 2.1.301 (2026-10-16): `--permission-mode` choices are acceptEdits, auto, bypassPermissions, manual, dontAsk, plan; `--permission-prompts host|none` routes `-p` prompts to `--permission-prompt-tool`; `--setting-sources user,project,local` limits which settings load. The probe (`bench/results/ask-probe.json`, 2026-10-17) found: every hook input carries `permission_mode` (manual shows as "default"); a failed Bash fires only PostToolUseFailure; a `!` command skips PreToolUse hooks; in auto mode a hook "ask" was silent interactively even though headless `-p` routed it to the prompt tool. So a headless "prompt tool called" result never proves the user sees a dialog; plan an interactive check for any premise about the dialog.
+
 Design-record trap: the lint.schema PostToolUse hook runs after every edit of design.md and flags frontmatter phases with no `## Phase N` heading. When adding phases in a second save, write the body headings first (or in the same Edit), then the frontmatter entries.
 
 Related: [[transcript-facts]]
