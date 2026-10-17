@@ -74,6 +74,14 @@ phases:
     tests: true
     drive: true
     security: true
+  - n: 6
+    files: [core/lib/escalation.mjs, test/hooks/handlers.test.mjs]
+    greps:
+      - path: core/lib/escalation.mjs
+        pattern: 'ASKING_MODES = new Set\(\["default", "acceptEdits"\]\)'
+    tests: true
+    drive: true
+    security: true
 ---
 # Design: Guard escalation through native ask dialog
 
@@ -98,17 +106,18 @@ phases:
 **Risks:**
 - **RISK-003** A skill that runs an env-prefixed destructive command now hits a deny. Mitigation: no skill step does (they call `picket` verbs, unaffected); the deny reason names the marker route from phase 2 on.
 
-### D-003: Ask only where the dialog is proven
+### D-003 (r2): Ask only where the dialog is proven
 
-**Decision:** The guard answers `ask` for a valid escalation only when both hold. (a) The hook input's `permission_mode` is in `ASKING_MODES`, a constant set filled by hand from phase 1's probe record with the modes in which a hook `ask` reached the prompt tool; a missing or unlisted mode denies. (b) No saved allow rule could match the marked command: `core/lib/saved-rules.mjs` reads `permissions.allow` from `~/.claude/settings.json`, `<root>/.claude/settings.json` and `<root>/.claude/settings.local.json` and flags `Bash`, `Bash(*)`, any pattern that starts with a wildcard, and any pattern containing `PICKET_ESCALATE`. Per the permissions docs, an allow rule does not match past an assignment of a variable that is not known-safe (`.worktrees/framework/work/20261008-why-permission-prompts-rose-on-the-plugin/research.md` R-011), so no other rule can pre-empt the marked form. Otherwise the guard denies, and the reason names the mode or the rule and its file, plus the user's own route (`! <command>`, subject to OQ-001's interactive check). Check (b) runs whatever OQ-002 finds, so a "Yes, don't ask again" click never approves a later escalation. Infrastructural decision.
+**Decision:** The guard answers `ask` for a valid escalation only when both hold. (a) The hook input's `permission_mode` is in `ASKING_MODES`; a missing or unlisted mode denies. A headless probe cell where the prompt tool was called is necessary but not enough: in auto mode every headless cell called the prompt tool, yet the user's interactive check recorded `auto_dialog: "silent"` (`bench/results/ask-probe.json`). So a mode joins `ASKING_MODES` only when its headless `ask` cell called the prompt tool and the user has accepted that the dialog really appears in it. By the user's ruling of 2026-10-17 the set is `{"default", "acceptEdits"}`; `auto`, `bypassPermissions` and `dontAsk` stay out until an interactive probe shows the dialog in each. In those modes an escalation denies with `why: "mode"` and the `! <command>` route; the probe's `bang_hooked: false` shows that a `!` command does not pass through the guard, so that route works. (b) No saved allow rule could match the marked command: `core/lib/saved-rules.mjs` reads `permissions.allow` from `~/.claude/settings.json`, `<root>/.claude/settings.json` and `<root>/.claude/settings.local.json` and flags `Bash`, `Bash(*)`, any pattern that starts with a wildcard, and any pattern containing `PICKET_ESCALATE`. Per the permissions docs, an allow rule does not match past an assignment of a variable that is not known-safe (`.worktrees/framework/work/20261008-why-permission-prompts-rose-on-the-plugin/research.md` R-011), so no other rule can pre-empt the marked form. Otherwise the guard denies, and the reason names the mode or the rule and its file, plus the user's own route (`! <command>`). Check (b) runs whatever OQ-002 finds, so a "Yes, don't ask again" click never approves a later escalation. Infrastructural decision.
 **Instead of:** trusting Claude Code to show the dialog in every mode: `bypassPermissions` skips prompts by name, and auto mode, the user's working mode, is unverified.
 **Risks:**
 - **RISK-004** Rules from `--allowedTools` or managed settings are invisible to a hook. Mitigation: stated limit; the probe's `ask+rule` cell shows whether a hook `ask` survives a matching allow rule at all.
-- **RISK-005** Auto mode proves silent, so escalation never asks in the user's usual mode. Mitigation: the deny then carries the exact `!` command, still better than today's dead end.
+- **RISK-005** Auto mode proved silent, so escalation never asks in the user's usual mode. Mitigation: the deny carries the exact `!` command, which the probe shows bypasses the guard; still better than today's dead end.
+- **RISK-013** `acceptEdits` is in the set on the user's ruling and its headless cell, with no interactive check recorded. Mitigation: an interactive probe of `acceptEdits` that comes back silent removes it, through an amendment.
 
-### D-004: Escalation rows in the ledger
+### D-004 (r2): Escalation rows in the ledger
 
-**Decision:** Every marked command the guard judges appends one row to `.picket/state/ledger.jsonl`: `{ v: 2, ts, session, event: "escalation", outcome: "ask" | "denied", why, key, command, reason, agent, work_id }`. `why` is null for `ask` and one of `shape`, `mode`, `saved_rule`, `refused_before` for `denied`; `key` is D-005's command key; `command` and `reason` pass `maskEnvValues` and are cut to 300 characters; `work_id` is the open item as observe.drive computes it. observe.drive (PostToolUse on Bash) appends the same shape with `outcome: "ran"` for a marked command. `picket cost` counts turns over `stop`, `subagent_stop` and `gate` rows only and returns `escalations: { asked, ran, not_run, denied, recent }`, `recent` being the last five rows; picket:inspecting renders it. Infrastructural decision.
+**Decision:** Every marked command the guard judges appends one row to `.picket/state/ledger.jsonl`: `{ v: 2, ts, session, event: "escalation", outcome: "ask" | "denied", why, key, command, reason, agent, work_id }`. `why` is null for `ask` and one of `shape`, `mode`, `saved_rule`, `refused_before`, `source` (the source deny refused it), `wrapped_verb` (the wrapped picket-verb deny refused it) for `denied`. Known gap: a marked command denied by the `$(...)` substitution check (`guard.bash.mjs:1101`, `substituted.denial`) returns before any row is written, so it leaves no ledger row; `key` is D-005's command key; `command` and `reason` pass `maskEnvValues` and are cut to 300 characters; `work_id` is the open item as observe.drive computes it. observe.drive (PostToolUse on Bash) appends the same shape with `outcome: "ran"` for a marked command. `picket cost` counts turns over `stop`, `subagent_stop` and `gate` rows only and returns `escalations: { asked, ran, not_run, denied, recent }`, `recent` being the last five rows; picket:inspecting renders it. Infrastructural decision.
 **Instead of:** a separate `escalations.jsonl`: the request names the ledger, and one file keeps the inspecting read and the refusal join together; the price is that cost must filter by event.
 **Risks:**
 - **RISK-006** Escalation rows inflate the turn count. Mitigation: `summarize` filters by event, tested with mixed rows.
@@ -296,12 +305,34 @@ phases:
 - **T-5.4** After an `ask` row followed by that failed `ran` row, the same marked command gets a fresh `ask` from `guardBash`, not the `refused_before` deny.
 - **T-5.5** `npm test` passes.
 
+## Phase 6: Ask only in modes with a proven dialog
+
+**Touch set:**
+- `core/lib/escalation.mjs`: `ASKING_MODES` (`:6`)
+- `test/hooks/handlers.test.mjs`: the `ASKING_MODES` test (`:601`) and the mode loop (`:616`)
+- `bench/results/ask-probe.json`: read; headless cells and `interactive`
+
+**Changes:**
+- `ASKING_MODES` becomes `new Set(["default", "acceptEdits"])`.
+- The test at `:601` no longer equates the set with the headless cells. It asserts the set is exactly `default` and `acceptEdits`, that each member's headless `ask` cell called the prompt tool, and that `auto` is absent while `interactive.auto_dialog` is not `shown`.
+- The mode loop at `:616` expects `ask` for `default` and `acceptEdits` only, and `deny` with `why: "mode"` for `undefined`, `auto`, `plan`, `bypassPermissions` and `dontAsk`.
+- The mode deny reason (`guard.bash.mjs:1089`) is already `... run it yourself: ! <command>` and stays unchanged.
+
+**Done when:**
+- **T-6.1** `ASKING_MODES` holds exactly `default` and `acceptEdits`.
+- **T-6.2** With `permission_mode` `auto`, `bypassPermissions` or `dontAsk`, `PICKET_ESCALATE="you asked me to push the release tag" git push origin v1.0.0-alpha.2` denies with `why: "mode"`, and the reason ends `! git push origin v1.0.0-alpha.2`.
+- **T-6.3** With `default` or `acceptEdits`, the same command gets `ask`.
+- **T-6.4** Piping a PreToolUse event with `permission_mode: "bypassPermissions"` for that command into `node core/hooks/guard.bash.mjs` prints a `deny` decision.
+- **T-6.5** `npm test` passes.
+
 ## Open questions
 
-- **OQ-001** Does a hook `ask` reach the user in auto mode (headless cell plus the interactive confirm), does the hook input carry `permission_mode`, and does a `!` command pass through PreToolUse hooks? Owner: developer runs the probe in phase 1; the user answers the two interactive steps at the phase 1 gate. Fallback: `auto` stays out of `ASKING_MODES`, so an escalation in auto mode denies with the `!` route; a missing `permission_mode` denies; if `!` is hooked, the deny text says "run it in your own terminal" instead.
+- **OQ-001** Does a hook `ask` reach the user in auto mode, does the hook input carry `permission_mode`, and does a `!` command pass through PreToolUse hooks? Answered: every probe cell's hook input carried `permission_mode`; in auto mode the interactive check recorded `auto_dialog: "silent"`; a `!` command does not pass through the hooks (`bang_hooked: false`). D-003 (r2) and phase 6 act on it.
 - **OQ-002** Does a hook `ask` override a saved allow rule that matches the command? Owner: developer (the `ask+rule` cells). Fallback: none needed for safety, because D-003 (b) denies whenever such a rule exists; the answer goes into the record and the preflight warn wording.
 - **OQ-003** Does PostToolUse or PostToolUseFailure fire for a Bash command that exits non-zero? Answered by the `ask+fail` cell: only `PostToolUseFailure` fires. D-005 (r2) and phase 5 wire observe.drive to it.
 - **OQ-004** `picket doctor` does not exist. Is the preflight `saved_rules` check enough, or does the user want a standalone verb? Owner: user. Fallback: preflight only (D-007).
 
 ## Revision log
 - 2026-10-17: D-005 (r2): failed escalated commands record `ran` via PostToolUseFailure; new phase 5; OQ-003 answered by the probe, cumulative review F-1
+- 2026-10-17: D-004 (r2): adds `why` values `source` and `wrapped_verb`; records that a `$(...)` substitution deny writes no row; review F-4, phase 5 (ef55743)
+- 2026-10-17: D-003 (r2): ASKING_MODES becomes default and acceptEdits; auto proved silent interactively, user drops bypassPermissions and dontAsk; OQ-001 closed; new phase 6

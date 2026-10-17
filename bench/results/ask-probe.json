@@ -100,7 +100,7 @@
     }
   ],
   "interactive": {
-    "auto_dialog": null,
-    "bang_hooked": null
+    "auto_dialog": "silent",
+    "bang_hooked": false
   }
 }

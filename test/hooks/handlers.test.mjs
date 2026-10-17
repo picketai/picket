@@ -598,13 +598,28 @@ function withEscalationProject(fn) {
   });
 }
 
-test("ASKING_MODES holds the hook modes in which the probe saw a hook ask reach the prompt tool, auto only once the dialog is confirmed", () => {
+test("ASKING_MODES holds default and acceptEdits, each proven by a headless ask cell, and leaves auto out while its dialog is not shown", () => {
   const record = JSON.parse(readFileSync(resolve("bench/results/ask-probe.json"), "utf8"));
-  const proven = record.cells
-    .filter((cell) => cell.scenario === "ask" && cell.prompt_tool_called && !cell.error)
-    .filter((cell) => cell.mode !== "auto" || record.interactive?.auto_dialog === "shown")
-    .map((cell) => cell.hook_permission_mode);
-  assert.deepEqual([...ASKING_MODES].sort(), [...new Set(proven)].sort());
+  assert.deepEqual([...ASKING_MODES].sort(), ["acceptEdits", "default"]);
+  for (const mode of ASKING_MODES) {
+    const cell = record.cells.find((c) => c.scenario === "ask" && c.hook_permission_mode === mode);
+    assert.ok(cell?.prompt_tool_called && !cell.error, `${mode} needs a headless ask cell that called the prompt tool`);
+  }
+  if (record.interactive?.auto_dialog !== "shown") assert.equal(ASKING_MODES.has("auto"), false);
+});
+
+test("a marked push asks in default and acceptEdits only, and denies for the mode everywhere else", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    for (const mode of ["default", "acceptEdits"]) {
+      assert.equal(judge(ESCALATED_PUSH, { permission_mode: mode, session_id: `asks-${mode}` }).permissionDecision, "ask", mode);
+    }
+    for (const mode of [undefined, "auto", "plan", "bypassPermissions", "dontAsk"]) {
+      const out = judge(ESCALATED_PUSH, { permission_mode: mode, session_id: `denies-${mode}` });
+      assert.equal(out.permissionDecision, "deny", String(mode));
+      assert.ok(out.permissionDecisionReason.endsWith(`! ${PUSH}`), out.permissionDecisionReason);
+    }
+    assert.deepEqual(escalationRows().map((r) => r.why), [null, null, "mode", "mode", "mode", "mode", "mode"]);
+  });
 });
 
 test("a marked destructive command asks in a proven mode, quoting the reason, and never allows", () => {
