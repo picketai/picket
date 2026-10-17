@@ -9,9 +9,9 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 | `inject.extensions.mjs` | SessionStart, SubagentStart | each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension |
 | `guard.scope.mjs` | PreToolUse Write, Edit | denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `.picket/state/` except `branching.yaml`); denies an Edit on a file this transcript never read |
 | `guard.comments.mjs` | PreToolUse Write, Edit | denies an edit that adds a comment line to a code file (detector in `lib/comments.mjs`, doc comments included), unless `picket comment` recorded the user's approval for that path and text on an open or blocked item |
-| `guard.bash.mjs` | PreToolUse Bash | the command evaluator kept from the earlier copy-in version: read-only commands allowed, destructive roots denied, compound and redirected commands prompt |
+| `guard.bash.mjs` | PreToolUse Bash, PowerShell | the command evaluator kept from the earlier copy-in version: read-only commands allowed, destructive roots denied, compound and redirected commands prompt; a PowerShell command is read by `lib/powershell-text.mjs` and is only ever denied or passed on, never allowed; a command marked with `PICKET_ESCALATE` asks in the modes listed in `lib/escalation.mjs` (default, acceptEdits, auto) |
 | `lint.schema.mjs` | PostToolUse Write, Edit under `work/` | order and design artifacts: frontmatter, phase headings, decision ids, caps, placeholders, revision protocol against git HEAD |
-| `observe.drive.mjs` | PostToolUse Bash | appends drive or inspect rows to `.picket/state/drive-log.jsonl` with the open work item and phase; `picket verify` reads them |
+| `observe.drive.mjs` | PostToolUse Bash, PowerShell | appends drive or inspect rows to `.picket/state/drive-log.jsonl` with the open work item and phase; `picket verify` reads them |
 | `monitor.context.mjs` | PostToolUse Read, Grep, Glob, WebFetch, WebSearch | the stall detector: six look-around calls with no action get one line of context |
 | `guard.block.mjs` | Stop, SubagentStop | a turn with a contract heading must end with an exact verdict token and stay within 40 lines |
 | `route.verdict.mjs` | Stop, SubagentStop | applies the verdict to the work item with the kernel and hands back `picket next` as context |
@@ -19,7 +19,7 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 
 Every hook, guards included, is a thin shell: it imports `runHook` from `core/lib/hook.mjs` and its handler from `core/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
 
-Libraries in `core/lib/`: `transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `turn-block.mjs` and `drive-evidence.mjs` (kept from the earlier copy-in version for their tested parsers), `source-paths.mjs` (what a source protects), and `core/lib/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses.
+Libraries in `core/lib/`: `transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `turn-block.mjs` and `drive-evidence.mjs` (kept from the earlier copy-in version for their tested parsers), `source-paths.mjs` (what a source protects), `powershell-text.mjs` (the PowerShell reader `guard.bash` uses for the PowerShell tool), and `core/lib/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses for Bash.
 
 Standalone: `node core/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
 
