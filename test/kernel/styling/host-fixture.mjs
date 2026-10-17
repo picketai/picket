@@ -90,6 +90,21 @@ export function fakeDconf(initial = {}) {
   return { values, run };
 }
 
+export function fakeDefaults(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  const run = ([verb, domain, key, , value]) => {
+    const name = `${domain} ${key}`;
+    if (verb === "read") return values.has(name) ? exited(0, `${values.get(name)}\n`) : exited(1);
+    if (verb === "write") {
+      values.set(name, value);
+      return exited(0);
+    }
+    if (verb === "delete") return exited(values.delete(name) ? 0 : 1);
+    return exited(1);
+  };
+  return { values, run };
+}
+
 export function servingFetch(body) {
   const fetch = async (url) => {
     fetch.urls.push(url);

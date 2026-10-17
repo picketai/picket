@@ -6,11 +6,12 @@ import { gnomeTerminal } from "./terminals/gnome-terminal.mjs";
 import { konsole } from "./terminals/konsole.mjs";
 import { manualWriter } from "./terminals/manual.mjs";
 import { ptyxis } from "./terminals/ptyxis.mjs";
+import { terminalApp } from "./terminals/terminal-app.mjs";
 import { windowsTerminal } from "./terminals/windows-terminal.mjs";
 
 const NAME = "terminal";
 const ICONS_ID = "statusline-icons";
-const WRITERS = Object.fromEntries([windowsTerminal, konsole, gnomeTerminal, ptyxis].map((writer) => [writer.id, writer]));
+const WRITERS = Object.fromEntries([windowsTerminal, terminalApp, konsole, gnomeTerminal, ptyxis].map((writer) => [writer.id, writer]));
 
 export function detectTerminal(env) {
   if (env.WT_SESSION) return "windows-terminal";
