@@ -18,7 +18,7 @@
         { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.scope.mjs"] },
         { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.comments.mjs"] }
       ] },
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.bash.mjs"] }] }
+      { "matcher": "Bash|PowerShell", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.bash.mjs"] }] }
     ],
     "PostToolUse": [
       { "matcher": "Write|Edit", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/lint.schema.mjs"] }] },

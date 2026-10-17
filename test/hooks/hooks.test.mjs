@@ -711,6 +711,20 @@ test("observe.drive is registered for PostToolUseFailure on Bash and records a f
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.bash is registered for Bash and PowerShell, and the spawned hook denies a destructive cmdlet with a PowerShell log row", () => {
+  const hooks = JSON.parse(readFileSync(resolve("core/hooks/hooks.json"), "utf8")).hooks;
+  const guards = hooks.PreToolUse.filter((entry) => entry.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/guard.bash.mjs"))));
+  assert.deepEqual(guards.map((entry) => entry.matcher), ["Bash|PowerShell"]);
+
+  const { root } = project();
+  const out = run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command: "Remove-Item -Recurse -Force build" }, cwd: root }, root);
+  assert.equal(out.hookSpecificOutput.permissionDecision, "deny");
+  const last = JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1));
+  assert.equal(last.tool, "PowerShell");
+  assert.equal(last.outcome, "deny");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("observe.drive logs --env values masked, quoted or not", () => {
   const { root } = project();
   const logged = (command) => {

@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 /**
- * Claude Code PreToolUse hook for the Bash tool.
- *
  * Goal: replace giant string-prefix allowlists with real evaluation of the
  * command, so that:
  *   - compound commands (a && b, a | b, a ; b) are checked per sub-command
@@ -14,16 +12,6 @@
  * falls through to Claude Code's normal permission prompt (exit code 0,
  * no decision). It only actively ALLOWS things it recognizes as safe,
  * and only actively DENIES things it recognizes as destructive.
- *
- * Wire it up in settings.json (exec form + ${CLAUDE_PROJECT_DIR} so the
- * script resolves regardless of the hook's spawn cwd):
- *   "hooks": {
- *     "PreToolUse": [
- *       { "matcher": "Bash",
- *         "hooks": [{ "type": "command", "command": "node",
- *                     "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.bash.mjs"] }] }
- *     ]
- *   }
  *
  * NOTE: the exact PreToolUse hook I/O contract (field names like
  * hookSpecificOutput / permissionDecision) has been iterated on by
@@ -43,10 +31,13 @@ import { bareAgentName } from "../agent-name.mjs";
 import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, recordEscalation, withoutMarker } from "../escalation.mjs";
 import { readLedger } from "../cost.mjs";
 import { escalationAllowRules } from "../saved-rules.mjs";
+import { readPowerShell } from "../powershell-text.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
+const POWERSHELL_TOOL = "PowerShell";
+const DEFAULT_TOOL = "Bash";
 
-function trace(root, rawCommand, outcome) {
+function trace(root, rawCommand, outcome, tool) {
   try {
     mkdirSync(stateDir(root), { recursive: true });
     appendFileSync(
@@ -54,6 +45,7 @@ function trace(root, rawCommand, outcome) {
       JSON.stringify({
         ts: new Date().toISOString(),
         outcome,
+        tool,
         cwd: process.cwd(),
         command: maskEnvValues(rawCommand).slice(0, TRACED_COMMAND_CHARS),
       }) + "\n"
@@ -110,6 +102,8 @@ const DENY_ROOTS = new Set([
   "sudo", "rm", "rmdir", "chmod", "chown", "chgrp", "dd", "mkfs",
   "shutdown", "reboot", "kill", "killall", "del", "erase",
   "Remove-Item", "ri",
+  "Stop-Process", "Clear-Content", "Clear-Item", "Remove-ItemProperty",
+  "Format-Volume", "Clear-Disk", "Stop-Computer", "Restart-Computer",
 ]);
 
 // Roots that execute another command supplied as an argument/string.
@@ -152,9 +146,9 @@ function isSanctionedLogSink(target) {
 // Helpers
 // ---------------------------------------------------------------------
 
-function outcomes(root, rawCommand) {
+function outcomes(root, rawCommand, tool) {
   function decide(decision, reason) {
-    trace(root, rawCommand, decision);
+    trace(root, rawCommand, decision, tool);
     return {
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
@@ -167,7 +161,7 @@ function outcomes(root, rawCommand) {
   function fallThrough(reason = "unspecified") {
     // No decision emitted -> Claude Code applies its normal permission
     // rules / prompts the user as usual.
-    trace(root, rawCommand, `fallthrough:${reason}`);
+    trace(root, rawCommand, `fallthrough:${reason}`, tool);
     return null;
   }
 
@@ -835,7 +829,7 @@ function nodePath(p) {
 // A segment that acts inside a source (D-008 r3) is judged by an allow-list alone, never by the
 // general `safe` class: that class trusts `git tag`, `reflog`, `remote` and tools that write
 // (`prettier --write`, `eslint --fix`). Anything not on the list is denied, never prompted.
-const SOURCE_READERS = new Set(["cd", "pwd", "cat", "head", "tail", "wc", "ls", "dir", "stat", "tree", "file", "diff", "grep", "rg", "Get-ChildItem", "Select-String"]);
+const SOURCE_READERS = new Set(["cd", "pwd", "cat", "head", "tail", "wc", "ls", "dir", "stat", "tree", "file", "diff", "grep", "rg", "Get-ChildItem", "Select-String", "Get-Content"]);
 const SOURCE_GIT_READS = new Set(["log", "show", "diff", "blame", "status", "ls-files", "ls-tree", "rev-parse", "grep", "cat-file"]);
 const SOURCE_LISTING_FLAGS = new Set(["--list", "-l", "-a", "-r", "-v"]);
 // The only git global options allowed: `-c`, `--config-env` and `--exec-path` can make a pager or alias run a command.
@@ -1010,11 +1004,12 @@ function classifySegment(tokens, cwd = process.cwd(), depth = 0, hookRoot = null
 // ---------------------------------------------------------------------
 
 export function guardBash(input, { root, home = homedir() }) {
+  const tool = input?.tool_name ?? DEFAULT_TOOL;
   const rawCommand = input?.tool_input?.command;
   if (typeof rawCommand !== "string" || !rawCommand.trim()) {
-    return outcomes(root, "").fallThrough("no-command");
+    return outcomes(root, "", tool).fallThrough("no-command");
   }
-  const outcome = outcomes(root, rawCommand);
+  const outcome = outcomes(root, rawCommand, tool);
   if (!parse) return outcome.fallThrough("no-tokenizer");
 
   // Claude Code's hook payload typically includes the session's working
@@ -1023,14 +1018,85 @@ export function guardBash(input, { root, home = homedir() }) {
   const cwd = typeof input?.cwd === "string" ? input.cwd : process.cwd();
 
   const escalation = { mode: input?.permission_mode ?? null, session: input?.session_id ?? null, agent: bareAgentName(input?.agent_type), home };
-  const { decision, reason } = evaluateCommand(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0, escalation });
+  const evaluate = tool === POWERSHELL_TOOL ? evaluatePowerShell : evaluateCommand;
+  const { decision, reason } = evaluate(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0, escalation });
   return decision ? outcome.decide(decision, reason) : outcome.fallThrough(reason);
 }
 
 const decide = (decision, reason) => ({ decision, reason });
 const fallThrough = (reason) => ({ decision: null, reason });
 
-const ESCALATE_HINT = 'If the user asked for this action in this session or the work cannot continue without it, run it alone as `PICKET_ESCALATE="<why>" <command>` and the user decides in the dialog. Cleanup after the work is never escalated: record it with `picket leave <id> --command "<command>"` and it is listed when the item closes.';
+const LEAVE_HINT = 'Cleanup after the work is never escalated: record it with `picket leave <id> --command "<command>"` and it is listed when the item closes.';
+const ESCALATE_HINT = `If the user asked for this action in this session or the work cannot continue without it, run it alone as \`PICKET_ESCALATE="<why>" <command>\` and the user decides in the dialog. ${LEAVE_HINT}`;
+
+function powerShellDenial(command) {
+  return `guard.bash: PowerShell command contains a destructive sub-command (e.g. Remove-Item, Stop-Process, Clear-Content, git push/reset/rebase/checkout/merge/clean). If the user asked for this action, the user runs it: ! ${maskEnvValues(command)}. ${LEAVE_HINT}`;
+}
+
+function sourceCheck(seg, cwd, roots) {
+  const hit = roots.length ? segmentSource(seg, cwd, roots) : null;
+  if (!hit || sourceAllowed(seg)) return { hit, refusal: null };
+  return { hit, refusal: { why: "source", reason: sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``) } };
+}
+
+function wrappedVerbCheck(seg, cwd, roots) {
+  for (const inner of wrappedCommands(seg)) {
+    if (hasHiddenExecution(inner)) return { fallThrough: "wrapped-hidden-execution" };
+    const innerText = shellText(inner);
+    if (!innerText) return { fallThrough: "wrapped-unparsable" };
+    let innerTokens;
+    try {
+      innerTokens = parse(innerText.command);
+    } catch {
+      return { fallThrough: "wrapped-unparsable" };
+    }
+    const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
+    if (innerSegs.some((s) => classifySegment(leadingAssignments(s).command, cwd) === "deny")) {
+      return { why: "wrapped_verb", reason: `guard.bash: the command wrapped in a picket verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.` };
+    }
+    if (roots.length) {
+      const hit = innerSegs.map((s) => (sourceAllowed(s) ? null : segmentSource(s, cwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [cwd], roots);
+      if (hit) return { why: "source", reason: sourceDenial(hit, `the command wrapped in a picket verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`) };
+    }
+  }
+  return null;
+}
+
+function classifyPowerShellSegment(seg, cwd, hookRoot) {
+  const { assignments, command } = leadingAssignments(seg);
+  const plain = classifySegment(command, cwd, 0, hookRoot);
+  return assignments.length ? classifyPrefixedCommand(plain) : plain;
+}
+
+function powerShellCd(seg, cwd) {
+  return typeof seg[1] === "string" && seg[1].includes("$") ? null : applyCd(seg, cwd);
+}
+
+function evaluatePowerShell(command, ctx) {
+  const { cwd, root, sources: roots } = ctx;
+  const reading = readPowerShell(command);
+  if (!reading) return fallThrough("powershell-unreadable");
+  if (!reading.segments.length) return fallThrough("no-segments");
+  const classifications = [];
+  const cwdsSeen = [cwd];
+  let effCwd = cwd;
+  for (const seg of reading.segments) {
+    const { hit, refusal } = sourceCheck(seg, effCwd, roots);
+    if (refusal) return decide("deny", refusal.reason);
+    classifications.push(hit ? "safe" : classifyPowerShellSegment(seg, effCwd, root));
+    if (seg[0] === "cd") {
+      effCwd = powerShellCd(seg, effCwd);
+      cwdsSeen.push(effCwd);
+    }
+    const wrapped = wrappedVerbCheck(seg, effCwd, roots);
+    if (wrapped?.fallThrough) return fallThrough(wrapped.fallThrough);
+    if (wrapped) return decide("deny", wrapped.reason);
+  }
+  const redirectHit = roots.length && reading.sawWriteRedirect ? redirectSource(reading.redirectTargets, cwdsSeen, roots) : null;
+  if (redirectHit) return decide("deny", sourceDenial(redirectHit, "a write redirect"));
+  if (classifications.includes("deny")) return decide("deny", powerShellDenial(command));
+  return fallThrough(`powershell:[${classifications.join(",")}]`);
+}
 
 function isOpaqueWord(value) {
   return value.includes(VARIABLE_MARK) || value.includes(SUBSTITUTION_WORD);
@@ -1125,8 +1191,8 @@ function evaluateCommand(command, ctx) {
   const carriesOutput = outputCarrier(taintedNames);
   let effCwd = cwd;
   for (const seg of segments) {
-    const hit = roots.length ? segmentSource(seg, effCwd, roots) : null;
-    if (hit && !sourceAllowed(seg)) return refuse("source", sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``));
+    const { hit, refusal } = sourceCheck(seg, effCwd, roots);
+    if (refusal) return refuse(refusal.why, refusal.reason);
     const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
     const { assignments, command: commandPart } = leadingAssignments(seg);
@@ -1144,25 +1210,9 @@ function evaluateCommand(command, ctx) {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);
     }
-    for (const inner of wrappedCommands(seg)) {
-      if (hasHiddenExecution(inner)) return fallThrough("wrapped-hidden-execution");
-      const innerText = shellText(inner);
-      if (!innerText) return fallThrough("wrapped-unparsable");
-      let innerTokens;
-      try {
-        innerTokens = parse(innerText.command);
-      } catch {
-        return fallThrough("wrapped-unparsable");
-      }
-      const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
-      if (innerSegs.some((s) => classifySegment(leadingAssignments(s).command, effCwd) === "deny")) {
-        return refuse("wrapped_verb", `guard.bash: the command wrapped in a picket verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.`);
-      }
-      if (roots.length) {
-        const hit = innerSegs.map((s) => (sourceAllowed(s) ? null : segmentSource(s, effCwd, roots))).find(Boolean) ?? redirectSource(innerTargets, [effCwd], roots);
-        if (hit) return refuse("source", sourceDenial(hit, `the command wrapped in a picket verb (${inner.slice(0, 60)}); run it directly so the permission prompt sees it`));
-      }
-    }
+    const wrapped = wrappedVerbCheck(seg, effCwd, roots);
+    if (wrapped?.fallThrough) return fallThrough(wrapped.fallThrough);
+    if (wrapped) return refuse(wrapped.why, wrapped.reason);
   }
 
   // A write redirect into a source denies even behind a read-only command: `echo x > <source>/a.md`.

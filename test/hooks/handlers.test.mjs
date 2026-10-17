@@ -189,6 +189,73 @@ test("guardBash called directly decides, falls through, and traces once per call
   });
 });
 
+const decisionUnder = (root, tool_name) => (command) => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+
+test("a destructive command denies under both the Bash and the PowerShell tool", () => {
+  withProject((root) => {
+    for (const tool_name of ["Bash", "PowerShell"]) {
+      for (const command of ["git push origin trunk", "git reset --hard", "rm -rf build", "git -C sub push"]) {
+        assert.equal(decisionUnder(root, tool_name)(command), "deny", `${tool_name}: ${command}`);
+      }
+    }
+  });
+});
+
+test("guardBash under PowerShell denies destructive cmdlets, aliases and hidden segments, and leaves a worktree teardown to the prompt", () => {
+  withProject((root) => {
+    const decision = decisionUnder(root, "PowerShell");
+    for (const command of ["Remove-Item -Recurse -Force build", "del build", "rd /s build", "Get-ChildItem; git push", "& git push", "Stop-Process -Name node", "Get-ChildItem | ForEach-Object { Remove-Item $_ }"]) {
+      assert.equal(decision(command), "deny", command);
+    }
+    assert.equal(decision("Remove-Item -Recurse -Force '.worktrees/feat'"), null);
+  });
+});
+
+test("guardBash never allows under PowerShell, while Bash keeps its allows and an unnamed tool reads as Bash", () => {
+  withProject((root) => {
+    for (const command of ["Get-ChildItem", "git status", "picket state x"]) {
+      assert.equal(decisionUnder(root, "PowerShell")(command), null, command);
+      assert.equal(decisionUnder(root, "Bash")(command), "allow", command);
+    }
+    assert.equal(decisionUnder(root, undefined)("git status"), "allow");
+    const rows = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(rows.map((r) => r.tool), ["PowerShell", "Bash", "PowerShell", "Bash", "PowerShell", "Bash", "Bash"]);
+    assert.equal(rows[0].outcome, "fallthrough:powershell:[safe]");
+  });
+});
+
+test("the PowerShell deny reason names the user's own route and never the bash marker", () => {
+  withProject((root) => {
+    const out = guardBash({ hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command: "Remove-Item -Recurse build" }, cwd: root }, { root }).hookSpecificOutput;
+    assert.match(out.permissionDecisionReason, /destructive sub-command/);
+    assert.match(out.permissionDecisionReason, /! Remove-Item -Recurse build/);
+    assert.equal(out.permissionDecisionReason.includes('PICKET_ESCALATE="<why>"'), false);
+  });
+});
+
+test("guardBash under PowerShell denies a write into a source and lets a read through to the prompt", () => {
+  withProject((root) => {
+    const source = join(root, "analysis");
+    execFileSync("git", ["init", "-q", source]);
+    mkdirSync(join(root, ".picket"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "PICKET_TEST_SOURCE_ANALYSIS" } } }));
+    process.env.PICKET_TEST_SOURCE_ANALYSIS = source;
+    try {
+      const src = source.replaceAll("\\", "/");
+      const outcome = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+      const write = outcome(`Set-Content ${src}/a.md x`);
+      assert.equal(write?.permissionDecision, "deny");
+      assert.match(write.permissionDecisionReason, /inside source analysis, which is read-only/);
+      assert.equal(outcome(`echo x > ${src}/a.md`)?.permissionDecision, "deny");
+      assert.equal(outcome(`Set-Location ${src}; Remove-Item a.md`)?.permissionDecision, "deny");
+      assert.notEqual(outcome(`Get-Content ${src}/a.md`)?.permissionDecision, "deny");
+      assert.notEqual(outcome(`cat ${src}/a.md`)?.permissionDecision, "deny");
+    } finally {
+      delete process.env.PICKET_TEST_SOURCE_ANALYSIS;
+    }
+  });
+});
+
 test("guardScope called directly guards kernel and hook state but lets the branching manifest through (T-7.3)", () => {
   withProject((root) => {
     const s = createWork({ lane: "order", title: "Scope", root });
