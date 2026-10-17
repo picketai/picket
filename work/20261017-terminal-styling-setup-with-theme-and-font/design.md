@@ -57,12 +57,12 @@ phases:
     drive: true
     security: false
   - n: 3
-    files: [core/lib/styling/picketai-theme.json, core/lib/styling/theme.mjs, core/lib/styling/setup.mjs, test/kernel/styling/theme.test.mjs]
+    files: [core/themes/picketai.json, core/lib/styling/theme.mjs, core/lib/styling/setup.mjs, test/kernel/styling/theme.test.mjs]
     greps:
-      - path: core/lib/styling/picketai-theme.json
+      - path: core/themes/picketai.json
         pattern: '"name": "PicketAI"'
       - path: core/lib/styling/theme.mjs
-        pattern: '\bthemes\b'
+        pattern: 'custom:picketai'
       - path: core/lib/styling/setup.mjs
         pattern: 'theme\.mjs'
     tests: true
@@ -178,12 +178,12 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 **Risks:**
 - **RISK-008** Users run the verb through Claude Code's `!` prefix, which is not a TTY, and only see the plan. Mitigation: the plan's last line says to run it in a terminal or pass `--yes`.
 
-### D-006: The theme ships as a data file copied to the user's themes folder
-**Decision:** Infrastructural decision. `core/lib/styling/picketai-theme.json` holds the spec's theme JSON unchanged, and `theme.mjs` copies it to `<home>/.claude/themes/picketai.json` as a `created` item, or as an `edited` item with a backup and a question when a different file is already there. Setup never writes the active theme. It reads `theme` from `<home>/.claude.json` read-only into `previous.theme` and tells the user to run `/theme` and pick PicketAI. On removal, when `~/.claude.json` names the Picket theme, the summary tells the user to run `/theme` and pick `previous.theme` (or `dark`) before the file is deleted. Dropping a token the docs do not list means deleting one line of the data file.
-**Instead of:** contributing the theme from the plugin so `/theme` lists it with no copy: I cannot confirm offline that plugins can contribute themes (OQ-001); if they can, a revision drops the copy and moves the file into the plugin.
+### D-006 (r2): The plugin ships the theme, and setup copies it to the user and selects the copy
+**Decision:** Infrastructural decision. The one copy of the theme is `core/themes/picketai.json`, the spec's Part 1 JSON unchanged (every token is documented). The plugin's `themes/` folder is scanned with no manifest key, so `/theme` lists it as `custom:picket:picketai` wherever the plugin is enabled. Because `picket init` enables the plugin with project scope, `theme.mjs` also copies the same file to `<home>/.claude/themes/picketai.json` (slug `picketai`) as a `created` item, or as an `edited` item with a backup and a question when a different file is already there. After the question `Make PicketAI your Claude Code theme?`, it sets `"theme": "custom:picketai"` in `<home>/.claude/settings.json`. That is an `edited` (or `created`) item whose `previous` is the settings key's old value or its absence, so it points at the user copy and works in every project. Removal puts the settings key back (or deletes it, so an older `~/.claude.json` value applies again), but only while it still reads `custom:picketai`. The removal path deletes the copy through D-004. `<home>/.claude.json` is only read, to name the theme in effect in the plan; it is never written. A `no` leaves the key alone, and the report says to run `/theme` and pick PicketAI.
+**Instead of:** writing `custom:picket:picketai` into user settings with no copy: the plugin is enabled per project, so in any other project that value names a missing theme.
 **Risks:**
-- **RISK-009** The themes folder or schema differs from the spec, so `/theme` does not list the theme. Mitigation: OQ-001 is answered before phase 3, and the copy lives in one module.
-- **RISK-010** Claude Code rewrites `~/.claude.json` while it runs, so writing the active theme there could be lost or corrupt the file. Mitigation: setup only reads it.
+- **RISK-009** In a Picket project `/theme` lists PicketAI twice (the plugin's and the user copy). Mitigation: both are the same file; accepted for a theme that works everywhere.
+- **RISK-010** A project's own `theme` setting outranks the user setting, so PicketAI does not show there. Mitigation: the report says that a project `theme` setting wins; setup never edits project files.
 
 ### D-007: The font is a pinned, hashed release unpacked with Node's own zlib
 **Decision:** Infrastructural decision. `core/lib/styling/nerd-font.json` pins `{ version, url, sha256, family: "JetBrainsMono Nerd Font Mono", files: "^JetBrainsMonoNerdFontMono-.*\\.ttf$" }` for `JetBrainsMono.zip` of `ryanoasis/nerd-fonts`. `font.mjs` first detects an existing install and records `preexisting: true` with nothing to remove. Detection on Windows reads the HKCU and HKLM `Fonts` registry keys and both font folders; on macOS it runs `brew list --cask font-jetbrains-mono-nerd-font`, then checks `~/Library/Fonts` and `/Library/Fonts`; on Linux it runs `fc-list : family`, then checks the fonts folder. Otherwise it streams the zip with `fetch` to `~/.picketai/cache/`, hashes it while streaming, and on any mismatch with the pinned SHA-256 deletes the file and fails the change with manual steps. `zip.mjs` reads the central directory and inflates entries with `zlib.inflateRawSync` (stored and deflate only), and only names matching `files` are written. Per-user install: Windows copies to `%LOCALAPPDATA%\Microsoft\Windows\Fonts\` and adds one `REG_SZ` value per file under `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts` with `reg add`. macOS runs `brew install --cask font-jetbrains-mono-nerd-font` when `brew` exists, else copies to `~/Library/Fonts/`. Linux copies to `${XDG_DATA_HOME:-~/.local/share}/fonts/` and runs `fc-cache -f`. Offline or any fetch failure fails this change only, with the release URL and the folder to copy into.
@@ -192,8 +192,8 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 - **RISK-011** The zip is tens of megabytes. Mitigation: it is streamed to disk, entries are read by offset, and the cache file is deleted after install.
 - **RISK-012** Apps started before registration do not see the font. Mitigation: the summary says to restart the terminal.
 
-### D-008: Each terminal gets a new PicketAI scheme or profile from its own writer
-**Decision:** Infrastructural decision. `detectTerminal(env, platform)` picks one id from the environment of the running command: `WT_SESSION` gives `windows-terminal`, `TERM_PROGRAM=Apple_Terminal` gives `terminal-app`, `KONSOLE_VERSION` gives `konsole`, the Ptyxis marker (OQ-005) gives `ptyxis`, `GNOME_TERMINAL_SCREEN` or `GNOME_TERMINAL_SERVICE` gives `gnome-terminal`, and anything else gives `other`. One writer per id under `core/lib/styling/terminals/` creates a new PicketAI scheme or profile from `palette.mjs` and the family in `nerd-font.json`, and only after its own question points the terminal's default at it; no writer edits an existing profile. `other` prints the palette table, the font name and short steps naming iTerm2, WezTerm, Kitty, Ghostty and Alacritty, and writes nothing. Windows Terminal's `settings.json` is JSON with comments, so its writer edits it through a vendored copy of Microsoft's `jsonc-parser` (`modify` and `applyEdits`, MIT) at `core/lib/vendor/jsonc-parser.mjs`, which leaves comments and formatting outside the edited spans byte for byte. After a terminal change that set the font, with the font present, the terminal component writes `statusline.icons: "nerd"` into `~/.picketai/config.json` as its own item, so revert puts `plain` back.
+### D-008 (r2): Each terminal gets a new PicketAI scheme or profile from its own writer
+**Decision:** Infrastructural decision. `detectTerminal(env, platform)` picks one id from the environment of the running command: `WT_SESSION` gives `windows-terminal`, `TERM_PROGRAM=Apple_Terminal` gives `terminal-app`, `KONSOLE_VERSION` gives `konsole`, `PTYXIS_VERSION` gives `ptyxis`, `GNOME_TERMINAL_SCREEN` or `GNOME_TERMINAL_SERVICE` gives `gnome-terminal`, and anything else gives `other`. One writer per id under `core/lib/styling/terminals/` creates a new PicketAI scheme or profile from `palette.mjs` and the family in `nerd-font.json`, and only after its own question points the terminal's default at it; no writer edits an existing profile. A setting that applies to every profile (Ptyxis keeps `use-system-font` and `font-name` app-wide) gets a separate question, with its previous value recorded. `other` prints the palette table, the font name and short steps naming iTerm2, WezTerm, Kitty, Ghostty and Alacritty, and writes nothing. Windows Terminal's `settings.json` is JSON with comments, so its writer edits it through a vendored copy of Microsoft's `jsonc-parser` (`modify` and `applyEdits`, MIT) at `core/lib/vendor/jsonc-parser.mjs`, which leaves comments and formatting outside the edited spans byte for byte. After a terminal change that set the font, with the font present, the terminal component writes `statusline.icons: "nerd"` into `~/.picketai/config.json` as its own item, so revert puts `plain` back.
 **Instead of:** a hand-written JSONC span editor: about 150 lines of new parser code nobody has used, against a widely used vendored file whose only cost is a frozen copy updated by hand, the pattern `shell-quote-parse.mjs` already set.
 **Risks:**
 - **RISK-013** A Windows Terminal profile with its own `colorScheme` or `font.face` ignores `profiles.defaults`. Mitigation: the summary names each such profile as a manual step.
@@ -210,7 +210,7 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 
 **Out:**
 - spinner text, background images, anything else the spec excludes
-- writing the active Claude Code theme (D-006)
+- writing `~/.claude.json` or any project settings file (D-006 (r2))
 - editing existing terminal profiles; writers for iTerm2, WezTerm, Kitty, Ghostty and Alacritty
 - `status/hooks/band.ts`, `session/hooks/format.ts`, `.claude/bin/statusline.mjs`
 - the manual test checklist, `CONTRIBUTING.md`, README and docs text (OQ-008)
@@ -287,25 +287,26 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 ## Phase 3: The PicketAI Claude Code theme
 
 **Touch set:**
-- `core/lib/styling/picketai-theme.json`: new; the spec's theme JSON
-- `core/lib/styling/theme.mjs`: new; theme component
+- `core/themes/picketai.json`: new; plugin theme, the one copy
+- `core/lib/styling/theme.mjs`: new; copy and `theme` setting
 - `core/lib/styling/setup.mjs`: register `theme` first
 - `test/kernel/styling/theme.test.mjs`: new; theme component tests
 - `test/kernel/styling/host-fixture.mjs`: read only; fake host
+- `core/.claude-plugin/plugin.json`: read only; no `themes` key needed
 
 **Changes:**
-- `picketai-theme.json`: the spec's Part 1 JSON as written, minus any token OQ-001 rules out.
-- `theme.mjs`: component `theme` per D-006 with target `<home>/.claude/themes/picketai.json`. Absent: a `created` change. Same bytes: no change. Different bytes: a change with the question `Replace <path>?`, kind `edited` with a backup. `previous.theme` is the `theme` value of `<home>/.claude.json`, or null when the file or key is missing or unreadable. The change's `manual` says to run `/theme` and pick PicketAI.
-- Removal: when `<home>/.claude.json` has a `theme` value containing `picketai` (any case), the outcome's `manual` says to run `/theme` and pick `previous.theme`, or `dark` when that is null. `<home>/.claude.json` is never written.
+- `core/themes/picketai.json`: the spec's Part 1 JSON as written (34 override tokens).
+- `theme.mjs`: component `theme` per D-006 (r2), two changes. The file change targets `<home>/.claude/themes/picketai.json`: absent gives `created`, same bytes give no change, different bytes give the question `Replace <path>?` and `edited` with a backup. The setting change targets `theme` in `<home>/.claude/settings.json`: `custom:picketai` already there gives no change; otherwise the question `Make PicketAI your Claude Code theme?`, then an `edited` (or `created`) item with `previous` holding the old value or its absence. The plan names the theme in effect: the settings value, else `theme` from `<home>/.claude.json`, else `dark`.
+- `unapply` of the setting: while the key reads `custom:picketai`, put back `previous` or delete the key, leaving every other key; any other value is kept.
 - `setup.mjs`: `COMPONENTS` order becomes `theme`, `statusline`; `--theme-only` maps to it.
 
 **Done when:**
-- **T-3.1** `picketai-theme.json` parses with `name` `PicketAI`, `base` `dark`, `overrides.claude` `#F9782B`, and every override value matching `^#[0-9A-F]{6}$`.
-- **T-3.2** `setupTerminal(host, { yes: true, only: ["theme"] })` on a temp home whose `.claude.json` holds `"theme": "dark"` creates `.claude/themes/picketai.json` byte-equal to the data file, records a `created` item with `previous.theme` `dark`, and the report's `manual` contains `/theme`; a second run changes nothing.
-- **T-3.3** A different `picketai.json` already in place stays byte-identical on the answer `no`; on `yes` it is backed up and replaced, and `--revert` restores it byte for byte.
-- **T-3.4** `--revert` deletes an unchanged created theme file and keeps an edited one with a `manual` step; with `.claude.json` holding `"theme": "PicketAI"`, the outcome's `manual` names `/theme` and `dark`.
-- **T-3.5** Across setup and revert, `.claude.json` keeps the same bytes, and `--theme-only` leaves `.claude/settings.json` untouched.
-- **T-3.6** `npm test` passes, and `picket setup-terminal --theme-only --dry-run` with a temp `HOME` and `USERPROFILE` exits 0 and names `picketai.json` in its plan.
+- **T-3.1** `core/themes/picketai.json` parses with `name` `PicketAI`, `base` `dark`, 34 `overrides` keys equal to the spec's, `overrides.claude` `#F9782B`, and every value matching `^#[0-9A-F]{6}$`; `claude plugin validate core` exits 0.
+- **T-3.2** `setupTerminal(host, { yes: true, only: ["theme"] })` on a temp home whose `.claude.json` holds `"theme": "dark"` creates `.claude/themes/picketai.json` byte-equal to `core/themes/picketai.json` and `.claude/settings.json` with `theme` `custom:picketai`, records the setting's `previous` as absent, and plans `dark` as the theme in effect; a second run changes nothing.
+- **T-3.3** The answer `no` to the setting question copies the file, leaves `.claude/settings.json` byte-identical, and the report's `manual` contains `/theme`; a different `picketai.json` already in place stays byte-identical on `no`, and on `yes` it is backed up, replaced, and restored byte for byte by `--revert`.
+- **T-3.4** `--revert` deletes an unchanged copied file, keeps an edited one with a `manual` step, and removes the `theme` key it added; with `previous` `"dark-ansi"` it puts `dark-ansi` back; after the test sets `theme` to `light`, revert keeps `light`.
+- **T-3.5** After the test adds `"env":{"A":"1"}` to `.claude/settings.json`, revert removes only `theme` and keeps `env`; setup of `theme` and `statusline` on a home with a settings file, then `--revert --yes`, returns that file byte for byte; `.claude.json` keeps its bytes throughout.
+- **T-3.6** `npm test` passes, and `picket setup-terminal --theme-only --dry-run` with a temp `HOME` and `USERPROFILE` exits 0 and names `picketai.json` and `custom:picketai` in its plan.
 
 ## Phase 4: JetBrainsMono Nerd Font Mono, pinned and verified
 
@@ -379,8 +380,8 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 - `konsole.mjs`: `created` items `${XDG_DATA_HOME:-~/.local/share}/konsole/PicketAI.colorscheme` (`[Background]`, `[BackgroundIntense]`, `[Foreground]`, `[ForegroundIntense]`, `[Color0]` to `[Color7]`, `[Color0Intense]` to `[Color7Intense]` as `Color=r,g,b`; `[General]` `Description=PicketAI`, `Opacity=1`) and `PicketAI.profile` (`[Appearance]` `ColorScheme=PicketAI`, `Font=JetBrainsMono Nerd Font Mono,11,-1,5,50,0,0,0,0,0`; `[General]` `Name=PicketAI`). After a question, `${XDG_CONFIG_HOME:-~/.config}/konsolerc` gets `[Desktop Entry]` `DefaultProfile=PicketAI.profile` through `ini.mjs`, as an `edited` item with `previous`.
 - `ini.mjs`: `setKey(text, section, key, value)` and `removeKey(text, section, key)`, which change one line, add the section when missing, and keep every other byte.
 - `gnome-terminal.mjs`: reads `/org/gnome/terminal/legacy/profiles:/list` and `/default` with `dconf read`, saves `dconf dump /org/gnome/terminal/legacy/profiles:/` as the item's backup, and writes a new profile `:<uuid>/` (`crypto.randomUUID()`): `visible-name`, `use-theme-colors false`, `foreground-color`, `background-color`, `palette` (16 values), `cursor-colors-set true`, `cursor-background-color`, `highlight-colors-set true`, `highlight-background-color`, `use-system-font false`, `font 'JetBrainsMono Nerd Font Mono 12'`. It appends the uuid to `list` and, after a question, sets `default`. `unapply` runs `dconf reset -f` on the profile path, removes only its uuid from `list`, and puts `default` back.
-- `ptyxis.mjs` (formats per OQ-005): `created` `${XDG_DATA_HOME:-~/.local/share}/org.gnome.Ptyxis/palettes/picketai.palette` (`[Palette]` `Name=PicketAI`; `[Dark]` `Background`, `Foreground`, `Cursor`, `Color0` to `Color15`); a new profile under `/org/gnome/Ptyxis/Profiles/<uuid>/` with `label 'PicketAI'` and `palette 'picketai'`, appended to `/org/gnome/Ptyxis/profile-uuids`; after a question, `default-profile-uuid`, `use-system-font false` and `font-name 'JetBrainsMono Nerd Font Mono 12'`, all with `previous`.
-- `terminal.mjs`: `PTYXIS_VERSION` gives `ptyxis` (OQ-005), checked before the GNOME Terminal variables.
+- `ptyxis.mjs` (formats per OQ-005, resolved): `created` `${XDG_DATA_HOME:-~/.local/share}/org.gnome.Ptyxis/palettes/picketai.palette` (`[Palette]` `Name=PicketAI`; `[Dark]` `Foreground`, `Background`, `CursorBackground`, `CursorForeground`, `Color0` to `Color15`); a new profile under `/org/gnome/Ptyxis/Profiles/<uuid>/` with `label 'PicketAI'` and `palette 'picketai'`, appended to `/org/gnome/Ptyxis/profile-uuids`. After the default question, `default-profile-uuid` is set with `previous`. After a separate question, `Use JetBrainsMono Nerd Font Mono in every Ptyxis profile?`, the app-wide `/org/gnome/Ptyxis/use-system-font false` and `font-name 'JetBrainsMono Nerd Font Mono 12'` are set as their own item with `previous` (D-008 (r2)).
+- `terminal.mjs`: `PTYXIS_VERSION` gives `ptyxis`, checked before the GNOME Terminal variables.
 - No `dconf` on the host gives a `manual` step and no write.
 
 **Done when:**
@@ -388,7 +389,7 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 - **T-6.2** Konsole `--revert` deletes both files and restores `konsolerc` byte for byte; after the test adds a line to `konsolerc`, revert puts back only the previous `DefaultProfile` (or removes it) and keeps the added line.
 - **T-6.3** GNOME setup against fake dconf with `list` `['abc']` and `default` `'abc'` writes every key in Changes, makes `list` `['abc', '<uuid>']`, sets `default` to `'<uuid>'` only after a yes, and writes a `palette` of 16 values starting `'#0D0A08'` and ending `'#FFFFFF'`.
 - **T-6.4** GNOME `--revert` resets the profile path, returns `list` to `['abc']` and `default` to `'abc'`, and keeps a profile uuid the test added after setup.
-- **T-6.5** Ptyxis setup writes the palette file with `Background=#0D0A08` and `Color0` to `Color15`, and a profile with `palette 'picketai'`; `--revert` deletes the file and puts back `profile-uuids`, `default-profile-uuid`, `use-system-font` and `font-name`.
+- **T-6.5** Ptyxis setup writes the palette file with `Name=PicketAI`, `Background=#0D0A08` and `Color0` to `Color15`, and a profile with `palette 'picketai'`; `use-system-font` and `font-name` change only after a yes to the font question, and a `no` leaves both at their fake dconf values; `--revert` deletes the file and puts back `profile-uuids`, `default-profile-uuid`, `use-system-font` and `font-name`.
 - **T-6.6** A second run changes nothing for each of the three, a host without `dconf` writes nothing and reports `manual`, and `npm test` passes.
 
 ## Phase 7: macOS Terminal.app
@@ -442,14 +443,16 @@ The spec at `C:\Users\vlad.apetre\Desktop\TUI\picketai-terminal-styling-prompt.m
 
 ## Open questions
 
-- **OQ-001** Claude Code custom themes (https://code.claude.com/docs/en/terminal-config): the file schema, the valid token names, the minimum version (the spec says 2.1.118), whether `~/.claude/themes/*.json` is read on every OS, whether a plugin can contribute a theme, and how `~/.claude.json` names the active custom theme. Owner: lead, before phase 3. Fallback: D-006 as written; unlisted tokens are deleted from `picketai-theme.json`, and the active-theme check matches `picketai` in any case.
-- **OQ-002** Does Claude Code give the status line command the terminal width (`COLUMNS` or a stdin field)? Owner: lead, in the phase 1 live check. Fallback: `COLUMNS` when it is a positive integer, else the narrow layout at 80 (T-1.2).
+- **OQ-001** [resolved 2026-10-17] Themes are `~/.claude/themes/<slug>.json` or a plugin's `themes/` folder (2.1.118); every spec token is documented; settings key `theme` takes `custom:<slug>`. Applied in D-006 (r2).
+- **OQ-002** [resolved 2026-10-17] Claude Code sets `COLUMNS` and `LINES` for the status line command, and stdin has no width field; the fallback as written holds.
 - **OQ-003** Phase 1 replaces the staged, unapproved phase 1 of `20261017-statusline-rows-share-the-brand-style`, and the phase 1 grep `38;2;215;119;87` of `20261016-session-line-moves-to-the-status-line` already fails. Owner: lead. Fallback: phase 1 edits the staged files in place; the lead abandons the superseded item before routing phase 1 and notes the change at the 20261016 cumulative review.
 - **OQ-004** Which `ryanoasis/nerd-fonts` release to pin and its SHA-256, checked against the checksum the release publishes. Owner: developer, in phase 4, stated in the phase report. Fallback: the latest release at implementation time, with the hash of the downloaded file and a note in the report when the release publishes no checksum.
-- **OQ-005** Linux terminal formats: the Ptyxis palette folder and keys, its profile and font keys, and the variable that marks a Ptyxis session; and whether Konsole under Qt 6 reads the Qt 5 ten-field `Font=` string. Owner: lead (docs or source), before phase 6. Fallback: phase 6 as written with `PTYXIS_VERSION` as the marker; a format proven wrong amends D-008 and phase 6.
+- **OQ-005** [resolved 2026-10-17] Ptyxis reads `<data dir>/org.gnome.Ptyxis/palettes/<id>.palette`, sets `PTYXIS_VERSION`, and keeps font keys app-wide; Konsole under Qt 6 reads the ten-field `Font=` string. Applied in D-008 (r2) and phase 6.
 - **OQ-006** Terminal.app: the PostScript name of the Mono font (`JetBrainsMonoNFM-Regular` assumed) and whether a running Terminal picks up `defaults write` before a restart. Owner: user, on a Mac, in the phase 7 live check. Fallback: the assumed name; the report asks for a Terminal restart.
-- **OQ-007** Does Claude Code offer a plugin removal hook that could start the uninstall offer? Owner: lead (docs). Fallback: `picket uninstall` only (D-005).
+- **OQ-007** [resolved 2026-10-17] Claude Code has no plugin install, disable or uninstall hook event; D-005 stands with `picket uninstall` as the only entry point.
 - **OQ-008** The spec's manual test checklist (Windows 11 with Windows Terminal, macOS Terminal.app, Ubuntu GNOME Terminal and Ptyxis, KDE Konsole), README text for the two verbs, and `CONTRIBUTING.md:27` ("The one third-party parser is vendored"), which phase 5 makes stale, are documents and not phase scope. Owner: lead, through `picket:documenting` after phase 8. Fallback: no phase writes them.
 - **OQ-009** The spec's "well under 100 ms" runtime is below Node's own start on Windows (about 90 ms here). Owner: user. Fallback: the D-002 caches and lazy imports, accepting the Node floor.
 
 ## Revision log
+- 2026-10-17: D-006 (r2): plugin ships `core/themes/picketai.json`; setup copies it and sets user `theme` to `custom:picketai`; docs confirm plugin themes and the key.
+- 2026-10-17: D-008 (r2): Ptyxis marker is `PTYXIS_VERSION`; app-wide Ptyxis font keys get their own question; OQ-005 answered from Ptyxis source.

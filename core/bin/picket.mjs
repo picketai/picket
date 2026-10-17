@@ -69,6 +69,15 @@ function statuslineInput() {
   }
 }
 
+function onlyComponents(opt, names) {
+  const flags = Object.keys(opt).filter((key) => key.endsWith("-only"));
+  if (flags.length === 0) return null;
+  const chosen = flags.map((flag) => flag.slice(0, -"-only".length));
+  const unknown = chosen.filter((name) => !names.includes(name));
+  if (unknown.length) throw new Error(`setup-terminal does not know --${unknown[0]}-only; use one of ${names.map((name) => `--${name}-only`).join(", ")}`);
+  return chosen;
+}
+
 function dirtyWarning(dirty) {
   return dirty.length ? `\nWARNING: uncommitted changes: ${dirty.join(", ")} (commit them or \`git checkout -- <path>\` before you print the closing block)` : "";
 }
@@ -281,6 +290,15 @@ async function main(argv) {
       process.stdout.write(`${rendered}\n`);
       return 0;
     }
+    case "setup-terminal": {
+      const { COMPONENTS, renderReport, setupTerminal } = await import("../lib/styling/setup.mjs");
+      const { realHost } = await import("../lib/styling/host.mjs");
+      const only = onlyComponents(opt, COMPONENTS.map((component) => component.name));
+      const report = await setupTerminal(realHost(), { only, dryRun: opt["dry-run"] === true, yes: opt.yes === true, revert: opt.revert === true });
+      if (opt.json) console.log(opt.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report));
+      else console.log(renderReport(report));
+      return report.changes.some((change) => change.result === "failed") ? 2 : 0;
+    }
     case "pr": {
       if (!rest[0]) throw new Error("pr needs <url>");
       if (opt.post) {
@@ -349,7 +367,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet statusline pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet statusline setup-terminal pr source`);
   }
 }
 

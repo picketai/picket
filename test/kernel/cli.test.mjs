@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -163,6 +163,33 @@ test("statusline reads input that is not JSON, and empty input, as no facts (T-1
     assert.equal(stderr, "");
     assert.equal(lines[0], "  PICKETAI >_");
   }
+});
+
+function withTempHome(fn) {
+  const home = mkdtempSync(join(tmpdir(), "picket-home-"));
+  try {
+    fn(home, { ...process.env, HOME: home, USERPROFILE: home });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+
+test("setup-terminal --dry-run --statusline-only prints the plan and writes nothing (T-2.6)", () => {
+  withTempHome((home, env) => {
+    const result = spawnSync("node", [BIN, "setup-terminal", "--dry-run", "--statusline-only"], { encoding: "utf8", env });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /planned\s+statusline: set statusLine to "picket statusline"/);
+    assert.deepEqual(readdirSync(home), []);
+  });
+});
+
+test("setup-terminal rejects a component flag it does not know (T-2.6)", () => {
+  withTempHome((home, env) => {
+    const result = spawnSync("node", [BIN, "setup-terminal", "--bogus-only"], { encoding: "utf8", env });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /--bogus-only/);
+    assert.deepEqual(readdirSync(home), []);
+  });
 });
 
 test("usage errors exit 1 with a message on stderr", () => {
