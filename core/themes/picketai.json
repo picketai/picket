@@ -1,0 +1,22 @@
+{
+  "name": "PicketAI",
+  "base": "dark",
+  "overrides": {
+    "claude": "#F9782B", "claudeShimmer": "#FFB27A",
+    "text": "#FDEFD4", "inverseText": "#0D0A08",
+    "inactive": "#8C8072", "inactiveShimmer": "#B8AA96", "subtle": "#4A4038",
+    "suggestion": "#F9782B", "permission": "#F9782B", "permissionShimmer": "#FFB27A",
+    "remember": "#E9C9A0",
+    "promptBorder": "#6B6158", "promptBorderShimmer": "#F9782B",
+    "bashBorder": "#FDEFD4", "planMode": "#E9C9A0", "autoAccept": "#9CC46A",
+    "success": "#9CC46A", "error": "#E5484D",
+    "warning": "#F5C04A", "warningShimmer": "#FFDB8A",
+    "diffAdded": "#1E3318", "diffRemoved": "#3F1A12",
+    "diffAddedWord": "#33572A", "diffRemovedWord": "#7A2E1C",
+    "diffAddedDimmed": "#161F13", "diffRemovedDimmed": "#24130F",
+    "userMessageBackground": "#1A1410", "userMessageBackgroundHover": "#241C16",
+    "bashMessageBackgroundColor": "#14110E", "selectionBg": "#5A3A22",
+    "briefLabelYou": "#FDEFD4", "briefLabelClaude": "#F9782B",
+    "rate_limit_fill": "#F9782B", "rate_limit_empty": "#3A322A"
+  }
+}

@@ -1,7 +1,8 @@
 import { backupFile, backupsDir, emptyManifest, ManifestError, manifestPath, readManifest, removeItems, writeManifest } from "./manifest.mjs";
 import { statuslineSetting } from "./statusline-setting.mjs";
+import { theme } from "./theme.mjs";
 
-export const COMPONENTS = [statuslineSetting];
+export const COMPONENTS = [theme, statuslineSetting];
 const YES_NO = { choices: ["yes", "no"], fallback: "no" };
 const NOT_INTERACTIVE = "nothing was written: run this in a terminal or pass --yes to apply it";
 
@@ -71,17 +72,18 @@ async function install(host, manifest, components, { dryRun, yes }) {
   if (!(await confirmed(host, question("Picket will make these changes:", summaries), yes))) {
     return declined(host, [...failures, ...planned.map((change) => ({ ...change, result: "declined" }))]);
   }
-  const applied = [];
   const changes = [...failures];
+  const restart = [];
+  const manual = [];
   for (const entry of entries) {
     const result = await applyEntry(host, manifest, entry, yes);
     changes.push(result);
-    if (result.result === "applied") applied.push(entry.change);
+    const { change } = entry;
+    if (result.result === "applied" && change.restart) restart.push(change.restart);
+    if (result.result === "applied" && change.manual) manual.push(change.manual);
+    if (result.result === "skipped" && change.manualIfSkipped) manual.push(change.manualIfSkipped);
   }
-  return report(changes, {
-    restart: applied.flatMap((change) => (change.restart ? [change.restart] : [])),
-    manual: applied.flatMap((change) => (change.manual ? [change.manual] : [])),
-  });
+  return report(changes, { restart, manual });
 }
 
 function itemSummary(item) {

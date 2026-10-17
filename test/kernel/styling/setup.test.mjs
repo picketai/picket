@@ -10,6 +10,10 @@ import { fakeHost, homeFiles, writeHomeFile } from "./host-fixture.mjs";
 const SETTINGS = ".claude/settings.json";
 const CUSTOM = '{"model":"x","statusLine":{"type":"command","command":"my-line"}}';
 
+function setupStatusline(host, options) {
+  return setupTerminal(host, { only: ["statusline"], ...options });
+}
+
 async function withHost(options, fn) {
   const host = fakeHost(options);
   try {
@@ -29,7 +33,7 @@ function readManifestOf(host) {
 
 test("setup creates the user settings with Picket's status line and records it; a second run changes nothing (T-2.1)", async () => {
   await withHost({}, async (host) => {
-    const first = await setupTerminal(host, { yes: true });
+    const first = await setupStatusline(host, { yes: true });
     assert.deepEqual(first.changes.map((change) => change.result), ["applied"]);
     assert.deepEqual(JSON.parse(read(host, SETTINGS)).statusLine, STATUS_LINE);
     const manifest = readManifestOf(host);
@@ -39,7 +43,7 @@ test("setup creates the user settings with Picket's status line and records it; 
     assert.match(manifest.items[0].sha256, /^[0-9a-f]{64}$/);
     const settingsBefore = read(host, SETTINGS);
     const manifestBefore = readFileSync(manifestPath(host.home), "utf8");
-    const second = await setupTerminal(host, { yes: true });
+    const second = await setupStatusline(host, { yes: true });
     assert.deepEqual(second.changes, []);
     assert.equal(read(host, SETTINGS), settingsBefore);
     assert.equal(readFileSync(manifestPath(host.home), "utf8"), manifestBefore);
@@ -48,7 +52,7 @@ test("setup creates the user settings with Picket's status line and records it; 
 
 test("declining the replace question leaves a custom status line byte for byte and writes no manifest (T-2.2)", async () => {
   await withHost({ files: { [SETTINGS]: CUSTOM }, answers: ["yes", "no"] }, async (host) => {
-    const result = await setupTerminal(host, {});
+    const result = await setupStatusline(host, {});
     assert.deepEqual(result.changes.map((change) => change.result), ["skipped"]);
     assert.equal(read(host, SETTINGS), CUSTOM);
     assert.equal(existsSync(manifestPath(host.home)), false);
@@ -57,7 +61,7 @@ test("declining the replace question leaves a custom status line byte for byte a
 });
 
 async function replacedCustomLine(host) {
-  await setupTerminal(host, {});
+  await setupStatusline(host, {});
   const settings = JSON.parse(read(host, SETTINGS));
   assert.deepEqual(settings.statusLine, STATUS_LINE);
   assert.equal(settings.model, "x");
@@ -74,7 +78,7 @@ test("accepting both questions replaces the status line, keeps other keys and ba
 test("revert restores an untouched settings file byte for byte and removes the manifest and backups (T-2.3)", async () => {
   await withHost({ files: { [SETTINGS]: CUSTOM }, answers: ["yes", "yes"] }, async (host) => {
     await replacedCustomLine(host);
-    const reverted = await setupTerminal(host, { revert: true, yes: true });
+    const reverted = await setupStatusline(host, { revert: true, yes: true });
     assert.deepEqual(reverted.changes.map((change) => change.result), ["restored"]);
     assert.equal(read(host, SETTINGS), CUSTOM);
     assert.equal(existsSync(manifestPath(host.home)), false);
@@ -87,7 +91,7 @@ test("revert after a later user edit puts the old status line back and keeps the
     await replacedCustomLine(host);
     const edited = { ...JSON.parse(read(host, SETTINGS)), env: { A: "1" } };
     writeHomeFile(host.home, SETTINGS, JSON.stringify(edited, null, 2));
-    const reverted = await setupTerminal(host, { revert: true, yes: true });
+    const reverted = await setupStatusline(host, { revert: true, yes: true });
     assert.deepEqual(reverted.changes.map((change) => change.result), ["removed"]);
     assert.deepEqual(JSON.parse(read(host, SETTINGS)), { model: "x", statusLine: { type: "command", command: "my-line" }, env: { A: "1" } });
     assert.equal(existsSync(manifestPath(host.home)), false);
@@ -96,8 +100,8 @@ test("revert after a later user edit puts the old status line back and keeps the
 
 test("revert removes a settings file setup created", async () => {
   await withHost({}, async (host) => {
-    await setupTerminal(host, { yes: true });
-    const reverted = await setupTerminal(host, { revert: true, yes: true });
+    await setupStatusline(host, { yes: true });
+    const reverted = await setupStatusline(host, { revert: true, yes: true });
     assert.deepEqual(reverted.changes.map((change) => change.result), ["removed"]);
     assert.deepEqual(homeFiles(host.home), []);
   });
@@ -106,7 +110,7 @@ test("revert removes a settings file setup created", async () => {
 test("a dry run lists the plan and writes nothing (T-2.4)", async () => {
   await withHost({ files: { [SETTINGS]: CUSTOM } }, async (host) => {
     const before = homeFiles(host.home);
-    const result = await setupTerminal(host, { dryRun: true });
+    const result = await setupStatusline(host, { dryRun: true });
     assert.deepEqual(result.changes.map((change) => [change.id, change.result]), [["statusline", "planned"]]);
     assert.deepEqual(homeFiles(host.home), before);
     assert.equal(host.questions.length, 0);
@@ -115,7 +119,7 @@ test("a dry run lists the plan and writes nothing (T-2.4)", async () => {
 
 test("without a terminal and without --yes nothing is written and the report says how to apply (T-2.4)", async () => {
   await withHost({ interactive: false }, async (host) => {
-    const result = await setupTerminal(host, {});
+    const result = await setupStatusline(host, {});
     assert.deepEqual(result.changes.map((change) => change.result), ["declined"]);
     assert.deepEqual(homeFiles(host.home), []);
     assert.match(renderReport(result).split("\n").at(-1), /--yes/);
@@ -124,7 +128,7 @@ test("without a terminal and without --yes nothing is written and the report say
 
 test("settings that are not valid JSON fail the change with a detail and stay as they are (T-2.5)", async () => {
   await withHost({ files: { [SETTINGS]: "{ not json" } }, async (host) => {
-    const result = await setupTerminal(host, { yes: true });
+    const result = await setupStatusline(host, { yes: true });
     assert.equal(result.changes.length, 1);
     assert.equal(result.changes[0].result, "failed");
     assert.match(result.changes[0].detail, /not valid JSON/);
@@ -135,7 +139,7 @@ test("settings that are not valid JSON fail the change with a detail and stay as
 test("a broken manifest stops setup and revert with a message naming the backups folder", async () => {
   await withHost({ files: { ".picketai/styling-manifest.json": "{ broken" } }, async (host) => {
     for (const options of [{ yes: true }, { revert: true, yes: true }]) {
-      const result = await setupTerminal(host, options);
+      const result = await setupStatusline(host, options);
       assert.equal(result.changes[0].result, "failed");
       assert.match(result.changes[0].detail, /backups/);
     }
@@ -145,10 +149,10 @@ test("a broken manifest stops setup and revert with a message naming the backups
 
 test("a second setup after the user replaced the line keeps the first backup and previous value", async () => {
   await withHost({ files: { [SETTINGS]: CUSTOM }, answers: ["yes", "yes", "yes", "yes"] }, async (host) => {
-    await setupTerminal(host, {});
+    await setupStatusline(host, {});
     const first = readManifestOf(host).items[0];
     writeHomeFile(host.home, SETTINGS, '{"model":"x","statusLine":{"type":"command","command":"other"}}');
-    await setupTerminal(host, {});
+    await setupStatusline(host, {});
     const second = readManifestOf(host).items;
     assert.equal(second.length, 1);
     assert.equal(second[0].backup, first.backup);

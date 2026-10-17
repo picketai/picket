@@ -32,8 +32,7 @@ function describe(statusLine) {
 
 function plan(host) {
   const path = settingsPath(host);
-  const { text, settings } = readSettings(path);
-  const current = settings.statusLine;
+  const current = readSettings(path).settings.statusLine;
   if (isDeepStrictEqual(current, STATUS_LINE)) return [];
   const replacing = current !== undefined;
   return [
@@ -43,6 +42,7 @@ function plan(host) {
       ...(replacing ? { question: `Replace your status line "${describe(current)}" with Picket's?` } : {}),
       restart: null,
       apply(host, backup) {
+        const { text, settings } = readSettings(path);
         const backupPath = text === null ? undefined : backup(path);
         writeSettings(path, { ...settings, statusLine: STATUS_LINE });
         return {
