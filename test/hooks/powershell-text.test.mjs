@@ -75,8 +75,21 @@ test("a leading escalation statement folds into the one command after it as a ma
   assert.deepEqual(segments('$env:PICKET_ESCALATE = "x"; git status; git push'), [["PICKET_ESCALATE=x"], ["git", "status"], ["git", "push"]]);
   assert.deepEqual(segments('$env:PICKET_ESCALATE = "x"; git push | Out-Null'), [["PICKET_ESCALATE=x"], ["git", "push"], ["out-null"]]);
   assert.deepEqual(segments('$env:PICKET_ESCALATE = "x"\ngit push'), [["PICKET_ESCALATE=x"], ["git", "push"]]);
-  assert.deepEqual(segments("$env:PICKET_ESCALATE = $why; git push"), [["$env:picket_escalate", "=", "$why"], ["git", "push"]]);
-  assert.deepEqual(segments('$env:picket_escalate = "x"; git push'), [["$env:picket_escalate", "=", "x"], ["git", "push"]]);
+  assert.deepEqual(segments("$env:PICKET_ESCALATE = $why; git push"), [["$why"], ["git", "push"]]);
+  assert.deepEqual(segments('$env:picket_escalate = "x"; git push'), [["x"], ["git", "push"]]);
+});
+
+test("an assignment statement is read as the command on its right-hand side", () => {
+  for (const text of ["$r = git push origin main 2>&1", "$r=git push origin main", "$r= git push origin main", "$r =git push origin main", "[string]$r = git push origin main", "$a = $b = git push origin main", "$log += git push origin main"]) {
+    assert.deepEqual(segments(text), [["git", "push", "origin", "main"]], text);
+  }
+  assert.deepEqual(segments("$null = Remove-Item -Recurse -Force build"), [["Remove-Item", "-Recurse", "-Force", "build"]]);
+  assert.deepEqual(segments("$x -eq 1"), [["$x", "-eq", "1"]]);
+});
+
+test("curly quotes delimit strings as PowerShell reads them", () => {
+  assert.deepEqual(segments("echo 'a’; Remove-Item -Recurse x; echo ‘b'"), [["echo", "a"], ["Remove-Item", "-Recurse", "x"], ["echo", "b"]]);
+  assert.deepEqual(segments("echo “a; b”"), [["echo", "a; b"]]);
 });
 
 test("a trailing & runs in the background", () => {

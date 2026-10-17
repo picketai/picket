@@ -204,7 +204,7 @@ test("a destructive command denies under both the Bash and the PowerShell tool",
 test("guardBash under PowerShell denies destructive cmdlets, aliases and hidden segments, and leaves a worktree teardown to the prompt", () => {
   withProject((root) => {
     const decision = decisionUnder(root, "PowerShell");
-    for (const command of ["Remove-Item -Recurse -Force build", "del build", "rd /s build", "Get-ChildItem; git push", "& git push", "Stop-Process -Name node", "Get-ChildItem | ForEach-Object { Remove-Item $_ }"]) {
+    for (const command of ["Remove-Item -Recurse -Force build", "del build", "rd /s build", "Get-ChildItem; git push", "& git push", "Stop-Process -Name node", "Get-ChildItem | ForEach-Object { Remove-Item $_ }", "$r = git push origin main 2>&1", "$null = Remove-Item -Recurse x"]) {
       assert.equal(decision(command), "deny", command);
     }
     assert.equal(decision("Remove-Item -Recurse -Force '.worktrees/feat'"), null);

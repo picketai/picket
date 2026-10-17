@@ -24,6 +24,11 @@ const NON_LITERAL_CALL_TARGET = /[$({@]/;
 const STREAM_PREFIX = /^[1-6*]$/;
 const REDIRECT = /^>>?(&[1-6])?/;
 const DISCARD_TARGET = "$null";
+const VARIABLE_TARGET = /^(?:\[[^\]]*\])*\$[^\s=]+$/;
+const ASSIGNMENT_OPERATOR = /^(?:[-+*/%]|\?\?)?=(.*)$/s;
+const ATTACHED_ASSIGNMENT = /^(?:\[[^\]]*\])*\$[^\s=+\-*/%?]+(?:[-+*/%]|\?\?)?=(.*)$/s;
+const SINGLE_QUOTES = new Set(["'", "‘", "’", "‚", "‛"]);
+const DOUBLE_QUOTES = new Set(['"', "“", "”", "„"]);
 
 export function canonicalRoot(word) {
   const name = normalizeRoot(word).toLowerCase();
@@ -33,6 +38,21 @@ export function canonicalRoot(word) {
 function markerAssignment(words) {
   const statement = words.join("");
   return `${MARKER}=${statement.slice(statement.indexOf("=") + 1)}`;
+}
+
+function withoutAssignment(words) {
+  const [first = "", second = "", ...rest] = words;
+  const spaced = VARIABLE_TARGET.test(first) ? ASSIGNMENT_OPERATOR.exec(second) : null;
+  if (spaced) return spaced[1] ? [spaced[1], ...rest] : rest;
+  const attached = ATTACHED_ASSIGNMENT.exec(first);
+  if (!attached) return words;
+  return attached[1] ? [attached[1], ...words.slice(1)] : words.slice(1);
+}
+
+function commandWords(words) {
+  let command = words;
+  for (let next = withoutAssignment(command); next !== command; next = withoutAssignment(command)) command = next;
+  return command.length ? [canonicalRoot(command[0]), ...command.slice(1)] : [];
 }
 
 class Unreadable extends Error {}
@@ -98,8 +118,8 @@ class PowerShellReader {
     const ch = this.at();
     if (ch === "$" && this.atStatementStart() && !this.readingMarker) this.noteMarkerStatement();
     if (this.word === null && (this.startsWith("@'\n") || this.startsWith("@'\r\n") || this.startsWith('@"\n') || this.startsWith('@"\r\n'))) return this.readHereString();
-    if (ch === "'") return this.readSingleQuoted();
-    if (ch === '"') return this.readDoubleQuoted();
+    if (SINGLE_QUOTES.has(ch)) return this.readSingleQuoted();
+    if (DOUBLE_QUOTES.has(ch)) return this.readDoubleQuoted();
     if (ch === "`") return this.readEscape();
     if (this.word === null && this.startsWith("<#")) return this.skipBlockComment();
     if (this.word === null && ch === "#") return this.skipLineComment();
@@ -122,8 +142,8 @@ class PowerShellReader {
   readSingleQuoted() {
     let text = "";
     for (let j = this.i + 1; j < this.text.length; j++) {
-      if (this.text[j] !== "'") text += this.text[j];
-      else if (this.text[j + 1] === "'") text += this.text[++j];
+      if (!SINGLE_QUOTES.has(this.text[j])) text += this.text[j];
+      else if (SINGLE_QUOTES.has(this.text[j + 1])) text += this.text[++j];
       else {
         this.append(text);
         this.i = j + 1;
@@ -138,8 +158,8 @@ class PowerShellReader {
     for (let j = this.i + 1; j < this.text.length; j++) {
       const ch = this.text[j];
       if (ch === "`") text += this.text[++j] ?? "";
-      else if (ch === '"' && this.text[j + 1] === '"') text += this.text[++j];
-      else if (ch === '"') {
+      else if (DOUBLE_QUOTES.has(ch) && DOUBLE_QUOTES.has(this.text[j + 1])) text += this.text[++j];
+      else if (DOUBLE_QUOTES.has(ch)) {
         if (text.includes("$(")) this.hiddenExecution = true;
         this.append(text);
         this.i = j + 1;
@@ -232,7 +252,8 @@ class PowerShellReader {
   endSegment() {
     this.endWord();
     if (this.pendingRedirect) this.recordRedirect(null);
-    if (this.words.length) this.segments.push(this.readingMarker ? [markerAssignment(this.words)] : [canonicalRoot(this.words[0]), ...this.words.slice(1)]);
+    const segment = this.readingMarker ? [markerAssignment(this.words)] : commandWords(this.words);
+    if (segment.length) this.segments.push(segment);
     this.words = [];
     this.readingMarker = false;
   }

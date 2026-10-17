@@ -1,8 +1,7 @@
 id: 20261017-guard-and-probe-cover-powershell-commands
 lane: order
 title: Guard and probe cover PowerShell commands
-status: open
+status: done
 created: 2026-10-17T18:07:55.063Z
-updated: 2026-10-17T18:30:00.415Z
+updated: 2026-10-17T18:52:32.534Z
 base: 2af10c94e89c748dfb8973350ffc4363c10a14df
-run_through: 3
