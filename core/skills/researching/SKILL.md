@@ -33,7 +33,7 @@ If this conversation has no `picket admit` answer for the request yet, run `pick
 
 ## The packet
 
-Rendered by code from the report on disk; print it verbatim and nothing else:
+Rendered by code from the report on disk; print it verbatim inside one ```` ```text ```` code fence, so its columns survive, and nothing else:
 
 ```
 picket packet <id>

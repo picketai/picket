@@ -8,7 +8,7 @@ The packet is rendered by code from the developer's saved block, so it has the s
 picket packet <id>
 ```
 
-Print its output verbatim, as plain lines, nothing before it and nothing after it: no summary of the plan, no restatement of the contract, no advice on which option to pick. It looks like this:
+Print its output verbatim inside one ```` ```text ```` code fence, so the terminal keeps its two columns (plain lines are joined by the Markdown renderer), and nothing before or after the fence: no summary of the plan, no restatement of the contract, no advice on which option to pick. It looks like this:
 
 ```
 ▶ phase 1/2 done · 20260914-shop-412-stop-sync-write
