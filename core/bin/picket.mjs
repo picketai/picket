@@ -3,6 +3,7 @@
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
 import { readFileSync } from "node:fs";
 import { packet } from "../lib/packet.mjs";
+import { renderStatusline } from "../lib/statusline.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../lib/pr.mjs";
 import { reviewSummaryRange } from "../lib/review.mjs";
 import { admit } from "../lib/admit.mjs";
@@ -56,6 +57,14 @@ function envFromFlags(values) {
     env[name] = pair.slice(eq + 1);
   }
   return env;
+}
+
+function statuslineInput() {
+  try {
+    return JSON.parse(readFileSync(0, "utf8")) ?? {};
+  } catch {
+    return {};
+  }
 }
 
 function dirtyWarning(dirty) {
@@ -263,6 +272,10 @@ async function main(argv) {
       else console.log(r.text);
       return 0;
     }
+    case "statusline": {
+      process.stdout.write(`${renderStatusline(statuslineInput(), { now: Date.now(), columns: Number(process.env.COLUMNS) })}\n`);
+      return 0;
+    }
     case "pr": {
       if (!rest[0]) throw new Error("pr needs <url>");
       if (opt.post) {
@@ -331,7 +344,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet statusline pr source`);
   }
 }
 

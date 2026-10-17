@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 const BIN = resolve("core/bin/picket.mjs");
 
@@ -106,6 +106,37 @@ test("next --latest prints the newest open item with the fixed key set; next alo
   );
   assert.throws(() => execFileSync("node", [BIN, "next", "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && /next needs <id> or --latest/.test(err.stderr));
   rmSync(root, { recursive: true, force: true });
+});
+
+const ESCAPE = /\x1b\[[0-9;]*m/g;
+const STATUSLINE_INPUT = readFileSync(resolve("test/kernel/statusline-input.json"), "utf8");
+
+function statusline(input, columns) {
+  const result = spawnSync("node", [BIN, "statusline"], { input, encoding: "utf8", env: { ...process.env, COLUMNS: columns } });
+  return { status: result.status, stderr: result.stderr, lines: result.stdout.replace(ESCAPE, "").replace(/\n$/, "").split("\n") };
+}
+
+test("statusline prints the fixture as one line of 158 code points at COLUMNS=160 (T-2.1)", () => {
+  const { status, stderr, lines } = statusline(STATUSLINE_INPUT, "160");
+  assert.equal(status, 0);
+  assert.equal(stderr, "");
+  assert.equal(lines.length, 1);
+  assert.equal([...lines[0]].length, 158);
+  assert.ok(lines[0].startsWith("◆ Opus 5.5 · high · picket:ordering"), lines[0]);
+});
+
+test("statusline splits the fixture into two lines at COLUMNS=90 (T-2.2)", () => {
+  const { lines } = statusline(STATUSLINE_INPUT, "90");
+  assert.equal(lines.length, 2);
+  assert.ok(lines[1].startsWith("5h "), lines[1]);
+});
+
+test("statusline reads input that is not JSON, and empty input, as no facts (T-2.3)", () => {
+  for (const input of ["not json", ""]) {
+    const { status, lines } = statusline(input, "160");
+    assert.equal(status, 0);
+    assert.ok(lines[0].startsWith("◆ ... · default · none"), lines[0]);
+  }
 });
 
 test("usage errors exit 1 with a message on stderr", () => {
