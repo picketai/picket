@@ -31,10 +31,16 @@ core/skills/               lane skills, consulting, documenting, reviewing, tick
                            inspecting
 core/output-styles/        picket:custom, the response rules
 core/bin/picket            the kernel CLI on the Bash tool's PATH; core/bin/picket.mjs runs it; core/lib/ its modules
-core/hooks/                eleven hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
-                           state and rule injection, verdict router, ledger
+core/lib/styling/          what picket setup-terminal installs and picket uninstall removes
+core/themes/               the PicketAI Claude Code theme setup-terminal copies
+core/hooks/                twelve hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
+                           state, rule and extension injection, verdict router, ledger
+status/                    picket-status: the open work item and its agents, above the prompt
+session/                   picket-session: this project's sessions and agents in a docked sidebar (opt-in)
+markdown/                  picket-markdown: a read-only pane for a Markdown path clicked in a reply
 .claude/rules/             harness-authoring (repository-only, never installed)
-.claude-plugin/            the root marketplace picketai: one plugin, picket, from ./core
+.claude-plugin/            the root marketplace picketai: picket from ./core, picket-status from ./status,
+                           picket-session from ./session, picket-markdown from ./markdown
 .picket/config.json        project settings (tracked): security paths, sources, lane caps, commands;
                            the contract is core/lib/config.schema.json
 .picket/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml
@@ -49,4 +55,17 @@ test/                      kernel, hook and budget tests: npm test
 
 ## Status
 
-`artifacts/reports/rework-plan-2026-09-07.md` carries the plan, the research it rests on, the status table and the head-to-head against trunk (section 4.2, clean run of 2026-09-14); `bench/results/comparison-clean.md` is the full report. Headline: 14 of 14 tasks pass against trunk's 13, every task on its intended lane against 57%, cost per task $2.97 against $3.37 at equal wall time, first reviewable output 96 s against 130 s, 0.4 permission prompts per task against 3.1, cache 97% against 91%. The research lane is the one lane that costs more (outline gate).
+Picket is an alpha, published on npm under the `alpha` dist-tag (`npm install -g @picketai/picket@alpha`).
+
+New since 1.0.0-alpha.1:
+
+- `picket setup-terminal` gives Claude Code and the terminal the PicketAI look (theme, font, colour scheme, status line), and `picket uninstall` removes only what you choose.
+- `picket statusline` renders the session line, and `picket init` sets it unless a status line is already set.
+- `picket leave` records cleanup a work item leaves for you; `picket close` lists it.
+- `picket next --latest` answers the newest open work item.
+- `picket --help`, `picket help` and `picket --version`.
+- The skill `picket:explaining` walks one scenario or concept through worked data.
+- `guard.bash` checks PowerShell commands too, and in the default, acceptEdits and auto modes a destructive command can be escalated to you with `PICKET_ESCALATE`.
+- `picket init` installs the mods picket-status and picket-markdown beside picket; picket-session is opt-in.
+
+`bench/results/comparison-clean.md` is the head-to-head against the previous harness (clean run of 2026-09-14). Headline: 14 of 14 tasks pass against trunk's 13, every task on its intended lane against 57%, cost per task $2.97 against $3.37 at equal wall time, first reviewable output 96 s against 130 s, 0.4 permission prompts per task against 3.1, cache 97% against 91%. The research lane is the one lane that costs more (outline gate).

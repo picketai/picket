@@ -20,7 +20,7 @@ In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plug
 node <path to this checkout>/core/bin/picket.mjs init
 ```
 
-It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore` and the permission keys in `.claude/settings.json`, then runs `claude plugin marketplace add` and `claude plugin install picket@picketai` with `--scope project`. A second run changes nothing; `--no-install` skips the two `claude` commands. To undo it, run `claude plugin uninstall picket@picketai --scope project` and `claude plugin marketplace remove picketai --scope project`. A copy stays under `~/.claude/plugins/cache/picketai/`, marked orphaned.
+It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore`, and in `.claude/settings.json` the permission allow and ask rules, `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and the `picket statusline` status line (unless one is already set). Then it runs `claude plugin marketplace add` and `claude plugin install` for `picket@picketai`, `picket-status@picketai` and `picket-markdown@picketai`, all with `--scope project`. A second run changes nothing; `--no-install` skips the four `claude` commands. To undo it, run `claude plugin uninstall` for `picket-markdown@picketai`, `picket-status@picketai` and `picket@picketai` with `--scope project`, then `claude plugin marketplace remove picketai --scope project`. A copy stays under `~/.claude/plugins/cache/picketai/`, marked orphaned.
 
 ## Code
 
@@ -31,6 +31,8 @@ Comments follow `core/rules/comments.md`: write none, and let names, small funct
 ## Tests
 
 Tests use `node:test` with `node:assert/strict`. `npm test` runs every file under `test/` and `bench/test/`; run it before proposing a commit. A check over the whole repository, such as the budgets or the Markdown paths, sits at the root of `test/`.
+
+The three mods have their own suites, which need the `claude` command: `npm run test:status`, `npm run test:session` and `npm run test:markdown` validate the plugin and run its tests.
 
 A test never depends on a gitignored file. A fresh clone must pass, so a test that reads a file only your machine has will fail for everyone else.
 
@@ -44,7 +46,7 @@ A path that is correct but cannot exist here (created at run time, machine-local
 
 ## Commits
 
-A commit message is `type(scope): summary`, with the summary in the present tense and no full stop. Types in use are `feat`, `fix`, `test`, `docs`, `chore` and `bench`. Scopes name the area touched, for example `kernel`, `hooks`, `guards`, `reviewing`, `sources`, `ux` or `bench`; leave the scope out when no single area fits.
+A commit message is `type(scope): summary`, with the summary in the present tense and no full stop. Types in use are `feat`, `fix`, `refactor`, `test`, `docs`, `chore` and `bench`. Scopes name the area touched, for example `kernel`, `hooks`, `guards`, `reviewing`, `sources`, `ux` or `bench`; leave the scope out when no single area fits.
 
 After a work item closes, its state lands in its own commit: `chore(work): close <id>`.
 
@@ -52,11 +54,13 @@ Agents never commit. The developer stages a phase and proposes a message, and th
 
 ## Releasing
 
-A release starts on `trunk` with a clean tree. Run `npm version prerelease --preid alpha`: it bumps the version in `package.json` and in the plugin manifest (through `.github/scripts/release.mjs`), commits both and tags the commit `v<version>`. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux, checks that the tag matches `package.json` and sits on `trunk`, and publishes under the `alpha` dist-tag. npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
+A release starts on `trunk` with a clean tree. Run `npm version prerelease --preid alpha`: it bumps the version in `package.json`, copies it into the four plugin manifests (`core/`, `status/`, `session/` and `markdown/`, through `.github/scripts/release.mjs sync-version`), commits them and tags the commit `v<version>`. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux, checks that the tag matches `package.json` and sits on `trunk`, and publishes under the `alpha` dist-tag. npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
 
 The workflow publishes through npm trusted publishing, so it needs a one-time setup on npmjs.com after the first version was published by hand. Open the package settings of `@picketai/picket` and add a trusted publisher for GitHub Actions with organization `picketai`, repository `picket`, workflow file `release.yml` and no environment.
 
-To check a release before tagging, start the `release` workflow by hand from the Actions tab. It runs the same tests on Linux and ends with `npm publish --dry-run`, which publishes nothing.
+To check a release before tagging, start the `release` workflow by hand from the Actions tab. It runs the same tests on Linux and ends with `npm publish --dry-run`, which publishes nothing. Read the file list it prints: no path may contain `.test.`.
+
+Publish only from the workflow. It packs a Linux checkout, where `core/bin/picket` keeps its executable bit and its LF line ends; a pack made on Windows drops the bit.
 
 ## Folders outside the product
 

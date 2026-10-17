@@ -63,8 +63,13 @@ bench/
   tasks/          14 task definitions (6 fast, 4 order, 2 research, 2 gate-trippers)
   hidden/<task>/  hidden vitest files copied in after the run
   adapters/       trunk.mjs, plugin.mjs: install, gate detection, signals, report paths
-  lib/            fixture.mjs, claude.mjs, grade.mjs, metrics.mjs
+  lib/            approver-mcp.mjs, ask-probe-hook.mjs, claude.mjs, fixture.mjs, grade.mjs,
+                  jobwrap.ps1, lanes.mjs, metrics.mjs, ports.mjs, trust.mjs
   schema/         ledger-v2 (hook ledger rows) and result (this runner's output)
   results/        committed baselines; spend.log is ignored
+  test/           unit tests for metrics, adapters and helpers: npm run bench:test
+  integration/    tests that spawn real processes: npm run bench:integration
   run.mjs, report.mjs
+  probe-ask.mjs   probes how claude -p answers a hook's ask, through the scripted approver
+  selfcheck.mjs   grader check, no LLM: hidden tests fail on the fixture, its own suite passes
 ```
