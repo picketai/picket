@@ -665,27 +665,27 @@ function withEscalationProject(fn) {
   });
 }
 
-test("ASKING_MODES holds default and acceptEdits, each proven by a headless ask cell, and leaves auto out while its dialog is not shown", () => {
+test("ASKING_MODES holds default, acceptEdits and auto, each proven by a headless ask cell, and auto only while its interactive dialog is shown", () => {
   const record = JSON.parse(readFileSync(resolve("bench/results/ask-probe.json"), "utf8"));
-  assert.deepEqual([...ASKING_MODES].sort(), ["acceptEdits", "default"]);
+  assert.deepEqual([...ASKING_MODES].sort(), ["acceptEdits", "auto", "default"]);
   for (const mode of ASKING_MODES) {
     const cell = record.cells.find((c) => c.scenario === "ask" && c.hook_permission_mode === mode);
     assert.ok(cell?.prompt_tool_called && !cell.error, `${mode} needs a headless ask cell that called the prompt tool`);
   }
-  if (record.interactive?.auto_dialog !== "shown") assert.equal(ASKING_MODES.has("auto"), false);
+  assert.equal(record.interactive?.auto_dialog, "shown", "auto is in ASKING_MODES, so the interactive probe must record its dialog as shown");
 });
 
-test("a marked push asks in default and acceptEdits only, and denies for the mode everywhere else", () => {
+test("a marked push asks in default, acceptEdits and auto only, and denies for the mode everywhere else", () => {
   withEscalationProject(({ judge, escalationRows }) => {
-    for (const mode of ["default", "acceptEdits"]) {
+    for (const mode of ["default", "acceptEdits", "auto"]) {
       assert.equal(judge(ESCALATED_PUSH, { permission_mode: mode, session_id: `asks-${mode}` }).permissionDecision, "ask", mode);
     }
-    for (const mode of [undefined, "auto", "plan", "bypassPermissions", "dontAsk"]) {
+    for (const mode of [undefined, "plan", "bypassPermissions", "dontAsk"]) {
       const out = judge(ESCALATED_PUSH, { permission_mode: mode, session_id: `denies-${mode}` });
       assert.equal(out.permissionDecision, "deny", String(mode));
       assert.ok(out.permissionDecisionReason.endsWith(`! ${PUSH}`), out.permissionDecisionReason);
     }
-    assert.deepEqual(escalationRows().map((r) => r.why), [null, null, "mode", "mode", "mode", "mode", "mode"]);
+    assert.deepEqual(escalationRows().map((r) => r.why), [null, null, null, "mode", "mode", "mode", "mode"]);
   });
 });
 
@@ -713,13 +713,13 @@ test("a marked destructive command asks in a proven mode, quoting the reason, an
 
 test("a marked push in an absent or unlisted permission mode denies with the mode and the user's own route", () => {
   withEscalationProject(({ judge, escalationRows }) => {
-    for (const permission_mode of [undefined, "auto", "plan"]) {
+    for (const permission_mode of [undefined, "plan", "bypassPermissions", "dontAsk"]) {
       const out = judge(ESCALATED_PUSH, { permission_mode });
       assert.equal(out.permissionDecision, "deny");
       assert.match(out.permissionDecisionReason, new RegExp(`permission mode ${permission_mode ?? "unknown"}`));
       assert.ok(out.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`), out.permissionDecisionReason);
     }
-    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["denied", "mode"], ["denied", "mode"], ["denied", "mode"]]);
+    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["denied", "mode"], ["denied", "mode"], ["denied", "mode"], ["denied", "mode"]]);
   });
 });
 
@@ -852,17 +852,17 @@ test("the escalation key is the same for the bash marker, both PowerShell marker
   assert.equal(commandKey('PICKET_ESCALATE="c" git push'), key);
 });
 
-test("a PowerShell-marked push asks in default and acceptEdits, denies for the mode in auto, and is not asked twice when it never ran", () => {
+test("a PowerShell-marked push asks in default, acceptEdits and auto, denies for the mode in bypassPermissions, and is not asked twice when it never ran", () => {
   withEscalationProject(({ judge, escalationRows }) => {
     const powerShell = (command, extra = {}) => judge(command, { tool_name: "PowerShell", ...extra });
-    for (const mode of ["default", "acceptEdits"]) {
+    for (const mode of ["default", "acceptEdits", "auto"]) {
       assert.equal(powerShell(POWERSHELL_ESCALATED_PUSH, { permission_mode: mode, session_id: `ps-${mode}` }).permissionDecision, "ask", mode);
     }
-    const auto = powerShell(POWERSHELL_ESCALATED_PUSH, { permission_mode: "auto", session_id: "ps-auto" });
-    assert.equal(auto.permissionDecision, "deny");
-    assert.ok(auto.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`), auto.permissionDecisionReason);
+    const bypass = powerShell(POWERSHELL_ESCALATED_PUSH, { permission_mode: "bypassPermissions", session_id: "ps-bypassPermissions" });
+    assert.equal(bypass.permissionDecision, "deny");
+    assert.ok(bypass.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`), bypass.permissionDecisionReason);
     assert.equal(powerShell(POWERSHELL_ESCALATED_PUSH, { session_id: "ps-default" }).permissionDecision, "deny");
-    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["ask", null], ["ask", null], ["denied", "mode"], ["denied", "refused_before"]]);
+    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["ask", null], ["ask", null], ["ask", null], ["denied", "mode"], ["denied", "refused_before"]]);
     assert.equal(escalationRows()[0].command, PUSH);
   });
 });

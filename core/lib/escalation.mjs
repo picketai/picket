@@ -3,7 +3,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { stateDir, statePath, STATE_FILES } from "./paths.mjs";
 
 export const MARKER = "PICKET_ESCALATE";
-export const ASKING_MODES = new Set(["default", "acceptEdits"]);
+export const ASKING_MODES = new Set(["default", "acceptEdits", "auto"]);
 
 const MAX_REASON_CHARS = 200;
 const LOGGED_CHARS = 300;
