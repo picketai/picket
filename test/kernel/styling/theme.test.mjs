@@ -50,7 +50,7 @@ const SPEC_TOKENS = [
   "permissionShimmer", "remember", "promptBorder", "promptBorderShimmer", "bashBorder", "planMode", "autoAccept", "success",
   "error", "warning", "warningShimmer", "diffAdded", "diffRemoved", "diffAddedWord", "diffRemovedWord", "diffAddedDimmed",
   "diffRemovedDimmed", "userMessageBackground", "userMessageBackgroundHover", "bashMessageBackgroundColor", "selectionBg",
-  "briefLabelYou", "briefLabelClaude", "rate_limit_fill", "rate_limit_empty",
+  "briefLabelYou", "briefLabelClaude", "rate_limit_fill", "rate_limit_empty", "composerSidebarBackground",
 ];
 
 async function withHost(options, fn) {
@@ -82,7 +82,7 @@ function results(report) {
   return Object.fromEntries(report.changes.map((change) => [change.id, change.result]));
 }
 
-test("the plugin theme is the spec's PicketAI theme with 34 hex tokens (T-3.1)", () => {
+test("the plugin theme is the spec's PicketAI theme with 35 hex tokens (T-3.1)", () => {
   const theme = JSON.parse(readFileSync(SOURCE, "utf8"));
   assert.equal(theme.name, "PicketAI");
   assert.equal(theme.base, "dark");

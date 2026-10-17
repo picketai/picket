@@ -12,8 +12,8 @@
   "docs": { "sections": [] },
   "lastChange": {
     "by": "Vlad Apetre",
-    "at": "2026-10-17T17:40:00Z",
+    "at": "2026-10-17T18:20:00Z",
     "via": "Claude Code",
-    "note": "The Markdown pane paints surface; code moves to surface-user"
+    "note": "Sidebar frame on surface (composerSidebarBackground); Claude Code's own line is the pane's only divider"
   }
 }

@@ -6,7 +6,7 @@ The values come from `core/themes/picketai.json` (the Claude Code theme) and `co
 
 ## Principles
 
-Dark first. The ground is `bg` #0D0A08, the same colour as the terminal, so the band never looks like a separate window. The Markdown pane paints `surface` #14110E, one step above the terminal and a theme key, instead of Claude Code's grey; code inside it sits on `surface-user` #1A1410.
+Dark first. The ground is `bg` #0D0A08, the same colour as the terminal, so the band never looks like a separate window. The Markdown pane and Claude Code's sidebar frame around it both paint `surface` #14110E, one step above the terminal, instead of the default grey; Claude Code's own one-column line on the pane's left is the only divider from the transcript, and the pane draws none. Code inside it sits on `surface-user` #1A1410.
 
 One accent. `accent` #F9782B marks what is active or what you can act on: a command, a path, a link, the selected file, the agent that is working. If everything is orange, nothing is. Labels and elapsed times stay `inactive`. Every icon you can click (? ⧉ ✎) uses `accent-shimmer`, so it reads as a control without competing with the active state.
 
@@ -27,7 +27,7 @@ The product is **Picket**; the project and brand are **PicketAI**. "Harness" is 
 | Token | Value | Claude Code theme key | Use |
 | --- | --- | --- | --- |
 | `bg` | #0D0A08 | inverseText | Terminal, pane and band background |
-| `surface` | #14110E | bashMessageBackgroundColor | Code blocks, pages |
+| `surface` | #14110E | bashMessageBackgroundColor, composerSidebarBackground | The Markdown pane and its sidebar frame, pages |
 | `text` | #FDEFD4 | text | Body text, headings in bold |
 | `accent` | #F9782B | claude, suggestion, permission | Active and actionable |
 | `accent-shimmer` | #FFB27A | claudeShimmer | Clickable icons, highlights, numbers in code |
@@ -42,7 +42,7 @@ The product is **Picket**; the project and brand are **PicketAI**. "Harness" is 
 | `warning` | #F5C04A | warning | Waiting, your gate, from 70% |
 | `error` | #E5484D | error | Blocked, conflicts, from 90% |
 
-`row-highlight` and `edge` have no theme key, so terminal UI does not use them: the Markdown pane highlights rows with `surface-user-hover` (theme key userMessageBackgroundHover) and draws no pane edge. Pages and mockups may use both.
+`row-highlight` and `edge` have no theme key, so terminal UI does not use them: the Markdown pane highlights rows with `surface-user-hover` (theme key userMessageBackgroundHover) and draws no edge of its own. Pages and mockups may use both.
 
 ## Terminal roles
 
@@ -59,7 +59,7 @@ How the status line, the status band and the Markdown pane colour each element.
 | Clickable icons: ? ⧉ ✎ ← ◂ ▸ | `accent-shimmer` |
 | Folders | `inactive` |
 | Rules, separators, code frame | `border` |
-| Pane background | `surface` |
+| Pane background and sidebar frame | `surface` |
 | Code block | `text` on `surface-user` |
 | Active tab | `text`, bold, underlined (a terminal draws the underline in the text colour) |
 | Inactive tab | `inactive` |
