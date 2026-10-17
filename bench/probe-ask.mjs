@@ -15,7 +15,10 @@ const SCRATCH_ROOT = realpathSync.native(tmpdir());
 const SCRATCH_PREFIX = "picket-ask-probe-";
 export const INTERACTIVE_DIR = join(SCRATCH_ROOT, `${SCRATCH_PREFIX}interactive`);
 
-const OK_COMMAND = "echo picket-probe-ok";
+const OK_SENTINEL = "picket-probe-ok";
+const BANG_SENTINEL = "picket-probe-bang";
+const OK_COMMAND = `echo ${OK_SENTINEL}`;
+const PROBED_TOOLS = "Bash|PowerShell";
 const FAILING_COMMAND = "ls picket-probe-missing";
 const SETTING_SOURCES = "project,local";
 const MODEL = "haiku";
@@ -30,7 +33,7 @@ export const CELLS = [
 ];
 
 const AUTO_ANSWERS = { shown: "shown", silent: "silent" };
-const BANG_ANSWERS = { hooked: true, unhooked: false };
+const UNRECORDED_INTERACTIVE = { auto_dialog: null, bang_hooked: null, tool: null };
 
 export function sentinelFor(scenario) {
   return scenario === "ask+fail" ? FAILING_COMMAND : OK_COMMAND;
@@ -41,7 +44,7 @@ function forwardSlashes(path) {
 }
 
 export function probeSettings(logPath) {
-  const hook = { matcher: "Bash", hooks: [{ type: "command", command: `node "${forwardSlashes(HOOK)}" "${forwardSlashes(logPath)}"` }] };
+  const hook = { matcher: PROBED_TOOLS, hooks: [{ type: "command", command: `node "${forwardSlashes(HOOK)}" "${forwardSlashes(logPath)}"` }] };
   return { hooks: { PreToolUse: [hook], PostToolUse: [hook], PostToolUseFailure: [hook] } };
 }
 
@@ -73,8 +76,12 @@ function readJsonLines(path) {
   });
 }
 
+function projectPaths(dir) {
+  return { hookLog: join(dir, "hook-log.jsonl"), promptLog: join(dir, "prompt-log.jsonl"), mcpConfig: join(dir, "mcp.json") };
+}
+
 function buildProject(dir, scenario) {
-  const paths = { hookLog: join(dir, "hook-log.jsonl"), promptLog: join(dir, "prompt-log.jsonl"), mcpConfig: join(dir, "mcp.json") };
+  const paths = projectPaths(dir);
   writeJson(join(dir, ".claude", "settings.json"), probeSettings(paths.hookLog));
   if (scenario === "ask+rule") writeJson(join(dir, ".claude", "settings.local.json"), allowRuleSettings());
   writeJson(paths.mcpConfig, { mcpServers: { bench: { command: "node", args: [APPROVER], env: { BENCH_PROMPT_LOG: paths.promptLog } } } });
@@ -163,7 +170,7 @@ async function probe() {
     cells.push(summary);
   }
   const previous = existsSync(RECORD) ? JSON.parse(readFileSync(RECORD, "utf8")) : null;
-  writeJson(RECORD, { claude_version: claudeVersion(), ran_at: new Date().toISOString(), cells, interactive: previous?.interactive ?? { auto_dialog: null, bang_hooked: null } });
+  writeJson(RECORD, { claude_version: claudeVersion(), ran_at: new Date().toISOString(), cells, interactive: previous?.interactive ?? UNRECORDED_INTERACTIVE });
   process.stdout.write(`wrote ${RECORD}\n`);
 }
 
@@ -174,8 +181,8 @@ function interactive() {
     [
       `Scratch project: ${INTERACTIVE_DIR}`,
       `1. In that directory run \`claude --permission-mode auto\`, accept the trust dialog, and ask it to run \`${OK_COMMAND}\`. Note whether a permission dialog appears (shown) or not (silent).`,
-      `2. In the same session type \`! ${OK_COMMAND}\` and check whether ${hookLog} gains a line for it (hooked) or not (unhooked).`,
-      `3. Exit, then run: node bench/probe-ask.mjs --confirm auto=shown|silent bang=hooked|unhooked`,
+      `2. In the same session type \`! echo ${BANG_SENTINEL}\`. ${hookLog} records whether the hook saw it.`,
+      `3. Exit, then run: node bench/probe-ask.mjs --confirm auto=shown|silent`,
       "",
     ].join("\n"),
   );
@@ -183,19 +190,32 @@ function interactive() {
 
 export function parseConfirm(args) {
   const answers = Object.fromEntries(args.map((arg) => arg.split("=")));
+  const unknownKeys = Object.keys(answers).filter((key) => key !== "auto");
+  if (unknownKeys.length) throw new Error(`--confirm takes only auto=; got ${unknownKeys.join(", ")}`);
   if (!Object.hasOwn(AUTO_ANSWERS, answers.auto ?? "")) throw new Error("--confirm needs auto=shown or auto=silent");
-  if (!Object.hasOwn(BANG_ANSWERS, answers.bang ?? "")) throw new Error("--confirm needs bang=hooked or bang=unhooked");
-  return { auto_dialog: AUTO_ANSWERS[answers.auto], bang_hooked: BANG_ANSWERS[answers.bang] };
+  return { auto_dialog: AUTO_ANSWERS[answers.auto] };
 }
 
-export function withInteractive(record, interactiveAnswers) {
-  return { ...record, interactive: interactiveAnswers };
+function preToolUseFor(hookLines, sentinel) {
+  return hookLines.find((line) => line.event === "PreToolUse" && line.command?.includes(sentinel));
+}
+
+export function interactiveAnswers(hookLines, args) {
+  const { auto_dialog } = parseConfirm(args);
+  const okLine = preToolUseFor(hookLines, OK_SENTINEL);
+  if (!okLine) throw new Error(`the hook log has no PreToolUse line for ${OK_SENTINEL}; the probe hook did not run, so nothing was recorded`);
+  return { auto_dialog, bang_hooked: Boolean(preToolUseFor(hookLines, BANG_SENTINEL)), tool: okLine.tool ?? null };
+}
+
+export function withInteractive(record, interactive) {
+  return { ...record, interactive };
 }
 
 function confirm(args) {
   if (!existsSync(RECORD)) throw new Error(`no record at ${RECORD}; run the probe first`);
   const record = JSON.parse(readFileSync(RECORD, "utf8"));
-  writeJson(RECORD, withInteractive(record, parseConfirm(args)));
+  const answers = interactiveAnswers(readJsonLines(projectPaths(INTERACTIVE_DIR).hookLog), args);
+  writeJson(RECORD, withInteractive(record, answers));
   untrustWorkspace(INTERACTIVE_DIR);
   removeScratch(INTERACTIVE_DIR);
   process.stdout.write(`wrote interactive answers to ${RECORD}\n`);

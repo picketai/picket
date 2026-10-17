@@ -9,6 +9,7 @@ export const ASK_REASON = "picket ask probe: sentinel command";
 export function logLine(input) {
   return {
     event: input?.hook_event_name ?? null,
+    tool: input?.tool_name ?? null,
     permission_mode: input?.permission_mode ?? null,
     has_tool_use_id: typeof input?.tool_use_id === "string",
     command: typeof input?.tool_input?.command === "string" ? input.tool_input.command.slice(0, 300) : null,

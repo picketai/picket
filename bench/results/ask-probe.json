@@ -100,7 +100,8 @@
     }
   ],
   "interactive": {
-    "auto_dialog": "silent",
-    "bang_hooked": false
+    "auto_dialog": "shown",
+    "bang_hooked": false,
+    "tool": "PowerShell"
   }
 }
