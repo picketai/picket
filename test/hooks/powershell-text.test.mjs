@@ -68,6 +68,17 @@ test("redirects record their target, $null discards, and stream merging is plumb
   assert.deepEqual(readPowerShell("echo x >").redirectTargets, [null]);
 });
 
+test("a leading escalation statement folds into the one command after it as a marker assignment", () => {
+  assert.deepEqual(segments('$env:PICKET_ESCALATE = "you asked for the tag"; git push origin v1'), [["PICKET_ESCALATE=you asked for the tag", "git", "push", "origin", "v1"]]);
+  assert.deepEqual(segments("$ENV:PICKET_ESCALATE='it''s the tag';git push"), [["PICKET_ESCALATE=it's the tag", "git", "push"]]);
+  assert.deepEqual(segments('git status; $env:PICKET_ESCALATE = "x"; git push'), [["git", "status"], ["PICKET_ESCALATE=x"], ["git", "push"]]);
+  assert.deepEqual(segments('$env:PICKET_ESCALATE = "x"; git status; git push'), [["PICKET_ESCALATE=x"], ["git", "status"], ["git", "push"]]);
+  assert.deepEqual(segments('$env:PICKET_ESCALATE = "x"; git push | Out-Null'), [["PICKET_ESCALATE=x"], ["git", "push"], ["out-null"]]);
+  assert.deepEqual(segments('$env:PICKET_ESCALATE = "x"\ngit push'), [["PICKET_ESCALATE=x"], ["git", "push"]]);
+  assert.deepEqual(segments("$env:PICKET_ESCALATE = $why; git push"), [["$env:picket_escalate", "=", "$why"], ["git", "push"]]);
+  assert.deepEqual(segments('$env:picket_escalate = "x"; git push'), [["$env:picket_escalate", "=", "x"], ["git", "push"]]);
+});
+
 test("a trailing & runs in the background", () => {
   const reading = readPowerShell("npm start &");
   assert.equal(reading.sawBackground, true);

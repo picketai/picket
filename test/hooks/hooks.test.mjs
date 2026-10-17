@@ -693,10 +693,41 @@ test("observe.drive appends one ran escalation row for an asked marked command, 
   rmSync(root, { recursive: true, force: true });
 });
 
-test("observe.drive is registered for PostToolUseFailure on Bash and records a failed escalation as ran, with no drive-log row", () => {
+test("observe.drive is registered for PostToolUse and PostToolUseFailure on Bash and PowerShell", () => {
   const hooks = JSON.parse(readFileSync(resolve("core/hooks/hooks.json"), "utf8")).hooks;
-  const failure = hooks.PostToolUseFailure.find((entry) => entry.matcher === "Bash");
-  assert.ok(failure.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/observe.drive.mjs"))));
+  for (const event of ["PostToolUse", "PostToolUseFailure"]) {
+    const observers = hooks[event].filter((entry) => entry.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/observe.drive.mjs"))));
+    assert.deepEqual(observers.map((entry) => entry.matcher), ["Bash|PowerShell"], event);
+  }
+});
+
+const POWERSHELL_MARKED_PUSH = '$env:PICKET_ESCALATE = "you asked for the tag"; git push origin v1';
+
+test("a PowerShell escalation the guard asked for gets a ran row with the same key, and a failure gets ran failed with no drive-log row", () => {
+  const { root } = project();
+  const home = mkdtempSync(join(tmpdir(), "harness-home-"));
+  const event = (hook_event_name, command, session_id) => ({ hook_event_name, tool_name: "PowerShell", tool_input: { command }, cwd: root, session_id, permission_mode: "default" });
+  const guardOut = execFileSync("node", [join(HOOKS, "guard.bash.mjs")], { input: JSON.stringify(event("PreToolUse", POWERSHELL_MARKED_PUSH, "s20")), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root, HOME: home, USERPROFILE: home } });
+  assert.equal(JSON.parse(guardOut).hookSpecificOutput.permissionDecision, "ask");
+  rmSync(home, { recursive: true, force: true });
+  run("observe.drive.mjs", event("PostToolUse", POWERSHELL_MARKED_PUSH, "s20"), root);
+  const [ask, ran] = ledgerRows(root);
+  assert.deepEqual([ask.outcome, ran.outcome, ran.why], ["ask", "ran", null]);
+  assert.equal(ran.key, ask.key);
+  assert.equal(ran.reason, "you asked for the tag");
+
+  const driveRowsBefore = driveLogRows(root).length;
+  asked(root, "s21");
+  run("observe.drive.mjs", event("PostToolUseFailure", POWERSHELL_MARKED_PUSH, "s21"), root);
+  assert.deepEqual(ledgerRows(root).slice(-2).map((r) => [r.outcome, r.why]), [["ask", null], ["ran", "failed"]]);
+  assert.equal(driveLogRows(root).length, driveRowsBefore);
+
+  run("observe.drive.mjs", event("PostToolUse", "picket state x", "s22"), root);
+  assert.equal(JSON.parse(driveLogRows(root).at(-1)).kind, "inspect");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("observe.drive records a failed escalation as ran, with no drive-log row", () => {
 
   const { root } = project();
   const fail = (command) => run("observe.drive.mjs", { hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s13" }, root);

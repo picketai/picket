@@ -28,7 +28,7 @@ import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
 import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
 import { detectTooling } from "../tooling.mjs";
 import { bareAgentName } from "../agent-name.mjs";
-import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, recordEscalation, withoutMarker } from "../escalation.mjs";
+import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, POWERSHELL_MARKER_TEXT, recordEscalation, withoutMarker } from "../escalation.mjs";
 import { readLedger } from "../cost.mjs";
 import { escalationAllowRules } from "../saved-rules.mjs";
 import { readPowerShell } from "../powershell-text.mjs";
@@ -1019,7 +1019,7 @@ export function guardBash(input, { root, home = homedir() }) {
 
   const escalation = { mode: input?.permission_mode ?? null, session: input?.session_id ?? null, agent: bareAgentName(input?.agent_type), home };
   const evaluate = tool === POWERSHELL_TOOL ? evaluatePowerShell : evaluateCommand;
-  const { decision, reason } = evaluate(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0, escalation });
+  const { decision, reason } = evaluate(rawCommand, { cwd, root, sources: protectedSources(root), depth: 0, escalation, tool });
   return decision ? outcome.decide(decision, reason) : outcome.fallThrough(reason);
 }
 
@@ -1030,7 +1030,7 @@ const LEAVE_HINT = 'Cleanup after the work is never escalated: record it with `p
 const ESCALATE_HINT = `If the user asked for this action in this session or the work cannot continue without it, run it alone as \`PICKET_ESCALATE="<why>" <command>\` and the user decides in the dialog. ${LEAVE_HINT}`;
 
 function powerShellDenial(command) {
-  return `guard.bash: PowerShell command contains a destructive sub-command (e.g. Remove-Item, Stop-Process, Clear-Content, git push/reset/rebase/checkout/merge/clean). If the user asked for this action, the user runs it: ! ${maskEnvValues(command)}. ${LEAVE_HINT}`;
+  return `guard.bash: PowerShell command contains a destructive sub-command (e.g. Remove-Item, Stop-Process, Clear-Content, git push/reset/rebase/checkout/merge/clean). If the user asked for this action in this session or the work cannot continue without it, run it alone as \`${POWERSHELL_MARKER_TEXT} = "<why>"; <command>\` and the user decides in the dialog, or the user runs it: ! ${maskEnvValues(command)}. ${LEAVE_HINT}`;
 }
 
 function sourceCheck(seg, cwd, roots) {
@@ -1079,10 +1079,15 @@ function evaluatePowerShell(command, ctx) {
   if (!reading.segments.length) return fallThrough("no-segments");
   const classifications = [];
   const cwdsSeen = [cwd];
+  const logRefusal = refusalLogger(command, reading.segments, ctx);
+  const refuse = ({ why, reason }) => {
+    logRefusal(why);
+    return decide("deny", reason);
+  };
   let effCwd = cwd;
   for (const seg of reading.segments) {
     const { hit, refusal } = sourceCheck(seg, effCwd, roots);
-    if (refusal) return decide("deny", refusal.reason);
+    if (refusal) return refuse(refusal);
     classifications.push(hit ? "safe" : classifyPowerShellSegment(seg, effCwd, root));
     if (seg[0] === "cd") {
       effCwd = powerShellCd(seg, effCwd);
@@ -1090,10 +1095,13 @@ function evaluatePowerShell(command, ctx) {
     }
     const wrapped = wrappedVerbCheck(seg, effCwd, roots);
     if (wrapped?.fallThrough) return fallThrough(wrapped.fallThrough);
-    if (wrapped) return decide("deny", wrapped.reason);
+    if (wrapped) return refuse(wrapped);
   }
   const redirectHit = roots.length && reading.sawWriteRedirect ? redirectSource(reading.redirectTargets, cwdsSeen, roots) : null;
-  if (redirectHit) return decide("deny", sourceDenial(redirectHit, "a write redirect"));
+  if (redirectHit) return refuse({ why: "source", reason: sourceDenial(redirectHit, "a write redirect") });
+  if (ctx.depth === 0 && ctx.escalation && reading.segments.some(carriesMarker)) {
+    return judgeEscalation(command, reading.segments, classifications, reading, ctx);
+  }
   if (classifications.includes("deny")) return decide("deny", powerShellDenial(command));
   return fallThrough(`powershell:[${classifications.join(",")}]`);
 }
@@ -1144,7 +1152,7 @@ function judgeEscalation(rawCommand, segments, classifications, flags, ctx) {
   const { shapeProblem, reason: rawReason } = readEscalation(segments, flags);
   const commandClass = classifications[0];
   const passedMode = !shapeProblem && commandClass === "deny" && ASKING_MODES.has(escalation.mode);
-  const savedRules = passedMode ? escalationAllowRules({ root, home: escalation.home }) : [];
+  const savedRules = passedMode ? escalationAllowRules({ root, home: escalation.home, tool: ctx.tool, command }) : [];
   const refusedBefore = passedMode && !savedRules.length && notRunBefore(readLedger(root), escalation.session, commandKey(command));
   const verdict = escalationVerdict({ shapeProblem, commandClass, mode: escalation.mode, savedRules, refusedBefore });
   if (!verdict) return fallThrough("escalation-not-destructive");

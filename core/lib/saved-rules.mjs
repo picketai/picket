@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { MARKER } from "./escalation.mjs";
+import { MARKER, POWERSHELL_MARKER_TEXT } from "./escalation.mjs";
 import { hostPath } from "./paths.mjs";
 
 const BASH_RULE = /^Bash(?:\((.*)\))?$/s;
+const POWERSHELL_RULE = /^PowerShell(?:\((.*)\))?$/s;
 
 export function settingsFiles(root, home) {
   return [hostPath(home, "settings.json"), hostPath(root, "settings.json"), hostPath(root, "settings.local.json")];
@@ -35,6 +36,16 @@ export function couldMatchEscalation(rule) {
   return prefix !== null && (MARKED_PREFIX.startsWith(prefix) || prefix.startsWith(MARKED_PREFIX));
 }
 
-export function escalationAllowRules({ root, home = homedir() }) {
-  return settingsFiles(root, home).flatMap((file) => allowRules(file).filter(couldMatchEscalation).map((rule) => ({ rule, file })));
+export function couldMatchPowerShellEscalation(rule, command) {
+  const match = rule.trim().match(POWERSHELL_RULE);
+  if (!match) return false;
+  const pattern = match[1];
+  if (pattern === undefined || pattern.startsWith("*") || pattern.includes(MARKER)) return true;
+  const prefix = literalPrefix(pattern)?.toLowerCase();
+  return prefix != null && [command, POWERSHELL_MARKER_TEXT].some((text) => text.toLowerCase().startsWith(prefix));
+}
+
+export function escalationAllowRules({ root, home = homedir(), tool = "Bash", command = "" }) {
+  const couldMatch = tool === "PowerShell" ? (rule) => couldMatchPowerShellEscalation(rule, command) : couldMatchEscalation;
+  return settingsFiles(root, home).flatMap((file) => allowRules(file).filter(couldMatch).map((rule) => ({ rule, file })));
 }

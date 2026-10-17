@@ -7,8 +7,10 @@ import { kernelVerbStart } from "../kernel-call.mjs";
 import { parse } from "../vendor/shell-quote-parse.mjs";
 import { commandKey, escalationMarker, notRunBefore, recordEscalation, withoutMarker } from "../escalation.mjs";
 import { readLedger } from "../cost.mjs";
+import { readPowerShell } from "../powershell-text.mjs";
 
 const LOGGED_COMMAND_CHARS = 200;
+const POWERSHELL_TOOL = "PowerShell";
 
 export function openWorkItem(root) {
   for (const id of listWork(root).reverse()) {
@@ -26,7 +28,7 @@ function tokenize(command) {
   }
 }
 
-function commandSegments(command) {
+function bashSegments(command) {
   const segments = [[]];
   for (const token of tokenize(command)) {
     if (typeof token === "string") segments.at(-1).push(token);
@@ -35,8 +37,12 @@ function commandSegments(command) {
   return segments.map((words) => (words[0] === "{" ? words.slice(1) : words));
 }
 
-function isKernelCall(command) {
-  return commandSegments(command).some((words) => kernelVerbStart(words) !== null);
+function commandSegments(command, tool) {
+  return tool === POWERSHELL_TOOL ? (readPowerShell(command)?.segments ?? []) : bashSegments(command);
+}
+
+function isKernelCall(segments) {
+  return segments.some((words) => kernelVerbStart(words) !== null);
 }
 
 const QUOTED_ENV_FLAG = /--env(\s+)(["'])([A-Za-z_][A-Za-z0-9_]*)=[^"']*\2/g;
@@ -46,12 +52,11 @@ export function maskEnvValues(command) {
   return command.replace(QUOTED_ENV_FLAG, "--env$1$3=***").replace(ENV_FLAG, "--env$1$2=***");
 }
 
-function commandKind(command) {
-  return !isKernelCall(command) && isDriveCommand(command) ? "drive" : "inspect";
+function commandKind(command, segments) {
+  return !isKernelCall(segments) && isDriveCommand(command) ? "drive" : "inspect";
 }
 
-function escalationReason(command) {
-  const segments = commandSegments(command);
+function escalationReason(segments) {
   if (segments.length !== 1) return null;
   const marker = escalationMarker(segments[0]);
   return marker && !marker.invalid ? marker.reason : null;
@@ -59,8 +64,8 @@ function escalationReason(command) {
 
 const FAILURE_EVENT = "PostToolUseFailure";
 
-function recordRanEscalation(root, command, { session, agent, work_id, failed }) {
-  const reason = escalationReason(command);
+function recordRanEscalation(root, command, segments, { session, agent, work_id, failed }) {
+  const reason = escalationReason(segments);
   if (reason === null) return;
   const escalated = maskEnvValues(withoutMarker(command));
   if (!notRunBefore(readLedger(root), session, commandKey(escalated))) return;
@@ -74,19 +79,20 @@ export function observeDrive(event, { root }) {
   const session = event.session_id ?? null;
   const agent = bareAgentName(event.agent_type);
   const failed = event.hook_event_name === FAILURE_EVENT;
+  const segments = commandSegments(command, event.tool_name);
   mkdirSync(stateDir(root), { recursive: true });
   if (!failed) {
     const row = {
       ts: new Date().toISOString(),
       session,
       agent,
-      kind: commandKind(command),
+      kind: commandKind(command, segments),
       command: maskEnvValues(command).replace(/\s+/g, " ").slice(0, LOGGED_COMMAND_CHARS),
       work_id,
       phase,
     };
     appendFileSync(statePath(root, STATE_FILES.driveLog), JSON.stringify(row) + "\n");
   }
-  recordRanEscalation(root, command, { session, agent, work_id, failed });
+  recordRanEscalation(root, command, segments, { session, agent, work_id, failed });
   return null;
 }

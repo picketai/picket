@@ -1,4 +1,5 @@
 import { normalizeRoot } from "./kernel-call.mjs";
+import { MARKER, POWERSHELL_FOLDABLE_MARKER, POWERSHELL_MARKER_STATEMENT } from "./escalation.mjs";
 
 const CANONICAL_GROUPS = [
   ["Remove-Item", ["remove-item", "ri", "rm", "rmdir", "rd", "del", "erase"]],
@@ -29,6 +30,11 @@ export function canonicalRoot(word) {
   return CANONICAL_ROOTS.get(name) ?? name;
 }
 
+function markerAssignment(words) {
+  const statement = words.join("");
+  return `${MARKER}=${statement.slice(statement.indexOf("=") + 1)}`;
+}
+
 class Unreadable extends Error {}
 
 class PowerShellReader {
@@ -43,13 +49,15 @@ class PowerShellReader {
     this.sawWriteRedirect = false;
     this.sawBackground = false;
     this.redirectTargets = [];
+    this.markers = [];
+    this.readingMarker = false;
   }
 
   read() {
     while (this.i < this.text.length) this.step();
     this.endSegment();
     return {
-      segments: this.segments,
+      segments: this.foldedSegments(),
       hiddenExecution: this.hiddenExecution,
       sawWriteRedirect: this.sawWriteRedirect,
       sawBackground: this.sawBackground,
@@ -73,8 +81,22 @@ class PowerShellReader {
     this.word = (this.word ?? "") + text;
   }
 
+  foldedSegments() {
+    const [marker] = this.markers;
+    const foldable = this.markers.length === 1 && marker.index === 0 && marker.foldable && this.segments.length === 2;
+    return foldable ? [[...this.segments[0], ...this.segments[1]]] : this.segments;
+  }
+
+  noteMarkerStatement() {
+    const rest = this.text.slice(this.i);
+    if (!POWERSHELL_MARKER_STATEMENT.test(rest)) return;
+    this.readingMarker = true;
+    this.markers.push({ index: this.segments.length, foldable: !this.text.slice(0, this.i).trim() && POWERSHELL_FOLDABLE_MARKER.test(rest) });
+  }
+
   step() {
     const ch = this.at();
+    if (ch === "$" && this.atStatementStart() && !this.readingMarker) this.noteMarkerStatement();
     if (this.word === null && (this.startsWith("@'\n") || this.startsWith("@'\r\n") || this.startsWith('@"\n') || this.startsWith('@"\r\n'))) return this.readHereString();
     if (ch === "'") return this.readSingleQuoted();
     if (ch === '"') return this.readDoubleQuoted();
@@ -210,8 +232,9 @@ class PowerShellReader {
   endSegment() {
     this.endWord();
     if (this.pendingRedirect) this.recordRedirect(null);
-    if (this.words.length) this.segments.push([canonicalRoot(this.words[0]), ...this.words.slice(1)]);
+    if (this.words.length) this.segments.push(this.readingMarker ? [markerAssignment(this.words)] : [canonicalRoot(this.words[0]), ...this.words.slice(1)]);
     this.words = [];
+    this.readingMarker = false;
   }
 }
 

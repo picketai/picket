@@ -13,7 +13,7 @@ import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.m
 import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
 import { guardBash, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
-import { ASKING_MODES } from "../../core/lib/escalation.mjs";
+import { ASKING_MODES, commandKey } from "../../core/lib/escalation.mjs";
 import { observeDrive } from "../../core/lib/hooks/observe.drive.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
 import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
@@ -840,6 +840,63 @@ test("an ask that never ran is not asked again in its session; one that ran gets
 
     ran("ls");
     assert.deepEqual(escalationRows().map((r) => [r.session, r.outcome, r.why]), [["s1", "ask", null], ["s1", "denied", "refused_before"], ["s2", "ask", null], ["s1", "ask", null]]);
+  });
+});
+
+const POWERSHELL_ESCALATED_PUSH = `$env:PICKET_ESCALATE = "you asked me to push the release tag"; ${PUSH}`;
+
+test("the escalation key is the same for the bash marker, both PowerShell marker quotes and the bare command", () => {
+  const key = commandKey("git push");
+  assert.equal(commandKey("$env:PICKET_ESCALATE='a'; git push"), key);
+  assert.equal(commandKey('$env:PICKET_ESCALATE="b"; git push'), key);
+  assert.equal(commandKey('PICKET_ESCALATE="c" git push'), key);
+});
+
+test("a PowerShell-marked push asks in default and acceptEdits, denies for the mode in auto, and is not asked twice when it never ran", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    const powerShell = (command, extra = {}) => judge(command, { tool_name: "PowerShell", ...extra });
+    for (const mode of ["default", "acceptEdits"]) {
+      assert.equal(powerShell(POWERSHELL_ESCALATED_PUSH, { permission_mode: mode, session_id: `ps-${mode}` }).permissionDecision, "ask", mode);
+    }
+    const auto = powerShell(POWERSHELL_ESCALATED_PUSH, { permission_mode: "auto", session_id: "ps-auto" });
+    assert.equal(auto.permissionDecision, "deny");
+    assert.ok(auto.permissionDecisionReason.endsWith(`run it yourself: ! ${PUSH}`), auto.permissionDecisionReason);
+    assert.equal(powerShell(POWERSHELL_ESCALATED_PUSH, { session_id: "ps-default" }).permissionDecision, "deny");
+    assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["ask", null], ["ask", null], ["denied", "mode"], ["denied", "refused_before"]]);
+    assert.equal(escalationRows()[0].command, PUSH);
+  });
+});
+
+test("a PowerShell marker that is not first or stands before two commands denies on shape", () => {
+  withEscalationProject(({ judge, escalationRows }) => {
+    for (const command of [`git status; $env:PICKET_ESCALATE = "x"; ${PUSH}`, `$env:PICKET_ESCALATE = "x"; git status; ${PUSH}`, `$env:PICKET_ESCALATE = "x"; ${PUSH} > out.txt`]) {
+      const out = judge(command, { tool_name: "PowerShell" });
+      assert.equal(out?.permissionDecision, "deny", command);
+      assert.match(out.permissionDecisionReason, /escalate one command, alone/, command);
+    }
+    assert.ok(escalationRows().every((r) => r.why === "shape"));
+  });
+});
+
+test("a saved PowerShell rule that could approve the escalation turns it into a deny, and a Bash rule does not", () => {
+  withEscalationProject(({ root, judge }) => {
+    mkdirSync(join(root, ".claude"), { recursive: true });
+    writeFileSync(join(root, ".claude", "settings.local.json"), JSON.stringify({ permissions: { allow: ["Bash(git *)", "PowerShell(picket *)"] } }));
+    assert.equal(judge(POWERSHELL_ESCALATED_PUSH, { tool_name: "PowerShell" }).permissionDecision, "ask");
+    writeFileSync(join(root, ".claude", "settings.local.json"), JSON.stringify({ permissions: { allow: ["PowerShell(git *)"] } }));
+    const out = judge(POWERSHELL_ESCALATED_PUSH, { tool_name: "PowerShell", session_id: "s2" });
+    assert.equal(out.permissionDecision, "deny");
+    assert.match(out.permissionDecisionReason, /saved allow rule PowerShell\(git \*\)/);
+  });
+});
+
+test("the PowerShell deny names the PowerShell marker form and the Bash deny keeps its text", () => {
+  withEscalationProject(({ judge }) => {
+    assert.match(judge(PUSH, { tool_name: "PowerShell" }).permissionDecisionReason, /\$env:PICKET_ESCALATE = "<why>"; <command>/);
+    assert.equal(
+      judge(PUSH).permissionDecisionReason,
+      'guard.bash: command contains a destructive sub-command (e.g. rm, sudo, git push/reset/rebase/checkout/merge/clean). If the user asked for this action in this session or the work cannot continue without it, run it alone as `PICKET_ESCALATE="<why>" <command>` and the user decides in the dialog. Cleanup after the work is never escalated: record it with `picket leave <id> --command "<command>"` and it is listed when the item closes.',
+    );
   });
 });
 

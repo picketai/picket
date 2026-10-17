@@ -10,6 +10,17 @@ const LOGGED_CHARS = 300;
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const NON_LITERAL = /[\n\r$`]/;
 const LEADING_MARKER = new RegExp(`^\\s*${MARKER}=(?:"(?:[^"\\\\]|\\\\.)*"|'[^']*'|\\\\.|[^\\s"'\\\\])*\\s*`);
+const POWERSHELL_ENV_DRIVE = "$env:";
+export const POWERSHELL_MARKER_TEXT = `${POWERSHELL_ENV_DRIVE}${MARKER}`;
+
+function anyCase(text) {
+  return [...text].map((ch) => (/[a-z]/i.test(ch) ? `[${ch.toLowerCase()}${ch.toUpperCase()}]` : `\\${ch}`)).join("");
+}
+
+const POWERSHELL_MARKER_ASSIGNMENT = String.raw`${anyCase(POWERSHELL_ENV_DRIVE)}${MARKER}\s*=\s*(?:'(?:[^']|'')*'|"(?:[^"\x60]|\x60[\s\S]|"")*")`;
+export const POWERSHELL_MARKER_STATEMENT = new RegExp(String.raw`^${POWERSHELL_MARKER_ASSIGNMENT}(?=[ \t]*(?:;|\r?\n|$))`);
+export const POWERSHELL_FOLDABLE_MARKER = new RegExp(String.raw`^${POWERSHELL_MARKER_ASSIGNMENT}[ \t]*;`);
+const POWERSHELL_LEADING_MARKER = new RegExp(String.raw`^\s*${POWERSHELL_MARKER_ASSIGNMENT}[ \t]*;`);
 
 export function leadingAssignments(segment) {
   const firstCommandToken = segment.findIndex((token) => typeof token !== "string" || !ASSIGNMENT.test(token));
@@ -40,7 +51,7 @@ export function escalationMarker(segment, { isOpaque = () => false } = {}) {
 }
 
 export function withoutMarker(rawCommand) {
-  return rawCommand.replace(LEADING_MARKER, "").trim();
+  return rawCommand.replace(POWERSHELL_LEADING_MARKER, "").replace(LEADING_MARKER, "").trim();
 }
 
 export function commandKey(command) {
