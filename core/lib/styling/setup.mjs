@@ -8,11 +8,11 @@ export const COMPONENTS = [theme, fontComponent(), terminalComponent(), statusli
 const YES_NO = { choices: ["yes", "no"], fallback: "no" };
 const NOT_INTERACTIVE = "nothing was written: run this in a terminal or pass --yes to apply it";
 
-function report(changes, { restart = [], manual = [] } = {}) {
+export function report(changes, { restart = [], manual = [] } = {}) {
   return { changes, restart: [...new Set(restart)], manual };
 }
 
-function line(id, summary, result, detail) {
+export function line(id, summary, result, detail) {
   return { id, summary, result, ...(detail ? { detail } : {}) };
 }
 
@@ -102,7 +102,16 @@ async function install(host, manifest, components, { dryRun, yes }) {
 }
 
 function itemSummary(item) {
-  return `remove ${item.component}${item.path ? ` from ${item.path}` : ""}`;
+  return `remove ${item.id}${item.path ? ` from ${item.path}` : ""}`;
+}
+
+export function removeChosen(host, manifest, ids, components) {
+  const summaries = new Map(manifest.items.map((item) => [item.id, itemSummary(item)]));
+  const outcomes = removeItems(host, manifest, ids, components);
+  return {
+    changes: outcomes.map((outcome) => line(outcome.id, summaries.get(outcome.id), outcome.result, outcome.detail)),
+    manual: outcomes.flatMap((outcome) => (outcome.manual ? [outcome.manual] : [])),
+  };
 }
 
 async function revertAll(host, manifest, components, { dryRun, yes }) {
@@ -114,12 +123,8 @@ async function revertAll(host, manifest, components, { dryRun, yes }) {
   if (!(await confirmed(host, question("Picket will undo these changes:", planned.map((change) => change.summary)), yes))) {
     return declined(host, planned.map((change) => ({ ...change, result: "declined" })));
   }
-  const summaries = new Map(planned.map((change) => [change.id, change.summary]));
-  const outcomes = removeItems(host, manifest, manifest.items.map((item) => item.id), components);
-  return report(
-    outcomes.map((outcome) => line(outcome.id, summaries.get(outcome.id), outcome.result, outcome.detail)),
-    { manual: outcomes.flatMap((outcome) => (outcome.manual ? [outcome.manual] : [])) },
-  );
+  const { changes, manual } = removeChosen(host, manifest, manifest.items.map((item) => item.id), components);
+  return report(changes, { manual });
 }
 
 export async function setupTerminal(host, { only = null, dryRun = false, yes = false, revert = false, components = COMPONENTS } = {}) {

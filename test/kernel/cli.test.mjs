@@ -192,6 +192,43 @@ test("setup-terminal rejects a component flag it does not know (T-2.6)", () => {
   });
 });
 
+function writeManifest(home, items) {
+  mkdirSync(join(home, ".picketai"));
+  const manifest = { version: 1, created: "2026-10-17T12:00:00.000Z", updated: "2026-10-17T12:00:00.000Z", items };
+  writeFileSync(join(home, ".picketai", "styling-manifest.json"), JSON.stringify(manifest));
+}
+
+function fontItem(files) {
+  return { id: "font", component: "font", kind: "external", data: { preexisting: false, via: "files", files, registry: [] }, installedAt: "2026-10-17T12:00:00.000Z" };
+}
+
+test("uninstall without a terminal keeps everything and names the commands that remove Picket (T-8.7)", () => {
+  withTempHome((home, env) => {
+    const font = join(home, "JetBrainsMonoNerdFontMono-Regular.ttf");
+    writeFileSync(font, "font");
+    writeManifest(home, [fontItem([font])]);
+    const before = readFileSync(join(home, ".picketai", "styling-manifest.json"), "utf8");
+    const result = spawnSync("node", [BIN, "uninstall"], { encoding: "utf8", env, input: "" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /kept\s+font/);
+    assert.match(result.stdout, /claude plugin uninstall picket@picketai/);
+    assert.equal(readFileSync(join(home, ".picketai", "styling-manifest.json"), "utf8"), before);
+    assert.equal(readFileSync(font, "utf8"), "font");
+  });
+});
+
+test("uninstall --yes exits 2 when a chosen removal fails (T-8.6)", () => {
+  withTempHome((home, env) => {
+    const stuck = join(home, "JetBrainsMonoNerdFontMono-Regular.ttf");
+    mkdirSync(stuck);
+    writeFileSync(join(stuck, "keep"), "x");
+    writeManifest(home, [fontItem([stuck])]);
+    const result = spawnSync("node", [BIN, "uninstall", "--yes"], { encoding: "utf8", env, input: "" });
+    assert.equal(result.status, 2, result.stdout);
+    assert.match(result.stdout, /failed\s+font/);
+  });
+});
+
 test("usage errors exit 1 with a message on stderr", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));

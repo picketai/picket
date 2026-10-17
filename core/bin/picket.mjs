@@ -299,6 +299,15 @@ async function main(argv) {
       else console.log(renderReport(report));
       return report.changes.some((change) => change.result === "failed") ? 2 : 0;
     }
+    case "uninstall": {
+      const { uninstall } = await import("../lib/styling/uninstall.mjs");
+      const { renderReport } = await import("../lib/styling/setup.mjs");
+      const { realHost } = await import("../lib/styling/host.mjs");
+      const report = await uninstall(realHost(), { yes: opt.yes === true });
+      if (opt.json) console.log(opt.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report));
+      else console.log(renderReport(report));
+      return report.changes.some((change) => change.result === "failed") ? 2 : 0;
+    }
     case "pr": {
       if (!rest[0]) throw new Error("pr needs <url>");
       if (opt.post) {
@@ -367,7 +376,7 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet statusline setup-terminal pr source`);
+      throw new Error(`unknown verb "${verb ?? ""}". Verbs: init extension extensions admit new list state set close leave next preflight verify route review-summary cost find-verdict drive check migrate comment packet statusline setup-terminal uninstall pr source`);
   }
 }
 
