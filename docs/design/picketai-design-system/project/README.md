@@ -6,7 +6,7 @@ The values come from `core/themes/picketai.json` (the Claude Code theme) and `co
 
 ## Principles
 
-Dark first. The ground is `bg` #0D0A08, the same colour as the terminal, so a pane or band never looks like a separate window. Raised things use `surface` #14110E.
+Dark first. The ground is `bg` #0D0A08, the same colour as the terminal, so the band never looks like a separate window. The Markdown pane paints `surface` #14110E, one step above the terminal and a theme key, instead of Claude Code's grey; code inside it sits on `surface-user` #1A1410.
 
 One accent. `accent` #F9782B marks what is active or what you can act on: a command, a path, a link, the selected file, the agent that is working. If everything is orange, nothing is. Labels and elapsed times stay `inactive`. Every icon you can click (? ⧉ ✎) uses `accent-shimmer`, so it reads as a control without competing with the active state.
 
@@ -59,7 +59,8 @@ How the status line, the status band and the Markdown pane colour each element.
 | Clickable icons: ? ⧉ ✎ ← ◂ ▸ | `accent-shimmer` |
 | Folders | `inactive` |
 | Rules, separators, code frame | `border` |
-| Code block | `text` on `surface` |
+| Pane background | `surface` |
+| Code block | `text` on `surface-user` |
 | Active tab | `text`, bold, underlined (a terminal draws the underline in the text colour) |
 | Inactive tab | `inactive` |
 | Approved phase dot, working agent | `accent` |

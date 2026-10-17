@@ -82,6 +82,8 @@ test('clicking a report path in a reply opens it in the pane, and its links navi
       view: {},
     },
   })
+  expect((await pane.find({ key: 'pane' }))?.props.backgroundColor).toBe('bashMessageBackgroundColor')
+  expect((await pane.find({ key: 'code:0' }))?.props.backgroundColor).toBe('userMessageBackground')
   const title = await pane.find({ type: 'Text', text: 'Latency' })
   expect(title?.props.color).toBeUndefined()
   expect(title?.props.bold).toBe(true)

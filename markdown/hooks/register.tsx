@@ -337,7 +337,13 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button, Code, Link } = $.ui.resolve(e)
     const viewed = await read($, doc)
-    if (viewed === null) return <Text dimColor>No file open. Click a .md path in a reply, or run /md path.</Text>
+    if (viewed === null) {
+      return (
+        <Box flexDirection="column" height={Math.max(1, e.props.scroll.bodyRows)} backgroundColor={SURFACES.pane}>
+          <Text color={TONES.muted}>No file open. Click a .md path in a reply, or run /md path.</Text>
+        </Box>
+      )
+    }
 
     const cwd = await $.session.cwd()
     const bodyRows = Math.max(8, e.props.scroll.bodyRows)
@@ -511,7 +517,7 @@ export const register: Register = on => {
                 <Text color={TONES.rule}>│</Text>
               ))}
             </Box>
-            <Box width={room - 3} flexDirection="column" backgroundColor={SURFACES.code}>
+            <Box key={`code:${block}`} width={room - 3} flexDirection="column" backgroundColor={SURFACES.code}>
               <Code source={run.join('\n')} language={lang === '' ? undefined : lang} wrap="truncate-end" />
             </Box>
             <Box width={1} flexShrink={0} flexDirection="column">
@@ -606,7 +612,7 @@ export const register: Register = on => {
       )
 
     return (
-      <Box flexDirection="column" height={bodyRows}>
+      <Box key="pane" flexDirection="column" height={bodyRows} backgroundColor={SURFACES.pane}>
         <Box height={contentRows} flexDirection="column" paddingRight={2} overflow="hidden">
           {body}
         </Box>

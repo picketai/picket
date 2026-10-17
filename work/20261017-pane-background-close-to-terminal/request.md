@@ -1,0 +1,2 @@
+lane: fast
+picket-markdown pane: paint the whole pane background with the bashMessageBackgroundColor theme key (#14110E under PicketAI, close to the terminal's #0D0A08) instead of Claude Code's grey, and move the code block background to userMessageBackground (#1A1410) so code stays raised. Update the palette module, the test, the Markdown pane board and the design system. User override to the fast lane.

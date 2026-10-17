@@ -10,6 +10,7 @@ export const TONES: Record<Tone, string> = {
 }
 
 export const SURFACES = {
-  code: 'bashMessageBackgroundColor',
+  pane: 'bashMessageBackgroundColor',
+  code: 'userMessageBackground',
   row: 'userMessageBackgroundHover',
 } as const
