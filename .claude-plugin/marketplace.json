@@ -11,7 +11,7 @@
     {
       "name": "picket-status",
       "source": "./status",
-      "description": "Model, thinking, skill, rate-limit windows, context and cache in one band"
+      "description": "The open work item and its agents, above the prompt"
     },
     {
       "name": "picket-session",

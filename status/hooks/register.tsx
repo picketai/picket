@@ -1,27 +1,10 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, ProcessRunResult, Register, SessionUsage } from 'claude-code'
+import type { EngineInterface, ProcessRunResult, Register } from 'claude-code'
 
-import type { AgentRow, Bar, CacheTtl, Work } from '../types'
-import { agentsLine, isEnded, isWorking, rows, sessionLine, workLine } from './band'
+import type { AgentRow, Work } from '../types'
+import { agentsLine, isEnded, isWorking, rows, workLine } from './band'
 
-const EMPTY: Bar = {
-  model: null,
-  effort: null,
-  skill: null,
-  cacheRead: null,
-  contextTokens: null,
-  contextWindow: null,
-  contextPercent: null,
-  limits: [],
-  now: 0,
-  cost: null,
-  compactAt: null,
-  lastRequestAt: null,
-  cacheTtl: null,
-  ttlSource: null,
-}
-
-const state = atom({ plugin: 'picket-status', key: 'bar' } as const, EMPTY)
+const clock = atom({ plugin: 'picket-status', key: 'now' } as const, 0)
 
 const work = atom({ plugin: 'picket-status', key: 'work' } as const, null as Work | null)
 
@@ -95,45 +78,16 @@ const refreshWork = async ($: EngineInterface) => {
   }
 }
 
-const compactAtOf = (usage: SessionUsage): number =>
-  usage.context.breakdown?.autoCompactThreshold ?? usage.context.breakdown?.rawMaxTokens ?? usage.context.window
-
-type CacheSplit = { ephemeral_1h_input_tokens: number; ephemeral_5m_input_tokens: number } | null | undefined
-
-const ttlOfSplit = (split: CacheSplit): CacheTtl | null => {
-  if (!split) {
-    return null
-  }
-  if (split.ephemeral_1h_input_tokens > 0) {
-    return '1h'
-  }
-  return split.ephemeral_5m_input_tokens > 0 ? '5m' : null
-}
-
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    const [model, usage, now] = await Promise.all([
-      $.session.model(),
-      $.session.usage({ breakdown: 'summary' }),
-      $.clock.now(),
-    ])
-    await update($, state, s => ({
-      ...s,
-      model,
-      contextTokens: usage.context.tokens ?? null,
-      contextWindow: usage.context.window,
-      contextPercent: usage.context.percent ?? null,
-      limits: usage.rateLimits,
-      cost: usage.cost?.usd ?? null,
-      compactAt: compactAtOf(usage),
-      now,
-    }))
+    const now = await $.clock.now()
+    await update($, clock, () => now)
     runner.launchers = LAUNCHERS
     await refreshWork($)
     $.clock.every(30_000, async () => {
       const tick = await $.clock.now()
-      await update($, state, s => ({ ...s, now: tick }))
+      await update($, clock, () => tick)
       await refreshWork($)
     })
     await syncRoster($)
@@ -141,35 +95,11 @@ export const register: Register = on => {
       const tick = await syncRoster($)
       const known = await read($, agents)
       if (known.some(row => isWorking(row.status))) {
-        await update($, state, s => ({ ...s, now: tick }))
+        await update($, clock, () => tick)
       }
     })
     return started
   })
-
-  on('turn.step', async function* ($, e, next) {
-    const result = yield* next(e)
-    if (e.agentId === undefined) {
-      const [before, now] = await Promise.all([read($, state), $.clock.now()])
-      const compactAt =
-        before.model === e.model ? before.compactAt : compactAtOf(await $.session.usage({ breakdown: 'summary' }))
-      await update($, state, s => ({
-        ...s,
-        model: e.model,
-        effort: e.effort === undefined ? null : String(e.effort),
-        cacheRead: result.usage?.cache_read_input_tokens ?? s.cacheRead,
-        lastRequestAt: now,
-        compactAt,
-        now,
-      }))
-    }
-    return result
-  })
-
-  on('tool.call', { tool: 'Skill' }, async ($, e, next) => {
-    await update($, state, s => ({ ...s, skill: e.skill }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const called = await next(e)
@@ -177,26 +107,6 @@ export const register: Register = on => {
       await refreshWork($)
     }
     return called
-  }).catch(($, e, next) => next(e))
-
-  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
-    const called = await next(e)
-    const split = called.result && 'usage' in called.result ? called.result.usage.cache_creation : null
-    const learned = ttlOfSplit(split)
-    if (learned !== null) {
-      await update($, state, s => (s.ttlSource === 'switch' ? s : { ...s, cacheTtl: learned, ttlSource: 'agent' }))
-    }
-    return called
-  }).catch(($, e, next) => next(e))
-
-  on('classic.PreModelSwitch', async ($, e, next) => {
-    await update($, state, s => ({ ...s, cacheTtl: e.cache_ttl, ttlSource: 'switch' }))
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
-  on('classic.PostModelSwitch', async ($, e, next) => {
-    await update($, state, s => ({ ...s, cacheTtl: e.cache_ttl, ttlSource: 'switch' }))
-    return next(e)
   }).catch(($, e, next) => next(e))
 
   on('agent.spawn', async ($, e, next) => {
@@ -224,29 +134,16 @@ export const register: Register = on => {
     return completed
   }).catch(($, e, next) => next(e))
 
-  on('session.measure', async ($, e, next) => {
-    const now = await $.clock.now()
-    await update($, state, s => ({
-      ...s,
-      contextTokens: e.context.tokens ?? s.contextTokens,
-      contextWindow: e.context.window,
-      contextPercent: e.context.percent ?? s.contextPercent,
-      limits: e.rateLimits.length > 0 ? e.rateLimits : s.limits,
-      cost: e.cost?.usd ?? s.cost,
-      now,
-    }))
-    return next(e)
-  })
-
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
       return next(e)
     }
+    const [now, latest, roster] = await Promise.all([read($, clock), read($, work), read($, agents)])
+    const lines = [workLine(latest, now), agentsLine(roster, latest, now)].filter(line => line !== null)
+    if (lines.length === 0) {
+      return next(e)
+    }
     const { Box, Text } = $.ui.resolve(e)
-    const [s, latest, roster] = await Promise.all([read($, state), read($, work), read($, agents)])
-    const lines = [workLine(latest, s.now), agentsLine(roster, latest, s.now), sessionLine(s)].filter(
-      line => line !== null,
-    )
     const drawn = lines.flatMap(line => rows(line, e.props.bodyColumns))
 
     return (

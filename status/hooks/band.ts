@@ -1,21 +1,8 @@
-import type { AgentRow, Bar, Limit, Line, Piece, Work } from '../types'
-import {
-  bar,
-  cacheLeft,
-  compactTokens,
-  contextColor,
-  elapsed,
-  levelColor,
-  minutes,
-  prettyModel,
-  stepText,
-  untilReset,
-} from './format'
+import type { AgentRow, Line, Piece, Work } from '../types'
+import { elapsed, minutes, stepText } from './format'
 
 const GAP = 2
-const PART_GAP: Piece = { text: '   ' }
 const DOT: Piece = { text: ' · ', dim: true }
-const CONTEXT_BAR_WIDTH = 10
 
 export const widthOf = (pieces: Piece[]): number =>
   pieces.reduce((sum, piece) => sum + [...piece.text].length, 0)
@@ -34,64 +21,6 @@ export const rows = (line: Line, columns: number): Piece[][] => {
 
 const joined = (parts: Piece[][], separator: Piece): Piece[] =>
   parts.flatMap((part, index) => (index === 0 ? part : [separator, ...part]))
-
-const limitPart = (label: string, limit: Limit | undefined, now: number): Piece[] => {
-  const head: Piece = { text: `${label} `, color: 'inactive' }
-  if (limit === undefined) {
-    return [head, { text: 'n/a', color: 'inactive' }]
-  }
-  return [
-    head,
-    { text: `${Math.round(limit.percentUsed)}%`, color: levelColor(limit.percentUsed) },
-    { text: ` (${untilReset(limit.resetsAt, now)})`, dim: true },
-  ]
-}
-
-const contextPart = (state: Bar): Piece[] => {
-  const tokens = state.contextTokens ?? 0
-  const percent = state.contextPercent ?? 0
-  const color = state.compactAt === null ? levelColor(percent) : contextColor(tokens, state.compactAt)
-  const window = state.contextWindow === null ? '?' : compactTokens(state.contextWindow)
-  return [
-    { text: 'ctx ', color: 'inactive' },
-    { text: `[${bar(percent, CONTEXT_BAR_WIDTH)}]`, color },
-    { text: ` ${compactTokens(tokens)}/${window} (${percent}%)` },
-  ]
-}
-
-const cachePart = (state: Bar): Piece[] => {
-  const left = cacheLeft(state, state.now)
-  return [
-    { text: 'cache ', color: 'inactive' },
-    { text: state.cacheRead === null ? 'n/a' : compactTokens(state.cacheRead) },
-    ...(left === null ? [] : [{ text: ' ' }, left]),
-  ]
-}
-
-const costPart = (state: Bar): Piece[] =>
-  state.cost === null ? [] : [{ text: `$${state.cost.toFixed(2)}` }]
-
-export const sessionLine = (state: Bar): Line => {
-  const limit = (kind: string) => state.limits.find(candidate => candidate.kind === kind)
-  const parts = [
-    limitPart('5h', limit('five_hour'), state.now),
-    limitPart('7d', limit('seven_day'), state.now),
-    contextPart(state),
-    cachePart(state),
-    costPart(state),
-  ]
-  return {
-    left: [
-      { text: '◆ ', color: 'claude' },
-      { text: state.model === null ? '...' : prettyModel(state.model), color: 'claude', bold: true },
-      DOT,
-      { text: state.effort ?? 'default', color: 'permission' },
-      DOT,
-      { text: state.skill ?? 'none', color: 'ide' },
-    ],
-    right: joined(parts.filter(part => part.length > 0), PART_GAP),
-  }
-}
 
 const progress = (work: Work): Piece[] => {
   if (work.phase_count === 0) {

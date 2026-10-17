@@ -1,7 +1,7 @@
 {
   "name": "picket-status",
   "version": "1.0.0-alpha.1",
-  "description": "Model, thinking, skill, rate-limit windows, context and cache in one band",
+  "description": "The open work item and its agents, above the prompt",
   "author": { "name": "Vlad Apetre" },
   "types": "./types/index.d.ts"
 }
