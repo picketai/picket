@@ -1,8 +1,9 @@
 import { backupFile, backupsDir, emptyManifest, ManifestError, manifestPath, readManifest, removeItems, writeManifest } from "./manifest.mjs";
 import { statuslineSetting } from "./statusline-setting.mjs";
+import { fontComponent } from "./font.mjs";
 import { theme } from "./theme.mjs";
 
-export const COMPONENTS = [theme, statuslineSetting];
+export const COMPONENTS = [theme, fontComponent(), statuslineSetting];
 const YES_NO = { choices: ["yes", "no"], fallback: "no" };
 const NOT_INTERACTIVE = "nothing was written: run this in a terminal or pass --yes to apply it";
 
@@ -56,11 +57,11 @@ async function applyEntry(host, manifest, { component, change }, yes) {
   const existing = manifest.items.find((recorded) => recorded.id === change.id);
   const backup = (path) => (existing ? existing.backup : backupFile(host, path, component.name));
   try {
-    recordItem(manifest, change.apply(host, backup));
+    recordItem(manifest, await change.apply(host, backup));
     writeManifest(host, manifest);
     return line(change.id, change.summary, "applied");
   } catch (err) {
-    return line(change.id, change.summary, "failed", err.message);
+    return { ...line(change.id, change.summary, "failed", err.message), ...(err.manual ? { manual: err.manual } : {}) };
   }
 }
 
@@ -76,9 +77,10 @@ async function install(host, manifest, components, { dryRun, yes }) {
   const restart = [];
   const manual = [];
   for (const entry of entries) {
-    const result = await applyEntry(host, manifest, entry, yes);
+    const { manual: failedManual, ...result } = await applyEntry(host, manifest, entry, yes);
     changes.push(result);
     const { change } = entry;
+    if (failedManual) manual.push(failedManual);
     if (result.result === "applied" && change.restart) restart.push(change.restart);
     if (result.result === "applied" && change.manual) manual.push(change.manual);
     if (result.result === "skipped" && change.manualIfSkipped) manual.push(change.manualIfSkipped);
@@ -90,7 +92,7 @@ function itemSummary(item) {
   return `remove ${item.component}${item.path ? ` from ${item.path}` : ""}`;
 }
 
-async function revertAll(host, manifest, { dryRun, yes }) {
+async function revertAll(host, manifest, components, { dryRun, yes }) {
   if (manifest === null || manifest.items.length === 0) {
     return report([], { manual: [`nothing to revert: no items in ${manifestPath(host.home)}; backups, if any, are under ${backupsDir(host.home)}`] });
   }
@@ -100,14 +102,14 @@ async function revertAll(host, manifest, { dryRun, yes }) {
     return declined(host, planned.map((change) => ({ ...change, result: "declined" })));
   }
   const summaries = new Map(planned.map((change) => [change.id, change.summary]));
-  const outcomes = removeItems(host, manifest, manifest.items.map((item) => item.id), COMPONENTS);
+  const outcomes = removeItems(host, manifest, manifest.items.map((item) => item.id), components);
   return report(
     outcomes.map((outcome) => line(outcome.id, summaries.get(outcome.id), outcome.result, outcome.detail)),
     { manual: outcomes.flatMap((outcome) => (outcome.manual ? [outcome.manual] : [])) },
   );
 }
 
-export async function setupTerminal(host, { only = null, dryRun = false, yes = false, revert = false } = {}) {
+export async function setupTerminal(host, { only = null, dryRun = false, yes = false, revert = false, components = COMPONENTS } = {}) {
   let manifest;
   try {
     manifest = readManifest(host);
@@ -115,9 +117,9 @@ export async function setupTerminal(host, { only = null, dryRun = false, yes = f
     if (!(err instanceof ManifestError)) throw err;
     return report([line("manifest", "read the styling manifest", "failed", err.message)]);
   }
-  if (revert) return revertAll(host, manifest, { dryRun, yes });
-  const components = only === null ? COMPONENTS : COMPONENTS.filter((component) => only.includes(component.name));
-  return install(host, manifest ?? emptyManifest(host), components, { dryRun, yes });
+  if (revert) return revertAll(host, manifest, components, { dryRun, yes });
+  const chosen = only === null ? components : components.filter((component) => only.includes(component.name));
+  return install(host, manifest ?? emptyManifest(host), chosen, { dryRun, yes });
 }
 
 export function renderReport(report) {

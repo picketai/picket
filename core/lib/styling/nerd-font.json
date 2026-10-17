@@ -1,0 +1,7 @@
+{
+  "version": "3.5.1",
+  "url": "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip",
+  "sha256": "fab782a66f7d3019da64f6572db9fc5d3a4bcb19f9fa13e2d8a62e3693d6396e",
+  "family": "JetBrainsMono Nerd Font Mono",
+  "files": "^JetBrainsMonoNerdFontMono-.*\\.ttf$"
+}

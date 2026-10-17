@@ -112,8 +112,9 @@ export function removeItems(host, manifest, ids, components) {
       manifest.items = manifest.items.filter((kept) => kept !== item);
       finish(host, manifest);
     } catch (err) {
-      const manual = item.backup ? `restore ${item.path} from ${item.backup} by hand` : `check ${item.path ?? item.id} by hand`;
-      outcomes.push({ id: item.id, result: "failed", detail: err.message, manual });
+      const fallback = item.backup ? `restore ${item.path} from ${item.backup} by hand` : `check ${item.path ?? item.id} by hand`;
+      outcomes.push({ id: item.id, result: "failed", detail: err.message, manual: err.manual ?? fallback });
+      finish(host, manifest);
     }
   }
   return outcomes;
