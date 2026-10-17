@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Transcript, now</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.65;white-space:pre}
+.w{white-space:pre-wrap}
+.c{color:#FFFFFF}.m{color:#999999}.k{color:#B1B9F9}.g{color:#4EBA65}.o{color:#D77757}.d{color:#505050}.tm{color:#5C9CF5}.sx{color:#9AB4F5}.b{font-weight:700}
+.badge{background:#4EBA65;color:#000000}
+.um{background:#373737}
+.da{background:#225C2B}.dr{background:#7A2936}.dwa{background:#38A660}.dwr{background:#B3596B}
+.po{color:#F9782B}.pd{color:#6B6158}.pm{color:#8C8072}.pc{color:#FDEFD4}
+</style>
+</helmet>
+<div style="width: 1340px; height: 1400px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 26px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">Transcript · now</div>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">Terminal output on Claude Code's default dark theme</h1>
+<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 1000px">Recreated from the screenshots of 2026-10-17. Only the band at the bottom uses the PicketAI palette; everything above it is Claude Code's dark theme: white text, lavender code, the dark theme's green and red diffs.</p>
+</div>
+
+<div style="border-radius: 12px; background: #0C0C0C; border: 1px solid #2A2A2A; padding: 20px 24px; display: flex; flex-direction: column; align-self: flex-start">
+<div class="t" style="width: 148ch; display: flex; flex-direction: column">
+<span><span class="c">● </span><span class="c">The dialog appeared in auto mode, so auto is "shown". Checking the hook log for the </span><span class="k">!</span><span class="c"> run.</span></span>
+<span> </span>
+<span class="m">  Ran 1 shell command</span>
+<span> </span>
+<span><span class="c">● </span><span class="c">The re-run worked, and it gives a different answer from the old record.</span></span>
+<span> </span>
+<span><span class="c">  - Auto mode shows the dialog. The hook log has the matching lines: a </span><span class="k">PreToolUse</span><span class="c"> and a </span><span class="k">PostToolUse</span><span class="c"> for </span><span class="k">PowerShell</span><span class="c">,</span></span>
+<span><span class="c">    with </span><span class="k">"permission_mode":"auto"</span><span class="c">.</span></span>
+<span><span class="c">  - </span><span class="k">!</span><span class="c"> commands skip the hook. Your </span><span class="k">! echo picket-probe-ok</span><span class="c"> added no line to the log.</span></span>
+<span> </span>
+<span><span class="c">  </span><span class="k">node bench/probe-ask.mjs --confirm auto=shown</span></span>
+<span> </span>
+<span class="um" style="width: 148ch"><span class="m">&gt; </span><span class="c">i ran it</span></span>
+<span> </span>
+<span><span class="g">● </span><span class="c b">Bash</span><span class="c">(node -e "const i=require('./bench/results/ask-probe.json').interactive;console.log(JSON.stringify(i))…")</span></span>
+<span><span class="m">  ⎿  </span><span class="c">{</span></span>
+<span><span class="c">       "auto_dialog": "shown",</span></span>
+<span><span class="c">       "bang_hooked": false,</span></span>
+<span class="m">     … +27 lines</span>
+<span><span class="m">  ⎿  </span><span class="c">Created </span><span class="c b">work\20261017-guard-and-probe-cover-powershell-commands\phases\1.approved</span><span class="m"> (+1 -0)</span></span>
+<span class="da" style="width: 120ch"><span class="m">       1 </span><span class="c">+2026-10-17T18:30:00.413Z</span></span>
+<span><span class="m">  ⎿  </span><span class="c">Updated </span><span class="c b">work\20261017-guard-and-probe-cover-powershell-commands\state.yaml</span><span class="m"> (+2 -1)</span></span>
+<span><span class="m">       5 </span><span class="c"> created: </span><span class="sx">2026-10-17T18:07:55.063Z</span></span>
+<span class="dr" style="width: 120ch"><span class="m">       6 </span><span class="c">-updated: </span><span class="sx">2026-10-17T18:</span><span class="dwr c">07:55.081</span><span class="sx">Z</span></span>
+<span class="da" style="width: 120ch"><span class="m">       6 </span><span class="c">+updated: </span><span class="sx">2026-10-17T18:</span><span class="dwa c">30:00.415</span><span class="sx">Z</span></span>
+<span><span class="m">       7 </span><span class="c"> base: 2af10c94e89c748dfb8973350ffc4363c10a14df</span></span>
+<span class="da" style="width: 120ch"><span class="m">       8 </span><span class="c">+run_through: 3</span></span>
+<span class="m">  ⎿  Allowed by auto mode classifier</span>
+<span> </span>
+<span><span class="g">● </span><span class="badge">picket:developer</span><span class="c">(Implement phase 1 of the PowerShell order)</span></span>
+<span> </span>
+<span><span class="g">● </span><span class="c">Teammate </span><span class="tm b">@architect</span><span class="c"> finished</span></span>
+<span class="m">  The order is recorded for 20261017-guard-and-probe-cover-powershell-commands, and the developer takes phase 1 next: the probe…</span>
+<span> </span>
+<span><span class="c">● </span><span class="c">▶ phase 1/3 done · 20261017-guard-and-probe-cover-powershell-commands</span></span>
+<span class="c">  The probe now hooks both Bash and PowerShell, and </span>
+<span> </span>
+<span class="c">    tests     passed</span>
+<span class="c">    lint      none detected</span>
+<span class="c w">    verified  picket drive --run "node .picket/state/scratch/drive-probe-confirm.mjs" → matcher Ba…   files     bench/probe-ask.mjs, bench/lib/ask-probe-hook.mjs, bench/results/ask-probe.json, +1 more   decisions  · T-1.4 compares the 8 cells to an expected list built from CELLS, not a git lookup</span>
+<span class="c">    commit    test(bench): ask probe hooks PowerShell and confirm checks the hook log (staged; approv…</span>
+<span> </span>
+<span class="d" style="text-align: center">Jump to bottom (ctrl+End) ↓</span>
+<div style="display: flex; justify-content: space-between"><div><span class="po"><span style="display: inline-block; width: 2ch">▶</span>order</span><span>  </span><span class="pc b">Guard and probe cover PowerShell commands</span><span>  </span><span class="po">●●</span><span class="pd">○</span><span class="pm"> 2/3</span></div><div><span class="po">developer implements phase 3 ⋯</span></div></div>
+<div><span style="display: inline-block; width: 2ch"></span><span class="pc">developer </span><span class="po b">working</span><span class="pm"> (5m31s)</span></div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.5; color: #B8AA96; max-width: 1180px">
+<span>Assistant text and its ● are white (text); inline code, commands and paths are lavender (permission); tool results, line numbers and "Ran 1 shell command" are grey (inactive).</span>
+<span>A finished tool call and a finished teammate take the green ● (success). Your own message sits on a grey row (userMessageBackground).</span>
+<span>The gate packet's key and value rows run together past 150 columns: verified, files and decisions share one wrapped line.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1340,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
