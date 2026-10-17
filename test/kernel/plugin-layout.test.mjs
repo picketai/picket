@@ -135,6 +135,8 @@ test("the npm package ships the plugin and its marketplace at the plugin's versi
   assert.ok(pkg.files.includes("core/"), "files ships core/");
   assert.ok(pkg.files.includes(".claude-plugin/marketplace.json"), "files ships the marketplace init looks for beside core/");
   assert.equal("dependencies" in pkg, false);
+  assert.deepEqual(pkg.engines, { node: ">=20" });
+  assert.equal(pkg.files.at(-1), "!**/*.test.*", "files ends by excluding test files from every shipped folder");
 });
 
 test("the npm package ships each mod's sources at the package version, without generated files", () => {

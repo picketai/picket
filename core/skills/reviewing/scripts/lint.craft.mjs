@@ -30,15 +30,6 @@
 // Scope is ADDED LINES ONLY. Pre-existing comments are somebody else's decision
 // and flagging them would bury this phase's actual findings.
 //
-// Usage:
-//   node .claude/scripts/lint.craft.mjs                    # working tree vs HEAD (+ untracked)
-//   node .claude/scripts/lint.craft.mjs --staged           # index vs HEAD
-//   node .claude/scripts/lint.craft.mjs --range A..B       # a commit range (a phase)
-//   node .claude/scripts/lint.craft.mjs --rules comments   # comments | tests | both (default)
-//   node .claude/scripts/lint.craft.mjs --strict           # candidates also set exit 1
-//   node .claude/scripts/lint.craft.mjs --json             # machine-readable
-//   node .claude/scripts/lint.craft.mjs -C src/Orders      # run against a nested repo
-//
 // Exit: 0 clean · 1 errors present (or candidates under --strict) · 2 bad usage.
 //
 // Escape hatch — an authorised exception is declared in the code, not argued in a
@@ -48,7 +39,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../../core/lib/comments.mjs';
+import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../../../lib/comments.mjs';
 
 // ---------------------------------------------------------------- args
 

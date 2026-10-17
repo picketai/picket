@@ -19,15 +19,15 @@ repos:
   # `default_branch` - cached base for new branches; re-validated on self-heal
   - name: ExampleApiSvc
     path: src/ExampleApiSvc
-    git_dir: D:/workspace/github/AISpec/src/ExampleApiSvc/.git
+    git_dir: ~/code/umbrella/src/ExampleApiSvc/.git
     default_branch: main
 
   - name: ExampleWebApp
     path: src/ExampleWebApp
-    git_dir: D:/workspace/github/AISpec/src/ExampleWebApp/.git
+    git_dir: ~/code/umbrella/src/ExampleWebApp/.git
     default_branch: trunk
 
   - name: ExampleDesktopApp
     path: src/ExampleDesktopApp
-    git_dir: D:/workspace/github/AISpec/src/ExampleDesktopApp/.git
+    git_dir: ~/code/umbrella/src/ExampleDesktopApp/.git
     default_branch: master

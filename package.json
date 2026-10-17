@@ -29,8 +29,12 @@
     "markdown/hooks/",
     "markdown/types/",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "!**/*.test.*"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "node scripts/test.mjs",
     "version": "node .github/scripts/release.mjs sync-version && git add core/.claude-plugin/plugin.json status/.claude-plugin/plugin.json session/.claude-plugin/plugin.json markdown/.claude-plugin/plugin.json",
