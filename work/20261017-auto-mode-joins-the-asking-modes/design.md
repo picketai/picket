@@ -91,6 +91,6 @@ An escalation (`PICKET_ESCALATE="<why>" <command>`) in auto permission mode deni
 
 ## Open questions
 
-- **OQ-001** Does interactive auto mode show the dialog for a hook `ask` on the Bash tool too? Run `node bench/probe-ask.mjs --interactive`, ask the session to run the sentinel with the Bash tool, and read `tool` in the hook log. Owner: user. Fallback: auto stays in for both tools on the headless Bash cell (D-002); a `silent` answer amends D-002 to a per-tool set.
+- **OQ-001** Does interactive auto mode show the dialog for a hook `ask` on the Bash tool too? Run `node bench/probe-ask.mjs --interactive`, ask the session to run the sentinel with the Bash tool, and read `tool` in the hook log. Owner: user. Fallback: auto stays in for both tools on the headless Bash cell (D-002); a `silent` answer amends D-002 to a per-tool set. Answered 2026-10-17: with `--disallowedTools PowerShell` the session ran the sentinel through Bash in auto mode, the hook log held a `PreToolUse` line with `tool: "Bash"`, and the user saw the dialog ("Hook PreToolUse:Bash requires confirmation for this command"; debug log `da12cdb2-590f-43a8-a658-eb10372f0a7a`). D-002 holds. The record stays the committed PowerShell one, because the Bash run's `--confirm` was entered as `silent` by mistake and was discarded.
 
 ## Revision log
