@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./paths.mjs";
 
 const IGNORE_LINE = `${stateRel("")}/`;
@@ -11,6 +12,7 @@ const MARKETPLACE_NAME = "picketai";
 const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
 const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
 const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
+const STATUS_LINE = { type: "command", command: "picket statusline", refreshInterval: 5 };
 const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
 const STATUS_PLUGIN_ID = `picket-status@${MARKETPLACE_NAME}`;
 const MARKDOWN_PLUGIN_ID = `picket-markdown@${MARKETPLACE_NAME}`;
@@ -111,7 +113,7 @@ function union(existing, wanted) {
   return list;
 }
 
-export function mergeSettings(settings) {
+export function mergeSettings(settings, { statusLineAt = null } = {}) {
   const merged = structuredClone(settings);
   const permissions = { ...(merged.permissions ?? {}) };
   const denied = Array.isArray(permissions.deny) ? permissions.deny : [];
@@ -120,10 +122,29 @@ export function mergeSettings(settings) {
   permissions.allow = union(permissions.allow, SETTINGS_ALLOW.filter((rule) => !blocked.includes(rule)));
   permissions.ask = union(permissions.ask, SETTINGS_ASK);
   merged.permissions = permissions;
+  if (!("statusLine" in merged) && statusLineAt === null) merged.statusLine = STATUS_LINE;
   return { merged, blocked };
 }
 
-function settingsStep(root) {
+function statusLineOf(path) {
+  try {
+    const settings = JSON.parse(readFileSync(path, "utf8"));
+    return settings !== null && typeof settings === "object" && "statusLine" in settings ? settings.statusLine : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function statusLineHolder(root, home) {
+  const candidates = [hostPath(root, "settings.json"), hostPath(root, "settings.local.json"), join(home, HOST_DIR, "settings.json")];
+  for (const path of candidates) {
+    const statusLine = statusLineOf(path);
+    if (statusLine !== undefined) return { path, ours: path === candidates[0] && isDeepStrictEqual(statusLine, STATUS_LINE) };
+  }
+  return null;
+}
+
+function settingsStep(root, { home }) {
   const path = hostPath(root, "settings.json");
   const existing = readOrNull(path);
   let settings;
@@ -132,11 +153,15 @@ function settingsStep(root) {
   } catch (err) {
     return { name: "settings", path, result: "failed", detail: `not valid JSON, left as is: ${err.message}` };
   }
-  const { merged, blocked } = mergeSettings(settings);
-  const warning = blocked.length ? `WARNING: permissions.deny holds ${blocked.join(", ")}, so init did not allow it` : undefined;
+  const holder = statusLineHolder(root, home);
+  const { merged, blocked } = mergeSettings(settings, { statusLineAt: holder?.path ?? null });
+  const notes = [
+    blocked.length ? `WARNING: permissions.deny holds ${blocked.join(", ")}, so init did not allow it` : null,
+    holder && !holder.ours ? `statusLine already set in ${holder.path}` : null,
+  ].filter(Boolean);
   const changed = existing === null || JSON.stringify(merged) !== JSON.stringify(settings);
   const result = changed ? writeIfChanged(path, existing, `${JSON.stringify(merged, null, 2)}\n`) : "unchanged";
-  return { name: "settings", path, result, ...(warning ? { detail: warning } : {}) };
+  return { name: "settings", path, result, ...(notes.length ? { detail: notes.join("; ") } : {}) };
 }
 
 export function marketplaceRoot() {
@@ -205,10 +230,10 @@ const STEPS = [
   ["settings", settingsStep],
 ];
 
-export function init(root, { install = true, exec = claudeRunner(), market = marketplaceRoot() } = {}) {
+export function init(root, { install = true, exec = claudeRunner(), market = marketplaceRoot(), home = homedir() } = {}) {
   const steps = STEPS.map(([name, step]) => {
     try {
-      return step(root);
+      return step(root, { home });
     } catch (err) {
       return { name, path: null, result: "failed", detail: err.message };
     }

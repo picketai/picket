@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { init, marketplaceRoot } from "../../core/lib/init.mjs";
 
@@ -21,8 +21,14 @@ function gitRepo() {
 
 function runInit(cwd, { env = {}, args = [] } = {}) {
   const { CLAUDE_PROJECT_DIR, ...base } = process.env;
-  const r = spawnSync("node", [BIN, "init", "--no-install", ...args], { cwd, env: { ...base, ...env }, encoding: "utf8" });
-  return { code: r.status, json: r.stdout.trim().startsWith("{") ? JSON.parse(r.stdout) : null, stdout: r.stdout, stderr: r.stderr };
+  const home = "HOME" in env || "USERPROFILE" in env ? null : tempDir("picket-home-");
+  try {
+    const homeEnv = home === null ? {} : { HOME: home, USERPROFILE: home };
+    const r = spawnSync("node", [BIN, "init", "--no-install", ...args], { cwd, env: { ...base, ...homeEnv, ...env }, encoding: "utf8" });
+    return { code: r.status, json: r.stdout.trim().startsWith("{") ? JSON.parse(r.stdout) : null, stdout: r.stdout, stderr: r.stderr };
+  } finally {
+    if (home !== null) rmSync(home, { recursive: true, force: true });
+  }
 }
 
 function results(report) {
@@ -141,21 +147,82 @@ const INIT_SETTINGS = {
     allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"],
     ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
   },
+  statusLine: { type: "command", command: "picket statusline", refreshInterval: 5 },
 };
 
-function writeSettings(root, text) {
+function writeSettings(root, text, file = "settings.json") {
   mkdirSync(join(root, ".claude"), { recursive: true });
-  writeFileSync(join(root, ".claude", "settings.json"), text);
+  writeFileSync(join(root, ".claude", file), text);
 }
 
-test("init creates .claude/settings.json with exactly the env key and the picket allow and ask rules", () => {
+function settingsStep(report) {
+  return report.steps.find((s) => s.name === "settings");
+}
+
+function settingsDetail(report) {
+  return settingsStep(report).detail;
+}
+
+test("init creates .claude/settings.json with the env key, the picket allow and ask rules, then the status line (T-3.1)", () => {
   const root = gitRepo();
   try {
     assert.equal(runInit(root).code, 0);
-    assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")), INIT_SETTINGS);
-    assert.ok(read(root, ".claude", "settings.json").endsWith("}\n"));
+    const text = read(root, ".claude", "settings.json");
+    assert.deepEqual(JSON.parse(text), INIT_SETTINGS);
+    assert.deepEqual(Object.keys(JSON.parse(text)), ["env", "permissions", "statusLine"]);
+    assert.ok(text.endsWith("}\n"));
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("init keeps a project status line of its own and names the file (T-3.3)", () => {
+  const root = gitRepo();
+  try {
+    const own = { type: "command", command: "my-line" };
+    writeSettings(root, JSON.stringify({ statusLine: own }));
+    const r = runInit(root);
+    assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")).statusLine, own);
+    assert.equal(settingsDetail(r.json), `statusLine already set in ${settingsStep(r.json).path}`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a status line in the local or the user settings keeps init from writing one, and init names that file (T-3.4)", () => {
+  const local = gitRepo();
+  const user = gitRepo();
+  const home = tempDir("picket-home-");
+  try {
+    const localText = JSON.stringify({ statusLine: { type: "command", command: "local-line" } });
+    writeSettings(local, localText, "settings.local.json");
+    const localRun = runInit(local);
+    assert.equal("statusLine" in JSON.parse(read(local, ".claude", "settings.json")), false);
+    assert.equal(settingsDetail(localRun.json), `statusLine already set in ${join(dirname(settingsStep(localRun.json).path), "settings.local.json")}`);
+    assert.equal(read(local, ".claude", "settings.local.json"), localText);
+
+    const userText = JSON.stringify({ statusLine: { type: "command", command: "user-line" } });
+    writeSettings(home, userText);
+    const userRun = runInit(user, { env: { HOME: home, USERPROFILE: home } });
+    assert.equal("statusLine" in JSON.parse(read(user, ".claude", "settings.json")), false);
+    assert.equal(settingsDetail(userRun.json), `statusLine already set in ${join(home, ".claude", "settings.json")}`);
+    assert.equal(read(home, ".claude", "settings.json"), userText);
+  } finally {
+    for (const dir of [local, user, home]) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a user settings file that is not JSON fails no step and holds no status line (T-3.5)", () => {
+  const root = gitRepo();
+  const home = tempDir("picket-home-");
+  try {
+    writeSettings(home, "{ not json");
+    const r = runInit(root, { env: { HOME: home, USERPROFILE: home } });
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.json.steps.some((s) => s.result === "failed"), false);
+    assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")).statusLine, INIT_SETTINGS.statusLine);
+  } finally {
+    for (const dir of [root, home]) rmSync(dir, { recursive: true, force: true });
   }
 });
 
@@ -166,7 +233,7 @@ test("init keeps existing settings in value and order and appends what is missin
     const r = runInit(root);
     assert.equal(results(r.json).settings, "updated");
     const settings = JSON.parse(read(root, ".claude", "settings.json"));
-    assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env"]);
+    assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env", "statusLine"]);
     assert.equal(settings.outputStyle, "Explanatory");
     assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"]);
     assert.deepEqual(settings.permissions.ask, INIT_SETTINGS.permissions.ask);
