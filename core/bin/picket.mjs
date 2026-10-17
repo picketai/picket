@@ -2,8 +2,10 @@
 // The kernel CLI. Every verb prints JSON on stdout (add --pretty for an indented copy, --human for a
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
 import { readFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 import { packet } from "../lib/packet.mjs";
-import { renderStatusline } from "../lib/statusline.mjs";
+import { iconsMode, liveProbe, renderStatusline } from "../lib/statusline.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../lib/pr.mjs";
 import { reviewSummaryRange } from "../lib/review.mjs";
 import { admit } from "../lib/admit.mjs";
@@ -273,7 +275,10 @@ async function main(argv) {
       return 0;
     }
     case "statusline": {
-      process.stdout.write(`${renderStatusline(statuslineInput(), { now: Date.now(), columns: Number(process.env.COLUMNS) })}\n`);
+      const now = Date.now();
+      const probe = liveProbe({ cacheDir: join(tmpdir(), "picket-statusline"), now });
+      const rendered = renderStatusline(statuslineInput(), { now, columns: Number(process.env.COLUMNS), icons: iconsMode(homedir()), probe });
+      process.stdout.write(`${rendered}\n`);
       return 0;
     }
     case "pr": {

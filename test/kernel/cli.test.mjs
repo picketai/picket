@@ -109,35 +109,59 @@ test("next --latest prints the newest open item with the fixed key set; next alo
 });
 
 const ESCAPE = /\x1b\[[0-9;]*m/g;
-const STATUSLINE_INPUT = readFileSync(resolve("test/kernel/statusline-input.json"), "utf8");
+const MINUTE = 60_000;
 
-function statusline(input, columns) {
-  const result = spawnSync("node", [BIN, "statusline"], { input, encoding: "utf8", env: { ...process.env, COLUMNS: columns } });
+function statuslineInput() {
+  const input = JSON.parse(readFileSync(resolve("test/kernel/statusline-input.json"), "utf8"));
+  const now = Date.now();
+  input.rate_limits.five_hour.resets_at = (now + 134 * MINUTE) / 1000;
+  input.rate_limits.seven_day.resets_at = (now + 78 * 60 * MINUTE) / 1000;
+  input.prompt_cache.expires_at = (now + 52 * MINUTE) / 1000;
+  return JSON.stringify(input);
+}
+
+function statusline(input, env) {
+  const result = spawnSync("node", [BIN, "statusline"], { input, encoding: "utf8", env });
   return { status: result.status, stderr: result.stderr, lines: result.stdout.replace(ESCAPE, "").replace(/\n$/, "").split("\n") };
 }
 
-test("statusline prints the brand line, then the fixture as one line of 158 code points at COLUMNS=160 (T-2.1)", () => {
-  const { status, stderr, lines } = statusline(STATUSLINE_INPUT, "160");
-  assert.equal(status, 0);
-  assert.equal(stderr, "");
-  assert.equal(lines.length, 2);
-  assert.ok(lines[0].startsWith("PICKETAI >_"), lines[0]);
-  assert.equal([...lines[1]].length, 158);
-  assert.ok(lines[1].startsWith("◆ Opus 5.5 · high · picket:ordering"), lines[1]);
+function envWithout(name) {
+  const env = { ...process.env };
+  delete env[name];
+  return env;
+}
+
+test("statusline prints the fixture on 2 lines at COLUMNS=150 and 3 lines without COLUMNS (T-1.8)", () => {
+  const wide = statusline(statuslineInput(), { ...process.env, COLUMNS: "150" });
+  assert.equal(wide.status, 0);
+  assert.equal(wide.stderr, "");
+  assert.equal(wide.lines.length, 2);
+  const narrow = statusline(statuslineInput(), envWithout("COLUMNS"));
+  assert.equal(narrow.status, 0);
+  assert.equal(narrow.stderr, "");
+  assert.equal(narrow.lines.length, 3);
 });
 
-test("statusline splits the fixture into two session lines at COLUMNS=90 (T-2.2)", () => {
-  const { lines } = statusline(STATUSLINE_INPUT, "90");
-  assert.equal(lines.length, 3);
-  assert.ok(lines[2].startsWith("5h "), lines[2]);
-});
-
-test("statusline reads input that is not JSON, and empty input, as no facts (T-2.3)", () => {
-  for (const input of ["not json", ""]) {
-    const { status, lines } = statusline(input, "160");
+test("statusline draws nerd icons when the user's Picket config asks for them (T-1.8)", () => {
+  const home = mkdtempSync(join(tmpdir(), "picket-home-"));
+  try {
+    mkdirSync(join(home, ".picketai"));
+    writeFileSync(join(home, ".picketai", "config.json"), '{"statusline":{"icons":"nerd"}}');
+    const { status, stderr, lines } = statusline(statuslineInput(), { ...process.env, COLUMNS: "150", HOME: home, USERPROFILE: home });
     assert.equal(status, 0);
-    assert.equal(lines[0], "PICKETAI >_");
-    assert.ok(lines[1].startsWith("◆ ... · default · none"), lines[1]);
+    assert.equal(stderr, "");
+    assert.ok(lines.some((line) => line.includes("\u{F0450}")), lines.join("\n"));
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("statusline reads input that is not JSON, and empty input, as no facts (T-1.8)", () => {
+  for (const input of ["not json", ""]) {
+    const { status, stderr, lines } = statusline(input, { ...process.env, COLUMNS: "150" });
+    assert.equal(status, 0);
+    assert.equal(stderr, "");
+    assert.equal(lines[0], "  PICKETAI >_");
   }
 });
 

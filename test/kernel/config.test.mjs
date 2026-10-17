@@ -28,8 +28,9 @@ function withProject(config, fn) {
 }
 
 test("paths.mjs is the only file under core/lib whose code names the config file (T-2.4)", () => {
-  const configName = new RegExp(`(?<![\\w.-])${basename(configRel()).replaceAll(".", "\\.")}`);
+  const configName = new RegExp(`(?<![\\w.-]|\\.picketai/)${basename(configRel()).replaceAll(".", "\\.")}`);
   assert.equal(configName.test('const f = "tsconfig.json";'), false);
+  assert.equal(configName.test('const f = ".picketai/config.json";'), false);
   assert.equal(configName.test('const f = ".picket/config.json";'), true);
   const lib = resolve("core/lib");
   const naming = readdirSync(lib)

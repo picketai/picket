@@ -27,6 +27,26 @@ export function branch(root) {
   return git(root, ["rev-parse", "--abbrev-ref", "HEAD"]);
 }
 
+function changeState(entries) {
+  if (entries.some((line) => line.startsWith("u "))) return "conflict";
+  const codes = entries.map((line) => line.slice(2, 4));
+  if (codes.some(([, worktree]) => worktree !== ".")) return "unstaged";
+  if (codes.some(([index]) => index !== ".")) return "staged";
+  return "clean";
+}
+
+export function workingState(root) {
+  const out = git(root, ["status", "--porcelain=v2", "--branch", "--untracked-files=no"]);
+  if (out === null) return null;
+  const lines = out.split(/\r?\n/);
+  const header = (key) => lines.find((line) => line.startsWith(`# branch.${key} `))?.slice(`# branch.${key} `.length) ?? null;
+  const name = header("head");
+  return {
+    branch: name === "(detached)" ? (header("oid") ?? "").slice(0, 7) : name,
+    state: changeState(lines.filter((line) => /^[12u] /.test(line))),
+  };
+}
+
 export function head(root) {
   return git(root, ["rev-parse", "--short", "HEAD"]);
 }
