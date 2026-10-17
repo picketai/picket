@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Status band, today and proposed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.65;white-space:pre}
+.c{color:#FDEFD4}.o{color:#F9782B}.m{color:#8C8072}.d{color:#6B6158}.s{color:#4A4038}.f{color:#857D6E}.y{color:#F5C04A}.bl{color:#4782C8}.b{font-weight:700}
+.fg{background:#9CC46A;color:#0D0A08}.fe{background:#2E2620;color:#E9C9A0}.g{color:#9CC46A}
+</style>
+</helmet>
+<div style="width: 1400px; height: 760px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 26px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">picket-status · for validation</div>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">The work and agents band on the PicketAI palette</h1>
+<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 1000px">The band above the prompt, with the status line below it for context. Today the progress dots and the working agent are blue, because the PicketAI theme sets no ide colour.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #8C8072; font-weight: 600">Today · 150 columns</div>
+<div style="border-radius: 12px; background: #0D0A08; border: 1px solid #2A221C; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; align-self: flex-start">
+<div class="t" style="width: 148ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="o">▶ design</span><span>  </span><span class="c b">Session line moves to the status line</span><span>  </span><span class="bl">●●●</span><span class="s">○</span><span class="m"> 3/4</span></div><div><span class="o">developer implements phase 4 ⋯</span></div></div>
+<div><span class="o">⚇ </span><span class="c">developer </span><span class="bl b">working</span><span class="bl"> (1m12s)</span><span class="f"> · </span><span class="c">reviewer </span><span class="y b">waiting</span><span class="y"> (3m)</span></div>
+</div>
+<div class="t" style="border: 1px solid #6B6158; border-radius: 6px; padding: 7px 12px"><span class="c">&gt; </span><span class="d">Try "add a test for the wrap rule"</span></div>
+<div class="t" style="width: 148ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">5h </span><span class="g">22%</span><span class="d"> (2h3m)</span>   <span class="m">7d </span><span class="g">41%</span><span class="d"> (3d11h)</span>   <span class="fg"> 46k</span><span class="fe">/200.0k 23% </span>   <span class="m">cache </span><span class="c">84k </span><span class="d">◷ 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #F9782B; font-weight: 600">Proposed · 150 columns</div>
+<div style="border-radius: 12px; background: #0D0A08; border: 1px solid #2A221C; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; align-self: flex-start">
+<div class="t" style="width: 148ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="o">▶ design</span><span>  </span><span class="c b">Session line moves to the status line</span><span>  </span><span class="o">●●●</span><span class="d">○</span><span class="m"> 3/4</span></div><div><span class="o">developer implements phase 4 ⋯</span></div></div>
+<div><span class="m">⚇ </span><span class="c">developer </span><span class="o b">working</span><span class="m"> (1m12s)</span><span class="d"> · </span><span class="c">reviewer </span><span class="y b">waiting</span><span class="y"> (3m)</span></div>
+</div>
+<div class="t" style="border: 1px solid #6B6158; border-radius: 6px; padding: 7px 12px"><span class="c">&gt; </span><span class="d">Try "add a test for the wrap rule"</span></div>
+<div class="t" style="width: 148ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">5h </span><span class="g">22%</span><span class="d"> (2h3m)</span>   <span class="m">7d </span><span class="g">41%</span><span class="d"> (3d11h)</span>   <span class="fg"> 46k</span><span class="fe">/200.0k 23% </span>   <span class="m">cache </span><span class="c">84k </span><span class="d">◷ 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+</div>
+</div>
+
+<p style="margin: 0; font-size: 13px; line-height: 1.55; color: #B8AA96; max-width: 1180px">Approved phases and the working state turn orange; the open phase dot goes from subtle #4A4038 to dim #6B6158 so it stays visible. The agents icon and elapsed time drop to muted so orange marks only what is active. Waiting, blocked and your gate keep the warning and error colours.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1400,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fallback and Nerd Font side by side</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'JBM Nerd';src:url("/_blob/5ca5530b27f822c08d79b58241743976") format("truetype");font-weight:400}
+@font-face{font-family:'JBM Nerd';src:url("/_blob/c73ec42c9203f4bc21dc11d4ffa4459e") format("truetype");font-weight:700}
+@font-face{font-family:'Codicon';src:url("/_blob/a6506111b41ced5d04d7f411b2095d51") format("truetype")}
+body{margin:0}
+.t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.65;white-space:pre}
+.nf{font-family:'JBM Nerd','Codicon','JetBrains Mono',monospace}
+.o{color:#F9782B}.c{color:#FDEFD4}.m{color:#8C8072}.d{color:#6B6158}.g{color:#9CC46A}.y{color:#F5C04A}.r{color:#E5484D}.b{font-weight:700}
+.fg{background:#9CC46A;color:#0D0A08}.fy{background:#F5C04A;color:#0D0A08}.fr{background:#E5484D;color:#0D0A08}.fe{background:#2E2620;color:#E9C9A0}.ce{color:#2E2620}
+</style>
+</helmet>
+<div style="width: 1500px; height: 1120px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 26px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">Side by side</div>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">Fallback and JetBrainsMono Nerd Font</h1>
+<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 980px">Same layout and colours. With the Nerd Font, icons mark the folder, branch, limits and cache, and the context bar gets rounded ends.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #8C8072; font-weight: 600">Fallback · any font · 80 columns</div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px">
+<div class="t" style="width: 78ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">5h </span><span class="g">22%</span><span class="d"> (2h3m)</span>   <span class="m">7d </span><span class="g">41%</span><span class="d"> (3d11h)</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="fg"> 46k</span><span class="fe">/200.0k 23% </span></div><div><span class="m">cache </span><span class="c">84k </span><span class="d">◷ 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+<div class="t" style="width: 78ch; padding-left: 2ch; display: flex; flex-direction: column; border-top: 1px solid #2A221C; padding-top: 12px">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">default</span><span class="d"> · </span><span class="o">none</span></div><div><span class="m">5h </span><span class="r">94%</span><span class="d"> (41m)</span>   <span class="m">7d </span><span class="y">83%</span><span class="d"> (1d2h)</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="fr b"> 150.0k/200.0k</span><span class="fe"> 75% </span></div><div><span class="m">cache </span><span class="c">84k </span><span class="r b">cold</span>   <span class="c">$12.06</span></div></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #F9782B; font-weight: 600">JetBrainsMono Nerd Font · 80 columns</div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px">
+<div class="t nf" style="width: 78ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="o">&#xF418; trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">&#xF250; 5h </span><span class="g">22%</span><span class="d"> &#xF0450; 2h3m</span>   <span class="m">&#xF0A33; 7d </span><span class="g">41%</span><span class="d"> &#xF0450; 3d11h</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="g">&#xE0B6;</span><span class="fg">46k</span><span class="fe">/200.0k 23%</span><span class="ce">&#xE0B4;</span></div><div><span class="m">&#xF01BC; </span><span class="c">84k </span><span class="d">&#xF0150; 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+<div class="t nf" style="width: 78ch; padding-left: 2ch; display: flex; flex-direction: column; border-top: 1px solid #2A221C; padding-top: 12px">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="o">&#xF418; trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">default</span><span class="d"> · </span><span class="o">none</span></div><div><span class="m">&#xF250; 5h </span><span class="r">94%</span><span class="d"> &#xF0450; 41m</span>   <span class="m">&#xF0A33; 7d </span><span class="y">83%</span><span class="d"> &#xF0450; 1d2h</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="r">&#xE0B6;</span><span class="fr b">150.0k/200.0k</span><span class="fe"> 75%</span><span class="ce">&#xE0B4;</span></div><div><span class="m">&#xF01BC; </span><span class="c">84k </span><span class="r b">&#xF0717; cold</span>   <span class="c">$12.06</span></div></div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #8C8072; font-weight: 600">Wide · 150 columns · fallback on top, Nerd Font below</div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; align-self: flex-start">
+<div class="t" style="width: 148ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">5h </span><span class="g">22%</span><span class="d"> (2h3m)</span>   <span class="m">7d </span><span class="g">41%</span><span class="d"> (3d11h)</span>   <span class="fg"> 46k</span><span class="fe">/200.0k 23% </span>   <span class="m">cache </span><span class="c">84k </span><span class="d">◷ 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+<div class="t nf" style="width: 148ch; padding-left: 2ch; display: flex; flex-direction: column; border-top: 1px solid #2A221C; padding-top: 12px">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="o">&#xF418; trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">&#xF250; 5h </span><span class="g">22%</span><span class="d"> &#xF0450; 2h3m</span>   <span class="m">&#xF0A33; 7d </span><span class="g">41%</span><span class="d"> &#xF0450; 3d11h</span>   <span class="g">&#xE0B6;</span><span class="fg">46k</span><span class="fe">/200.0k 23%</span><span class="ce">&#xE0B4;</span>   <span class="m">&#xF01BC; </span><span class="c">84k </span><span class="d">&#xF0150; 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #F9782B; font-weight: 600">Branch icon and name coloured by git state · one icon, U+F418 (fallback ⎇ takes the same colours)</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap">
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 12px 18px; display: flex; flex-direction: column; gap: 4px"><div class="t nf"><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="o">&#xF418; trunk</span></div><div style="font-size: 12px; color: #8C8072">clean · orange</div></div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 12px 18px; display: flex; flex-direction: column; gap: 4px"><div class="t nf"><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="y">&#xF418; trunk</span></div><div style="font-size: 12px; color: #8C8072">unstaged changes · amber</div></div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 12px 18px; display: flex; flex-direction: column; gap: 4px"><div class="t nf"><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="g">&#xF418; trunk</span></div><div style="font-size: 12px; color: #8C8072">staged changes · green</div></div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 12px 18px; display: flex; flex-direction: column; gap: 4px"><div class="t nf"><span class="m">&#xF07B; </span><span class="c">AISpec</span><span class="d"> · </span><span class="r">&#xF418; trunk</span></div><div style="font-size: 12px; color: #8C8072">conflicts · red</div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1500,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

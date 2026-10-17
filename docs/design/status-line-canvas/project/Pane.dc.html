@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Markdown pane, today and proposed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.65;white-space:pre}
+.r{display:flex;justify-content:space-between;width:58ch}
+.c{color:#FDEFD4}.o{color:#F9782B}.sh{color:#FFB27A}.m{color:#8C8072}.d{color:#6B6158}.s{color:#4A4038}.f{color:#857D6E}.g{color:#9CC46A}.b{font-weight:700}.u{text-decoration:underline}
+.uo{text-decoration:underline;text-decoration-color:#F9782B;text-decoration-thickness:2px;text-underline-offset:3px}
+.kw{color:#569CD6}.nu{color:#B5CEA8}
+.hl{background:#2E2620}.cb{background:#14110E}
+</style>
+</helmet>
+<div style="width: 1500px; height: 1060px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 26px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">picket-markdown · for validation</div>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">The Markdown pane on the PicketAI palette</h1>
+<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 1000px">Same document, same layout, same controls. Left is how the pane draws today with the PicketAI theme active; right is the proposal. Only colours change.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #8C8072; font-weight: 600">Today · PicketAI theme · grey pane background</div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 14px 0 14px 14px; display: flex; overflow: hidden">
+<div class="t" style="width: 11ch; flex-shrink: 0; display: flex; flex-direction: column"><span class="c">⏺ Closed it</span><span class="c">  without th</span><span class="c">  e cumulati</span><span class="c">  ve review.</span><span> </span><span class="o">&gt; </span></div>
+<div class="t" style="background: #232323; padding: 0 2ch 0 0; display: flex; flex-direction: column; flex-shrink: 0">
+<span> </span>
+<span class="s">  work 20261016-session-line… · design · open</span>
+<span> </span>
+<div class="r"><span><span>  </span><span class="o b">Session line moves to the status line</span></span><span class="f">? ⧉</span></div>
+<span class="s">  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span><span class="o">▎ </span><span class="c">The band keeps the work and agents lines; the</span></span>
+<span><span class="o">▎ </span><span class="c">session line moves to </span><span class="o">picket statusline</span><span class="c">. See</span></span>
+<span><span>  </span><span class="o u">order.md</span><span class="c">.</span></span>
+<span> </span>
+<div class="r"><span><span>  </span><span class="c b">Decisions</span></span><span class="f">? ⧉</span></div>
+<span class="s">  ──────────────────────────────────────────────────────────</span>
+<span><span>  </span><span class="s">1. </span><span class="c">Render the session line in the kernel</span></span>
+<span><span>  </span><span class="s">2. </span><span class="c">Keep </span><span class="o">picket next --latest</span><span class="c"> for the band</span></span>
+<span> </span>
+<span><span>  </span><span class="s">╭─ ts ──────────────────────────────────────────────── </span><span class="c">⧉</span></span>
+<span><span>  </span><span class="s">│ </span><span class="kw">const</span><span class="c"> GAP = </span><span class="nu">2</span></span>
+<span><span>  </span><span class="s">│ </span><span class="kw">export const</span><span class="c"> rows = (line: Line) =&gt;</span></span>
+<span><span>  </span><span class="s">╰─────────────────────────────────────────────────────────</span></span>
+<span> </span>
+<span><span class="s">─ design.md · 34% ─────────────────── </span><span class="c">Files</span><span class="s"> │ </span><span class="f">Outline</span><span> </span><span class="f">✎</span></span>
+<span> </span>
+<span class="f">  ▾ work/20261016-session-line-moves-to-the-st…</span>
+<span><span>    </span><span class="o b">› design.md</span></span>
+<span class="c">      request.md</span>
+<span class="f">  ▸ core/</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.5; color: #8C8072">
+<span>Rules, list numbers and the code frame use subtle #4A4038: 1.96:1, close to invisible.</span>
+<span>Folders, tabs and icons use the terminal's faint attribute, so their colour depends on the terminal.</span>
+<span>Code keeps the host syntax colours; the selected file has no row highlight.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #F9782B; font-weight: 600">Proposed · PicketAI palette · terminal background</div>
+<div style="border-radius: 10px; background: #0D0A08; border: 1px solid #2A221C; padding: 14px 0 14px 14px; display: flex; overflow: hidden">
+<div class="t" style="width: 11ch; flex-shrink: 0; display: flex; flex-direction: column"><span class="c">⏺ Closed it</span><span class="c">  without th</span><span class="c">  e cumulati</span><span class="c">  ve review.</span><span> </span><span class="o">&gt; </span></div>
+<div style="width: 1ch; flex-shrink: 0; background: #2A221C"></div>
+<div class="t" style="background: #0D0A08; padding: 0 2ch 0 0; display: flex; flex-direction: column; flex-shrink: 0">
+<span> </span>
+<span class="m">  work 20261016-session-line… · design · open</span>
+<span> </span>
+<div class="r"><span><span>  </span><span class="c b">Session line moves to the status line</span></span><span class="m">? ⧉</span></div>
+<span class="d">  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span><span class="o">▎ </span><span class="c">The band keeps the work and agents lines; the</span></span>
+<span><span class="o">▎ </span><span class="c">session line moves to </span><span class="o">picket statusline</span><span class="c">. See</span></span>
+<span><span>  </span><span class="o u">order.md</span><span class="c">.</span></span>
+<span> </span>
+<div class="r"><span><span>  </span><span class="c b">Decisions</span></span><span class="m">? ⧉</span></div>
+<span class="d">  ──────────────────────────────────────────────────────────</span>
+<span><span>  </span><span class="m">1. </span><span class="c">Render the session line in the kernel</span></span>
+<span><span>  </span><span class="m">2. </span><span class="c">Keep </span><span class="o">picket next --latest</span><span class="c"> for the band</span></span>
+<span> </span>
+<div class="r"><span class="d" style="flex: 1; overflow: hidden">  ╭─ ts ──────────────────────────────────────────────────────────</span><span class="m"> ⧉ </span><span class="d">─╮</span></div>
+<div class="r"><span>  </span><span class="cb" style="flex: 1; display: flex; justify-content: space-between"><span><span class="d">│ </span><span class="o">const</span><span class="c"> GAP </span><span class="m">=</span><span class="sh"> 2</span></span><span class="d">│</span></span></div>
+<div class="r"><span>  </span><span class="cb" style="flex: 1; display: flex; justify-content: space-between"><span><span class="d">│ </span><span class="o">export const</span><span class="c"> rows </span><span class="m">= (</span><span class="c">line</span><span class="m">: </span><span class="g">Line</span><span class="m">) =&gt;</span></span><span class="d">│</span></span></div>
+<div class="r"><span class="d" style="flex: 1; overflow: hidden">  ╰──────────────────────────────────────────────────────────────</span><span class="d">╯</span></div>
+<span> </span>
+<span><span class="d">─ </span><span class="m">design.md · 34%</span><span class="d"> ─────────────────── </span><span class="c b uo">Files</span><span class="d"> │ </span><span class="m">Outline</span><span> </span><span class="m">✎</span></span>
+<span> </span>
+<span class="m">  ▾ work/20261016-session-line-moves-to-the-st…</span>
+<span class="hl"><span>    </span><span class="o b">› design.md</span><span>                                           </span></span>
+<span class="hl"><span class="c">      request.md</span><span>                                          </span></span>
+<span class="m">  ▸ core/</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.5; color: #B8AA96">
+<span>Pane on #0D0A08 with a one-column #2A221C edge against the transcript.</span>
+<span>Headings cream bold; code, commands, paths and links orange; rules and the code frame dim.</span>
+<span>Markers, footer, icons, folders and the inactive tab muted; active tab cream with an orange underline.</span>
+<span>Selected file orange bold on #2E2620; the hovered row (request.md) takes the same highlight without bold.</span>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1500,"height":1060}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

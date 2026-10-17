@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Status line, wide and narrow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.t{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.65;white-space:pre}
+.o{color:#F9782B}.c{color:#FDEFD4}.m{color:#8C8072}.d{color:#6B6158}.g{color:#9CC46A}.y{color:#F5C04A}.r{color:#E5484D}.b{font-weight:700}
+.fg{background:#9CC46A;color:#0D0A08}.fy{background:#F5C04A;color:#0D0A08}.fr{background:#E5484D;color:#0D0A08}.fe{background:#2E2620;color:#E9C9A0}
+</style>
+</helmet>
+<div style="width: 1400px; height: 900px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 26px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">For validation</div>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">Brand line on top, session line below</h1>
+<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 900px">Line 1 always puts the brand on the left and the folder and branch on the right. Line 2 is today's session line on a wide terminal and splits into three rows when it does not fit.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #E9C9A0; font-weight: 600">Wide terminal · 150 columns · two lines</div>
+<div style="border-radius: 12px; background: #0D0A08; border: 1px solid #2A221C; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; align-self: flex-start">
+<div class="t" style="border: 1px solid #6B6158; border-radius: 6px; padding: 7px 12px"><span class="c">&gt; </span><span class="d">Try "add a test for the wrap rule"</span></div>
+<div class="t" style="width: 148ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">5h </span><span class="g">22%</span><span class="d"> (2h3m)</span>   <span class="m">7d </span><span class="g">41%</span><span class="d"> (3d11h)</span>   <span class="fg"> 46k</span><span class="fe">/200.0k 23% </span>   <span class="m">cache </span><span class="c">84k </span><span class="d">◷ 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 48px; align-items: flex-start">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; color: #E9C9A0; font-weight: 600">Narrow terminal · 80 columns · three lines</div>
+<div style="border-radius: 12px; background: #0D0A08; border: 1px solid #2A221C; padding: 20px 24px; display: flex; flex-direction: column; gap: 12px">
+<div class="t" style="border: 1px solid #6B6158; border-radius: 6px; padding: 7px 12px"><span class="c">&gt; </span><span class="d">Try "add a test"</span></div>
+<div class="t" style="width: 78ch; padding-left: 2ch; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between"><div><span class="c b">PICKET</span><span class="o b">AI</span><span class="o"> &gt;_</span></div><div><span class="c">AISpec</span><span class="d"> · </span><span class="o">⎇ trunk</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="o b">Opus 5.5</span><span class="d"> · </span><span class="c">high</span><span class="d"> · </span><span class="o">picket:designing</span></div><div><span class="m">5h </span><span class="g">22%</span><span class="d"> (2h3m)</span>   <span class="m">7d </span><span class="g">41%</span><span class="d"> (3d11h)</span></div></div>
+<div style="display: flex; justify-content: space-between"><div><span class="fg"> 46k</span><span class="fe">/200.0k 23% </span></div><div><span class="m">cache </span><span class="c">84k </span><span class="d">◷ 25m</span>   <span class="c">$3.42</span></div></div>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 380px; padding-top: 34px">
+<div style="font-size: 15px; font-weight: 600; color: #FDEFD4">How the narrow rows split</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #B8AA96">Row 1: model, effort and skill on the left; the 5h and 7d limits on the right.</p>
+<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #B8AA96">Row 2: context on the left; cache and cost on the right.</p>
+<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #B8AA96">The model name starts at the same column as PICKETAI: the ◆ mark is gone on every width.</p>
+<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #B8AA96">Separators are the dim bullets again; the bars are gone. The branch has a ⎇ icon.</p>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1400,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

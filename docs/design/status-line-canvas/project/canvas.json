@@ -1,0 +1,99 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Compare.dc.html": {
+      "h": 1120,
+      "title": "Fallback vs JetBrainsMono Nerd Font",
+      "w": 1500,
+      "x": 0,
+      "y": 1026
+    },
+    "Main.dc.html": {
+      "h": 900,
+      "title": "Status line · wide and narrow",
+      "w": 1400,
+      "x": 0,
+      "y": 0
+    },
+    "Narrow.dc.html": {
+      "h": 640,
+      "title": "Narrow · busy and hot states",
+      "w": 900,
+      "x": 1480,
+      "y": 0
+    },
+    "Pane.dc.html": {
+      "h": 1060,
+      "title": "Markdown pane · today vs proposed",
+      "w": 1500,
+      "x": 0,
+      "y": 0,
+      "page": "mods"
+    },
+    "Band.dc.html": {
+      "h": 760,
+      "title": "Status band · today vs proposed",
+      "w": 1400,
+      "x": 1580,
+      "y": 0,
+      "page": "mods"
+    },
+    "Palette.dc.html": {
+      "h": 980,
+      "title": "Palette · tokens and contrast",
+      "w": 1180,
+      "x": 1580,
+      "y": 880,
+      "page": "mods"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-17T10:55:00Z",
+    "v": 1
+  },
+  "designSystems": [
+    {
+      "title": "PicketAI",
+      "namespace": "picketai",
+      "artifact": "https://claude.ai/artifact/78MVaNYN5PLKLWw2VUR7tx",
+      "version": null,
+      "copiedAt": "2026-10-17T16:45:00Z"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "title": {
+      "kind": "title1",
+      "maxW": 2380,
+      "text": "Picket status line · PicketAI palette",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "modsTitle": {
+      "kind": "title1",
+      "maxW": 2980,
+      "text": "Picket mods · PicketAI palette",
+      "w": 240,
+      "x": 0,
+      "y": -300,
+      "page": "mods"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Narrow.dc.html",
+    "Compare.dc.html",
+    "Pane.dc.html",
+    "Band.dc.html",
+    "Palette.dc.html"
+  ],
+  "pages": [
+    { "id": "statusline", "name": "Status line" },
+    { "id": "mods", "name": "Mods" }
+  ],
+  "title": "Picket status line"
+}

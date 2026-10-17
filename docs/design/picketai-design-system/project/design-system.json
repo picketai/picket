@@ -1,0 +1,19 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": { "v": 1, "at": "2026-10-17T16:40:00Z" },
+  "title": "PicketAI",
+  "namespace": "PicketAI",
+  "libraries": [],
+  "sections": {},
+  "groups": [],
+  "assetGroups": {},
+  "blobs": {},
+  "docs": { "sections": [] },
+  "lastChange": {
+    "by": "Vlad Apetre",
+    "at": "2026-10-17T16:40:00Z",
+    "via": "Claude Code",
+    "note": "First version from core/themes/picketai.json and core/lib/styling/palette.mjs at trunk@81436d9"
+  }
+}
