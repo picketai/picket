@@ -116,26 +116,28 @@ function statusline(input, columns) {
   return { status: result.status, stderr: result.stderr, lines: result.stdout.replace(ESCAPE, "").replace(/\n$/, "").split("\n") };
 }
 
-test("statusline prints the fixture as one line of 158 code points at COLUMNS=160 (T-2.1)", () => {
+test("statusline prints the brand line, then the fixture as one line of 158 code points at COLUMNS=160 (T-2.1)", () => {
   const { status, stderr, lines } = statusline(STATUSLINE_INPUT, "160");
   assert.equal(status, 0);
   assert.equal(stderr, "");
-  assert.equal(lines.length, 1);
-  assert.equal([...lines[0]].length, 158);
-  assert.ok(lines[0].startsWith("◆ Opus 5.5 · high · picket:ordering"), lines[0]);
+  assert.equal(lines.length, 2);
+  assert.ok(lines[0].startsWith("PICKETAI >_"), lines[0]);
+  assert.equal([...lines[1]].length, 158);
+  assert.ok(lines[1].startsWith("◆ Opus 5.5 · high · picket:ordering"), lines[1]);
 });
 
-test("statusline splits the fixture into two lines at COLUMNS=90 (T-2.2)", () => {
+test("statusline splits the fixture into two session lines at COLUMNS=90 (T-2.2)", () => {
   const { lines } = statusline(STATUSLINE_INPUT, "90");
-  assert.equal(lines.length, 2);
-  assert.ok(lines[1].startsWith("5h "), lines[1]);
+  assert.equal(lines.length, 3);
+  assert.ok(lines[2].startsWith("5h "), lines[2]);
 });
 
 test("statusline reads input that is not JSON, and empty input, as no facts (T-2.3)", () => {
   for (const input of ["not json", ""]) {
     const { status, lines } = statusline(input, "160");
     assert.equal(status, 0);
-    assert.ok(lines[0].startsWith("◆ ... · default · none"), lines[0]);
+    assert.equal(lines[0], "PICKETAI >_");
+    assert.ok(lines[1].startsWith("◆ ... · default · none"), lines[1]);
   }
 });
 

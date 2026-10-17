@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { cacheLeft, contextColor, factsOf, lastSkill, paint, renderStatusline, sessionLine } from "../../core/lib/statusline.mjs";
+import { basename, resolve } from "node:path";
+import { brandLine, cacheLeft, contextColor, factsOf, lastSkill, paint, renderStatusline, sessionLine } from "../../core/lib/statusline.mjs";
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 const MINUTE = 60_000;
@@ -20,6 +21,10 @@ function plainRows(input, columns) {
   return renderStatusline(input, { now: NOW, columns }).replace(ESCAPE, "").split("\n");
 }
 
+function sessionRows(input, columns) {
+  return plainRows(input, columns).slice(1);
+}
+
 function textOf(pieces) {
   return pieces.map((piece) => piece.text).join("");
 }
@@ -31,8 +36,8 @@ function cachePiece(promptCache) {
 const LEFT = "◆ Opus 5.5 · high · picket:ordering";
 const RIGHT = "5h 42% (2h14m)   7d 71% (3d6h)   ctx [███░░░░░░░] 62k/200.0k (31%)   cache 48k ◷ 52m   $4.12";
 
-test("the fixture at 160 columns prints one row of 158 code points (T-1.1)", () => {
-  const rows = plainRows(fixture(), 160);
+test("the fixture at 160 columns prints one session row of 158 code points (T-1.1)", () => {
+  const rows = sessionRows(fixture(), 160);
   assert.equal(rows.length, 1);
   assert.equal([...rows[0]].length, 158);
   assert.ok(rows[0].startsWith(LEFT));
@@ -40,12 +45,12 @@ test("the fixture at 160 columns prints one row of 158 code points (T-1.1)", () 
 });
 
 test("the fixture at 90 columns prints the left part then the right part (T-1.2)", () => {
-  assert.deepEqual(plainRows(fixture(), 90), [LEFT, RIGHT]);
+  assert.deepEqual(sessionRows(fixture(), 90), [LEFT, RIGHT]);
 });
 
 test("columns that are not a positive integer lay out at 78 (T-1.2)", () => {
   for (const columns of [NaN, 0, -5, 12.5]) {
-    const rows = plainRows({ effort: { level: "max" } }, columns);
+    const rows = sessionRows({ effort: { level: "max" } }, columns);
     assert.equal(rows.length, 1);
     assert.equal([...rows[0]].length, 78);
   }
@@ -83,9 +88,23 @@ test("lastSkill reads the last Skill call of an assistant entry (T-1.6)", () => 
   assert.equal(lastSkill(TRANSCRIPT, Buffer.byteLength(lines.at(-1)) + 2), null);
 });
 
-test("paint writes 24-bit colours and leaves plain pieces bare (T-1.7)", () => {
+test("paint writes 24-bit colours and gives plain pieces the cream text colour (T-1.7)", () => {
   const line = sessionLine(factsOf(fixture(), { now: NOW, skill: "picket:ordering" }));
-  assert.equal(paint([line.left[0]]), "\x1b[38;2;215;119;87m◆ \x1b[0m");
-  assert.equal(paint([line.left[1]]), "\x1b[1;38;2;215;119;87mOpus 5.5\x1b[0m");
-  assert.equal(paint([line.right.at(-1)]), "$4.12");
+  assert.equal(paint([line.left[0]]), "\x1b[38;2;249;120;43m◆ \x1b[0m");
+  assert.equal(paint([line.left[1]]), "\x1b[1;38;2;249;120;43mOpus 5.5\x1b[0m");
+  assert.equal(paint([line.right.at(-1)]), "\x1b[38;2;253;239;212m$4.12\x1b[0m");
+});
+
+test("the brand line names the workspace folder and the branch when known", () => {
+  const facts = (input, branch) => factsOf(input, { now: NOW, skill: null, branch });
+  assert.equal(textOf(brandLine(facts({ workspace: { current_dir: "D:/work/AISpec" }, cwd: "D:/elsewhere" }, "trunk"))), "PICKETAI >_ │ AISpec │ trunk");
+  assert.equal(textOf(brandLine(facts({ cwd: "/home/dev/shop" }, null))), "PICKETAI >_ │ shop");
+  assert.equal(textOf(brandLine(facts({}, null))), "PICKETAI >_");
+});
+
+test("the brand line is the first row, above the session rows", () => {
+  const [brand, session] = plainRows(fixture(), 160);
+  assert.ok(brand.startsWith(`PICKETAI >_ │ ${basename(resolve("."))}`), brand);
+  assert.ok(session.startsWith(LEFT), session);
+  assert.equal(plainRows({}, 160)[0], "PICKETAI >_");
 });

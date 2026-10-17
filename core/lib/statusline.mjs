@@ -1,3 +1,5 @@
+import { basename, resolve } from "node:path";
+import { branch } from "./git.mjs";
 import { readTail } from "./transcript.mjs";
 
 export const EDGE_COLUMNS = 2;
@@ -8,18 +10,20 @@ const CONTEXT_BAR_WIDTH = 10;
 const MINUTE = 60_000;
 const PART_GAP = { text: "   " };
 const DOT = { text: " · ", dim: true };
+const BAR = { text: " │ ", color: "inactive" };
 const SKILL_CALL = '"name":"Skill"';
 
 const PALETTE = {
-  claude: "38;2;215;119;87",
-  permission: "38;2;177;185;249",
-  ide: "38;2;71;130;200",
-  inactive: "38;2;138;138;138",
-  success: "38;2;78;186;101",
-  warning: "38;2;255;193;7",
-  error: "38;2;255;107;128",
+  claude: "38;2;249;120;43",
+  text: "38;2;253;239;212",
+  remember: "38;2;233;201;160",
+  ide: "38;2;122;162;200",
+  inactive: "38;2;140;128;114",
+  success: "38;2;156;196;106",
+  warning: "38;2;245;192;74",
+  error: "38;2;229;72;77",
 };
-const DIM = "38;2;107;107;107";
+const DIM = "38;2;107;97;88";
 
 const FAMILY = /^claude-(opus|sonnet|haiku|fable)-(\d+)-(\d+)/;
 
@@ -86,9 +90,16 @@ function cacheOf(promptCache) {
   };
 }
 
-export function factsOf(input, { now, skill }) {
+export function workspaceDir(input) {
+  return input.workspace?.current_dir ?? input.cwd ?? null;
+}
+
+export function factsOf(input, { now, skill, branch = null }) {
   const context = input.context_window ?? {};
+  const dir = workspaceDir(input);
   return {
+    folder: dir === null ? null : basename(resolve(dir)),
+    branch,
     model: input.model?.id ?? null,
     effort: input.effort?.level ?? null,
     skill,
@@ -141,6 +152,17 @@ function costPart(facts) {
   return facts.cost === null ? [] : [{ text: `$${facts.cost.toFixed(2)}` }];
 }
 
+export function brandLine(facts) {
+  const brand = [
+    { text: "PICKET", color: "text", bold: true },
+    { text: "AI", color: "claude", bold: true },
+    { text: " >_", color: "claude" },
+  ];
+  const folder = facts.folder === null ? [] : [BAR, { text: facts.folder, color: "text" }];
+  const branchName = facts.branch === null ? [] : [BAR, { text: facts.branch, color: "claude" }];
+  return [...brand, ...folder, ...branchName];
+}
+
 export function sessionLine(facts) {
   const parts = [
     limitPart("5h", facts.limits.five_hour, facts.now),
@@ -154,7 +176,7 @@ export function sessionLine(facts) {
       { text: "◆ ", color: "claude" },
       { text: facts.model === null ? "..." : prettyModel(facts.model), color: "claude", bold: true },
       DOT,
-      { text: facts.effort ?? "default", color: "permission" },
+      { text: facts.effort ?? "default", color: "remember" },
       DOT,
       { text: facts.skill ?? "none", color: "ide" },
     ],
@@ -177,17 +199,12 @@ export function rows(line, columns) {
 }
 
 function codesOf(piece) {
-  const color = piece.color ? PALETTE[piece.color] : piece.dim ? DIM : null;
+  const color = piece.color ? PALETTE[piece.color] : piece.dim ? DIM : PALETTE.text;
   return [piece.bold ? "1" : null, color].filter((code) => code !== null);
 }
 
 export function paint(pieces) {
-  return pieces
-    .map((piece) => {
-      const codes = codesOf(piece);
-      return codes.length === 0 ? piece.text : `\x1b[${codes.join(";")}m${piece.text}\x1b[0m`;
-    })
-    .join("");
+  return pieces.map((piece) => `\x1b[${codesOf(piece).join(";")}m${piece.text}\x1b[0m`).join("");
 }
 
 function skillCalled(line) {
@@ -216,6 +233,7 @@ function layoutColumns(columns) {
 }
 
 export function renderStatusline(input, { now, columns }) {
-  const facts = factsOf(input, { now, skill: lastSkill(input.transcript_path) });
-  return rows(sessionLine(facts), layoutColumns(columns)).map(paint).join("\n");
+  const dir = workspaceDir(input);
+  const facts = factsOf(input, { now, skill: lastSkill(input.transcript_path), branch: dir === null ? null : branch(dir) });
+  return [brandLine(facts), ...rows(sessionLine(facts), layoutColumns(columns))].map(paint).join("\n");
 }
