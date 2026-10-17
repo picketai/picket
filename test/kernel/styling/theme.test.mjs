@@ -25,6 +25,22 @@ test("the theme copy is kept while PicketAI is still the theme setting, and goes
   }
 });
 
+test("the theme copy is kept while /theme chose PicketAI in ~/.claude.json, with no theme setting item", async () => {
+  const global = '{"theme":"custom:picketai"}';
+  const host = fakeHost({ files: { ".claude.json": global }, answers: ["yes", "no"] });
+  try {
+    await setupTerminal(host, { only: ["theme"] });
+    assert.deepEqual(readManifest(host).items.map((item) => item.id), ["theme-file"]);
+    const [blocked] = removeItems(host, readManifest(host), ["theme-file"], [theme]);
+    assert.equal(blocked.result, "kept");
+    assert.match(blocked.detail, /run \/theme, pick dark/);
+    assert.ok(existsSync(join(host.home, ".claude", "themes", "picketai.json")));
+    assert.equal(readFileSync(join(host.home, ".claude.json"), "utf8"), global);
+  } finally {
+    host.dispose();
+  }
+});
+
 const SOURCE = "core/themes/picketai.json";
 const COPY = ".claude/themes/picketai.json";
 const SETTINGS = ".claude/settings.json";

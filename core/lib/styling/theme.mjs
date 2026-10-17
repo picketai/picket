@@ -34,14 +34,18 @@ function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function themeInEffect(host, settings) {
-  if (typeof settings.theme === "string") return settings.theme;
+function globalTheme(host) {
   try {
     const global = JSON.parse(readFileSync(join(host.home, `${HOST_DIR}.json`), "utf8"));
-    return typeof global?.theme === "string" ? global.theme : "dark";
+    return typeof global?.theme === "string" ? global.theme : null;
   } catch {
-    return "dark";
+    return null;
   }
+}
+
+function themeInEffect(host, settings) {
+  if (typeof settings.theme === "string") return settings.theme;
+  return globalTheme(host) ?? "dark";
 }
 
 function fileChange(host) {
@@ -133,8 +137,11 @@ function activeSetting(host) {
 }
 
 function blocks(item, host) {
-  if (item.id !== "theme-file" || activeSetting(host) !== THEME_VALUE) return null;
-  return `PicketAI is still your Claude Code theme: run /theme and pick ${themeInEffect(host, {})}, or remove the theme setting together with the file`;
+  if (item.id !== "theme-file") return null;
+  const global = globalTheme(host);
+  if (activeSetting(host) !== THEME_VALUE && global !== THEME_VALUE) return null;
+  const fallback = global !== null && global !== THEME_VALUE ? global : "dark";
+  return `PicketAI is still your Claude Code theme: run /theme, pick ${fallback}, then remove the theme again`;
 }
 
 export const theme = { name: NAME, plan, unapply, blocks };
