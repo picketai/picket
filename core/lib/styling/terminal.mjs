@@ -2,12 +2,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { detectFont, readPin } from "./font.mjs";
 import { installedAt, sha256File } from "./manifest.mjs";
+import { gnomeTerminal } from "./terminals/gnome-terminal.mjs";
+import { konsole } from "./terminals/konsole.mjs";
 import { manualWriter } from "./terminals/manual.mjs";
+import { ptyxis } from "./terminals/ptyxis.mjs";
 import { windowsTerminal } from "./terminals/windows-terminal.mjs";
 
 const NAME = "terminal";
 const ICONS_ID = "statusline-icons";
-const WRITERS = { [windowsTerminal.id]: windowsTerminal };
+const WRITERS = Object.fromEntries([windowsTerminal, konsole, gnomeTerminal, ptyxis].map((writer) => [writer.id, writer]));
 
 export function detectTerminal(env) {
   if (env.WT_SESSION) return "windows-terminal";

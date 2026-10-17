@@ -67,6 +67,29 @@ export function fakeRegistry(values = {}) {
   return { keys, run };
 }
 
+export function fakeDconf(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  const run = ([verb, ...args]) => {
+    if (verb === "help") return exited(0);
+    if (verb === "read") return exited(0, values.has(args[0]) ? `${values.get(args[0])}\n` : "");
+    if (verb === "write") {
+      values.set(args[0], args[1]);
+      return exited(0);
+    }
+    if (verb === "reset" && args[0] === "-f") {
+      for (const key of [...values.keys()]) if (key.startsWith(args[1])) values.delete(key);
+      return exited(0);
+    }
+    if (verb === "reset") {
+      values.delete(args[0]);
+      return exited(0);
+    }
+    if (verb === "dump") return exited(0, [...values].filter(([key]) => key.startsWith(args[0])).map(([key, value]) => `${key}=${value}`).join("\n"));
+    return exited(1);
+  };
+  return { values, run };
+}
+
 export function servingFetch(body) {
   const fetch = async (url) => {
     fetch.urls.push(url);
