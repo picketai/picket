@@ -24,27 +24,27 @@
       "y": 0
     },
     "Pane.dc.html": {
-      "h": 1060,
-      "title": "Markdown pane · today vs proposed",
-      "w": 1500,
+      "h": 1040,
+      "title": "Markdown pane · final",
+      "w": 860,
       "x": 0,
       "y": 0,
       "page": "mods"
     },
     "Band.dc.html": {
-      "h": 760,
-      "title": "Status band · today vs proposed",
+      "h": 500,
+      "title": "Status band · final",
       "w": 1400,
-      "x": 1580,
+      "x": 940,
       "y": 0,
       "page": "mods"
     },
     "Palette.dc.html": {
-      "h": 980,
-      "title": "Palette · tokens and contrast",
+      "h": 860,
+      "title": "Palette · theme keys and contrast",
       "w": 1180,
-      "x": 1580,
-      "y": 880,
+      "x": 940,
+      "y": 620,
       "page": "mods"
     }
   },
@@ -75,7 +75,7 @@
     },
     "modsTitle": {
       "kind": "title1",
-      "maxW": 2980,
+      "maxW": 2340,
       "text": "Picket mods · PicketAI palette",
       "w": 240,
       "x": 0,

@@ -8,7 +8,7 @@ The values come from `core/themes/picketai.json` (the Claude Code theme) and `co
 
 Dark first. The ground is `bg` #0D0A08, the same colour as the terminal, so a pane or band never looks like a separate window. Raised things use `surface` #14110E.
 
-One accent. `accent` #F9782B marks what is active or what you can act on: a command, a path, a link, the selected file, the agent that is working. If everything is orange, nothing is. Labels, icons and elapsed times stay `inactive`.
+One accent. `accent` #F9782B marks what is active or what you can act on: a command, a path, a link, the selected file, the agent that is working. If everything is orange, nothing is. Labels and elapsed times stay `inactive`. Every icon you can click (? ⧉ ✎) uses `accent-shimmer`, so it reads as a control without competing with the active state.
 
 State has its own colours. `success`, `warning` and `error` only ever mean a state (staged, waiting for you, blocked). They are never decoration and never a second accent.
 
@@ -30,8 +30,8 @@ The product is **Picket**; the project and brand are **PicketAI**. "Harness" is 
 | `surface` | #14110E | bashMessageBackgroundColor | Code blocks, pages |
 | `text` | #FDEFD4 | text | Body text, headings in bold |
 | `accent` | #F9782B | claude, suggestion, permission | Active and actionable |
-| `accent-shimmer` | #FFB27A | claudeShimmer | Highlights, numbers in code |
-| `inactive` | #8C8072 | inactive | Markers, footers, icons, folders |
+| `accent-shimmer` | #FFB27A | claudeShimmer | Clickable icons, highlights, numbers in code |
+| `inactive` | #8C8072 | inactive | Markers, footers, folders |
 | `inactive-shimmer` | #B8AA96 | inactiveShimmer | Muted text on a highlighted row |
 | `border` | #6B6158 | promptBorder | Rules, separators, frames |
 | `subtle` | #4A4038 | subtle | Decoration only |
@@ -42,7 +42,7 @@ The product is **Picket**; the project and brand are **PicketAI**. "Harness" is 
 | `warning` | #F5C04A | warning | Waiting, your gate, from 70% |
 | `error` | #E5484D | error | Blocked, conflicts, from 90% |
 
-`row-highlight` and `edge` have no theme key. Terminal UI uses them only while the PicketAI theme is active and leaves them out under any other theme.
+`row-highlight` and `edge` have no theme key, so terminal UI does not use them: the Markdown pane highlights rows with `surface-user-hover` (theme key userMessageBackgroundHover) and draws no pane edge. Pages and mockups may use both.
 
 ## Terminal roles
 
@@ -53,13 +53,14 @@ How the status line, the status band and the Markdown pane colour each element.
 | Body text, file names | `text` |
 | Headings | `text`, bold |
 | Inline code, commands, paths, links | `accent` (links underlined) |
-| Selected file | `accent`, bold, on `row-highlight` |
-| Hovered row | `row-highlight`, not bold |
-| List numbers, bullets, footer, ? and ⧉ icons | `inactive` |
-| Folders | `inactive`; `inactive-shimmer` when hovered |
+| Selected file | `accent`, bold, on `surface-user-hover` |
+| Hovered row | `surface-user-hover`, not bold |
+| List numbers, bullets, footer | `inactive` |
+| Clickable icons: ? ⧉ ✎ ← ◂ ▸ | `accent-shimmer` |
+| Folders | `inactive` |
 | Rules, separators, code frame | `border` |
 | Code block | `text` on `surface` |
-| Active tab | `text`, bold, underlined in `accent` |
+| Active tab | `text`, bold, underlined (a terminal draws the underline in the text colour) |
 | Inactive tab | `inactive` |
 | Approved phase dot, working agent | `accent` |
 | Open phase dot | `border` |
@@ -90,7 +91,6 @@ Terminal glyphs come from the Nerd Font, each with a plain Unicode fallback for 
 | Folder | U+F07B | none |
 | Cache time | U+F0150 | ◷ |
 | Lane | none | ▶ |
-| Agents | none | ⚇ |
 | Phase approved, open | none | ● ○ |
 | Working, needs you | none | ⋯ ◀ |
 

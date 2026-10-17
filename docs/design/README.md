@@ -23,4 +23,4 @@ Ask Claude Code to read each artifact's project files into its folder here, for 
 
 Then review the diff and commit it on its own: `docs(design): refresh from artifacts`.
 
-Snapshot taken 2026-10-17: design system version 1792253904-2e16, canvas version 1792254375-2b9e.
+Snapshot taken 2026-10-17: design system version 1792256119-ee8d, canvas version 1792256154-98ef.

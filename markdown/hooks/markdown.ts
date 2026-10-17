@@ -1,4 +1,4 @@
-export type Tone = 'accent' | 'link' | 'code' | 'subtle'
+import type { Tone } from './palette'
 
 export type SpanStyle = {
   bold?: boolean
@@ -167,16 +167,16 @@ function tableRows(header: string[], body: string[][], room: number, table: numb
   const wide = total > room ? { table, width: total } : undefined
   const border = (left: string, mid: string, right: string, isTop = false): Row => ({
     kind: 'line',
-    spans: [{ text: left + widths.map(w => '─'.repeat(w + 2)).join(mid) + right, style: { tone: 'subtle' } }],
+    spans: [{ text: left + widths.map(w => '─'.repeat(w + 2)).join(mid) + right, style: { tone: 'rule' } }],
     ...(wide !== undefined && { wide: { ...wide, isTop } }),
   })
   const line = (row: string[], isHeader: boolean): Row => {
-    const spans: Span[] = [{ text: '│', style: { tone: 'subtle' } }]
+    const spans: Span[] = [{ text: '│', style: { tone: 'rule' } }]
     row.forEach((cell, i) => {
       const w = widths[i] ?? 3
       const text = cut(cell, w)
       spans.push({ text: ` ${text}${' '.repeat(Math.max(0, w - width(text)))} `, style: isHeader ? { bold: true } : {} })
-      spans.push({ text: '│', style: { tone: 'subtle' } })
+      spans.push({ text: '│', style: { tone: 'rule' } })
     })
     return { kind: 'line', spans, ...(wide !== undefined && { wide: { ...wide, isTop: false } }) }
   }
@@ -284,20 +284,20 @@ export function layout(text: string, room: number): Layout {
     if (heading !== null) {
       gap('heading')
       const level = heading[1]?.length ?? 1
-      const style: SpanStyle = level === 1 ? { bold: true, tone: 'accent' } : level === 2 ? { bold: true } : { bold: true, italic: true }
+      const style: SpanStyle = level <= 2 ? { bold: true } : { bold: true, italic: true }
       const title = heading[2] ?? ''
       const [first, ...more] = lines(wrap(inline(title, style), Math.max(1, room - 4)))
       found.push({ level, text: plain(title), row: rows.length, line: i })
       if (first !== undefined && first.kind === 'line') rows.push({ ...first, heading: found.length - 1 })
       rows.push(...more)
-      if (level === 1) rows.push({ kind: 'line', spans: [{ text: '━'.repeat(room), style: { tone: 'subtle' } }] })
+      if (level === 1) rows.push({ kind: 'line', spans: [{ text: '━'.repeat(room), style: { tone: 'rule' } }] })
       i++
       continue
     }
 
     if (RULE.test(line)) {
       gap('rule')
-      rows.push({ kind: 'line', spans: [{ text: '─'.repeat(room), style: { tone: 'subtle' } }] })
+      rows.push({ kind: 'line', spans: [{ text: '─'.repeat(room), style: { tone: 'rule' } }] })
       i++
       continue
     }
@@ -316,7 +316,7 @@ export function layout(text: string, room: number): Layout {
       gap('quote')
       const quoted: string[] = []
       while (i < source.length && QUOTE.test(source[i] ?? '')) quoted.push(QUOTE.exec(source[i++] ?? '')?.[1] ?? '')
-      const bar: Span[] = [{ text: '│ ', style: { tone: 'subtle' } }]
+      const bar: Span[] = [{ text: '│ ', style: { tone: 'rule' } }]
       rows.push(...lines(wrap(inline(quoted.join(' '), { italic: true, dim: true }), room, bar)))
       continue
     }
@@ -335,7 +335,7 @@ export function layout(text: string, room: number): Layout {
         i++
       }
       const indent = '  '.repeat(depth + 1)
-      const first: Span[] = [{ text: indent }, { text: `${marker} `, style: { tone: 'subtle' } }]
+      const first: Span[] = [{ text: indent }, { text: `${marker} `, style: { tone: 'muted' } }]
       const rest: Span[] = [{ text: indent + ' '.repeat(width(marker) + 1) }]
       rows.push(...lines(wrap(inline(text.join(' ')), room, first, rest)))
       continue

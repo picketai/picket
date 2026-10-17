@@ -16,37 +16,34 @@ body{margin:0}
 td,th{padding:9px 12px;border-bottom:1px solid #2A221C;text-align:left;vertical-align:middle}
 th{font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#8C8072;font-weight:600}
 .sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:8px;border:1px solid #4A4038}
-.ok{color:#9CC46A}.no{color:#E5484D}.wa{color:#F5C04A}
+.ok{color:#9CC46A}.no{color:#E5484D}
 </style>
 </helmet>
-<div style="width: 1180px; height: 980px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 22px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
+<div style="width: 1180px; height: 860px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 22px; background: #14110E; color: #FDEFD4; font-family: 'IBM Plex Sans', system-ui, sans-serif">
 <div style="display: flex; flex-direction: column; gap: 8px">
-<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">One palette for both mods</div>
-<h1 style="margin: 0; font-size: 34px; font-weight: 600">Roles, theme tokens and contrast</h1>
-<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 1000px">Each role reads a Claude Code theme token, so PicketAI and any other theme apply. Ratios are against the pane background #0D0A08 and the row highlight #2E2620; text needs 7:1 (body) or 4.5:1 (secondary), lines 3:1.</p>
+<div style="font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #F9782B; font-weight: 600">One palette for both mods · final</div>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">Roles, theme keys and contrast</h1>
+<p style="margin: 0; font-size: 16px; color: #B8AA96; max-width: 1000px">Each role reads a Claude Code theme key from the mod's palette module (status/hooks/palette.ts, markdown/hooks/palette.ts). Ratios are for the PicketAI theme, against the background #0D0A08 and the row highlight #241C16; text needs 7:1 (body) or 4.5:1 (secondary), lines 3:1.</p>
 </div>
 <table style="border-collapse: collapse; width: 100%; font-size: 14px">
-<thead><tr><th>Role</th><th>Theme token</th><th>PicketAI</th><th>On #0D0A08</th><th>On #2E2620</th></tr></thead>
+<thead><tr><th>Role</th><th>Theme key</th><th>PicketAI</th><th>On #0D0A08</th><th>On #241C16</th></tr></thead>
 <tbody>
-<tr><td>Body text, file names, headings (bold)</td><td class="mono">text</td><td class="mono"><span class="sw" style="background:#FDEFD4"></span>#FDEFD4</td><td class="mono ok">17.36 body ✓</td><td class="mono ok">13.06 ✓</td></tr>
-<tr><td>Inline code, commands, paths, links, selected file, active state</td><td class="mono">claude · suggestion · permission</td><td class="mono"><span class="sw" style="background:#F9782B"></span>#F9782B</td><td class="mono ok">7.28 body ✓</td><td class="mono ok">5.48 secondary ✓</td></tr>
-<tr><td>Numbers in code</td><td class="mono">claudeShimmer</td><td class="mono"><span class="sw" style="background:#FFB27A"></span>#FFB27A</td><td class="mono ok">11.18 ✓</td><td class="mono ok">8.42 ✓</td></tr>
-<tr><td>List markers, footer, ? and ⧉, folders, inactive tab, elapsed time</td><td class="mono">inactive</td><td class="mono"><span class="sw" style="background:#8C8072"></span>#8C8072</td><td class="mono ok">5.12 secondary ✓</td><td class="mono no">3.85 ✗</td></tr>
-<tr><td>Muted text on a highlighted row (folder under hover)</td><td class="mono">inactiveShimmer</td><td class="mono"><span class="sw" style="background:#B8AA96"></span>#B8AA96</td><td class="mono ok">8.67 ✓</td><td class="mono ok">6.53 ✓</td></tr>
-<tr><td>Rules, separators, code frame, open phase dot</td><td class="mono">promptBorder</td><td class="mono"><span class="sw" style="background:#6B6158"></span>#6B6158</td><td class="mono ok">3.27 line ✓</td><td class="mono no">2.46 ✗</td></tr>
-<tr><td>Today's rules and markers (replaced)</td><td class="mono">subtle</td><td class="mono"><span class="sw" style="background:#4A4038"></span>#4A4038</td><td class="mono no">1.96 ✗</td><td class="mono no">1.47 ✗</td></tr>
+<tr><td>Body text, file names, headings (bold)</td><td class="mono">text</td><td class="mono"><span class="sw" style="background:#FDEFD4"></span>#FDEFD4</td><td class="mono ok">17.36 body ✓</td><td class="mono ok">14.75 ✓</td></tr>
+<tr><td>Code, commands, paths, links, selected file, lane, working state</td><td class="mono">claude · suggestion · permission</td><td class="mono"><span class="sw" style="background:#F9782B"></span>#F9782B</td><td class="mono ok">7.28 body ✓</td><td class="mono ok">6.19 secondary ✓</td></tr>
+<tr><td>Clickable icons ? ⧉ ✎ ← ◂ ▸</td><td class="mono">claudeShimmer</td><td class="mono"><span class="sw" style="background:#FFB27A"></span>#FFB27A</td><td class="mono ok">11.18 ✓</td><td class="mono ok">9.50 ✓</td></tr>
+<tr><td>List markers, work status, footer label, folders, inactive tab, counts, elapsed time</td><td class="mono">inactive</td><td class="mono"><span class="sw" style="background:#8C8072"></span>#8C8072</td><td class="mono ok">5.12 secondary ✓</td><td class="mono no">4.35 ✗</td></tr>
+<tr><td>Rules, separators, table borders, code frame, open phase dot</td><td class="mono">promptBorder</td><td class="mono"><span class="sw" style="background:#6B6158"></span>#6B6158</td><td class="mono ok">3.27 line ✓</td><td class="mono">not used there</td></tr>
 <tr><td>Code block background</td><td class="mono">bashMessageBackgroundColor</td><td class="mono"><span class="sw" style="background:#14110E"></span>#14110E</td><td class="mono">surface</td><td class="mono">cream 16.55 ✓</td></tr>
-<tr><td>Row highlight: selected and hovered file</td><td class="mono wa">no token</td><td class="mono"><span class="sw" style="background:#2E2620"></span>#2E2620</td><td class="mono">surface</td><td class="mono">cream 13.06 ✓</td></tr>
-<tr><td>Pane edge, one column</td><td class="mono wa">no token</td><td class="mono"><span class="sw" style="background:#2A221C"></span>#2A221C</td><td class="mono wa">1.26 decor</td><td class="mono">n/a</td></tr>
-<tr><td>Success, staged, approved</td><td class="mono">success</td><td class="mono"><span class="sw" style="background:#9CC46A"></span>#9CC46A</td><td class="mono ok">9.88 ✓</td><td class="mono ok">7.44 ✓</td></tr>
-<tr><td>Waiting, your gate, unstaged</td><td class="mono">warning</td><td class="mono"><span class="sw" style="background:#F5C04A"></span>#F5C04A</td><td class="mono ok">11.77 ✓</td><td class="mono ok">8.85 ✓</td></tr>
-<tr><td>Blocked, errors, conflicts</td><td class="mono">error</td><td class="mono"><span class="sw" style="background:#E5484D"></span>#E5484D</td><td class="mono ok">5.04 secondary ✓</td><td class="mono no">3.79 ✗</td></tr>
+<tr><td>Row highlight: selected and hovered file</td><td class="mono">userMessageBackgroundHover</td><td class="mono"><span class="sw" style="background:#241C16"></span>#241C16</td><td class="mono">surface</td><td class="mono">cream 14.75 ✓</td></tr>
+<tr><td>Success, staged</td><td class="mono">success</td><td class="mono"><span class="sw" style="background:#9CC46A"></span>#9CC46A</td><td class="mono ok">9.88 ✓</td><td class="mono ok">8.40 ✓</td></tr>
+<tr><td>Waiting, your gate</td><td class="mono">warning</td><td class="mono"><span class="sw" style="background:#F5C04A"></span>#F5C04A</td><td class="mono ok">11.77 ✓</td><td class="mono ok">10.00 ✓</td></tr>
+<tr><td>Blocked, errors</td><td class="mono">error</td><td class="mono"><span class="sw" style="background:#E5484D"></span>#E5484D</td><td class="mono ok">5.04 secondary ✓</td><td class="mono">not used there</td></tr>
 </tbody>
 </table>
-<p style="margin: 0; font-size: 13px; line-height: 1.55; color: #8C8072; max-width: 1060px">Every ✗ on #2E2620 is a colour that never sits on a highlighted row in the proposal, except muted folders: a hovered folder switches to inactiveShimmer. The row highlight and the pane edge have no theme token yet, so they come from the palette module while PicketAI is active and are left out under other themes.</p>
+<p style="margin: 0; font-size: 13px; line-height: 1.55; color: #8C8072; max-width: 1060px">One known miss: a folder under the pointer stays muted on the highlight, 4.35:1, just under 4.5:1. A hover can change a row's background but not its text colour.</p>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1180,"height":980}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1180,"height":860}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

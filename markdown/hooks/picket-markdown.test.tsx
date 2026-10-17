@@ -82,12 +82,24 @@ test('clicking a report path in a reply opens it in the pane, and its links navi
       view: {},
     },
   })
-  expect((await pane.find({ type: 'Text', text: 'Latency' }))?.props.color).toBe('claude')
+  const title = await pane.find({ type: 'Text', text: 'Latency' })
+  expect(title?.props.color).toBeUndefined()
+  expect(title?.props.bold).toBe(true)
   expect(await pane.find({ key: 'copy:0' })).toBeDefined()
+  expect((await pane.find({ type: 'Text', text: '⧉' }))?.props.color).toBe('claudeShimmer')
+  expect((await pane.find({ type: 'Text', text: '?' }))?.props.color).toBe('claudeShimmer')
+  expect((await pane.find({ type: 'Text', text: '✎' }))?.props.color).toBe('claudeShimmer')
+  expect((await pane.find({ type: 'Text', text: ' ─╮' }))?.props.color).toBe('promptBorder')
+  expect(await pane.find({ type: 'Text', text: `╰${'─'.repeat(54)}╯` })).toBeDefined()
+  expect((await pane.find({ type: 'Text', text: '── ' }))?.props.color).toBe('promptBorder')
+  expect((await pane.find({ type: 'Text', text: ' ──' }))?.props.color).toBe('promptBorder')
   expect(await pane.find({ key: `file:${REPORT}` })).toBeDefined()
+  const selected = await pane.find({ key: `row:${REPORT}` })
+  expect(selected?.props.backgroundColor).toBe('userMessageBackgroundHover')
 
   await pane.press({ key: 'link:0' })
   expect(await pane.find({ type: 'Text', text: 'Order' })).toBeDefined()
+  expect((await pane.find({ key: `row:${REPORT}` }))?.props.backgroundColor).toBeUndefined()
   expect(await pane.find({ key: `file:${ORDER}` })).toBeDefined()
 
   expect(await pane.find({ key: 'toggle-tree' })).toBeUndefined()

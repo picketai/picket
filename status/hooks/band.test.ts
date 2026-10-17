@@ -42,8 +42,9 @@ describe('work line', () => {
   test('the left part reads lane, title and approved phase dots', async () => {
     const line = workLine(WORK, NOW)
     expect(text(line?.left ?? [])).toBe('▶ order  Ship picket-markdown mod with picket init  ●○ 1/2')
-    expect(line?.left.filter(piece => piece.text === '●').map(piece => piece.color)).toEqual(['ide'])
-    expect(line?.left.filter(piece => piece.text === '○').map(piece => piece.color)).toEqual(['subtle'])
+    expect(line?.left.filter(piece => piece.text === '●').map(piece => piece.color)).toEqual(['claude'])
+    expect(line?.left.filter(piece => piece.text === '○').map(piece => piece.color)).toEqual(['promptBorder'])
+    expect(line?.left.find(piece => piece.text === ' 1/2')?.color).toBe('inactive')
     expect(text(workLine({ ...WORK, phase_count: 0, phases_approved: 0 }, NOW)?.left ?? [])).toBe(
       '▶ order  Ship picket-markdown mod with picket init',
     )
@@ -53,12 +54,15 @@ describe('work line', () => {
   test('a user gate reads as your step with the minutes waited', async () => {
     const right = workLine(WORK, NOW)?.right ?? []
     expect(text(right)).toBe('you approve phase 1 ◀ 6m')
-    expect(right[0]).toEqual({ text: 'you approve phase 1 ◀', color: 'warning', bold: true })
+    expect(right).toEqual([
+      { text: 'you approve phase 1 ◀', color: 'warning', bold: true },
+      { text: ' 6m', color: 'inactive' },
+    ])
   })
 
   test('an agent step reads as its actor at work, a block as the reason', async () => {
     const implementing = { ...WORK, action: 'implement_phase', actor: 'developer', phase: 2 }
-    expect(workLine(implementing, NOW)?.right).toEqual([{ text: 'developer implements phase 2 ⋯', color: 'permission' }])
+    expect(workLine(implementing, NOW)?.right).toEqual([{ text: 'developer implements phase 2 ⋯', color: 'claude' }])
     const blocked = { ...WORK, status: 'blocked', action: 'resolve_block', blocked_reason: 'phase 2 stalled, 3 tests fail' }
     expect(workLine(blocked, NOW)?.right).toEqual([
       { text: 'blocked: phase 2 stalled, 3 tests fail ◀', color: 'error', bold: true },
@@ -83,8 +87,9 @@ describe('agents line', () => {
       null,
       NOW,
     )
-    expect(text(line?.left ?? [])).toBe('⚇ developer working (3m12s)')
-    expect(line?.left.find(piece => piece.text === 'working')).toEqual({ text: 'working', color: 'ide', bold: true })
+    expect(text(line?.left ?? [])).toBe('  developer working (3m12s)')
+    expect(line?.left.find(piece => piece.text === 'working')).toEqual({ text: 'working', color: 'claude', bold: true })
+    expect(line?.left.find(piece => piece.text === ' (3m12s)')?.color).toBe('inactive')
     expect(line?.right).toEqual([])
   })
 
@@ -92,12 +97,18 @@ describe('agents line', () => {
     const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE })
     const gate = { ...WORK, actor: 'user', by: 'developer' }
     const waiting = agentsLine([developer], gate, NOW)
-    expect(text(waiting?.left ?? [])).toBe('⚇ developer waiting (6m)')
+    expect(text(waiting?.left ?? [])).toBe('  developer waiting (6m)')
     expect(waiting?.left.find(piece => piece.text === 'waiting')?.color).toBe('warning')
     expect(agentsLine([developer], { ...gate, by: 'reviewer' }, NOW)).toBe(null)
 
     const earlier = { ...developer, id: 'id-old', name: 'developer-old', idleAt: NOW - 20 * MINUTE }
-    expect(text(agentsLine([earlier, developer], gate, NOW)?.left ?? [])).toBe('⚇ developer waiting (6m)')
+    expect(text(agentsLine([earlier, developer], gate, NOW)?.left ?? [])).toBe('  developer waiting (6m)')
+  })
+
+  test('the first agent name starts in the same column as the lane name', async () => {
+    const lane = text(workLine(WORK, NOW)?.left ?? []).indexOf(WORK.lane)
+    const name = text(agentsLine([agent('developer', 'running')], null, NOW)?.left ?? []).indexOf('developer')
+    expect(name).toBe(lane)
   })
 
   test('no working or waiting agent means no agents line', async () => {

@@ -12,8 +12,8 @@
   "docs": { "sections": [] },
   "lastChange": {
     "by": "Vlad Apetre",
-    "at": "2026-10-17T16:40:00Z",
+    "at": "2026-10-17T17:20:00Z",
     "via": "Claude Code",
-    "note": "First version from core/themes/picketai.json and core/lib/styling/palette.mjs at trunk@81436d9"
+    "note": "Terminal roles match the shipped mods: rows highlight with surface-user-hover, tab underline in the text colour"
   }
 }

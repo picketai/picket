@@ -1,4 +1,5 @@
 import type { Piece, Work } from '../types'
+import { TONE } from './palette'
 
 const MINUTE = 60_000
 
@@ -38,14 +39,14 @@ const agentVerb = (work: Work): string => {
 
 export const stepText = (work: Work, now: number): Piece[] => {
   if (work.status === 'blocked') {
-    return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: 'error', bold: true }]
+    return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: TONE.error, bold: true }]
   }
   if (work.actor === 'user') {
     const ask = work.action === 'resolve_sources' ? 'you pick source versions' : `you approve phase ${work.phase}`
     return [
-      { text: `${ask} ◀`, color: 'warning', bold: true },
-      { text: ` ${minutes(now - Date.parse(work.since))}`, dim: true },
+      { text: `${ask} ◀`, color: TONE.warning, bold: true },
+      { text: ` ${minutes(now - Date.parse(work.since))}`, color: TONE.muted },
     ]
   }
-  return [{ text: `${work.actor ?? 'lead'} ${agentVerb(work)} ⋯`, color: 'permission' }]
+  return [{ text: `${work.actor ?? 'lead'} ${agentVerb(work)} ⋯`, color: TONE.accent }]
 }

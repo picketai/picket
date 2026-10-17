@@ -4,7 +4,8 @@ import type { EngineInterface, PressedLink, Register, UiPressArgument } from 'cl
 import type { DocWork, ViewedDoc } from '../types'
 import { baseName, candidatePaths, dirOf, fromHref, isMarkdownPath, linkPaths, resolvePath } from './links'
 import { changedRows, layout, sliceSpans, width } from './markdown'
-import type { Row, Span, Tone } from './markdown'
+import type { Row, Span } from './markdown'
+import { SURFACES, TONES } from './palette'
 import { folderOf, folders, relative, treeRows } from './tree'
 import { field, markerCount, phaseCount, statusLine, workId } from './work'
 
@@ -21,8 +22,8 @@ const changed = atom({ plugin: 'picket-markdown', key: 'changed' } as const, {})
 const history = atom({ plugin: 'picket-markdown', key: 'history' } as const, [])
 const hscroll = atom({ plugin: 'picket-markdown', key: 'hscroll' } as const, {})
 const TABLE_STEP = 8
-
-const TONES: Record<Tone, string> = { accent: 'claude', link: 'suggestion', code: 'permission', subtle: 'subtle' }
+const FOOTER_START = '── '
+const FOOTER_END = ' Files │ Outline  ✎ ──'
 
 type View = { path: string; treeTop: number; maxOffset: number; maxTreeOffset: number; listRows: number }
 let lastView: View | undefined
@@ -355,7 +356,7 @@ export const register: Register = on => {
           }
     const top: Row[] = [{ kind: 'line', spans: [] }]
     if (viewed.work !== undefined) {
-      top.push({ kind: 'line', spans: [{ text: statusLine(viewed.work), style: { tone: 'subtle' } }] }, { kind: 'line', spans: [] })
+      top.push({ kind: 'line', spans: [{ text: statusLine(viewed.work), style: { tone: 'muted' } }] }, { kind: 'line', spans: [] })
     }
     const headRows = top.length
     const rows: Row[] = [...top, ...laid.rows, { kind: 'line', spans: [] }]
@@ -411,6 +412,8 @@ export const register: Register = on => {
 
     const gutter = (at: number) => <Text color={TONES.accent}>{marks.has(at) ? '▎ ' : '  '}</Text>
 
+    const icon = (glyph: string) => <Text color={TONES.control}>{glyph}</Text>
+
     const tableControls = (table: number, key: string, off: number, max: number) => (
       <Box flexDirection="row">
         <Text> </Text>
@@ -420,7 +423,7 @@ export const register: Register = on => {
           dimColor={off === 0}
           onPress={() => update($, hscroll, map => ({ ...map, [key]: clamp((map[key] ?? 0) - TABLE_STEP, 0, max) }))}
         >
-          ◂
+          {icon('◂')}
         </Button>
         <Button
           key={`tr:${table}`}
@@ -428,7 +431,7 @@ export const register: Register = on => {
           dimColor={off >= max}
           onPress={() => update($, hscroll, map => ({ ...map, [key]: clamp((map[key] ?? 0) + TABLE_STEP, 0, max) }))}
         >
-          ▸
+          {icon('▸')}
         </Button>
       </Box>
     )
@@ -451,12 +454,12 @@ export const register: Register = on => {
           {controls}
           {heading !== undefined ? (
             <Box flexGrow={1} justifyContent="flex-end">
-              <Button key={`ask:${row.heading}`} plain dimColor onPress={() => ask($, viewed.path, heading.section)}>
-                ?
+              <Button key={`ask:${row.heading}`} plain onPress={() => ask($, viewed.path, heading.section)}>
+                {icon('?')}
               </Button>
               <Text> </Text>
-              <Button key={`section:${row.heading}`} plain dimColor onPress={copy($, heading.section, 'the section')}>
-                ⧉
+              <Button key={`section:${row.heading}`} plain onPress={copy($, heading.section, 'the section')}>
+                {icon('⧉')}
               </Button>
             </Box>
           ) : null}
@@ -475,14 +478,15 @@ export const register: Register = on => {
         body.push(
           <Box height={1} flexDirection="row">
             {gutter(shown + i)}
-            <Text color={TONES.subtle}>{label + '─'.repeat(Math.max(1, room - width(label) - 3))} </Text>
+            <Text color={TONES.rule}>{label + '─'.repeat(Math.max(1, room - width(label) - 5))} </Text>
             <Button key={`copy:${row.block}`} plain onPress={copy($, laid.code[row.block] ?? '', 'the snippet')}>
-              ⧉
+              {icon('⧉')}
             </Button>
+            <Text color={TONES.rule}> ─╮</Text>
           </Box>,
         )
       } else if (row.kind === 'code-foot') {
-        body.push(line(shown + i, { kind: 'line', spans: [{ text: `╰${'─'.repeat(room - 1)}`, style: { tone: 'subtle' } }] }))
+        body.push(line(shown + i, { kind: 'line', spans: [{ text: `╰${'─'.repeat(room - 2)}╯`, style: { tone: 'rule' } }] }))
       } else {
         const run: string[] = []
         const block = row.block
@@ -504,11 +508,16 @@ export const register: Register = on => {
             </Box>
             <Box width={2} flexShrink={0} flexDirection="column">
               {run.map(() => (
-                <Text color={TONES.subtle}>│</Text>
+                <Text color={TONES.rule}>│</Text>
               ))}
             </Box>
-            <Box width={room - 2} flexDirection="column">
+            <Box width={room - 3} flexDirection="column" backgroundColor={SURFACES.code}>
               <Code source={run.join('\n')} language={lang === '' ? undefined : lang} wrap="truncate-end" />
+            </Box>
+            <Box width={1} flexShrink={0} flexDirection="column">
+              {run.map(() => (
+                <Text color={TONES.rule}>│</Text>
+              ))}
             </Box>
           </Box>,
         )
@@ -518,13 +527,13 @@ export const register: Register = on => {
     const fileBody = tree.slice(treeShown, treeShown + listRows).map(item => {
       if (item.kind === 'folder') {
         return (
-          <Box height={1} paddingLeft={2}>
+          <Box key={`row:${item.dir}`} height={1} paddingLeft={2} hover={{ backgroundColor: SURFACES.row }}>
             <Button
               key={`dir:${item.dir}`}
               plain
               onPress={() => update($, expanded, map => ({ ...map, [item.dir]: item.isClosed }))}
             >
-              <Text dimColor>{cut(`${item.isClosed ? '▸' : '▾'} ${item.label}`, columns - 4)}</Text>
+              <Text color={TONES.muted}>{cut(`${item.isClosed ? '▸' : '▾'} ${item.label}`, columns - 4)}</Text>
             </Button>
           </Box>
         )
@@ -533,7 +542,13 @@ export const register: Register = on => {
       const indent = 2 + item.depth * 2 + (item.isSelected || isNew ? 0 : 2)
       const label = cut(item.label, columns - indent - 4)
       return (
-        <Box height={1} paddingLeft={indent}>
+        <Box
+          key={`row:${item.path}`}
+          height={1}
+          paddingLeft={indent}
+          backgroundColor={item.isSelected ? SURFACES.row : undefined}
+          hover={{ backgroundColor: SURFACES.row }}
+        >
           <Button key={`file:${item.path}`} plain onPress={() => showOrToast($, item.path)}>
             {item.isSelected ? (
               <Text color={TONES.accent} bold>
@@ -575,12 +590,20 @@ export const register: Register = on => {
     const where = maxOffset === 0 ? 'all' : `${Math.round((shown / maxOffset) * 100)}%`
     const canGoBack = (await read($, history)).length > 0
     const lead = `${cut(baseName(viewed.path), Math.max(8, columns - 42))} · ${where} `
-    const controls = width('Files │ Outline ✎')
-    const rule = '─'.repeat(Math.max(1, columns - 5 - width(lead) - controls))
+    const backWidth = canGoBack ? width('← ') : 0
+    const rule = '─'.repeat(Math.max(1, columns - 2 - width(FOOTER_START) - backWidth - width(lead) - width(FOOTER_END)))
     const setMode = (next: 'files' | 'outline') => async () => {
       await update($, mode, () => next)
       await update($, treeOffset, () => 0)
     }
+    const tab = (name: 'files' | 'outline', label: string) =>
+      browse === name ? (
+        <Text bold underline>
+          {label}
+        </Text>
+      ) : (
+        <Text color={TONES.muted}>{label}</Text>
+      )
 
     return (
       <Box flexDirection="column" height={bodyRows}>
@@ -589,25 +612,27 @@ export const register: Register = on => {
         </Box>
         <Box height={treeHeight} flexDirection="column" overflow="hidden" paddingTop={1}>
           <Box height={1} flexDirection="row" paddingRight={2}>
+            <Text color={TONES.rule}>{FOOTER_START}</Text>
             {canGoBack ? (
               <Button key="back" plain onPress={() => back($).catch(error => $.ui.toast(`picket-markdown: ${message(error)}`))}>
-                ←
+                {icon('←')}
               </Button>
-            ) : (
-              <Text color={TONES.subtle}>─</Text>
-            )}
-            <Text color={TONES.subtle}> {lead + rule} </Text>
-            <Button key="mode:files" plain dimColor={browse !== 'files'} onPress={setMode('files')}>
-              Files
+            ) : null}
+            {canGoBack ? <Text> </Text> : null}
+            <Text color={TONES.muted}>{lead}</Text>
+            <Text color={TONES.rule}>{rule} </Text>
+            <Button key="mode:files" plain onPress={setMode('files')}>
+              {tab('files', 'Files')}
             </Button>
-            <Text color={TONES.subtle}> │ </Text>
-            <Button key="mode:outline" plain dimColor={browse !== 'outline'} onPress={setMode('outline')}>
-              Outline
+            <Text color={TONES.rule}> │ </Text>
+            <Button key="mode:outline" plain onPress={setMode('outline')}>
+              {tab('outline', 'Outline')}
             </Button>
-            <Text> </Text>
-            <Button key="editor" plain dimColor onPress={() => openInEditor($, viewed.path)}>
-              ✎
+            <Text>  </Text>
+            <Button key="editor" plain onPress={() => openInEditor($, viewed.path)}>
+              {icon('✎')}
             </Button>
+            <Text color={TONES.rule}> ──</Text>
           </Box>
           <Text> </Text>
           {browse === 'files' ? fileBody : outlineBody}
