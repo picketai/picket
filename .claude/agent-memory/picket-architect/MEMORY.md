@@ -1,6 +1,8 @@
 - [Transcript facts](transcript-facts.md) — continuation message shape in subagent transcripts, transcript location, hook timing baseline caveat
-- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap
+- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell
 - [Bash heredoc backslashes](bash-heredoc-backslashes.md) — doubled backslashes collapse in node heredocs here, backtick-heavy appends fail; do record edits with Edit
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
 - [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch seconds, Windows shell, blank on nonzero exit; new verbs touch guard verb sets
+- [npm pack facts](npm-pack-facts.md) — `!**/*.test.*` in files excludes tests (npm 10.4 probe); npm packs the working copy, so CRLF and exec bit leak
+- [State folder facts](state-folder-facts.md) — .picket/state is gitignored, so git-status criteria are vacuous; statusline spawn tests write into the repo without a temp root
 - [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; absence via negative lookahead + flags i; edit frontmatter with Edit, not sed
