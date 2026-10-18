@@ -454,6 +454,77 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
   });
 });
 
+const WAIVE = "picket waive 20261018-x --path p --text t";
+
+test("the lead-only rule reaches inside eval, shell -c, argv wrappers, PowerShell hosts and cmd /c (T-2.1)", () => {
+  withProject((root) => {
+    const outcome = (command, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type: "picket:developer" }, { root })?.hookSpecificOutput ?? null;
+    for (const [command, tool] of [
+      [`eval ${WAIVE}`],
+      ["bash -c 'picket waive 20261018-x --path p --text t'"],
+      [`sh -c "picket comment 20261018-x --path p --text t"`],
+      [`bash -lc '${WAIVE}'`],
+      [`timeout 5 ${WAIVE}`],
+      [`env FOO=1 ${WAIVE}`],
+      [`timeout 5 bash -c '${WAIVE}'`],
+      [`echo 20261018-x | xargs picket`],
+      [`cmd /c ${WAIVE}`],
+      [`Invoke-Expression '${WAIVE}'`, "PowerShell"],
+      [`iex '${WAIVE}'`, "PowerShell"],
+      [`pwsh -c "${WAIVE}"`, "PowerShell"],
+      [`powershell -Command "${WAIVE}"`, "PowerShell"],
+      [`cmd /c ${WAIVE}`, "PowerShell"],
+    ]) {
+      const out = outcome(command, tool);
+      assert.equal(out?.permissionDecision, "deny", `${tool ?? "Bash"}: ${command}`);
+      assert.match(out.permissionDecisionReason, /picket waive|picket comment/, command);
+    }
+  });
+});
+
+test("an unreadable payload that mentions picket is denied for an agent; ordinary wrappers keep their decision (T-2.2, T-2.3)", () => {
+  withProject((root) => {
+    const decision = (command, agent_type) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput?.permissionDecision ?? null;
+    const hidden = `CMD="${WAIVE}"; bash -c "$CMD"`;
+    assert.equal(decision(hidden, "picket:developer"), "deny");
+    assert.equal(decision(`bash -c "$(echo picket) waive x"`, "picket:developer"), "deny");
+    for (const command of ["bash -c 'npm test'", "timeout 30 npm test", 'bash -c "echo $HOME"']) assert.equal(decision(command, "picket:developer"), null, command);
+    for (const command of [`eval ${WAIVE}`, `bash -c '${WAIVE}'`, hidden]) assert.equal(decision(command, undefined), null, `lead: ${command}`);
+  });
+});
+
+test("a spawned agent's shell write to a code or test file is denied, naming the path and the Write tool; the lead's is unchanged (T-2.4)", () => {
+  withProject((root) => {
+    const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput ?? null;
+    for (const [command, path, tool] of [
+      ["cat > test/kernel/x.test.mjs <<'EOF'\nimport x from 'y';\nEOF", "test/kernel/x.test.mjs"],
+      ["echo x >> src/a.ts", "src/a.ts"],
+      ["printf x | tee -a src/a.py", "src/a.py"],
+      ["sed -i 's/a/b/' src/a.cs", "src/a.cs"],
+      ["sed -i.bak -e 's/a/b/' src/b.cs", "src/b.cs"],
+      ["Set-Content src/a.ts x", "src/a.ts", "PowerShell"],
+      ['"x" | Out-File src/a.ts', "src/a.ts", "PowerShell"],
+      ["Add-Content -Value x -Path src/c.ts", "src/c.ts", "PowerShell"],
+      ["echo x > src/a.ts", "src/a.ts", "PowerShell"],
+    ]) {
+      const out = outcome(command, "picket:developer", tool);
+      assert.equal(out?.permissionDecision, "deny", command);
+      assert.ok(out.permissionDecisionReason.startsWith(`guard.bash: ${path} is code; a shell write skips guard.comments and guard.silenced. Write it with the Edit or Write tool.`), out.permissionDecisionReason);
+      assert.equal(outcome(command, undefined, tool), null, `lead: ${command}`);
+    }
+  });
+});
+
+test("state files, docs, discards, stream plumbing and code outside the project are not shell-write denials (T-2.5)", () => {
+  withProject((root) => {
+    const reason = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type: "picket:developer" }, { root })?.hookSpecificOutput?.permissionDecisionReason ?? "";
+    const outside = join(tmpdir(), "elsewhere", "a.ts").replaceAll("\\", "/");
+    for (const command of ["echo x > .picket/state/scratch/a.mjs", "echo x > notes.md", "node gen.mjs > /dev/null", "npm test 2>&1 | tail -5", `echo x > '${outside}'`, "sed -n '1,5p' src/a.ts", "tee notes.txt"]) {
+      assert.doesNotMatch(reason(command), /is code; a shell write/, command);
+    }
+  });
+});
+
 test("guardBash allows a lone read-only picket verb and leaves a mutating one to the allow rule", () => {
   withProject((root) => {
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;

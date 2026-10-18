@@ -328,6 +328,7 @@ To remove the command from your machine: `npm uninstall -g @picketai/picket`.
 |---|---|---|
 | `guard.bash: command contains a destructive sub-command` | a Bash or PowerShell command deletes, resets, force-pushes or similar | in the default, acceptEdits and auto modes the agent reruns it as `PICKET_ESCALATE="<why>" <command>` and you decide in the dialog; cleanup after the work is recorded with `picket leave` and listed when the item closes; or run it yourself: type `! <command>` in Claude Code |
 | `guard.comments: ... adds 1 comment line(s)` | a new comment without your approval | approve it with `k <n>` at the next block, or let the code speak |
+| `guard.bash: ... is code; a shell write skips guard.comments and guard.silenced` | an agent's redirect, `tee`, `sed -i` or PowerShell `Set-Content` writing a code or test file | nothing; the agent writes it with the Edit or Write tool, where the comment and silenced-check guards run. A code generator you asked an agent for can run as `PICKET_ESCALATE="<why>" <command>` |
 | `guard.silenced: ... adds 1 silenced check(s)` | a new suppression, skipped or focused test, or weaker threshold without your waiver | let the agent fix the cause, or accept it with `w <n>` at the next block |
 | `guard.scope: ... is kernel-owned` | a direct edit of a work item's state | nothing; state changes only through `picket` |
 | `guard.scope: read ... before editing it` | the file changed since the agent last read it | nothing; the agent re-reads and retries |

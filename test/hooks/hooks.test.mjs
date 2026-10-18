@@ -308,6 +308,18 @@ test("guard.comments reads the file so an Edit inside an open block keeps the bl
   rmSync(root, { recursive: true, force: true });
 });
 
+test("the guard.bash shell denies a heredoc into a test file and an agent's bash -c picket waive", () => {
+  const { root, id } = project();
+  const bash = (command, agent_type) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type }, root)?.hookSpecificOutput ?? null;
+  const heredoc = "cat > test/x.test.mjs <<'EOF'\nit.skip('x');\nEOF";
+  const write = bash(heredoc, "picket:developer");
+  assert.equal(write?.permissionDecision, "deny");
+  assert.match(write.permissionDecisionReason, /test\/x\.test\.mjs is code/);
+  assert.equal(bash(heredoc), null, "the lead's shell write keeps its decision");
+  assert.equal(bash(`bash -c 'picket waive ${id} --path a --text b'`, "picket:developer")?.permissionDecision, "deny");
+  rmSync(root, { recursive: true, force: true });
+});
+
 function silencedEdit(root, path, old_string, new_string) {
   return run("guard.silenced.mjs", { hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path: join(root, path), old_string, new_string }, cwd: root }, root)?.hookSpecificOutput ?? null;
 }
