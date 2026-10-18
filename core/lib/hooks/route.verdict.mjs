@@ -27,6 +27,13 @@ function keepPullRequestReview(id, verdict, text, root) {
 }
 
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
+const CLASS_ID = /^[A-Z][A-Za-z]*\d+$/;
+
+export function reviewClasses(text) {
+  const value = text.match(/^Classes:\s*(.*)$/m)?.[1]?.trim() ?? "";
+  if (/^none$/i.test(value)) return [];
+  return [...new Set(value.split(/[\s,]+/).filter((id) => CLASS_ID.test(id)))];
+}
 
 function unsavedBlockNote(info, verdict) {
   if (info || !DEVELOPER_VERDICTS.includes(verdict)) return "";
@@ -47,7 +54,8 @@ function applyVerdict({ event, info, hints, id, verdict, text, root }) {
   const amend = text.match(/^AMENDMENT NEEDED:.*$/m)?.[0] ?? null;
   const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, root);
-  const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined, session: event.session_id });
+  const classes = info?.agent === "reviewer" ? reviewClasses(text) : [];
+  const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined, session: event.session_id, classes });
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }

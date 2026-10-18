@@ -55,6 +55,7 @@ Questions: none | S-4 <what is ambiguous>                            (cumulative
 Findings: clean | <n> critical, <n> major, <n> minor
 - [Critical] path:line — <what>. <why it matters>. <the fix>. Likelihood: high|medium|low. Leave it: <one-line PR note>.
 - [Major] path:line — <what>. <why it matters>. <the fix>. Likelihood: high|medium|low. Leave it: <one-line PR note>.
+Classes: none | <row ids of the Critical and Major findings, comma-separated: Ts4, Cm1>
 Checked: <what you tried to break and could not, one line, optional; never a paragraph>
 
 APPROVED
@@ -62,4 +63,4 @@ APPROVED
 
 Phase, checkpoint, cross-check and pr reviews omit the cumulative-only lines and end Critical and Major lines at the fix; in a cumulative review `Likelihood` and `Leave it` close every Critical and Major line.
 
-Findings cap at 25 lines plus one overflow count; Minor findings past five become a count by category. The last line is exactly one of `APPROVED`, `CHANGES REQUIRED`, `ALIGNED`, `DRIFT DETECTED`. A decision drift adds the line `AMENDMENT NEEDED: D-00x <reason>` above the verdict; the hooks route both.
+Findings cap at 25 lines plus one overflow count; Minor findings past five become a count by category. The last line is exactly one of `APPROVED`, `CHANGES REQUIRED`, `ALIGNED`, `DRIFT DETECTED`. A decision drift adds the line `AMENDMENT NEEDED: D-00x <reason>` above the verdict; the hooks route both. `Classes:` names the checklist row id behind each Critical and Major finding (`Ts4`, `Sl1`, `Rf3`), once each; the kernel stores them with a `CHANGES REQUIRED` verdict and counts repeats across work items at close.

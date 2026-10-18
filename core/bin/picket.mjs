@@ -200,6 +200,7 @@ async function main(argv) {
             ...(v.left_staged.length ? [`left staged (not this item's): ${v.left_staged.join(", ")}`] : []),
             ...v.warnings.map((w) => `WARNING: ${w}`),
             ...v.left.map(leftLine),
+            ...v.repeats.map((r) => `repeats: ${r.class} (${r.items.join(", ")})`),
           ].join("\n"),
         );
         return 0;

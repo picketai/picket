@@ -337,6 +337,16 @@ test("wrong owner is refused, rejection clears the run grant, drift blocks", () 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("classes are stored on a CHANGES REQUIRED entry only (T-9.3)", () => {
+  const { root, id } = setup();
+  route({ id, verdict: "CHANGES REQUIRED", agent: "reviewer", phase: 1, classes: ["Ts4", "Cm1"], root });
+  route({ id, verdict: "CHANGES REQUIRED", agent: "reviewer", phase: 1, classes: [], root });
+  route({ id, verdict: "APPROVED", agent: "reviewer", phase: 1, classes: ["Ts4"], root });
+  const entries = readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual(entries.map((e) => e.classes ?? null), [["Ts4", "Cm1"], null, null]);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("bareAgentName strips only the exact picket: prefix", () => {
   assert.equal(bareAgentName("picket:analyst"), "analyst");
   assert.equal(bareAgentName("analyst"), "analyst");

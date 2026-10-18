@@ -84,6 +84,12 @@ export function findVerdict(text) {
  * @param {string} [o.scope]     "cumulative" | "checkpoint" | "crosscheck"
  * @param {number} [o.through]   for `approved`: last phase of a granted run
  */
+const CLASSED_VERDICT = "CHANGES REQUIRED";
+
+function mistakeClasses({ verdict, classes }) {
+  return verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
+}
+
 export function route(o) {
   o = { ...o, agent: bareAgentName(o.agent) };
   const root = o.root ?? projectRoot();
@@ -166,7 +172,7 @@ export function route(o) {
   }
 
   claimForSession(o.id, o.session, root);
-  appendVerdict(o.id, { agent: o.agent, verdict: o.verdict, phase, scope: o.scope ?? null, through: o.through ?? null }, root);
+  appendVerdict(o.id, { agent: o.agent, verdict: o.verdict, phase, scope: o.scope ?? null, through: o.through ?? null, ...mistakeClasses(o) }, root);
   if (commitAfter != null) commitPhase(o.id, commitAfter, root, applied);
   return { id: o.id, verdict: o.verdict, phase, applied, next: next(o.id, root) };
 }

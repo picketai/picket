@@ -114,6 +114,31 @@ test("close with nothing left prints no left line and returns an empty list", ()
   rmSync(root, { recursive: true, force: true });
 });
 
+const changesRequired = (classes) => ({ agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 1, classes });
+
+test("close returns a repeat for a class two CHANGES REQUIRED reviews named, across items or within one (T-9.4)", () => {
+  const { root, id } = repoWithOpenItem();
+  const other = createWork({ lane: "order", title: "Older item", root }).id;
+  appendVerdict(other, changesRequired(["Ts4", "Cm1"]), root);
+  appendVerdict(other, changesRequired(["Sl1"]), root);
+  appendVerdict(other, changesRequired(["Sl1"]), root);
+  appendVerdict(id, changesRequired(["Ts4"]), root);
+  appendVerdict(id, { agent: "reviewer", verdict: "APPROVED", phase: 1, classes: ["Cm1"] }, root);
+  const closed = picket(root, "close", id);
+  assert.equal(closed.code, 0, closed.stdout);
+  const byClass = Object.fromEntries(closed.json.repeats.map((r) => [r.class, r.items.sort()]));
+  assert.deepEqual(byClass, { Sl1: [other], Ts4: [id, other].sort() });
+  assert.match(picket(root, "close", id, "--human").stdout, /^repeats: Sl1 \(/m);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("close returns no repeats when no class was named twice (T-9.4)", () => {
+  const { root, id } = repoWithOpenItem();
+  appendVerdict(id, changesRequired(["Ts4"]), root);
+  assert.deepEqual(picket(root, "close", id).json.repeats, []);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("a fast close without --touched refuses a staged path outside the work item and writes nothing (T-1.5)", () => {
   const { root, id, git } = repoWithOpenItem();
   stageSource(root, git);

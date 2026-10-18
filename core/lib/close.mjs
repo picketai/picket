@@ -3,7 +3,7 @@ import { phasePaths } from "./gate.mjs";
 import { blockFiles } from "./packet.mjs";
 import { appendLedger } from "./ledger.mjs";
 import { next } from "./next.mjs";
-import { readArtifact, readState, writeState } from "./work.mjs";
+import { listWork, readArtifact, readState, readVerdicts, writeState } from "./work.mjs";
 import { readLeft } from "./leave.mjs";
 
 export class CloseRefused extends Error {
@@ -61,17 +61,34 @@ export function recordAccept(root, id, commit, phase = null) {
   } catch {}
 }
 
+const MIN_REPEATS = 2;
+
+export function repeatedClasses(root) {
+  const seen = new Map();
+  for (const id of listWork(root)) {
+    for (const entry of readVerdicts(id, root)) {
+      if (entry.verdict !== "CHANGES REQUIRED" || !Array.isArray(entry.classes)) continue;
+      for (const cls of new Set(entry.classes)) seen.set(cls, [...(seen.get(cls) ?? []), id]);
+    }
+  }
+  return [...seen]
+    .filter(([, ids]) => ids.length >= MIN_REPEATS)
+    .map(([cls, ids]) => ({ class: cls, items: [...new Set(ids)] }))
+    .sort((a, b) => a.class.localeCompare(b.class));
+}
+
 export function close(id, root, { message, touched = [] } = {}) {
   refuseUnlessClosable(id, root);
   const commitMessage = message ?? defaultCloseMessage(id);
+  const repeats = repeatedClasses(root);
   if (!isRepo(root)) {
     markDone(id, root);
-    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(id, root) };
+    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(id, root), repeats };
   }
   const { lane } = readState(id, root);
   refuseUntouchedFastClose(id, root, lane, touched);
   markDone(id, root);
   const { sha: commit, left_staged, warnings } = commitOwned(root, commitMessage, { add: [`work/${id}`], owns: itemOwner(id, root, lane, touched) });
   if (commit) recordAccept(root, id, commit);
-  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(id, root) };
+  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(id, root), repeats };
 }

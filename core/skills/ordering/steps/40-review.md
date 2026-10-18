@@ -31,7 +31,7 @@ Continue `reviewer` (spawn it, type `picket:reviewer`, named `reviewer` only if 
 
 Wait for it. The hook routes it:
 
-`APPROVED`: `picket next` says `close` (or the next phase after a checkpoint). On close, run `picket close <id>` and print the closing block from `SKILL.md`, adding `Questions: <the reviewer's line>` when it is not `none`; stop.
+`APPROVED`: `picket next` says `close` (or the next phase after a checkpoint). On close, run `picket close <id>` and print the closing block from `SKILL.md`, adding `Questions: <the reviewer's line>` when it is not `none`, and `Repeats: <class> (<items>)` for each entry in the close result's `repeats` (a reviewer row id that two or more `CHANGES REQUIRED` reviews named). For each repeat, offer one follow-up request under the block: "Fix the <class> mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on <the past mistake's commit>". Then stop.
 
 `CHANGES REQUIRED`: `SendMessage` the developer with `work: <id>`, `review: <the reviewer's findings verbatim>`, `phase: <the phase each finding belongs to>`. The developer fixes and ends with `PHASE DONE`; re-run this step, continuing the same reviewer instance. On the third `CHANGES REQUIRED` for this item, stop with the options `[c] continue with a fresh developer · [d] redesign · [x] accept as is`.
 

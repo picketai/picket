@@ -47,7 +47,7 @@ A cross-check request carries no summary because there is no diff. Load `steps/6
 | Size | Load |
 |---|---|
 | small | `10-alignment.md`, `12-bar.md`, `30-patterns-security.md`, one `40-framework-<name>.md` per framework |
-| medium | the small set plus `20-patterns-core.md` (skip its SOLID and DRY sections) and one `50-concern-<name>.md` per concern |
+| medium | the small set plus `20-patterns-core.md` (skip its SOLID and DRY sections), `25-design-red-flags.md` and one `50-concern-<name>.md` per concern |
 | large | the medium set with `20-patterns-core.md` in full |
 
 `security_path: true` overrides size: load `20-patterns-core.md` in full and `30-patterns-security.md`, and read every changed security-path file in full, whatever the size. `30-patterns-security.md` sits on every row because a 2-file, 40-line change can hardcode a secret as easily as a large one.
@@ -117,6 +117,7 @@ reviewing/
   steps/12-bar.md                         silenced checks against the user's waivers (always)
   steps/15-traced.md                      cumulative only, with 10's floors, 12-bar.md and criteria rules: request and story first, plan last
   steps/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
+  steps/25-design-red-flags.md            eight shapes that hurt the next reader, Rf1 to Rf8 (medium and large)
   steps/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
   steps/40-framework-typescript.md        types, promises, errors, React, imports, leaks
   steps/40-framework-dotnet.md            async, DI, EF Core, null safety, exceptions, disposal

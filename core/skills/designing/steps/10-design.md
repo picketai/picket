@@ -34,6 +34,8 @@ Write `work/<id>/design.md` in two saves, because the developer starts on the fi
 
 Decisions: at most eight `### D-###`. Each names the choice, the constraint it satisfies, `**Instead of:**` the strongest alternative with the reason it lost, `**Risks:**` as `RISK-###` with a mitigation. Mark `[IRREVERSIBLE]` inline where a step cannot be undone (a migration that drops data, a published contract, a deleted branch). Use tactical DDD vocabulary where the design touches domain logic or persistence; say "infrastructural decision" where it does not.
 
+A schema or data migration reads `designing/steps/15-migration.md` before writing its phases.
+
 Verify every premise about existing schema, data, legacy behaviour or a third-party contract by reading the source or the live schema before a phase rests on it; otherwise record it as `OQ-###` with a fallback and keep the dependent criterion out of phase 1. A strategic question the design cannot settle (a boundary move, a build-or-buy choice) is an `OQ-###` flagged `[STRATEGIC]`; the lead takes it to `picket:consulting`.
 
 End with the architect output block and `ARTIFACT WRITTEN` after the second save.

@@ -7,7 +7,7 @@ import { join, resolve } from "node:path";
 import { createWork, writeState } from "../../core/lib/work.mjs";
 import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
 import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
-import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
+import { reviewClasses, routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
 import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
 import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
@@ -193,6 +193,21 @@ test("routeVerdict on a developer PHASE DONE stamps the item with the event's se
     const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, { root });
     assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
     assert.match(readFileSync(join(root, "work", s.id, "state.yaml"), "utf8"), /^session: s3$/m);
+  });
+});
+
+test("routeVerdict stores a reviewer's Classes on a CHANGES REQUIRED entry and nothing for none (T-9.3)", () => {
+  withProject((root) => {
+    const s = createWork({ lane: "order", title: "Classed", root });
+    writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
+    const review = (classes, verdict) => `## Review: ${s.id} · cumulative\n\nOne gap.\n\nAlignment: PASS\nFindings: 0 critical, 2 major, 0 minor\n- [Major] a.mjs:1 — x. y. z.\n${classes}\n\n${verdict}`;
+    const routeBlock = (block, session) => routeVerdict({ hook_event_name: "SubagentStop", session_id: session, transcript_path: transcript(root, [user(`work: ${s.id}\nscope: cumulative`), assistant(block)]), cwd: root, agent_type: "picket:reviewer" }, { root });
+    routeBlock(review("Classes: Ts4, Cm1", "CHANGES REQUIRED"), "s1");
+    routeBlock(review("Classes: none", "CHANGES REQUIRED"), "s2");
+    routeBlock(review("", "CHANGES REQUIRED"), "s3");
+    const entries = readFileSync(join(root, "work", s.id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(entries.map((e) => e.classes ?? null), [["Ts4", "Cm1"], null, null]);
+    assert.deepEqual(reviewClasses("Classes: Ts4,Cm1 Ts4, and more"), ["Ts4", "Cm1"]);
   });
 });
 
