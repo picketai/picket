@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../core/lib/git.mjs";
+import { commitOwned, dirtyPaths, head, isRepo, isTestPath, productLinesAdded, workingState } from "../../core/lib/git.mjs";
 import { liveProbe } from "../../core/lib/statusline.mjs";
 
 function gitIn(root, ...args) {
@@ -111,6 +111,109 @@ test("workingState names a detached head by 7 hex characters and is null outside
     assert.match(workingState(root).branch, /^[0-9a-f]{7}$/);
   });
   withTempDir("picket-norepo-", (root) => assert.equal(workingState(root), null));
+});
+
+test("isTestPath knows test folders and test file names across languages (T-1.7)", () => {
+  for (const path of ["test/kernel/cost.test.mjs", "src/Fee.Tests/RoundingTests.cs", "pkg/fee_test.go", "app/__tests__/a.js", "lib/test_fee.py", "src/a.spec.ts"]) {
+    assert.equal(isTestPath(path), true, path);
+  }
+  for (const path of ["src/latest.mjs", "docs/testing.md", "src/contest.js", "src/Tests.md"]) {
+    assert.equal(isTestPath(path), false, path);
+  }
+});
+
+const IDENTITY_ENV = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
+
+function withIdentity(fn) {
+  const saved = Object.fromEntries(Object.keys(IDENTITY_ENV).map((k) => [k, process.env[k]]));
+  Object.assign(process.env, IDENTITY_ENV);
+  try {
+    return fn();
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+}
+
+function gitOut(root, ...args) {
+  return execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
+}
+
+const stagedNames = (root) => gitOut(root, "diff", "--cached", "--name-only").split("\n").filter(Boolean).sort();
+const committedNames = (root) => gitOut(root, "show", "--name-only", "--format=", "HEAD").split("\n").filter(Boolean).sort();
+const ownsSrc = (path) => path.startsWith("src/");
+
+test("commitOwned commits the owned staged paths and leaves every other staged path staged (T-1.1)", () => {
+  withCommittedRepo((root) => {
+    writeIn(root, "src/a.js", "a\n");
+    writeIn(root, "README.md", "foreign\n");
+    gitIn(root, "add", "-A");
+    const r = withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc }));
+    assert.deepEqual([r.committed, r.left_staged, r.warnings], [["src/a.js"], ["README.md"], []]);
+    assert.equal(r.sha, head(root));
+    assert.deepEqual(committedNames(root), ["src/a.js"]);
+    assert.deepEqual(stagedNames(root), ["README.md"]);
+  });
+});
+
+test("commitOwned commits the staged content, not a later working tree edit (T-1.2)", () => {
+  withCommittedRepo((root) => {
+    writeIn(root, "src/a.js", "A\n");
+    gitIn(root, "add", "-A");
+    writeIn(root, "src/a.js", "B\n");
+    withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc }));
+    assert.equal(gitOut(root, "show", "HEAD:src/a.js"), "A");
+    assert.equal(readFileSync(join(root, "src", "a.js"), "utf8"), "B\n");
+    assert.deepEqual(stagedNames(root), []);
+    assert.equal(gitOut(root, "status", "--porcelain", "--", "src/a.js"), "M src/a.js");
+  });
+});
+
+test("commitOwned commits a staged deletion and treats a bracketed name as a literal path (T-1.3)", () => {
+  withCommittedRepo((root) => {
+    writeIn(root, "src/old.js", "old\n");
+    writeIn(root, "src/[id]/page.tsx", "page\n");
+    writeIn(root, "src/i/page.tsx", "other\n");
+    gitIn(root, "add", "-A");
+    gitIn(root, "commit", "-q", "-m", "files");
+    gitIn(root, "rm", "-q", "--", "src/old.js");
+    writeIn(root, "src/[id]/page.tsx", "page 2\n");
+    writeIn(root, "src/i/page.tsx", "other 2\n");
+    gitIn(root, "add", "-A");
+    const owns = (path) => path === "src/old.js" || path === "src/[id]/page.tsx";
+    withIdentity(() => commitOwned(root, "feat: pages", { owns }));
+    assert.deepEqual(committedNames(root), ["src/[id]/page.tsx", "src/old.js"]);
+    assert.throws(() => gitOut(root, "cat-file", "-e", "HEAD:src/old.js"));
+    assert.deepEqual(stagedNames(root), ["src/i/page.tsx"]);
+  });
+});
+
+test("commitOwned with nothing owned commits nothing and reports what stays staged", () => {
+  withCommittedRepo((root) => {
+    const before = head(root);
+    writeIn(root, "README.md", "foreign\n");
+    gitIn(root, "add", "-A");
+    assert.deepEqual(commitOwned(root, "feat: none", { owns: ownsSrc }), { sha: null, committed: [], left_staged: ["README.md"], warnings: [] });
+    assert.equal(head(root), before);
+  });
+});
+
+test("a failed commit leaves HEAD and the real index as they were and removes the temporary index (T-1.6)", () => {
+  withCommittedRepo((root) => {
+    const hook = join(root, ".git", "hooks", "commit-msg");
+    writeFileSync(hook, "#!/bin/sh\nexit 1\n");
+    chmodSync(hook, 0o755);
+    const before = head(root);
+    writeIn(root, "src/a.js", "a\n");
+    writeIn(root, "README.md", "foreign\n");
+    gitIn(root, "add", "-A");
+    assert.throws(() => withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc })), /git commit failed/);
+    assert.equal(head(root), before);
+    assert.deepEqual(stagedNames(root), ["README.md", "src/a.js"]);
+    assert.equal(existsSync(join(root, ".git", "picket-commit.index")), false);
+  });
 });
 
 test("liveProbe reuses git state for 5 seconds and the skill while the transcript size holds (T-1.7)", () => {

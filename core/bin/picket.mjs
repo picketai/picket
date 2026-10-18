@@ -200,9 +200,17 @@ async function main(argv) {
     case "close": {
       if (!rest[0]) throw new Error("close needs <id>");
       const message = typeof opt.message === "string" ? opt.message : undefined;
+      const touched = typeof opt.touched === "string" ? opt.touched.split(",").map((p) => p.trim()).filter(Boolean) : [];
       try {
-        const r = close(rest[0], root, { message });
-        out(r, opt, (v) => [`${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`, ...v.left.map(leftLine)].join("\n"));
+        const r = close(rest[0], root, { message, touched });
+        out(r, opt, (v) =>
+          [
+            `${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`,
+            ...(v.left_staged.length ? [`left staged (not this item's): ${v.left_staged.join(", ")}`] : []),
+            ...v.warnings.map((w) => `WARNING: ${w}`),
+            ...v.left.map(leftLine),
+          ].join("\n"),
+        );
         return 0;
       } catch (err) {
         if (!err.next) {

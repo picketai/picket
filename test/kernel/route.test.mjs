@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -14,9 +14,37 @@ function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-route-"));
   mkdirSync(join(root, ".claude"));
   const s = createWork({ lane: "order", title: "Csv", root });
-  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n\n## Phase 3: C\n\nt\n");
+  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.ts]\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n\n## Phase 3: C\n\nt\n");
   return { root, id: s.id };
 }
+
+const PHASED_ORDER = "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.js, src/old.js]\n  - n: 2\n    files: [src/b.js]\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n";
+
+function repoWithPhasedOrder() {
+  const root = mkdtempSync(join(tmpdir(), "harness-route-"));
+  mkdirSync(join(root, ".claude"));
+  const git = (...a) => execFileSync("git", ["-C", root, "-c", "user.email=t@t", "-c", "user.name=t", ...a], { encoding: "utf8" }).trim();
+  git("init", "-q");
+  writeFileSync(join(root, "README.md"), "base\n");
+  writeFileSync(join(root, ".gitignore"), ".picket/state/\n");
+  mkdirSync(join(root, "src"));
+  writeFileSync(join(root, "src", "old.js"), "old\n");
+  const s = createWork({ lane: "order", title: "Scoped", root });
+  writeFileSync(join(root, "work", s.id, "order.md"), PHASED_ORDER);
+  git("add", "-A");
+  git("commit", "-q", "-m", "base");
+  return { root, id: s.id, git };
+}
+
+function stage(root, git, files) {
+  for (const [rel, text] of Object.entries(files)) {
+    mkdirSync(join(root, rel, ".."), { recursive: true });
+    writeFileSync(join(root, rel), text);
+  }
+  git("add", "-A", "--", ...Object.keys(files));
+}
+
+const lines = (text) => text.split("\n").filter(Boolean).sort();
 
 function acceptRows(root) {
   const path = statePath(root, STATE_FILES.ledger);
@@ -52,8 +80,9 @@ test("a ledger write that fails after the phase commit leaves the commit line as
     git("add", "-A");
     git("commit", "-q", "-m", "base");
     mkdirSync(statePath(root, STATE_FILES.ledger), { recursive: true });
-    writeFileSync(join(root, "a.ts"), "export const a = 1;\n");
-    git("add", "--", "a.ts");
+    mkdirSync(join(root, "src"));
+    writeFileSync(join(root, "src", "a.ts"), "export const a = 1;\n");
+    git("add", "--", "src/a.ts");
     route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
     const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
     const committed = r.applied.findIndex((line) => line.startsWith("committed "));
@@ -71,6 +100,80 @@ test("an approval outside a git repository commits nothing and appends no accept
     const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
     assert.ok(r.applied.includes("nothing staged to commit"), r.applied.join("; "));
     assert.deepEqual(acceptRows(root), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("an approval commits the phase's files and work item, and leaves a foreign staged path staged (T-1.1)", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    writeFileSync(join(root, "README.md"), "foreign\n");
+    stage(root, git, { "src/a.js": "a\n", "README.md": "foreign\n" });
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+    assert.ok(committed.includes("src/a.js"), committed.join(", "));
+    assert.ok(committed.includes(`work/${id}/phases/1.approved`), committed.join(", "));
+    assert.ok(!committed.includes("README.md"), committed.join(", "));
+    assert.equal(git("diff", "--cached", "--name-only"), "README.md");
+    assert.ok(r.applied.includes("left staged, not phase 1's: README.md"), r.applied.join(" | "));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a staged test path outside the lists rides along and is named; a staged deletion of a listed file lands (T-1.3)", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    stage(root, git, { "test/b.test.js": "t\n" });
+    git("rm", "-q", "--", "src/old.js");
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+    assert.ok(committed.includes("test/b.test.js") && committed.includes("src/old.js"), committed.join(", "));
+    assert.throws(() => git("cat-file", "-e", "HEAD:src/old.js"));
+    assert.ok(r.applied.includes("committed outside phase 1's files: test/b.test.js"), r.applied.join(" | "));
+    assert.equal(git("diff", "--cached", "--name-only"), "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a run-grant approval on PHASE DONE commits through the same phase predicate (T-1.4)", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    stage(root, git, { "src/a.js": "a\n" });
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    route({ id, verdict: "approved", agent: "user", phase: 1, through: 2, root });
+    stage(root, git, { "src/b.js": "b\n", "src/a.js": "a2\n" });
+    const r = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+    assert.ok(r.applied.some((a) => a.startsWith("committed ")), r.applied.join(" | "));
+    const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+    assert.ok(committed.includes("src/b.js") && !committed.includes("src/a.js"), committed.join(", "));
+    assert.equal(git("diff", "--cached", "--name-only"), "src/a.js");
+    assert.ok(r.applied.includes("left staged, not phase 2's: src/a.js"), r.applied.join(" | "));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a refused phase commit keeps HEAD, keeps every staged path staged and leaves no temporary index (T-1.6)", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    const hook = join(root, ".git", "hooks", "commit-msg");
+    writeFileSync(hook, "#!/bin/sh\nexit 1\n");
+    chmodSync(hook, 0o755);
+    writeFileSync(join(root, "README.md"), "foreign\n");
+    stage(root, git, { "src/a.js": "a\n", "README.md": "foreign\n" });
+    const before = git("rev-parse", "HEAD");
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    assert.ok(r.applied.some((a) => a.startsWith("git commit failed")), r.applied.join(" | "));
+    assert.equal(git("rev-parse", "HEAD"), before);
+    const staged = lines(git("diff", "--cached", "--name-only"));
+    assert.ok(staged.includes("README.md") && staged.includes("src/a.js"), staged.join(", "));
+    assert.equal(existsSync(join(root, ".git", "picket-commit.index")), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -155,7 +258,7 @@ test("approval commits the staged phase with the developer's proposed message; r
   git("add", "-A");
   git("commit", "-q", "-m", "base");
   const s = createWork({ lane: "order", title: "Csv", root });
-  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: Add csv\n\nt\n\n## Phase 2: Wire route\n\nt\n");
+  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/csv.ts]\n---\n# O\n\n## Phase 1: Add csv\n\nt\n\n## Phase 2: Wire route\n\nt\n");
   git("add", "-A");
   git("commit", "-q", "-m", "order");
 

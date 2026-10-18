@@ -13,6 +13,11 @@ export function ownGate(id, n, root) {
   return null;
 }
 
+export function phasePaths(id, n, root) {
+  const art = readArtifact(id, root);
+  return [...new Set([...entryFiles(phaseEntry(art.front, n)), ...touchSetPaths(phaseSection(art.body, n))])];
+}
+
 function phaseEntry(front, n) {
   const phases = Array.isArray(front?.phases) ? front.phases : [];
   return phases.find((p) => Number(p?.n) === Number(n)) ?? null;

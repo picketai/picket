@@ -47,7 +47,7 @@ test("close of a fast item appends an accept row with the commit's product lines
     mkdirSync(join(root, "src"));
     writeFileSync(join(root, "src", "a.ts"), Array.from({ length: 5 }, (_, i) => `export const a${i} = ${i};\n`).join(""));
     git("add", "--", "src/a.ts");
-    const r = picket(root, "close", id, "--message", "fix: a");
+    const r = picket(root, "close", id, "--message", "fix: a", "--touched", "src/a.ts");
     assert.equal(r.code, 0, r.stdout);
     const rows = acceptRows(root);
     assert.equal(rows.length, 1);
@@ -114,29 +114,52 @@ test("close with nothing left prints no left line and returns an empty list", ()
   rmSync(root, { recursive: true, force: true });
 });
 
-test("close refuses a staged path outside the work item and writes nothing", () => {
+test("a fast close without --touched refuses a staged path outside the work item and writes nothing (T-1.5)", () => {
   const { root, id, git } = repoWithOpenItem();
   stageSource(root, git);
   const before = git("rev-parse", "HEAD");
-  const r = picket(root, "close", id);
-  assert.equal(r.code, 2);
-  assert.match(r.json.error, /src\/a\.ts/);
-  assert.match(stateText(root, id), /status: open/);
-  assert.equal(git("rev-parse", "HEAD"), before);
+  for (const extra of [[], ["--message", "fix: a"]]) {
+    const r = picket(root, "close", id, ...extra);
+    assert.equal(r.code, 2);
+    assert.match(r.json.error, /src\/a\.ts/);
+    assert.match(stateText(root, id), /status: open/);
+    assert.equal(git("rev-parse", "HEAD"), before);
+  }
   rmSync(root, { recursive: true, force: true });
 });
 
-test("close --message commits the staged change and the closing state as one commit", () => {
+test("close --touched commits those paths and the closing state as one commit and leaves a foreign staged path (T-1.5)", () => {
   const { root, id, git } = repoWithOpenItem();
   stageSource(root, git);
+  writeFileSync(join(root, "README.md"), "foreign\n");
+  git("add", "--", "README.md");
   const before = git("rev-parse", "HEAD");
-  const r = picket(root, "close", id, "--message", "fix: a");
+  const r = picket(root, "close", id, "--message", "fix: a", "--touched", "src/a.ts");
   assert.equal(r.code, 0, r.stdout);
   assert.equal(git("rev-list", "--count", `${before}..HEAD`), "1");
   assert.equal(git("log", "-1", "--format=%s"), "fix: a");
   const files = git("show", "--name-only", "--format=", "HEAD").split("\n");
   assert.ok(files.includes("src/a.ts"), files.join(", "));
   assert.ok(files.includes(`work/${id}/state.yaml`), files.join(", "));
+  assert.ok(!files.includes("README.md"), files.join(", "));
+  assert.deepEqual(r.json.left_staged, ["README.md"]);
+  assert.equal(git("diff", "--cached", "--name-only"), "README.md");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("close --human names the paths it left staged", () => {
+  const { root, id, git } = repoWithOpenItem("order");
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.ts]\n---\n# Order\n\n## Phase 1: Module\n\ntext\n");
+  setMarker(id, 1, "done", root);
+  setMarker(id, 1, "approved", root);
+  appendVerdict(id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" }, root);
+  stageSource(root, git);
+  writeFileSync(join(root, "README.md"), "foreign\n");
+  git("add", "--", "README.md");
+  const r = picket(root, "close", id, "--human");
+  assert.equal(r.code, 0, r.stdout);
+  assert.match(r.stdout, /^left staged \(not this item's\): README\.md$/m);
+  assert.ok(git("show", "--name-only", "--format=", "HEAD").split("\n").includes("src/a.ts"));
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -157,18 +180,23 @@ test("a second close commits nothing, and an abandoned item is refused", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test("a refused commit leaves the item done and staged, and the next close commits it", () => {
+test("a refused commit leaves the item done and staged, and the next close commits it (T-1.6)", () => {
   const { root, id, git } = repoWithOpenItem();
   const hook = join(root, ".git", "hooks", "commit-msg");
   writeFileSync(hook, "#!/bin/sh\nexit 1\n");
   chmodSync(hook, 0o755);
+  writeFileSync(join(root, "README.md"), "foreign\n");
+  git("add", "--", "README.md");
   const before = git("rev-parse", "HEAD");
-  const failed = picket(root, "close", id);
+  const failed = picket(root, "close", id, "--touched", "README.md");
   assert.equal(failed.code, 2, failed.stdout);
   assert.match(failed.json.error, /git commit failed/);
   assert.match(stateText(root, id), /status: done/);
-  assert.ok(git("diff", "--cached", "--name-only").split("\n").includes(`work/${id}/state.yaml`));
+  const staged = git("diff", "--cached", "--name-only").split("\n");
+  assert.ok(staged.includes(`work/${id}/state.yaml`) && staged.includes("README.md"), staged.join(", "));
   assert.equal(git("rev-parse", "HEAD"), before);
+  assert.equal(existsSync(join(root, ".git", "picket-commit.index")), false);
+  git("reset", "-q", "--", "README.md");
 
   rmSync(hook);
   const retried = picket(root, "close", id);

@@ -4,21 +4,36 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWork } from "../../core/lib/work.mjs";
-import { ownGate } from "../../core/lib/gate.mjs";
+import { ownGate, phasePaths } from "../../core/lib/gate.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
-function gateFor({ entry, body = "t\n", config }) {
+function withDesign({ entry, body = "t\n", config }, fn) {
   const root = mkdtempSync(join(tmpdir(), "harness-gate-"));
   try {
     mkdirSync(join(root, ".claude"));
     if (config) writeConfig(root, config);
     const s = createWork({ lane: "design", title: "Gate", root });
     writeFileSync(join(root, "work", s.id, "design.md"), `---\nlane: design\nphases:\n  - n: 1\n${entry}---\n# D\n\n## Phase 1: One\n\n${body}`);
-    return ownGate(s.id, 1, root);
+    return fn(s.id, root);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
+
+function gateFor(design) {
+  return withDesign(design, (id, root) => ownGate(id, 1, root));
+}
+
+test("phasePaths answers the union of frontmatter files and touch set paths, once each", () => {
+  const paths = withDesign(
+    {
+      entry: "    files: [lib/a.mjs, lib/b.mjs]\n",
+      body: "**Touch set:**\n- `lib/b.mjs`: why\n- `lib/dir/`: why\n\n**Changes:** `lib/ignored.mjs`\n\n## Phase 2: Two\n\n**Touch set:**\n- `lib/two.mjs`: why\n",
+    },
+    (id, root) => phasePaths(id, 1, root),
+  );
+  assert.deepEqual(paths, ["lib/a.mjs", "lib/b.mjs", "lib/dir/"]);
+});
 
 const plainFiles = "    files: [lib/plain.mjs]\n";
 

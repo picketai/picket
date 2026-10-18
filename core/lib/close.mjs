@@ -1,7 +1,8 @@
-import { commitStaged, dirtyPaths, filesInCommit, isRepo, productLinesAdded, repoPrefix, stagedFiles } from "./git.mjs";
+import { commitOwned, dirtyPaths, filesInCommit, isRepo, isTestPath, listedPathMatcher, productLinesAdded, repoPrefix, stagedFiles } from "./git.mjs";
+import { phasePaths } from "./gate.mjs";
 import { appendLedger } from "./ledger.mjs";
 import { next } from "./next.mjs";
-import { readState, writeState } from "./work.mjs";
+import { readArtifact, readState, writeState } from "./work.mjs";
 import { readLeft } from "./leave.mjs";
 
 export class CloseRefused extends Error {
@@ -15,10 +16,20 @@ export function defaultCloseMessage(id) {
   return `chore: close ${id}`;
 }
 
-function refuseForeignStaged(id, root) {
+const PHASED_LANES = new Set(["order", "design"]);
+
+function itemOwner(id, root, lane, touched) {
+  const phased = PHASED_LANES.has(lane);
+  const phaseLists = phased ? readArtifact(id, root).phases.flatMap((p) => phasePaths(id, p.n, root)) : [];
+  const listed = listedPathMatcher(root, [`work/${id}/`, ...phaseLists, ...touched]);
+  return (path) => listed(path) || (phased && isTestPath(path));
+}
+
+function refuseUntouchedFastClose(id, root, lane, touched) {
+  if (lane !== "fast" || touched.length) return;
   const own = `${repoPrefix(root)}work/${id}/`;
   const foreign = stagedFiles(root).filter((path) => !path.startsWith(own));
-  if (foreign.length) throw new CloseRefused(`staged paths outside ${own}: ${foreign.join(", ")}; unstage them, or pass --message "<m>" to commit them with the close`);
+  if (foreign.length) throw new CloseRefused(`staged paths outside ${own}: ${foreign.join(", ")}; pass --touched <p1,p2> to commit them with the close, or unstage them`);
 }
 
 function markDone(id, root) {
@@ -50,16 +61,17 @@ export function recordAccept(root, id, commit, phase = null) {
   } catch {}
 }
 
-export function close(id, root, { message } = {}) {
+export function close(id, root, { message, touched = [] } = {}) {
   refuseUnlessClosable(id, root);
   const commitMessage = message ?? defaultCloseMessage(id);
   if (!isRepo(root)) {
     markDone(id, root);
-    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], dirty: [], left: readLeft(id, root) };
+    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(id, root) };
   }
-  if (message === undefined) refuseForeignStaged(id, root);
+  const { lane } = readState(id, root);
+  refuseUntouchedFastClose(id, root, lane, touched);
   markDone(id, root);
-  const commit = commitStaged(root, commitMessage, [`work/${id}`]);
+  const { sha: commit, left_staged, warnings } = commitOwned(root, commitMessage, { add: [`work/${id}`], owns: itemOwner(id, root, lane, touched) });
   if (commit) recordAccept(root, id, commit);
-  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], dirty: dirtyPaths(root), left: readLeft(id, root) };
+  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(id, root) };
 }

@@ -1,5 +1,7 @@
 // Read-only git helpers. Every function returns data, never throws on a missing repo.
 import { execFileSync } from "node:child_process";
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { BOOKKEEPING_PREFIXES } from "./paths.mjs";
 
 function git(root, args) {
@@ -128,20 +130,83 @@ export function stagedFiles(root) {
   return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 }
 
-/**
- * Commit whatever is staged, nothing more, and return the short sha; null when nothing is staged.
- * The developer stages a phase and ends its turn; the user's approval is what turns the index
- * into a commit, so a rejected phase never lands in history.
- */
-export function commitStaged(root, message, alsoAdd = []) {
-  // The work item's own state (markers, verdicts) rides along, so history shows the phase and the
-  // decision that let it in as one commit.
-  for (const p of alsoAdd) git(root, ["add", "-A", "--", p]);
-  if (!stagedFiles(root).length) return null;
+const TEST_DIRS = new Set(["test", "tests", "__tests__", "spec"]);
+const TEST_FILE_PATTERNS = [/\.(test|spec)\.[^.]+$/, /_test\.go$/, /^test_.*\.py$/, /Tests\.cs$/];
+
+export function isTestPath(path) {
+  const segments = String(path).replace(/\\/g, "/").split("/");
+  const name = segments.pop();
+  if (segments.some((dir) => TEST_DIRS.has(dir) || /\.Tests$/.test(dir))) return true;
+  return TEST_FILE_PATTERNS.some((pattern) => pattern.test(name));
+}
+
+export function listedPathMatcher(root, listed) {
+  const prefix = repoPrefix(root);
+  const entries = listed.map((p) => prefix + String(p).replace(/\\/g, "/").replace(/^\.\//, ""));
+  return (path) => entries.some((entry) => (entry.endsWith("/") ? path.startsWith(entry) : path === entry));
+}
+
+function gitStrict(cwd, args, { index, input } = {}) {
+  return execFileSync("git", ["-C", cwd, "--literal-pathspecs", ...args], {
+    encoding: "utf8",
+    input,
+    env: index ? { ...process.env, GIT_INDEX_FILE: index } : process.env,
+    stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+  });
+}
+
+function nulList(out) {
+  return (out ?? "").split("\0").filter(Boolean);
+}
+
+function nulInput(paths) {
+  return paths.map((p) => `${p}\0`).join("");
+}
+
+function stagedPathsNoRenames(top) {
+  return nulList(git(top, ["--literal-pathspecs", "diff", "--cached", "--name-only", "--no-renames", "-z"]));
+}
+
+function entryPath(entry) {
+  return entry.slice(entry.indexOf("\t") + 1);
+}
+
+function buildTemporaryIndex(top, index, base, owned) {
+  gitStrict(top, base ? ["read-tree", base] : ["read-tree", "--empty"], { index });
+  const wanted = new Set(owned);
+  const entries = nulList(gitStrict(top, ["ls-files", "-s", "-z"])).filter((entry) => wanted.has(entryPath(entry)));
+  if (entries.length) gitStrict(top, ["update-index", "-z", "--index-info"], { index, input: nulInput(entries) });
+  const present = new Set(entries.map(entryPath));
+  const deleted = owned.filter((path) => !present.has(path));
+  if (deleted.length) gitStrict(top, ["update-index", "--force-remove", "-z", "--stdin"], { index, input: nulInput(deleted) });
+}
+
+function commitIndex(top, index, message) {
   try {
-    execFileSync("git", ["-C", root, "commit", "-q", "-m", message], { stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" });
+    gitStrict(top, ["commit", "-q", "-m", message], { index });
   } catch (err) {
     throw new Error(`git commit failed: ${String(err.stderr ?? err.message).trim().split("\n").at(-1)}`);
   }
-  return git(root, ["rev-parse", "--short", "HEAD"]);
+}
+
+export function commitOwned(root, message, { add = [], owns }) {
+  for (const p of add) git(root, ["--literal-pathspecs", "add", "-A", "--", p]);
+  const top = git(root, ["rev-parse", "--show-toplevel"]);
+  const staged = top ? stagedPathsNoRenames(top) : [];
+  const committed = staged.filter((path) => owns(path));
+  const left_staged = staged.filter((path) => !owns(path));
+  if (!committed.length) return { sha: null, committed, left_staged, warnings: [] };
+
+  const index = resolve(root, git(root, ["rev-parse", "--git-path", "picket-commit.index"]));
+  const before = revParse(top, "HEAD");
+  try {
+    buildTemporaryIndex(top, index, before, committed);
+    commitIndex(top, index, message);
+  } finally {
+    rmSync(index, { force: true });
+  }
+  const sha = head(top);
+  const warnings = revParse(top, `${sha}^`) === before ? [] : [`HEAD moved during the commit; check ${sha}`];
+  gitStrict(top, ["reset", "-q", "--pathspec-from-file=-", "--pathspec-file-nul"], { input: nulInput(committed) });
+  return { sha, committed, left_staged, warnings };
 }

@@ -2,8 +2,8 @@
 // and by the lane skills. Exact-match tokens only; near misses are recorded but change nothing.
 import { appendVerdict, deriveState, hasMarker, projectRoot, readState, setMarker, writeState } from "./work.mjs";
 import { next } from "./next.mjs";
-import { ownGate } from "./gate.mjs";
-import { commitStaged } from "./git.mjs";
+import { ownGate, phasePaths } from "./gate.mjs";
+import { commitOwned, isTestPath, listedPathMatcher } from "./git.mjs";
 import { recordAccept } from "./close.mjs";
 import { readBlock, parseBlock } from "./packet.mjs";
 import { bareAgentName } from "./agent-name.mjs";
@@ -20,14 +20,20 @@ function commitPhase(id, phase, root, applied) {
   const proposed = b.fields.commit && !/^[0-9a-f]{7,40}$/i.test(b.fields.commit) ? b.fields.commit.replace(/\s*\(staged.*\)$/i, "") : null;
   const title = s.phases.find((p) => p.n === Number(phase))?.title ?? `phase ${phase}`;
   const message = proposed ?? `${title}, phase ${phase} of ${id}`;
-  let sha;
+  const listed = listedPathMatcher(root, [`work/${id}/`, ...phasePaths(id, phase, root)]);
+  let result;
   try {
-    sha = commitStaged(root, message, [`work/${id}`]);
+    result = commitOwned(root, message, { add: [`work/${id}`], owns: (path) => listed(path) || isTestPath(path) });
   } catch (err) {
     applied.push(err.message);
     return;
   }
+  const { sha, committed, left_staged, warnings } = result;
   applied.push(sha ? `committed ${sha}: ${message}` : "nothing staged to commit");
+  const outside = committed.filter((path) => !listed(path));
+  if (outside.length) applied.push(`committed outside phase ${phase}'s files: ${outside.join(", ")}`);
+  if (left_staged.length) applied.push(`left staged, not phase ${phase}'s: ${left_staged.join(", ")}`);
+  applied.push(...warnings);
   if (sha) recordAccept(root, id, sha, Number(phase));
 }
 
