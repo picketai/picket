@@ -1,0 +1,13 @@
+{
+  "ts": "2026-10-18T15:54:15.719Z",
+  "base": "0792939ecd04de40e3fb73fb700a22cd001a8e76",
+  "mutant": {
+    "path": "core/lib/hooks/guard.bash.mjs",
+    "line": 453,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "ms": 210630
+}
