@@ -474,6 +474,9 @@ test("the lead-only rule reaches inside eval, shell -c, argv wrappers, PowerShel
       [`pwsh -c "${WAIVE}"`, "PowerShell"],
       [`powershell -Command "${WAIVE}"`, "PowerShell"],
       [`cmd /c ${WAIVE}`, "PowerShell"],
+      [`command ${WAIVE}`],
+      [`exec ${WAIVE}`],
+      [`nice -n 5 ${WAIVE}`],
     ]) {
       const out = outcome(command, tool);
       assert.equal(out?.permissionDecision, "deny", `${tool ?? "Bash"}: ${command}`);
@@ -490,6 +493,9 @@ test("an unreadable payload that mentions picket is denied for an agent; ordinar
     assert.equal(decision(`bash -c "$(echo picket) waive x"`, "picket:developer"), "deny");
     for (const command of ["bash -c 'npm test'", "timeout 30 npm test", 'bash -c "echo $HOME"']) assert.equal(decision(command, "picket:developer"), null, command);
     for (const command of [`eval ${WAIVE}`, `bash -c '${WAIVE}'`, hidden]) assert.equal(decision(command, undefined), null, `lead: ${command}`);
+    assert.equal(decision("bash -c 'for f in .picket/state/scratch/*.mjs; do node $f; done'", "picket:developer"), null, "a .picket/ path is not a mention of the picket command");
+    assert.equal(decision("bash -c 'node core/bin/picket.mjs $VERB x'", "picket:developer"), "deny", "the kernel script is a mention");
+    assert.equal(decision("command -v picket", "picket:developer"), null, "a lookup of the picket command is not a call");
   });
 });
 
@@ -506,6 +512,15 @@ test("a spawned agent's shell write to a code or test file is denied, naming the
       ['"x" | Out-File src/a.ts', "src/a.ts", "PowerShell"],
       ["Add-Content -Value x -Path src/c.ts", "src/c.ts", "PowerShell"],
       ["echo x > src/a.ts", "src/a.ts", "PowerShell"],
+      ["bash -c 'cat > test/x.test.mjs <<EOF\nit.skip(1)\nEOF'", "test/x.test.mjs"],
+      ['sh -c "sed -i s/a/b/ src/a.ts"', "src/a.ts"],
+      ["eval 'echo x >> src/e.ts'", "src/e.ts"],
+      ["timeout 5 tee src/t.ts", "src/t.ts"],
+      ["pwsh -c \"Set-Content src/p.ts x\"", "src/p.ts", "PowerShell"],
+      ["echo x >| src/clobber.ts", "src/clobber.ts"],
+      ["sc src/s.ts x", "src/s.ts", "PowerShell"],
+      ["ac src/s.ts x", "src/s.ts", "PowerShell"],
+      ["Set-Content -Path:src/colon.ts x", "src/colon.ts", "PowerShell"],
     ]) {
       const out = outcome(command, "picket:developer", tool);
       assert.equal(out?.permissionDecision, "deny", command);

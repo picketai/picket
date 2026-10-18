@@ -443,11 +443,15 @@ const HIDDEN_PAYLOAD_REFUSAL = Object.freeze({
 const SHELL_PAYLOAD_ROOTS = new Set(["sh", "bash", "zsh", "ksh", "dash"]);
 const POWERSHELL_HOSTS = new Set(["powershell", "pwsh"]);
 const EXPRESSION_ROOTS = new Map([["eval", "sh"], ["Invoke-Expression", "ps"], ["iex", "ps"]].map(([name, dialect]) => [name.toLowerCase(), dialect]));
-const ARGV_TAIL_ROOTS = new Set(["xargs", "env", "nohup", "timeout", "watch"]);
+const ARGV_TAIL_ROOTS = new Set(["xargs", "env", "nohup", "timeout", "watch", "command", "exec", "nice"]);
 const SHELL_COMMAND_FLAG = /^-[a-z]*c[a-z]*$/;
 const POWERSHELL_COMMAND_FLAG = /^-(c|command)$/i;
 const CMD_RUN_FLAG = /^\/c$/i;
-const KERNEL_MENTION = /\bpicket\b/i;
+const KERNEL_MENTION = /(?:^|[\s;&|(`'"=\\/])picket(?:\.mjs|\.cmd)?(?=$|[\s;&|)`'"])/i;
+
+function isClobberPipe(token) {
+  return typeof token === "object" && token?.op === "|";
+}
 
 function stringWords(seg) {
   return seg.map((t) => (typeof t === "string" ? t : ""));
@@ -468,22 +472,23 @@ function metaPayload(seg) {
     const i = words.findIndex((w) => CMD_RUN_FLAG.test(w));
     return i < 0 ? null : { tail: seg.slice(i + 1) };
   }
-  return ARGV_TAIL_ROOTS.has(root) ? { tail: seg.slice(1) } : null;
+  return ARGV_TAIL_ROOTS.has(root) ? { tail: seg.slice(1), readsInput: root === "xargs" } : null;
 }
 
 function textPayload(text, dialect) {
   return text === null ? null : { text, dialect };
 }
 
-function payloadSegments(text, dialect) {
+function payloadParse(text, dialect) {
   if (dialect === "ps") {
     const reading = readPowerShell(text);
-    return reading && !reading.hiddenExecution ? reading.segments : null;
+    return reading && !reading.hiddenExecution ? { segments: reading.segments, redirectTargets: reading.redirectTargets } : null;
   }
   const shell = shellText(text);
   if (!shell || hasHiddenExecution(shell.command)) return null;
   try {
-    return splitIntoSegments(parse(shell.command, markVariable)).segments;
+    const { segments, redirectTargets } = splitIntoSegments(parse(shell.command, markVariable));
+    return { segments, redirectTargets };
   } catch {
     return null;
   }
@@ -495,12 +500,12 @@ function isOpaquePayload(payload, segments) {
   return segments.some((s) => s.some((t) => typeof t === "string" && isOpaqueWord(t)));
 }
 
-function leadOnlyInTail(tail, agent, mentionsKernel, depth) {
+function leadOnlyInTail({ tail, readsInput }, agent, mentionsKernel, depth) {
   for (let i = 0; i < tail.length; i++) {
     const rest = tail.slice(i);
     if (typeof rest[0] !== "string") continue;
     const start = kernelVerbStart(rest);
-    if (start !== null) return leadOnlyRefusal(rest, agent) ?? (parseArgs(stringWords(rest.slice(start))).pos[0] ? null : HIDDEN_PAYLOAD_REFUSAL);
+    if (start !== null) return leadOnlyRefusal(rest, agent) ?? (readsInput && !parseArgs(stringWords(rest.slice(start))).pos[0] ? HIDDEN_PAYLOAD_REFUSAL : null);
     if (metaPayload(rest)) return leadOnlyInside(rest, agent, mentionsKernel, depth + 1);
   }
   return null;
@@ -510,8 +515,8 @@ function leadOnlyInside(seg, agent, mentionsKernel, depth = 0) {
   if (!SPAWNED_AGENTS.has(agent) || depth > MAX_SUBSTITUTION_DEPTH) return null;
   const payload = metaPayload(seg);
   if (!payload) return null;
-  if (payload.tail) return leadOnlyInTail(payload.tail, agent, mentionsKernel, depth);
-  const segments = payloadSegments(payload.text, payload.dialect);
+  if (payload.tail) return leadOnlyInTail(payload, agent, mentionsKernel, depth);
+  const segments = payloadParse(payload.text, payload.dialect)?.segments ?? null;
   if (isOpaquePayload(payload, segments)) return mentionsKernel ? HIDDEN_PAYLOAD_REFUSAL : null;
   for (const inner of segments) {
     const found = leadOnlyRefusal(inner, agent) ?? leadOnlyInside(inner, agent, mentionsKernel, depth + 1);
@@ -521,8 +526,9 @@ function leadOnlyInside(seg, agent, mentionsKernel, depth = 0) {
 }
 
 const STATE_PREFIX_REL = `${stateRel("")}/`.toLowerCase();
-const POWERSHELL_WRITERS = new Set(["Set-Content", "Add-Content", "Out-File"].map((name) => name.toLowerCase()));
+const POWERSHELL_WRITERS = new Set(["Set-Content", "sc", "Add-Content", "ac", "Out-File"].map((name) => name.toLowerCase()));
 const POWERSHELL_PATH_PARAMS = /^-(path|filepath|literalpath)$/i;
+const POWERSHELL_PATH_COLON = /^-(path|filepath|literalpath):(.+)$/i;
 const POWERSHELL_VALUE_PARAMS = /^-(value|encoding|inputobject|width|stream)$/i;
 const SED_SCRIPT_FLAGS = new Set(["-e", "--expression", "-f", "--file"]);
 
@@ -552,6 +558,8 @@ function sedInPlaceFiles(words) {
 }
 
 function powerShellWriterFiles(words) {
+  const attached = words.map((w) => POWERSHELL_PATH_COLON.exec(w)?.[2]).find(Boolean);
+  if (attached) return [attached];
   const named = valueAfter(words, POWERSHELL_PATH_PARAMS);
   if (named) return [named];
   for (let i = 1; i < words.length; i++) {
@@ -568,6 +576,34 @@ function segmentWriteTargets(seg) {
   if (root === "sed") return sedInPlaceFiles(words);
   if (POWERSHELL_WRITERS.has(root)) return powerShellWriterFiles(words);
   return [];
+}
+
+function codeWriteIn(seg, cwds, root) {
+  return segmentWriteTargets(seg).map((t) => codeWriteTarget(t, cwds, root)).find(Boolean) ?? null;
+}
+
+function codeWriteInTail(tail, cwds, root, depth) {
+  for (let i = 0; i < tail.length; i++) {
+    const rest = tail.slice(i);
+    if (typeof rest[0] !== "string") continue;
+    const hit = codeWriteIn(rest, cwds, root) ?? (metaPayload(rest) ? codeWriteInside(rest, cwds, root, depth + 1) : null);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function codeWriteInside(seg, cwds, root, depth = 0) {
+  if (depth > MAX_SUBSTITUTION_DEPTH) return null;
+  const payload = metaPayload(seg);
+  if (!payload) return null;
+  if (payload.tail) return codeWriteInTail(payload.tail, cwds, root, depth);
+  const parsed = payloadParse(payload.text, payload.dialect);
+  if (!parsed) return null;
+  for (const inner of parsed.segments) {
+    const hit = codeWriteIn(inner, cwds, root) ?? codeWriteInside(inner, cwds, root, depth + 1);
+    if (hit) return hit;
+  }
+  return parsed.redirectTargets.map((t) => codeWriteTarget(t, cwds, root)).find(Boolean) ?? null;
 }
 
 function codeWriteDenial(rel, hint) {
@@ -632,6 +668,7 @@ function splitIntoSegments(tokens) {
         continue;
       }
       if (WRITE_REDIRECT_OPS.has(tok.op)) {
+        if (tok.op === ">" && isClobberPipe(tokens[i + 1])) i++;
         const target = tokens[i + 1];
         if (target === DISCARD_TARGET) {
           i++;
@@ -1253,7 +1290,7 @@ function evaluatePowerShell(command, ctx) {
     const leadOnly = leadOnlyRefusal(seg, agent) ?? leadOnlyInside(leadingAssignments(seg).command, agent, mentionsKernel);
     if (leadOnly) return refuse(leadOnly);
     classifications.push(hit ? "safe" : classifyPowerShellSegment(seg, effCwd, root));
-    codeWrite ??= segmentWriteTargets(seg).map((t) => codeWriteTarget(t, [effCwd], root)).find(Boolean) ?? null;
+    codeWrite ??= codeWriteIn(seg, [effCwd], root) ?? codeWriteInside(leadingAssignments(seg).command, [effCwd], root);
     if (seg[0] === "cd") {
       effCwd = powerShellCd(seg, effCwd);
       cwdsSeen.push(effCwd);
@@ -1378,7 +1415,7 @@ function evaluateCommand(command, ctx) {
     if (refusal) return refuse(refusal.why, refusal.reason);
     const leadOnly = leadOnlyRefusal(seg, agent) ?? leadOnlyInside(leadingAssignments(seg).command, agent, mentionsKernel);
     if (leadOnly) return refuse(leadOnly.why, leadOnly.reason);
-    codeWrite ??= segmentWriteTargets(seg).map((t) => codeWriteTarget(t, [effCwd], root)).find(Boolean) ?? null;
+    codeWrite ??= codeWriteIn(seg, [effCwd], root) ?? codeWriteInside(leadingAssignments(seg).command, [effCwd], root);
     const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
     const { assignments, command: commandPart } = leadingAssignments(seg);

@@ -14,7 +14,7 @@ export function ownGate(id, n, root) {
 }
 
 const FENCED_BLOCK = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm;
-const INLINE_CODE = /(`+)[\s\S]*?\1/g;
+const INLINE_CODE = /(`+)[^\n]*?\1/g;
 
 function withoutCode(section) {
   return section.replace(FENCED_BLOCK, "").replace(INLINE_CODE, "");
