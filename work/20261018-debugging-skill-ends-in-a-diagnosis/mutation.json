@@ -1,0 +1,13 @@
+{
+  "ts": "2026-10-18T13:37:44.129Z",
+  "base": "c4adc9c68ac5eb36723f68aac5766cb0e0626277",
+  "mutant": {
+    "path": "core/lib/admit.mjs",
+    "line": 118,
+    "from": "&&",
+    "to": "||"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "ms": 203387
+}
