@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { rulesDir } from "../paths.mjs";
 
-export const INJECTED_RULES = Object.freeze(["prose.md", "comments.md", "work-items.md", "security-paths.md"]);
+export const INJECTED_RULES = Object.freeze(["prose.md", "comments.md", "work-items.md", "security-paths.md", "untrusted.md"]);
 
 export function joinedRules(dir = rulesDir()) {
   if (!existsSync(dir)) return null;

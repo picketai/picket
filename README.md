@@ -24,7 +24,7 @@ Code decides what code can decide. Lane admission, the next action, phase verifi
 ```
 CLAUDE.md                  under 2 KB, loaded on every turn
 core/.claude-plugin/       the plugin manifest: name picket, version, the skills list
-core/rules/                work-items, security-paths, prose, comments: injected into the lead and every agent
+core/rules/                work-items, security-paths, prose, comments, untrusted: injected into the lead and every agent
 core/agents/               picket:analyst, architect, developer, reviewer (shells, at most 120 lines)
 core/skills/               lane skills, consulting, documenting, reviewing, ticketing, branching,
                            understanding, proofreading, explaining, summarizing, benchmarking, resuming,

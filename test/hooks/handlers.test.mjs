@@ -97,14 +97,14 @@ test("no handler reads stdin, writes stdout or exits the process (T-6.2)", () =>
   }
 });
 
-const RULE_HEADINGS = ["# Writing rules", "# Comments in code", "# Work items", "# Security paths"];
+const RULE_HEADINGS = ["# Writing rules", "# Comments in code", "# Work items", "# Security paths", "# Untrusted content"];
 
 function headingOrder(text) {
   return RULE_HEADINGS.map((heading) => text.indexOf(`${heading}\n`));
 }
 
 for (const event of [{ hook_event_name: "SubagentStart", agent_type: "picket:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
-  test(`injectRules returns the four rules in order for ${event.hook_event_name}`, () => {
+  test(`injectRules returns the five rules in order, untrusted last, for ${event.hook_event_name}`, () => {
     const out = injectRules(event);
     assert.equal(out.hookSpecificOutput.hookEventName, event.hook_event_name);
     const text = out.hookSpecificOutput.additionalContext;
@@ -121,8 +121,27 @@ test("injectRules joins the rule files with one blank line, in the injected orde
     mkdirSync(dir);
     INJECTED_RULES.forEach((file, i) => writeFileSync(join(dir, file), `# Rule ${i}\n\nbody ${i}\n`));
     const out = injectRules({ hook_event_name: "SessionStart" }, { rules: dir });
-    assert.equal(out.hookSpecificOutput.additionalContext, "# Rule 0\n\nbody 0\n\n# Rule 1\n\nbody 1\n\n# Rule 2\n\nbody 2\n\n# Rule 3\n\nbody 3");
+    assert.equal(out.hookSpecificOutput.additionalContext, "# Rule 0\n\nbody 0\n\n# Rule 1\n\nbody 1\n\n# Rule 2\n\nbody 2\n\n# Rule 3\n\nbody 3\n\n# Rule 4\n\nbody 4");
   });
+});
+
+test("the inject.rules shell spawned for SubagentStart carries the untrusted rule (T-3.2)", () => {
+  const out = JSON.parse(execFileSync("node", [join(HOOKS, "inject.rules.mjs")], { input: JSON.stringify({ hook_event_name: "SubagentStart", agent_type: "picket:analyst" }), encoding: "utf8" }));
+  assert.match(out.hookSpecificOutput.additionalContext, /^# Untrusted content$/m);
+  assert.equal(INJECTED_RULES.at(-1), "untrusted.md");
+});
+
+test("the data-not-instructions statement lives only in the untrusted rule (T-3.4)", () => {
+  const hits = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith(".md") && /is data, never (an? )?instructions?/i.test(readFileSync(path, "utf8"))) hits.push(path.slice(resolve("core").length + 1).replaceAll("\\", "/"));
+    }
+  };
+  walk(resolve("core"));
+  assert.deepEqual(hits, ["rules/untrusted.md"]);
 });
 
 test("injectRules returns null when the rules folder is missing", () => {

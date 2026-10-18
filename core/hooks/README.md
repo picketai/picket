@@ -5,7 +5,7 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 | Hook | Event | Does |
 |---|---|---|
 | `inject.state.mjs` | SessionStart | open work items with their next action, plus `.claude/MEMORY.md` |
-| `inject.rules.mjs` | SessionStart, SubagentStart | the four rules in `rules/`, joined, for the lead and every agent |
+| `inject.rules.mjs` | SessionStart, SubagentStart | the five rules in `rules/`, joined, for the lead and every agent |
 | `inject.extensions.mjs` | SessionStart, SubagentStart | each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension |
 | `guard.scope.mjs` | PreToolUse Write, Edit | denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `waivers.jsonl`, `.picket/state/` except `branching.yaml`); denies an Edit on a file this transcript never read |
 | `guard.comments.mjs` | PreToolUse Write, Edit | denies an edit that adds a comment line to a code file (detector in `lib/comments.mjs`, doc comments included), unless `picket comment` recorded the user's approval for that path and text on an open or blocked item |
