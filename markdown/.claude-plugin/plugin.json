@@ -1,6 +1,6 @@
 {
   "name": "picket-markdown",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Click a markdown file path in a reply to read it, read-only, in a pane beside the transcript",
   "author": { "name": "Vlad Apetre" },
   "types": "./types/index.d.ts"

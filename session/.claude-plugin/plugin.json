@@ -1,6 +1,6 @@
 {
   "name": "picket-session",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "Sessions of this project and every agent of this one, in a docked sidebar",
   "author": { "name": "Vlad Apetre" },
   "types": "./types/index.d.ts"
