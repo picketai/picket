@@ -91,6 +91,32 @@ test('a picket that cannot start is retried through cmd and the work line draws'
   expect(await (await band($)).find({ type: 'Text', text: /^▶ order/ })).toBeDefined()
 })
 
+test('the latest call carries the session id the engine answers', async ($, on) => {
+  world(on)
+  on('session.id', () => ({ value: 'sid-1' }))
+  const runs: (readonly string[])[] = []
+  on('process.run', ($, e) => {
+    runs.push(e.argv)
+    return exited(0, JSON.stringify(LATEST))
+  })
+
+  await $.session.start(START)
+  expect(runs).toEqual([['picket', 'next', '--latest', '--session', 'sid-1']])
+})
+
+test('a session id that cannot be read leaves the latest call without it', async ($, on) => {
+  world(on)
+  on('session.id', () => ({ deny: 'no session' }))
+  const runs: (readonly string[])[] = []
+  on('process.run', ($, e) => {
+    runs.push(e.argv)
+    return exited(0, JSON.stringify(LATEST))
+  })
+
+  await $.session.start(START)
+  expect(runs).toEqual([['picket', 'next', '--latest']])
+})
+
 test('a failed, unreadable or empty answer with no agent at work leaves the engine its own tree', async ($, on) => {
   world(on)
   const answers = [exited(1, ''), exited(0, 'not json'), exited(0, JSON.stringify({ ...LATEST, id: null, action: 'none' }))]

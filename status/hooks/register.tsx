@@ -39,10 +39,20 @@ const LAUNCHERS: readonly (readonly string[])[] = [['picket'], ['cmd', '/c', 'pi
 
 const runner = { launchers: LAUNCHERS, isBusy: false }
 
+const sessionArgs = async ($: EngineInterface): Promise<string[]> => {
+  try {
+    const id = await $.session.id()
+    return id ? ['--session', id] : []
+  } catch {
+    return []
+  }
+}
+
 const runLatest = async ($: EngineInterface): Promise<ProcessRunResult | null> => {
+  const session = await sessionArgs($)
   for (const launcher of runner.launchers) {
     try {
-      const result = await $.process.run([...launcher, 'next', '--latest'], { timeoutMs: 10_000 })
+      const result = await $.process.run([...launcher, 'next', '--latest', ...session], { timeoutMs: 10_000 })
       runner.launchers = [launcher]
       return result
     } catch {

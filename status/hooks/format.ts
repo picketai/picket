@@ -37,7 +37,23 @@ const agentVerb = (work: Work): string => {
   }
 }
 
+const otherSessionStep = (work: Work): string => {
+  if (work.status === 'blocked') {
+    return `blocked: ${work.blocked_reason ?? work.detail}`
+  }
+  if (work.action === 'resolve_sources') {
+    return 'waits for source picks'
+  }
+  if (work.actor === 'user') {
+    return `waits for approval of phase ${work.phase}`
+  }
+  return `${work.actor ?? 'lead'} ${agentVerb(work)}`
+}
+
 export const stepText = (work: Work, now: number): Piece[] => {
+  if (work.other_session === true) {
+    return [{ text: otherSessionStep(work), color: TONE.muted }]
+  }
   if (work.status === 'blocked') {
     return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: TONE.error, bold: true }]
   }

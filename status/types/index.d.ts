@@ -16,6 +16,8 @@ export type Work = {
   blocked_reason: string | null
   since: string
   by: string | null
+  session?: string | null
+  other_session?: boolean
 }
 
 export type AgentRow = {

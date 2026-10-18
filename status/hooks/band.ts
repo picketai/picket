@@ -5,6 +5,7 @@ import { TONE } from './palette'
 const GAP = 2
 const INDENT: Piece = { text: '  ' }
 const DOT: Piece = { text: ' · ', color: TONE.rule }
+const OTHER_SESSION: Piece = { text: ' · other session', color: TONE.muted }
 
 export const widthOf = (pieces: Piece[]): number =>
   pieces.reduce((sum, piece) => sum + [...piece.text].length, 0)
@@ -48,7 +49,7 @@ export const agentState = (row: AgentRow, all: AgentRow[], work: Work | null): A
   if (isWorking(row.status)) {
     return 'working'
   }
-  if (work?.actor !== 'user' || work.by !== row.role) {
+  if (work?.actor !== 'user' || work.other_session === true || work.by !== row.role) {
     return 'idle'
   }
   const latestIdle = Math.max(...all.filter(other => other.role === row.role).map(other => other.idleAt ?? -Infinity))
@@ -84,12 +85,14 @@ export const workLine = (work: Work | null, now: number): Line | null => {
   if (work === null) {
     return null
   }
+  const isOther = work.other_session === true
   return {
     left: [
-      { text: `▶ ${work.lane}`, color: TONE.accent },
+      { text: `▶ ${work.lane}`, color: isOther ? TONE.muted : TONE.accent },
       { text: '  ' },
-      { text: work.title, bold: true },
+      isOther ? { text: work.title, color: TONE.muted } : { text: work.title, bold: true },
       ...progress(work),
+      ...(isOther ? [OTHER_SESSION] : []),
     ],
     right: stepText(work, now),
   }

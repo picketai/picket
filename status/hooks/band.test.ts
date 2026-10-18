@@ -117,3 +117,26 @@ describe('agents line', () => {
     expect(agentsLine([agent('a', 'idle'), agent('b', 'idle')], null, NOW)).toBe(null)
   })
 })
+
+describe('another session', () => {
+  const other: Work = { ...WORK, session: 's1', other_session: true }
+
+  test('a user gate of another session reads muted, names the session and asks nothing', async () => {
+    const line = workLine(other, NOW)
+    expect(text(line?.left ?? [])).toBe('▶ order  Ship picket-markdown mod with picket init  ●○ 1/2 · other session')
+    expect(line?.left.at(-1)).toEqual({ text: ' · other session', color: 'inactive' })
+    expect(line?.left[0]?.color).toBe('inactive')
+    expect(line?.right).toEqual([{ text: 'waits for approval of phase 1', color: 'inactive' }])
+    expect(text(line?.right ?? []).includes('you approve')).toBe(false)
+    expect(text([...(line?.left ?? []), ...(line?.right ?? [])]).includes('◀')).toBe(false)
+  })
+
+  test('the idle agent whose verdict another session is answering does not wait', async () => {
+    const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE })
+    expect(agentsLine([developer], { ...other, actor: 'user', by: 'developer' }, NOW)).toBe(null)
+  })
+
+  test('the same session reads as before', async () => {
+    expect(workLine({ ...WORK, session: 's1', other_session: false }, NOW)).toEqual(workLine(WORK, NOW))
+  })
+})
