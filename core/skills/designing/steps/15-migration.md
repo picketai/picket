@@ -23,7 +23,7 @@ Backfill the old records in batches:
 
 ## Contract
 
-The destructive step comes last, alone, in its own phase, after every reader and writer uses the new shape. Mark that phase `[IRREVERSIBLE]` in its title and on the decision that calls for it: dropping a column, deleting the old file version, removing a public field. The kernel gives such a phase its own gate, so no run grant crosses it.
+The destructive step comes last, alone, in its own phase, after every reader and writer uses the new shape. Mark that phase [IRREVERSIBLE] in its title and on the decision that calls for it: dropping a column, deleting the old file version, removing a public field. The kernel gives such a phase its own gate, so no run grant crosses it.
 
 Deprecate before you remove. A public field or endpoint first goes behind an adapter or a flag that keeps old callers working, with a phase that measures or announces the switch; removal is the contract phase.
 

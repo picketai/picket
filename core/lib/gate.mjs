@@ -15,9 +15,20 @@ export function ownGate(id, n, root) {
 
 const FENCED_BLOCK = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm;
 const INLINE_CODE = /(`+)[^\n]*?\1/g;
+const BACKTICK_RUN = /`+/g;
+
+function hasUnpairedBacktick(line) {
+  const runsByLength = new Map();
+  for (const run of line.match(BACKTICK_RUN) ?? []) runsByLength.set(run.length, (runsByLength.get(run.length) ?? 0) + 1);
+  return [...runsByLength.values()].some((count) => count % 2 === 1);
+}
+
+function lineWithoutCode(line) {
+  return hasUnpairedBacktick(line) ? line : line.replace(INLINE_CODE, "");
+}
 
 function withoutCode(section) {
-  return section.replace(FENCED_BLOCK, "").replace(INLINE_CODE, "");
+  return section.replace(FENCED_BLOCK, "").split("\n").map(lineWithoutCode).join("\n");
 }
 
 export function phasePaths(id, n, root) {

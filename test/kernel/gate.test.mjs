@@ -79,6 +79,9 @@ test("an [IRREVERSIBLE] marker counts in prose and not inside inline code or a f
   assert.ok(paths.includes("core/skills/designing/steps/15-migration.md"), "touch-set paths in backticks still read");
   const unclosed = "- **T-1.1** a stray ` backtick here\n- **T-1.2** drop the column [IRREVERSIBLE]\n- **T-1.3** a later `code` span\n";
   assert.equal(gateFor({ entry: plainFiles, body: unclosed })?.kind, "irreversible", "an unclosed backtick never hides a marker on a later line");
+  const sameLine = "- **T-1.1** a stray ` backtick, then drop the column [IRREVERSIBLE] and a `code` span\n";
+  assert.equal(gateFor({ entry: plainFiles, body: sameLine })?.kind, "irreversible", "a stray backtick on the marker's line hides nothing");
+  assert.equal(gateFor({ entry: plainFiles, body: "- **T-1.1** the step names `[IRREVERSIBLE]` and `15-migration.md`\n" }), null, "spans that open and close on the line still hide a quoted marker");
 });
 
 test("a security path wins over a mark, and a mark wins over an irreversible step", () => {
