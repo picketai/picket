@@ -15,6 +15,7 @@ export const STATE_FILES = Object.freeze({
   guardLog: "guard.log",
   branchingManifest: "branching.yaml",
   sessions: "sessions",
+  mutationRestore: "mutation-restore.json",
 });
 
 const SESSION_ID = /^[A-Za-z0-9_-]{1,128}$/;

@@ -27,6 +27,7 @@ import { cost } from "../lib/cost.mjs";
 import { reviewSummary } from "../lib/review.mjs";
 import { loadConfig } from "../lib/config.mjs";
 import { parseArgs } from "../lib/cli-args.mjs";
+import { mutate, renderMutation } from "../lib/mutate.mjs";
 import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../lib/sources.mjs";
 
 function out(value, opt, text) {
@@ -79,7 +80,7 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
-const VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "leave", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "waive", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+const VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "leave", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "waive", "mutate", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
 
 function usage() {
   return ["usage: picket <verb> [args] [--pretty | --human]", "", `verbs: ${VERBS.join(" ")}`, "", "picket --version   print the installed version"].join("\n");
@@ -291,6 +292,12 @@ async function main(argv) {
       const entry = appendComment(rest[0], { path: opt.path, text: opt.text }, root);
       out(entry, opt, (v) => `approved comment for ${v.path}: "${v.text}"`);
       return 0;
+    }
+    case "mutate": {
+      if (!rest[0]) throw new Error("mutate needs <id>");
+      const r = mutate(rest[0], { root });
+      out(r, opt, renderMutation);
+      return r.outcome === "error" ? 2 : 0;
     }
     case "waive": {
       const hasText = typeof opt.text === "string" && opt.text.trim() !== "";

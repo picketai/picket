@@ -417,7 +417,7 @@ function withSubstitutedOutput(seg, plain, carriesOutput) {
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 const BARE_KERNEL = "picket";
 export const KERNEL_READ_VERBS = new Set(["state", "next", "packet", "list", "review-summary", "cost", "preflight", "extensions", "admit", "find-verdict", "verify"]);
-export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "leave", "route", "drive", "comment", "waive", "pr", "migrate", "check", "source", "statusline", "setup-terminal", "uninstall"]);
+export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "leave", "route", "drive", "comment", "waive", "mutate", "pr", "migrate", "check", "source", "statusline", "setup-terminal", "uninstall"]);
 export const KERNEL_READ_SUBVERBS = { source: ["find", "grep"] };
 export const LEAD_ONLY_VERBS = new Set(["comment", "waive"]);
 const SPAWNED_AGENTS = new Set(["analyst", "architect", "developer", "reviewer"]);

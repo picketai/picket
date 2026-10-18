@@ -4,7 +4,7 @@ import { wasRead, agentTranscript } from "../transcript.mjs";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../paths.mjs";
 
-const KERNEL_OWNED_ENTRIES = ["state.yaml", "verdicts.jsonl", "comments.jsonl", "waivers.jsonl", "left.jsonl", "phases/", "request.md", "story.md", "sources.yaml", "sources/", "repos.yaml"];
+const KERNEL_OWNED_ENTRIES = ["state.yaml", "verdicts.jsonl", "comments.jsonl", "waivers.jsonl", "mutation.json", "left.jsonl", "phases/", "request.md", "story.md", "sources.yaml", "sources/", "repos.yaml"];
 const KERNEL_OWNED = new RegExp(`^work/[^/]+/(${KERNEL_OWNED_ENTRIES.map((entry) => entry.replaceAll(".", "\\.")).join("|")})`);
 const STATE_PREFIX = `${stateRel("")}/`.toLowerCase();
 const MODEL_WRITABLE_STATE = MODEL_WRITABLE_STATE_FILES.map((name) => stateRel(name).toLowerCase());

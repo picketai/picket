@@ -1,12 +1,13 @@
 # Ordering, step 4: the cumulative or checkpoint review
 
-`picket next <id>` said `review_cumulative` (or `review_checkpoint` in the design lane). Compute the summary the reviewer needs; never let the reviewer detect it:
+`picket next <id>` said `review_cumulative` (or `review_checkpoint` in the design lane). Compute the summary the reviewer needs; never let the reviewer detect it. Before a cumulative review, run the mutation spot-check first, once: it inverts one operator on a changed source line (`===` to `!==`), runs the tests, puts the file back, and saves the outcome for the summary:
 
 ```
+picket mutate <id>
 picket review-summary <id>
 ```
 
-It prints `{ size, frameworks, concerns, security_path, changed_files, base, request, repos }` from the diff between the work item's base and HEAD, across the root and every nested repo.
+The summary prints `{ size, frameworks, concerns, security_path, changed_files, base, request, repos, silenced, mutation }` from the diff between the work item's base and HEAD, across the root and every nested repo. A checkpoint skips `picket mutate`; its `mutation` is whatever an earlier run left, or null.
 
 ## Cumulative: a fresh reviewer
 

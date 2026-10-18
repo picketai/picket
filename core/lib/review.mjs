@@ -11,6 +11,7 @@ import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
+import { readMutation } from "./mutate.mjs";
 
 export const SIZE = Object.freeze({ small: { files: 3, lines: 50 }, medium: { files: 10, lines: 400 } });
 
@@ -188,6 +189,7 @@ export function reviewSummary(id, o = {}) {
     // Each snapshot against its live version: snapshot_sha256, live_sha256, moved (and why).
     sources: liveDrift(join(root, "work", id), config.sources),
     silenced: withWaived(silenced, itemWaivers(id, root)),
+    mutation: readMutation(id, root),
   };
 }
 

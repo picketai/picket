@@ -36,6 +36,7 @@ Field meaning:
 - `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
 - `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
 - `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`steps/12-bar.md`).
+- `mutation`: the last `picket mutate` result (`{ mutant: { path, line, from, to }, outcome }`), or null when none ran; `survived` is row Mu1 in `steps/12-bar.md`.
 
 Summary missing or a field absent: ask for it and stop. Do not fall back to your own detection.
 

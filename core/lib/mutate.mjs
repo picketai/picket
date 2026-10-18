@@ -1,0 +1,134 @@
+import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { check } from "./check.mjs";
+import { LANGS, MARKUP, commentOf, extOf, maskStrings } from "./comments.mjs";
+import * as git from "./git.mjs";
+import { STATE_FILES, stateDir, statePath } from "./paths.mjs";
+import { detectTooling } from "./preflight.mjs";
+import { isTestPath } from "./silenced.mjs";
+import { projectRoot, readState, workDir } from "./work.mjs";
+
+const OPERATOR = /(?<=\s)(?:<=|>=|<|>)(?=\s)|===|!==|==|!=|&&|\|\||\btrue\b|\bfalse\b/g;
+
+const INVERSE = Object.freeze({
+  "===": "!==", "!==": "===", "==": "!=", "!=": "==",
+  "<": ">=", ">=": "<", ">": "<=", "<=": ">",
+  "&&": "||", "||": "&&", true: "false", false: "true",
+});
+
+function codeLang(path) {
+  const lang = LANGS[extOf(path)];
+  return lang && lang !== MARKUP ? lang : null;
+}
+
+function isCandidateFile(root, path) {
+  return !git.isNonProduct(path) && Boolean(codeLang(path)) && !isTestPath(path) && existsSync(join(root, path));
+}
+
+function addedLineIndexes(before, afterLines) {
+  const kept = new Map();
+  for (const line of before.split(/\r?\n/)) kept.set(line, (kept.get(line) ?? 0) + 1);
+  return afterLines.flatMap((line, index) => {
+    const count = kept.get(line) ?? 0;
+    if (count) kept.set(line, count - 1);
+    return count ? [] : [index];
+  });
+}
+
+function codePart(line, lang) {
+  const masked = maskStrings(line);
+  const comment = commentOf(line, lang);
+  return comment ? masked.slice(0, comment.col) : masked;
+}
+
+function firstOperator(code) {
+  OPERATOR.lastIndex = 0;
+  const m = OPERATOR.exec(code);
+  return m ? { col: m.index, from: m[0], to: INVERSE[m[0]] } : null;
+}
+
+function fileMutant(root, base, path) {
+  const lang = codeLang(path);
+  const lines = readFileSync(join(root, path), "utf8").split("\n");
+  const plain = lines.map((line) => line.replace(/\r$/, ""));
+  for (const index of addedLineIndexes(git.fileAt(root, base, path), plain)) {
+    const op = firstOperator(codePart(plain[index], lang));
+    if (op) return { path, line: index + 1, col: op.col, from: op.from, to: op.to };
+  }
+  return null;
+}
+
+export function pickMutant(root, base) {
+  const files = git.changedSince(root, base).filter((path) => isCandidateFile(root, path)).sort();
+  for (const path of files) {
+    const mutant = fileMutant(root, base, path);
+    if (mutant) return mutant;
+  }
+  return null;
+}
+
+function restoreRecordPath(root) {
+  return statePath(root, STATE_FILES.mutationRestore);
+}
+
+export function restoreLeftover(root) {
+  const record = restoreRecordPath(root);
+  if (!existsSync(record)) return null;
+  const { path, original } = JSON.parse(readFileSync(record, "utf8"));
+  writeFileSync(join(root, path), Buffer.from(original, "base64"));
+  rmSync(record);
+  return path;
+}
+
+function withMutant(root, mutant, run) {
+  const file = join(root, mutant.path);
+  const original = readFileSync(file);
+  mkdirSync(stateDir(root), { recursive: true });
+  writeFileSync(restoreRecordPath(root), JSON.stringify({ path: mutant.path, original: original.toString("base64") }));
+  const lines = original.toString("utf8").split("\n");
+  const line = lines[mutant.line - 1];
+  lines[mutant.line - 1] = line.slice(0, mutant.col) + mutant.to + line.slice(mutant.col + mutant.from.length);
+  try {
+    writeFileSync(file, lines.join("\n"));
+    return run();
+  } finally {
+    writeFileSync(file, original);
+    rmSync(restoreRecordPath(root), { force: true });
+  }
+}
+
+function testOutcome(root) {
+  try {
+    const status = check({ root, steps: ["test"] }).steps[0]?.status;
+    if (status === "passed") return "survived";
+    if (status === "failed") return "killed";
+    return "error";
+  } catch {
+    return "error";
+  }
+}
+
+export function mutate(id, { root = projectRoot() } = {}) {
+  const started = Date.now();
+  const restored = restoreLeftover(root);
+  const base = readState(id, root).base ?? "HEAD";
+  const command = detectTooling(root).test ?? null;
+  const found = command ? pickMutant(root, base) : null;
+  const outcome = !command ? "no test command" : !found ? "no candidate" : withMutant(root, found, () => testOutcome(root));
+  const mutant = found ? { path: found.path, line: found.line, from: found.from, to: found.to } : null;
+  const result = { ts: new Date().toISOString(), base, mutant, command, outcome, ms: Date.now() - started };
+  writeFileSync(join(workDir(id, root), "mutation.json"), JSON.stringify(result, null, 2) + "\n");
+  return { ...result, restored };
+}
+
+export function readMutation(id, root = projectRoot()) {
+  const file = join(workDir(id, root), "mutation.json");
+  return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+}
+
+export function renderMutation(v) {
+  const lines = v.restored ? [`restored ${v.restored} from an interrupted run`] : [];
+  const where = v.mutant ? `${v.mutant.path}:${v.mutant.line} ${v.mutant.from} -> ${v.mutant.to}` : "none";
+  lines.push(`mutant ${where}: ${v.outcome}`);
+  return lines.join("\n");
+}

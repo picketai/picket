@@ -175,7 +175,8 @@ test("with no extension enabled, extension_steps is empty and the summary keeps 
     changeFiles(root, 2);
     const summary = reviewSummary(id, { root });
     assert.deepEqual(summary.extension_steps, []);
-    assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources", "silenced"]);
+    assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources", "silenced", "mutation"]);
+    assert.equal(summary.mutation, null, "no mutation.json, no mutation");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
