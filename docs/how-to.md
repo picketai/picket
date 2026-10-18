@@ -2,7 +2,7 @@
 
 Picket turns Claude Code into a small, disciplined team. You describe a change in plain words; Picket picks how much process it needs, writes a plan when one is worth having, implements it phase by phase, verifies each phase by running it, and stops for your approval before anything lands in git history.
 
-This guide is for a developer installing the alpha in their own project. It covers installing, the daily loop, configuration, updating, removal and troubleshooting.
+This guide is for a developer installing the alpha in their own project. It covers installing, the daily loop, adopting Picket in an existing codebase, configuration, updating, removal and troubleshooting.
 
 ## What you get
 
@@ -205,6 +205,18 @@ shows every work item with its lane, phase and next step, and the session's spen
 | `CLAUDE.md` | yes | the Picket block plus your project facts |
 
 Agents never commit. The developer stages a phase; your approval runs `picket route`, which commits the staged files together with the work item's state, so every phase is one commit with a message you saw in the packet.
+
+## Adopting Picket in an existing codebase
+
+An old codebase has gaps Picket cannot see on day one: modules nobody fully understands, a test suite with holes, and checks that were switched off long ago. Take these steps in this order; each one makes the next safer.
+
+1. **Map the code before you change it.** Ask a question about the module you will touch first ("how does invoicing compute totals? no code changes"); it takes the research lane and leaves a report under `work/<id>/`. Then run `/picket:understanding <your plan>` to test the plan against the project's own words, so that "invoice", "order" and "bill" mean one thing each.
+2. **Record the bar you have today in `quality`.** Measure what the project holds now and write that down, not what you wish it held. Example: the coverage report says 72% of lines and lint prints 14 warnings, so `.picket/config.json` gets `"quality": { "coverage_min": 70, "max_warnings": 14 }`. From then on, an edit that writes `lines: 60` in `vitest.config.ts` or `--max-warnings 20` in `package.json` is denied.
+3. **Pin behaviour before any refactor.** The developer writes a characterization test first: one that asserts what the code does today, odd outputs included, and passes before the refactor starts. The procedure is in `core/skills/expediting/steps/20-prove.md`, and the block's `Red:` line names the test.
+4. **Approve a silenced check, never let one in quietly.** When a suppression, a skipped test or a weaker threshold is the right call (a flaky test that blocks a release), the developer proposes it on the block's `Waivers:` line with why, and you reply `w <n>`. The review lists every one, waived or not, so the debt stays visible.
+5. **Raise the bar over time.** When coverage reaches 78%, set `coverage_min` to 75; when the warnings drop to 6, set `max_warnings` to 6. The same goes for the minimum shares in Picket's own measurement tests. Each raise is one small edit to the config, and Picket denies any later edit that falls back under it.
+
+The anti-pattern is ratcheting nothing: recording the bar once and never raising it, or leaving `quality` empty, so a project that got better can quietly get worse again.
 
 ## Configuration
 
