@@ -1,10 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { cacheLeft, compactTokens, contextColor, displayWidth, factsOf, iconsMode, lastSkill, renderStatusline } from "../../core/lib/statusline.mjs";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { cacheLeft, compactTokens, contextColor, displayWidth, factsOf, iconsMode, lastSkill, recordSessionCost, renderStatusline } from "../../core/lib/statusline.mjs";
 import { rgb } from "../../core/lib/styling/palette.mjs";
+import { sessionCostPath, statePath, STATE_FILES } from "../../core/lib/paths.mjs";
+
+const BIN = resolve("core/bin/picket.mjs");
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 const MINUTE = 60_000;
@@ -206,6 +210,75 @@ test("iconsMode is nerd only for that exact value in the user's Picket config", 
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
+});
+
+function withTempRoot({ picket }, fn) {
+  const root = mkdtempSync(join(tmpdir(), "picket-statusline-root-"));
+  try {
+    if (picket) mkdirSync(join(root, ".picket"));
+    fn(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function spawnStatusline(input, root) {
+  return spawnSync("node", [BIN, "statusline"], { input: JSON.stringify(input), encoding: "utf8", env: { ...process.env, COLUMNS: "150", CLAUDE_PROJECT_DIR: root } });
+}
+
+function fixture() {
+  return JSON.parse(readFileSync("test/kernel/statusline-input.json", "utf8"));
+}
+
+function sessionFiles(root) {
+  const dir = statePath(root, STATE_FILES.sessions);
+  return existsSync(dir) ? readdirSync(dir) : [];
+}
+
+test("picket statusline writes the session cost snapshot under the project root and prints as before (T-1.1)", () => {
+  withTempRoot({ picket: true }, (root) => {
+    const printed = spawnStatusline(fixture(), root);
+    withTempRoot({ picket: false }, (bare) => {
+      assert.equal(printed.stdout, spawnStatusline(fixture(), bare).stdout);
+    });
+    assert.equal(printed.status, 0);
+    assert.equal(printed.stderr, "");
+    const snapshot = JSON.parse(readFileSync(join(root, ".picket", "state", "sessions", "statusline-fixture.json"), "utf8"));
+    assert.equal(snapshot.session, "statusline-fixture");
+    assert.equal(snapshot.cost_usd, 4.12);
+    assert.match(snapshot.ts, /^\d{4}-\d{2}-\d{2}T/);
+  });
+});
+
+test("picket statusline prints and writes nothing without .picket, with an unsafe session id or without a cost (T-1.2)", () => {
+  const noCost = fixture();
+  delete noCost.cost;
+  const cases = [
+    [{ picket: false }, fixture()],
+    [{ picket: true }, { ...fixture(), session_id: "../x" }],
+    [{ picket: true }, noCost],
+  ];
+  for (const [options, input] of cases) {
+    withTempRoot(options, (root) => {
+      const printed = spawnStatusline(input, root);
+      assert.equal(printed.status, 0);
+      assert.match(printed.stdout.replace(ESCAPE, ""), /PICKETAI/);
+      assert.deepEqual(sessionFiles(root), [], JSON.stringify(input.session_id));
+      assert.equal(existsSync(statePath(root, "x.json")), false);
+    });
+  }
+});
+
+test("sessionCostPath refuses ids that are not a plain file name", () => {
+  for (const id of ["../x", "a/b", "a.b", "", "x".repeat(129), undefined, 42]) assert.equal(sessionCostPath("/r", id), null, String(id));
+  assert.ok(sessionCostPath("/r", "abc-DEF_1").endsWith(join("sessions", "abc-DEF_1.json")));
+});
+
+test("recordSessionCost swallows a write error", () => {
+  withTempRoot({ picket: true }, (root) => {
+    writeFileSync(join(root, ".picket", "state"), "a file where the state folder should be");
+    assert.doesNotThrow(() => recordSessionCost(fixture(), { root }));
+  });
 });
 
 test("rgb splits a palette hex into its channels", () => {

@@ -45,7 +45,23 @@ function summarizeEscalations(rows) {
   };
 }
 
+export function rowCosts(rows) {
+  const previous = new Map();
+  return rows.map((r) => {
+    if (!TURN_EVENTS.has(r.event) || !Number.isFinite(r.session_cost_usd)) return null;
+    const before = previous.get(r.session);
+    previous.set(r.session, r.session_cost_usd);
+    return before === undefined || r.session_cost_usd < before ? r.session_cost_usd : r.session_cost_usd - before;
+  });
+}
+
+function addKnown(sum, value) {
+  return value === null ? sum : (sum ?? 0) + value;
+}
+
 export function summarize(rows, { session = null, work_id = null } = {}) {
+  const costs = rowCosts(rows);
+  const costOf = new Map(rows.map((r, i) => [r, costs[i]]));
   let scoped = rows;
   if (session) scoped = scoped.filter((r) => r.session === session);
   if (work_id) scoped = scoped.filter((r) => r.work_id === work_id);
@@ -55,10 +71,10 @@ export function summarize(rows, { session = null, work_id = null } = {}) {
   const lines = rs.reduce((a, r) => a + (r.lines_added ?? 0), 0);
   const byAgent = {};
   for (const r of rs) {
-    const a = (byAgent[r.agent] ??= { turns: 0, duration_ms: 0, cost_usd: 0, bounces: 0, blocks: 0, tool_calls: 0, rereads: 0 });
+    const a = (byAgent[r.agent] ??= { turns: 0, duration_ms: 0, cost_usd: null, bounces: 0, blocks: 0, tool_calls: 0, rereads: 0 });
     a.turns++;
     a.duration_ms += r.duration_ms ?? 0;
-    a.cost_usd += r.cost_usd ?? 0;
+    a.cost_usd = addKnown(a.cost_usd, costOf.get(r));
     a.bounces += r.bounces ?? 0;
     a.blocks += r.blocks ?? 0;
     a.tool_calls += r.tool_calls ?? 0;
@@ -69,7 +85,7 @@ export function summarize(rows, { session = null, work_id = null } = {}) {
     rows: rs.length,
     sessions: new Set(rs.map((r) => r.session)).size,
     work_items: new Set(rs.map((r) => r.work_id).filter(Boolean)).size,
-    cost_usd: rs.reduce((a, r) => a + (r.cost_usd ?? 0), 0),
+    cost_usd: rs.reduce((sum, r) => addKnown(sum, costOf.get(r)), null),
     usage,
     tokens_total: tokens,
     cache_hit_ratio: cacheHitRatio(usage),

@@ -14,7 +14,10 @@ export const STATE_FILES = Object.freeze({
   driveLog: "drive-log.jsonl",
   guardLog: "guard.log",
   branchingManifest: "branching.yaml",
+  sessions: "sessions",
 });
+
+const SESSION_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 export const MODEL_WRITABLE_STATE_FILES = Object.freeze([STATE_FILES.branchingManifest]);
 
@@ -82,6 +85,11 @@ export function stateDir(root) {
 
 export function statePath(root, name) {
   return join(stateDir(root), name);
+}
+
+export function sessionCostPath(root, session) {
+  if (typeof session !== "string" || !SESSION_ID.test(session)) return null;
+  return join(statePath(root, STATE_FILES.sessions), `${session}.json`);
 }
 
 export function configRel() {

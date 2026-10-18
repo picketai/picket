@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createWork, writeState } from "../../core/lib/work.mjs";
-import { hostPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
+import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
 import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
 import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
@@ -138,6 +138,18 @@ test("emitLedger called directly appends one v2 row to the ledger (T-6.3)", () =
     assert.equal(rows.length, 1);
     assert.equal(rows[0].v, 2);
     assert.equal(rows[0].session, "s1");
+  });
+});
+
+test("emitLedger stores the session's cost snapshot as session_cost_usd and writes no cost_usd (T-1.3)", () => {
+  withProject((root) => {
+    const tp = transcript(root, [user("hello"), assistant("Done.")]);
+    mkdirSync(statePath(root, STATE_FILES.sessions), { recursive: true });
+    writeFileSync(sessionCostPath(root, "s1"), JSON.stringify({ session: "s1", cost_usd: 2.5, ts: "2026-10-18T07:00:00Z" }));
+    for (const session_id of ["s1", "s2"]) emitLedger({ hook_event_name: "Stop", session_id, transcript_path: tp, cwd: root }, { root });
+    const rows = readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(rows.map((r) => r.session_cost_usd), [2.5, null]);
+    assert.ok(rows.every((r) => !("cost_usd" in r)));
   });
 });
 

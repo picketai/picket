@@ -1,8 +1,8 @@
-import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "../transcript.mjs";
 import { findVerdict } from "../route.mjs";
 import { readState } from "../work.mjs";
-import { stateDir, statePath, STATE_FILES } from "../paths.mjs";
+import { sessionCostPath, stateDir, statePath, STATE_FILES } from "../paths.mjs";
 
 const HEADING = /^##\s+(Phase\s+(\d+)\s+of\s+([a-z0-9-]+)|Review:\s+([a-z0-9-]+)|(?:Order|Design|Amendment):\s+([a-z0-9-]+)|Report:\s+([a-z0-9-]+)|Expedited:\s+([a-z0-9-]+))/m;
 
@@ -27,6 +27,17 @@ function gateKind(text) {
 
 function ledgerUsage(usage) {
   return usage ? { input_tokens: usage.input, cache_read_input_tokens: usage.cache_read, cache_creation_input_tokens: usage.cache_creation, output_tokens: usage.output } : null;
+}
+
+function sessionCost(root, session) {
+  const file = sessionCostPath(root, session);
+  if (file === null) return null;
+  try {
+    const cost = JSON.parse(readFileSync(file, "utf8"))?.cost_usd;
+    return Number.isFinite(cost) ? cost : null;
+  } catch {
+    return null;
+  }
 }
 
 export function emitLedger(event, { root }) {
@@ -61,7 +72,7 @@ export function emitLedger(event, { root }) {
     blocks: 0,
     first_reviewable_ms: firstReviewableMs(stats),
     usage: ledgerUsage(span.usage),
-    cost_usd: null,
+    session_cost_usd: sessionCost(root, event.session_id),
     lines_added: null,
   };
   mkdirSync(stateDir(root), { recursive: true });

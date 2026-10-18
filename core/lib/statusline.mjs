@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { workingState } from "./git.mjs";
+import { PICKET_DIR, sessionCostPath } from "./paths.mjs";
 import { BRAND, rgb } from "./styling/palette.mjs";
 import { readTail } from "./transcript.mjs";
 
@@ -393,7 +394,17 @@ export function liveProbe({ cacheDir, now, readGit = workingState, readSkill = l
   };
 }
 
-const DIRECT_PROBE = { git: workingState, skill: (path) => lastSkill(path) };
+export function recordSessionCost(input, { root }) {
+  try {
+    const cost = input.cost?.total_cost_usd;
+    const file = sessionCostPath(root, input.session_id);
+    if (file === null || !Number.isFinite(cost) || !existsSync(join(root, PICKET_DIR))) return;
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ session: input.session_id, cost_usd: cost, ts: new Date().toISOString() }));
+  } catch {}
+}
+
+const DIRECT_PROBE ={ git: workingState, skill: (path) => lastSkill(path) };
 
 export function renderStatusline(input, { now, columns, icons = "plain", probe = DIRECT_PROBE }) {
   const dir = workspaceDir(input);

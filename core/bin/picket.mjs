@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { packet } from "../lib/packet.mjs";
-import { iconsMode, liveProbe, renderStatusline } from "../lib/statusline.mjs";
+import { iconsMode, liveProbe, recordSessionCost, renderStatusline, workspaceDir } from "../lib/statusline.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../lib/pr.mjs";
 import { reviewSummaryRange } from "../lib/review.mjs";
 import { admit } from "../lib/admit.mjs";
@@ -260,7 +260,7 @@ async function main(argv) {
       return 0;
     }
     case "cost": {
-      out(cost({ root, session: opt.session, work_id: opt.work }), opt, (v) => `${v.rows} turns · $${v.cost_usd.toFixed(2)} · cache ${v.cache_hit_ratio == null ? "-" : Math.round(v.cache_hit_ratio * 100) + "%"} · ${v.tokens_per_accepted_line == null ? "-" : Math.round(v.tokens_per_accepted_line)} tok/line · stops ${v.stops} · bounces ${v.bounces} · escalations ${v.escalations.asked} asked, ${v.escalations.ran} ran, ${v.escalations.not_run} not run, ${v.escalations.denied} denied`);
+      out(cost({ root, session: opt.session, work_id: opt.work }), opt, (v) => `${v.rows} turns · $${v.cost_usd == null ? "-" : v.cost_usd.toFixed(2)} · cache ${v.cache_hit_ratio == null ? "-" : Math.round(v.cache_hit_ratio * 100) + "%"} · ${v.tokens_per_accepted_line == null ? "-" : Math.round(v.tokens_per_accepted_line)} tok/line · stops ${v.stops} · bounces ${v.bounces} · escalations ${v.escalations.asked} asked, ${v.escalations.ran} ran, ${v.escalations.not_run} not run, ${v.escalations.denied} denied`);
       return 0;
     }
     case "find-verdict": {
@@ -304,8 +304,10 @@ async function main(argv) {
     case "statusline": {
       const now = Date.now();
       const probe = liveProbe({ cacheDir: join(tmpdir(), "picket-statusline"), now });
-      const rendered = renderStatusline(statuslineInput(), { now, columns: Number(process.env.COLUMNS), icons: iconsMode(homedir()), probe });
+      const input = statuslineInput();
+      const rendered = renderStatusline(input, { now, columns: Number(process.env.COLUMNS), icons: iconsMode(homedir()), probe });
       process.stdout.write(`${rendered}\n`);
+      recordSessionCost(input, { root: projectRoot(input.workspace?.project_dir ?? workspaceDir(input) ?? undefined) });
       return 0;
     }
     case "setup-terminal": {

@@ -121,8 +121,13 @@ function statuslineInput() {
 }
 
 function statusline(input, env) {
-  const result = spawnSync("node", [BIN, "statusline"], { input, encoding: "utf8", env });
-  return { status: result.status, stderr: result.stderr, lines: result.stdout.replace(ESCAPE, "").replace(/\n$/, "").split("\n") };
+  const root = mkdtempSync(join(tmpdir(), "picket-statusline-root-"));
+  try {
+    const result = spawnSync("node", [BIN, "statusline"], { input, encoding: "utf8", env: { ...env, CLAUDE_PROJECT_DIR: root } });
+    return { status: result.status, stderr: result.stderr, lines: result.stdout.replace(ESCAPE, "").replace(/\n$/, "").split("\n") };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 }
 
 function envWithout(name) {

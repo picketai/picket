@@ -142,6 +142,7 @@ test("paths exports locations only", () => {
     "projectRoot",
     "repoRelative",
     "rulesDir",
+    "sessionCostPath",
     "stateDir",
     "statePath",
     "stateRel",
