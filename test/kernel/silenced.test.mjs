@@ -49,7 +49,22 @@ test("a skip inside a string, in markdown, or in a non-test source file is allow
   assert.deepEqual(kinds("test/a.test.ts", "", 'const s = "it.only(";'), []);
   assert.deepEqual(kinds("docs/testing.md", "", 'it.skip("x", () => {});'), []);
   assert.deepEqual(kinds("src/runner.ts", "", 'it.skip("x", () => {});'), []);
-  assert.deepEqual(kinds("test/page.html", "", "<!-- eslint-disable -->"), [], "markup is not scanned");
+  assert.deepEqual(kinds("test/page.html", "", 'it.skip("x", () => {});'), [], "skip patterns skip markup files");
+});
+
+test("a suppression in a markup file is found in its markup comment or its script block", () => {
+  assert.deepEqual(kinds("test/page.html", "", "<!-- eslint-disable -->"), ["suppression"]);
+  assert.deepEqual(kinds("src/Card.vue", "<script setup>", lines("<script setup>", "// eslint-disable-next-line vue/no-mutating-props")), ["suppression"]);
+  assert.deepEqual(kinds("src/Card.svelte", "", "/* istanbul ignore next */"), ["suppression"]);
+  assert.ok(scansPath("src/Card.vue"));
+});
+
+test("a marker word outside a comment is not a suppression, nor is a mypy setting that tightens a check", () => {
+  assert.deepEqual(kinds("src/a.ts", "", "const opts = { type: ignoreCase };"), []);
+  assert.deepEqual(kinds("src/a.ts", "", "const nolintRules = [];"), []);
+  assert.deepEqual(kinds("src/a.py", "", "# mypy: disallow-untyped-defs"), []);
+  assert.deepEqual(kinds("src/a.py", "", "# mypy: ignore-errors"), ["suppression"]);
+  assert.deepEqual(kinds("src/Fee.cs", "", '[SuppressMessage("Style", "IDE0060")]'), ["suppression"]);
 });
 
 test("isTestPath is the shape lint.craft used for test files", () => {
@@ -111,5 +126,5 @@ test("scansPath covers code files and threshold files only", () => {
   assert.ok(scansPath("package.json"));
   assert.ok(scansPath("pytest.ini"));
   assert.equal(scansPath("README.md"), false);
-  assert.equal(scansPath("src/a.html"), false);
+  assert.ok(scansPath("src/a.html"), "markup is scanned for suppressions");
 });

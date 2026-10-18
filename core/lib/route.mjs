@@ -74,6 +74,12 @@ export function findVerdict(text) {
   return m[1].replace(/\s+/g, " ").trim();
 }
 
+const CLASSED_VERDICT = "CHANGES REQUIRED";
+
+function mistakeClasses({ verdict, classes }) {
+  return verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
+}
+
 /**
  * Applies a verdict to a work item and returns the next action.
  * @param {object} o
@@ -84,12 +90,6 @@ export function findVerdict(text) {
  * @param {string} [o.scope]     "cumulative" | "checkpoint" | "crosscheck"
  * @param {number} [o.through]   for `approved`: last phase of a granted run
  */
-const CLASSED_VERDICT = "CHANGES REQUIRED";
-
-function mistakeClasses({ verdict, classes }) {
-  return verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
-}
-
 export function route(o) {
   o = { ...o, agent: bareAgentName(o.agent) };
   const root = o.root ?? projectRoot();

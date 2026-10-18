@@ -1,4 +1,4 @@
-import { LANGS, MARKUP, SUPPRESSION_MARKERS, extOf, maskStrings } from "./comments.mjs";
+import { COMMENT_SUPPRESSION_MARKERS, LANGS, MARKUP, STATEMENT_SUPPRESSION_MARKERS, commentOf, extOf, maskStrings } from "./comments.mjs";
 
 const TEST_FILE_HINT = /(^|\/)(tests?|spec|specs|__tests__)(\/|$)|\.(test|spec|tests)\.[a-z]+$|_test\.\w+$|test_\w+\.py$/i;
 const TEST_CLASS_FILE = /(Tests?|(^|[/._-])tests?)\.\w+$/;
@@ -7,7 +7,18 @@ export function isTestPath(rel) {
   return TEST_FILE_HINT.test(rel) || TEST_CLASS_FILE.test(rel);
 }
 
-const SUPPRESSION = { kind: "suppression", test: (masked) => SUPPRESSION_MARKERS.some((re) => re.test(masked)) };
+const SCRIPT_LANG = LANGS[".js"];
+
+function commentBodies(text, lang) {
+  const langs = lang === MARKUP ? [lang, SCRIPT_LANG] : [lang];
+  return langs.map((l) => commentOf(text, l)?.body).filter(Boolean);
+}
+
+function isSuppression(text, lang) {
+  if (commentBodies(text, lang).some((body) => COMMENT_SUPPRESSION_MARKERS.some((re) => re.test(body)))) return true;
+  const masked = maskStrings(text);
+  return STATEMENT_SUPPRESSION_MARKERS.some((re) => re.test(masked));
+}
 
 const TEST_MOVES = [
   { kind: "focused-test", re: /\b(it|test|describe|context|suite)\.only\b|\b(fit|fdescribe)\s*\(/ },
@@ -34,13 +45,8 @@ export function hasThresholds(rel) {
   return THRESHOLDS.some((row) => row.file.test(rel));
 }
 
-function codeLang(rel) {
-  const lang = LANGS[extOf(rel)];
-  return lang && lang !== MARKUP ? lang : null;
-}
-
 export function scansPath(rel) {
-  return Boolean(codeLang(rel)) || hasThresholds(rel);
+  return Boolean(LANGS[extOf(rel)]) || hasThresholds(rel);
 }
 
 export function normaliseLine(line) {
@@ -62,11 +68,14 @@ function difference(lines, minus) {
 }
 
 function codeMoves(rel, added) {
-  if (!codeLang(rel)) return [];
-  const checks = isTestPath(rel) ? [...TEST_MOVES, SUPPRESSION] : [SUPPRESSION];
+  const lang = LANGS[extOf(rel)];
+  if (!lang) return [];
+  const testMoves = lang !== MARKUP && isTestPath(rel) ? TEST_MOVES : [];
   return added.flatMap((text) => {
     const masked = maskStrings(text);
-    return checks.filter((check) => check.test(masked)).map(({ kind }) => ({ kind, text }));
+    const kinds = testMoves.filter((move) => move.test(masked)).map((move) => move.kind);
+    if (isSuppression(text, lang)) kinds.push("suppression");
+    return kinds.map((kind) => ({ kind, text }));
   });
 }
 

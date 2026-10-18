@@ -82,6 +82,17 @@ test("no added operator is no candidate; no test command is no test command (T-6
   });
 });
 
+test("a suite that is red before any mutant is baseline red, and no mutant is written", () => {
+  withRepo({ testCommand: "node probe.cjs" }, ({ root, id }) => {
+    write(root, "src/same.js", CHANGED.replace("===", "!=="));
+    const before = readFileSync(join(root, "src", "same.js"), "utf8");
+    const result = mutate(id, { root });
+    assert.deepEqual([result.outcome, result.mutant], ["baseline red", null]);
+    assert.equal(renderMutation(result), "mutant none: baseline red");
+    assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), before);
+  });
+});
+
 test("a restore record left by an interrupted run is applied before the next pick (T-6.3)", () => {
   withRepo({}, ({ root, id }) => {
     write(root, "src/same.js", CHANGED.replace("===", "!=="));

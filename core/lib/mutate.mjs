@@ -97,15 +97,25 @@ function withMutant(root, mutant, run) {
   }
 }
 
-function testOutcome(root) {
+function testStatus(root) {
   try {
-    const status = check({ root, steps: ["test"] }).steps[0]?.status;
-    if (status === "passed") return "survived";
-    if (status === "failed") return "killed";
-    return "error";
+    return check({ root, steps: ["test"] }).steps[0]?.status ?? "error";
   } catch {
     return "error";
   }
+}
+
+function mutantOutcome(root) {
+  const status = testStatus(root);
+  if (status === "passed") return "survived";
+  if (status === "failed") return "killed";
+  return "error";
+}
+
+function baselineOutcome(root) {
+  const status = testStatus(root);
+  if (status === "passed") return null;
+  return status === "failed" ? "baseline red" : "error";
 }
 
 export function mutate(id, { root = projectRoot() } = {}) {
@@ -113,8 +123,9 @@ export function mutate(id, { root = projectRoot() } = {}) {
   const restored = restoreLeftover(root);
   const base = readState(id, root).base ?? "HEAD";
   const command = detectTooling(root).test ?? null;
-  const found = command ? pickMutant(root, base) : null;
-  const outcome = !command ? "no test command" : !found ? "no candidate" : withMutant(root, found, () => testOutcome(root));
+  const baseline = command ? baselineOutcome(root) : null;
+  const found = command && !baseline ? pickMutant(root, base) : null;
+  const outcome = !command ? "no test command" : baseline ?? (!found ? "no candidate" : withMutant(root, found, () => mutantOutcome(root)));
   const mutant = found ? { path: found.path, line: found.line, from: found.from, to: found.to } : null;
   const result = { ts: new Date().toISOString(), base, mutant, command, outcome, ms: Date.now() - started };
   writeFileSync(join(workDir(id, root), "mutation.json"), JSON.stringify(result, null, 2) + "\n");
