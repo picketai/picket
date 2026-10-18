@@ -301,6 +301,25 @@ test("a fix verb, a security path with a fix verb and a forced lane keep today's
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a diagnosis that touches a security path takes the design lane", () => {
+  const root = repo();
+  const touched = admit("debug the flaky invoice test", { root, touched: ["src/auth/login.ts"] });
+  assert.equal(touched.lane, "design");
+  assert.equal(touched.signals.diagnosis, true);
+  assert.equal(admit("Debug why login fails when the password has a space.", { root }).lane, "design");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a declared research item, a no-code-changes report and a change verb each keep a diagnosis phrase out of the skill", () => {
+  const root = repo();
+  assert.equal(admit("A research item: why does the nightly import fail on large files? Measure and report, product code untouched.", { root }).lane, "research");
+  assert.equal(admit("Why does the cache fail after restart? Write a report, no code changes.", { root }).lane, "research");
+  for (const request of ["Find the root cause and patch it.", "Debug the retry and make the retry configurable.", "Find why it fails, then write a regression test and correct the handler.", "The invoice test is flaky. Make it pass."]) {
+    assert.notEqual(admit(request, { root }).lane, NO_LANE, request);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("no lane never escalates on a recheck", () => {
   const root = repo();
   assert.equal(recheck(NO_LANE, "debug the flaky invoice test", ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"], { root }).escalate, false);

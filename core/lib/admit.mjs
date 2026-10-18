@@ -29,7 +29,8 @@ const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|option
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak|(remov(e|es|ing)|delet(e|es|ing))(\s+[\w'-]+){0,3}\s+(keys?|lines?|entry|entries|settings?|hooks?))\b/i;
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const DIAGNOSIS = /\b(debug(ging)?|diagnos(e|es|is|ing)|root[- ]cause|find (out )?why)\b|\bwhy (does|do|did|is|are)\b[^?!\n]*\b(fail\w*|crash\w*|throw\w*|errors?|flaky|hang\w*|regress\w*|wrong)/i;
-const CHANGE_VERB = /(?:^|[.;:!?,]\s*|\b(?:and|then|to|please|also)\s+)(fix|add|change|log|rename|implement|remove|refactor|update|replace|delete)\b/i;
+const CHANGE_VERB = /(?:^|[.;:!?,]\s*|\b(?:and|then|to|please|also)\s+)(fix|add|change|log|rename|implement|remove|refactor|update|replace|delete|patch|make|correct|resolve|write|adjust|modify|edit)\b/i;
+const NO_CODE_CHANGES = /\bno code changes?\b|\bproduct code untouched\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
 const FORCED_LANE = /\blane:\s*(fast|order|design|research)\b/i;
@@ -77,6 +78,12 @@ function withoutNonCredentialTokens(text) {
   return text.replace(NOT_A_CREDENTIAL, " ");
 }
 
+function isDiagnosis(text, signals) {
+  if (signals.declared_research || signals.small_change || signals.new_surface) return false;
+  if (NO_CODE_CHANGES.test(text) || CHANGE_VERB.test(text)) return false;
+  return DIAGNOSIS.test(text.replace(QUOTED, " "));
+}
+
 export function securityPaths(root = projectRoot()) {
   return loadConfig(root).security_paths;
 }
@@ -115,16 +122,16 @@ export function admit(text, o = {}) {
     design_question: DESIGN_QUESTION.test(text),
     small_change: SMALL_CHANGE.test(text),
   };
-  signals.diagnosis = DIAGNOSIS.test(text.replace(QUOTED, " ")) &&!signals.small_change && !signals.new_surface && !CHANGE_VERB.test(text);
+  signals.diagnosis = isDiagnosis(text, signals);
 
   if (forced) return forcedResult(forced, signals);
 
-  if (signals.diagnosis) {
+  if (signals.diagnosis && !signals.security) {
     reasons.push(`asks for a diagnosis, not a change: run picket:${DIAGNOSIS_SKILL}`);
     return { lane: NO_LANE, skill: DIAGNOSIS_SKILL, reasons, signals };
   }
 
-  if (signals.research && !signals.new_surface) {
+  if (signals.research && !signals.new_surface && !signals.diagnosis) {
     reasons.push("the request asks a question and changes no code");
     return { lane: "research", reasons, signals };
   }

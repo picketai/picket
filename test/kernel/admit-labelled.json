@@ -114,5 +114,10 @@
   { "request": "Why do new invoices get the id INV-NaN and fail to save after an import?", "lane": "none", "skill": "debugging", "why": "a why question about a failure is a diagnosis" },
   { "request": "Diagnose why `src/storage/jsonRepository.ts` throws on a half-written file.", "lane": "none", "skill": "debugging", "why": "asks for a diagnosis, changes no code" },
   { "request": "Find why the CSV export crashes on an empty list and fix it.", "lane": "fast", "why": "diagnosis plus a fix verb keeps today's routing: a small fix" },
-  { "request": "The CLI crashes on an unknown flag; debug it and then add a help message for unknown flags with a test.", "lane": "order", "why": "diagnosis plus an add verb keeps today's routing: no file named, order is the default" }
+  { "request": "The CLI crashes on an unknown flag; debug it and then add a help message for unknown flags with a test.", "lane": "order", "why": "diagnosis plus an add verb keeps today's routing: no file named, order is the default" },
+  { "request": "A research item: why does the nightly import fail on large files? Measure and report, product code untouched.", "lane": "research", "why": "a declared research item wins over a diagnosis phrase" },
+  { "request": "Why does the cache fail after restart? Write a report, no code changes.", "lane": "research", "why": "asks for a report with no code changes, so it is research, not a diagnosis" },
+  { "request": "Find the root cause of the 500 on GET /invoices and patch it.", "lane": "order", "why": "diagnosis plus a patch verb keeps today's routing: no file named, order is the default" },
+  { "request": "The retry test is flaky; find out why, then make the retry count configurable.", "lane": "order", "why": "diagnosis plus a make verb keeps today's routing" },
+  { "request": "Debug why login fails when the password has a space.", "lane": "design", "why": "a diagnosis that names a security concern takes the design lane" }
 ]
