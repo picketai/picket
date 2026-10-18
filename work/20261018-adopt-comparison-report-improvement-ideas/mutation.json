@@ -1,0 +1,13 @@
+{
+  "ts": "2026-10-18T11:53:20.064Z",
+  "base": "1dfac5df62cd75650ede891e7a68d3229dd05dd8",
+  "mutant": {
+    "path": "bench/lib/grade.mjs",
+    "line": 92,
+    "from": ">",
+    "to": "<="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "ms": 105061
+}
