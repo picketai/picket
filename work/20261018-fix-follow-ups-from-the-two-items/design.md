@@ -89,7 +89,7 @@ Running the two items of 2026-10-18 surfaced seven gaps (`request.md`). A phase 
 - **RISK-004** The lead in the fast lane can still write a code or test file by shell and skip both edit guards. Mitigation: accepted per the lead's ruling; the lead works in the user's view, and the review summary's silenced list and lint.craft see the result in the diff.
 - **RISK-005** `cp`, `mv`, `git apply` or `patch` still bring a file in unchecked. Mitigation: **OQ-001**; the review summary's silenced list and lint.craft still see the result in the diff.
 
-### D-005 (r2): Admission treats a new harness surface as new surface
+### D-005 (r3): Admission treats a new harness surface as new surface
 **Decision:** Infrastructural decision. `NEW_SURFACE` in `core/lib/admit.mjs` gains `skill`, `agent`, `hook`, `verb`, `subcommand`, `rule` and `step file`, and accepts up to three words between the article and the noun, so "Add a debugging skill" and "adds a new `picket statusline` verb" leave the fast lane. These nouns count only after an action verb (`add`, `adds`, `added`, `adding`, `create`, `introduce`), never after a bare "new", so a question about a surface stays research: "how is a new hook registered?" and "How does a new skill get added? Write a report, no code changes." answer `research` today and must keep doing so. One pattern still holds all new-surface wording. A scratch run of this pattern over `test/kernel/admit-labelled.json` and `bench/tasks/` matched nothing. Over `work/*/request.md` the verb-led pattern matched four requests, which ended in `order` or `design` (the `fast` one is the case this fixes).
 **Instead of:** a separate `harness_surface` signal: it would decide exactly what `new_surface` decides, so two names for one rule.
 **Risks:**

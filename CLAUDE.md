@@ -18,7 +18,7 @@ Every session and agent gets the rules `prose`, `comments`, `work-items`, `secur
 
 ## This repository
 
-Start sessions with `npm run claude` (`claude --plugin-dir core`). `harness-authoring` loads by path (.claude/**, core/**).
+Start sessions with `npm run claude`: `core/bin` comes first on PATH (`command -v picket`). `harness-authoring` loads by path (.claude/**, core/**).
 
 ## Project facts
 

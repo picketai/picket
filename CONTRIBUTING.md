@@ -14,7 +14,7 @@ The `## Layout` section of `README.md` maps every top-level folder. New things g
 
 ## Installing from a local checkout
 
-In this repository, `npm run claude` (`claude --plugin-dir core`) loads the plugin straight from `core/`. To set up another project, run this there, with the path of this checkout:
+In this repository, `npm run claude` runs `scripts/claude.mjs`, which starts `claude --plugin-dir core` with this checkout's `core/bin` first on `PATH` and `PICKET_CHECKOUT` set to the checkout. The plugin then loads straight from `core/`, and every `picket` command in the session runs this checkout's kernel, not the installed npm package; `command -v picket` shows which one runs. To set up another project, run this there, with the path of this checkout:
 
 ```sh
 node <path to this checkout>/core/bin/picket.mjs init

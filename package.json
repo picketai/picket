@@ -47,7 +47,7 @@
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
     "picket": "node core/bin/picket.mjs",
-    "claude": "claude --plugin-dir core"
+    "claude": "node scripts/claude.mjs"
   },
   "devDependencies": {
     "opensrc": "^0.7.2"

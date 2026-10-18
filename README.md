@@ -4,7 +4,7 @@ Picket is a software-development workflow for Claude Code: four lanes, four agen
 
 To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md). [The agents](docs/agents.md) reference says what each agent does and when it runs, and [the skills](docs/skills.md) reference does the same for each skill.
 
-Picket ships as a Claude Code plugin in `core/`. In this repository, start every session with `claude --plugin-dir core` (`npm run claude`).
+Picket ships as a Claude Code plugin in `core/`. In this repository, start every session with `npm run claude`: it runs `claude --plugin-dir core` with this checkout's `core/bin` first on `PATH`, so `picket` is the checkout's kernel, not the installed one.
 
 Code decides what code can decide. Lane admission, the next action, phase verification, verdict routing and cost all come from `picket <verb>`; the model fills in what remains. State is the filesystem: one directory per work item under `work/<id>/`, read fresh on every call, never remembered.
 
