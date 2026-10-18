@@ -5,4 +5,5 @@
 - [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch seconds, Windows shell, blank on nonzero exit; new verbs touch guard verb sets
 - [npm pack facts](npm-pack-facts.md) — `!**/*.test.*` in files excludes tests (npm 10.4 probe); npm packs the working copy, so CRLF and exec bit leak
 - [State folder facts](state-folder-facts.md) — .picket/state is gitignored, so git-status criteria are vacuous; statusline spawn tests write into the repo without a temp root
+- [Session identity facts](session-identity-facts.md) — CLAUDE_CODE_SESSION_ID in Bash, $.session.id() in mods; commit --only takes worktree content
 - [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; absence via negative lookahead + flags i; edit frontmatter with Edit, not sed
