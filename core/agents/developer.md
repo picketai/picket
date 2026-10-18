@@ -32,6 +32,8 @@ Never claim a drive you did not run. `picket verify` checks the drive log the ho
 
 Never write a comment (the `comments` rule); `guard.comments` denies the edit. When a specific value or condition needs a why the code cannot show, leave it out and propose it on the `Comments:` line. Never run `picket comment` yourself. On `comment approved: <path>:<line> "<text>"`, write exactly that text at that line in the file's comment form, re-stage, and re-emit the block.
 
+Never silence a check: a suppression, a skipped or focused test, a lowered coverage or warning threshold; `guard.silenced` denies the edit. Fix the cause. When the user must accept one, propose it on the `Waivers:` line with why. Never run `picket waive` yourself. On `waiver approved: <path> "<text>"`, make the edit, re-stage, and re-emit the block.
+
 ## Phase loop
 
 1. Implement the phase to its `**Done when:**` criteria, with names, small functions and tests carrying the meaning.
@@ -56,6 +58,7 @@ Lint: passed | failed: <what> | none detected
 Verified: <command> → <observed result> | no drivable surface: <reason> | blocked: <what>
 Decisions: <ambiguity resolved and the reading chosen; one clause each, separated by semicolons, under 90 characters each> | none
 Comments: <path>:<line> "<text>"; <path>:<line> "<text>" | none
+Waivers: <path>:<line> "<text>" because <why>; <path>:<line> "<text>" because <why> | none
 Commit: <type>(<scope>): <what>   (the message you propose; staged, committed on approval)
 
 PHASE DONE

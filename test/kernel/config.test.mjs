@@ -110,7 +110,7 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", () => {
 
 test("no config file is the defaults with no error and no warning", () => {
   withProject(undefined, (root) => {
-    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], error: null, warnings: [] });
+    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, error: null, warnings: [] });
   });
 });
 
@@ -154,4 +154,25 @@ test("extensions defaults to an empty list, keeps a valid list and drops a malfo
     assert.match(config.warnings.join("\n"), /not a name; it is dropped/);
   });
   assert.deepEqual(SCHEMA.properties.extensions.default, []);
+});
+
+test("a quality bar loads with no warning; a bad field warns and is dropped (T-1.5)", () => {
+  withProject({ version: 1, quality: { coverage_min: 80, max_warnings: 0 } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.quality, { coverage_min: 80, max_warnings: 0 });
+    assert.deepEqual(config.warnings, []);
+  });
+  withProject({ version: 1, quality: { coverage_min: "x", max_warnings: 2 } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.quality, { max_warnings: 2 });
+    assert.equal(config.warnings.length, 1);
+    assert.match(config.warnings[0], /quality\.coverage_min must be a number from 0 to 100; it is dropped/);
+  });
+  withProject({ version: 1, quality: { coverage_min: 101, max_warnings: -1, branches: 3 } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.quality, {});
+    assert.equal(config.warnings.length, 3);
+  });
+  withProject({ version: 1, quality: 85 }, (root) => assert.deepEqual(loadConfig(root, {}).quality, {}));
+  assert.deepEqual(Object.keys(SCHEMA.properties.quality.properties).sort(), ["coverage_min", "max_warnings"]);
 });

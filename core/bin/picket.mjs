@@ -17,7 +17,7 @@ import { close } from "../lib/close.mjs";
 import { leave, leftLine } from "../lib/leave.mjs";
 import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../lib/extensions.mjs";
-import { appendComment, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
+import { appendComment, appendWaiver, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
 import { latest, next } from "../lib/next.mjs";
 import { configRel, pluginManifestPath } from "../lib/paths.mjs";
 import { preflight } from "../lib/preflight.mjs";
@@ -93,7 +93,7 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
-const VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "leave", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+const VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "leave", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "waive", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
 
 function usage() {
   return ["usage: picket <verb> [args] [--pretty | --human]", "", `verbs: ${VERBS.join(" ")}`, "", "picket --version   print the installed version"].join("\n");
@@ -304,6 +304,14 @@ async function main(argv) {
       readState(rest[0], root);
       const entry = appendComment(rest[0], { path: opt.path, text: opt.text }, root);
       out(entry, opt, (v) => `approved comment for ${v.path}: "${v.text}"`);
+      return 0;
+    }
+    case "waive": {
+      const hasText = typeof opt.text === "string" && opt.text.trim() !== "";
+      const deleted = opt.deleted === true;
+      if (!rest[0] || typeof opt.path !== "string" || hasText === deleted) throw new Error('waive needs <id> --path <p> and exactly one of --text "<added line>" or --deleted');
+      const entry = appendWaiver(rest[0], { path: opt.path, text: hasText ? opt.text : null, deleted }, root);
+      out(entry, opt, (v) => `waived for ${v.path}: ${v.deleted ? "its deletion" : `"${v.text}"`}`);
       return 0;
     }
     case "packet": {

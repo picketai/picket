@@ -103,6 +103,30 @@ test("comment records an approval and needs both --path and --text (T-1.4)", () 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("waive records a waiver, needs exactly one of --text or --deleted, and refuses a closed item", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
+  try {
+    mkdirSync(join(root, ".claude"));
+    const { id } = run(root, ["new", "--lane", "order", "--title", "Flaky fee test"]);
+    const fails = (args, pattern) => assert.throws(() => execFileSync("node", [BIN, "waive", ...args, "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && pattern.test(err.stderr));
+    fails([id, "--text", "it.skip("], /waive needs/);
+    fails([id, "--path", "test/fee.test.ts"], /waive needs/);
+    fails([id, "--path", "test/fee.test.ts", "--text", "it.skip(", "--deleted"], /waive needs/);
+
+    const line = run(root, ["waive", id, "--path", "test\\fee.test.ts", "--text", 'it.skip("rounds", () => {});']);
+    assert.deepEqual([line.path, line.text, line.deleted], ["test/fee.test.ts", 'it.skip("rounds", () => {});', false]);
+    const gone = run(root, ["waive", id, "--path", "test/old.test.ts", "--deleted"]);
+    assert.deepEqual([gone.text, gone.deleted], [null, true]);
+    const recorded = readFileSync(join(root, "work", id, "waivers.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.deepEqual(recorded.map((r) => Object.keys(r)), [["ts", "path", "text", "deleted"], ["ts", "path", "text", "deleted"]]);
+
+    run(root, ["set", id, "status=done"]);
+    fails([id, "--path", "test/fee.test.ts", "--text", "it.skip("], /open or blocked item only/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("next --latest prints the newest open item with the fixed key set; next alone exits 1", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));

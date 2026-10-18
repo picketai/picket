@@ -10,7 +10,7 @@ export const CONFIG_FILE = configRel();
 
 export const CONFIG_VERSION = 1;
 
-export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions"]);
+export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality"]);
 
 export const DEFAULT_LANES = Object.freeze({
   fast: Object.freeze({ max_files: 3 }),
@@ -27,6 +27,12 @@ export const CONFIG_DEFAULTS = Object.freeze({
   lanes: DEFAULT_LANES,
   commands: {},
   extensions: [],
+  quality: {},
+});
+
+export const QUALITY_FIELDS = Object.freeze({
+  coverage_min: { valid: (v) => typeof v === "number" && v >= 0 && v <= 100, rule: "must be a number from 0 to 100" },
+  max_warnings: { valid: (v) => Number.isInteger(v) && v >= 0, rule: "must be an integer of 0 or more" },
 });
 
 function isPlainObject(value) {
@@ -129,6 +135,22 @@ function checkExtensions(value, warn) {
   return names;
 }
 
+function checkQuality(value, warn) {
+  if (value === undefined) return {};
+  if (!isPlainObject(value)) {
+    warn("quality must be an object; no quality bar set");
+    return {};
+  }
+  const bar = {};
+  for (const [field, configured] of Object.entries(value)) {
+    const known = QUALITY_FIELDS[field];
+    if (!known) warn(`unknown key "quality.${field}"`);
+    else if (!known.valid(configured)) warn(`quality.${field} ${known.rule}; it is dropped`);
+    else bar[field] = configured;
+  }
+  return bar;
+}
+
 function commandProblem(name, command) {
   if (!COMMAND_NAMES.includes(name)) return `unknown key "commands.${name}"`;
   if (typeof command !== "string" || !command.trim()) return `commands.${name} must be a non-empty string; detection stands`;
@@ -149,7 +171,8 @@ export function loadConfig(root, env = process.env) {
   const lanes = checkLanes(raw.lanes, warn);
   const commands = checkCommands(raw.commands, warn);
   const extensions = checkExtensions(raw.extensions, warn);
-  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, error, warnings };
+  const quality = checkQuality(raw.quality, warn);
+  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, error, warnings };
 }
 
 function resolveSource(name, decl, env) {

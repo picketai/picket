@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../../../lib/comments.mjs';
+import { isTestPath } from '../../../lib/silenced.mjs';
 
 // ---------------------------------------------------------------- args
 
@@ -102,8 +103,6 @@ const TEST_CONTENT_SIGNALS = [
 const ARCH_SIGNALS = [
   { re: /NetArchTest|ArchUnit|com\.tngtech\.archunit|ts-arch|dependency-cruiser/i, what: 'an architecture-test harness' },
 ];
-
-const TEST_FILE_HINT = /(^|\/)(tests?|spec|specs|__tests__)(\/|$)|\.(test|spec|tests)\.[a-z]+$|Tests?\.\w+$|_test\.\w+$|test_\w+\.py$/i;
 
 // ---------------------------------------------------------------- git plumbing
 
@@ -212,7 +211,7 @@ function scanTests(file, added, isNew) {
   const allowAll = /craft-lint-allow:\s*(TK\d|ALL)\b/i.test(body);
 
   const pathNamesKind = TEST_PATH_SIGNALS.some(s => s.re.test(file));
-  const looksLikeTest = TEST_FILE_HINT.test(file) || pathNamesKind;
+  const looksLikeTest = isTestPath(file) || pathNamesKind;
 
   // TK1 — the path itself names an excluded kind.
   for (const sig of TEST_PATH_SIGNALS) {

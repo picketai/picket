@@ -189,14 +189,17 @@ function samePath(a, b) {
   return process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
-export function appendComment(id, { path, text }, root = projectRoot(), cwd = process.cwd()) {
-  const entry = { ts: new Date().toISOString(), path: commentPath(path, root, cwd), text: String(text) };
-  appendFileSync(join(workDir(id, root), "comments.jsonl"), JSON.stringify(entry) + "\n");
+const COMMENTS_FILE = "comments.jsonl";
+const WAIVERS_FILE = "waivers.jsonl";
+
+function appendApproval(id, file, { path, ...fields }, root, cwd) {
+  const entry = { ts: new Date().toISOString(), path: commentPath(path, root, cwd), ...fields };
+  appendFileSync(join(workDir(id, root), file), JSON.stringify(entry) + "\n");
   return entry;
 }
 
-function readComments(id, root) {
-  const p = join(workDir(id, root), "comments.jsonl");
+function readApprovals(id, file, root) {
+  const p = join(workDir(id, root), file);
   if (!existsSync(p)) return [];
   return readFileSync(p, "utf8")
     .split(/\r?\n/)
@@ -204,15 +207,35 @@ function readComments(id, root) {
     .map((l) => ({ id, ...JSON.parse(l) }));
 }
 
+function activeApprovals(file, root) {
+  return listOpenWork(root).flatMap((id) => readApprovals(id, file, root));
+}
+
+function approvalsFor(file, rel, root) {
+  const target = commentPath(rel, root, root);
+  return activeApprovals(file, root).filter((entry) => samePath(commentPath(entry.path, root, root), target));
+}
+
+export function appendComment(id, { path, text }, root = projectRoot(), cwd = process.cwd()) {
+  return appendApproval(id, COMMENTS_FILE, { path, text: String(text) }, root, cwd);
+}
+
 export function approvedComments(root = projectRoot()) {
-  return listWork(root)
-    .filter((id) => ["open", "blocked"].includes(readState(id, root).status))
-    .flatMap((id) => readComments(id, root));
+  return activeApprovals(COMMENTS_FILE, root);
 }
 
 export function approvedCommentsFor(rel, root = projectRoot()) {
-  const target = commentPath(rel, root, root);
-  return approvedComments(root).filter((entry) => samePath(commentPath(entry.path, root, root), target));
+  return approvalsFor(COMMENTS_FILE, rel, root);
+}
+
+export function appendWaiver(id, { path, text = null, deleted = false }, root = projectRoot(), cwd = process.cwd()) {
+  const { status } = readState(id, root);
+  if (!ACTIVE_STATUSES.has(status)) throw new Error(`work item ${id} is ${status}; a waiver applies to an open or blocked item only`);
+  return appendApproval(id, WAIVERS_FILE, { path, text: deleted ? null : String(text), deleted: Boolean(deleted) }, root, cwd);
+}
+
+export function waiversFor(rel, root = projectRoot()) {
+  return approvalsFor(WAIVERS_FILE, rel, root);
 }
 
 export function readVerdicts(id, root = projectRoot()) {

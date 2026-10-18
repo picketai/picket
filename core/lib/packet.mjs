@@ -108,17 +108,20 @@ function decisionLines(value, width = WIDTH) {
 
 const SHOWN_PROPOSALS = 3;
 
-function commentProposals(value) {
+const COMMENT_SEPARATOR = /(?<=")\s*;\s+/;
+const WAIVER_SEPARATOR = /;\s+(?=\S+:\d+\s+"|\S+\s+deleted\b)/;
+
+function proposals(value, separator) {
   const v = String(value ?? "").trim();
   if (!v || /^none$/i.test(v)) return [];
-  return v.split(/(?<=")\s*;\s+/).map((s) => s.trim()).filter(Boolean);
+  return v.split(separator).map((s) => s.trim()).filter(Boolean);
 }
 
-function proposalLines(proposals, width = WIDTH) {
+function proposalLines(label, items, width = WIDTH) {
   const indent = `  ${"".padEnd(LABEL)}`;
-  const shown = proposals.slice(0, SHOWN_PROPOSALS).map((p, i) => `${indent}${i + 1} ${cut(p, width - indent.length - 2)}`);
-  if (proposals.length > SHOWN_PROPOSALS) shown.push(`${indent}+${proposals.length - SHOWN_PROPOSALS} more in the phase block`);
-  return shown;
+  const shown = items.slice(0, SHOWN_PROPOSALS).map((p, i) => `${indent}${i + 1} ${cut(p, width - indent.length - 2)}`);
+  if (items.length > SHOWN_PROPOSALS) shown.push(`${indent}+${items.length - SHOWN_PROPOSALS} more in the phase block`);
+  return [`  ${label.padEnd(LABEL)}${shown[0].slice(2 + LABEL)}`, ...shown.slice(1)];
 }
 
 /** One line per version of an ambiguous reference: label, branch, short commit, dirty flag. */
@@ -154,11 +157,15 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
       lines.push(`  ${"decisions".padEnd(LABEL)}${dec[0].slice(2 + LABEL)}`);
       lines.push(...dec.slice(1));
     }
-    const proposals = commentProposals(b.fields.comments);
-    if (proposals.length) {
-      const shown = proposalLines(proposals, width);
-      lines.push(`  ${"comments".padEnd(LABEL)}${shown[0].slice(2 + LABEL)}`, ...shown.slice(1));
+    const comments = proposals(b.fields.comments, COMMENT_SEPARATOR);
+    if (comments.length) {
+      lines.push(...proposalLines("comments", comments, width));
       if (options) options += "   [k] keep comment <n>";
+    }
+    const waivers = proposals(b.fields.waivers, WAIVER_SEPARATOR);
+    if (waivers.length) {
+      lines.push(...proposalLines("waivers", waivers, width));
+      if (options) options += "   [w] waive <n>";
     }
     // The developer stages and proposes a message; approval is what commits.
     if (b.fields.commit) lines.push(field("commit", `${b.fields.commit.replace(/\s*\(staged.*\)$/i, "")}  (staged; approval commits it)`, width));

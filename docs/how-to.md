@@ -217,7 +217,8 @@ All settings live in `.picket/config.json`. Every key is optional.
   "commands": { "test": "npm test", "lint": "npm run lint" },
   "lanes": { "fast": { "max_files": 3 }, "order": { "max_phases": 3, "max_decisions": 5 } },
   "sources": { "specs": { "env": "PICKET_SOURCE_SPECS" } },
-  "extensions": ["house-style"]
+  "extensions": ["house-style"],
+  "quality": { "coverage_min": 85, "max_warnings": 0 }
 }
 ```
 
@@ -236,6 +237,8 @@ All settings live in `.picket/config.json`. Every key is optional.
 Agents read a source with `picket source find specs <name>` and `picket source grep specs <regex>`, and nothing ever writes to it.
 
 `extensions` enables and orders your extensions.
+
+`quality` records the bar your checks must hold: `coverage_min` (0 to 100) and `max_warnings` (0 or more). A hook denies any edit that makes a known threshold weaker, either than its value before the edit or than this bar. Example: with `coverage_min: 85`, writing `lines: 80` in `vitest.config.ts` is denied, and so is changing `--max-warnings 0` to `--max-warnings 5` in `package.json`. The same hook denies a new suppression (`eslint-disable`, `@ts-ignore`, `noqa`) and a new skipped or focused test. When you accept one, reply `w <n>` to the proposal on the block's `Waivers:` line.
 
 ### Extensions
 
@@ -313,6 +316,7 @@ To remove the command from your machine: `npm uninstall -g @picketai/picket`.
 |---|---|---|
 | `guard.bash: command contains a destructive sub-command` | a Bash or PowerShell command deletes, resets, force-pushes or similar | in the default, acceptEdits and auto modes the agent reruns it as `PICKET_ESCALATE="<why>" <command>` and you decide in the dialog; cleanup after the work is recorded with `picket leave` and listed when the item closes; or run it yourself: type `! <command>` in Claude Code |
 | `guard.comments: ... adds 1 comment line(s)` | a new comment without your approval | approve it with `k <n>` at the next block, or let the code speak |
+| `guard.silenced: ... adds 1 silenced check(s)` | a new suppression, skipped or focused test, or weaker threshold without your waiver | let the agent fix the cause, or accept it with `w <n>` at the next block |
 | `guard.scope: ... is kernel-owned` | a direct edit of a work item's state | nothing; state changes only through `picket` |
 | `guard.scope: read ... before editing it` | the file changed since the agent last read it | nothing; the agent re-reads and retries |
 
@@ -330,6 +334,7 @@ To remove the command from your machine: `npm uninstall -g @picketai/picket`.
 | `c` / `x <why>` | commit or discard a fast-lane change |
 | `a` / `r <n>` / `x <why>` | approve, run through phase n, or reject a phase |
 | `k <n>` | keep proposed comment n |
+| `w <n>` | waive proposed silenced check n |
 | `/picket:resuming [<id>]` | continue an open work item |
 | `/picket:inspecting` | status and cost |
 | `/picket:reviewing <pull request URL>` | review a pull request on GitHub or Azure DevOps |

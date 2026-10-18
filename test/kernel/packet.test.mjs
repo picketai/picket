@@ -130,6 +130,28 @@ test("four proposals stay within the width and the fourth is counted (T-3.2)", (
   rmSync(root, { recursive: true, force: true });
 });
 
+const withWaivers = (value) => BLOCK.replace("Commit: 3f9c2a1", `Waivers: ${value}\nCommit: 3f9c2a1`);
+
+test("waiver proposals render numbered and end the options with the waive option (T-1.6)", () => {
+  const { root, id } = setup();
+  setMarker(id, 1, "done", root);
+  const two = 'test/fee.test.ts:12 "it.skip(\'rounds\')" because the rate table ships next week; src/a.ts:3 "// eslint-disable-line" because x; y';
+  saveBlock(id, 1, withWaivers(two), root);
+  const { lines } = packet(id, root);
+  assert.ok(lines.includes(`  waivers   1 test/fee.test.ts:12 "it.skip('rounds')" because the rate table ships next week`));
+  assert.ok(lines.includes(`  ${"".padEnd(10)}2 src/a.ts:3 "// eslint-disable-line" because x; y`), "a semicolon inside a why stays in its proposal");
+  assert.match(lines.at(-1), /\[w\] waive <n>$/);
+
+  saveBlock(id, 1, withComments('src/fee.ts:42 "half-up"').replace("Commit:", `Waivers: ${two}\nCommit:`), root);
+  assert.match(packet(id, root).lines.at(-1), /\[k\] keep comment <n> {3}\[w\] waive <n>$/);
+
+  saveBlock(id, 1, withWaivers("none"), root);
+  const plain = packet(id, root);
+  assert.equal(plain.lines.some((l) => /^ {2}waivers/.test(l)), false);
+  assert.doesNotMatch(plain.text, /waive/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("a missing block degrades to 'not reported', a blocked item shows the reason", () => {
   const { root, id } = setup();
   setMarker(id, 1, "done", root);

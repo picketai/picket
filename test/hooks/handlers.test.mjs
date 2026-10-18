@@ -26,6 +26,7 @@ const SHELLS = [
   "guard.block.mjs",
   "guard.comments.mjs",
   "guard.scope.mjs",
+  "guard.silenced.mjs",
   "inject.extensions.mjs",
   "inject.rules.mjs",
   "inject.state.mjs",

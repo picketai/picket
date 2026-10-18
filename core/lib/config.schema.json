@@ -74,6 +74,16 @@
       "type": "array",
       "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,39}$" },
       "default": []
+    },
+    "quality": {
+      "description": "The quality bar. A change that sets a coverage threshold below coverage_min, or a warning limit above max_warnings, is a silenced check.",
+      "type": "object",
+      "properties": {
+        "coverage_min": { "type": "number", "minimum": 0, "maximum": 100 },
+        "max_warnings": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false,
+      "default": {}
     }
   },
   "additionalProperties": false

@@ -4,7 +4,8 @@ import { wasRead, agentTranscript } from "../transcript.mjs";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../paths.mjs";
 
-const KERNEL_OWNED = /^work\/[^/]+\/(state\.yaml|verdicts\.jsonl|comments\.jsonl|left\.jsonl|phases\/|request\.md|story\.md|sources\.yaml|sources\/|repos\.yaml)/;
+const KERNEL_OWNED_ENTRIES = ["state.yaml", "verdicts.jsonl", "comments.jsonl", "waivers.jsonl", "left.jsonl", "phases/", "request.md", "story.md", "sources.yaml", "sources/", "repos.yaml"];
+const KERNEL_OWNED = new RegExp(`^work/[^/]+/(${KERNEL_OWNED_ENTRIES.map((entry) => entry.replaceAll(".", "\\.")).join("|")})`);
 const STATE_PREFIX = `${stateRel("")}/`.toLowerCase();
 const MODEL_WRITABLE_STATE = MODEL_WRITABLE_STATE_FILES.map((name) => stateRel(name).toLowerCase());
 const SCRATCH_PREFIX = `${stateRel("scratch")}/`.toLowerCase();
@@ -59,7 +60,7 @@ export function guardScope(event, { root }) {
   if (!filePath) return null;
   const abs = resolve(event.cwd ?? root, filePath);
   const rel = relative(realPath(root), realPath(abs)).replaceAll("\\", "/");
-  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`picket new\`, \`picket set\`, \`picket route\`, \`picket comment\` or \`picket source\`, never a direct write`);
+  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`picket new\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`);
   if (isHookOnlyState(rel)) return deny(`${rel} is written by the hooks only`);
   if (isLegacyState(rel)) return deny(`${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`);
   const source = underSource(abs, sourceRoots(root));
