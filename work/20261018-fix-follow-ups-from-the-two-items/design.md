@@ -55,6 +55,14 @@ phases:
     tests: true
     drive: true
     security: false
+  - n: 5
+    files: [core/lib/admit.mjs, bench/test/tasks.test.mjs, test/kernel/admit-labelled.json]
+    greps:
+      - path: test/kernel/admit-labelled.json
+        pattern: 'its own module'
+    tests: true
+    drive: false
+    security: false
 ---
 # Design: Fix follow-ups from the two items
 
@@ -89,8 +97,8 @@ Running the two items of 2026-10-18 surfaced seven gaps (`request.md`). A phase 
 - **RISK-004** The lead in the fast lane can still write a code or test file by shell and skip both edit guards. Mitigation: accepted per the lead's ruling; the lead works in the user's view, and the review summary's silenced list and lint.craft see the result in the diff.
 - **RISK-005** `cp`, `mv`, `git apply` or `patch` still bring a file in unchecked. Mitigation: **OQ-001**; the review summary's silenced list and lint.craft still see the result in the diff.
 
-### D-005 (r3): Admission treats a new harness surface as new surface
-**Decision:** Infrastructural decision. `NEW_SURFACE` in `core/lib/admit.mjs` gains `skill`, `agent`, `hook`, `verb`, `subcommand`, `rule` and `step file`, and accepts up to three words between the article and the noun, so "Add a debugging skill" and "adds a new `picket statusline` verb" leave the fast lane. These nouns count only after an action verb (`add`, `adds`, `added`, `adding`, `create`, `introduce`), never after a bare "new", so a question about a surface stays research: "how is a new hook registered?" and "How does a new skill get added? Write a report, no code changes." answer `research` today and must keep doing so. One pattern still holds all new-surface wording. A scratch run of this pattern over `test/kernel/admit-labelled.json` and `bench/tasks/` matched nothing. Over `work/*/request.md` the verb-led pattern matched four requests, which ended in `order` or `design` (the `fast` one is the case this fixes).
+### D-005 (r4): Admission treats a new harness surface as new surface
+**Decision:** Infrastructural decision. `NEW_SURFACE` in `core/lib/admit.mjs` gains `skill`, `agent`, `hook`, `verb`, `subcommand`, `rule` and `step file`, and accepts up to three words between the article and the noun, so "Add a debugging skill" and "adds a new `picket statusline` verb" leave the fast lane. These nouns count only after an action verb (`add`, `adds`, `added`, `adding`, `create`, `introduce`), never after a bare "new", so a question about a surface stays research: "how is a new hook registered?" and "How does a new skill get added? Write a report, no code changes." answer `research` today and must keep doing so. One pattern still holds all new-surface wording. A scratch run of this pattern over `test/kernel/admit-labelled.json` and `bench/tasks/` matched nothing. Over `work/*/request.md` the verb-led pattern matched four requests, which ended in `order` or `design` (the `fast` one is the case this fixes). (r4) Placing code "in its own module" (also `file`, `class` or `folder`, after `in` or `into` and `its`, `their` or `a`) is new-surface wording too. `bench/tasks/order-08-validation.json` ("Put the validation in its own module under src/http/") is labelled `order` but admits `fast` ("1 file(s) named"), at HEAD before this item as well. A scratch run of that phrase matched only `order-08-validation` and `order-09-csv-export` (both `order`) and no labelled entry. The user ruled to fold the fix into this item. Phases 3 and 4 were approved before this amendment landed, so it is phase 5.
 **Instead of:** a separate `harness_surface` signal: it would decide exactly what `new_surface` decides, so two names for one rule.
 **Risks:**
 - **RISK-006** "Add an eslint rule that bans console" now admits as order. Mitigation: accepted; a new lint rule is a project convention, which is a recorded decision. A labelled case pins the behaviour. The near miss the other way is a research question that names a surface ("how is a new hook registered?"): a bare "new" before the noun would have moved it out of research, so the verb is required and two labelled research cases pin it. "how do I add a skill?" answers `order` today, because `RESEARCH` has no "how do I", and this change leaves it there.
@@ -190,6 +198,21 @@ Running the two items of 2026-10-18 surfaced seven gaps (`request.md`). A phase 
 - **T-4.4** `git diff` shows no change to `core/templates/claude-block.md`, CLAUDE.md is at most 2048 bytes, and the init tests pass.
 - **T-4.5** `npm test` passes.
 
+## Phase 5: Every bench task admits to its labelled lane
+
+**Touch set:**
+- `core/lib/admit.mjs`: own-module wording in `NEW_SURFACE` (D-005 r4)
+- `bench/test/tasks.test.mjs`: lane check over every task
+- `test/kernel/admit-labelled.json`: one own-module entry labelled `order`
+
+**Changes:** As D-005 (r4). `NEW_SURFACE` gains the placement wording "in (or into) its, their or a own module, file, class or folder". The lane test in `bench/test/tasks.test.mjs` iterates every `bench/tasks/*.json` except lane `none`, instead of the four newest. One labelled entry with the own-module wording is added, labelled `order`; no other entry changes.
+
+**Done when:**
+- **T-5.1** The bench lane test checks every task file except lane `none`, and `order-08-validation` admits `order`.
+- **T-5.2** "Put the parsing in its own module under src/http/" admits `order`, and the labelled set holds one such entry labelled `order`.
+- **T-5.3** No existing labelled entry changes its label, `MIN_SHARE` stays 0.9, and the share is at or above it.
+- **T-5.4** `npm test` passes.
+
 ## Open questions
 
 - **OQ-001** Should `cp`, `mv`, `git apply` and `patch` into code files be denied too? Owner: user. Fallback: they stay as they are; the review summary's silenced list and lint.craft see the result in the diff.
@@ -199,3 +222,4 @@ Running the two items of 2026-10-18 surfaced seven gaps (`request.md`). A phase 
 ## Revision log
 - 2026-10-18: D-004 (r2): shell-write deny narrowed to spawned agents, as request item 4 says; lead and approved scripts keep redirect generation; T-2.4, T-2.5 test the agent.
 - 2026-10-18: D-005 (r2): harness nouns count only after an action verb, so surface questions stay research; two labelled research cases; T-3.2 cites the debugging order by id.
+- 2026-10-18: D-005 (r4): "in its own module" is new surface, so order-08-validation admits order; new phase 5, as phases 3 and 4 were approved; 87fea42 carried a bare (r3) marker.

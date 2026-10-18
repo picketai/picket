@@ -20,12 +20,12 @@ test("every task file names its id, lane, budget, stops and checks, and its id l
   }
 });
 
-test("each new task's lane is the one admit picks for its prompt, except none (T-8.2)", () => {
-  for (const id of NEW_TASKS) {
-    const task = load(id);
-    if (task.lane === "none") continue;
-    assert.equal(admit(task.prompt, { root: FIXTURE }).lane, task.lane, id);
-  }
+test("every task's lane is the one admit picks for its prompt, except none", () => {
+  const ids = readdirSync(TASKS).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
+  assert.ok(ids.length >= 18, `${ids.length} tasks`);
+  const misses = ids.map(load).filter((task) => task.lane !== "none").map((task) => ({ task, got: admit(task.prompt, { root: FIXTURE }).lane })).filter(({ task, got }) => got !== task.lane);
+  assert.deepEqual(misses.map(({ task, got }) => `${task.id}: labelled ${task.lane}, admit ${got}`), []);
+  assert.equal(admit("Put the parsing in its own module under src/http/", { root: FIXTURE }).lane, "order", "placing code in its own module is new surface");
 });
 
 test("the four new tasks carry the checks of their shape (T-8.1)", () => {

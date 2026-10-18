@@ -127,5 +127,6 @@
   { "request": "Fix the typo in the hook table of `core/hooks/README.md`.", "lane": "fast", "why": "a typo fix that only names a hook, adds none" },
   { "request": "Rename the `--deleted` flag of the waive verb in one file.", "lane": "fast", "why": "a rename that only names a verb, adds none" },
   { "request": "how is a new hook registered?", "lane": "research", "why": "a question about a surface, with no action verb, changes no code" },
-  { "request": "How does a new skill get added? Write a report, no code changes.", "lane": "research", "why": "asks for a report with no code changes" }
+  { "request": "How does a new skill get added? Write a report, no code changes.", "lane": "research", "why": "asks for a report with no code changes" },
+  { "request": "Move the money formatting out of `src/domain/money.ts` into its own module and unit test it.", "lane": "order", "why": "placing code in its own module is new surface, even with one file named" }
 ]
