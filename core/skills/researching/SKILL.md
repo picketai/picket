@@ -59,6 +59,7 @@ picket packet <id>
 <the report's one-sentence answer>
 Report: work/<id>/research.md · findings: <n> · architect review: <yes: R-00x | no>
 Left for you: <picket close's left lines; omit when there are none>
+Left staged: <picket close's left staged paths, not this item's; omit when there are none>
 ```
 
 ## Rules of the lane

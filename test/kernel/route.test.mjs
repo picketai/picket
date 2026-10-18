@@ -123,18 +123,35 @@ test("an approval commits the phase's files and work item, and leaves a foreign 
   }
 });
 
-test("a staged test path outside the lists rides along and is named; a staged deletion of a listed file lands (T-1.3)", () => {
+test("a staged path the block lists outside the plan rides along and is named; a staged deletion of a listed file lands (T-1.3)", () => {
   const { root, id, git } = repoWithPhasedOrder();
   try {
     stage(root, git, { "test/b.test.js": "t\n" });
     git("rm", "-q", "--", "src/old.js");
     route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    saveBlock(id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/old.js (+1 more: test/b.test.js)\n\nPHASE DONE", root);
     const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
     const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
     assert.ok(committed.includes("test/b.test.js") && committed.includes("src/old.js"), committed.join(", "));
     assert.throws(() => git("cat-file", "-e", "HEAD:src/old.js"));
     assert.ok(r.applied.includes("committed outside phase 1's files: test/b.test.js"), r.applied.join(" | "));
     assert.equal(git("diff", "--cached", "--name-only"), "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a staged test path neither the plan nor the block lists stays staged, as another session's file", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    stage(root, git, { "src/a.js": "a\n", "test/foreign.test.js": "t\n" });
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    saveBlock(id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js\n\nPHASE DONE", root);
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+    assert.ok(committed.includes("src/a.js") && !committed.includes("test/foreign.test.js"), committed.join(", "));
+    assert.equal(git("diff", "--cached", "--name-only"), "test/foreign.test.js");
+    assert.ok(r.applied.includes("left staged, not phase 1's: test/foreign.test.js"), r.applied.join(" | "));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

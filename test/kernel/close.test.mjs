@@ -163,6 +163,26 @@ test("close --human names the paths it left staged", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test("an order close commits a test file a phase block lists and leaves an unlisted staged test file", () => {
+  const { root, id, git } = repoWithOpenItem("order");
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.ts]\n---\n# Order\n\n## Phase 1: Module\n\ntext\n");
+  mkdirSync(join(root, "work", id, "phases"), { recursive: true });
+  writeFileSync(join(root, "work", id, "phases", "1.block.md"), "## Phase 1 of x: Module\n\nDone.\n\nFiles: src/a.ts, test/a.test.ts\n\nPHASE DONE\n");
+  setMarker(id, 1, "done", root);
+  setMarker(id, 1, "approved", root);
+  appendVerdict(id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" }, root);
+  mkdirSync(join(root, "test"));
+  writeFileSync(join(root, "test", "a.test.ts"), "t\n");
+  writeFileSync(join(root, "test", "foreign.test.ts"), "t\n");
+  git("add", "--", "test/a.test.ts", "test/foreign.test.ts");
+  const r = picket(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  const files = git("show", "--name-only", "--format=", "HEAD").split("\n");
+  assert.ok(files.includes("test/a.test.ts") && !files.includes("test/foreign.test.ts"), files.join(", "));
+  assert.deepEqual(r.json.left_staged, ["test/foreign.test.ts"]);
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("a second close commits nothing, and an abandoned item is refused", () => {
   const { root, id, git } = repoWithOpenItem();
   assert.equal(picket(root, "close", id).code, 0);

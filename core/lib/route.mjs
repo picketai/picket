@@ -3,9 +3,9 @@
 import { appendVerdict, deriveState, hasMarker, isSessionId, projectRoot, readState, setMarker, writeState } from "./work.mjs";
 import { next } from "./next.mjs";
 import { ownGate, phasePaths } from "./gate.mjs";
-import { commitOwned, isTestPath, listedPathMatcher } from "./git.mjs";
+import { commitOwned, listedPathMatcher } from "./git.mjs";
 import { recordAccept } from "./close.mjs";
-import { readBlock, parseBlock } from "./packet.mjs";
+import { blockFiles, readBlock, parseBlock } from "./packet.mjs";
 import { bareAgentName } from "./agent-name.mjs";
 
 /**
@@ -21,9 +21,10 @@ function commitPhase(id, phase, root, applied) {
   const title = s.phases.find((p) => p.n === Number(phase))?.title ?? `phase ${phase}`;
   const message = proposed ?? `${title}, phase ${phase} of ${id}`;
   const listed = listedPathMatcher(root, [`work/${id}/`, ...phasePaths(id, phase, root)]);
+  const reported = listedPathMatcher(root, blockFiles(id, phase, root));
   let result;
   try {
-    result = commitOwned(root, message, { add: [`work/${id}`], owns: (path) => listed(path) || isTestPath(path) });
+    result = commitOwned(root, message, { add: [`work/${id}`], owns: (path) => listed(path) || reported(path) });
   } catch (err) {
     applied.push(err.message);
     return;

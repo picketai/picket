@@ -23,6 +23,13 @@ export function readBlock(id, n, root = projectRoot()) {
   return existsSync(p) ? readFileSync(p, "utf8") : null;
 }
 
+const PATH_TOKEN = /^[\w.@\-\/\\]+\.[A-Za-z0-9]+$/;
+
+export function blockFiles(id, n, root = projectRoot()) {
+  const files = parseBlock(readBlock(id, n, root) ?? "").fields.files ?? "";
+  return files.split(/[\s,():]+/).filter((token) => PATH_TOKEN.test(token));
+}
+
 /** The developer block: heading, one-sentence line, `Label: value` fields, verdict on the last line. */
 export function parseBlock(text) {
   const lines = String(text ?? "").replace(/\r\n/g, "\n").split("\n");

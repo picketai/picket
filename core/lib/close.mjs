@@ -1,5 +1,6 @@
-import { commitOwned, dirtyPaths, filesInCommit, isRepo, isTestPath, listedPathMatcher, productLinesAdded, repoPrefix, stagedFiles } from "./git.mjs";
+import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, productLinesAdded, repoPrefix, stagedFiles } from "./git.mjs";
 import { phasePaths } from "./gate.mjs";
+import { blockFiles } from "./packet.mjs";
 import { appendLedger } from "./ledger.mjs";
 import { next } from "./next.mjs";
 import { readArtifact, readState, writeState } from "./work.mjs";
@@ -19,10 +20,9 @@ export function defaultCloseMessage(id) {
 const PHASED_LANES = new Set(["order", "design"]);
 
 function itemOwner(id, root, lane, touched) {
-  const phased = PHASED_LANES.has(lane);
-  const phaseLists = phased ? readArtifact(id, root).phases.flatMap((p) => phasePaths(id, p.n, root)) : [];
-  const listed = listedPathMatcher(root, [`work/${id}/`, ...phaseLists, ...touched]);
-  return (path) => listed(path) || (phased && isTestPath(path));
+  const phases = PHASED_LANES.has(lane) ? readArtifact(id, root).phases : [];
+  const phaseLists = phases.flatMap((p) => [...phasePaths(id, p.n, root), ...blockFiles(id, p.n, root)]);
+  return listedPathMatcher(root, [`work/${id}/`, ...phaseLists, ...touched]);
 }
 
 function refuseUntouchedFastClose(id, root, lane, touched) {

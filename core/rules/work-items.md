@@ -8,7 +8,7 @@ The lane artifact is `order.md` (order lane), `design.md` (design lane) or `rese
 
 Phase progress is marker files under `phases/`: `N.done` (developer finished), `N.approved` (user approved), `N.reviewed` (reviewer passed), `N.block.md` (the developer's block, saved by the hook for the gate packet). `picket route` writes them; `picket next` and `picket packet` read them.
 
-Nothing is committed by an agent. The developer stages a phase and proposes a message; `picket route … --verdict approved` commits the index with it, work item state included, so `git log -1 --format=%h -- work/<id>/phases/N.approved` names the phase commit. A rejected phase stays staged for the fix and never reaches history.
+Nothing is committed by an agent. The developer stages a phase and proposes a message; `picket route … --verdict approved` commits with it only the phase's own staged paths (its plan paths, the files its block lists, and the work item state), leaving anything else staged, so `git log -1 --format=%h -- work/<id>/phases/N.approved` names the phase commit. A rejected phase stays staged for the fix and never reaches history.
 
 Amend a decision in place: edit the `### D-###` body, bump its marker (`### D-002 (r2): Name`), and append one line to `## Revision log`: `- YYYY-MM-DD: D-002 (r2): what changed; why`. Withdrawn decisions keep their ID with `[withdrawn]`. Never renumber a published ID.
 

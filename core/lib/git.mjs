@@ -130,16 +130,6 @@ export function stagedFiles(root) {
   return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 }
 
-const TEST_DIRS = new Set(["test", "tests", "__tests__", "spec"]);
-const TEST_FILE_PATTERNS = [/\.(test|spec)\.[^.]+$/, /_test\.go$/, /^test_.*\.py$/, /Tests\.cs$/];
-
-export function isTestPath(path) {
-  const segments = String(path).replace(/\\/g, "/").split("/");
-  const name = segments.pop();
-  if (segments.some((dir) => TEST_DIRS.has(dir) || /\.Tests$/.test(dir))) return true;
-  return TEST_FILE_PATTERNS.some((pattern) => pattern.test(name));
-}
-
 export function listedPathMatcher(root, listed) {
   const prefix = repoPrefix(root);
   const entries = listed.map((p) => prefix + String(p).replace(/\\/g, "/").replace(/^\.\//, ""));

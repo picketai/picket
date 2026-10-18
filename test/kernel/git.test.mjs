@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { commitOwned, dirtyPaths, head, isRepo, isTestPath, productLinesAdded, workingState } from "../../core/lib/git.mjs";
+import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../core/lib/git.mjs";
 import { liveProbe } from "../../core/lib/statusline.mjs";
 
 function gitIn(root, ...args) {
@@ -111,15 +111,6 @@ test("workingState names a detached head by 7 hex characters and is null outside
     assert.match(workingState(root).branch, /^[0-9a-f]{7}$/);
   });
   withTempDir("picket-norepo-", (root) => assert.equal(workingState(root), null));
-});
-
-test("isTestPath knows test folders and test file names across languages (T-1.7)", () => {
-  for (const path of ["test/kernel/cost.test.mjs", "src/Fee.Tests/RoundingTests.cs", "pkg/fee_test.go", "app/__tests__/a.js", "lib/test_fee.py", "src/a.spec.ts"]) {
-    assert.equal(isTestPath(path), true, path);
-  }
-  for (const path of ["src/latest.mjs", "docs/testing.md", "src/contest.js", "src/Tests.md"]) {
-    assert.equal(isTestPath(path), false, path);
-  }
 });
 
 const IDENTITY_ENV = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };

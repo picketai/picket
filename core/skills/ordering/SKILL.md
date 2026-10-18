@@ -56,4 +56,5 @@ Never edit `work/<id>/` yourself; never write code yourself in this lane.
 Phases: <n> · commits <first>..<last> · review: APPROVED
 Questions: <the cumulative reviewer's Questions line; omit this line when it says none>
 Left for you: <picket close's left lines; omit when there are none>
+Left staged: <picket close's left staged paths, not this item's; omit when there are none>
 ```
