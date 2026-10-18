@@ -1,0 +1,7 @@
+id: 20261018-delete-stale-reviewing-templates-fix-lint
+lane: fast
+title: "Delete stale reviewing templates, fix lint"
+status: done
+created: 2026-10-18T05:58:55.295Z
+updated: 2026-10-18T06:49:41.591Z
+base: b04d20392fb98ff7e61dd41e778af5c22ac102a0

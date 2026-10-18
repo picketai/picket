@@ -1,27 +1,6 @@
 #!/usr/bin/env node
 // Craft lint — locate comment-discipline and test-kind violations in a diff.
 //
-// Two policies this repo states in prose and, until now, enforced only by
-// prompt discipline:
-//
-//   1. developer.md <craftsmanship_charter> — comments are scarce and carry WHY.
-//      Mechanism narration ("// loop over the orders") and commented-out code are
-//      noise; a comment explaining WHAT the code does should have been a better
-//      name or a smaller function.
-//   2. detectors.yaml#test_authoring_policy — the developer authors unit tests and
-//      (conditionally) architecture tests. Integration, e2e, contract, performance,
-//      and smoke tests are off unless explicitly unlocked.
-//
-// WHY a script at all. These two differ in how mechanical they are, and the
-// script's design follows that difference rather than pretending it away:
-//
-//   - Test-kind detection is genuinely mechanical. "This file imports
-//     Testcontainers" is a fact, not a judgement, so those hits are ERRORS.
-//   - Comment *intent* is not mechanical. No regex knows whether a comment earns
-//     its place. So comment hits are CANDIDATES: a reader must confirm or dismiss
-//     each one. The exception is commented-out code, which is decidable, and
-//     therefore an error.
-//
 // Only decidable things set exit 1 — errors are CD1 and TK1/TK2 alone.
 //
 // A tool that reported judgement calls as errors would train its readers to pass
@@ -297,10 +276,6 @@ function scanComments(file, added) {
     if (SKIP_MARKERS.some(re => re.test(body))) continue;
     if (SKIP_MARKERS.some(re => re.test(text))) continue;
 
-    // Density counts only comment lines that are NOT already justified. A file
-    // whose comments all carry a WHY is dense on purpose and must score 0 —
-    // a tool that penalises the exact comments the charter asks for is a tool
-    // people learn to ignore.
     const carriesWhy = WHY_MARKERS.some(re => re.test(body));
     if (carriesWhy) blockJustified = true;
     if (!blockJustified) commentLines++;
@@ -387,7 +362,7 @@ function scanTests(file, added, isNew) {
     if (sig.re.test(file)) {
       if (!allowAll) {
         report('error', 'TK1', file, added[0]?.line ?? 1,
-          `${isNew ? 'new file' : 'changed file'} is a ${sig.kind} test — off by default (detectors.yaml#test_authoring_policy)`, file);
+          `${isNew ? 'new file' : 'changed file'} is a ${sig.kind} test — off by default (the developer writes unit and architecture tests only)`, file);
       }
       break;
     }
@@ -456,8 +431,8 @@ if (opt.json) {
 
   console.log(`craft-lint: ${errors.length} error(s), ${candidates.length} candidate(s)`);
   if (candidates.length) {
-    console.log('  A candidate is not a finding. Confirm it against the charter (comments carry WHY,');
-    console.log('  and only where a reader would otherwise be confused), then fix or dismiss it.');
+    console.log('  A candidate is not a finding. Confirm it against the comments rule (no new comment');
+    console.log('  unless exempt or approved with picket comment), then fix or dismiss it.');
   }
 }
 
