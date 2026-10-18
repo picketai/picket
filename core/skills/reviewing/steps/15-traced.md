@@ -1,6 +1,6 @@
 # Traced review (scope `cumulative`)
 
-The cumulative review checks the change against what was asked, not against the architect's reading of it. Load this file in addition to `10-alignment.md`'s floors and criteria rules: its comment and test floors still apply to the diff, and step 5 grades the plan's criteria by its procedure. What this file replaces is the reading order and the requirements table. The load table in `SKILL.md` still applies for the pattern files.
+The cumulative review checks the change against what was asked, not against the architect's reading of it. Load this file in addition to `10-alignment.md`'s floors and criteria rules and to `12-bar.md`: the comment and test floors and the silenced-check row still apply to the diff, and step 5 grades the plan's criteria by its procedure. What this file replaces is the reading order and the requirements table. The load table in `SKILL.md` still applies for the pattern files.
 
 You are a fresh instance. The plan is read last, on purpose: reading it first anchors you on its reading of the story, and a plan that misread the story then passes review.
 

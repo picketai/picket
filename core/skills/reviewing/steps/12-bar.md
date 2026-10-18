@@ -1,0 +1,11 @@
+# Holding the bar (always loaded)
+
+These rows check that the change did not lower the bar the project's checks set: no suppression, skipped or focused test, deleted test or weaker threshold went in without the user's waiver. They run at every size, and the cumulative review loads them with `10-alignment.md`'s floors, because a one-line `it.skip(` is enough to hide a broken feature.
+
+The kernel computes the evidence. The summary's `silenced` list holds one entry per move since the work item's base: `{ path, kind, text, waived }`, with `kind` one of `suppression`, `skipped-test`, `focused-test`, `threshold`, `deleted-test`. It covers edits the `guard.silenced` hook never saw: a file written through Bash, a test file deleted. `waived: true` means `picket waive` recorded the user's approval for that path and line (or that deletion) on this item. A pull request range has no item, so every entry there is `waived: false`.
+
+| # | Check | Fail condition | Severity |
+|---|---|---|---|
+| Sl1 | Unwaived silenced check | The summary's `silenced` list has an entry with `waived: false` | Major |
+
+Report Sl1 as one aggregated Major finding listing each `path`, `kind` and `text`, so a phase with several moves costs one slot. The fix is to restore the check and fix its cause; when the user must accept a move, the developer proposes it on its block's `Waivers:` line. A waived entry is never a finding, but read it: a waiver for a line that hides a defect the phase introduced is still a Critical or Major under the row that defect breaks.

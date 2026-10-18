@@ -4,9 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, readState, writeState } from "../../core/lib/work.mjs";
+import { appendWaiver, createWork, readState, writeState } from "../../core/lib/work.mjs";
 import { branchingManifestPath } from "../../core/lib/paths.mjs";
-import { reviewSummary } from "../../core/lib/review.mjs";
+import { reviewSummary, reviewSummaryRange } from "../../core/lib/review.mjs";
 import { nestedRepos, readBases } from "../../core/lib/repos.mjs";
 
 function git(dir, ...args) {
@@ -175,7 +175,75 @@ test("with no extension enabled, extension_steps is empty and the summary keeps 
     changeFiles(root, 2);
     const summary = reviewSummary(id, { root });
     assert.deepEqual(summary.extension_steps, []);
-    assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources"]);
+    assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources", "silenced"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function testedRepo() {
+  const root = mkdtempSync(join(tmpdir(), "harness-review-silenced-"));
+  mkdirSync(join(root, ".claude"));
+  mkdirSync(join(root, "test"));
+  git(root, "init", "-q", "-b", "trunk");
+  writeFileSync(join(root, "test", "old.test.ts"), 'it("keeps", () => {});\n');
+  commitFile(root, "test/fee.test.ts", 'it("rounds", () => {});\n', "base");
+  return root;
+}
+
+const focus = 'it.only("rounds", () => {});';
+
+test("a focus added since base is listed unwaived, however the file was written (T-2.1, T-2.3)", () => {
+  const root = testedRepo();
+  try {
+    const id = createWork({ lane: "order", title: "Fees", root }).id;
+    writeFileSync(join(root, "test", "fee.test.ts"), `${focus}\nit("rounds", () => {});\n`);
+    assert.deepEqual(reviewSummary(id, { root }).silenced, [{ path: "test/fee.test.ts", kind: "focused-test", text: focus, waived: false }]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a waived line is listed with waived: true", () => {
+  const root = testedRepo();
+  try {
+    const id = createWork({ lane: "order", title: "Fees", root }).id;
+    writeFileSync(join(root, "test", "fee.test.ts"), `${focus}\n`);
+    appendWaiver(id, { path: "test/fee.test.ts", text: focus }, root, root);
+    assert.deepEqual(reviewSummary(id, { root }).silenced.map((m) => m.waived), [true]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a tracked test file deleted since base is a deleted-test, waived only by a --deleted waiver (T-2.2)", () => {
+  const root = testedRepo();
+  try {
+    const id = createWork({ lane: "order", title: "Fees", root }).id;
+    rmSync(join(root, "test", "old.test.ts"));
+    assert.deepEqual(reviewSummary(id, { root }).silenced, [{ path: "test/old.test.ts", kind: "deleted-test", text: null, waived: false }]);
+    appendWaiver(id, { path: "test/old.test.ts", text: "it(" }, root, root);
+    assert.equal(reviewSummary(id, { root }).silenced[0].waived, false, "a text waiver does not cover a deletion");
+    appendWaiver(id, { path: "test/old.test.ts", deleted: true }, root, root);
+    assert.equal(reviewSummary(id, { root }).silenced[0].waived, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the range summary lists silenced moves between two commits, all unwaived (T-2.4)", () => {
+  const root = testedRepo();
+  try {
+    const base = git(root, "rev-parse", "HEAD");
+    commitFile(root, "test/fee.test.ts", `${focus}\n`, "focus");
+    git(root, "rm", "-q", "test/old.test.ts");
+    git(root, "commit", "-q", "-m", "drop");
+    const head = git(root, "rev-parse", "HEAD");
+    writeFileSync(join(root, "test", "fee.test.ts"), "it.skip(\"working tree only\", () => {});\n");
+    assert.deepEqual(reviewSummaryRange(root, base, head).silenced, [
+      { path: "test/fee.test.ts", kind: "focused-test", text: focus, waived: false },
+      { path: "test/old.test.ts", kind: "deleted-test", text: null, waived: false },
+    ]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

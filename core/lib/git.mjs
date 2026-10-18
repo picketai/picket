@@ -103,6 +103,15 @@ export function changedSince(root, base) {
   return [...new Set([...diffed.split(/\r?\n/), ...untracked.split(/\r?\n/)].map((s) => s.trim()).filter(Boolean))].sort();
 }
 
+export function fileAt(root, rev, path) {
+  return git(root, ["show", `${rev}:${path}`]) ?? "";
+}
+
+export function deletedSince(root, base, head = null) {
+  const out = git(root, ["diff", "--name-only", "--diff-filter=D", base, ...(head ? [head] : [])]) ?? "";
+  return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
+}
+
 function addedLines(numstat, excluded) {
   let added = 0;
   for (const line of numstat.split(/\r?\n/)) {

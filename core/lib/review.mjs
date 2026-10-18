@@ -4,14 +4,46 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { deriveState, projectRoot } from "./work.mjs";
+import { deriveState, itemWaivers, projectRoot } from "./work.mjs";
 import { loadConfig, securityPaths } from "./config.mjs";
 import { liveDrift } from "./sources.mjs";
 import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
+import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
 
 export const SIZE = Object.freeze({ small: { files: 3, lines: 50 }, medium: { files: 10, lines: 400 } });
+
+const DELETED = "\0deleted";
+
+function workingText(dir, path) {
+  try {
+    return readFileSync(join(dir, path), "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function silencedIn({ dir, base, head = null, files, prefix = "", bar }) {
+  const deleted = git.deletedSince(dir, base, head).filter((path) => !git.isNonProduct(path));
+  const gone = new Set(deleted);
+  const after = (path) => (head ? git.fileAt(dir, head, path) : workingText(dir, path));
+  const edited = files
+    .filter((path) => !gone.has(path) && scansPath(path))
+    .flatMap((path) => silencedMoves({ rel: path, before: git.fileAt(dir, base, path), after: after(path), bar }).map((move) => ({ path, ...move })));
+  return [...edited, ...deletedTestMoves(deleted)].map((move) => ({ ...move, path: prefix + move.path }));
+}
+
+function pathKey(path) {
+  const slashed = String(path).replaceAll("\\", "/");
+  return process.platform === "win32" ? slashed.toLowerCase() : slashed;
+}
+
+function withWaived(moves, waivers) {
+  const key = (path, text) => `${pathKey(path)}\n${text}`;
+  const waived = new Set(waivers.map((w) => key(w.path, w.deleted ? DELETED : normaliseLine(w.text))));
+  return moves.map(({ path, kind, text }) => ({ path, kind, text, waived: waived.has(key(path, text ?? DELETED)) }));
+}
 
 function numstat(root, base, head = null) {
   try {
@@ -111,6 +143,7 @@ export function reviewSummaryRange(root, base, head) {
     concerns: detectConcerns(root, changed),
     security_path: securityPath,
     extension_steps: extensionSteps(root, size, securityPath),
+    silenced: withWaived(silencedIn({ dir: root, base, head, files: changed, bar: loadConfig(root).quality }), []),
   };
 }
 
@@ -133,6 +166,11 @@ export function reviewSummary(id, o = {}) {
   const sec = securityPaths(root);
   const size = sizeClass(changed.length, added + removed);
   const securityPath = changed.some((f) => sec.some((p) => f.startsWith(p)));
+  const config = loadConfig(root);
+  const silenced = [
+    ...silencedIn({ dir: root, base, files: rootChanged, bar: config.quality }),
+    ...nested.filter((r) => !r.skipped).flatMap((r) => silencedIn({ dir: r.worktree, base: r.base, files: r.changed.map((f) => f.slice(r.path.length + 1)), prefix: `${r.path}/`, bar: config.quality })),
+  ];
   return {
     work_id: id,
     base,
@@ -148,7 +186,8 @@ export function reviewSummary(id, o = {}) {
     phases: s.phase_count,
     repos: nested.filter((r) => r.skipped || r.changed.length).map(repoReport),
     // Each snapshot against its live version: snapshot_sha256, live_sha256, moved (and why).
-    sources: liveDrift(join(root, "work", id), loadConfig(root).sources),
+    sources: liveDrift(join(root, "work", id), config.sources),
+    silenced: withWaived(silenced, itemWaivers(id, root)),
   };
 }
 

@@ -90,6 +90,10 @@ function thresholdMoves(rel, removed, added, bar) {
     .map((text) => ({ kind: "threshold", text }));
 }
 
+export function deletedTestMoves(paths) {
+  return paths.filter(isTestPath).map((path) => ({ path, kind: "deleted-test", text: null }));
+}
+
 export function silencedMoves({ rel, before = "", after = "", bar = {} }) {
   const beforeLines = linesOf(before);
   const afterLines = linesOf(after);

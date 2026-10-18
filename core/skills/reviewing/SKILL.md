@@ -24,7 +24,7 @@ Reference for the reviewer: what the kernel hands you, which checklist to open, 
 The kernel computes size and detection before you run. It passes one JSON object:
 
 ```json
-{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."], "extension_steps": [{ "extension": "acme", "path": ".picket/extensions/acme/review/api.md" }] }
+{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."], "extension_steps": [{ "extension": "acme", "path": ".picket/extensions/acme/review/api.md" }], "silenced": [{ "path": "test/fee.test.ts", "kind": "skipped-test", "text": "it.skip(...)", "waived": false }] }
 ```
 
 Field meaning:
@@ -35,6 +35,7 @@ Field meaning:
 - `security_path`: true when any changed file sits under a CLAUDE.md `## Security paths` entry.
 - `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
 - `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
+- `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`steps/12-bar.md`).
 
 Summary missing or a field absent: ask for it and stop. Do not fall back to your own detection.
 
@@ -44,7 +45,7 @@ A cross-check request carries no summary because there is no diff. Load `steps/6
 
 | Size | Load |
 |---|---|
-| small | `10-alignment.md`, `30-patterns-security.md`, one `40-framework-<name>.md` per framework |
+| small | `10-alignment.md`, `12-bar.md`, `30-patterns-security.md`, one `40-framework-<name>.md` per framework |
 | medium | the small set plus `20-patterns-core.md` (skip its SOLID and DRY sections) and one `50-concern-<name>.md` per concern |
 | large | the medium set with `20-patterns-core.md` in full |
 
@@ -112,7 +113,8 @@ The kernel finds the clone by the repository name in the URL: the project root, 
 reviewing/
   SKILL.md                                this file
   steps/10-alignment.md                   criteria to evidence, plus the comment and test floors (always)
-  steps/15-traced.md                      cumulative only, with 10's floors and criteria rules: request and story first, plan last
+  steps/12-bar.md                         silenced checks against the user's waivers (always)
+  steps/15-traced.md                      cumulative only, with 10's floors, 12-bar.md and criteria rules: request and story first, plan last
   steps/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
   steps/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
   steps/40-framework-typescript.md        types, promises, errors, React, imports, leaks

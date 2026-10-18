@@ -234,6 +234,10 @@ export function appendWaiver(id, { path, text = null, deleted = false }, root = 
   return appendApproval(id, WAIVERS_FILE, { path, text: deleted ? null : String(text), deleted: Boolean(deleted) }, root, cwd);
 }
 
+export function itemWaivers(id, root = projectRoot()) {
+  return readApprovals(id, WAIVERS_FILE, root);
+}
+
 export function waiversFor(rel, root = projectRoot()) {
   return approvalsFor(WAIVERS_FILE, rel, root);
 }
