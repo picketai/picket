@@ -55,6 +55,20 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a Files: line of twelve paths shows whole paths up to the width, then +k more (T-1.3)", () => {
+  const { root, id } = setup();
+  setMarker(id, 1, "done", root);
+  const paths = Array.from({ length: 12 }, (_, i) => `src/module-${i}/handler-${i}.ts`);
+  saveBlock(id, 1, BLOCK.replace(/^Files: .*$/m, `Files: ${paths.join(", ")}`), root);
+  const row = packet(id, root).lines.find((l) => l.startsWith("  files"));
+  const shown = row.slice("  files     ".length).replace(/, \+\d+ more$/, "").split(", ");
+  const more = Number(row.match(/\+(\d+) more$/)?.[1]);
+  assert.ok(row.length <= WIDTH, row);
+  assert.deepEqual(shown, paths.slice(0, shown.length), "whole paths, in order");
+  assert.equal(shown.length + more, 12);
+  rmSync(root, { recursive: true, force: true });
+});
+
 function gatedSetup({ entry, touchSet = "", config }) {
   const root = mkdtempSync(join(tmpdir(), "harness-packet-"));
   mkdirSync(join(root, ".claude"));

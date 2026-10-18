@@ -9,8 +9,15 @@ export function ownGate(id, n, root) {
   const securePath = firstSecurityPath([...entryFiles(entry), ...touchSetPaths(section)], root);
   if (securePath) return { kind: "security_path", reason: `touches a security path (${securePath})` };
   if (isMarkedSecure(entry)) return { kind: "security_mark", reason: "is marked security-sensitive in the record" };
-  if (/\[IRREVERSIBLE\]/.test(section)) return { kind: "irreversible", reason: "carries an irreversible step" };
+  if (/\[IRREVERSIBLE\]/.test(withoutCode(section))) return { kind: "irreversible", reason: "carries an irreversible step" };
   return null;
+}
+
+const FENCED_BLOCK = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm;
+const INLINE_CODE = /(`+)[\s\S]*?\1/g;
+
+function withoutCode(section) {
+  return section.replace(FENCED_BLOCK, "").replace(INLINE_CODE, "");
 }
 
 export function phasePaths(id, n, root) {

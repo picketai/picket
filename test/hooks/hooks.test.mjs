@@ -134,6 +134,19 @@ test("guard.block checks the Red and Root cause lines of a PHASE DONE developer 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("guard.block rejects a PHASE DONE block that folds Files: into +n more and passes the full list (T-1.1)", () => {
+  const { root, id } = project();
+  const phase = (files) => [`## Phase 1 of ${id}: A`, "", "Done.", "", `Files: ${files}`, "Red: n/a: docs only", "Root cause: none", "", "PHASE DONE"].join("\n");
+  for (const folded of ["src/a.ts, src/b.ts (+3 more)", "src/a.ts, src/b.ts, +3 more"]) {
+    const out = blockVerdict(root, phase(folded));
+    assert.equal(out?.decision, "block", folded);
+    assert.match(out.reason, /"Files: src\/a\.ts, src\/b\.ts.*" folds paths into "\+<n> more"; list every staged path on Files:/, folded);
+  }
+  assert.equal(blockVerdict(root, phase("src/a.ts, src/b.ts, src/c.ts, src/d.ts, src/e.ts")), null);
+  assert.equal(blockVerdict(root, `## Phase 1 of ${id}: A\n\nStuck.\n\nFiles: src/a.ts (+3 more)\n\nPHASE STALLED`), null, "a stalled block is not checked");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("guard.block does not ask a stalled block or another agent's block for proof lines (T-4.2)", () => {
   const { root, id } = project();
   assert.equal(blockVerdict(root, `## Phase 1 of ${id}: A\n\nCannot meet T-1.2.\n\nPHASE STALLED`), null, "stalled");

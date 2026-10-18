@@ -67,6 +67,18 @@ test("a configured security path in frontmatter files gates the phase", () => {
   assert.equal(gate?.kind, "security_path");
 });
 
+test("an [IRREVERSIBLE] marker counts in prose and not inside inline code or a fenced block (T-1.4)", () => {
+  const plain = "- **T-1.1** drop the legacy column [IRREVERSIBLE]\n";
+  assert.equal(gateFor({ entry: plainFiles, body: plain })?.kind, "irreversible");
+  const inline = "**Touch set:**\n- `core/skills/designing/steps/15-migration.md`: the contract step marked `[IRREVERSIBLE]`\n\n- **T-1.1** the step file names `[IRREVERSIBLE]`\n";
+  assert.equal(gateFor({ entry: plainFiles, body: inline }), null);
+  const fenced = "Example:\n\n```\n## Phase 3: Drop the column [IRREVERSIBLE]\n```\n\n~~~md\n[IRREVERSIBLE]\n~~~\n";
+  assert.equal(gateFor({ entry: plainFiles, body: fenced }), null);
+  assert.equal(gateFor({ entry: plainFiles, body: `${inline}\nThe real step: [IRREVERSIBLE]\n` })?.kind, "irreversible", "a plain marker beside a quoted one still gates");
+  const paths = withDesign({ entry: plainFiles, body: inline }, (id, root) => phasePaths(id, 1, root));
+  assert.ok(paths.includes("core/skills/designing/steps/15-migration.md"), "touch-set paths in backticks still read");
+});
+
 test("a security path wins over a mark, and a mark wins over an irreversible step", () => {
   const config = { security_paths: ["lib/secure/"] };
   const irreversible = "- **T-1.1** drop the table [IRREVERSIBLE]\n";

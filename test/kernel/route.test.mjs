@@ -141,6 +141,22 @@ test("a staged path the block lists outside the plan rides along and is named; a
   }
 });
 
+test("a staged file only the block's full Files: line names is committed with the phase (T-1.2)", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    const extra = Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`docs/n${i}.md`, `${i}\n`]));
+    stage(root, git, { "src/a.js": "a\n", ...extra });
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    saveBlock(id, 1, `## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js, ${Object.keys(extra).join(", ")}\n\nPHASE DONE`, root);
+    route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+    for (const path of ["src/a.js", ...Object.keys(extra)]) assert.ok(committed.includes(path), path);
+    assert.equal(git("diff", "--cached", "--name-only"), "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("a staged test path neither the plan nor the block lists stays staged, as another session's file", () => {
   const { root, id, git } = repoWithPhasedOrder();
   try {

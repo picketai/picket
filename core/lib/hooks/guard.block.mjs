@@ -23,8 +23,19 @@ function blockProblems(block) {
   if (!token) problems.push(`the last line must be exactly one verdict token (${Object.keys(VERDICTS).join(", ")}); it is "${last.slice(0, 60)}"`);
   const counted = nonEmpty.filter((l) => !FINDING_LINE.test(l.trim())).length;
   if (counted > BUDGET) problems.push(`the block is ${counted} non-empty lines; the budget is ${BUDGET}. Move detail into the artifact and keep the block to its fields`);
-  if (token === "PHASE DONE" && DEVELOPER_HEADING.test(nonEmpty[0]?.trim() ?? "")) problems.push(...proofProblems(nonEmpty.map((l) => l.trim())));
+  if (token === "PHASE DONE" && DEVELOPER_HEADING.test(nonEmpty[0]?.trim() ?? "")) {
+    const lines = nonEmpty.map((l) => l.trim());
+    problems.push(...filesProblems(lines), ...proofProblems(lines));
+  }
   return problems;
+}
+
+const FOLDED_FILES = /\+\d+ more/;
+
+function filesProblems(lines) {
+  const files = fieldValue(lines, "Files");
+  if (files === null || !FOLDED_FILES.test(files)) return [];
+  return [`"Files: ${files.slice(0, 60)}" folds paths into "+<n> more"; list every staged path on Files:, since the packet shortens it for display`];
 }
 
 function fieldValue(lines, label) {

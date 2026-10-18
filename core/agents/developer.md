@@ -52,7 +52,7 @@ Three failed attempts at the same criterion, or a conflict you cannot resolve wi
 
 <one sentence under 90 characters: the claim, not the explanation; what the system now does that it did not before>
 
-Files: <path>, <path> (+<k> more)
+Files: <every path you staged, comma-separated>
 Tests: passed | failed: <what> | no suite detected
 Lint: passed | failed: <what> | none detected
 Verified: <command> → <observed result> | no drivable surface: <reason> | blocked: <what>
