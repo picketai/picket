@@ -428,6 +428,9 @@ function leadOnlyRefusal(seg, agent) {
   if (start === null) return null;
   const words = seg.slice(start).map((t) => (typeof t === "string" ? t : ""));
   const verb = parseArgs(words).pos[0];
+  if (typeof verb === "string" && (isOpaqueWord(verb) || /[$`]/.test(verb))) {
+    return { why: "lead_only", reason: "guard.bash: a spawned agent writes its picket verb out in full; an expansion in the verb position could hide `picket waive` or `picket comment`, which only the lead runs after the user answers at the gate." };
+  }
   if (!LEAD_ONLY_VERBS.has(verb)) return null;
   return { why: "lead_only", reason: `guard.bash: \`picket ${verb}\` records the user's approval, so only the lead runs it after the user answers at the gate. The ${agent} proposes it on its block instead.` };
 }

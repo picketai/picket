@@ -428,6 +428,13 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
       }
     }
     assert.notEqual(outcome("picket --root . state waive", "picket:developer")?.permissionDecision, "deny", "waive as an argument of another verb");
+    for (const hidden of ["V=waive; picket $V x --path a --text b", "picket $(echo waive) x --path a --text b", "picket `echo waive` x", "picket --root . ${V} x"]) {
+      const out = outcome(hidden, "picket:developer");
+      assert.equal(out?.permissionDecision, "deny", hidden);
+      assert.match(out.permissionDecisionReason, /expansion in the verb position/, hidden);
+    }
+    assert.equal(outcome("$V = 'waive'; picket $V x", "picket:developer", "PowerShell")?.permissionDecision, "deny", "PowerShell variable verb");
+    assert.notEqual(outcome("picket $(echo waive) x", undefined)?.permissionDecision, "deny", "the lead is not refused");
     assert.notEqual(outcome("picket state 20261018-x", "picket:developer")?.permissionDecision, "deny");
   });
 });
