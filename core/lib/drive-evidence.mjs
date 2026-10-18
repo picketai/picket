@@ -1,18 +1,3 @@
-// Drive evidence — the machine record behind the developer's `**Verification:**`
-// field (implement.md step 7a, detectors.yaml#verification_rules).
-//
-// Why this exists: step 7a already says the right thing — "Verified means
-// OBSERVED at runtime — a command you ran and output you saw. Reading the code
-// again is not verification." But guard.verdict only checked that the field was
-// non-empty, so `**Verification:** ran the flow, looked fine` passed. The
-// contract was well-specified and unenforced: the one place the harness took a
-// claim on trust for a fact that opens a gate.
-//
-// The colleague's harness solves this with a stamp written BY the verify script.
-// We have no fixed script — the developer drives the flow with a project-detected
-// command — so the evidence comes from OBSERVING what actually ran:
-// observe.bash.mjs records every Bash call, and the agent cannot write that log.
-//
 // Deliberately asymmetric: the classifier below treats anything that is neither
 // a recognised inspection command nor a recognised build/test command as a
 // drive. A false "that was a drive" only preserves today's behaviour (a claim

@@ -27,6 +27,22 @@ test("names that do not start with a blocked word are unchanged", () => {
   assert.equal(name("report", "Analysis of pricing"), "pricing-analysis");
 });
 
+function run(args) {
+  return execFileSync(process.execPath, [script, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+test("order and design name the work item file in either argument form", () => {
+  assert.equal(run(["--kind", "design", "--work", "20261018-x"]), "work/20261018-x/design.md");
+  assert.equal(run(["design", "--work", "20261018-x"]), "work/20261018-x/design.md");
+  assert.equal(run(["order", "--work", "20261018-x"]), "work/20261018-x/order.md");
+});
+
+test("the retired adr, plan and progress kinds are refused", () => {
+  for (const kind of ["adr", "plan", "progress"]) {
+    assert.throws(() => run(["--kind", kind, "pricing"]), /type must be one of report, sdr, charter, context-map, glossary, api/);
+  }
+});
+
 function installedProject() {
   const root = mkdtempSync(join(tmpdir(), "picket-filename-"));
   mkdirSync(join(root, ".picket"));

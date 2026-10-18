@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Deterministic filename-stem derivation for the documenting skill.
 // Usage: node filename.mjs <type> "<subject phrase>"
-// Types: report, adr, plan, sdr, charter, context-map, glossary, progress, api
 // Prints the derived filename stem on stdout (numbered types include the NNNNN- prefix; a stem
 // that would start with report, summary, findings or analysis gets an about- prefix).
 import { readdirSync, existsSync } from 'node:fs';
@@ -13,7 +12,7 @@ function die(msg) {
   process.exit(1);
 }
 
-const TYPES = ['report', 'adr', 'plan', 'design', 'sdr', 'charter', 'context-map', 'glossary', 'progress', 'api'];
+const TYPES = ['report', 'sdr', 'charter', 'context-map', 'glossary', 'api'];
 
 // Accept both forms: `filename.mjs <type> "<subject>"` and `filename.mjs --kind <type> ["<subject>"] [--work <id>]`.
 // Work-item artifacts (order, design) have fixed names inside the work directory and need no subject.
@@ -24,13 +23,12 @@ for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--kind' || argv[i] === '--work') opts[argv[i].slice(2)] = argv[++i];
   else positional.push(argv[i]);
 }
-if (opts.kind === 'order' || opts.kind === 'design' || positional[0] === 'order') {
-  const kind = opts.kind ?? positional[0];
-  if (!opts.work) die(`--kind ${kind} needs --work <id>`);
-  process.stdout.write(`work/${opts.work}/${kind}.md\n`);
+const type = opts.kind ?? positional[0];
+if (type === 'order' || type === 'design') {
+  if (!opts.work) die(`--kind ${type} needs --work <id>`);
+  process.stdout.write(`work/${opts.work}/${type}.md\n`);
   process.exit(0);
 }
-const type = opts.kind ?? positional[0];
 const subjectArg = opts.kind ? positional[0] : positional[1];
 if (!type || !subjectArg) die(`usage: filename.mjs <${TYPES.join('|')}> "<subject>"  |  filename.mjs --kind <type> "<subject>" [--work <id>]`);
 if (!TYPES.includes(type)) die(`type must be one of ${TYPES.join(', ')}, order, design`);
@@ -89,7 +87,6 @@ function appendOnce(s, suffix) {
 if (type === 'report')      stem = appendOnce(stem, '-analysis');
 if (type === 'charter')     stem = appendOnce(stem, '-charter');
 if (type === 'glossary')    stem = appendOnce(stem, '-glossary');
-if (type === 'progress')    stem = appendOnce(stem, '-progress');
 if (type === 'context-map') stem = stem.includes('context-map') ? stem : `${stem}-context-map`;
 
 // Numbered types prepend NNNNN-, scanning their host directory for the next free integer.
@@ -117,36 +114,9 @@ function safe(name) {
 
 const root = projectRoot();
 let out;
-if (type === 'adr') {
-  const next = nextSequence(join(root, 'artifacts/adr'));
-  out = `${String(next).padStart(5, '0')}-${stem}`;
-} else if (type === 'design') {
-  // Design records live in artifacts/plans/ but share history with legacy ADR-prefixed
-  // pairs, so the sequence scans BOTH directories — a new record must never collide
-  // with a legacy pair's number in either.
-  const next = Math.max(
-    nextSequence(join(root, 'artifacts/adr')),
-    nextSequence(join(root, 'artifacts/plans')),
-  );
-  out = `${String(next).padStart(5, '0')}-${stem}`;
-} else if (type === 'sdr') {
+if (type === 'sdr') {
   const next = nextSequence(join(root, 'artifacts/strategy/decisions'));
   out = `${String(next).padStart(5, '0')}-${stem}`;
-} else if (type === 'plan') {
-  // Plans inherit the paired ADR's prefix if a matching stem exists; otherwise unprefixed.
-  let prefix = '';
-  if (existsSync(join(root, 'artifacts/adr'))) {
-    const pattern = new RegExp(`^(\\d{5})-${stem}\\.md$`);
-    for (const name of readdirSync(join(root, 'artifacts/adr'))) {
-      const match = pattern.exec(name);
-      if (match && match[1] > prefix) prefix = match[1];
-    }
-  }
-  out = prefix ? `${prefix}-${stem}` : stem;
-} else if (type === 'progress') {
-  // Progress files: `plan-<short-title>-progress.md` under .claude/agent-memory/developer/.
-  // The subject is expected to be the plan short-title; prepend `plan-` if not already there.
-  out = stem.startsWith('plan-') ? stem : `plan-${stem}`;
 } else {
   // report, charter, context-map, glossary, api: no numeric prefix.
   out = stem;

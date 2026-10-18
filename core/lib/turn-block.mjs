@@ -1,18 +1,3 @@
-// Shared turn-block extraction + contract detection for the Stop / SubagentStop
-// hooks (guard.verdict.mjs, emit.metrics.mjs).
-//
-// Why this exists: a named teammate ends its turn with ONE SendMessage carrying
-// its <output_format> block verbatim (CLAUDE.md ## Turn discipline), so the
-// contract text lives in a TOOL INPUT inside the *subagent's* transcript — not
-// in the team lead's final assistant text, which CLAUDE.md ## Agent
-// Communication forbids from re-quoting teammate output at all. Hooks that read
-// only the lead's last text therefore see no teammate block, ever. Measured on
-// the development umbrella before this fix: 1 gate event in 633 ledger lines,
-// against 131 ADRs and 200+ review records on disk.
-//
-// Both hooks import one extractor and one detection table so the "same
-// content-keyed heuristics" claim in their headers is structurally true instead
-// of a comment that drifts.
 import { openSync, fstatSync, readSync, closeSync, existsSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 
@@ -228,11 +213,6 @@ export function readTurn(data, { includeToolPayloads = isSubagentTurn(data) } = 
  * a phase gate — a 15-minute gap could be either, and those have opposite
  * fixes. This measures the turn itself: from the request entering the
  * transcript to the last assistant entry leaving it.
- *
- * Token totals here are PER TURN and belong under a key of their own. The
- * ledger's `usage` field is cumulative per session and report.mjs reads the
- * last line as the session total, so a teammate's numbers must never land
- * there (see emit.metrics.mjs).
  *
  * Returns nulls rather than guesses when the boundary falls outside the tail
  * window: a missing number is honest, a wrong one is worse than none.
