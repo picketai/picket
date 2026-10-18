@@ -1,0 +1,98 @@
+[
+  {
+    "skill": "benchmarking",
+    "positive": ["run the bench against trunk", "benchmark the plugin and show pass@1 and cost", "did this change to the agent regress the baseline"],
+    "negative": [
+      { "prompt": "how much has this session cost so far", "owner": "inspecting" },
+      { "prompt": "review the diff of this phase", "owner": "reviewing" }
+    ]
+  },
+  {
+    "skill": "branching",
+    "positive": ["spin up a worktree for feature-x", "start a branch for this feature in every nested repo", "tear down the worktree for feature-x"],
+    "negative": [
+      { "prompt": "write the PR description for this branch", "owner": "summarizing" },
+      { "prompt": "resume the open work item", "owner": "resuming" }
+    ]
+  },
+  {
+    "skill": "consulting",
+    "positive": ["should we build or buy the invoicing engine", "where does this boundary go between billing and orders", "is this a separate bounded context or part of sales"],
+    "negative": [
+      { "prompt": "write a charter for the billing context", "owner": "documenting" },
+      { "prompt": "question me on this plan to stress-test it", "owner": "understanding" }
+    ]
+  },
+  {
+    "skill": "documenting",
+    "positive": ["document the REST API of the invoices service", "add a glossary entry for settlement", "write a charter and a context map"],
+    "negative": [
+      { "prompt": "proofread this README before I send it", "owner": "proofreading" },
+      { "prompt": "write the PR body from the commits", "owner": "summarizing" }
+    ]
+  },
+  {
+    "skill": "explaining",
+    "positive": ["walk me through what happens to the data when a customer pays, with an example", "explain with real data how a discount is applied", "explain the concept of idempotency simply, with an example"],
+    "negative": [
+      { "prompt": "map the flow and write a report on disk, no code changes", "owner": "researching" },
+      { "prompt": "stress-test my thinking on this design", "owner": "understanding" }
+    ]
+  },
+  {
+    "skill": "inspecting",
+    "positive": ["status", "show the ledger and the cache ratio", "what's open and what's next"],
+    "negative": [
+      { "prompt": "continue the work item where we left off", "owner": "resuming" },
+      { "prompt": "run the bench and compare plugin and trunk", "owner": "benchmarking" }
+    ]
+  },
+  {
+    "skill": "proofreading",
+    "positive": ["proofread this customer email", "check this release note before I send it", "polish this public doc and find the typos"],
+    "negative": [
+      { "prompt": "document the API reference", "owner": "documenting" },
+      { "prompt": "review this pull request on GitHub", "owner": "reviewing" }
+    ]
+  },
+  {
+    "skill": "resuming",
+    "positive": ["resume", "continue 20261018-invoice-export", "where were we on the export feature"],
+    "negative": [
+      { "prompt": "show the status of every work item and its spend", "owner": "inspecting" },
+      { "prompt": "resume work on branch feature-x in its worktree", "owner": "branching" }
+    ]
+  },
+  {
+    "skill": "reviewing",
+    "positive": ["review this phase", "review the pull request at this URL and post the findings", "run an alignment check of the design record"],
+    "negative": [
+      { "prompt": "proofread this spec for another company", "owner": "proofreading" },
+      { "prompt": "summarize this branch into the PR template", "owner": "summarizing" }
+    ]
+  },
+  {
+    "skill": "summarizing",
+    "positive": ["write the PR description", "summarize this branch into the pull-request template", "PR body for the session's work"],
+    "negative": [
+      { "prompt": "review the diff and give a verdict", "owner": "reviewing" },
+      { "prompt": "draft a Jira story for the export", "owner": "ticketing" }
+    ]
+  },
+  {
+    "skill": "ticketing",
+    "positive": ["log a bug in Jira", "pull JIRA-123", "draft an epic for the backlog"],
+    "negative": [
+      { "prompt": "write the PR description", "owner": "summarizing" },
+      { "prompt": "add a glossary entry and document the term", "owner": "documenting" }
+    ]
+  },
+  {
+    "skill": "understanding",
+    "positive": ["question me on this plan", "interview me and sharpen the terminology", "help me think this through before we implement"],
+    "negative": [
+      { "prompt": "should we build or buy, and what is the strategy", "owner": "consulting" },
+      { "prompt": "explain with an example what happens to the data", "owner": "explaining" }
+    ]
+  }
+]

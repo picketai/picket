@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { joinedRules } from "../core/lib/hooks/inject.rules.mjs";
+import { skillDescriptions } from "./skills/routing.mjs";
 
 const ROOT = resolve(".");
 const BUDGETS = {
@@ -53,24 +54,11 @@ test("agent shells, skills, step files and rules stay within their line budgets"
 
 test("every skill has a description with a 'Use when' trigger and one declared route", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const problems = [];
-  for (const p of walk(join(ROOT, "core", "skills"), (f) => f.endsWith("SKILL.md"))) {
-    const text = readFileSync(p, "utf8").replace(/\r\n/g, "\n");
-    const fm = text.match(/^---\n([\s\S]*?)\n---/);
-    if (!fm) {
+  for (const { path: p, description: desc } of skillDescriptions(ROOT)) {
+    if (desc === null) {
       problems.push(`${rel(p)}: no frontmatter`);
       continue;
     }
-    // description is either one line or a folded block (`>` / `|`) of indented lines
-    const lines = fm[1].split("\n");
-    const start = lines.findIndex((l) => /^description:/.test(l));
-    let desc = "";
-    if (start >= 0) {
-      const head = lines[start].replace(/^description:\s*/, "");
-      if (/^(>-?|\|-?)?\s*$/.test(head)) {
-        for (let i = start + 1; i < lines.length && /^\s+\S/.test(lines[i]); i++) desc += " " + lines[i].trim();
-      } else desc = head;
-    }
-    desc = desc.replace(/\s+/g, " ").trim();
     if (!/use when/i.test(desc)) problems.push(`${rel(p)}: description lacks "Use when"`);
     if (desc.length > 1024) problems.push(`${rel(p)}: description ${desc.length} chars > 1024`);
   }
