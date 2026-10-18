@@ -1,5 +1,7 @@
 # Latency session — what changed and what to check (written 2026-09-03)
 
+Checklist run on 2026-10-17: results in `artifacts/reports/latency-session-followup-2026-10-17.md`.
+
 Working session of 2026-09-02/03 on harness latency and cost. Companion running
 state: `tmp/latency-worklog.md`. Check back **on or after 2026-09-17**, once the
 host project (`D:\workspace\development`) has run a couple of weeks on the new

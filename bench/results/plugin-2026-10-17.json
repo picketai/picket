@@ -1,0 +1,3763 @@
+{
+  "manifest": {
+    "harness": "plugin",
+    "harness_root": "D:\\workspace\\github\\AISpec",
+    "harness_commit": "2ce91da",
+    "harness_dirty": true,
+    "fixture_hash": "ba1d8b716475",
+    "claude_version": "2.1.302 (Claude Code)",
+    "node_version": "v20.11.1",
+    "effort_level": "high",
+    "permission_mode": "acceptEdits",
+    "allowed_tools": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git ls-files*)",
+      "Bash(git blame*)",
+      "Bash(picket *)",
+      "Read(//d/workspace/github/AISpec/core/**)"
+    ],
+    "runs_per_task": 2,
+    "started": "2026-10-17T19:53:18.519Z"
+  },
+  "records": [
+    {
+      "task": "fast-01-pagination",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T19:53:19.039Z",
+      "session_ids": [
+        "af8c85fc-abc7-44a7-adcd-19a61f8a4d83",
+        "af8c85fc-abc7-44a7-adcd-19a61f8a4d83"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 18,
+      "cost_usd": 0.6922902000000001,
+      "usage": {
+        "input_tokens": 24,
+        "cache_read_input_tokens": 451249,
+        "cache_creation_input_tokens": 26043,
+        "output_tokens": 3133
+      },
+      "api_ms": 59298,
+      "wall_ms": 61489,
+      "tool_calls": 15,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Grep": 2,
+        "Read": 3,
+        "Edit": 2
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 23282,
+      "first_tool_ms": 7538,
+      "first_reviewable_ms": 23282,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-fix-invoice-list-page-offset\n\nPage 1 of `GET /invoices` now returns the newest `size` invoices instead of skipping them.\n\nFiles: src/http/handlers.ts, test/router.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive --hit \"GET /invoices?page=1&size=2\" --hit \"GET /invoices?page=2&size=2\"` → 200 for both; page 1 starts at INV-1006 (the newest) and page 2 starts at INV-1004\nDecisions: the offset is now `(page - 1) * size`. The existing size test used `page=0`, so I moved it to `page=1`. `page=0` now returns an empty list. I left it that way and added no validation, to keep the change small.\nComments: none\nCommit: fix(http): start invoice list pages at 1   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as `851697d` (`fix(http): start invoice list pages at 1`), and the work item is now closed. Nothing was left uncommitted.\n\nThe commit message doesn't have the `Co-Authored-By` trailer because I didn't include it in the message. I can amend the commit to add it if you want."
+      ],
+      "error": null,
+      "port": 8100,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9454,
+      "tokens_total": 480449,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 17,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:page \\* size, \\(page \\+ 1\\) \\* size",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T19:54:24.628Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-01-pagination-r1-mvctdkfv.jsonl"
+    },
+    {
+      "task": "fast-01-pagination",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T19:54:25.029Z",
+      "session_ids": [
+        "47a22d74-2717-463f-a98d-a9718a56bf13",
+        "47a22d74-2717-463f-a98d-a9718a56bf13"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 19,
+      "cost_usd": 0.7166194000000001,
+      "usage": {
+        "input_tokens": 24,
+        "cache_read_input_tokens": 459917,
+        "cache_creation_input_tokens": 27192,
+        "output_tokens": 3160
+      },
+      "api_ms": 90910,
+      "wall_ms": 68637,
+      "tool_calls": 16,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Grep": 2,
+        "Read": 4,
+        "Edit": 2
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 31538,
+      "first_tool_ms": 7967,
+      "first_reviewable_ms": 31538,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-fix-invoice-list-page-offset\n\nPage 1 of `GET /invoices` now returns the newest `size` invoices, and page 2 returns the next ones.\n\nThe offset is now `(page - 1) * size`. The existing \"limits the page size\" test asked for `page=0`, so I changed it to `page=1`. With pages starting at 1, page 0 now returns an empty list.\n\nFiles: src/http/handlers.ts, test/router.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive` GET `/invoices?page=1&size=2` → 200, first item INV-1006 (the newest); GET `/invoices?page=2&size=2` → 200, first item INV-1004\nComments: none\nCommit: fix(http): start invoice list pages at 1   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as `2b95e9f` (\"fix(http): start invoice list pages at 1\") and closed work item 20261017-fix-invoice-list-page-offset. The commit holds the handler fix, the two new page tests and the work item's state file. Nothing is left uncommitted."
+      ],
+      "error": null,
+      "port": 8101,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9441,
+      "tokens_total": 490293,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 17,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:page \\* size, \\(page \\+ 1\\) \\* size",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T19:55:37.547Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-01-pagination-r2-mvctezgw.jsonl"
+    },
+    {
+      "task": "fast-02-config-guard",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T19:55:37.934Z",
+      "session_ids": [
+        "3fba7d4a-9fe4-4540-ba86-227d4f671998",
+        "3fba7d4a-9fe4-4540-ba86-227d4f671998"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 20,
+      "cost_usd": 0.7582556000000001,
+      "usage": {
+        "input_tokens": 28,
+        "cache_read_input_tokens": 540599,
+        "cache_creation_input_tokens": 26798,
+        "output_tokens": 3614
+      },
+      "api_ms": 73167,
+      "wall_ms": 59483,
+      "tool_calls": 17,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Grep": 1,
+        "Read": 5,
+        "Edit": 1,
+        "Write": 2
+      },
+      "reads": 5,
+      "unique_reads": 5,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 19107,
+      "first_tool_ms": 6808,
+      "first_reviewable_ms": 19107,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-config-loader-falls-back-for-server\n\n`loadConfig()` no longer crashes when `server` is missing: it now uses the `DEFAULT_CONFIG` port and host.\n\nFiles: src/config.ts, test/config.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive --run \"node --loader ts-node/esm .picket/state/scratch/drive.mjs\"` → a config of `{}` loads as the full `DEFAULT_CONFIG`; `{server:{host:\"0.0.0.0\"}}` with `PORT=9001` gives `{\"port\":9001,\"host\":\"0.0.0.0\"}`\nComments: none\nCommit: fix(config): fall back to DEFAULT_CONFIG when server block is missing   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as `9c1980c`. `loadConfig()` now falls back to the `DEFAULT_CONFIG` port and host when `data/config.json` has no `server` block, and the new unit test covers the empty-object case. The commit holds the loader fix, the test, and the closed work item, and nothing else was left uncommitted."
+      ],
+      "error": null,
+      "port": 8102,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9527,
+      "tokens_total": 571039,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/config.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 32,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/config.ts:raw\\.server!",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T19:56:41.171Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-02-config-guard-r1-mvctgjqf.jsonl"
+    },
+    {
+      "task": "fast-02-config-guard",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T19:56:41.570Z",
+      "session_ids": [
+        "c13ca953-d0de-473c-9d8c-e4507d721c42",
+        "c13ca953-d0de-473c-9d8c-e4507d721c42"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 22,
+      "cost_usd": 0.785013,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 578332,
+        "cache_creation_input_tokens": 26991,
+        "output_tokens": 3802
+      },
+      "api_ms": 80288,
+      "wall_ms": 63330,
+      "tool_calls": 19,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Grep": 3,
+        "Read": 4,
+        "Glob": 1,
+        "Edit": 1,
+        "Write": 2
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 22894,
+      "first_tool_ms": 6776,
+      "first_reviewable_ms": 22894,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-loadconfig-falls-back-for-missing-server\n\n`loadConfig()` now uses the `DEFAULT_CONFIG` server port and host when the `server` block or one of its fields is missing.\n\nFiles: src/config.ts, test/config.test.ts\nTests: passed\nLint: passed\nVerified: `node --loader ts-node/esm .picket/state/scratch/drive-config.ts` (loads a `{}` config file) → exit 0, printed the full `DEFAULT_CONFIG` (port 8080, host 127.0.0.1)\nComments: none\nCommit: fix(config): fall back to DEFAULT_CONFIG when server block is missing   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as `5ba82ff`. The work item is closed, and no uncommitted files were left behind."
+      ],
+      "error": null,
+      "port": 8103,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9554,
+      "tokens_total": 609155,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/config.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 38,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 23,
+          "failed": 0,
+          "total": 23,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "23/23 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/config.ts:raw\\.server!",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T19:57:49.033Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-02-config-guard-r2-mvcthwtq.jsonl"
+    },
+    {
+      "task": "fast-03-rename",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T19:57:49.412Z",
+      "session_ids": [
+        "02aa2275-03e8-4945-8dc5-ce13c87412bb",
+        "02aa2275-03e8-4945-8dc5-ce13c87412bb"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 23,
+      "cost_usd": 0.7086046000000001,
+      "usage": {
+        "input_tokens": 26,
+        "cache_read_input_tokens": 496858,
+        "cache_creation_input_tokens": 26384,
+        "output_tokens": 2937
+      },
+      "api_ms": 80912,
+      "wall_ms": 63532,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 1,
+        "Read": 4,
+        "Grep": 3,
+        "Edit": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 24675,
+      "first_tool_ms": 7216,
+      "first_reviewable_ms": 24675,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-rename-applystuff-to-describe-its-result\n\nThe pricing function is now named `subtotalAndDiscount`, which says what it returns.\n\nFiles: src/domain/pricing.ts, src/domain/invoice.ts, test/pricing.test.ts\nTests: passed\nLint: passed\nVerified: `npm run cli -- list` → exit 0, totals for all six invoices printed (for example INV-1001 Acme Bakery 95.18 EUR)\nComments: none\nCommit: refactor(pricing): rename applyStuff to subtotalAndDiscount   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as `ae61993`: `applyStuff` is now `subtotalAndDiscount`, with the caller in `src/domain/invoice.ts` and the tests in `test/pricing.test.ts` updated. The work item is closed and nothing was left uncommitted."
+      ],
+      "error": null,
+      "port": 8104,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9495,
+      "tokens_total": 526205,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/domain/invoice.ts",
+        "src/domain/pricing.ts",
+        "test/pricing.test.ts"
+      ],
+      "lines_added": 7,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "grep:src/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "10 file(s) scanned"
+          },
+          {
+            "name": "grep:test/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "grep:src/domain/pricing.ts:minLines: 25, percent: 10",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T19:58:55.152Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-03-rename-r1-mvctjd6u.jsonl"
+    },
+    {
+      "task": "fast-03-rename",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T19:58:55.524Z",
+      "session_ids": [
+        "51bc4c06-9498-48f2-a176-43a4c72addaf",
+        "51bc4c06-9498-48f2-a176-43a4c72addaf"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 23,
+      "cost_usd": 0.7644338000000002,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 582053,
+        "cache_creation_input_tokens": 27033,
+        "output_tokens": 3206
+      },
+      "api_ms": 84415,
+      "wall_ms": 67805,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 1,
+        "Read": 4,
+        "Grep": 3,
+        "Edit": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 20360,
+      "first_tool_ms": 6761,
+      "first_reviewable_ms": 20360,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-rename-applystuff-to-descriptive-name\n\nI renamed `applyStuff` to `subtotalAndDiscount`, which names the two values it returns.\n\nFiles: src/domain/pricing.ts, src/domain/invoice.ts, test/pricing.test.ts\nTests: passed\nLint: passed\nVerified: `npm run cli -- list` → exit 0, totals printed for all 6 invoices (for example, INV-1001 Acme Bakery 95.18 EUR)\nComments: none\nCommit: refactor(pricing): rename applyStuff to subtotalAndDiscount   (staged; your answer commits it)\n\nI also hit `GET /invoices`. It returned 200 with `total: 6` but an empty `items` list on page 1. That never reaches the renamed function, so I verified with the CLI instead. The empty page is separate from this rename and I left it alone.\n\n[c] commit   [x] discard: <why>",
+        "The rename to `subtotalAndDiscount` is committed as 3ce8965, together with the updated caller in `src/domain/invoice.ts` and the tests. The work item is closed and nothing is left uncommitted."
+      ],
+      "error": null,
+      "port": 8105,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9556,
+      "tokens_total": 612322,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/domain/invoice.ts",
+        "src/domain/pricing.ts",
+        "test/pricing.test.ts"
+      ],
+      "lines_added": 7,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "grep:src/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "10 file(s) scanned"
+          },
+          {
+            "name": "grep:test/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "grep:src/domain/pricing.ts:minLines: 25, percent: 10",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:00:05.690Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-03-rename-r2-mvctks7c.jsonl"
+    },
+    {
+      "task": "fast-04-listen-error-log",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:00:06.137Z",
+      "session_ids": [
+        "5f6569e3-e384-4dd9-8cf0-c3a46c108fd2",
+        "5f6569e3-e384-4dd9-8cf0-c3a46c108fd2"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 20,
+      "cost_usd": 0.7300554000000001,
+      "usage": {
+        "input_tokens": 28,
+        "cache_read_input_tokens": 531194,
+        "cache_creation_input_tokens": 25659,
+        "output_tokens": 3380
+      },
+      "api_ms": 67059,
+      "wall_ms": 56798,
+      "tool_calls": 17,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 1,
+        "Read": 3,
+        "Glob": 1,
+        "Edit": 2,
+        "Write": 2
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 18475,
+      "first_tool_ms": 5596,
+      "first_reviewable_ms": 18475,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-log-listen-errors-before-exiting\n\nWhen the service can't listen, it now prints the reason to stderr before exiting with code 1.\n\nFiles: src/http/server.ts, test/server.test.ts\nTests: passed\nLint: passed\nVerified: `node .picket/state/scratch/drive.mjs` (holds a port open, then starts the service on it) → exit 1, stderr `ledgerlite cannot listen: 127.0.0.1:52188 is already in use`\nComments: none\nCommit: fix(http): log listen errors to stderr before exiting   (staged; your answer commits it)\n\nThe message is built by a new exported function, `describeListenError`, so the tests can check it without opening a port. Any error other than EADDRINUSE prints as `ledgerlite server error: <message>`.\n\n[c] commit   [x] discard: <why>",
+        "Committed as 7462bca. The work item is closed and nothing was left uncommitted."
+      ],
+      "error": null,
+      "port": 8106,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9539,
+      "tokens_total": 560261,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/server.ts",
+        "test/server.test.ts"
+      ],
+      "lines_added": 25,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "grep:src/http/server.ts:EADDRINUSE",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:console\\.error",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:process\\.exit\\(1\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/router.ts",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:01:05.119Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-04-listen-error-log-r1-mvctmamy.jsonl"
+    },
+    {
+      "task": "fast-04-listen-error-log",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:01:05.513Z",
+      "session_ids": [
+        "d5892a08-fc3b-47d4-839f-3389ed30b7c2",
+        "d5892a08-fc3b-47d4-839f-3389ed30b7c2"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 20,
+      "cost_usd": 0.7436260000000001,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 568396,
+        "cache_creation_input_tokens": 25631,
+        "output_tokens": 3367
+      },
+      "api_ms": 71272,
+      "wall_ms": 58278,
+      "tool_calls": 17,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 1,
+        "Read": 3,
+        "Glob": 1,
+        "Edit": 2,
+        "Write": 2
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 20244,
+      "first_tool_ms": 5894,
+      "first_reviewable_ms": 20244,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-log-listen-errors-before-exiting\n\nWhen the service can't start listening, it now writes the reason to stderr before exiting with code 1.\n\nFiles: src/http/server.ts, test/server.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive --run \"node .picket/state/scratch/drive.mjs\"` (occupies a port, then starts the service on it) → exit code 1, stderr `ledgerlite cannot listen: 127.0.0.1:54524 is already in use`\nComments: none\nCommit: fix(http): log listen errors to stderr before exiting   (staged; your answer commits it)\n\nDecisions: a new function `describeListenError` builds the message so it can be unit tested. Both messages start with `ledgerlite cannot listen:`, the same name the existing \"listening\" log line uses.\n\n[c] commit   [x] discard: <why>",
+        "The change is committed as `78960eb`, \"fix(http): log listen errors to stderr before exiting\", and the work item is closed. Nothing else is left uncommitted."
+      ],
+      "error": null,
+      "port": 8107,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9568,
+      "tokens_total": 597424,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/server.ts",
+        "test/server.test.ts"
+      ],
+      "lines_added": 25,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "grep:src/http/server.ts:EADDRINUSE",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:console\\.error",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:process\\.exit\\(1\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/router.ts",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:02:06.232Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-04-listen-error-log-r2-mvctnkhj.jsonl"
+    },
+    {
+      "task": "fast-05-page-size-default",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:02:06.619Z",
+      "session_ids": [
+        "8b310e75-2baa-4c30-8a2e-36dcdaa71edf",
+        "8b310e75-2baa-4c30-8a2e-36dcdaa71edf"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 21,
+      "cost_usd": 0.7173874,
+      "usage": {
+        "input_tokens": 24,
+        "cache_read_input_tokens": 465434,
+        "cache_creation_input_tokens": 27503,
+        "output_tokens": 3044
+      },
+      "api_ms": 62793,
+      "wall_ms": 53797,
+      "tool_calls": 18,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Read": 4,
+        "Grep": 1,
+        "Edit": 4,
+        "Glob": 1
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 19129,
+      "first_tool_ms": 6188,
+      "first_reviewable_ms": 19129,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-invoices-default-page-size-to-25\n\nGET /invoices now returns 25 items per page by default, and both defaults agree.\n\nFiles: src/config.ts, data/config.json, test/router.test.ts\nTests: passed (2 new tests: the default size is 25, and the value in data/config.json matches the code default)\nLint: passed\nVerified: `picket drive --hit \"GET /invoices\"` → 200 `{\"page\":1,\"size\":25,\"total\":6,\"items\":[]}`\nComments: none\nCommit: feat(invoices): raise default page size from 20 to 25   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as 747c655. The work item is closed and nothing was left uncommitted.\n\nOne thing I noticed while testing, which this change didn't cause: `GET /invoices` with no `page` returned `\"page\":1` and an empty `items` list, even though `total` was 6. The list seems to start at page 0, so the default page skips the first 25 invoices. Your existing test uses `page=0`, which fits that. I left it alone because it was outside this request."
+      ],
+      "error": null,
+      "port": 8108,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9442,
+      "tokens_total": 496005,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "data/config.json",
+        "src/config.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 13,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/config.ts:defaultPageSize: 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:data/config.json:\"defaultPageSize\": 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:03:04.107Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-05-page-size-default-r1-mvctovn7.jsonl"
+    },
+    {
+      "task": "fast-05-page-size-default",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:03:04.499Z",
+      "session_ids": [
+        "8223b8f4-b0cc-4636-98d5-ab7c374b1616",
+        "8223b8f4-b0cc-4636-98d5-ab7c374b1616"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 21,
+      "cost_usd": 0.7242149999999999,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 428610,
+        "cache_creation_input_tokens": 28505,
+        "output_tokens": 3177
+      },
+      "api_ms": 61463,
+      "wall_ms": 51884,
+      "tool_calls": 18,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Read": 5,
+        "Grep": 1,
+        "Edit": 4
+      },
+      "reads": 5,
+      "unique_reads": 5,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 20252,
+      "first_tool_ms": 5710,
+      "first_reviewable_ms": 20252,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-invoices-default-page-size-to-25\n\nGET /invoices now returns 25 items per page by default, set the same way in both places.\n\nFiles: src/config.ts, data/config.json, test/router.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive --hit \"GET /invoices?page=0\"` → 200 `{\"page\":0,\"size\":25,\"total\":6,...}`\nDecisions: I added a test that checks `data/config.json` and `DEFAULT_CONFIG.listing` still match, so the two values can't drift apart again. I left the `size=20` in the README alone because it is an example query, not the default. Separately, I noticed an older bug that this change does not fix: `page` defaults to 1, but pages are counted from 0, so a request with no `page` skips the first page.\nComments: none\nCommit: fix(invoices): raise default page size from 20 to 25   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as `20dbf2e`. The default page size is now 25 in both `src/config.ts` and `data/config.json`, and the work item is closed."
+      ],
+      "error": null,
+      "port": 8109,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9376,
+      "tokens_total": 460314,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "data/config.json",
+        "src/config.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 13,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/config.ts:defaultPageSize: 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:data/config.json:\"defaultPageSize\": 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:04:00.337Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-05-page-size-default-r2-mvctq4az.jsonl"
+    },
+    {
+      "task": "fast-06-tax-rounding",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:04:00.731Z",
+      "session_ids": [
+        "a0d5ff20-fbdd-4adb-b686-3d02efe9b224",
+        "a0d5ff20-fbdd-4adb-b686-3d02efe9b224"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 19,
+      "cost_usd": 0.7019749999999999,
+      "usage": {
+        "input_tokens": 24,
+        "cache_read_input_tokens": 454609,
+        "cache_creation_input_tokens": 26208,
+        "output_tokens": 3306
+      },
+      "api_ms": 89357,
+      "wall_ms": 68286,
+      "tool_calls": 16,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Read": 5,
+        "Grep": 1,
+        "Edit": 2
+      },
+      "reads": 5,
+      "unique_reads": 5,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 27129,
+      "first_tool_ms": 7182,
+      "first_reviewable_ms": 27129,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-round-tax-percentage-half-up-to-cent\n\nTax on 19.99 EUR at 7% is now 1.40 EUR, because `percentOf` rounds half up instead of truncating.\n\nFiles: src/domain/money.ts, test/money.test.ts\nTests: passed (all suites, including the three discount ladder tests in test/pricing.test.ts)\nLint: passed\nVerified: `npm run cli -- list` → exit 0, all six invoices listed with totals\nDecisions: I used `Math.round`, which rounds an exact half toward positive infinity. For a negative amount, -0.5 cents would round to 0, not -1. Nothing in the code computes a percentage of a negative amount today. Besides the 1999 cents case (gives 140), I added a test where the result is exactly half a cent (50 at 1% gives 1) and one where it is below half (1001 at 7% gives 70).\nComments: none\nCommit: fix(money): round percentages half up to the nearest cent   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as 39d465c. Tax on a 19.99 EUR invoice at 7% now comes out as 1.40 instead of 1.39. The commit includes the rounding fix in `src/domain/money.ts`, the new tests in `test/money.test.ts`, and the work item, which is now closed. Nothing was left uncommitted."
+      ],
+      "error": null,
+      "port": 8110,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9454,
+      "tokens_total": 484147,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/domain/money.ts",
+        "test/money.test.ts"
+      ],
+      "lines_added": 13,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 23,
+          "failed": 0,
+          "total": 23,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "23/23 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "grep:src/domain/money.ts:Math\\.floor\\(\\(amount \\* ratePercent\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:05:12.690Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-06-tax-rounding-r1-mvctrbou.jsonl"
+    },
+    {
+      "task": "fast-06-tax-rounding",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:05:13.076Z",
+      "session_ids": [
+        "c5b3df74-dfd9-4f7a-8adf-874bfd7f4099",
+        "c5b3df74-dfd9-4f7a-8adf-874bfd7f4099"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 25,
+      "cost_usd": 0.9080396,
+      "usage": {
+        "input_tokens": 36,
+        "cache_read_input_tokens": 731181,
+        "cache_creation_input_tokens": 29674,
+        "output_tokens": 4311
+      },
+      "api_ms": 90283,
+      "wall_ms": 70203,
+      "tool_calls": 22,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 1,
+        "Read": 7,
+        "Grep": 4,
+        "Edit": 2
+      },
+      "reads": 7,
+      "unique_reads": 7,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 23841,
+      "first_tool_ms": 5945,
+      "first_reviewable_ms": 23841,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261017-round-tax-percentage-half-up-to-cent\n\nTax on 19.99 EUR at 7% is now 1.40, not 1.39: `percentOf` rounds half up instead of truncating.\n\nFiles: src/domain/money.ts, test/money.test.ts\nTests: passed (the discount ladder tests in test/pricing.test.ts also pass)\nLint: passed\nVerified: `npm run cli -- show INV-1001` → net 8896 at 7% (622.72 cents) gives taxCents 623, total 9519; before the change it was 622\nDecisions: I used `Math.round`, which rounds exact halves toward positive infinity. A negative amount such as -150 at 1% gives -1, not -2. No current caller passes a negative amount.\nComments: none\nCommit: fix(money): round percentOf half up to the nearest cent   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "Committed as cb57ae1: `percentOf` now rounds half up, so 19.99 EUR at 7% tax gives 1.40."
+      ],
+      "error": null,
+      "port": 8111,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.961,
+      "tokens_total": 765202,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/domain/money.ts",
+        "test/money.test.ts"
+      ],
+      "lines_added": 7,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 21,
+          "failed": 0,
+          "total": 21,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "21/21 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "grep:src/domain/money.ts:Math\\.floor\\(\\(amount \\* ratePercent\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:06:26.969Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-06-tax-rounding-r2-mvctsvij.jsonl"
+    },
+    {
+      "task": "gate-13-api-key-auth",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:06:27.332Z",
+      "session_ids": [
+        "c12b0843-7b40-4f13-a18c-e99521728941",
+        "c12b0843-7b40-4f13-a18c-e99521728941",
+        "c12b0843-7b40-4f13-a18c-e99521728941"
+      ],
+      "stops": 2,
+      "gates": [
+        "approval",
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 11,
+      "cost_usd": 5.191963400000001,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 581450,
+        "cache_creation_input_tokens": 9636,
+        "output_tokens": 2427
+      },
+      "api_ms": 812274,
+      "wall_ms": 384460,
+      "tool_calls": 69,
+      "tool_counts": {
+        "Bash": 30,
+        "Skill": 1,
+        "Read": 14,
+        "Agent": 4,
+        "Write": 6,
+        "Edit": 11,
+        "ToolSearch": 1,
+        "SendMessage": 1,
+        "Grep": 1
+      },
+      "reads": 14,
+      "unique_reads": 14,
+      "rereads": 0,
+      "subagents": 4,
+      "first_write_ms": 108588,
+      "first_tool_ms": 6131,
+      "first_reviewable_ms": 108588,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/2 done · 20261017-api-key-authentication-for-endpoints\n  Config now loads `auth.apiKey` from the file, with an empty default and an `API_KEY` override.\n\n  tests     passed\n  lint      passed\n  verified  picket drive --env API_KEY=<test value> --hit \"GET /health\" --hit \"GET /invoices\" → bot…\n  files     D:/workspace/github/AISpec/bench/.runs/gate-13-api-key-auth-r1-mvctugtt/repo/src/config…\n  gate      phase 1 is marked security-sensitive in the record; run grants stop here\n  decisions · non-string file key check pulled into `configuredApiKey(raw)`\n            · added a test that an empty API_KEY keeps the file key\n  commit    feat(config): load auth.apiKey with API_KEY override (staged; approval commits it)\n\n[a] approve   [r] run through 2   [x] reject: <why>\n```",
+        "```text\n▶ phase 2/2 done · 20261017-api-key-authentication-for-endpoints\n  Every endpoint except `GET /health` now returns 401 unless the request sends the configured `x-ap…\n\n  tests     passed\n  lint      passed\n  verified  picket drive --env API_KEY=<test value> --env PORT=18080 --run \"node .picket/state/scra…\n  files     D:/workspace/github/AISpec/bench/.runs/gate-13-api-key-auth-r1-mvctugtt/repo/src/auth/a…\n  gate      phase 2 touches a security path (src/auth/apiKey.ts); run grants stop here\n  decisions · phase 2 started because `picket next` showed implement_phase and you approved phase 1\n            · it still needs its own approval\n            · a URL that will not parse is treated as not public, so it needs a key\n            · +2 more in the phase block\n  commit    feat(auth): require x-api-key on all endpoints except GET /health (staged; approval com…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Design closed: 20261017-api-key-authentication-for-endpoints\n\nEvery endpoint except `GET /health` now needs the configured `x-api-key`, checked in constant time. A missing or wrong key gets 401 `{ error: { message: \"unauthorized\" } }`.\n\nPhases: 2 · decisions: 5 (0 amended) · commits 7f9539e..5065deb · review: APPROVED\n\nQuestions: Should the server refuse to start when no key is set? Right now it starts and answers 401 on everything except health (OQ-001). The README doesn't mention `x-api-key` or `API_KEY` yet (OQ-002).\n\nThe reviewer also flagged one minor issue: `src/main.ts` was converted from CRLF to LF line endings, so all 8 of its original lines show as changed in the diff."
+      ],
+      "error": null,
+      "port": 8112,
+      "trusted": true,
+      "rate_limits": 6,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/gate-13-api-key-auth-r1-mvctugtt/repo && for f in src/config.ts src/http/router.ts src/http/server.ts src/http/handlers.ts src/main.ts data/config.json test/r",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9837,
+      "tokens_total": 593535,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/auth/apiKey.ts",
+        "src/config.ts",
+        "src/http/router.ts",
+        "src/http/server.ts",
+        "src/main.ts",
+        "test/auth.test.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 253,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 41,
+          "failed": 0,
+          "total": 41,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "41/41 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "exists:src/auth/*.ts",
+            "ok": true,
+            "detail": "src/auth/apiKey.ts"
+          },
+          {
+            "name": "grep:src/auth/*.ts:timingSafeEqual",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/config.ts:apiKey",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/invoices.json",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:12:57.807Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/gate-13-api-key-auth-r1-mvctugtt.jsonl"
+    },
+    {
+      "task": "gate-13-api-key-auth",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:12:58.246Z",
+      "session_ids": [
+        "7f5c2275-d10a-47e1-9c05-843d72ff3ec5",
+        "7f5c2275-d10a-47e1-9c05-843d72ff3ec5"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 12,
+      "cost_usd": 3.322887,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 589398,
+        "cache_creation_input_tokens": 8707,
+        "output_tokens": 2096
+      },
+      "api_ms": 517141,
+      "wall_ms": 312211,
+      "tool_calls": 64,
+      "tool_counts": {
+        "Bash": 25,
+        "Skill": 1,
+        "Read": 16,
+        "Agent": 4,
+        "Write": 6,
+        "Edit": 10,
+        "ToolSearch": 1,
+        "PushNotification": 1
+      },
+      "reads": 16,
+      "unique_reads": 16,
+      "rereads": 0,
+      "subagents": 4,
+      "first_write_ms": 126568,
+      "first_tool_ms": 6252,
+      "first_reviewable_ms": 126568,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-api-key-authentication-for-all-endpoints\n  Every endpoint except `GET /health` now needs a matching `x-api-key`; anything else gets a 401.\n\n  tests     passed\n  lint      passed\n  verified  picket drive --run \"node .picket/state/scratch/drive.mjs\" → /health 200 with no key; /i…\n  files     src/auth/apiKey.ts, src/http/router.ts, src/http/server.ts, src/config.ts, +3 more\n  gate      phase 1 touches a security path (src/auth/apiKey.ts); run grants stop here\n  decisions · `Router` declares `implements RequestHandler` explicitly so drift fails at compile ti…\n            · config test also covers a non-string `auth.apiKey` falling back to \"\"\n  commit    feat(auth): require x-api-key on all endpoints except GET /health (staged; approval com…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Design closed: 20261017-api-key-authentication-for-all-endpoints\n\nEvery endpoint except `GET /health` now requires a matching `x-api-key` header. The key comes from `auth.apiKey`, and the `API_KEY` environment variable overrides it.\nPhases: 1 · decisions: 4 (0 amended) · commits b5c7b98..0bf377d · review: APPROVED\n\nBefore you deploy, set `API_KEY` or `auth.apiKey`. The default key is empty, and with no key set every endpoint except `/health` answers 401. The server still starts, but it prints a warning."
+      ],
+      "error": null,
+      "port": 8113,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/gate-13-api-key-auth-r2-mvcu2udu/repo && for f in src/config.ts src/main.ts src/http/router.ts src/http/server.ts src/http/handlers.ts test/router.test.ts vit",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/gate-13-api-key-auth-r2-mvcu2udu/repo && cat data/config.json; echo; cat -n src/cli.ts; cat .picket/config.json 2>/dev/null; cat work/20261017-api-key-authent",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "for f in src/config.ts src/http/router.ts src/http/server.ts src/http/handlers.ts src/auth/apiKey.ts src/main.ts; do printf \"%s \" $f; grep -c $'\\r' $f; done; cat .gitattributes 2>/dev/null",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 3,
+      "cache_hit_ratio": 0.9854,
+      "tokens_total": 600223,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/auth/apiKey.ts",
+        "src/config.ts",
+        "src/http/router.ts",
+        "src/http/server.ts",
+        "src/main.ts",
+        "test/auth.test.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 190,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 33,
+          "failed": 0,
+          "total": 33,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "33/33 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "exists:src/auth/*.ts",
+            "ok": true,
+            "detail": "src/auth/apiKey.ts"
+          },
+          {
+            "name": "grep:src/auth/*.ts:timingSafeEqual",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/config.ts:apiKey",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/invoices.json",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:18:16.529Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/gate-13-api-key-auth-r2-mvcu2udu.jsonl"
+    },
+    {
+      "task": "gate-14-status-migration",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:18:16.897Z",
+      "session_ids": [
+        "98727e2d-ec9b-48d3-b4dc-f35fee541150",
+        "98727e2d-ec9b-48d3-b4dc-f35fee541150",
+        "98727e2d-ec9b-48d3-b4dc-f35fee541150",
+        "98727e2d-ec9b-48d3-b4dc-f35fee541150"
+      ],
+      "stops": 3,
+      "gates": [
+        "approval",
+        "irreversible",
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 12,
+      "cost_usd": 8.858701999999997,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 612012,
+        "cache_creation_input_tokens": 9308,
+        "output_tokens": 2975
+      },
+      "api_ms": 1891517,
+      "wall_ms": 644698,
+      "tool_calls": 97,
+      "tool_counts": {
+        "Bash": 37,
+        "Skill": 1,
+        "Read": 19,
+        "Agent": 4,
+        "Write": 5,
+        "Edit": 22,
+        "Grep": 5,
+        "ToolSearch": 1,
+        "SendMessage": 2,
+        "Glob": 1
+      },
+      "reads": 19,
+      "unique_reads": 18,
+      "rereads": 1,
+      "subagents": 4,
+      "first_write_ms": 189280,
+      "first_tool_ms": 8608,
+      "first_reviewable_ms": 189280,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/3 done · 20261017-invoice-status-lifecycle-and-migration\n  New invoices now start as `draft`, and stored records with no status are read back as `issued`.\n\n  tests     passed\n  lint      passed\n  verified  picket drive --hit \"GET /invoices/INV-1001\" on the unmigrated data file → 200 with \"sta…\n  files     src/domain/invoice.ts, src/storage/jsonRepository.ts, test/invoice.test.ts, +2 more\n  decisions · `read()` keeps any other top-level keys of the file through a spread\n            · a separate `StoredFileShape` keeps on-disk and in-memory types apart\n            · the error for a bad status names the id and the bad value\n            · +1 more in the phase block\n  commit    feat(invoice): add status field with draft on create and issued read default (staged; a…\n\n[a] approve   [r] run through 3   [x] reject: <why>\n```",
+        "Phase 2 is committed as `ce40f33`. The issue and pay endpoints are in place and answer 409 on any other transition.\n\nI've paused your run before phase 3. That phase runs the migration against the real `data/invoices.json`, and the design marks that step irreversible. Once the file is rewritten, an old record that had no status looks exactly like an invoice that was really issued. My phase 1 packet should have warned you about this before you granted the run, and it didn't, so I'm asking now.\n\nThe developer would run the migration and then run it a second time to prove it changes nothing. The original file stays in git at `1b951e0`, and phase 3's changes are only staged, not committed, until you approve them.\n\n```text\n⚠ irreversible: phase 3 rewrites data/invoices.json (6 records get \"status\": \"issued\")\n\n[i] confirm irreversible step and continue the run   [x] stop here: <why>\n```",
+        "```text\n▶ phase 3/3 done · 20261017-invoice-status-lifecycle-and-migration\n  `npm run migrate:status` sets missing invoice statuses in a single pass and can be run again safe…\n\n  tests     passed\n  lint      passed\n  verified  first run printed \"migrated 6 of 6\"; picket drive compare vs 1b951e0 → 6 ids, all issue…\n  files     src/storage/statusMigration.ts, scripts/migrate-invoice-status.ts, +4 more\n  gate      phase 3 carries an irreversible step; run grants stop here\n  decisions · a failed rename deletes `<file>.tmp` before rethrowing\n            · I ran the real migration with plain npm, since picket drive restores files it changes\n  commit    feat(storage): add idempotent invoice status migration and migrate data/invoices.json (…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Design closed: 20261017-invoice-status-lifecycle-and-migration\n\nInvoices now have a lifecycle. New invoices start as `draft`. `POST /invoices/:id/issue` moves a draft to `issued` and `POST /invoices/:id/pay` moves an issued invoice to `paid`; any other move answers 409. A record stored without a status is read as `issued`. The six records in `data/invoices.json` were migrated with `npm run migrate:status`, and a second run changed nothing.\n\nPhases: 3 · decisions: 5 (0 amended) · commits ea58dd7..4e62c3a · review: APPROVED\n\nQuestions: the CLI `show` command (`src/cli.ts:24`) now also prints `status`. You didn't ask for that. It only adds a field, so the reviewer let it pass.\n\nLeft for you: a record whose status is not one of the three values (for example `\"void\"`) now makes every read of the file fail with an error naming that invoice. The design chose this deliberately, and today's data has no such record. To roll back the migrated data, restore `data/invoices.json` from `1b951e0`."
+      ],
+      "error": null,
+      "port": 8114,
+      "trusted": true,
+      "rate_limits": 8,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "ls work/20261017-invoice-status-lifecycle-and-migration; cat package.json .picket/config.json data/invoices.json data/config.json; for f in src/*.ts src/*/*.ts test/*.ts vitest.config.ts tsconfig.json",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/gate-14-status-migration-r1-mvcu9ob8/repo && ls work/20261017-invoice-status-lifecycle-and-migration .claude 2>&1; for f in src/domain/invoice.ts src/storage/",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/gate-14-status-migration-r1-mvcu9ob8/repo && npm run --silent migrate:status -- data/invoices.json 2>&1 | grep -v -i \"experimental\\|--import\\|trace-warnings\";",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 3,
+      "cache_hit_ratio": 0.985,
+      "tokens_total": 624317,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "data/invoices.json",
+        "package.json",
+        "scripts/migrate-invoice-status.ts",
+        "src/domain/invoice.ts",
+        "src/http/handlers.ts",
+        "src/storage/jsonRepository.ts",
+        "src/storage/statusMigration.ts",
+        "test/invoice.test.ts",
+        "test/migration.test.ts",
+        "test/repository.test.ts",
+        "test/router.test.ts",
+        "tsconfig.json"
+      ],
+      "lines_added": 437,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 40,
+          "failed": 0,
+          "total": 40,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "40/40 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "exists:scripts/*migrat*",
+            "ok": true,
+            "detail": "scripts/migrate-invoice-status.ts"
+          },
+          {
+            "name": "grep:data/invoices.json:\"status\": \"issued\"",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:/invoices/:id/(issue|pay)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:29:05.352Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/gate-14-status-migration-r1-mvcu9ob8.jsonl"
+    },
+    {
+      "task": "gate-14-status-migration",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:29:05.759Z",
+      "session_ids": [
+        "d47b1aaf-cfd2-4b18-b874-fedd2c949a11",
+        "d47b1aaf-cfd2-4b18-b874-fedd2c949a11"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 5,
+      "cost_usd": 4.305128200000002,
+      "usage": {
+        "input_tokens": 10,
+        "cache_read_input_tokens": 303523,
+        "cache_creation_input_tokens": 3625,
+        "output_tokens": 1256
+      },
+      "api_ms": 640172,
+      "wall_ms": 445081,
+      "tool_calls": 96,
+      "tool_counts": {
+        "Bash": 39,
+        "Skill": 1,
+        "Read": 23,
+        "Agent": 4,
+        "Write": 5,
+        "Edit": 20,
+        "Grep": 2,
+        "SendMessage": 2
+      },
+      "reads": 23,
+      "unique_reads": 22,
+      "rereads": 1,
+      "subagents": 4,
+      "first_write_ms": 122402,
+      "first_tool_ms": 6105,
+      "first_reviewable_ms": 122402,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/3 done · 20261017-invoice-status-lifecycle-with-data-migration\n  Invoices now have a status: new ones start as draft…\n\n  tests     passed\n  lint      passed\n  verified  picket drive on unmigrated data/invoices.json → GET /invoices/INV-1001 200 \"status\":\"is…\n  files     src/domain/invoice.ts, src/storage/legacyInvoice.ts, +4 more\n  decisions · issue and pay share one private `transition` over the ALLOWED_MOVES table\n            · repository splits FileShape (stored) from LoadedShape (normalised) for honest types\n  commit    feat(invoice): add status lifecycle to Invoice with issued default for legacy records (…\n\n[a] approve   [r] run through 3   [x] reject: <why>\n```",
+        "## Design closed: 20261017-invoice-status-lifecycle-with-data-migration\n\nInvoices now have a `draft` → `issued` → `paid` lifecycle. New invoices start as `draft`. `POST /invoices/:id/issue` and `POST /invoices/:id/pay` move an invoice one step and answer 409 on any other move. An idempotent migration script set the six records in `data/invoices.json` to `issued`, and the repository reads any record without a status as `issued`.\nPhases: 3 · decisions: 4 (0 amended) · commits 4596f77..32430de · review: APPROVED\n\nThe README endpoint table still doesn't list the two new routes or the `status` field. The design left that out of scope, so tell me if you want it added. The migration command is `npm run migrate:invoice-status`."
+      ],
+      "error": null,
+      "port": 8115,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in package.json src/domain/invoice.ts src/storage/jsonRepository.ts src/http/handlers.ts src/http/router.ts src/http/server.ts src/main.ts src/cli.ts src/config.ts data/invoices.json data/config",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "node --version; ls node_modules 2>&1 | head -5; ls scripts 2>&1; cat work/*/request.md; node \"D:/workspace/github/AISpec/core/skills/documenting/scripts/filename.mjs\" --kind design --work 20261017-inv",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/gate-14-status-migration-r2-mvcunkz6/repo && picket check && mkdir -p .picket/state/scratch && cp data/invoices.json .picket/state/scratch/invoices-drive.json",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 3,
+      "cache_hit_ratio": 0.9882,
+      "tokens_total": 308414,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "data/invoices.json",
+        "package.json",
+        "scripts/migrate-invoice-status.ts",
+        "src/domain/invoice.ts",
+        "src/http/handlers.ts",
+        "src/storage/jsonRepository.ts",
+        "src/storage/legacyInvoice.ts",
+        "src/storage/migrateInvoiceStatus.ts",
+        "test/invoice.test.ts",
+        "test/migrateInvoiceStatus.test.ts",
+        "test/repository.test.ts",
+        "test/router.test.ts",
+        "tsconfig.json"
+      ],
+      "lines_added": 420,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 42,
+          "failed": 0,
+          "total": 42,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "42/42 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "exists:scripts/*migrat*",
+            "ok": true,
+            "detail": "scripts/migrate-invoice-status.ts"
+          },
+          {
+            "name": "grep:data/invoices.json:\"status\": \"issued\"",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:/invoices/:id/(issue|pay)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:36:34.585Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/gate-14-status-migration-r2-mvcunkz6.jsonl"
+    },
+    {
+      "task": "order-07-summary-endpoint",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:36:34.982Z",
+      "session_ids": [
+        "f3c42f0b-4993-49af-8cdb-7e4b19abfa2b",
+        "f3c42f0b-4993-49af-8cdb-7e4b19abfa2b"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 19,
+      "cost_usd": 2.2040732000000003,
+      "usage": {
+        "input_tokens": 34,
+        "cache_read_input_tokens": 696343,
+        "cache_creation_input_tokens": 32452,
+        "output_tokens": 4374
+      },
+      "api_ms": 274374,
+      "wall_ms": 191976,
+      "tool_calls": 42,
+      "tool_counts": {
+        "Bash": 20,
+        "Skill": 1,
+        "Read": 11,
+        "Agent": 3,
+        "Write": 1,
+        "Edit": 6
+      },
+      "reads": 11,
+      "unique_reads": 11,
+      "rereads": 0,
+      "subagents": 3,
+      "first_write_ms": 66952,
+      "first_tool_ms": 5724,
+      "first_reviewable_ms": 66952,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-invoice-summary-endpoint-with-tests\n  `GET /invoices/:id/summary` now returns the compact summary…\n\n  tests     passed\n  lint      passed\n  verified  picket drive GET /invoices/INV-1003/summary → 200 `{\"lineCount\":3,\"totalCents\":36913,\"t…\n  files     src/http/handlers.ts, test/router.test.ts\n  decisions · one 404 test covers both T-1.2 (exact body) and T-1.3 (equals the `/invoices/:id` 404)\n  commit    feat(http): add GET /invoices/:id/summary with shared not-found response (staged; appro…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Order closed: 20261017-invoice-summary-endpoint-with-tests\n\n`GET /invoices/:id/summary` now returns `{ id, customer, currency, lineCount, totalCents, total }`, for example `\"total\": \"369.13 EUR\"`. An unknown id gets the same 404 body as `GET /invoices/:id`, because both routes now use one shared not-found helper. Tests cover the success case and the 404.\nPhases: 1 · commits ce36e81..3cdb37b · review: APPROVED\n\nThe order left one question open (OQ-001): should `README.md`'s endpoint table get a row for the new route? It was left unchanged. If you want the row, it can be a separate small docs change."
+      ],
+      "error": null,
+      "port": 8116,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in package.json src/http/handlers.ts src/http/router.ts src/http/server.ts src/domain/invoice.ts src/domain/money.ts src/domain/pricing.ts src/storage/jsonRepository.ts src/main.ts test/router.t",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd /d/workspace/github/AISpec/bench/.runs/order-07-summary-endpoint-r1-mvcux7m0/repo; npx vitest run test/router.test.ts 2>&1 | tail -8; npx tsc -p tsconfig.json --noEmit; echo lint=$?",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9554,
+      "tokens_total": 733203,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 45,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:/invoices/:id/summary",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:39:50.672Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-07-summary-endpoint-r1-mvcux7m0.jsonl"
+    },
+    {
+      "task": "order-07-summary-endpoint",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:39:51.042Z",
+      "session_ids": [
+        "095c467c-98c9-4395-aa69-6973969d70aa",
+        "095c467c-98c9-4395-aa69-6973969d70aa"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 17,
+      "cost_usd": 1.9808541999999996,
+      "usage": {
+        "input_tokens": 32,
+        "cache_read_input_tokens": 629543,
+        "cache_creation_input_tokens": 29555,
+        "output_tokens": 4217
+      },
+      "api_ms": 242383,
+      "wall_ms": 175801,
+      "tool_calls": 37,
+      "tool_counts": {
+        "Bash": 19,
+        "Skill": 1,
+        "Read": 7,
+        "Agent": 3,
+        "Write": 1,
+        "Edit": 5,
+        "Grep": 1
+      },
+      "reads": 7,
+      "unique_reads": 7,
+      "rereads": 0,
+      "subagents": 3,
+      "first_write_ms": 58593,
+      "first_tool_ms": 6170,
+      "first_reviewable_ms": 58593,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-add-invoice-summary-endpoint-with-tests\n  `GET /invoices/:id/summary` now returns a compact summary…\n\n  tests     passed\n  lint      passed\n  verified  picket drive GET /invoices/INV-1001/summary → 200 `{\"id\":\"INV-1001\",\"customer\":\"Acme Ba…\n  files     src/http/handlers.ts, test/router.test.ts\n  decisions · 404 test checks the exact body and also checks it equals the GET /invoices/INV-9999 b…\n  commit    feat(http): add GET /invoices/:id/summary endpoint with shared 404 helper (staged; appr…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Order closed: 20261017-add-invoice-summary-endpoint-with-tests\n\n`GET /invoices/:id/summary` now returns `{ id, customer, currency, lineCount, totalCents, total }` (for example `INV-1001` returns `total: \"95.18 EUR\"`). Unknown ids get the same 404 body as `GET /invoices/:id`, because both routes now share one not-found helper. It has unit tests for the happy path and the 404.\n\nPhases: 1 · commits a986015..9647ca6 · review: APPROVED"
+      ],
+      "error": null,
+      "port": 8117,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in src/http/handlers.ts src/http/router.ts src/http/server.ts src/domain/invoice.ts src/domain/money.ts src/domain/pricing.ts src/storage/jsonRepository.ts src/main.ts src/config.ts test/router.",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/order-07-summary-endpoint-r2-mvcv1ewd/repo && git diff --stat 1b951e0; grep -n \"1070\\|ratePercent\" test/router.test.ts src/config.ts; npx vitest run test/rout",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9551,
+      "tokens_total": 663347,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 44,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:/invoices/:id/summary",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:42:51.088Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-07-summary-endpoint-r2-mvcv1ewd.jsonl"
+    },
+    {
+      "task": "order-08-validation",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:42:51.507Z",
+      "session_ids": [
+        "93bc7558-3518-4eb9-a51c-465363d338db",
+        "93bc7558-3518-4eb9-a51c-465363d338db"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 29,
+      "cost_usd": 2.8667328000000003,
+      "usage": {
+        "input_tokens": 40,
+        "cache_read_input_tokens": 967281,
+        "cache_creation_input_tokens": 47594,
+        "output_tokens": 7901
+      },
+      "api_ms": 391658,
+      "wall_ms": 262754,
+      "tool_calls": 52,
+      "tool_counts": {
+        "Bash": 26,
+        "Skill": 2,
+        "Grep": 4,
+        "Read": 10,
+        "Write": 4,
+        "Edit": 3,
+        "Agent": 3
+      },
+      "reads": 10,
+      "unique_reads": 8,
+      "rereads": 2,
+      "subagents": 3,
+      "first_write_ms": 29061,
+      "first_tool_ms": 6969,
+      "first_reviewable_ms": 29061,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-validate-invoice-creation-request-bodies\n  POST /invoices now rejects invalid bodies with a 400 that names the first bad field…\n\n  tests     passed\n  lint      passed\n  verified  picket drive POST /invoices → quantity -1 gave 400 `lines[0].quantity`; valid body gave…\n  files     src/http/validation.ts, src/http/handlers.ts, test/validation.test.ts, +1 more\n  decisions · the check functions now return the validated value, not just an error, so D-002 needs…\n            · check order unchanged\n  commit    feat(http): validate POST /invoices bodies and return field errors (staged; approval co…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Order closed: 20261017-validate-invoice-creation-request-bodies\n\n`POST /invoices` now checks the request body in `src/http/validation.ts`. A bad body gets a 400 that names the first offending field, such as `lines[0].quantity`, and nothing is saved.\nPhases: 1 · commits 1c8ed8a..00ab68b · review: APPROVED"
+      ],
+      "error": null,
+      "port": 8118,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "OUT=$(picket new --lane order --title \"Validate POST invoices request body\" --request - <<'PICKET_REQUEST_END'\nPOST /invoices accepts anything, so a body without a customer or with a negative quantity",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "OUT=$(picket new --lane order --title \"Validate invoice creation request bodies\" --request - <<'PICKET_REQUEST_END'\nPOST /invoices accepts anything, so a body without a customer or with a negative qua",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9531,
+      "tokens_total": 1022816,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "src/http/validation.ts",
+        "test/router.test.ts",
+        "test/validation.test.ts"
+      ],
+      "lines_added": 155,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 45,
+          "failed": 0,
+          "total": 45,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 6,
+          "failed": 0,
+          "total": 6,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "45/45 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "6/6 passed"
+          },
+          {
+            "name": "exists:src/http/valid*.ts",
+            "ok": true,
+            "detail": "src/http/validation.ts"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:47:18.095Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-08-validation-r1-mvcv5a43.jsonl"
+    },
+    {
+      "task": "order-08-validation",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:47:18.482Z",
+      "session_ids": [
+        "a12b9fd1-8a14-4723-8da7-cdb4bebcbd0c",
+        "a12b9fd1-8a14-4723-8da7-cdb4bebcbd0c"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 32,
+      "cost_usd": 2.8398756,
+      "usage": {
+        "input_tokens": 48,
+        "cache_read_input_tokens": 1138611,
+        "cache_creation_input_tokens": 41973,
+        "output_tokens": 8316
+      },
+      "api_ms": 421189,
+      "wall_ms": 282926,
+      "tool_calls": 59,
+      "tool_counts": {
+        "Bash": 27,
+        "Skill": 2,
+        "Read": 17,
+        "Write": 3,
+        "Edit": 4,
+        "Agent": 3,
+        "Grep": 1,
+        "ToolSearch": 1,
+        "PushNotification": 1
+      },
+      "reads": 17,
+      "unique_reads": 15,
+      "rereads": 2,
+      "subagents": 3,
+      "first_write_ms": 30596,
+      "first_tool_ms": 7031,
+      "first_reviewable_ms": 30596,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-validate-post-invoices-request-body-order\n  POST /invoices now rejects invalid bodies with a 400 naming the first bad field…\n\n  tests     passed\n  lint      passed\n  verified  `picket drive --env LEDGER_FILE=<temp copy> --hit \"POST /invoices ...\"` → empty custome…\n  files     src/http/handlers.ts, src/http/validation.ts, test/validation.test.ts, +1 more\n  decisions · validation.ts adopted unchanged, since every rule test passed against it\n            · router tests also check repo count for the no-body case\n  commit    feat(http): validate POST /invoices request bodies with 400 field errors (staged; appro…\n\n[a] approve   [x] reject: <why>\n```",
+        "## Order closed: 20261017-validate-post-invoices-request-body-order\n\nPOST /invoices now checks the request body. A bad body gets a 400 with `{ error: { field, message } }` naming the first bad field, and nothing is stored.\nPhases: 1 · commits c9f010c..87ff8bb · review: APPROVED\n\nThe validator is in `src/http/validation.ts`. It is tested on its own in `test/validation.test.ts` and through the router in `test/router.test.ts`. I also ran the real server against a temporary copy of the data file: an empty customer got 400 on `customer`, quantity -1 got 400 on `lines[0].quantity`, and a valid body got 201.\n\nThe work started in the fast lane, and admit moved it to the order lane because it touches 4 files. That first item is marked abandoned.\n\nThe reviewer found one minor issue that does not block. `src/http/validation.ts:21` accepts integers too large to be exact, such as `2**60`, so a cents total could come out wrong. Your request only said \"integer >= 0\", so I left it. Switching to `Number.isSafeInteger` would fix it if you want that."
+      ],
+      "error": null,
+      "port": 8119,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/order-08-validation-r2-mvcvb04w/repo && mkdir -p .picket/state/scratch && cp data/invoices.json .picket/state/scratch/invoices.json && git hash-object data/in",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9644,
+      "tokens_total": 1188948,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "src/http/validation.ts",
+        "test/router.test.ts",
+        "test/validation.test.ts"
+      ],
+      "lines_added": 206,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 55,
+          "failed": 0,
+          "total": 55,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 6,
+          "failed": 0,
+          "total": 6,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "55/55 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "6/6 passed"
+          },
+          {
+            "name": "exists:src/http/valid*.ts",
+            "ok": true,
+            "detail": "src/http/validation.ts"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:52:05.282Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-08-validation-r2-mvcvb04w.jsonl"
+    },
+    {
+      "task": "order-09-csv-export",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:52:05.807Z",
+      "session_ids": [
+        "b1f8eb30-6dd0-4de2-bd32-5ba179848b55",
+        "b1f8eb30-6dd0-4de2-bd32-5ba179848b55"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 18,
+      "cost_usd": 2.413287799999999,
+      "usage": {
+        "input_tokens": 34,
+        "cache_read_input_tokens": 701656,
+        "cache_creation_input_tokens": 30252,
+        "output_tokens": 4657
+      },
+      "api_ms": 340577,
+      "wall_ms": 262804,
+      "tool_calls": 53,
+      "tool_counts": {
+        "Bash": 29,
+        "Skill": 1,
+        "Read": 9,
+        "Agent": 3,
+        "Write": 4,
+        "ToolSearch": 1,
+        "SendMessage": 1,
+        "Edit": 3,
+        "Grep": 2
+      },
+      "reads": 9,
+      "unique_reads": 9,
+      "rereads": 0,
+      "subagents": 3,
+      "first_write_ms": 82590,
+      "first_tool_ms": 6732,
+      "first_reviewable_ms": 82590,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/2 done · 20261017-csv-export-of-invoices-endpoint\n  `formatCsv` now turns a header and rows into RFC 4180 CSV with CRLF line endings…\n\n  tests     passed\n  lint      passed\n  verified  no drivable surface: pure module with no entry point until phase 2 adds the route\n  files     D:/workspace/github/AISpec/bench/.runs/order-09-csv-export-r1-mvcvh5qd/repo/src/format/…\n  decisions · header fields are quoted by the same rule as data fields\n            · exported `CsvField` type alias for row cells\n  commit    feat(format): add pure RFC 4180 CSV formatter (staged; approval commits it)\n\n[a] approve   [r] run through 2   [x] reject: <why>\n```",
+        "## Order closed: 20261017-csv-export-of-invoices-endpoint\n\n`GET /invoices.csv` is live. It returns `text/csv; charset=utf-8` with the header `id,customer,currency,totalCents,createdAt`, then one row per invoice, newest first, with totals that include the configured tax rate. The formatting lives in a pure module, `src/format/csv.ts`.\nPhases: 2 · commits 5dad271..7b3b856 · review: APPROVED\n\nThe order left two questions for you and accounting. Right now the export does neither of these things:\n\n- **Formula prefixing:** should a field that starts with `=`, `+`, `-` or `@` get a prefix? Without one, Excel may treat it as a formula. For example, a customer named `=SUM(A1)` would be calculated instead of shown as text.\n- **Byte order mark:** does accounting's spreadsheet tool need a UTF-8 byte order mark at the start of the file? Without it, some versions of Excel show accented customer names wrongly."
+      ],
+      "error": null,
+      "port": 8120,
+      "trusted": true,
+      "rate_limits": 6,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/order-09-csv-export-r1-mvcvh5qd/repo && for f in src/http/*.ts src/domain/*.ts src/config.ts src/main.ts src/storage/jsonRepository.ts test/router.test.ts dat",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/order-09-csv-export-r1-mvcvh5qd/repo && cat work/20261017-csv-export-of-invoices-endpoint/phases/*.block.md; npx tsc -p tsconfig.json --noEmit; echo tsc=$?",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9586,
+      "tokens_total": 736599,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/format/csv.ts",
+        "src/http/handlers.ts",
+        "test/csv.test.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 113,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 34,
+          "failed": 0,
+          "total": 34,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "34/34 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:invoices\\.csv",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T20:56:32.447Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-09-csv-export-r1-mvcvh5qd.jsonl"
+    },
+    {
+      "task": "order-09-csv-export",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T20:56:32.878Z",
+      "session_ids": [
+        "410ead45-c0f8-40ec-8c02-31a2178a6c9c",
+        "410ead45-c0f8-40ec-8c02-31a2178a6c9c"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 17,
+      "cost_usd": 2.381733,
+      "usage": {
+        "input_tokens": 32,
+        "cache_read_input_tokens": 648956,
+        "cache_creation_input_tokens": 29630,
+        "output_tokens": 4358
+      },
+      "api_ms": 319460,
+      "wall_ms": 245561,
+      "tool_calls": 49,
+      "tool_counts": {
+        "Bash": 25,
+        "Skill": 1,
+        "Read": 10,
+        "Agent": 3,
+        "Grep": 1,
+        "Write": 3,
+        "Edit": 4,
+        "ToolSearch": 1,
+        "SendMessage": 1
+      },
+      "reads": 10,
+      "unique_reads": 10,
+      "rereads": 0,
+      "subagents": 3,
+      "first_write_ms": 77156,
+      "first_tool_ms": 5735,
+      "first_reviewable_ms": 77156,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/2 done · 20261017-csv-export-of-all-invoices\n  There is now an import-free CSV module that quotes fields per RFC 4180 and ends every record with…\n\n  tests     passed\n  lint      passed\n  verified  no drivable surface: a pure module with no entry point until phase 2 wires the route\n  files     D:/workspace/github/AISpec/bench/.runs/order-09-csv-export-r2-mvcvmvvr/repo/src/export/…\n  decisions · added CR-only and header-quoting tests beyond T-1.x to pin the D-001 rules\n  commit    feat(export): add pure RFC 4180 CSV formatting module (staged; approval commits it)\n\n[a] approve   [r] run through 2   [x] reject: <why>\n```",
+        "## Order closed: 20261017-csv-export-of-all-invoices\n\n`GET /invoices.csv` now returns every invoice as `text/csv; charset=utf-8`. Rows are newest first, totals include the configured tax rate, and fields are quoted per RFC 4180. The CSV formatting is a separate module with no I/O, and it has its own unit tests.\nPhases: 2 · commits b419dc6..252fd54 · review: APPROVED\n\nTwo open questions from the order were not answered, so the code takes the order's default for both. The first matters more:\n\n1. **Spreadsheet formula injection:** customer names come from `POST /invoices` without validation and go into the CSV as stored. A name starting with `=`, `+`, `-` or `@` could run as a formula when accounting opens the file in Excel. Fixing it means either validating names when an invoice is created or escaping those values in the CSV module. That needs its own change.\n2. **No download header:** the response does not send `Content-Disposition: attachment`, so a browser may show the CSV instead of downloading it. Adding it is a one-line change.\n\nThe `text/csv; charset=utf-8` content type is checked only by the route test. The live server run showed status 200 and all 6 rows, but its output did not include response headers."
+      ],
+      "error": null,
+      "port": 8121,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in package.json src/config.ts src/domain/invoice.ts src/domain/money.ts src/domain/pricing.ts src/http/handlers.ts src/http/router.ts src/http/server.ts src/main.ts src/storage/jsonRepository.ts",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9563,
+      "tokens_total": 682976,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/export/csv.ts",
+        "src/http/handlers.ts",
+        "test/csv.test.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 100,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 32,
+          "failed": 0,
+          "total": 32,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "32/32 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:invoices\\.csv",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:00:42.057Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-09-csv-export-r2-mvcvmvvr.jsonl"
+    },
+    {
+      "task": "order-10-idempotency",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T21:00:42.432Z",
+      "session_ids": [
+        "68f2216d-adce-4bf5-805d-6fa82d67fda4",
+        "68f2216d-adce-4bf5-805d-6fa82d67fda4"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 17,
+      "cost_usd": 2.5878658,
+      "usage": {
+        "input_tokens": 32,
+        "cache_read_input_tokens": 636353,
+        "cache_creation_input_tokens": 30434,
+        "output_tokens": 4913
+      },
+      "api_ms": 528681,
+      "wall_ms": 346300,
+      "tool_calls": 53,
+      "tool_counts": {
+        "Bash": 23,
+        "Skill": 1,
+        "Read": 17,
+        "Agent": 3,
+        "Write": 3,
+        "Edit": 6
+      },
+      "reads": 17,
+      "unique_reads": 12,
+      "rereads": 5,
+      "subagents": 3,
+      "first_write_ms": 108554,
+      "first_tool_ms": 11793,
+      "first_reviewable_ms": 108554,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-idempotency-key-support-for-post-invoices\n  A repeated POST /invoices with the same Idempotency-Key now returns the original invoice…\n\n  tests     passed\n  lint      passed\n  verified  picket drive --run \"node .picket/state/scratch/drive.mjs\" (real server, temp LEDGER_FIL…\n  files     D:/workspace/github/AISpec/bench/.runs/order-10-idempotency-r1-mvcvs8hg/repo/src/storag…\n  decisions · drive script starts the server itself so it can read the temp ledger afterwards\n            · fingerprint of a missing body is \"\"\n            · added a test where the recorded invoice is gone, per D-002\n  commit    feat(invoices): support Idempotency-Key on POST /invoices (staged; approval commits it)\n\n[a] approve   [x] reject: <why>\n```",
+        "## Order closed: 20261017-idempotency-key-support-for-post-invoices\n\nPOST /invoices now takes an optional `Idempotency-Key` header. The first request with a key creates the invoice and returns 201. A repeat with the same key and body returns that same invoice with 200 and creates nothing. The same key with a different body returns 409 with `{ error: { message } }`. The keys live in an in-memory store in `src/storage/idempotencyStore.ts`, passed in through the router's dependencies, and router tests cover all three cases.\nPhases: 1 · commits 9e9003a..ce6a3c6 · review: APPROVED\n\nThe reviewer raised one minor point, and it does not block anything. RISK-002 in the order says test T-1.6 sends two requests with the same key at the same time, but it actually sends them one after the other. What really prevents a duplicate is that the handler does not pause between looking up the key and saving it."
+      ],
+      "error": null,
+      "port": 8122,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "out=$(picket new --lane order --title \"Idempotency-Key support for POST invoices\" --request - <<'PICKET_REQUEST_END'\nClients retry POST /invoices after timeouts and end up with duplicate invoices. Sup",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9543,
+      "tokens_total": 671732,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "src/storage/idempotencyStore.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 135,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 29,
+          "failed": 0,
+          "total": 29,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "29/29 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/**/*.ts:idempotency-key",
+            "ok": true,
+            "detail": "3 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/jsonRepository.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:06:32.371Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-10-idempotency-r1-mvcvs8hg.jsonl"
+    },
+    {
+      "task": "order-10-idempotency",
+      "lane_expected": "order",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T21:06:32.759Z",
+      "session_ids": [
+        "842ba845-0279-48e2-a68e-bfed3da24764",
+        "842ba845-0279-48e2-a68e-bfed3da24764"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 17,
+      "cost_usd": 2.550945400000001,
+      "usage": {
+        "input_tokens": 32,
+        "cache_read_input_tokens": 622690,
+        "cache_creation_input_tokens": 28588,
+        "output_tokens": 3831
+      },
+      "api_ms": 382023,
+      "wall_ms": 273587,
+      "tool_calls": 47,
+      "tool_counts": {
+        "Bash": 24,
+        "Skill": 1,
+        "Read": 8,
+        "Agent": 3,
+        "Write": 3,
+        "Grep": 2,
+        "Edit": 6
+      },
+      "reads": 8,
+      "unique_reads": 8,
+      "rereads": 0,
+      "subagents": 3,
+      "first_write_ms": 82113,
+      "first_tool_ms": 6282,
+      "first_reviewable_ms": 82113,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ phase 1/1 done · 20261017-idempotency-key-support-for-post-invoices\n  POST /invoices now replays the same key and body with 200, and returns 409 when the body changes.\n\n  tests     passed\n  lint      passed\n  verified  picket drive --run \"node .picket/state/scratch/drive-idempotency.mjs\" (npm start, temp…\n  files     D:/workspace/github/AISpec/bench/.runs/order-10-idempotency-r2-mvcvzqs8/repo/src/storag…\n  decisions · kept withTotals and createAndSave as closures in buildRouter, so the POST handler sta…\n            · a stale record with a missing invoice creates a new one and overwrites it (RISK-002),…\n            · GET routes left unchanged\n  commit    feat(invoices): support Idempotency-Key on POST /invoices (staged; approval commits it)\n\n[a] approve   [x] reject: <why>\n```",
+        "## Order closed: 20261017-idempotency-key-support-for-post-invoices\n\nPOST /invoices now takes an optional `Idempotency-Key` header. A repeat with the same key and the same body returns the original invoice with status 200. The same key with a different body returns 409. The keys live in an in-memory store in its own module, `src/storage/idempotencyStore.ts`, passed in through the router's dependencies. New tests in `test/router.test.ts` cover the three cases through the router.\nPhases: 1 · commits 43f190e..a3d333d · review: APPROVED"
+      ],
+      "error": null,
+      "port": 8123,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/order-10-idempotency-r2-mvcvzqs8/repo && for f in src/http/router.ts src/http/handlers.ts src/http/server.ts src/main.ts test/router.test.ts package.json src/",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "cd D:/workspace/github/AISpec/bench/.runs/order-10-idempotency-r2-mvcvzqs8/repo && npx tsc -p tsconfig.json --noEmit; echo tsc=$?; npx vitest run test/router.test.ts 2>&1 | tail -8; git diff 1b951e0 -",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9561,
+      "tokens_total": 655141,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "src/storage/idempotencyStore.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 135,
+      "signals": {
+        "lane": "order",
+        "verdicts": [
+          "APPROVED"
+        ],
+        "route": "order:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 26,
+          "failed": 0,
+          "total": 26,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "26/26 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/**/*.ts:idempotency-key",
+            "ok": true,
+            "detail": "3 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/storage/jsonRepository.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:11:09.973Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/order-10-idempotency-r2-mvcvzqs8.jsonl"
+    },
+    {
+      "task": "research-11-pricing",
+      "lane_expected": "research",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T21:11:10.339Z",
+      "session_ids": [
+        "0e2db5f1-e6f9-43c3-97b8-98b06cea462d",
+        "0e2db5f1-e6f9-43c3-97b8-98b06cea462d"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 12,
+      "cost_usd": 0.7856413999999999,
+      "usage": {
+        "input_tokens": 20,
+        "cache_read_input_tokens": 346800,
+        "cache_creation_input_tokens": 23476,
+        "output_tokens": 2098
+      },
+      "api_ms": 115204,
+      "wall_ms": 78539,
+      "tool_calls": 21,
+      "tool_counts": {
+        "Bash": 6,
+        "Skill": 1,
+        "Read": 11,
+        "Agent": 1,
+        "Glob": 1,
+        "Write": 1
+      },
+      "reads": 11,
+      "unique_reads": 10,
+      "rereads": 1,
+      "subagents": 1,
+      "first_write_ms": 46994,
+      "first_tool_ms": 6800,
+      "first_reviewable_ms": 46994,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ outline ready · 20261017-how-invoice-pricing-totals-are-computed\n  An invoice total is the sum of line subtotals, minus a volume discount…\n\n  report    work/20261017-how-invoice-pricing-totals-are-computed/research.md\n  findings  11\n\n[a] accept   [d] deeper pass   [x] reject: <why>\n```",
+        "## Research closed: 20261017-how-invoice-pricing-totals-are-computed\n\n`computeTotals` in `src/domain/invoice.ts` adds up the line subtotals, then takes off the volume discount from `applyStuff` in `src/domain/pricing.ts`: 5% at 10 or more lines, 10% at 25 or more lines, counted by number of lines, not by quantity. Tax is then charged on the discounted amount through `taxOn`, at 7% from `data/config.json`. The only rounding is in `percentOf` in `src/domain/money.ts`, which rounds the discount and the tax down to whole cents, each on its own.\n\nReport: work/20261017-how-invoice-pricing-totals-are-computed/research.md · findings: 11 · architect review: no\n\nThe report is an outline. It did not read `test/invoice.test.ts`, `src/cli.ts` or `data/invoices.json`, so two things are unconfirmed: whether any test checks the order of discount and tax inside `computeTotals`, and whether the CLI calculates totals on its own path."
+      ],
+      "error": null,
+      "port": 8124,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9365,
+      "tokens_total": 372394,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "research",
+        "verdicts": [],
+        "route": "research:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "untouched:src/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:test/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20261017-how-invoice-pricing-totals-are-computed/research.md"
+          },
+          {
+            "name": "report_heading:(Summary|Executive Summary|Overview|Answer)",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_cited_paths_exist",
+            "ok": true,
+            "detail": "19 citations"
+          },
+          {
+            "name": "report_mentions:percentOf",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:taxOn|tax",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:discount",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:floor|round|truncat",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:12:31.010Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/research-11-pricing-r1-mvcw5ozb.jsonl"
+    },
+    {
+      "task": "research-11-pricing",
+      "lane_expected": "research",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T21:12:31.371Z",
+      "session_ids": [
+        "4ff20120-dfeb-4fa1-8501-a8f111e72b43",
+        "4ff20120-dfeb-4fa1-8501-a8f111e72b43"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 12,
+      "cost_usd": 0.8359898000000001,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 400808,
+        "cache_creation_input_tokens": 25255,
+        "output_tokens": 2532
+      },
+      "api_ms": 138458,
+      "wall_ms": 91000,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 1,
+        "Read": 10,
+        "Agent": 1,
+        "Write": 1
+      },
+      "reads": 10,
+      "unique_reads": 9,
+      "rereads": 1,
+      "subagents": 1,
+      "first_write_ms": 46935,
+      "first_tool_ms": 6975,
+      "first_reviewable_ms": 46935,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ report ready · 20261017-invoice-pricing-discount-tax-rounding\n  An invoice total is computed on read by `computeTotals` in `src/domain/invoice.ts`…\n\n  report    work/20261017-invoice-pricing-discount-tax-rounding/research.md\n  findings  11\n\n[a] accept   [d] deeper pass   [x] reject: <why>\n```",
+        "## Research closed: 20261017-invoice-pricing-discount-tax-rounding\n\n`computeTotals` (`src/domain/invoice.ts:22`) adds up `quantity * unitPriceCents` for each line (`lineSubtotal`, `src/domain/pricing.ts:15`). It then subtracts a volume discount based on line count, set in `LADDER` (`src/domain/pricing.ts:10`) and applied in `applyStuff` (`src/domain/pricing.ts:20`): 5% from 10 lines, 10% from 25 lines. Tax is applied after the discount, on the net, at 7% from config (`taxOn`, `src/domain/pricing.ts:27`). Rounding happens only in `Math.floor` inside `percentOf` (`src/domain/money.ts:44`), once for the discount and once for the tax.\n\nReport: work/20261017-invoice-pricing-discount-tax-rounding/research.md · findings: 11 · architect review: no"
+      ],
+      "error": null,
+      "port": 8125,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9407,
+      "tokens_total": 428617,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "research",
+        "verdicts": [],
+        "route": "research:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "untouched:src/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:test/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20261017-invoice-pricing-discount-tax-rounding/research.md"
+          },
+          {
+            "name": "report_heading:(Summary|Executive Summary|Overview|Answer)",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_cited_paths_exist",
+            "ok": true,
+            "detail": "23 citations"
+          },
+          {
+            "name": "report_mentions:percentOf",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:taxOn|tax",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:discount",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:floor|round|truncat",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:14:04.446Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/research-11-pricing-r2-mvcw7fi6.jsonl"
+    },
+    {
+      "task": "research-12-lifecycle",
+      "lane_expected": "research",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T21:14:04.807Z",
+      "session_ids": [
+        "a50d0841-ad7a-4e2b-9bfc-43287924c456",
+        "a50d0841-ad7a-4e2b-9bfc-43287924c456"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 12,
+      "cost_usd": 0.7809046000000002,
+      "usage": {
+        "input_tokens": 20,
+        "cache_read_input_tokens": 348041,
+        "cache_creation_input_tokens": 23674,
+        "output_tokens": 2632
+      },
+      "api_ms": 116028,
+      "wall_ms": 81114,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 6,
+        "Skill": 1,
+        "Read": 11,
+        "Agent": 1,
+        "Write": 1
+      },
+      "reads": 11,
+      "unique_reads": 10,
+      "rereads": 1,
+      "subagents": 1,
+      "first_write_ms": 46857,
+      "first_tool_ms": 6227,
+      "first_reviewable_ms": 46857,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "```text\n▶ outline ready · 20261017-post-invoices-request-lifecycle-map\n  A POST /invoices request is received by `serve` in `src/http/server.ts`…\n\n  report    work/20261017-post-invoices-request-lifecycle-map/research.md\n  findings  12\n\n[a] accept   [d] deeper pass   [x] reject: <why>\n```",
+        "## Research closed: 20261017-post-invoices-request-lifecycle-map\n\n`serve` in `src/http/server.ts` reads the body and parses it as JSON (`readBody`). `Router.handle` in `src/http/router.ts` then matches the method and the path segments. `JsonInvoiceRepository.nextId` allocates the id as the highest existing number plus one, so the first is INV-1001. `save` rewrites the whole `data/invoices.json` with `writeFileSync`, and the response is 201 with the invoice plus a `totals` object.\n\nReport: work/20261017-post-invoices-request-lifecycle-map/research.md · findings: 12 · architect review: yes: R-009\n\n**Concurrency:**\n- **One Node process:** two requests cannot interleave. Nothing awaits between `nextId` and `save`, and every file call is synchronous (R-008).\n- **Two processes on the same file:** both can read the same highest id and issue the same id, for example two INV-1005. The second full rewrite also drops the first invoice (R-009).\n- **Crash or reader mid-write:** the write goes straight to the target file, with no temp file and rename. A crash or a reader during the write can see a truncated file, and from then on every request fails with 500 (R-010).\n\n**Limits of this report:**\n- You accepted the outline, so the deep pass did not run. The numbered sequence is in the R-001 to R-007 findings; the Structure and Dependencies sections still say \"pending deep pass\".\n- It is not yet known whether `src/cli.ts` writes the same JSON file. If it does, the two-process problem can happen in normal use.\n\nR-009 needs a design decision, either a file lock or a stored counter. `picket:ordering` or `picket:designing` can take it if you want it fixed.\n\nNo source code changed. `picket close` made one commit, 9d134de, which adds only the work item files."
+      ],
+      "error": null,
+      "port": 8126,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9363,
+      "tokens_total": 374367,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "research",
+        "verdicts": [],
+        "route": "research:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "untouched:src/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:test/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20261017-post-invoices-request-lifecycle-map/research.md"
+          },
+          {
+            "name": "report_heading:(Summary|Executive Summary|Overview|Answer)",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_cited_paths_exist",
+            "ok": true,
+            "detail": "16 citations"
+          },
+          {
+            "name": "report_mentions:readBody|server\\.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:Router|router\\.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:nextId",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:writeFileSync|save",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:concurren",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:15:28.031Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/research-12-lifecycle-r1-mvcw9flw.jsonl"
+    },
+    {
+      "task": "research-12-lifecycle",
+      "lane_expected": "research",
+      "harness": "plugin",
+      "run": 2,
+      "fixture_sha": "be723e1f2b720a2a8598be04d70027c37857ec3b",
+      "started": "2026-10-17T21:15:28.390Z",
+      "session_ids": [
+        "27677524-6046-4426-a7fc-b7eb4b3cde52",
+        "27677524-6046-4426-a7fc-b7eb4b3cde52"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 14,
+      "cost_usd": 0.7959858,
+      "usage": {
+        "input_tokens": 26,
+        "cache_read_input_tokens": 468272,
+        "cache_creation_input_tokens": 24678,
+        "output_tokens": 2873
+      },
+      "api_ms": 105318,
+      "wall_ms": 79049,
+      "tool_calls": 16,
+      "tool_counts": {
+        "Bash": 10,
+        "Skill": 1,
+        "Read": 4,
+        "Agent": 1
+      },
+      "reads": 4,
+      "unique_reads": 3,
+      "rereads": 1,
+      "subagents": 1,
+      "first_write_ms": null,
+      "first_tool_ms": 5460,
+      "first_reviewable_ms": 53750,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "The analyst finished the outline (14 findings so far). It is waiting for your choice:\n\n```text\n▶ outline ready · 20261017-trace-post-invoices-request-to-disk\n  A POST /invoices body is read and parsed in `readBody` (`src/http/server.ts`) with `JSON.parse` […\n\n  report    work/20261017-trace-post-invoices-request-to-disk/research.md\n  findings  14\n\n[a] accept   [d] deeper pass   [x] reject: <why>\n```",
+        "## Research closed: 20261017-trace-post-invoices-request-to-disk\n\nA POST /invoices request moves through these steps:\n\n1. `readBody` (`src/http/server.ts`) collects the body and parses it with `JSON.parse`.\n2. `Router.handle` (`src/http/router.ts`) matches the path by comparing it segment by segment with each registered route.\n3. `JsonInvoiceRepository.nextId` gives the new invoice the highest stored number plus one, starting at INV-1001.\n4. `save` and `write` (`src/storage/jsonRepository.ts`) overwrite the whole JSON file.\n5. The response is 201 with the invoice plus a `totals` object.\n\nInside one Node process, two concurrent requests cannot get the same id, because the steps from allocation to save run with no `await` between them. The file store does break in two cases:\n\n- **Two processes on the same file:** both can read the same highest id and allocate the same `INV-n`. The second save then silently replaces the first invoice.\n- **A crash or a concurrent read during `writeFileSync`:** the reader can see a truncated file, because the write is not atomic.\n\nReport: work/20261017-trace-post-invoices-request-to-disk/research.md · findings: 14 · architect review: no\n\nThe report is the outline you accepted, so some parts are missing:\n\n- **Structure section:** it still says \"pending deep pass\" and has no numbered sequence. The findings R-001 to R-010 cover each step with its file and line.\n- **Not read yet:**\n  - `src/domain/pricing.ts`: how the totals are calculated.\n  - The tests: whether they cover concurrent requests.\n  - `src/cli.ts`: whether it is a second writer to the same file."
+      ],
+      "error": null,
+      "port": 8127,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in src/main.ts src/http/server.ts src/http/router.ts src/http/handlers.ts src/storage/jsonRepository.ts src/domain/invoice.ts src/config.ts; do echo \"=== $f\"; cat -n $f; done; cat data/invoices.",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "ls work/20261017-trace-post-invoices-request-to-disk; cat > work/20261017-trace-post-invoices-request-to-disk/research.md <<'EOF'\n---\nkind: report\ntitle: Life of a POST /invoices request\ndate: 2026-10",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9499,
+      "tokens_total": 495849,
+      "base_sha": "1b951e01155376acb242c33c6b6bbbdbfca75756",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "research",
+        "verdicts": [],
+        "route": "research:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "untouched:src/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:test/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20261017-trace-post-invoices-request-to-disk/research.md"
+          },
+          {
+            "name": "report_heading:(Summary|Executive Summary|Overview|Answer)",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_cited_paths_exist",
+            "ok": true,
+            "detail": "15 citations"
+          },
+          {
+            "name": "report_mentions:readBody|server\\.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:Router|router\\.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:nextId",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:writeFileSync|save",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "report_mentions:concurren",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-10-17T21:16:49.520Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/research-12-lifecycle-r2-mvcwb83d.jsonl"
+    }
+  ]
+}
