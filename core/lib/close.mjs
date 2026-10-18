@@ -44,9 +44,9 @@ function refuseUnlessClosable(id, root) {
   throw new CloseRefused(`next is ${action}, not close`, { action, actor, phase, detail });
 }
 
-function recordAccept(root, id, commit) {
+export function recordAccept(root, id, commit, phase = null) {
   try {
-    appendLedger(root, { event: "accept", session: null, agent: null, work_id: id, phase: null, commit, lines_added: productLinesAdded(root, commit) });
+    appendLedger(root, { event: "accept", session: null, agent: null, work_id: id, phase, commit, lines_added: productLinesAdded(root, commit) });
   } catch {}
 }
 

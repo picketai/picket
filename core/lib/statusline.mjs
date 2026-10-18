@@ -404,7 +404,7 @@ export function recordSessionCost(input, { root }) {
   } catch {}
 }
 
-const DIRECT_PROBE ={ git: workingState, skill: (path) => lastSkill(path) };
+const DIRECT_PROBE = { git: workingState, skill: (path) => lastSkill(path) };
 
 export function renderStatusline(input, { now, columns, icons = "plain", probe = DIRECT_PROBE }) {
   const dir = workspaceDir(input);

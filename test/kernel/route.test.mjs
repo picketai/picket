@@ -44,6 +44,26 @@ test("an approval that commits appends one accept row naming the phase commit an
   }
 });
 
+test("a ledger write that fails after the phase commit leaves the commit line as the last applied entry", () => {
+  const { root, id } = setup();
+  const git = (...args) => execFileSync("git", ["-C", root, "-c", "user.email=t@t", "-c", "user.name=t", ...args], { encoding: "utf8" }).trim();
+  try {
+    git("init", "-q");
+    git("add", "-A");
+    git("commit", "-q", "-m", "base");
+    mkdirSync(statePath(root, STATE_FILES.ledger), { recursive: true });
+    writeFileSync(join(root, "a.ts"), "export const a = 1;\n");
+    git("add", "--", "a.ts");
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const committed = r.applied.findIndex((line) => line.startsWith("committed "));
+    assert.ok(committed >= 0, r.applied.join("; "));
+    assert.ok(r.applied.slice(committed + 1).every((line) => !/EISDIR|EPERM|EACCES/.test(line)), r.applied.join("; "));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("an approval outside a git repository commits nothing and appends no accept row (T-3.3)", () => {
   const { root, id } = setup();
   try {
