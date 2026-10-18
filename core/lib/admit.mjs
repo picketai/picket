@@ -9,6 +9,9 @@ import { DEFAULT_LANES, DEFAULT_SECURITY_PATHS, loadConfig } from "./config.mjs"
 
 export { DEFAULT_SECURITY_PATHS };
 
+export const NO_LANE = "none";
+const DIAGNOSIS_SKILL = "debugging";
+
 export const CAPS = Object.freeze({
   fast_max_files: DEFAULT_LANES.fast.max_files,
   order_max_phases: DEFAULT_LANES.order.max_phases,
@@ -25,6 +28,8 @@ const NEW_SURFACE = /\b(add(ed)? (an? )?(new )?(endpoint|route|module|command|wo
 const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|options?|strategy|should we)\b/i;
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak|(remov(e|es|ing)|delet(e|es|ing))(\s+[\w'-]+){0,3}\s+(keys?|lines?|entry|entries|settings?|hooks?))\b/i;
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
+const DIAGNOSIS = /\b(debug(ging)?|diagnos(e|es|is|ing)|root[- ]cause|find (out )?why)\b|\bwhy (does|do|did|is|are)\b[^?!\n]*\b(fail\w*|crash\w*|throw\w*|errors?|flaky|hang\w*|regress\w*|wrong)/i;
+const CHANGE_VERB = /(?:^|[.;:!?,]\s*|\b(?:and|then|to|please|also)\s+)(fix|add|change|log|rename|implement|remove|refactor|update|replace|delete)\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
 const FORCED_LANE = /\blane:\s*(fast|order|design|research)\b/i;
@@ -110,8 +115,14 @@ export function admit(text, o = {}) {
     design_question: DESIGN_QUESTION.test(text),
     small_change: SMALL_CHANGE.test(text),
   };
+  signals.diagnosis = DIAGNOSIS.test(text.replace(QUOTED, " ")) &&!signals.small_change && !signals.new_surface && !CHANGE_VERB.test(text);
 
   if (forced) return forcedResult(forced, signals);
+
+  if (signals.diagnosis) {
+    reasons.push(`asks for a diagnosis, not a change: run picket:${DIAGNOSIS_SKILL}`);
+    return { lane: NO_LANE, skill: DIAGNOSIS_SKILL, reasons, signals };
+  }
 
   if (signals.research && !signals.new_surface) {
     reasons.push("the request asks a question and changes no code");
@@ -149,7 +160,7 @@ export function admit(text, o = {}) {
 export function recheck(currentLane, text, touched, o = {}) {
   const result = admit(text, { ...o, touched });
   const order = ["fast", "order", "design"];
-  if (currentLane === "research") return { ...result, escalate: false };
+  if (currentLane === "research" || currentLane === NO_LANE) return { ...result, escalate: false };
   const escalate = order.indexOf(result.lane) > order.indexOf(currentLane);
   return { ...result, escalate, from: currentLane };
 }

@@ -133,7 +133,7 @@ async function main(argv) {
         return 0;
       }
       const r = admit(text, { root, touched: opt.touched ? String(opt.touched).split(",").filter(Boolean) : [] });
-      out(r, opt, (v) => `lane: ${v.lane} (${v.reasons.join("; ")})`);
+      out(r, opt, (v) => `lane: ${v.lane}${v.skill ? ` · skill: picket:${v.skill}` : ""} (${v.reasons.join("; ")})`);
       return 0;
     }
     case "new": {

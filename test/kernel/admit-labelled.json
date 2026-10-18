@@ -100,5 +100,19 @@
   { "request": "Why does `npm test` print a warning about the TypeScript target?", "lane": "research", "why": "asks a question, changes no code" },
   { "request": "How is the server shut down, and does it finish requests in flight?", "lane": "research", "why": "asks a question, changes no code" },
   { "request": "Understand what the CLI does with an unknown command and report it.", "lane": "research", "why": "asks to understand and report, changes no code" },
-  { "request": "lane: research. List every place that reads the config and what it reads.", "lane": "research", "why": "a forced lane: research is honoured" }
+  { "request": "lane: research. List every place that reads the config and what it reads.", "lane": "research", "why": "a forced lane: research is honoured" },
+  { "request": "Debug why GET /invoices returns 500 after the page size change.", "lane": "none", "skill": "debugging", "why": "asks for a diagnosis; the word change is a noun, not a change verb" },
+  { "request": "The tax test fails intermittently on CI, find the root cause.", "lane": "none", "skill": "debugging", "why": "asks for a root cause, changes no code" },
+  { "request": "Diagnose the crash in the CSV export.", "lane": "none", "skill": "debugging", "why": "asks for a diagnosis, changes no code" },
+  { "request": "debug the flaky invoice test", "lane": "none", "skill": "debugging", "why": "asks for a diagnosis, changes no code" },
+  { "request": "Why does loadConfig throw on an empty file?", "lane": "none", "skill": "debugging", "why": "a why question about a failure is a diagnosis" },
+  { "request": "Why does `test/router.test.ts` fail only when it runs after the repository tests?", "lane": "none", "skill": "debugging", "why": "a why question about a failure is a diagnosis" },
+  { "request": "Find out why the server hangs on shutdown when a request is still open.", "lane": "none", "skill": "debugging", "why": "asks to find why something hangs, changes no code" },
+  { "request": "It worked yesterday; today `npm test` errors in pricing. Find the root cause before anyone touches it.", "lane": "none", "skill": "debugging", "why": "asks for a root cause, changes no code" },
+  { "request": "Why is the invoice total wrong by one cent for 19.99 at 7%? I see an error in the cents.", "lane": "none", "skill": "debugging", "why": "a why question about an error is a diagnosis" },
+  { "request": "Debugging needed: POST /invoices crashes when the customer field is missing. What is the root cause?", "lane": "none", "skill": "debugging", "why": "asks for a diagnosis, changes no code" },
+  { "request": "Why do new invoices get the id INV-NaN and fail to save after an import?", "lane": "none", "skill": "debugging", "why": "a why question about a failure is a diagnosis" },
+  { "request": "Diagnose why `src/storage/jsonRepository.ts` throws on a half-written file.", "lane": "none", "skill": "debugging", "why": "asks for a diagnosis, changes no code" },
+  { "request": "Find why the CSV export crashes on an empty list and fix it.", "lane": "fast", "why": "diagnosis plus a fix verb keeps today's routing: a small fix" },
+  { "request": "The CLI crashes on an unknown flag; debug it and then add a help message for unknown flags with a test.", "lane": "order", "why": "diagnosis plus an add verb keeps today's routing: no file named, order is the default" }
 ]

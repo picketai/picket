@@ -2,8 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { admit, recheck, mentionedPaths, forcedLane } from "../../core/lib/admit.mjs";
+import { join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { NO_LANE, admit, recheck, mentionedPaths, forcedLane } from "../../core/lib/admit.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function repo() {
@@ -271,5 +272,44 @@ test("a configured security path overrides a forced fast lane (T-1.7)", () => {
   const r = admit("lane: fast. Fix the typo.", { root, touched: ["lib/secure/keys.ts"] });
   assert.equal(r.lane, "design");
   assert.deepEqual(r.signals.security_path_hits, ["lib/secure/keys.ts"]);
+  rmSync(root, { recursive: true, force: true });
+});
+
+for (const request of [
+  "Debug why GET /invoices returns 500 after the page size change",
+  "debug the flaky invoice test",
+  "Why does loadConfig throw on an empty file?",
+]) {
+  test(`a diagnosis request answers no lane and the debugging skill: ${request} (T-2.1)`, () => {
+    const root = repo();
+    const r = admit(request, { root });
+    assert.deepEqual([r.lane, r.skill], [NO_LANE, "debugging"]);
+    assert.equal(r.signals.diagnosis, true);
+    assert.match(r.reasons[0], /diagnosis, not a change: run picket:debugging/);
+    rmSync(root, { recursive: true, force: true });
+  });
+}
+
+test("a fix verb, a security path with a fix verb and a forced lane keep today's routing (T-2.2)", () => {
+  const root = repo();
+  assert.equal(admit("Fix the bug where the CSV export crashes on an empty list", { root }).lane, "fast");
+  assert.equal(admit("Find why the CSV export crashes on an empty list and fix it", { root }).lane, "fast");
+  assert.equal(admit("Fix the crash in `src/auth/login.ts` when the password is empty", { root }).lane, "design");
+  assert.equal(admit("lane: order. Debug why the export crashes", { root }).lane, "order");
+  assert.equal(admit("When the port is taken the service exits silently, which is hard to diagnose. Log the error in `src/http/server.ts`.", { root }).lane, "fast");
+  assert.equal(admit("How does pricing pick the tier discount?", { root }).lane, "research");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("no lane never escalates on a recheck", () => {
+  const root = repo();
+  assert.equal(recheck(NO_LANE, "debug the flaky invoice test", ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"], { root }).escalate, false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("picket admit --human names the skill for a diagnosis request (T-2.3)", () => {
+  const root = repo();
+  const printed = execFileSync("node", [resolve("core/bin/picket.mjs"), "admit", "--text", "debug the flaky invoice test", "--human", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } }).trim();
+  assert.match(printed, /^lane: none · skill: picket:debugging \(asks for a diagnosis/);
   rmSync(root, { recursive: true, force: true });
 });
