@@ -320,6 +320,29 @@ test("a declared research item, a no-code-changes report and a change verb each 
   rmSync(root, { recursive: true, force: true });
 });
 
+test("adding a skill, hook or verb is new surface and leaves the fast lane (T-3.1)", () => {
+  const root = repo();
+  for (const request of ["Add a debugging skill, picket:debugging, to the core.", "Add a hook that denies shell writes", "Add a new `picket mutate` verb", "Create a release agent", "adds a new `picket statusline` verb", "Introduce a subcommand for source pick"]) {
+    const r = admit(request, { root });
+    assert.equal(r.lane, "order", request);
+    assert.equal(r.signals.new_surface, true, request);
+    assert.ok(r.reasons.includes("adds a new surface (endpoint, module, or handler)"), request);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("naming a surface without adding one keeps its lane, and diagnosis requests still answer none (T-3.2)", () => {
+  const root = repo();
+  assert.equal(admit("Fix the typo in the hook table of `core/hooks/README.md`", { root }).lane, "fast");
+  assert.equal(admit("Rename the `--deleted` flag of the waive verb in one file", { root }).lane, "fast");
+  assert.equal(admit("how is a new hook registered?", { root }).lane, "research");
+  assert.equal(admit("How does a new skill get added? Write a report, no code changes.", { root }).lane, "research");
+  for (const request of ["Debug why GET /invoices returns 500 after the page size change", "debug the flaky invoice test", "Why does loadConfig throw on an empty file?"]) {
+    assert.equal(admit(request, { root }).lane, NO_LANE, request);
+  }
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("no lane never escalates on a recheck", () => {
   const root = repo();
   assert.equal(recheck(NO_LANE, "debug the flaky invoice test", ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts"], { root }).escalate, false);

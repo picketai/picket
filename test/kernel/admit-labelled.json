@@ -119,5 +119,13 @@
   { "request": "Why does the cache fail after restart? Write a report, no code changes.", "lane": "research", "why": "asks for a report with no code changes, so it is research, not a diagnosis" },
   { "request": "Find the root cause of the 500 on GET /invoices and patch it.", "lane": "order", "why": "diagnosis plus a patch verb keeps today's routing: no file named, order is the default" },
   { "request": "The retry test is flaky; find out why, then make the retry count configurable.", "lane": "order", "why": "diagnosis plus a make verb keeps today's routing" },
-  { "request": "Debug why login fails when the password has a space.", "lane": "design", "why": "a diagnosis that names a security concern takes the design lane" }
+  { "request": "Debug why login fails when the password has a space.", "lane": "design", "why": "a diagnosis that names a security concern takes the design lane" },
+  { "request": "Add a debugging skill, picket:debugging, to the core.", "lane": "order", "why": "adds a new harness surface: a skill" },
+  { "request": "Add a hook that denies shell writes to code files.", "lane": "order", "why": "adds a new harness surface: a hook" },
+  { "request": "Add a new `picket mutate` verb that spot-checks one operator.", "lane": "order", "why": "adds a new harness surface: a verb" },
+  { "request": "Create a release agent that drafts the changelog from the phase commits.", "lane": "order", "why": "adds a new harness surface: an agent" },
+  { "request": "Fix the typo in the hook table of `core/hooks/README.md`.", "lane": "fast", "why": "a typo fix that only names a hook, adds none" },
+  { "request": "Rename the `--deleted` flag of the waive verb in one file.", "lane": "fast", "why": "a rename that only names a verb, adds none" },
+  { "request": "how is a new hook registered?", "lane": "research", "why": "a question about a surface, with no action verb, changes no code" },
+  { "request": "How does a new skill get added? Write a report, no code changes.", "lane": "research", "why": "asks for a report with no code changes" }
 ]
