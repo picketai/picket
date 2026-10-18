@@ -19,6 +19,8 @@ One of three, before any edit:
 
 When the test passes before the fix, it does not reach the defect: change the test, never the expectation.
 
+When the request carries a red test from `picket:debugging` (its hand-off names the test path and its failure line), run that test first instead of step 1: it is the red, and no second test is written. The block's `Red:` and `Root cause:` lines repeat the diagnosis's lines once you have seen the same failure.
+
 ## A refactor: pin first
 
 Write a characterization test before the first edit: one that pins today's observable behaviour, odd outputs included. Example: `formatName(null)` returns `"undefined undefined"` today, so the test asserts exactly that, and the refactor keeps it unless the plan says otherwise.

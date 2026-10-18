@@ -14,6 +14,7 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 | `picket:understanding` | command | stress-test a plan by questions | `/picket:understanding <plan, design, or idea>` |
 | `picket:proofreading` | command | proofread text for outside readers | `/picket:proofreading <path or pasted text>` |
 | `picket:explaining` | command | walk one scenario or concept with real data, start to end | `/picket:explaining <scenario or concept>` |
+| `picket:debugging` | command | find a bug's root cause and leave a failing test, never a fix | `/picket:debugging <symptom>` |
 | `picket:ticketing` | command | pull, draft or update Jira tickets | `/picket:ticketing ...` |
 | `picket:summarizing` | command | fill the pull request template | `/picket:summarizing [branch or repo hint]` |
 | `picket:branching` | command | worktrees across nested repositories | `/picket:branching <branch>` |
@@ -100,6 +101,14 @@ Explains one scenario the way a customer or a QA tester would go through the app
 **How you reach it.** `/picket:explaining <scenario or concept>`, or "explain with an example", "walk me through", "show me with real data", "what happens to the data when", "explain the concept of", "explain X simply".
 
 **Where it fits.** It runs in the main session with no agent and writes no file; the answer is in the reply. It has two modes. Codebase mode, the default, takes data from what you gave, the work item's snapshots, test fixtures and configuration, the code and a pulled ticket, in that order, and may run a read-only command to capture real output. Concept mode reads reliable web sources (official documentation, standards such as IETF RFCs, peer-reviewed papers), cites each rule by URL, and lists every page it read; a fact found only on a blog or forum stays `[ASSUMED]`. The answer has a starting data table, numbered steps with the code location and the values in and out, and an end state table. Every value is marked `[VERIFIED]` with its source, `[INFERRED]` or `[ASSUMED]`, and a value nobody could find is listed under "Not known" instead of being made up. When a scenario needs more than 12 files read or 5 pages fetched, it offers the research lane, which keeps a report on disk.
+
+## picket:debugging
+
+Finds the root cause of a bug before anyone fixes it. It reproduces the failure where you saw it, narrows it down with real evidence, and ends in a diagnosis and one failing test, never in a fix.
+
+**How you reach it.** `/picket:debugging <symptom>`, or "debug X", "why does X fail" (or crash, or throw), "find the root cause", "this test is flaky", "it worked yesterday", "reproduce this bug", "diagnose before anyone fixes it".
+
+**Where it fits.** It runs in the main session with no agent and opens no work item. It reproduces on your surface (`picket drive` for an endpoint or a CLI, `picket check` for a test); when a bug will not reproduce, it walks environment, data, timing and leftover state in turn. It shrinks the input, halves the code path with captured values, uses `git bisect` when the code used to work, and tests each hypothesis on its own, undoing what a disproved one changed. The only file it writes is the smallest test that fails for the cause it found. The diagnosis block gives the symptom, the reproduction, the root cause, the red test, the evidence marked `[VERIFIED]`, `[INFERRED]` or `[ASSUMED]`, what was ruled out, and a one-paragraph hand-off. Reply `f` and the hand-off goes through `picket admit` to the lane that fixes it; that lane runs the red test first instead of writing its own. A cause with no capture from the session stays "strongest hypothesis".
 
 ## picket:ticketing
 

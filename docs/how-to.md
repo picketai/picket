@@ -353,6 +353,7 @@ To remove the command from your machine: `npm uninstall -g @picketai/picket`.
 | `/picket:consulting` | think a strategic question through before any change |
 | `/picket:ticketing` | draft or update Jira tickets |
 | `/picket:explaining` | walk one scenario or concept through worked data |
+| `/picket:debugging` | find a bug's root cause and leave one failing test for the fix |
 | `picket setup-terminal` | give Claude Code and your terminal the PicketAI look |
 | `picket uninstall` | remove the styling items you choose |
 | `picket next <id> --human` | the next step of a work item, from a terminal |

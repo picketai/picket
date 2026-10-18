@@ -7,7 +7,8 @@ description: >
   `picket admit` answers `research`, or when the user says "how does X work", "map the flow",
   "write a report on", "before we touch this I need to understand", or "no code changes". A
   plain question with a one-paragraph answer needs no lane: answer it. One scenario explained
-  with worked data, step by step, goes to `picket:explaining`.
+  with worked data, step by step, goes to `picket:explaining`; a failure to diagnose goes to
+  `picket:debugging`.
 user-invocable: true
 ---
 

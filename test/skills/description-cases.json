@@ -24,6 +24,14 @@
     ]
   },
   {
+    "skill": "debugging",
+    "positive": ["debug why GET /invoices returns 500", "find the root cause of the crash in the CSV export", "this test is flaky, reproduce this bug before anyone fixes it", "it worked yesterday and now the import throws"],
+    "negative": [
+      { "prompt": "walk me through what happens when a customer pays", "owner": "explaining" },
+      { "prompt": "write a report on how pricing works", "owner": "researching" }
+    ]
+  },
+  {
     "skill": "documenting",
     "positive": ["document the REST API of the invoices service", "add a glossary entry for settlement", "write a charter and a context map"],
     "negative": [
@@ -36,7 +44,8 @@
     "positive": ["walk me through what happens to the data when a customer pays, with an example", "explain with real data how a discount is applied", "explain the concept of idempotency simply, with an example"],
     "negative": [
       { "prompt": "map the flow and write a report on disk, no code changes", "owner": "researching" },
-      { "prompt": "stress-test my thinking on this design", "owner": "understanding" }
+      { "prompt": "stress-test my thinking on this design", "owner": "understanding" },
+      { "prompt": "why does the export crash on an empty list", "owner": "debugging" }
     ]
   },
   {

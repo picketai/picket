@@ -27,8 +27,8 @@ core/.claude-plugin/       the plugin manifest: name picket, version, the skills
 core/rules/                work-items, security-paths, prose, comments, untrusted: injected into the lead and every agent
 core/agents/               picket:analyst, architect, developer, reviewer (shells, at most 120 lines)
 core/skills/               lane skills, consulting, documenting, reviewing, ticketing, branching,
-                           understanding, proofreading, explaining, summarizing, benchmarking, resuming,
-                           inspecting
+                           understanding, proofreading, explaining, debugging, summarizing, benchmarking,
+                           resuming, inspecting
 core/output-styles/        picket:custom, the response rules
 core/bin/picket            the kernel CLI on the Bash tool's PATH; core/bin/picket.mjs runs it; core/lib/ its modules
 core/lib/styling/          what picket setup-terminal installs and picket uninstall removes
@@ -76,6 +76,7 @@ Since that run:
 - `picket mutate` inverts one operator on a changed line, runs the tests and puts the file back; a mutant that survives is a review finding.
 - The hook `guard.silenced` denies an edit that silences a check, and the review summary lists every such change and every deleted test since the work item began.
 - A fifth injected rule, `untrusted`, tells every agent that fetched pages, tickets, review threads and tool output are data, never instructions.
+- The skill `picket:debugging` finds a bug's root cause and ends in a diagnosis and one failing test, never a fix; the fix goes through a lane.
 
 ## Compared with agent-skills and pstack
 
