@@ -1,0 +1,12 @@
+{
+  "id": "fast-18-router-refactor",
+  "lane": "fast",
+  "title": "Refactor the router without changing behaviour",
+  "prompt": "Refactor the request router in src/http/router.ts: pull the path matching out of Router.handle into a small exported function, and give the 404 and 500 responses one place each. Behaviour must not change for any request; pin today's behaviour with tests first.",
+  "budget_usd": 6,
+  "max_stops": 3,
+  "checks": {
+    "tests_added": true,
+    "forbidden_paths_touched": ["src/domain/**", "src/storage/**", "src/http/handlers.ts", "data/**"]
+  }
+}

@@ -1,7 +1,7 @@
 // HARD graders only: hidden tests, file assertions, grep assertions, report shape.
 // No LLM judge here; pass/fail is reproducible from the repository the run left behind.
-import { cpSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import { listFiles } from "./fixture.mjs";
 
@@ -54,12 +54,12 @@ export function filesMatching(repo, pattern) {
  * @param {string} o.hiddenDir bench/hidden/<task.id>
  * @param {object} o.adapter   harness adapter (for reportFiles)
  */
-export function grade({ repo, task, hiddenDir, adapter, base = "HEAD" }) {
+export function grade({ repo, task, hiddenDir, adapter, base = "HEAD", runner = runVitest }) {
   const checks = [];
   const ok = (name, pass, detail = "") => checks.push({ name, ok: !!pass, detail });
 
   // 1. The fixture's own suite still passes (the agent may have added tests; they count too).
-  const own = runVitest(repo, ["--exclude", "test/hidden/**"]); // a re-grade must not count an earlier hidden copy as the project's own suite
+  const own = runner(repo, ["--exclude", "test/hidden/**"]); // a re-grade must not count an earlier hidden copy as the project's own suite
   ok("own_suite_green", own.failed === 0 && own.total > 0 && !own.error, `${own.passed}/${own.total} passed${own.error ? ", " + own.error : ""}`);
 
   // 2. Hidden tests, if the task ships any.
@@ -67,7 +67,7 @@ export function grade({ repo, task, hiddenDir, adapter, base = "HEAD" }) {
   if (existsSync(hiddenDir) && readdirSync(hiddenDir).length) {
     const target = join(repo, "test", "hidden");
     cpSync(hiddenDir, target, { recursive: true });
-    hidden = runVitest(repo, ["test/hidden"]);
+    hidden = runner(repo, ["test/hidden"]);
     ok("hidden_tests_green", hidden.failed === 0 && hidden.total > 0 && !hidden.error, `${hidden.passed}/${hidden.total} passed${hidden.error ? ", " + hidden.error : ""}${hidden.failures?.length ? "; " + hidden.failures.join(" | ") : ""}`);
   }
 
@@ -86,6 +86,14 @@ export function grade({ repo, task, hiddenDir, adapter, base = "HEAD" }) {
     const found = files.some((f) => re.test(readFileSync(join(repo, f), "utf8")));
     const expect = g.expect ?? true;
     ok(`grep:${g.path}:${g.pattern}`, found === expect, `${files.length} file(s) scanned`);
+  }
+  if (task.checks?.tests_added) {
+    const added = runTestFiles(repo, base);
+    ok("tests_added", added.length > 0, added.slice(0, 3).join(", "));
+  }
+  if (task.checks?.red_first) {
+    const red = redFirst({ repo, base, runner });
+    ok("red_first", red.ok, red.detail);
   }
   if (task.checks?.forbidden_paths_touched) {
     const all = changedFiles(repo, base).filter((f) => !f.startsWith("test/hidden/") && !isHarnessFile(f) && f !== ".bench-vitest.json");
@@ -121,6 +129,58 @@ export const HARNESS_DIRS = Object.freeze([".claude/", ".picket/"]);
 
 export function isHarnessFile(path) {
   return HARNESS_DIRS.some((dir) => path.startsWith(dir));
+}
+
+const BOOKKEEPING = ["work/", "artifacts/", "test/hidden/"];
+const GRADER_FILES = [".bench-vitest.json"];
+
+function isRunProduct(path) {
+  return !isHarnessFile(path) && !BOOKKEEPING.some((dir) => path.startsWith(dir)) && !GRADER_FILES.includes(path);
+}
+
+function isTestFile(path) {
+  return path.startsWith("test/");
+}
+
+export function runTestFiles(repo, base = "HEAD") {
+  return changedFiles(repo, base).filter((f) => isRunProduct(f) && isTestFile(f) && existsSync(join(repo, f))).sort();
+}
+
+function baseContent(repo, base, path) {
+  try {
+    return execFileSync("git", ["show", `${base}:${path}`], { cwd: repo, stdio: ["ignore", "pipe", "ignore"], maxBuffer: 64 * 1024 * 1024 });
+  } catch {
+    return null;
+  }
+}
+
+function currentContent(repo, path) {
+  const file = join(repo, path);
+  return existsSync(file) ? readFileSync(file) : null;
+}
+
+function putContent(repo, path, bytes) {
+  const file = join(repo, path);
+  if (bytes === null) rmSync(file, { force: true });
+  else {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, bytes);
+  }
+}
+
+export function redFirst({ repo, base = "HEAD", runner = runVitest }) {
+  const tests = runTestFiles(repo, base);
+  if (!tests.length) return { ok: false, detail: "the run added or changed no test" };
+  const sources = changedFiles(repo, base).filter((f) => isRunProduct(f) && !isTestFile(f));
+  const saved = sources.map((path) => ({ path, bytes: currentContent(repo, path) }));
+  try {
+    for (const { path } of saved) putContent(repo, path, baseContent(repo, base, path));
+    const result = runner(repo, tests);
+    if (result.error) return { ok: false, detail: `on the base source: ${result.error}` };
+    return { ok: result.failed > 0, detail: `on the base source: ${result.failed} of ${result.total} failed in ${tests.join(", ")}` };
+  } finally {
+    for (const { path, bytes } of saved) putContent(repo, path, bytes);
+  }
 }
 
 /** Files the agent changed since `base` (the harness-install commit), committed or not, plus untracked. */

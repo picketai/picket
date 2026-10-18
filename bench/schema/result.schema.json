@@ -30,7 +30,7 @@
         "required": ["task", "lane_expected", "harness", "run", "fixture_sha", "cost_usd", "usage", "wall_ms", "stops", "terminal", "pass", "signals", "grade"],
         "properties": {
           "task": { "type": "string" },
-          "lane_expected": { "enum": ["fast", "order", "design", "research"] },
+          "lane_expected": { "enum": ["fast", "order", "design", "research", "none"] },
           "harness": { "type": "string" },
           "run": { "type": "integer" },
           "fixture_sha": { "type": "string" },

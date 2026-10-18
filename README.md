@@ -51,7 +51,7 @@ test/                      kernel, hook and budget tests: npm test
 
 ## Benchmarks
 
-`node bench/run.mjs --harness <plugin|trunk> --tasks all --runs 5` runs the 14 golden tasks against one Picket build in fresh fixture repos with a scripted approver, grades by code, and `node bench/report.mjs <baseline> <candidate> --check` reports pass@1, pass^k, route agreement, cost and variance, time to first reviewable output, stops, prompts, re-reads and cache hit ratio, failing on a regression past two standard errors. Every run spends real API budget: dry-run first.
+`node bench/run.mjs --harness <plugin|trunk> --tasks all --runs 5` runs the 18 golden tasks against one Picket build in fresh fixture repos with a scripted approver, grades by code, and `node bench/report.mjs <baseline> <candidate> --check` reports pass@1, pass^k, route agreement, cost and variance, time to first reviewable output, stops, prompts, re-reads and cache hit ratio, failing on a regression past two standard errors. Every run spends real API budget: dry-run first.
 
 ## Status
 

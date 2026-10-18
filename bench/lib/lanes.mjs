@@ -3,6 +3,7 @@ const HARNESSES_WITH_LANES = ["plugin", "rework"];
 export function laneMatches(r) {
   const lane = r.signals?.lane;
   const want = r.lane_expected;
+  if (want === "none") return HARNESSES_WITH_LANES.includes(r.harness) ? !lane : !lane || lane === "direct";
   if (!lane) return false;
   if (HARNESSES_WITH_LANES.includes(r.harness)) return lane === want;
   if (want === "fast") return lane === "direct" || lane === "expedited";

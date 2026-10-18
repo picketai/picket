@@ -60,7 +60,7 @@ then one lane at `--runs 1`, and read `bench/results/spend.log` before committin
 ```
 bench/
   fixture/        LedgerLite source; the benchmark repository
-  tasks/          14 task definitions (6 fast, 4 order, 2 research, 2 gate-trippers)
+  tasks/          18 task definitions (8 fast, 5 order, 2 research, 2 gate-trippers, 1 lane none: a question that opens no work item)
   hidden/<task>/  hidden vitest files copied in after the run
   adapters/       trunk.mjs, plugin.mjs: install, gate detection, signals, report paths
   lib/            approver-mcp.mjs, ask-probe-hook.mjs, claude.mjs, fixture.mjs, grade.mjs,

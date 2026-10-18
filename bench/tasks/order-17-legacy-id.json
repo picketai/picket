@@ -1,0 +1,12 @@
+{
+  "id": "order-17-legacy-id",
+  "lane": "order",
+  "title": "New invoices get the id INV-NaN after an import",
+  "prompt": "We imported one old invoice from the previous system; its id is LEGACY-7. Since then every invoice we create comes back with the id INV-NaN, and the second new one replaced the first. New invoices should keep counting up from the highest INV- number.",
+  "budget_usd": 8,
+  "max_stops": 4,
+  "checks": {
+    "red_first": true,
+    "forbidden_paths_touched": ["src/http/**", "data/**"]
+  }
+}

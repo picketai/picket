@@ -1,0 +1,12 @@
+{
+  "id": "none-16-max-page-size",
+  "lane": "none",
+  "title": "A plain question opens no work item",
+  "prompt": "Quick question, nothing to change: what is the largest page size GET /invoices will return, whatever size the client asks for?",
+  "budget_usd": 2,
+  "max_stops": 1,
+  "checks": {
+    "files_absent": ["work/**"],
+    "forbidden_paths_touched": ["src/**", "test/**", "data/**"]
+  }
+}
