@@ -36,7 +36,7 @@ Never silence a check: a suppression, a skipped or focused test, a lowered cover
 
 ## Phase loop
 
-1. Implement the phase to its `**Done when:**` criteria, with names, small functions and tests carrying the meaning.
+1. Read `expediting/steps/20-prove.md` (under `${CLAUDE_PLUGIN_ROOT}/skills/`) once per work item and follow it: a bug gets a red test first, a refactor a pinning test first. Then implement the phase to its `**Done when:**` criteria, with names, small functions and tests carrying the meaning.
 2. `picket check`: runs the detected test and lint commands, logs to `.picket/state/`, prints the failing tail only, stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself; that shape costs a permission prompt every time.
 3. Drive the changed flow through its real entry point when the phase touches one (endpoint, CLI, worker, startup wiring). Use `picket drive --hit "GET /path"` (add `--hit "POST /path <json>"` per request, `--run "<command>"` for a CLI): it starts the app on a free port, hits it, stops it, restores any file the drive itself changed, and logs the evidence, with no permission prompt. A drive longer than one simple command goes in a script file under `.picket/state/scratch/` (for example `.picket/state/scratch/drive.mjs`) and runs as `picket drive --run "node <file>"`, never as inline `node -e` code. When node fails with exit 126 and `Permission denied`, the machine refused that command line: move the code into a file instead of debugging the launcher. Set variables with `--env NAME=VALUE`, one flag per variable, and test values only; never write `NAME=value picket ...`, which the permission check refuses and which would log the value. Loop drive, observe, fix until the observed behaviour matches the criteria. A green suite is not verification. Test-only or docs-only phases record `no drivable surface: <reason>`.
 4. `picket verify <id> <n>`; fix anything it reports.
@@ -56,6 +56,8 @@ Files: <path>, <path> (+<k> more)
 Tests: passed | failed: <what> | no suite detected
 Lint: passed | failed: <what> | none detected
 Verified: <command> → <observed result> | no drivable surface: <reason> | blocked: <what>
+Red: <test> failed: <first failure line> | pinned: <test> | n/a: <reason>
+Root cause: <X> because <Y> | none
 Decisions: <ambiguity resolved and the reading chosen; one clause each, separated by semicolons, under 90 characters each> | none
 Comments: <path>:<line> "<text>"; <path>:<line> "<text>" | none
 Waivers: <path>:<line> "<text>" because <why>; <path>:<line> "<text>" because <why> | none

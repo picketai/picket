@@ -4,6 +4,9 @@ import { VERDICTS } from "../route.mjs";
 const CONTRACT = /^##\s+(Phase\s+\d+\s+of\s+[a-z0-9-]+|Review:\s+[a-z0-9-]+|(Order|Design|Amendment):\s+[a-z0-9-]+|Report:\s+[a-z0-9-]+)/m;
 const BUDGET = 40;
 const FINDING_LINE = /^- \[(Critical|Major|Minor|Nit)\]/;
+const DEVELOPER_HEADING = /^##\s+Phase\s+\d+\s+of\s+[a-z0-9-]+/;
+const RED_FORMS = /^(.+?\bfailed: \S.*|pinned: \S.*|n\/a: \S.*)$/;
+const CAUSE_FORM = /\S because \S/;
 
 function turnText(event) {
   try {
@@ -20,6 +23,23 @@ function blockProblems(block) {
   if (!token) problems.push(`the last line must be exactly one verdict token (${Object.keys(VERDICTS).join(", ")}); it is "${last.slice(0, 60)}"`);
   const counted = nonEmpty.filter((l) => !FINDING_LINE.test(l.trim())).length;
   if (counted > BUDGET) problems.push(`the block is ${counted} non-empty lines; the budget is ${BUDGET}. Move detail into the artifact and keep the block to its fields`);
+  if (token === "PHASE DONE" && DEVELOPER_HEADING.test(nonEmpty[0]?.trim() ?? "")) problems.push(...proofProblems(nonEmpty.map((l) => l.trim())));
+  return problems;
+}
+
+function fieldValue(lines, label) {
+  const line = lines.find((l) => l.startsWith(`${label}:`));
+  return line === undefined ? null : line.slice(label.length + 1).trim();
+}
+
+function proofProblems(lines) {
+  const problems = [];
+  const red = fieldValue(lines, "Red");
+  if (red === null) problems.push('the block has no "Red:" line (Red: <test> failed: <first failure line> | pinned: <test> | n/a: <reason>)');
+  else if (!RED_FORMS.test(red)) problems.push(`"Red: ${red.slice(0, 60)}" is none of <test> failed: <first failure line>, pinned: <test>, n/a: <reason>`);
+  const cause = fieldValue(lines, "Root cause");
+  if (cause === null) problems.push('the block has no "Root cause:" line (Root cause: <X> because <Y> | none)');
+  else if (cause !== "none" && !CAUSE_FORM.test(cause)) problems.push(`"Root cause: ${cause.slice(0, 60)}" is neither none nor <X> because <Y>`);
   return problems;
 }
 

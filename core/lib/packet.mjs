@@ -24,6 +24,9 @@ export function readBlock(id, n, root = projectRoot()) {
 }
 
 const PATH_TOKEN = /^[\w.@\-\/\\]+\.[A-Za-z0-9]+$/;
+const FIELD_LABEL = String.raw`[A-Z][a-z]+(?: [a-z]+)?`;
+const FIELD_START = new RegExp(`^${FIELD_LABEL}:\\s`);
+const FIELD_LINE = new RegExp(`^(${FIELD_LABEL}):\\s*(.*)$`);
 
 export function blockFiles(id, n, root = projectRoot()) {
   const files = parseBlock(readBlock(id, n, root) ?? "").fields.files ?? "";
@@ -42,10 +45,10 @@ export function parseBlock(text) {
   }
   while (i < lines.length && !lines[i].trim()) i++;
   const para = [];
-  while (i < lines.length && lines[i].trim() && !/^[A-Z][a-z]+:\s/.test(lines[i])) para.push(lines[i].trim()), i++;
+  while (i < lines.length && lines[i].trim() && !FIELD_START.test(lines[i])) para.push(lines[i].trim()), i++;
   out.headline = para.join(" ");
   for (; i < lines.length; i++) {
-    const m = lines[i].match(/^([A-Z][a-z]+):\s*(.*)$/);
+    const m = lines[i].match(FIELD_LINE);
     if (m) out.fields[m[1].toLowerCase()] = m[2].trim();
   }
   const last = lines.filter((l) => l.trim()).at(-1)?.trim() ?? "";
@@ -150,6 +153,9 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(field("tests", b.fields.tests ?? "not reported", width));
     lines.push(field("lint", b.fields.lint ?? "not reported", width));
     lines.push(field("verified", b.fields.verified ?? "not reported", width));
+    if (b.fields.red) lines.push(field("red", b.fields.red, width));
+    const cause = b.fields["root cause"];
+    if (cause && !/^none$/i.test(cause)) lines.push(field("cause", cause, width));
     lines.push(field("files", b.fields.files ? filesLine(b.fields.files, width) : "not reported", width));
     if (n.own_gate) lines.push(field("gate", `phase ${n.phase} ${n.own_gate.reason}; run grants stop here`, width));
     const dec = decisionLines(b.fields.decisions, width);

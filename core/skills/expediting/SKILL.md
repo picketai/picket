@@ -30,7 +30,7 @@ Name the touch set before editing: the files you will change, at most three. Ask
 
 ## Step 2: make the change
 
-Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
+Read `steps/20-prove.md` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
 
 The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; no new comments (the `comments` rule), a needed why goes on the `Comments:` line for the user; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
 
@@ -57,6 +57,8 @@ Files: <path>, <path>
 Tests: passed | failed: <what> | no suite detected
 Lint: passed | failed: <what> | none detected
 Verified: <command> → <observed result> | no drivable surface: <reason>
+Red: <test> failed: <first failure line> | pinned: <test> | n/a: <reason>
+Root cause: <X> because <Y> | none
 Comments: <path>:<line> "<text>" | none
 Commit: <type>(<scope>): <what>   (staged; your answer commits it)
 

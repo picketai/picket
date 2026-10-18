@@ -105,10 +105,41 @@ test("guard.block bounces a contract block without a token and passes one with i
   const b = run("guard.block.mjs", { hook_event_name: "SubagentStop", transcript_path: bad, cwd: root }, root);
   assert.equal(b.decision, "block");
   assert.match(b.reason, /verdict token/);
-  const good = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nPHASE DONE` }])]);
+  const good = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nRed: n/a: docs only\nRoot cause: none\n\nPHASE DONE` }])]);
   assert.equal(run("guard.block.mjs", { hook_event_name: "SubagentStop", transcript_path: good, cwd: root }, root), null);
   const plain = transcript(root, [user("x"), assistant([{ type: "text", text: "just a chat reply" }])]);
   assert.equal(run("guard.block.mjs", { hook_event_name: "Stop", transcript_path: plain, cwd: root }, root), null);
+  rmSync(root, { recursive: true, force: true });
+});
+
+function blockVerdict(root, text) {
+  const tp = transcript(root, [user("x"), assistant([{ type: "text", text }])]);
+  return run("guard.block.mjs", { hook_event_name: "SubagentStop", transcript_path: tp, cwd: root }, root);
+}
+
+test("guard.block checks the Red and Root cause lines of a PHASE DONE developer block (T-4.1)", () => {
+  const { root, id } = project();
+  const phase = (...fields) => [`## Phase 1 of ${id}: A`, "", "Done.", "", ...fields, "", "PHASE DONE"].join("\n");
+  const noRed = blockVerdict(root, phase("Root cause: none"));
+  assert.equal(noRed?.decision, "block");
+  assert.match(noRed.reason, /no "Red:" line/);
+  const flaky = blockVerdict(root, phase("Red: n/a: docs only", "Root cause: flaky"));
+  assert.equal(flaky?.decision, "block");
+  assert.match(flaky.reason, /"Root cause: flaky" is neither none nor/);
+  assert.match(blockVerdict(root, phase("Red: maybe", "Root cause: none"))?.reason ?? "", /"Red: maybe" is none of/);
+  assert.match(blockVerdict(root, phase("Red: n/a: docs only"))?.reason ?? "", /no "Root cause:" line/);
+  assert.equal(blockVerdict(root, phase("Red: n/a: docs only", "Root cause: none")), null);
+  assert.equal(blockVerdict(root, phase("Red: test/fee.test.ts failed: expected 1.05, got 1.04", "Root cause: totals were off because the rate was read in percent")), null);
+  assert.equal(blockVerdict(root, phase("Red: pinned: test/name.test.ts", "Root cause: none")), null);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("guard.block does not ask a stalled block or another agent's block for proof lines (T-4.2)", () => {
+  const { root, id } = project();
+  assert.equal(blockVerdict(root, `## Phase 1 of ${id}: A\n\nCannot meet T-1.2.\n\nPHASE STALLED`), null, "stalled");
+  assert.equal(blockVerdict(root, `## Review: ${id} · phase 1\n\nClean.\n\nFindings: clean\n\nAPPROVED`), null, "reviewer");
+  assert.equal(blockVerdict(root, `## Design: ${id}\n\nWritten.\n\nARTIFACT WRITTEN`), null, "architect");
+  assert.equal(blockVerdict(root, `## Report: ${id}\n\nWritten.\n\nREPORT WRITTEN`), null, "analyst");
   rmSync(root, { recursive: true, force: true });
 });
 

@@ -130,7 +130,27 @@ test("four proposals stay within the width and the fourth is counted (T-3.2)", (
   rmSync(root, { recursive: true, force: true });
 });
 
-const withWaivers = (value) => BLOCK.replace("Commit: 3f9c2a1", `Waivers: ${value}\nCommit: 3f9c2a1`);
+const withProof = (red, cause) => BLOCK.replace("Commit: 3f9c2a1", `Red: ${red}\nRoot cause: ${cause}\nCommit: 3f9c2a1`);
+
+test("parseBlock reads a two-word label, and the packet shows red always and cause only when not none (T-4.3)", () => {
+  const block = withProof("test/fee.test.ts failed: expected 1.05, got 1.04", "totals were off because the rate was read in percent");
+  assert.equal(parseBlock(block).fields["root cause"], "totals were off because the rate was read in percent");
+  const { root, id } = setup();
+  setMarker(id, 1, "done", root);
+  saveBlock(id, 1, block, root);
+  const { lines } = packet(id, root);
+  const verified = lines.findIndex((l) => l.startsWith("  verified"));
+  assert.equal(lines[verified + 1], "  red       test/fee.test.ts failed: expected 1.05, got 1.04");
+  assert.equal(lines[verified + 2], "  cause     totals were off because the rate was read in percent");
+
+  saveBlock(id, 1, withProof("n/a: docs only", "none"), root);
+  const plain = packet(id, root).lines;
+  assert.ok(plain.includes("  red       n/a: docs only"));
+  assert.equal(plain.some((l) => l.startsWith("  cause")), false);
+  rmSync(root, { recursive: true, force: true });
+});
+
+const withWaivers =(value) => BLOCK.replace("Commit: 3f9c2a1", `Waivers: ${value}\nCommit: 3f9c2a1`);
 
 test("waiver proposals render numbered and end the options with the waive option (T-1.6)", () => {
   const { root, id } = setup();

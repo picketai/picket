@@ -7,5 +7,7 @@ The kernel computes the evidence. The summary's `silenced` list holds one entry 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
 | Sl1 | Unwaived silenced check | The summary's `silenced` list has an entry with `waived: false` | Major |
+| Pb1 | Bug or refactor without proof | The phase fixes a defect or reshapes code and its `Red:` line is `n/a`, or the named test does not exercise the changed code | Major |
+| Pb2 | Symptom fix without cause | The diff adds a retry, null guard, skip or snapshot update and `Root cause:` is `none` | Major |
 
-Report Sl1 as one aggregated Major finding listing each `path`, `kind` and `text`, so a phase with several moves costs one slot. The fix is to restore the check and fix its cause; when the user must accept a move, the developer proposes it on its block's `Waivers:` line. A waived entry is never a finding, but read it: a waiver for a line that hides a defect the phase introduced is still a Critical or Major under the row that defect breaks.
+Report Sl1 as one aggregated Major finding listing each `path`, `kind` and `text`, so a phase with several moves costs one slot. The fix is to restore the check and fix its cause; when the user must accept a move, the developer proposes it on its block's `Waivers:` line. Pb1 and Pb2 read the developer's block (`work/<id>/phases/<n>.block.md`) against the diff. For Pb1, a refactor's characterization test must pin the behaviour the diff reshapes, and a bug's red test must call the changed code; open the test and check. Report each per phase. A waived entry is never a finding, but read it: a waiver for a line that hides a defect the phase introduced is still a Critical or Major under the row that defect breaks.
