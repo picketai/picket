@@ -11,7 +11,7 @@ import { routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../core/lib/hooks/inject.state.mjs";
 import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
 import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
-import { guardBash, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
+import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
 import { ASKING_MODES, commandKey } from "../../core/lib/escalation.mjs";
 import { observeDrive } from "../../core/lib/hooks/observe.drive.mjs";
@@ -406,6 +406,30 @@ test("every picket verb is placed in exactly one of the read and other verb sets
   }
   for (const verb of Object.keys(KERNEL_READ_SUBVERBS)) assert.ok(KERNEL_OTHER_VERBS.has(verb), `${verb} has read sub-verbs, so it belongs in KERNEL_OTHER_VERBS`);
   assert.ok(KERNEL_OTHER_VERBS.has("source"));
+});
+
+test("only the lead and the user run picket waive and picket comment; a spawned agent is denied", () => {
+  withProject((root) => {
+    const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput ?? null;
+    for (const verb of LEAD_ONLY_VERBS) {
+      const command = `picket ${verb} 20261018-x --path test/a.test.ts --text "it.skip("`;
+      for (const agent of ["picket:developer", "developer", "reviewer", "picket:architect"]) {
+        const out = outcome(command, agent);
+        assert.equal(out?.permissionDecision, "deny", `${agent} ${verb}`);
+        assert.match(out.permissionDecisionReason, new RegExp(`picket ${verb}\` records the user's approval`));
+      }
+      assert.notEqual(outcome(command, undefined)?.permissionDecision, "deny", `lead ${verb}`);
+      assert.equal(outcome(`cd ${root} && ${command}`, "picket:developer")?.permissionDecision, "deny", `compound ${verb}`);
+      assert.equal(outcome(`picket drive --run '${command}'`, "picket:developer")?.permissionDecision, "deny", `wrapped ${verb}`);
+      assert.equal(outcome(command, "picket:developer", "PowerShell")?.permissionDecision, "deny", `PowerShell ${verb}`);
+      const args = command.slice("picket ".length);
+      for (const form of [`picket --root ${root} ${args}`, `picket --human --root . ${args}`, `node core/bin/picket.mjs --root . ${args}`]) {
+        assert.equal(outcome(form, "picket:developer")?.permissionDecision, "deny", form);
+      }
+    }
+    assert.notEqual(outcome("picket --root . state waive", "picket:developer")?.permissionDecision, "deny", "waive as an argument of another verb");
+    assert.notEqual(outcome("picket state 20261018-x", "picket:developer")?.permissionDecision, "deny");
+  });
 });
 
 test("guardBash allows a lone read-only picket verb and leaves a mutating one to the allow rule", () => {

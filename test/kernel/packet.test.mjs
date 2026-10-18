@@ -143,6 +143,10 @@ test("parseBlock reads a two-word label, and the packet shows red always and cau
   assert.equal(lines[verified + 1], "  red       test/fee.test.ts failed: expected 1.05, got 1.04");
   assert.equal(lines[verified + 2], "  cause     totals were off because the rate was read in percent");
 
+  const twoWordHeadline = parseBlock(BLOCK.replace(/^The nightly stock sync.*$/m, "Guard added: it denies skips."));
+  assert.equal(twoWordHeadline.headline, "Guard added: it denies skips.", "only Root cause is a two-word label");
+  assert.equal(twoWordHeadline.fields["guard added"], undefined);
+
   saveBlock(id, 1, withProof("n/a: docs only", "none"), root);
   const plain = packet(id, root).lines;
   assert.ok(plain.includes("  red       n/a: docs only"));

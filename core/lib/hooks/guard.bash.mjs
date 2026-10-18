@@ -25,6 +25,7 @@ import { isAbsolute, join, resolve } from "path";
 import { sourceRoots, underSource } from "../source-paths.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
+import { parseArgs } from "../cli-args.mjs";
 import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
 import { detectTooling } from "../tooling.mjs";
 import { bareAgentName } from "../agent-name.mjs";
@@ -418,6 +419,18 @@ const BARE_KERNEL = "picket";
 export const KERNEL_READ_VERBS = new Set(["state", "next", "packet", "list", "review-summary", "cost", "preflight", "extensions", "admit", "find-verdict", "verify"]);
 export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "leave", "route", "drive", "comment", "waive", "pr", "migrate", "check", "source", "statusline", "setup-terminal", "uninstall"]);
 export const KERNEL_READ_SUBVERBS = { source: ["find", "grep"] };
+export const LEAD_ONLY_VERBS = new Set(["comment", "waive"]);
+const SPAWNED_AGENTS = new Set(["analyst", "architect", "developer", "reviewer"]);
+
+function leadOnlyRefusal(seg, agent) {
+  if (!SPAWNED_AGENTS.has(agent)) return null;
+  const start = kernelVerbStart(seg);
+  if (start === null) return null;
+  const words = seg.slice(start).map((t) => (typeof t === "string" ? t : ""));
+  const verb = parseArgs(words).pos[0];
+  if (!LEAD_ONLY_VERBS.has(verb)) return null;
+  return { why: "lead_only", reason: `guard.bash: \`picket ${verb}\` records the user's approval, so only the lead runs it after the user answers at the gate. The ${agent} proposes it on its block instead.` };
+}
 
 function wrappedCommands(seg) {
   const start = kernelVerbStart(seg);
@@ -1039,7 +1052,7 @@ function sourceCheck(seg, cwd, roots) {
   return { hit, refusal: { why: "source", reason: sourceDenial(hit, `\`${seg.filter((t) => typeof t === "string").join(" ").slice(0, 60)}\``) } };
 }
 
-function wrappedVerbCheck(seg, cwd, roots) {
+function wrappedVerbCheck(seg, cwd, roots, agent = null) {
   for (const inner of wrappedCommands(seg)) {
     if (hasHiddenExecution(inner)) return { fallThrough: "wrapped-hidden-execution" };
     const innerText = shellText(inner);
@@ -1051,6 +1064,8 @@ function wrappedVerbCheck(seg, cwd, roots) {
       return { fallThrough: "wrapped-unparsable" };
     }
     const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
+    const leadOnly = innerSegs.map((s) => leadOnlyRefusal(s, agent)).find(Boolean);
+    if (leadOnly) return leadOnly;
     if (innerSegs.some((s) => classifySegment(leadingAssignments(s).command, cwd) === "deny")) {
       return { why: "wrapped_verb", reason: `guard.bash: the command wrapped in a picket verb (${inner.slice(0, 60)}) contains a destructive sub-command; run it directly so the permission prompt sees it.` };
     }
@@ -1088,12 +1103,14 @@ function evaluatePowerShell(command, ctx) {
   for (const seg of reading.segments) {
     const { hit, refusal } = sourceCheck(seg, effCwd, roots);
     if (refusal) return refuse(refusal);
+    const leadOnly = leadOnlyRefusal(seg, ctx.escalation?.agent);
+    if (leadOnly) return refuse(leadOnly);
     classifications.push(hit ? "safe" : classifyPowerShellSegment(seg, effCwd, root));
     if (seg[0] === "cd") {
       effCwd = powerShellCd(seg, effCwd);
       cwdsSeen.push(effCwd);
     }
-    const wrapped = wrappedVerbCheck(seg, effCwd, roots);
+    const wrapped = wrappedVerbCheck(seg, effCwd, roots, ctx.escalation?.agent);
     if (wrapped?.fallThrough) return fallThrough(wrapped.fallThrough);
     if (wrapped) return refuse(wrapped);
   }
@@ -1201,6 +1218,8 @@ function evaluateCommand(command, ctx) {
   for (const seg of segments) {
     const { hit, refusal } = sourceCheck(seg, effCwd, roots);
     if (refusal) return refuse(refusal.why, refusal.reason);
+    const leadOnly = leadOnlyRefusal(seg, ctx.escalation?.agent);
+    if (leadOnly) return refuse(leadOnly.why, leadOnly.reason);
     const unallowed = effCwd !== cwd && seg.some(carriesSubstitution) ? recheckBodies(substituted.bodies, effCwd, bodyCtx) : null;
     if (unallowed?.decision === "deny") return unallowed;
     const { assignments, command: commandPart } = leadingAssignments(seg);
@@ -1218,7 +1237,7 @@ function evaluateCommand(command, ctx) {
       effCwd = applyCd(seg, effCwd);
       cwdsSeen.push(effCwd);
     }
-    const wrapped = wrappedVerbCheck(seg, effCwd, roots);
+    const wrapped = wrappedVerbCheck(seg, effCwd, roots, ctx.escalation?.agent);
     if (wrapped?.fallThrough) return fallThrough(wrapped.fallThrough);
     if (wrapped) return refuse(wrapped.why, wrapped.reason);
   }

@@ -4,9 +4,11 @@ import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { BOOKKEEPING_PREFIXES } from "./paths.mjs";
 
-function git(root, args) {
+const FILE_BUFFER = 64 * 1024 * 1024;
+
+function git(root, args, { maxBuffer } = {}) {
   try {
-    return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trimEnd();
+    return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer }).trimEnd();
   } catch {
     return null;
   }
@@ -104,7 +106,7 @@ export function changedSince(root, base) {
 }
 
 export function fileAt(root, rev, path) {
-  return git(root, ["show", `${rev}:${path}`]) ?? "";
+  return git(root, ["show", `${rev}:${path}`], { maxBuffer: FILE_BUFFER }) ?? "";
 }
 
 export function deletedSince(root, base, head = null) {

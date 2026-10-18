@@ -231,6 +231,19 @@ test("a tracked test file deleted since base is a deleted-test, waived only by a
   }
 });
 
+test("a file over a megabyte at base is read whole, so its existing suppression is not new", () => {
+  const root = testedRepo();
+  try {
+    const big = ["// eslint-disable-next-line no-console", ...Array.from({ length: 40000 }, (_, i) => `export const value${i} = ${i};`)].join("\n");
+    commitFile(root, "big.ts", `${big}\n`, "big");
+    const id = createWork({ lane: "order", title: "Big", root }).id;
+    writeFileSync(join(root, "big.ts"), `${big}\nexport const extra = 1;\n`);
+    assert.deepEqual(reviewSummary(id, { root }).silenced, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("the range summary lists silenced moves between two commits, all unwaived (T-2.4)", () => {
   const root = testedRepo();
   try {

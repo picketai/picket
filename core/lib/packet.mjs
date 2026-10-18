@@ -24,8 +24,8 @@ export function readBlock(id, n, root = projectRoot()) {
 }
 
 const PATH_TOKEN = /^[\w.@\-\/\\]+\.[A-Za-z0-9]+$/;
-const FIELD_LABEL = String.raw`[A-Z][a-z]+(?: [a-z]+)?`;
-const FIELD_START = new RegExp(`^${FIELD_LABEL}:\\s`);
+const FIELD_LABEL = String.raw`Root cause|[A-Z][a-z]+`;
+const FIELD_START = new RegExp(`^(${FIELD_LABEL}):\\s`);
 const FIELD_LINE = new RegExp(`^(${FIELD_LABEL}):\\s*(.*)$`);
 
 export function blockFiles(id, n, root = projectRoot()) {

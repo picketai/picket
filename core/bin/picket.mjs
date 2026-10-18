@@ -26,22 +26,8 @@ import { route, findVerdict } from "../lib/route.mjs";
 import { cost } from "../lib/cost.mjs";
 import { reviewSummary } from "../lib/review.mjs";
 import { loadConfig } from "../lib/config.mjs";
+import { parseArgs } from "../lib/cli-args.mjs";
 import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../lib/sources.mjs";
-
-function parse(argv) {
-  const pos = [];
-  const opt = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a.startsWith("--")) {
-      const key = a.slice(2);
-      const nxt = argv[i + 1];
-      const val = nxt === undefined || nxt.startsWith("--") ? true : argv[++i];
-      opt[key] = key in opt ? [].concat(opt[key], val) : val; // a repeated flag collects (--hit a --hit b)
-    } else pos.push(a);
-  }
-  return { pos, opt };
-}
 
 function out(value, opt, text) {
   if (opt.human && text) console.log(text(value));
@@ -104,7 +90,7 @@ function installedVersion() {
 }
 
 async function main(argv) {
-  const { pos, opt } = parse(argv);
+  const { pos, opt } = parseArgs(argv);
   const [verb, ...rest] = pos;
   if ("version" in opt) {
     console.log(installedVersion());

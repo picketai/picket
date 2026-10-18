@@ -1,9 +1,10 @@
 import { LANGS, MARKUP, SUPPRESSION_MARKERS, extOf, maskStrings } from "./comments.mjs";
 
-const TEST_FILE_HINT = /(^|\/)(tests?|spec|specs|__tests__)(\/|$)|\.(test|spec|tests)\.[a-z]+$|Tests?\.\w+$|_test\.\w+$|test_\w+\.py$/i;
+const TEST_FILE_HINT = /(^|\/)(tests?|spec|specs|__tests__)(\/|$)|\.(test|spec|tests)\.[a-z]+$|_test\.\w+$|test_\w+\.py$/i;
+const TEST_CLASS_FILE = /(Tests?|(^|[/._-])tests?)\.\w+$/;
 
 export function isTestPath(rel) {
-  return TEST_FILE_HINT.test(rel);
+  return TEST_FILE_HINT.test(rel) || TEST_CLASS_FILE.test(rel);
 }
 
 const SUPPRESSION = { kind: "suppression", test: (masked) => SUPPRESSION_MARKERS.some((re) => re.test(masked)) };

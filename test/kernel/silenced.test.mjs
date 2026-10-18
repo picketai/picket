@@ -54,7 +54,8 @@ test("a skip inside a string, in markdown, or in a non-test source file is allow
 
 test("isTestPath is the shape lint.craft used for test files", () => {
   for (const p of ["test/a.mjs", "src/__tests__/a.js", "a.test.ts", "a.spec.js", "FeeTests.cs", "fee_test.go", "test_fee.py", "spec/a.rb"]) assert.ok(isTestPath(p), p);
-  for (const p of ["src/fee.ts", "src/contest/fee.ts", "lib/specify.mjs"]) assert.equal(isTestPath(p), false, p);
+  for (const p of ["src/fee.ts", "src/contest/fee.ts", "lib/specify.mjs", "src/versions/latest.ts", "src/contest.js", "app/protest.py", "src/Latest.cs"]) assert.equal(isTestPath(p), false, p);
+  for (const p of ["src/FeeTest.java", "src/test.js", "src/fee-test.ts", "src/Orders.Tests.cs"]) assert.ok(isTestPath(p), p);
 });
 
 test("a coverage threshold lowered below its previous value is a threshold move; raised is not", () => {
