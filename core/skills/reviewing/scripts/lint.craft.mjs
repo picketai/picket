@@ -10,10 +10,6 @@
 // and flagging them would bury this phase's actual findings.
 //
 // Exit: 0 clean · 1 errors present (or candidates under --strict) · 2 bad usage.
-//
-// Escape hatch — an authorised exception is declared in the code, not argued in a
-// review. `craft-lint-allow: <RULE> — <reason>` suppresses a hit: anywhere in the
-// file for TK rules, on the same or preceding line for CD rules.
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
@@ -49,50 +45,7 @@ function usage() {
 
 // ---------------------------------------------------------------- signal tables
 
-// Comments opening with these words describe MECHANISM — what the next line
-// plainly already says. Present tense and imperative both appear in the wild.
-const NARRATION_OPENERS = new Set([
-  'loop', 'loops', 'iterate', 'iterates', 'set', 'sets', 'get', 'gets', 'fetch', 'fetches',
-  'create', 'creates', 'build', 'builds', 'initialize', 'initializes', 'initialise', 'declare',
-  'declares', 'assign', 'assigns', 'increment', 'increments', 'decrement', 'add', 'adds',
-  'append', 'appends', 'remove', 'removes', 'delete', 'deletes', 'call', 'calls', 'invoke',
-  'invokes', 'return', 'returns', 'check', 'checks', 'validate', 'validates', 'convert',
-  'converts', 'map', 'maps', 'parse', 'parses', 'update', 'updates', 'save', 'saves',
-  'load', 'loads', 'read', 'reads', 'write', 'writes', 'send', 'sends', 'start', 'starts',
-  'stop', 'stops', 'open', 'opens', 'close', 'closes', 'define', 'defines', 'instantiate',
-  'construct', constructor_word(), 'wire', 'wires', 'inject', 'injects', 'register',
-  'registers', 'setup', 'configure', 'configures', 'handle', 'handles', 'process', 'processes',
-  'filter', 'filters', 'sort', 'sorts', 'group', 'groups', 'sum', 'count', 'find', 'finds',
-  'first', 'then', 'next', 'now', 'here', 'this', 'we', 'method', 'function', 'helper',
-  'constructor', 'property', 'field', 'variable', 'class', 'interface',
-]);
-function constructor_word() { return 'constructs'; }
-
-// A comment carrying any of these is doing the job comments exist for: it says
-// something the code cannot. Presence of a WHY marker clears the narration and
-// restatement rules — deliberately generous, because a false candidate on a
-// legitimate comment is the most annoying possible failure of this tool.
-const WHY_MARKERS = [
-  /\bbecause\b/i, /\bsince\b/i, /\bso that\b/i, /\bso we\b/i, /\bto avoid\b/i, /\bto prevent\b/i,
-  /\botherwise\b/i, /\bmust\b/i, /\brequired by\b/i, /\brequires\b/i, /\bworkaround\b/i,
-  /\bwork ?around\b/i, /\bhack\b/i, /\bbug\b/i, /\bissue\b/i, /\bticket\b/i, /\bspec\b/i,
-  /\brfc\b/i, /\bsee\b/i, /\bper\b/i, /\bintentional/i, /\bdeliberate/i, /\bon purpose\b/i,
-  /\bdo not\b/i, /\bdon'?t\b/i, /\bnever\b/i, /\bcannot\b/i, /\bcan'?t\b/i, /\bwon'?t\b/i,
-  /\bfails?\b/i, /\bbreaks?\b/i, /\bcrash/i, /\blegacy\b/i, /\bupstream\b/i, /\bthird[- ]party\b/i,
-  /\bvendor\b/i, /\brace\b/i, /\bdeadlock\b/i, /\bthread[- ]safe/i, /\btimeout\b/i,
-  /\brounding\b/i, /\bprecision\b/i, /\bperf(ormance)?\b/i, /\border matters\b/i,
-  /\bassum/i, /\bcaveat\b/i, /\bgotcha\b/i, /\bedge case\b/i, /\bhistoric/i, /\bmigrat/i,
-  /\bcompat/i, /\bdeprecat/i, /\bunsafe\b/i, /\bsafety\b/i, /\binvariant\b/i,
-  /https?:\/\//i, /\b[A-Z][A-Z0-9]+-\d+\b/, /\bTODO\(/i, /\bNOTE:/i, /\bWHY:/i, /\bWARNING:/i,
-];
-
-const SKIP_MARKERS = [...DIRECTIVE_MARKERS, /\bcraft-lint-allow\b/i];
-
 // Commented-out code. Decidable enough to be an error rather than a candidate.
-// A bare keyword is not enough: "// return zero" is narration (CD2), while
-// "// return zero;" or "// return Money.zero(c);" is code somebody commented out.
-// Each shape therefore demands punctuation, an operator, or a call — the marks
-// prose does not carry.
 // Shapes that are code on their own, no corroboration needed.
 const CODE_SHAPES_STRONG = [
   /;\s*$/, /=>\s*$/,
@@ -218,127 +171,31 @@ function report(sev, rule, file, line, message, detail) {
   findings.push({ severity: sev, rule, file, line, message, detail });
 }
 
-function words(s) {
-  return s.toLowerCase().match(/[a-z][a-z0-9]*/g) || [];
-}
-
-// Words too generic to evidence restatement: they appear in almost any comment
-// AND almost any identifier, so counting them turns CD3 into a coin flip.
-const OVERLAP_STOPWORDS = new Set([
-  'code', 'codes', 'data', 'value', 'values', 'type', 'types', 'name', 'names',
-  'line', 'lines', 'file', 'files', 'path', 'paths', 'list', 'item', 'items',
-  'result', 'results', 'text', 'string', 'number', 'object', 'method', 'class',
-  'test', 'tests', 'case', 'cases', 'true', 'false', 'null', 'none', 'each',
-  'with', 'from', 'into', 'when', 'then', 'else', 'that', 'this', 'their', 'them',
-]);
-
-// Identifier words from a code line, camelCase and snake_case split, so
-// `orderTotal` and "order total" compare equal.
-function identifierWords(code) {
-  const out = new Set();
-  for (const id of code.match(/[A-Za-z_$][A-Za-z0-9_$]*/g) || []) {
-    for (const part of id.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[_$\s]+/)) {
-      const w = part.toLowerCase();
-      if (w.length >= 4) out.add(w);
-    }
-  }
-  return out;
-}
-
 function hasAllow(rule, lines, i) {
   const re = new RegExp(`craft-lint-allow:\\s*(${rule}|ALL)\\b`, 'i');
   return re.test(lines[i]?.text || '') || re.test(lines[i - 1]?.text || '');
+}
+
+function isDirective(body, text) {
+  return DIRECTIVE_MARKERS.some(re => re.test(body) || re.test(text));
 }
 
 function scanComments(file, added) {
   const lang = LANGS[extOf(file)];
   if (!lang) return;
 
-  let commentLines = 0, codeLines = 0;
-  const flagged = [];
-
-  // A WHY marker justifies its whole contiguous comment block: the reason often
-  // lands in the first sentence and the rest of the paragraph elaborates it.
-  // Judging each line alone would flag the continuation of a good comment.
-  let blockJustified = false;
-
-  for (let i = 0; i < added.length; i++) {
-    const { line, text } = added[i];
-    if (!text.trim()) { blockJustified = false; continue; }
-
+  for (const { line, text } of added) {
     const c = commentOf(text, lang);
-    if (!c) { codeLines++; blockJustified = false; continue; }
-
+    if (!c) continue;
     const body = c.body.trim();
-    if (!body) continue;
+    if (!body || isDirective(body, text)) continue;
 
-    if (c.isDoc) continue;
-    if (SKIP_MARKERS.some(re => re.test(body))) continue;
-    if (SKIP_MARKERS.some(re => re.test(text))) continue;
-
-    const carriesWhy = WHY_MARKERS.some(re => re.test(body));
-    if (carriesWhy) blockJustified = true;
-    if (!blockJustified) commentLines++;
-
-    // CD1 — commented-out code.
-    if (isCommentedOutCode(body) && !carriesWhy) {
-      if (!hasAllow('CD1', added, i)) {
-        report('error', 'CD1', file, line, 'commented-out code — delete it; git remembers', body.slice(0, 80));
-        continue;
-      }
-    }
-
-    if (blockJustified) continue;
-
-    const w = words(body);
-    if (!w.length) continue;
-
-    // CD2 — mechanism narration.
-    if (NARRATION_OPENERS.has(w[0]) && w.length <= 14) {
-      if (!hasAllow('CD2', added, i)) {
-        flagged.push({ rule: 'CD2', line, body, msg: 'narrates mechanism, carries no WHY' });
-        continue;
-      }
-    }
-
-    // CD3 — restates the line it sits above (or beside).
-    const nextCode = c.inline ? { text: text.slice(0, c.col) } : nextCodeLine(added, i, lang);
-    if (nextCode && w.length <= 12) {
-      const ids = identifierWords(nextCode.text);
-      const overlap = [...new Set(w.filter(x => x.length >= 4 && ids.has(x) && !OVERLAP_STOPWORDS.has(x)))];
-      if (overlap.length >= 2 && !hasAllow('CD3', added, i)) {
-        flagged.push({ rule: 'CD3', line, body, msg: `restates the code (${overlap.join(', ')})` });
-      }
+    if (isCommentedOutCode(body)) {
+      report('error', 'CD1', file, line, 'commented-out code — delete it; git remembers', body.slice(0, 80));
+    } else {
+      report('candidate', 'CD2', file, line, `new ${c.isDoc ? 'doc ' : ''}comment — allowed only with an approval recorded by picket comment`, body.slice(0, 80));
     }
   }
-
-  for (const f of flagged) {
-    report('candidate', f.rule, file, f.line, f.msg, f.body.slice(0, 80));
-  }
-
-  // CD4 — density. Only meaningful with enough added comment lines to be a habit
-  // rather than one considered remark.
-  // Never an error. Density is a judgement like CD2/CD3 — some files earn heavy
-  // commentary (a parser, a security guard, a piece of infrastructure explaining
-  // a decision) and a threshold cannot tell those from narration. Only CD1 and
-  // the TK rules are decidable, and only decidable things set exit 1.
-  if (commentLines >= 5 && codeLines > 0) {
-    const ratio = commentLines / (commentLines + codeLines);
-    if (ratio > 0.2) {
-      report('candidate', 'CD4', file, added[0].line,
-        `${(ratio * 100).toFixed(0)}% of added lines are unjustified comments (${commentLines} comment / ${codeLines} code) — is each one earning its place?`, null);
-    }
-  }
-}
-
-function nextCodeLine(added, i, lang) {
-  for (let j = i + 1; j < added.length && j <= i + 3; j++) {
-    const t = added[j].text;
-    if (!t.trim()) continue;
-    if (commentOf(t, lang)) continue;
-    return added[j];
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------- test-kind scan
