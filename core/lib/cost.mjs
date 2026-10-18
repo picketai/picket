@@ -69,17 +69,20 @@ export function summarize(rows, { session = null, work_id = null } = {}) {
   const usage = sumUsage(rs);
   const tokens = usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens + usage.output_tokens;
   const lines = rs.reduce((a, r) => a + (r.lines_added ?? 0), 0);
+  const bounces = scoped.filter((r) => r.event === "bounce");
+  const blocks = scoped.filter((r) => r.event === "block");
   const byAgent = {};
+  const agentEntry = (agent) => (byAgent[agent] ??= { turns: 0, duration_ms: 0, cost_usd: null, bounces: 0, blocks: 0, tool_calls: 0, rereads: 0 });
   for (const r of rs) {
-    const a = (byAgent[r.agent] ??= { turns: 0, duration_ms: 0, cost_usd: null, bounces: 0, blocks: 0, tool_calls: 0, rereads: 0 });
+    const a = agentEntry(r.agent);
     a.turns++;
     a.duration_ms += r.duration_ms ?? 0;
     a.cost_usd = addKnown(a.cost_usd, costOf.get(r));
-    a.bounces += r.bounces ?? 0;
-    a.blocks += r.blocks ?? 0;
     a.tool_calls += r.tool_calls ?? 0;
     a.rereads += r.rereads ?? 0;
   }
+  for (const r of bounces) agentEntry(r.agent).bounces++;
+  for (const r of blocks) agentEntry(r.agent).blocks++;
   const ttfr = rs.map((r) => r.first_reviewable_ms).filter((x) => Number.isFinite(x));
   return {
     rows: rs.length,
@@ -92,8 +95,8 @@ export function summarize(rows, { session = null, work_id = null } = {}) {
     lines_added: lines,
     tokens_per_accepted_line: lines ? tokens / lines : null,
     stops: rs.filter((r) => r.event === "gate").length,
-    bounces: rs.reduce((a, r) => a + (r.bounces ?? 0), 0),
-    blocks: rs.reduce((a, r) => a + (r.blocks ?? 0), 0),
+    bounces: bounces.length,
+    blocks: blocks.length,
     turns: rs.length,
     first_reviewable_ms: ttfr.length ? ttfr : [],
     by_agent: byAgent,

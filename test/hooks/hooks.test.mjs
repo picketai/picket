@@ -136,6 +136,47 @@ test("guard.scope denies kernel-owned writes and unread edits, allows the rest",
   rmSync(root, { recursive: true, force: true });
 });
 
+test("a spawned guard.scope deny appends one block row naming the hook, the bare agent, the session and the open item (T-2.1)", () => {
+  const { root, id } = project();
+  const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "work", id, "state.yaml") }, cwd: root, session_id: "s30", agent_type: "picket:developer" }, root);
+  assert.equal(out.hookSpecificOutput.permissionDecision, "deny");
+  const rows = ledgerRows(root);
+  assert.equal(rows.length, 1);
+  assert.deepEqual({ v: rows[0].v, event: rows[0].event, hook: rows[0].hook, agent: rows[0].agent, session: rows[0].session, work_id: rows[0].work_id }, { v: 2, event: "block", hook: "guard.scope", agent: "developer", session: "s30", work_id: id });
+  assert.ok(rows[0].reason.length > 0 && rows[0].reason.length <= 300, rows[0].reason);
+  assert.match(rows[0].ts, /^\d{4}-\d{2}-\d{2}T/);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a spawned guard.block bounce on the lead's Stop appends one bounce row (T-2.2)", () => {
+  const { root, id } = project();
+  const tp = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nI think this is approved.` }])]);
+  const out = run("guard.block.mjs", { hook_event_name: "Stop", session_id: "s31", transcript_path: tp, cwd: root }, root);
+  assert.equal(out.decision, "block");
+  const rows = ledgerRows(root);
+  assert.deepEqual(rows.map((r) => [r.event, r.hook, r.agent, r.session]), [["bounce", "guard.block", "lead", "s31"]]);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a guard that allows or falls through appends no ledger row and prints what it printed before (T-2.3)", () => {
+  const { root } = project();
+  const allowed = run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "git status" }, cwd: root, session_id: "s32" }, root);
+  assert.deepEqual(Object.keys(allowed.hookSpecificOutput).sort(), ["hookEventName", "permissionDecision", "permissionDecisionReason"]);
+  assert.equal(allowed.hookSpecificOutput.permissionDecision, "allow");
+  assert.equal(run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command: "cat a > b" }, cwd: root, session_id: "s32" }, root), null);
+  assert.deepEqual(ledgerRows(root), []);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("a denying hook still prints its deny and exits 0 when the state folder cannot be written (T-2.4)", () => {
+  const { root, id } = project();
+  mkdirSync(join(root, ".picket"), { recursive: true });
+  writeFileSync(join(root, ".picket", "state"), "a file where the state folder should be");
+  const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "work", id, "state.yaml") }, cwd: root, session_id: "s33" }, root);
+  assert.equal(out.hookSpecificOutput.permissionDecision, "deny");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("guard.scope keeps the comment approvals kernel-owned (T-1.5)", () => {
   const { root, id } = project();
   const out = run("guard.scope.mjs", { hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "work", id, "comments.jsonl"), content: "{}" }, cwd: root }, root);

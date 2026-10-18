@@ -63,6 +63,18 @@ test("picket cost --human prints $- without snapshots and the last snapshot of o
   assert.match(costLine([stop("s1", "main", 0.4), stop("s1", "developer", 1.1)]), /^2 turns · \$1\.10 · /);
 });
 
+test("blocks and bounces count their own rows, per agent too, inside the scope (T-2.5)", () => {
+  const denial = (event, agent, work_id = "w1") => ({ v: 2, session: "s1", event, agent, hook: "guard.scope", work_id, reason: "r" });
+  const rows = [stop("s1", "developer", 0.4), denial("block", "developer"), denial("block", "lead"), denial("bounce", "lead"), denial("block", "developer", "w2")];
+  const summary = summarize(rows, { work_id: "w1" });
+  assert.deepEqual([summary.blocks, summary.bounces, summary.turns], [2, 1, 1]);
+  assert.deepEqual(summary.by_agent.lead, { turns: 0, duration_ms: 0, cost_usd: null, bounces: 1, blocks: 1, tool_calls: 0, rereads: 0 });
+  assert.deepEqual([summary.by_agent.developer.blocks, summary.by_agent.developer.bounces], [1, 0]);
+  const agents = Object.values(summary.by_agent);
+  assert.equal(agents.reduce((n, a) => n + a.blocks, 0), summary.blocks);
+  assert.equal(agents.reduce((n, a) => n + a.bounces, 0), summary.bounces);
+});
+
 test("turns count stop, subagent_stop and gate rows only, and escalations are summarized beside them", () => {
   const summary = summarize(ROWS);
   assert.equal(summary.turns, 2);

@@ -1,8 +1,9 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "../transcript.mjs";
 import { findVerdict } from "../route.mjs";
 import { readState } from "../work.mjs";
-import { sessionCostPath, stateDir, statePath, STATE_FILES } from "../paths.mjs";
+import { appendLedger } from "../ledger.mjs";
+import { sessionCostPath } from "../paths.mjs";
 
 const HEADING = /^##\s+(Phase\s+(\d+)\s+of\s+([a-z0-9-]+)|Review:\s+([a-z0-9-]+)|(?:Order|Design|Amendment):\s+([a-z0-9-]+)|Report:\s+([a-z0-9-]+)|Expedited:\s+([a-z0-9-]+))/m;
 
@@ -53,8 +54,6 @@ export function emitLedger(event, { root }) {
   const work_id = heading?.[3] ?? heading?.[4] ?? heading?.[5] ?? heading?.[6] ?? heading?.[7] ?? hints.work_id ?? null;
   const gate = !isSub && /\[a\] approve|\[c\] continue|\[i\] confirm/.test(text);
   const row = {
-    v: 2,
-    ts: new Date().toISOString(),
     session: event.session_id ?? "unknown",
     event: gate ? "gate" : isSub ? "subagent_stop" : "stop",
     agent: agentName(event, path),
@@ -68,14 +67,11 @@ export function emitLedger(event, { root }) {
     tool_calls: stats.tool_calls,
     reads: stats.reads,
     rereads: stats.rereads,
-    bounces: 0,
-    blocks: 0,
     first_reviewable_ms: firstReviewableMs(stats),
     usage: ledgerUsage(span.usage),
     session_cost_usd: sessionCost(root, event.session_id),
     lines_added: null,
   };
-  mkdirSync(stateDir(root), { recursive: true });
-  appendFileSync(statePath(root, STATE_FILES.ledger), JSON.stringify(row) + "\n");
+  appendLedger(root, row);
   return null;
 }
