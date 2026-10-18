@@ -164,6 +164,18 @@ test("routeVerdict on a pull request review keeps the block and names its state 
   });
 });
 
+test("routeVerdict on a developer PHASE DONE stamps the item with the event's session (T-2.5)", () => {
+  withProject((root) => {
+    const s = createWork({ lane: "order", title: "Claimed", session: "s1", root });
+    writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
+    const block = `## Phase 1 of ${s.id}: A\n\nA works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: feat: a\n\nPHASE DONE`;
+    const tp = transcript(root, [user(`work: ${s.id}\nphase: 1`), assistant(block)]);
+    const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, { root });
+    assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+    assert.match(readFileSync(join(root, "work", s.id, "state.yaml"), "utf8"), /^session: s3$/m);
+  });
+});
+
 test("injectState with an empty event lists the open work items (T-6.3)", () => {
   withProject((root) => {
     const s = createWork({ lane: "order", title: "Csv export", root });

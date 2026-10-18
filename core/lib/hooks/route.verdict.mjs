@@ -47,7 +47,7 @@ function applyVerdict({ event, info, hints, id, verdict, text, root }) {
   const amend = text.match(/^AMENDMENT NEEDED:.*$/m)?.[0] ?? null;
   const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, root);
-  const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined });
+  const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined, session: event.session_id });
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }

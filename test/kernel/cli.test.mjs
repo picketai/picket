@@ -7,9 +7,19 @@ import { execFileSync, spawnSync } from "node:child_process";
 
 const BIN = resolve("core/bin/picket.mjs");
 
-function run(root, args) {
-  const out = execFileSync("node", [BIN, ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
-  return JSON.parse(out);
+function sessionEnv(root, session) {
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: root };
+  delete env.CLAUDE_CODE_SESSION_ID;
+  if (session !== undefined) env.CLAUDE_CODE_SESSION_ID = session;
+  return env;
+}
+
+function runText(root, args, session) {
+  return execFileSync("node", [BIN, ...args, "--root", root], { encoding: "utf8", env: sessionEnv(root, session) });
+}
+
+function run(root, args, session) {
+  return JSON.parse(runText(root, args, session));
 }
 
 test("picket leave answers JSON with the recorded entry and close returns it under left", () => {
@@ -102,10 +112,26 @@ test("next --latest prints the newest open item with the fixed key set; next alo
   assert.equal(n.id, id);
   assert.deepEqual(
     Object.keys(n).sort(),
-    ["id", "lane", "status", "phase", "options", "own_gate", "action", "actor", "detail", "title", "phases_approved", "phase_count", "blocked_reason", "since", "by"].sort(),
+    ["id", "lane", "status", "phase", "options", "own_gate", "action", "actor", "detail", "title", "phases_approved", "phase_count", "blocked_reason", "since", "by", "session", "other_session"].sort(),
   );
   assert.throws(() => execFileSync("node", [BIN, "next", "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && /next needs <id> or --latest/.test(err.stderr));
   rmSync(root, { recursive: true, force: true });
+});
+
+test("new takes --session over the environment, route claims for the environment's session, next --latest marks another's (T-2.6)", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
+  try {
+    mkdirSync(join(root, ".claude"));
+    const { id } = run(root, ["new", "--lane", "order", "--title", "Flagged", "--session", "flag"], "env");
+    assert.equal(run(root, ["state", id]).session, "flag");
+    writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
+    run(root, ["route", id, "--verdict", "PHASE DONE", "--agent", "developer", "--phase", "1"], "s9");
+    assert.equal(run(root, ["state", id]).session, "s9");
+    assert.match(runText(root, ["next", "--latest", "--session", "drive-test", "--human"]).trim(), / \(other session\)$/);
+    assert.doesNotMatch(runText(root, ["next", "--latest", "--session", "s9", "--human"]), /other session/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 const ESCAPE = /\x1b\[[0-9;]*m/g;

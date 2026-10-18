@@ -179,6 +179,23 @@ test("a refused phase commit keeps HEAD, keeps every staged path staged and leav
   }
 });
 
+test("a verdict routed by another session claims the item; the same session leaves state.yaml alone (T-2.4)", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-route-"));
+  try {
+    mkdirSync(join(root, ".claude"));
+    const s = createWork({ lane: "order", title: "Claim", session: "s1", root });
+    writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n");
+    const stateFile = join(root, "work", s.id, "state.yaml");
+    route({ id: s.id, verdict: "PHASE DONE", agent: "developer", phase: 1, session: "s2", root });
+    assert.match(readFileSync(stateFile, "utf8"), /^session: s2$/m);
+    const before = readFileSync(stateFile, "utf8");
+    route({ id: s.id, verdict: "ALIGNED", agent: "reviewer", scope: "crosscheck", session: "s2", root });
+    assert.equal(readFileSync(stateFile, "utf8"), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("findVerdict matches exact tokens at line start only", () => {
   assert.equal(findVerdict("summary\nAPPROVED\nmore"), "APPROVED");
   assert.equal(findVerdict("CHANGES   REQUIRED because"), "CHANGES REQUIRED");

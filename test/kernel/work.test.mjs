@@ -61,6 +61,37 @@ test("harness new saves --text and --request byte for byte as request.md, and no
   rmSync(root, { recursive: true, force: true });
 });
 
+function envWithSession(session) {
+  const env = { ...process.env };
+  delete env.CLAUDE_CODE_SESSION_ID;
+  if (session !== undefined) env.CLAUDE_CODE_SESSION_ID = session;
+  return env;
+}
+
+test("picket new stamps the session from CLAUDE_CODE_SESSION_ID and writes no session line without it (T-2.1)", () => {
+  const root = tempRoot();
+  try {
+    const create = (title, session) => JSON.parse(execFileSync("node", [BIN, "new", "--lane", "fast", "--title", title, "--root", root], { encoding: "utf8", env: { ...envWithSession(session), CLAUDE_PROJECT_DIR: root } })).id;
+    const stamped = create("Stamped", "s1");
+    assert.match(readFileSync(join(root, "work", stamped, "state.yaml"), "utf8"), /^session: s1$/m);
+    const unstamped = create("Unstamped", undefined);
+    assert.doesNotMatch(readFileSync(join(root, "work", unstamped, "state.yaml"), "utf8"), /^session:/m);
+    assert.equal(readState(unstamped, root).session, undefined);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("createWork writes a non-empty session and ignores an empty one", () => {
+  const root = tempRoot();
+  try {
+    assert.equal(readState(createWork({ lane: "fast", title: "A", session: "s1", root }).id, root).session, "s1");
+    assert.equal(readState(createWork({ lane: "fast", title: "B", session: "", root }).id, root).session, undefined);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("state validation refuses unknown fields and blocked without reason", () => {
   const root = tempRoot();
   const s = createWork({ lane: "fast", title: "Fix", root });

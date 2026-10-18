@@ -1,6 +1,6 @@
 // What a verdict means for the state machine. Called by the route.verdict hook on every agent stop
 // and by the lane skills. Exact-match tokens only; near misses are recorded but change nothing.
-import { appendVerdict, deriveState, hasMarker, projectRoot, readState, setMarker, writeState } from "./work.mjs";
+import { appendVerdict, deriveState, hasMarker, isSessionId, projectRoot, readState, setMarker, writeState } from "./work.mjs";
 import { next } from "./next.mjs";
 import { ownGate, phasePaths } from "./gate.mjs";
 import { commitOwned, isTestPath, listedPathMatcher } from "./git.mjs";
@@ -35,6 +35,14 @@ function commitPhase(id, phase, root, applied) {
   if (left_staged.length) applied.push(`left staged, not phase ${phase}'s: ${left_staged.join(", ")}`);
   applied.push(...warnings);
   if (sha) recordAccept(root, id, sha, Number(phase));
+}
+
+function claimForSession(id, session, root) {
+  if (!isSessionId(session)) return;
+  const st = readState(id, root);
+  if (String(st.session) === String(session)) return;
+  st.session = session;
+  writeState(st, root);
 }
 
 export const VERDICTS = Object.freeze({
@@ -156,6 +164,7 @@ export function route(o) {
       break;
   }
 
+  claimForSession(o.id, o.session, root);
   appendVerdict(o.id, { agent: o.agent, verdict: o.verdict, phase, scope: o.scope ?? null, through: o.through ?? null }, root);
   if (commitAfter != null) commitPhase(o.id, commitAfter, root, applied);
   return { id: o.id, verdict: o.verdict, phase, applied, next: next(o.id, root) };

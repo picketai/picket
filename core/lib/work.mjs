@@ -95,7 +95,7 @@ export function validateState(s) {
     if (typeof s.created !== "string") errors.push("created missing");
     if (s.status === "blocked" && !s.blocked_reason) errors.push("blocked without blocked_reason");
     for (const k of Object.keys(s)) {
-      if (!["id", "lane", "title", "status", "created", "updated", "blocked_reason", "branch", "run_through", "source", "base"].includes(k)) errors.push(`unknown field ${k}`);
+      if (!["id", "lane", "title", "status", "created", "updated", "blocked_reason", "branch", "run_through", "source", "base", "session"].includes(k)) errors.push(`unknown field ${k}`);
     }
   }
   if (errors.length) throw new Error(`invalid state: ${errors.join("; ")}`);
@@ -108,13 +108,18 @@ export function validateState(s) {
  * cumulative review traces the change back to. The story's references are resolved against the
  * reachable sources first; a pin that matches nothing throws IntakeError before anything is written.
  */
-export function createWork({ lane, title, id, source = null, request = null, story = null, root = projectRoot(), now = new Date() }) {
+export function isSessionId(session) {
+  return typeof session === "string" && session !== "";
+}
+
+export function createWork({ lane, title, id, source = null, request = null, story = null, session = null, root = projectRoot(), now = new Date() }) {
   if (!LANES.includes(lane)) throw new Error(`lane must be one of ${LANES.join("|")}`);
   const wid = id ?? newId(title, now);
   if (existsSync(join(workDir(wid, root), "state.yaml"))) throw new Error(`work item ${wid} already exists`);
   const intake = story == null ? null : storyIntake(String(story), root);
   const state = { id: wid, lane, title, status: "open", created: now.toISOString(), updated: now.toISOString() };
   if (source) state.source = source;
+  if (isSessionId(session)) state.session = session;
   const base = gitHead(root);
   if (base) state.base = base;
   writeState(state, root);

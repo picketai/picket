@@ -78,6 +78,10 @@ function onlyComponents(opt, names) {
   return chosen;
 }
 
+function sessionOf(opt) {
+  return typeof opt.session === "string" ? opt.session : process.env.CLAUDE_CODE_SESSION_ID;
+}
+
 function dirtyWarning(dirty) {
   return dirty.length ? `\nWARNING: uncommitted changes: ${dirty.join(", ")} (commit them or \`git checkout -- <path>\` before you print the closing block)` : "";
 }
@@ -153,7 +157,7 @@ async function main(argv) {
       if (("ticket" in opt || "story" in opt) && (typeof opt.ticket !== "string" || typeof opt.story !== "string")) throw new Error("new needs --ticket <KEY> and --story <file> together");
       let s;
       try {
-        s = createWork({ lane: opt.lane, title: String(opt.title), id: opt.id, source: opt.ticket ?? opt.source, request, story: opt.story ? readFileSync(opt.story) : null, root });
+        s = createWork({ lane: opt.lane, title: String(opt.title), id: opt.id, source: opt.ticket ?? opt.source, request, story: opt.story ? readFileSync(opt.story) : null, session: sessionOf(opt), root });
       } catch (err) {
         if (!(err instanceof IntakeError)) throw err;
         out({ error: "source references not found", failures: err.failures }, opt, () => err.message);
@@ -229,7 +233,8 @@ async function main(argv) {
     }
     case "next": {
       if (!rest[0] && opt.latest) {
-        out(latest(root), opt, (v) => (v.id ? `${v.id}: ${v.action} · ${v.actor ?? "-"} · ${v.detail}` : "(no open work item)"));
+        const session = typeof opt.session === "string" ? opt.session : undefined;
+        out(latest(root, { session }), opt, (v) => (v.id ? `${v.id}: ${v.action} · ${v.actor ?? "-"} · ${v.detail}${v.other_session ? " (other session)" : ""}` : "(no open work item)"));
         return 0;
       }
       if (!rest[0]) throw new Error("next needs <id> or --latest");
@@ -250,7 +255,7 @@ async function main(argv) {
     }
     case "route": {
       if (!rest[0] || !opt.verdict || !opt.agent) throw new Error("route needs <id> --verdict <TOKEN> --agent <name>");
-      const r = route({ id: rest[0], verdict: String(opt.verdict), agent: String(opt.agent), phase: opt.phase ? Number(opt.phase) : undefined, scope: opt.scope, through: opt.through ? Number(opt.through) : undefined, reason: opt.reason, root });
+      const r = route({ id: rest[0], verdict: String(opt.verdict), agent: String(opt.agent), phase: opt.phase ? Number(opt.phase) : undefined, scope: opt.scope, through: opt.through ? Number(opt.through) : undefined, reason: opt.reason, session: sessionOf(opt), root });
       out(r, opt, (v) => `${v.verdict} applied (${v.applied.join(", ") || "recorded"}) · next: ${v.next.action} by ${v.next.actor ?? "-"}${v.next.phase ? ` · phase ${v.next.phase}` : ""}`);
       return 0;
     }

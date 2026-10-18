@@ -196,6 +196,51 @@ test("latest after a developer's PHASE DONE asks the user and carries the phase 
   rmSync(r, { recursive: true, force: true });
 });
 
+function stamped(r, title, session, ts) {
+  const s = createWork({ lane: "order", title, session, root: r });
+  if (ts) appendVerdict(s.id, { ts, agent: "architect", verdict: "ARTIFACT WRITTEN" }, r);
+  return s.id;
+}
+
+test("latest with a session picks that session's newest item over a newer item of another (T-2.2)", () => {
+  const r = root();
+  try {
+    const b = stamped(r, "B", "s2", "2098-01-01T00:00:00.000Z");
+    stamped(r, "A", "s1", LATER);
+    const n = latest(r, { session: "s2" });
+    assert.deepEqual([n.id, n.session, n.other_session], [b, "s2", false]);
+  } finally {
+    rmSync(r, { recursive: true, force: true });
+  }
+});
+
+test("latest with no item of that session answers the newest and marks it another session's (T-2.3)", () => {
+  const r = root();
+  try {
+    stamped(r, "A", "s1", "2098-01-01T00:00:00.000Z");
+    const newest = stamped(r, "C", "s1", LATER);
+    const n = latest(r, { session: "s2" });
+    assert.deepEqual([n.id, n.session, n.other_session], [newest, "s1", true]);
+    const { session, other_session, ...rest } = latest(r);
+    assert.deepEqual([session, other_session], ["s1", false]);
+    const { session: _s, other_session: _o, ...restWithSession } = n;
+    assert.deepEqual(rest, restWithSession);
+  } finally {
+    rmSync(r, { recursive: true, force: true });
+  }
+});
+
+test("latest counts an unstamped item as another session's", () => {
+  const r = root();
+  try {
+    const legacy = stamped(r, "Legacy", null, LATER);
+    const n = latest(r, { session: "s2" });
+    assert.deepEqual([n.id, n.session, n.other_session], [legacy, null, true]);
+  } finally {
+    rmSync(r, { recursive: true, force: true });
+  }
+});
+
 test("latest with no open item answers none", () => {
   const r = root();
   assert.deepEqual(latest(r), { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] });

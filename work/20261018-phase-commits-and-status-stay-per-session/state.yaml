@@ -3,6 +3,7 @@ lane: order
 title: Phase commits and status stay per-session
 status: open
 created: 2026-10-18T08:25:20.083Z
-updated: 2026-10-18T08:41:31.918Z
+updated: 2026-10-18T08:46:34.777Z
 base: 79fa5aaf08c3124aad34a7492354b7a8520bb2b6
 run_through: 3
+session: 556ab53a-65c4-43b9-b735-21afe8f969a9

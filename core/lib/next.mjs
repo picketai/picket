@@ -1,7 +1,7 @@
 // The single next action for a work item, computed from derived state. Never stored.
 // Every branch returns { action, actor, phase, detail, options } where `options` is the bracket menu
 // the gate packet shows the user (empty when no user decision is due).
-import { deriveState, listOpenWork, workDir } from "./work.mjs";
+import { deriveState, isSessionId, listOpenWork, workDir } from "./work.mjs";
 import { ambiguousRefs } from "./sources.mjs";
 import { ownGate } from "./gate.mjs";
 
@@ -85,13 +85,23 @@ function sinceOf(s) {
   return ts && ts > s.updated ? ts : s.updated;
 }
 
-export function latest(root) {
-  const open = listOpenWork(root).map((id) => deriveState(id, root));
-  if (!open.length) return { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] };
-  const newest = open.reduce((best, s) => {
+function newestOf(items) {
+  return items.reduce((best, s) => {
     const order = sinceOf(s).localeCompare(sinceOf(best)) || s.id.localeCompare(best.id);
     return order > 0 ? s : best;
   });
+}
+
+function stampOf(s) {
+  return isSessionId(s.session) ? s.session : null;
+}
+
+export function latest(root, { session } = {}) {
+  const open = listOpenWork(root).map((id) => deriveState(id, root));
+  if (!open.length) return { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] };
+  const given = isSessionId(session);
+  const own = given ? open.filter((s) => stampOf(s) === session) : [];
+  const newest = newestOf(own.length ? own : open);
   return {
     ...next(newest.id, root),
     title: newest.title,
@@ -100,5 +110,7 @@ export function latest(root) {
     blocked_reason: newest.blocked_reason ?? null,
     since: sinceOf(newest),
     by: newest.last_verdict?.agent ?? null,
+    session: stampOf(newest),
+    other_session: given && stampOf(newest) !== session,
   };
 }
