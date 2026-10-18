@@ -30,6 +30,21 @@ The part of Picket no extension can change: the verdict tokens, `route` as the o
 An agent the lead starts with the Agent tool, such as `picket:developer`; in Claude Code terms, a subagent. Not a member of a Claude Code agent team.
 _Avoid_: agent team member
 
+**Silenced move**:
+An added checker suppression (`eslint-disable`, `@ts-expect-error`, `noqa`), a skipped or focused test, a weaker threshold, or a deleted test. `guard.silenced` denies one at the edit and the review summary lists each one.
+
+**Waiver**:
+The user's recorded approval of one silenced move on one path, written by `picket waive`. Only the lead or the user can run it.
+
+**Quality bar**:
+The `quality` block in `.picket/config.json` (`coverage_min`, `max_warnings`) that the guard reads to tell a weaker threshold.
+
+**Mutant**:
+One operator on a changed line inverted by `picket mutate` (`===` to `!==`) to test whether the tests notice. A mutant that survives is a finding.
+
+**Mistake class**:
+The reviewer row id (`Ts4`, `Rf8`) behind a Critical or Major finding. `picket close` reports a class named in two or more reviews.
+
 ## Decisions
 
 - **Product name Tether, project TetherAI** [superseded 2026-10-10 by Picket] (2026-10-02): plugin and CLI are `tether`, state lives in `.tether/`. npm, repository and organization names are settled at the alpha (2026-10-04); npm `tether` is taken, so expect a scope. Report: https://claude.ai/artifact/QyPJqATUoenwE4Cdc3R5km
