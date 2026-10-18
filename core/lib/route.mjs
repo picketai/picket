@@ -3,7 +3,8 @@
 import { appendVerdict, deriveState, hasMarker, projectRoot, readState, setMarker, writeState } from "./work.mjs";
 import { next } from "./next.mjs";
 import { ownGate } from "./gate.mjs";
-import { commitStaged } from "./git.mjs";
+import { commitStaged, productLinesAdded } from "./git.mjs";
+import { appendLedger } from "./ledger.mjs";
 import { readBlock, parseBlock } from "./packet.mjs";
 import { bareAgentName } from "./agent-name.mjs";
 
@@ -22,6 +23,7 @@ function commitPhase(id, phase, root, applied) {
   try {
     const sha = commitStaged(root, message, [`work/${id}`]);
     applied.push(sha ? `committed ${sha}: ${message}` : "nothing staged to commit");
+    if (sha) appendLedger(root, { event: "accept", session: null, agent: null, work_id: id, phase: Number(phase), commit: sha, lines_added: productLinesAdded(root, sha) });
   } catch (err) {
     applied.push(err.message);
   }

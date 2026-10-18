@@ -70,7 +70,6 @@ export function emitLedger(event, { root }) {
     first_reviewable_ms: firstReviewableMs(stats),
     usage: ledgerUsage(span.usage),
     session_cost_usd: sessionCost(root, event.session_id),
-    lines_added: null,
   };
   appendLedger(root, row);
   return null;

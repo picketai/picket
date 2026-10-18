@@ -149,7 +149,7 @@ test("emitLedger stores the session's cost snapshot as session_cost_usd and writ
     for (const session_id of ["s1", "s2"]) emitLedger({ hook_event_name: "Stop", session_id, transcript_path: tp, cwd: root }, { root });
     const rows = readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
     assert.deepEqual(rows.map((r) => r.session_cost_usd), [2.5, null]);
-    assert.ok(rows.every((r) => !("cost_usd" in r)));
+    for (const key of ["cost_usd", "lines_added", "bounces", "blocks"]) assert.ok(rows.every((r) => !(key in r)), key);
   });
 });
 

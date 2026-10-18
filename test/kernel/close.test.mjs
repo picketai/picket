@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -35,6 +35,41 @@ function stageSource(root, git) {
   writeFileSync(join(root, "src", "a.ts"), "export const a = 1;\n");
   git("add", "--", "src/a.ts");
 }
+
+function acceptRows(root) {
+  const path = join(root, ".picket", "state", "ledger.jsonl");
+  return existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.event === "accept") : [];
+}
+
+test("close of a fast item appends an accept row with the commit's product lines and no phase (T-3.3)", () => {
+  const { root, id, git } = repoWithOpenItem();
+  try {
+    mkdirSync(join(root, "src"));
+    writeFileSync(join(root, "src", "a.ts"), Array.from({ length: 5 }, (_, i) => `export const a${i} = ${i};\n`).join(""));
+    git("add", "--", "src/a.ts");
+    const r = picket(root, "close", id, "--message", "fix: a");
+    assert.equal(r.code, 0, r.stdout);
+    const rows = acceptRows(root);
+    assert.equal(rows.length, 1);
+    assert.deepEqual([rows[0].work_id, rows[0].phase, rows[0].lines_added, rows[0].commit], [id, null, 5, git("rev-parse", "--short", "HEAD")]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("close outside a git repository commits nothing and appends no accept row (T-3.3)", () => {
+  const root = mkdtempSync(join(tmpdir(), "picket-close-"));
+  try {
+    mkdirSync(join(root, ".picket"));
+    const { id } = createWork({ lane: "fast", title: "No repo", root });
+    const r = picket(root, "close", id);
+    assert.equal(r.code, 0, r.stdout);
+    assert.equal(r.json.commit, null);
+    assert.deepEqual(acceptRows(root), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("close commits the closing state with the untracked review marker under chore: close <id>", () => {
   const { root, id, git } = repoWithOpenItem();

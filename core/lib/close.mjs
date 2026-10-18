@@ -1,4 +1,5 @@
-import { commitStaged, dirtyPaths, filesInCommit, isRepo, repoPrefix, stagedFiles } from "./git.mjs";
+import { commitStaged, dirtyPaths, filesInCommit, isRepo, productLinesAdded, repoPrefix, stagedFiles } from "./git.mjs";
+import { appendLedger } from "./ledger.mjs";
 import { next } from "./next.mjs";
 import { readState, writeState } from "./work.mjs";
 import { readLeft } from "./leave.mjs";
@@ -43,6 +44,12 @@ function refuseUnlessClosable(id, root) {
   throw new CloseRefused(`next is ${action}, not close`, { action, actor, phase, detail });
 }
 
+function recordAccept(root, id, commit) {
+  try {
+    appendLedger(root, { event: "accept", session: null, agent: null, work_id: id, phase: null, commit, lines_added: productLinesAdded(root, commit) });
+  } catch {}
+}
+
 export function close(id, root, { message } = {}) {
   refuseUnlessClosable(id, root);
   const commitMessage = message ?? defaultCloseMessage(id);
@@ -53,5 +60,6 @@ export function close(id, root, { message } = {}) {
   if (message === undefined) refuseForeignStaged(id, root);
   markDone(id, root);
   const commit = commitStaged(root, commitMessage, [`work/${id}`]);
+  if (commit) recordAccept(root, id, commit);
   return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], dirty: dirtyPaths(root), left: readLeft(id, root) };
 }

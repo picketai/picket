@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { dirtyPaths, head, isRepo, workingState } from "../../core/lib/git.mjs";
+import { dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../core/lib/git.mjs";
 import { liveProbe } from "../../core/lib/statusline.mjs";
 
 function gitIn(root, ...args) {
@@ -30,6 +30,21 @@ function withModifiedRepo(rel, fn) {
     rmSync(root, { recursive: true, force: true });
   }
 }
+
+const numbered = (n) => Array.from({ length: n }, (_, i) => `line ${i}\n`).join("");
+
+test("productLinesAdded counts a commit's added product lines and leaves bookkeeping and binaries out (T-3.1)", () => {
+  withModifiedRepo("src/base.txt", (root) => {
+    writeIn(root, "src/a.ts", numbered(12));
+    writeIn(root, "work/x/order.md", numbered(30));
+    writeIn(root, "artifacts/r.md", numbered(4));
+    writeFileSync(join(root, "src", "logo.bin"), Buffer.from([0, 1, 2, 0, 255]));
+    gitIn(root, "add", "-A", "--", "src/a.ts", "work", "artifacts", "src/logo.bin");
+    gitIn(root, "commit", "-q", "-m", "add");
+    assert.equal(productLinesAdded(root, head(root)), 12);
+    assert.equal(productLinesAdded(root, "no-such-rev"), 0);
+  });
+});
 
 test("dirtyPaths keeps the first character of a path whose status column starts with a space (T-3.1)", () => {
   withModifiedRepo("src/a.txt", (root) => assert.deepEqual(dirtyPaths(root), ["src/a.txt"]));

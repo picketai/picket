@@ -101,14 +101,21 @@ export function changedSince(root, base) {
   return [...new Set([...diffed.split(/\r?\n/), ...untracked.split(/\r?\n/)].map((s) => s.trim()).filter(Boolean))].sort();
 }
 
-export function linesAddedSince(root, base, excluded = isNonProduct) {
-  const out = git(root, ["diff", "--numstat", base]) ?? "";
+function addedLines(numstat, excluded) {
   let added = 0;
-  for (const line of out.split(/\r?\n/)) {
+  for (const line of numstat.split(/\r?\n/)) {
     const m = line.match(/^(\d+)\t(\d+)\t(.+)$/);
     if (m && !excluded(m[3])) added += Number(m[1]);
   }
   return added;
+}
+
+export function linesAddedSince(root, base, excluded = isNonProduct) {
+  return addedLines(git(root, ["diff", "--numstat", base]) ?? "", excluded);
+}
+
+export function productLinesAdded(root, sha) {
+  return addedLines(git(root, ["show", "--numstat", "--relative", "--format=", sha]) ?? "", isNonProduct);
 }
 
 export function log1(root) {

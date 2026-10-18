@@ -75,6 +75,15 @@ test("blocks and bounces count their own rows, per agent too, inside the scope (
   assert.equal(agents.reduce((n, a) => n + a.bounces, 0), summary.bounces);
 });
 
+test("lines come from the item's accept rows and divide its turn tokens (T-3.4)", () => {
+  const turn = { ...stop("s1", "developer", null), usage: { input_tokens: 4000, cache_read_input_tokens: 5000, cache_creation_input_tokens: 0, output_tokens: 1000 }, lines_added: 999 };
+  const accept = (lines_added, work_id = "w1") => ({ v: 2, event: "accept", session: null, agent: null, work_id, phase: 1, commit: "abc1234", lines_added });
+  const summary = summarize([turn, accept(40), accept(60), accept(500, "w2")], { work_id: "w1" });
+  assert.equal(summary.lines_added, 100);
+  assert.equal(summary.tokens_per_accepted_line, 100);
+  assert.equal(summary.turns, 1);
+});
+
 test("turns count stop, subagent_stop and gate rows only, and escalations are summarized beside them", () => {
   const summary = summarize(ROWS);
   assert.equal(summary.turns, 2);

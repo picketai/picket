@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -8,6 +8,7 @@ import { createWork, deriveState } from "../../core/lib/work.mjs";
 import { route, findVerdict } from "../../core/lib/route.mjs";
 import { saveBlock } from "../../core/lib/packet.mjs";
 import { bareAgentName } from "../../core/lib/agent-name.mjs";
+import { statePath, STATE_FILES } from "../../core/lib/paths.mjs";
 
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-route-"));
@@ -16,6 +17,44 @@ function setup() {
   writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n\n## Phase 3: C\n\nt\n");
   return { root, id: s.id };
 }
+
+function acceptRows(root) {
+  const path = statePath(root, STATE_FILES.ledger);
+  return existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.event === "accept") : [];
+}
+
+test("an approval that commits appends one accept row naming the phase commit and its product lines (T-3.2)", () => {
+  const { root, id } = setup();
+  const git = (...args) => execFileSync("git", ["-C", root, "-c", "user.email=t@t", "-c", "user.name=t", ...args], { encoding: "utf8" }).trim();
+  try {
+    git("init", "-q");
+    git("add", "-A");
+    git("commit", "-q", "-m", "base");
+    mkdirSync(join(root, "src"));
+    writeFileSync(join(root, "src", "a.ts"), Array.from({ length: 12 }, (_, i) => `export const a${i} = ${i};\n`).join(""));
+    git("add", "--", "src/a.ts");
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const rows = acceptRows(root);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].commit, git("log", "-1", "--format=%h", "--", `work/${id}/phases/1.approved`));
+    assert.deepEqual([rows[0].work_id, rows[0].phase, rows[0].lines_added, rows[0].session, rows[0].agent], [id, 1, 12, null, null]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("an approval outside a git repository commits nothing and appends no accept row (T-3.3)", () => {
+  const { root, id } = setup();
+  try {
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    assert.ok(r.applied.includes("nothing staged to commit"), r.applied.join("; "));
+    assert.deepEqual(acceptRows(root), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("findVerdict matches exact tokens at line start only", () => {
   assert.equal(findVerdict("summary\nAPPROVED\nmore"), "APPROVED");
@@ -92,6 +131,7 @@ test("approval commits the staged phase with the developer's proposed message; r
   const git = (...a) => execFileSync("git", ["-C", root, "-c", "user.email=t@t", "-c", "user.name=t", ...a], { encoding: "utf8" }).trim();
   git("init", "-q");
   writeFileSync(join(root, "README.md"), "base\n");
+  writeFileSync(join(root, ".gitignore"), ".picket/state/\n");
   git("add", "-A");
   git("commit", "-q", "-m", "base");
   const s = createWork({ lane: "order", title: "Csv", root });

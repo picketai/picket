@@ -68,7 +68,7 @@ export function summarize(rows, { session = null, work_id = null } = {}) {
   const rs = scoped.filter((r) => TURN_EVENTS.has(r.event));
   const usage = sumUsage(rs);
   const tokens = usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens + usage.output_tokens;
-  const lines = rs.reduce((a, r) => a + (r.lines_added ?? 0), 0);
+  const lines = scoped.filter((r) => r.event === "accept").reduce((a, r) => a + (r.lines_added ?? 0), 0);
   const bounces = scoped.filter((r) => r.event === "bounce");
   const blocks = scoped.filter((r) => r.event === "block");
   const byAgent = {};
