@@ -12,8 +12,8 @@ import { recordEscalation } from "../../core/lib/escalation.mjs";
 
 const HOOKS = resolve("core/hooks");
 
-function run(hook, payload, root) {
-  const out = execFileSync("node", [join(HOOKS, hook)], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+function run(hook, payload, root, env = {}) {
+  const out = execFileSync("node", [join(HOOKS, hook)], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root, ...env } });
   return out.trim() ? JSON.parse(out) : null;
 }
 
@@ -793,6 +793,14 @@ test("monitor.context speaks up after six look-around calls", () => {
   assert.match(out.hookSpecificOutput.additionalContext, /6 consecutive/);
   const five = transcript(root, [user("x"), assistant(six.slice(1))]);
   assert.equal(run("monitor.context.mjs", { hook_event_name: "PostToolUse", tool_name: "Read", transcript_path: five, cwd: root }, root), null);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("the spawned notify.user prints nothing when notifications are off or the type is not a prompt", () => {
+  const { root } = project();
+  const prompt = { hook_event_name: "Notification", notification_type: "permission_prompt", message: "Claude needs your permission to use Bash", cwd: root };
+  assert.equal(run("notify.user.mjs", prompt, root, { PICKET_NOTIFY: "off" }), null);
+  assert.equal(run("notify.user.mjs", { ...prompt, notification_type: "auth_success" }, root), null);
   rmSync(root, { recursive: true, force: true });
 });
 

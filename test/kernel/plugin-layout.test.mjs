@@ -74,8 +74,15 @@ test("the registration check notices a shell that hooks.json drops", () => {
   assert.notDeepEqual([...registeredShells(dropped)].sort(), shellsOnDisk().sort());
 });
 
-test("hooks.json registers the seven events the plugin needs", () => {
-  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionStart", "Stop", "SubagentStart", "SubagentStop"]);
+test("hooks.json registers the eight events the plugin needs", () => {
+  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["Notification", "PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionStart", "Stop", "SubagentStart", "SubagentStop"]);
+});
+
+test("the Notification hook runs notify.user.mjs only for permission and idle prompts", () => {
+  const [group, ...rest] = readJson(PLUGIN_HOOKS).hooks.Notification;
+  assert.deepEqual(rest, []);
+  assert.equal(group.matcher, "permission_prompt|idle_prompt");
+  assert.deepEqual(group.hooks.map((hook) => hook.args), [[`${PLUGIN_HOOK_PREFIX}notify.user.mjs`]]);
 });
 
 test(".claude/settings.json carries no hooks, so the plugin is the only loader", () => {

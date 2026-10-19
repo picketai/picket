@@ -17,6 +17,7 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 | `guard.block.mjs` | Stop, SubagentStop | a turn with a contract heading must end with an exact verdict token and stay within 40 lines |
 | `route.verdict.mjs` | Stop, SubagentStop | applies the verdict to the work item with the kernel and hands back `picket next` as context |
 | `emit.ledger.mjs` | Stop, SubagentStop | one v2 ledger row per turn (`bench/schema/ledger-v2.schema.json`) |
+| `notify.user.mjs` | Notification permission_prompt, idle_prompt | an OS notification in a detached process (a Windows toast through powershell.exe, osascript, notify-send); `PICKET_NOTIFY=off` skips it |
 
 Every hook, guards included, is a thin shell: it imports `runHook` from `core/lib/hook.mjs` and its handler from `core/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
 

@@ -42,6 +42,9 @@
         { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/route.verdict.mjs"] },
         { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/emit.ledger.mjs"] }
       ] }
+    ],
+    "Notification": [
+      { "matcher": "permission_prompt|idle_prompt", "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/notify.user.mjs"] }] }
     ]
   }
 }

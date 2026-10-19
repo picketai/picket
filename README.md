@@ -33,8 +33,8 @@ core/output-styles/        picket:custom, the response rules
 core/bin/picket            the kernel CLI on the Bash tool's PATH; core/bin/picket.mjs runs it; core/lib/ its modules
 core/lib/styling/          what picket setup-terminal installs and picket uninstall removes
 core/themes/               the PicketAI Claude Code theme setup-terminal copies
-core/hooks/                twelve hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
-                           state, rule and extension injection, verdict router, ledger
+core/hooks/                fourteen hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
+                           state, rule and extension injection, verdict router, ledger, notifier
 status/                    picket-status: the open work item and its agents, above the prompt
 session/                   picket-session: this project's sessions and agents in a docked sidebar (opt-in)
 markdown/                  picket-markdown: a read-only pane for a Markdown path clicked in a reply
