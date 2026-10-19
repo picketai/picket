@@ -1,1 +1,2 @@
 - [Review summary drops .claude paths](review-summary-drops-claude-paths.md) — in this harness repo, review the full git range; changed_files omits .claude/**
+- [Probe guards directly](probe-guards-directly.md) — import guardBash via node -e; probe wrapped writes and aliases as agent and lead

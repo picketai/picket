@@ -1,5 +1,5 @@
 - [Transcript facts](transcript-facts.md) — continuation message shape in subagent transcripts, transcript location, hook timing baseline caveat
-- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell
+- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key
 - [Bash heredoc backslashes](bash-heredoc-backslashes.md) — doubled backslashes collapse in node heredocs here, backtick-heavy appends fail; do record edits with Edit
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
 - [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch seconds, Windows shell, blank on nonzero exit; new verbs touch guard verb sets
@@ -7,3 +7,5 @@
 - [State folder facts](state-folder-facts.md) — .picket/state is gitignored, so git-status criteria are vacuous; statusline spawn tests write into the repo without a temp root
 - [Session identity facts](session-identity-facts.md) — CLAUDE_CODE_SESSION_ID in Bash, $.session.id() in mods; commit --only takes worktree content
 - [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; absence via negative lookahead + flags i; edit frontmatter with Edit, not sed
+- [Block format couplings](block-format-couplings.md) — pr.mjs parses finding lines by position, packet one-word labels, CLAUDE.md 2043/2048 bytes, row id prefixes collide
+- [Record edits ride phase commits](record-edits-ride-phase-commits.md) — approval commits all of work/<id>/, so a half-done amendment can land; lint compares markers to HEAD

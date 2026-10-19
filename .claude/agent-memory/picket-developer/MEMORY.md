@@ -1,0 +1,1 @@
+- [Files line lists every staged path](feedback-files-line.md) — "+k more" leaves files out of the phase commit
