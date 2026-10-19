@@ -147,7 +147,7 @@ const INIT_SETTINGS = {
     allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"],
     ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
   },
-  statusLine: { type: "command", command: "picket statusline", refreshInterval: 5 },
+  statusLine: { type: "command", command: "picket statusline" },
 };
 
 function writeSettings(root, text, file = "settings.json") {
