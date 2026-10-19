@@ -50,6 +50,8 @@ picket packet <id>
 [a] accept   [d] deeper pass   [x] reject: <why>
 ```
 
+Print it, send a push notification when the tool exists, and end the turn.
+
 `d` continues the analyst with `work: <id>`, `deep pass`, plus any redirect. `x <what>` continues it with the redirect and asks for a new outline. The deep pass ends with the same packet, headed `report ready`.
 
 ## Closing block

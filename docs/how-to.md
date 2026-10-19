@@ -284,6 +284,24 @@ Every change is recorded in `~/.picketai/styling-manifest.json`, and every file 
 
 Contributors who change setup or uninstall run the manual checklist in `docs/setup-terminal-checklist.md` on each platform.
 
+## Notifications
+
+Picket shows an OS notification when Claude Code asks for your permission and when it has waited for your input: a toast on Windows, a notification through `osascript` on macOS, and `notify-send` on Linux. The permission notification comes at once. The idle one comes after Claude Code's idle wait, which is 60 seconds by default.
+
+To make the idle wait 30 seconds, close every Claude Code session first, because a running session rewrites the file, then add this key at the top level of `~/.claude.json`:
+
+```json
+{ "messageIdleNotifThresholdMs": 30000 }
+```
+
+The key is not in Claude Code's documented settings, so a later version may ignore it. `picket init` never writes it, because it is your own preference and not the project's.
+
+To turn Picket's notification off, for example when you already have your own Notification hook or your terminal notifies on its own, set `PICKET_NOTIFY=off` in the `env` block of `.claude/settings.local.json`:
+
+```json
+{ "env": { "PICKET_NOTIFY": "off" } }
+```
+
 ## Updating
 
 ```sh
