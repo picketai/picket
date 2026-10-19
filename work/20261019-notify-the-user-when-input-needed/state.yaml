@@ -1,9 +1,9 @@
 id: 20261019-notify-the-user-when-input-needed
 lane: order
 title: Notify the user when input needed
-status: open
+status: done
 created: 2026-10-19T10:44:48.015Z
-updated: 2026-10-19T12:21:29.036Z
+updated: 2026-10-19T12:33:56.158Z
 session: 0f45d662-dd0f-496a-898a-44c9461ff049
 base: dcdeb7b00e621b27e499ea77f9b6db559f446a03
 run_through: 2

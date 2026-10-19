@@ -1,0 +1,13 @@
+{
+  "ts": "2026-10-19T12:32:09.563Z",
+  "base": "dcdeb7b00e621b27e499ea77f9b6db559f446a03",
+  "mutant": {
+    "path": "core/lib/hooks/notify.user.mjs",
+    "line": 37,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "ms": 251969
+}
