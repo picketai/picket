@@ -320,3 +320,7 @@ Phase 2 also amends `CONTRIBUTING.md` with a short "Code conventions" section th
 ## Open questions
 
 None. Q-1 (the refusal JSON) and Q-2 (helpers take `root` first) from the first discussion were settled by the user's sketch and K-1.
+
+## Revision log
+
+- 2026-10-22: K-8: the claim that `src/` runs under Node type stripping now holds, because source imports name `.mts` (item 03, X-11). `UsageError` moves from `action.mts` to `util/args.mts` (item 03, X-5). K-10 gains a fourth rename: `extensions` becomes `extension list` (item 03, X-8).

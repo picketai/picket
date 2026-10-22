@@ -7,8 +7,8 @@ Decisions that hold across every refactor item. Each item checks itself against 
 ### C-001: Source in `src/`, output in `dist/`
 Everything hand-written lives in `src/`. `dist/` is generated whole by `npm run build`, ignored by git, and never edited. From item 01, L-1.
 
-### C-002: Code is `.mts`, imports name the output
-New and converted modules are `.mts` and pass `strict`. An import names the file it will load at runtime: `import { readState } from "./work.mjs"`, never `./work.mts`. From item 01, L-2 and L-4.
+### C-002 (r2): Code is `.mts`, source imports name `.mts`
+New and converted modules are `.mts` and pass `strict`. An import in `src/` names the source file: `import { readState } from "../shared/work/index.mts"`. The build rewrites it, so `dist/` holds only `.mjs` files with `.mjs` imports. From item 01, L-2 and L-4; revised by item 03, X-11.
 
 ### C-003: Convert bottom-up
 A module converts to `.mts` only after the modules it imports, or together with them in the same change. From item 01, L-4.
@@ -43,6 +43,10 @@ Verbs are one lowercase word, group verbs take one one-word subverb; every verb 
 ### C-013: No assumed locations
 The plugin root is found by walking up to `.claude-plugin/plugin.json`; no code assumes how deep it sits. From item 02, K-13.
 
+### C-014: Five folders under `src/lib`, imports flow one way
+`cli/`, `hooks/`, `verbs.mts`, `verbs/<verb>/`, `shared/`, `util/`. `util/` imports only `node:` and `util/`; `shared/` only `shared/` and `util/`; a verb folder never imports another verb folder; hooks are entry points and may import a verb's `index.mts`; only `bin/` imports `cli/`. From item 03, X-2 and X-3.
+
 ## Revision log
 
 - 2026-10-22: C-004 (r2): floor raised from Node 20 to 22 for shipped code, 24 for tooling; item 01 L-5 (r2).
+- 2026-10-22: C-002 (r2): source imports name `.mts`, the build rewrites them to `.mjs`; item 03 X-11, user approved.

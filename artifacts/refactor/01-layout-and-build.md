@@ -257,3 +257,4 @@ One item, three phases.
 
 - 2026-10-22: L-5 (r2): floor raised from Node 20 to 22, contributors on 24 or newer, runtime check added; the user chose it after the Node line timings.
 - 2026-10-22: tsconfig gains `erasableSyntaxOnly` (item 02, K-8); R-4 closed by item 02, K-13.
+- 2026-10-22: L-2 (r2): per-module build runs with `bundle: true`, `packages: "external"` and a plugin rewriting `.mts` imports to `.mjs`; item 03, X-11.
