@@ -14,6 +14,8 @@ const BIN = resolve("dist/bin/picket.mjs");
 const SOURCE = "export function same(a, b) {\n  return 0;\n}\n";
 const CHANGED = "export function same(a, b) {\n  if (a === b) return 1;\n  return 0;\n}\n";
 const PROBE = 'const text = require("fs").readFileSync("src/same.js", "utf8");\nprocess.exit(text.includes("!==") ? 1 : 0);\n';
+const BUILD = 'const fs = require("fs");\nfs.mkdirSync("out", { recursive: true });\nfs.copyFileSync("src/same.js", "out/same.js");\n';
+const NO_OPERATOR = SOURCE.replace("return 0;", "return 0;\n  const x = 1;");
 
 function git(dir, ...args) {
   return execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -24,15 +26,16 @@ function write(root, path, text) {
   writeFileSync(join(root, path), text);
 }
 
-function repo({ testCommand = "node -e 0" } = {}) {
+function repo({ testCommand = "node -e 0", buildCommand = null } = {}) {
   const root = mkdtempSync(join(tmpdir(), "harness-mutate-"));
   mkdirSync(join(root, ".claude"));
   git(root, "init", "-q", "-b", "trunk");
   write(root, "src/same.js", SOURCE);
   write(root, "probe.cjs", PROBE);
+  write(root, "build.cjs", BUILD);
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "base");
-  if (testCommand) writeConfig(root, { version: 1, commands: { test: testCommand } });
+  if (testCommand) writeConfig(root, { version: 1, commands: buildCommand ? { test: testCommand, build: buildCommand } : { test: testCommand } });
   const id = createWork({ lane: "order", title: "Same", root }).id;
   return { root, id };
 }
@@ -80,6 +83,38 @@ test("no added operator is no candidate; no test command is no test command (T-6
     assert.deepEqual([result.outcome, result.command], ["no test command", null]);
     assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), CHANGED);
   });
+});
+
+test("a test command that builds leaves the mutant in the build output, so mutate rebuilds from the restored source", () => {
+  withRepo({ testCommand: "node build.cjs", buildCommand: "node build.cjs" }, ({ root, id }) => {
+    write(root, "src/same.js", CHANGED);
+    const result = mutate(id, { root });
+    assert.equal(result.outcome, "survived");
+    assert.equal(result.rebuild, "passed");
+    assert.equal(readFileSync(join(root, "out", "same.js"), "utf8"), CHANGED);
+  });
+});
+
+test("a file restored from an interrupted run is rebuilt even with no candidate, and no build command is none detected", () => {
+  withRepo({ buildCommand: "node build.cjs" }, ({ root, id }) => {
+    write(root, "src/same.js", CHANGED.replace("===", "!=="));
+    write(root, "out/same.js", "export const stale = 1;\n");
+    mkdirSync(dirname(statePath(root, STATE_FILES.mutationRestore)), { recursive: true });
+    writeFileSync(statePath(root, STATE_FILES.mutationRestore), JSON.stringify({ path: "src/same.js", original: Buffer.from(NO_OPERATOR).toString("base64") }));
+    const result = mutate(id, { root });
+    assert.deepEqual([result.outcome, result.rebuild], ["no candidate", "passed"]);
+    assert.equal(readFileSync(join(root, "out", "same.js"), "utf8"), NO_OPERATOR);
+  });
+  withRepo({}, ({ root, id }) => {
+    write(root, "src/same.js", CHANGED);
+    assert.equal(mutate(id, { root }).rebuild, "none detected");
+  });
+});
+
+test("a failed rebuild is reported, since the build output may still hold the mutant", () => {
+  const failed = { mutant: { path: "src/a.js", line: 3, from: "<", to: ">=" }, outcome: "survived", rebuild: "failed" };
+  assert.equal(renderMutation(failed), "mutant src/a.js:3 < -> >=: survived\nrebuild after restoring: failed; the build output may still hold the mutant");
+  assert.equal(renderMutation({ ...failed, rebuild: "passed" }), "mutant src/a.js:3 < -> >=: survived");
 });
 
 test("a suite that is red before any mutant is baseline red, and no mutant is written", () => {

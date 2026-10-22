@@ -32,6 +32,11 @@ export function pluginDir(harnessRoot) {
   return join(harnessRoot, "dist");
 }
 
+export function build(harnessRoot) {
+  const r = spawnSync("npm run build", { cwd: harnessRoot, shell: true, encoding: "utf8" });
+  if (r.status !== 0) throw new Error(`npm run build failed in ${harnessRoot} (exit ${r.status}):\n${r.stdout}${r.stderr}`);
+}
+
 function runInit(repo, harnessRoot) {
   const { CLAUDE_PROJECT_DIR, ...env } = process.env;
   const cli = join(pluginDir(harnessRoot), "bin", "picket.mjs");

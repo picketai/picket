@@ -97,12 +97,18 @@ function withMutant(root, mutant, run) {
   }
 }
 
-function testStatus(root) {
+const REBUILD_PROBLEMS = Object.freeze(["failed", "timed out", "error"]);
+
+function stepStatus(root, step) {
   try {
-    return check({ root, steps: ["test"] }).steps[0]?.status ?? "error";
+    return check({ root, steps: [step] }).steps[0]?.status ?? "error";
   } catch {
     return "error";
   }
+}
+
+function testStatus(root) {
+  return stepStatus(root, "test");
 }
 
 function mutantOutcome(root) {
@@ -126,8 +132,9 @@ export function mutate(id, { root = projectRoot() } = {}) {
   const baseline = command ? baselineOutcome(root) : null;
   const found = command && !baseline ? pickMutant(root, base) : null;
   const outcome = !command ? "no test command" : baseline ?? (!found ? "no candidate" : withMutant(root, found, () => mutantOutcome(root)));
+  const rebuild = found || restored ? stepStatus(root, "build") : null;
   const mutant = found ? { path: found.path, line: found.line, from: found.from, to: found.to } : null;
-  const result = { ts: new Date().toISOString(), base, mutant, command, outcome, ms: Date.now() - started };
+  const result = { ts: new Date().toISOString(), base, mutant, command, outcome, rebuild, ms: Date.now() - started };
   writeFileSync(join(workDir(id, root), "mutation.json"), JSON.stringify(result, null, 2) + "\n");
   return { ...result, restored };
 }
@@ -141,5 +148,6 @@ export function renderMutation(v) {
   const lines = v.restored ? [`restored ${v.restored} from an interrupted run`] : [];
   const where = v.mutant ? `${v.mutant.path}:${v.mutant.line} ${v.mutant.from} -> ${v.mutant.to}` : "none";
   lines.push(`mutant ${where}: ${v.outcome}`);
+  if (REBUILD_PROBLEMS.includes(v.rebuild)) lines.push(`rebuild after restoring: ${v.rebuild}; the build output may still hold the mutant`);
   return lines.join("\n");
 }

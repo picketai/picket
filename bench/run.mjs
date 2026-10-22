@@ -102,7 +102,7 @@ function manifest(adapter, harnessRoot, fixtureHash, args) {
     harness: adapter.name,
     harness_root: harnessRoot,
     harness_commit: sh("git rev-parse --short HEAD", harnessRoot),
-    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .picket core CLAUDE.md", harnessRoot) ? true : false,
+    harness_dirty: sh("git status --porcelain --untracked-files=no -- .claude .picket src CLAUDE.md", harnessRoot) ? true : false,
     fixture_hash: fixtureHash,
     claude_version: sh("claude --version"),
     node_version: process.version,
@@ -302,6 +302,7 @@ async function main() {
     for (const t of tasks) log(`  ${t.id} [${t.lane}] budget $${t.budget_usd ?? 10}`);
     return;
   }
+  adapter.build?.(harnessRoot);
 
   mkdirSync(dirname(out), { recursive: true });
   const existing = existsSync(out) ? JSON.parse(readFileSync(out, "utf8")) : { manifest: man, records: [] };

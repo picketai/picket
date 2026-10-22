@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as trunk from "../adapters/trunk.mjs";
 import * as plugin from "../adapters/plugin.mjs";
 import { laneMatches } from "../lib/lanes.mjs";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -35,6 +35,20 @@ test("a plugin install refuses a root without the plugin manifest", () => {
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("the plugin build runs the harness root's npm build, and a failed build stops the bench", () => {
+  const root = mkdtempSync(join(tmpdir(), "bench-build-"));
+  try {
+    writeFileSync(join(root, "build.cjs"), 'require("fs").writeFileSync("built.txt", "yes");\n');
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "harness", scripts: { build: "node build.cjs" } }));
+    plugin.build(root);
+    assert.equal(readFileSync(join(root, "built.txt"), "utf8"), "yes");
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "harness", scripts: { build: "node -e process.exit(2)" } }));
+    assert.throws(() => plugin.build(root), /npm run build failed/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
