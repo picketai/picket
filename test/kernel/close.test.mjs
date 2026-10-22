@@ -313,7 +313,7 @@ test("close refuses an order item whose cumulative review is pending and names t
 
   const human = picket(root, "close", id, "--human");
   assert.equal(human.code, 2);
-  assert.equal(human.stdout, `${id}: not closed · next: review_cumulative · reviewer · all phases approved; one cumulative review remains`);
+  assert.equal(human.stdout, "refused: next is review_cumulative, not close");
   rmSync(root, { recursive: true, force: true });
 });
 

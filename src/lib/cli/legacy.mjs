@@ -8,16 +8,10 @@ import { preparePullRequest, parsePullRequestUrl, postReview } from "../verbs/pu
 import { reviewSummaryRange } from "../shared/review-summary.mjs";
 import { drive, renderDrive } from "../verbs/drive/drive.mjs";
 import { check, renderCheck } from "../shared/checks.mjs";
-import { migrate, renderMigrate } from "../verbs/migrate/migrate.mjs";
-import { dirtyPaths } from "../shared/git.mjs";
-import { close } from "../verbs/close/close.mjs";
-import { leftLine } from "../shared/work/left.mjs";
-import { init, initRoot, InitRefused, renderInit } from "../verbs/init/init.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../shared/extensions.mjs";
-import { appendComment, appendWaiver, createWork, projectRoot, readState, workDir, writeState } from "../shared/work/work.mjs";
+import { createWork, projectRoot, readState, workDir } from "../shared/work/work.mjs";
 import { next } from "../shared/work/next-step.mjs";
 import { configRel } from "../shared/paths.mjs";
-import { route } from "../verbs/route/route.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
 import { reviewSummary } from "../shared/review-summary.mjs";
 import { loadConfig } from "../shared/config.mjs";
@@ -64,10 +58,6 @@ function sessionOf(opt) {
   return typeof opt.session === "string" ? opt.session : process.env.CLAUDE_CODE_SESSION_ID;
 }
 
-function dirtyWarning(dirty) {
-  return dirty.length ? `\nWARNING: uncommitted changes: ${dirty.join(", ")} (commit them or \`git checkout -- <path>\` before you print the closing block)` : "";
-}
-
 /** The request from `--text "<text>"` or `--request <file|->`; a flag given without a value is an error. */
 function readRequest(opt, verb) {
   if (typeof opt.text === "string") return opt.text;
@@ -75,7 +65,7 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
-export const LEGACY_VERBS = ["init", "extension", "extensions", "new", "set", "close", "route", "review-summary", "find-verdict", "drive", "check", "migrate", "comment", "waive", "mutate", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+export const LEGACY_VERBS = ["extension", "extensions", "new", "review-summary", "find-verdict", "drive", "check", "mutate", "statusline", "setup-terminal", "uninstall", "pr", "source"];
 
 export async function legacyMain(argv) {
   const { pos, opt } = parseArgs(argv);
@@ -91,19 +81,6 @@ export async function legacyMain(argv) {
     case "extensions": {
       out(describeExtensions(loadExtensions(root)), opt, renderExtensions);
       return 0;
-    }
-    case "init": {
-      let initAt;
-      try {
-        initAt = initRoot({ root: typeof opt.root === "string" ? opt.root : undefined });
-      } catch (err) {
-        if (!(err instanceof InitRefused)) throw err;
-        out({ root: null, error: err.message }, opt, (v) => `init refused · ${v.error}`);
-        return 2;
-      }
-      const report = init(initAt, { install: !opt["no-install"] });
-      out(report, opt, renderInit);
-      return report.steps.some((s) => s.result === "failed") ? 2 : 0;
     }
     case "new": {
       if (!opt.lane || !opt.title) throw new Error("new needs --lane and --title");
@@ -125,54 +102,6 @@ export async function legacyMain(argv) {
       const why = sources.map((x) => `${x.name}: ${x.reason}`).join("; ") || `none declared in ${configRel()}`;
       const warnings = noSource ? [`story.md saved without snapshots: no reachable source (${why})`] : [];
       out({ ...s, dir: `work/${s.id}`, warnings, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}${v.warnings.map((w) => `\nWARNING: ${w}`).join("")}`);
-      return 0;
-    }
-    case "set": {
-      if (!rest[0] || rest.length < 2) throw new Error('set needs <id> and key=value pairs (status, blocked_reason, branch, title, run_through)');
-      const st = readState(rest[0], root);
-      for (const kv of rest.slice(1)) {
-        const m = kv.match(/^([a-z_]+)=(.*)$/);
-        if (!m) throw new Error(`bad assignment ${kv}`);
-        if (!["status", "blocked_reason", "branch", "title", "run_through"].includes(m[1])) throw new Error(`field ${m[1]} is not settable`);
-        if (m[2] === "") delete st[m[1]];
-        else st[m[1]] = m[1] === "run_through" ? Number(m[2]) : m[2];
-      }
-      if (st.status !== "blocked") delete st.blocked_reason;
-      writeState(st, root);
-      // Closing with uncommitted changes in the tree is the most common way a drive's side effect ships.
-      const dirty = st.status === "done" ? (dirtyPaths(root) ?? []) : [];
-      out({ ...st, dirty, next: next(st.id, root) }, opt, (v) => `${v.id}: status ${v.status}${v.blocked_reason ? " (" + v.blocked_reason + ")" : ""} · next: ${v.next.action}${dirtyWarning(v.dirty)}`);
-      return 0;
-    }
-    case "close": {
-      if (!rest[0]) throw new Error("close needs <id>");
-      const message = typeof opt.message === "string" ? opt.message : undefined;
-      const touched = typeof opt.touched === "string" ? opt.touched.split(",").map((p) => p.trim()).filter(Boolean) : [];
-      try {
-        const r = close(rest[0], root, { message, touched });
-        out(r, opt, (v) =>
-          [
-            `${v.id}: closed · ${v.commit ? `committed ${v.commit} ${v.message}` : "nothing to commit"}${dirtyWarning(v.dirty)}`,
-            ...(v.left_staged.length ? [`left staged (not this item's): ${v.left_staged.join(", ")}`] : []),
-            ...v.warnings.map((w) => `WARNING: ${w}`),
-            ...v.left.map(leftLine),
-            ...v.repeats.map((r) => `repeats: ${r.class} (${r.items.join(", ")})`),
-          ].join("\n"),
-        );
-        return 0;
-      } catch (err) {
-        if (!err.next) {
-          out({ id: rest[0], error: err.message }, opt, (v) => `${v.id}: not closed · ${v.error}`);
-          return 2;
-        }
-        out({ id: rest[0], error: err.message, next: err.next }, opt, (v) => `${v.id}: not closed · next: ${v.next.action} · ${v.next.actor ?? "-"} · ${v.next.detail}`);
-        return 2;
-      }
-    }
-    case "route": {
-      if (!rest[0] || !opt.verdict || !opt.agent) throw new Error("route needs <id> --verdict <TOKEN> --agent <name>");
-      const r = route({ id: rest[0], verdict: String(opt.verdict), agent: String(opt.agent), phase: opt.phase ? Number(opt.phase) : undefined, scope: opt.scope, through: opt.through ? Number(opt.through) : undefined, reason: opt.reason, session: sessionOf(opt), root });
-      out(r, opt, (v) => `${v.verdict} applied (${v.applied.join(", ") || "recorded"}) · next: ${v.next.action} by ${v.next.actor ?? "-"}${v.next.phase ? ` · phase ${v.next.phase}` : ""}`);
       return 0;
     }
     case "review-summary": {
@@ -211,26 +140,11 @@ export async function legacyMain(argv) {
       out(r, opt, renderDrive);
       return r.ok ? 0 : 2;
     }
-    case "comment": {
-      if (!rest[0] || typeof opt.path !== "string" || typeof opt.text !== "string" || !opt.text.trim()) throw new Error('comment needs <id> --path <p> --text "<t>"');
-      readState(rest[0], root);
-      const entry = appendComment(rest[0], { path: opt.path, text: opt.text }, root);
-      out(entry, opt, (v) => `approved comment for ${v.path}: "${v.text}"`);
-      return 0;
-    }
     case "mutate": {
       if (!rest[0]) throw new Error("mutate needs <id>");
       const r = mutate(rest[0], { root });
       out(r, opt, renderMutation);
       return r.outcome === "error" ? 2 : 0;
-    }
-    case "waive": {
-      const hasText = typeof opt.text === "string" && opt.text.trim() !== "";
-      const deleted = opt.deleted === true;
-      if (!rest[0] || typeof opt.path !== "string" || hasText === deleted) throw new Error('waive needs <id> --path <p> and exactly one of --text "<added line>" or --deleted');
-      const entry = appendWaiver(rest[0], { path: opt.path, text: hasText ? opt.text : null, deleted }, root);
-      out(entry, opt, (v) => `waived for ${v.path}: ${v.deleted ? "its deletion" : `"${v.text}"`}`);
-      return 0;
     }
     case "statusline": {
       const now = Date.now();
@@ -314,11 +228,6 @@ export async function legacyMain(argv) {
       const r = sub === "find" ? findInSource(source, query) : grepInSource(source, query, { path: typeof opt.path === "string" ? opt.path : null });
       const more = (v) => (v.overflow ? `\n+${v.overflow} more not shown` : "");
       out({ source: name, root: source.root, ...r }, opt, (v) => (v.hits.map((h) => (h.line ? `${h.path}:${h.line} [${h.places.join(", ")}] ${h.text}` : `${h.path} [${h.places.join(", ")}]`)).join("\n") || "(no hits)") + more(v));
-      return 0;
-    }
-    case "migrate": {
-      const r = migrate(root, { dryRun: Boolean(opt["dry-run"]) });
-      out(r, opt, renderMigrate);
       return 0;
     }
     case "check": {

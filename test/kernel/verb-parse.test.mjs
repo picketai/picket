@@ -9,6 +9,13 @@ import { verb as packet } from "../../dist/lib/verbs/packet/index.mjs";
 import { verb as preflight } from "../../dist/lib/verbs/preflight/index.mjs";
 import { verb as state } from "../../dist/lib/verbs/state/index.mjs";
 import { verb as verify } from "../../dist/lib/verbs/verify/index.mjs";
+import { verb as close } from "../../dist/lib/verbs/close/index.mjs";
+import { verb as comment } from "../../dist/lib/verbs/comment/index.mjs";
+import { verb as init } from "../../dist/lib/verbs/init/index.mjs";
+import { verb as migrate } from "../../dist/lib/verbs/migrate/index.mjs";
+import { verb as route } from "../../dist/lib/verbs/route/index.mjs";
+import { verb as set } from "../../dist/lib/verbs/set/index.mjs";
+import { verb as waive } from "../../dist/lib/verbs/waive/index.mjs";
 
 const ID = "20261023-x";
 
@@ -58,4 +65,43 @@ test("packet reads --width as a whole number (T-4.4)", () => {
   assert.deepEqual(parse(packet, [ID, "--width", "80"]), { id: ID, width: 80 });
   assert.equal(parse(packet, [ID]).width, undefined);
   assert.throws(() => parse(packet, [ID, "--width", "abc"]), UsageError);
+});
+
+test("set reads key=value assignments, an empty value included, and refuses a token without =", () => {
+  assert.deepEqual(parse(set, [ID, "status=blocked", "blocked_reason="]), { id: ID, assignments: [{ field: "status", value: "blocked" }, { field: "blocked_reason", value: "" }] });
+  assert.throws(() => parse(set, [ID]), UsageError);
+  assert.throws(() => parse(set, [ID, "status"]), (err) => err instanceof UsageError && err.message.includes("bad assignment status"));
+});
+
+test("close reads the message and the touched paths", () => {
+  assert.deepEqual(parse(close, [ID, "--message", "chore: done", "--touched", "a.ts,b.ts"]), { id: ID, message: "chore: done", touched: ["a.ts", "b.ts"] });
+  assert.deepEqual(parse(close, [ID]), { id: ID, message: undefined, touched: [] });
+  assert.throws(() => parse(close, []), UsageError);
+});
+
+test("comment needs a path and a text that is not blank", () => {
+  assert.deepEqual(parse(comment, [ID, "--path", "src/a.ts", "--text", "why"]), { id: ID, path: "src/a.ts", text: "why" });
+  assert.throws(() => parse(comment, [ID, "--path", "src/a.ts", "--text", " "]), UsageError);
+  assert.throws(() => parse(comment, [ID, "--text", "why"]), UsageError);
+});
+
+test("waive takes exactly one of --text and --deleted (T-5.4)", () => {
+  assert.deepEqual(parse(waive, [ID, "--path", "a.test.ts", "--text", "it.skip("]), { id: ID, path: "a.test.ts", text: "it.skip(", deleted: false });
+  assert.deepEqual(parse(waive, [ID, "--path", "a.test.ts", "--deleted"]), { id: ID, path: "a.test.ts", text: null, deleted: true });
+  assert.throws(() => parse(waive, [ID, "--path", "a.test.ts", "--text", "x", "--deleted"]), UsageError);
+  assert.throws(() => parse(waive, [ID, "--path", "a.test.ts"]), UsageError);
+});
+
+test("route needs a verdict and an agent and reads its numbers as whole numbers (T-5.4)", () => {
+  const input = parse(route, [ID, "--verdict", "approved", "--agent", "user", "--phase", "2", "--through", "4"]);
+  assert.deepEqual(input, { id: ID, verdict: "approved", agent: "user", phase: 2, scope: undefined, through: 4, reason: undefined, session: undefined });
+  assert.throws(() => parse(route, [ID, "--verdict", "approved", "--agent", "user", "--phase", "x"]), UsageError);
+  assert.throws(() => parse(route, [ID, "--verdict", "approved"]), (err) => err instanceof UsageError && err.message.includes("--agent"));
+});
+
+test("migrate reads --dry-run and init reads --root and --no-install", () => {
+  assert.deepEqual(parse(migrate, ["--dry-run"]), { dryRun: true });
+  assert.deepEqual(parse(migrate, []), { dryRun: false });
+  assert.deepEqual(parse(init, ["--root", "/p", "--no-install"]), { root: "/p", install: false });
+  assert.deepEqual(parse(init, []), { root: null, install: true });
 });

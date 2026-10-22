@@ -76,7 +76,9 @@ test("the CLI walks a work item end to end and speaks JSON", () => {
   assert.equal(blocked.next.action, "resolve_block");
   const reopened = run(root, ["set", created.id, "status=open"]);
   assert.equal(reopened.blocked_reason, undefined);
-  assert.throws(() => execFileSync("node", [BIN, "set", created.id, "lane=design", "--root", root], { stdio: "pipe" }), /not settable/);
+  const unsettable = spawnSync("node", [BIN, "set", created.id, "lane=design", "--root", root], { encoding: "utf8" });
+  assert.equal(unsettable.status, 2);
+  assert.match(unsettable.stdout, /field lane is not settable/);
 
   const rs = run(root, ["review-summary", created.id, "--base", "HEAD"]);
   assert.equal(rs.size, "small");
