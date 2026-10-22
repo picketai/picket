@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { workingState } from "../../shared/git.mjs";
-import { PICKET_DIR, sessionCostPath } from "../../shared/paths.mjs";
+import { PICKET_DIR, projectRoot, sessionCostPath } from "../../shared/paths.mjs";
 import { BRAND, rgb } from "../../shared/styling/palette.mjs";
 import { readTail } from "../../shared/transcript/transcript.mjs";
 
@@ -394,7 +394,11 @@ export function liveProbe({ cacheDir, now, readGit = workingState, readSkill = l
   };
 }
 
-export function recordSessionCost(input, { root }) {
+function inputRoot(input) {
+  return projectRoot(input.workspace?.project_dir ?? workspaceDir(input) ?? undefined);
+}
+
+export function recordSessionCost(input, { root = inputRoot(input) } = {}) {
   try {
     const cost = input.cost?.total_cost_usd;
     const file = sessionCostPath(root, input.session_id);

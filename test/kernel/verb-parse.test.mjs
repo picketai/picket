@@ -16,6 +16,14 @@ import { verb as migrate } from "../../dist/lib/verbs/migrate/index.mjs";
 import { verb as route } from "../../dist/lib/verbs/route/index.mjs";
 import { verb as set } from "../../dist/lib/verbs/set/index.mjs";
 import { verb as waive } from "../../dist/lib/verbs/waive/index.mjs";
+import { verb as drive } from "../../dist/lib/verbs/drive/index.mjs";
+import { verb as check } from "../../dist/lib/verbs/check/index.mjs";
+import { verb as mutate } from "../../dist/lib/verbs/mutate/index.mjs";
+import { verb as statusline } from "../../dist/lib/verbs/statusline/index.mjs";
+import { verb as sourceFind } from "../../dist/lib/verbs/source/find.mjs";
+import { verb as sourceGrep } from "../../dist/lib/verbs/source/grep.mjs";
+import { verb as sourcePick } from "../../dist/lib/verbs/source/pick.mjs";
+import { verb as sourceAdd } from "../../dist/lib/verbs/source/add.mjs";
 
 const ID = "20261023-x";
 
@@ -104,4 +112,38 @@ test("migrate reads --dry-run and init reads --root and --no-install", () => {
   assert.deepEqual(parse(migrate, []), { dryRun: false });
   assert.deepEqual(parse(init, ["--root", "/p", "--no-install"]), { root: "/p", install: false });
   assert.deepEqual(parse(init, []), { root: null, install: true });
+});
+
+test("drive reads its flags with today's value types and refuses a bad timeout, env or bare --run (T-6.4)", () => {
+  const input = parse(drive, ["--run", "node -e 0", "--env", "A=1", "--hit", "GET /a", "--hit", "GET /b", "--timeout", "30", "--keep-changes", "--work", ID, "--phase", "2"]);
+  assert.deepEqual(input, { env: { A: "1" }, run: "node -e 0", start: undefined, hits: ["GET /a", "GET /b"], port: undefined, wait: undefined, timeoutMs: 30000, keepChanges: true, work: ID, phase: "2" });
+  assert.throws(() => parse(drive, ["--run", "x", "--timeout", "abc"]), UsageError);
+  assert.throws(() => parse(drive, ["--run", "x", "--env", "1A=2"]), (err) => err instanceof UsageError && err.message.includes("--env"));
+  assert.throws(() => parse(drive, ["--run"]), UsageError);
+});
+
+test("check reads its steps, a single command and a whole-second timeout (T-6.4)", () => {
+  assert.deepEqual(parse(check, ["--steps", "test,build", "--timeout", "60"]), { steps: ["test", "build"], only: undefined, timeoutMs: 60000 });
+  assert.deepEqual(parse(check, []), { steps: undefined, only: undefined, timeoutMs: undefined });
+  assert.throws(() => parse(check, ["--timeout", "1.5"]), UsageError);
+  assert.throws(() => parse(check, ["--only"]), UsageError);
+});
+
+test("mutate needs an id, and statusline reads its input from standard input", () => {
+  assert.deepEqual(parse(mutate, [ID]), { id: ID });
+  assert.throws(() => parse(mutate, []), UsageError);
+  assert.deepEqual(parse(statusline, [], () => '{"cwd":"/p"}'), { cwd: "/p" });
+  assert.deepEqual(parse(statusline, [], () => "not json"), {});
+  assert.deepEqual(parse(statusline, [], () => ""), {});
+});
+
+test("the source subverbs read their positional arguments (T-6.4)", () => {
+  assert.deepEqual(parse(sourceFind, ["analysis", "pricing"]), { name: "analysis", query: "pricing", path: null });
+  assert.deepEqual(parse(sourceGrep, ["analysis", "rate", "--path", "docs/"]), { name: "analysis", query: "rate", path: "docs/" });
+  assert.throws(() => parse(sourceGrep, ["analysis"]), UsageError);
+  assert.throws(() => parse(sourceFind, []), UsageError);
+  assert.deepEqual(parse(sourcePick, [ID, "docs/a.md", "main"]), { id: ID, ref: "docs/a.md", label: "main" });
+  assert.throws(() => parse(sourcePick, [ID, "docs/a.md"]), UsageError);
+  assert.deepEqual(parse(sourceAdd, [ID, "docs/a.md"]), { id: ID, ref: "docs/a.md" });
+  assert.throws(() => parse(sourceAdd, [ID]), UsageError);
 });

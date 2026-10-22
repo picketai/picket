@@ -1,48 +1,21 @@
 // The kernel CLI. Every verb prints JSON on stdout (add --pretty for an indented copy, --human for a
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
 import { readFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
-import { iconsMode, liveProbe, recordSessionCost, renderStatusline, workspaceDir } from "../verbs/statusline/statusline.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../verbs/pullrequest/pr.mjs";
 import { reviewSummaryRange } from "../shared/review-summary.mjs";
-import { drive, renderDrive } from "../verbs/drive/drive.mjs";
-import { check, renderCheck } from "../shared/checks.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../shared/extensions.mjs";
-import { createWork, projectRoot, readState, workDir } from "../shared/work/work.mjs";
+import { createWork, projectRoot } from "../shared/work/work.mjs";
 import { next } from "../shared/work/next-step.mjs";
 import { configRel } from "../shared/paths.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
 import { reviewSummary } from "../shared/review-summary.mjs";
 import { loadConfig } from "../shared/config.mjs";
 import { parseArgs } from "../util/args.mjs";
-import { mutate, renderMutation } from "../verbs/mutate/mutate.mjs";
-import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../shared/sources/sources.mjs";
+import { IntakeError } from "../shared/sources/sources.mjs";
 
 function out(value, opt, text) {
   if (opt.human && text) console.log(text(value));
   else console.log(opt.pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value));
-}
-
-const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-function envFromFlags(values) {
-  const env = {};
-  for (const pair of values === undefined ? [] : [].concat(values)) {
-    const eq = typeof pair === "string" ? pair.indexOf("=") : -1;
-    const name = eq > 0 ? pair.slice(0, eq) : "";
-    if (!ENV_NAME.test(name)) throw new Error(`--env needs NAME=VALUE with NAME matching ${ENV_NAME.source}, got "${pair === true ? "" : pair}"`);
-    env[name] = pair.slice(eq + 1);
-  }
-  return env;
-}
-
-function statuslineInput() {
-  try {
-    return JSON.parse(readFileSync(0, "utf8")) ?? {};
-  } catch {
-    return {};
-  }
 }
 
 function onlyComponents(opt, names) {
@@ -65,7 +38,7 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
-export const LEGACY_VERBS = ["extension", "extensions", "new", "review-summary", "find-verdict", "drive", "check", "mutate", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+export const LEGACY_VERBS = ["extension", "extensions", "new", "review-summary", "find-verdict", "setup-terminal", "uninstall", "pr"];
 
 export async function legacyMain(argv) {
   const { pos, opt } = parseArgs(argv);
@@ -121,40 +94,6 @@ export async function legacyMain(argv) {
       out({ verdict: findVerdict(opt.text ?? readFileSync(0, "utf8")) }, opt, (v) => v.verdict ?? "");
       return 0;
     }
-    case "drive": {
-      // Starts the app (or runs a CLI command), exercises it, stops it, and logs the evidence itself.
-      const env = envFromFlags(opt.env);
-      const r = await drive({
-        root,
-        env,
-        run: opt.run === true ? undefined : opt.run,
-        start: opt.start === true ? undefined : opt.start,
-        hits: opt.hit === undefined ? [] : [].concat(opt.hit),
-        port: opt.port,
-        wait: opt.wait,
-        timeoutMs: opt.timeout ? Number(opt.timeout) * 1000 : undefined,
-        keepChanges: opt["keep-changes"] === true,
-        id: opt.work,
-        phase: opt.phase,
-      });
-      out(r, opt, renderDrive);
-      return r.ok ? 0 : 2;
-    }
-    case "mutate": {
-      if (!rest[0]) throw new Error("mutate needs <id>");
-      const r = mutate(rest[0], { root });
-      out(r, opt, renderMutation);
-      return r.outcome === "error" ? 2 : 0;
-    }
-    case "statusline": {
-      const now = Date.now();
-      const probe = liveProbe({ cacheDir: join(tmpdir(), "picket-statusline"), now });
-      const input = statuslineInput();
-      const rendered = renderStatusline(input, { now, columns: Number(process.env.COLUMNS), icons: iconsMode(homedir()), probe });
-      process.stdout.write(`${rendered}\n`);
-      recordSessionCost(input, { root: projectRoot(input.workspace?.project_dir ?? workspaceDir(input) ?? undefined) });
-      return 0;
-    }
     case "setup-terminal": {
       const { COMPONENTS, renderReport, setupTerminal } = await import("../shared/styling/setup.mjs");
       const { realHost } = await import("../shared/styling/host.mjs");
@@ -190,50 +129,6 @@ export async function legacyMain(argv) {
         `  base ${v.base.slice(0, 10)} · head ${v.head.slice(0, 10)} (${v.ref})`,
       ].join("\n"));
       return 0;
-    }
-    case "source": {
-      const { sources } = loadConfig(root);
-      if (rest[0] === "pick") {
-        // The opening gate's answer: one version for an ambiguous story reference.
-        const [, id, ref, label] = rest;
-        if (!id || !ref || !label) throw new Error("source pick needs <id> <ref> <label>");
-        const rec = pickSource(workDir(id, root), ref, label, sources);
-        out({ ...rec, next: next(id, root) }, opt, (v) => `${v.ref}: ${v.branch ?? v.worktree} @ ${String(v.commit).slice(0, 8)} (chosen_by user) · next: ${v.next.action}`);
-        return 0;
-      }
-      if (rest[0] === "add") {
-        // A reference the architect brings in after intake; ambiguous or missing exits 2, writing nothing.
-        const [, id, ref] = rest;
-        if (!id || !ref) throw new Error("source add needs <id> <ref>");
-        readState(id, root); // an unknown id fails here, not as a missing directory
-        try {
-          const r = addSource(workDir(id, root), ref, sources);
-          out(r, opt, (v) => `${v.ref.ref}: ${v.added ? `added from ${v.ref.branch ?? v.ref.worktree} @ ${String(v.ref.commit).slice(0, 8)} (${v.ref.chosen_by}) · snapshot ${v.ref.snapshot}` : "already recorded"}`);
-          return 0;
-        } catch (err) {
-          if (!(err instanceof LookupError)) throw err;
-          out({ ref, error: err.message }, opt, () => err.message);
-          return 2;
-        }
-      }
-      // Read-only discovery across every worktree and local branch of a declared source.
-      const [sub, name, query] = rest;
-      if (!["find", "grep"].includes(sub) || !name || query === undefined) throw new Error("source needs find <name> <substring>, grep <name> <regex> [--path <prefix>], pick <id> <ref> <label>, or add <id> <ref>");
-      const source = sources.find((s) => s.name === name);
-      if (!source) throw new Error(`no source named ${name}; declared: ${sources.map((s) => s.name).join(", ") || `(none, see ${configRel()})`}`);
-      if (!source.root) {
-        out({ source: name, error: source.reason }, opt, (v) => `source ${v.source} is unreachable: ${v.error}`);
-        return 2;
-      }
-      const r = sub === "find" ? findInSource(source, query) : grepInSource(source, query, { path: typeof opt.path === "string" ? opt.path : null });
-      const more = (v) => (v.overflow ? `\n+${v.overflow} more not shown` : "");
-      out({ source: name, root: source.root, ...r }, opt, (v) => (v.hits.map((h) => (h.line ? `${h.path}:${h.line} [${h.places.join(", ")}] ${h.text}` : `${h.path} [${h.places.join(", ")}]`)).join("\n") || "(no hits)") + more(v));
-      return 0;
-    }
-    case "check": {
-      const r = check({ root, steps: opt.steps ? String(opt.steps).split(",").filter(Boolean) : undefined, only: opt.only === true ? undefined : opt.only, timeoutMs: opt.timeout ? Number(opt.timeout) * 1000 : undefined });
-      out(r, opt, renderCheck);
-      return r.ok ? 0 : 2;
     }
     default:
       throw new Error(`unknown verb "${verb}". Verbs: ${LEGACY_VERBS.join(" ")}`);
