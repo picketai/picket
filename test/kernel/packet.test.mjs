@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWork, setMarker } from "../../dist/lib/shared/work/work.mjs";
-import { packet, parseBlock, saveBlock, cut, WIDTH } from "../../dist/lib/packet.mjs";
+import { cut, packet, WIDTH } from "../../dist/lib/verbs/packet/packet.mjs";
+import { blockFiles, parseBlock, saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 // The block the user's screenshot came from, in the developer's contract shape.
@@ -36,6 +37,13 @@ test("parseBlock reads the developer block into fields", () => {
   assert.equal(b.fields.tests, "passed (374/374 Shop.Inventory.Tests)");
   assert.equal(b.fields.commit, "3f9c2a1");
   assert.equal(b.verdict, "PHASE DONE");
+});
+
+test("blockFiles reads dot-files with or without folders and skips words without a dot (B11, T-3.3)", () => {
+  const { root, id } = setup();
+  saveBlock(id, 1, BLOCK.replace(/^Files: .*$/m, "Files: .gitattributes, src/.npmrc, src/a.mjs (phase 1)"), root);
+  assert.deepEqual(blockFiles(id, 1, root), [".gitattributes", "src/.npmrc", "src/a.mjs"]);
+  rmSync(root, { recursive: true, force: true });
 });
 
 test("the gate packet is fixed-shape, width-capped, and ends with the options", () => {

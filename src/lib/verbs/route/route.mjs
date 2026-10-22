@@ -1,13 +1,13 @@
 // What a verdict means for the state machine. Called by the route.verdict hook on every agent stop
 // and by the lane skills. Exact-match tokens only; near misses are recorded but change nothing.
-import { appendVerdict, deriveState, hasMarker, isSessionId, projectRoot, readState, setMarker, writeState } from "./shared/work/work.mjs";
-import { next } from "./shared/work/next-step.mjs";
-import { ownGate, phasePaths } from "./shared/work/gate.mjs";
-import { commitOwned, listedPathMatcher } from "./shared/git.mjs";
-import { recordAccept } from "./close.mjs";
-import { blockFiles, readBlock, parseBlock } from "./packet.mjs";
-import { bareAgentName } from "./shared/agent-name.mjs";
-import { VERDICTS } from "./shared/verdicts.mjs";
+import { appendVerdict, deriveState, hasMarker, isSessionId, projectRoot, readState, setMarker, writeState } from "../../shared/work/work.mjs";
+import { next } from "../../shared/work/next-step.mjs";
+import { ownGate, phasePaths } from "../../shared/work/gate.mjs";
+import { commitOwned, listedPathMatcher } from "../../shared/git.mjs";
+import { recordAccept } from "../../shared/ledger.mjs";
+import { blockFiles, readBlock, parseBlock } from "../../shared/work/block.mjs";
+import { bareAgentName } from "../../shared/agent-name.mjs";
+import { VERDICTS } from "../../shared/verdicts.mjs";
 
 /**
  * Approval turns the developer's staged work into a commit. The message is the one the developer

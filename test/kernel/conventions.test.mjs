@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, posix, relative, resolve } from "node:path";
 import { codeLines, isKernelSource } from "./kernel-sources.mjs";
 
 const SOURCE_ROOT = "src";
@@ -119,4 +119,94 @@ test("the scans read typed sources only, never declaration files", () => {
   const sources = typedSources(resolve(SOURCE_ROOT)).map(repoPath);
   assert.equal(sources.includes("src/lib/shared/action.mts"), true);
   assert.deepEqual(sources.filter((path) => !path.endsWith(".mts") || path.endsWith(".d.mts") || path.endsWith(".test.mts")), []);
+});
+
+const SKILL_SCRIPTS = /^src\/skills\/[^/]+\/scripts\//;
+const IMPORT_SPECIFIER = /\bfrom\s*["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']\s*\)|\bimport\s+["']([^"']+)["']/g;
+
+const ALLOWED_ZONES = {
+  util: ["util"],
+  shared: ["shared", "util"],
+  hooks: ["hooks", "shared", "util", "verbs/"],
+  cli: ["cli", "verbs.mts", "verbs/", "shared", "util"],
+  "verbs.mts": [],
+};
+
+function zoneOf(path) {
+  if (SKILL_SCRIPTS.test(path)) return path.match(SKILL_SCRIPTS)[0];
+  if (!path.startsWith(LIB_PREFIX)) return null;
+  const [first, second] = path.slice(LIB_PREFIX.length).split("/");
+  if (first === "verbs.mts") return first;
+  return first === "verbs" ? `verbs/${second}` : first;
+}
+
+function allowedZones(zone) {
+  if (zone.startsWith("verbs/")) return [zone, "shared", "util"];
+  if (SKILL_SCRIPTS.test(zone)) return [zone, "shared", "util"];
+  return ALLOWED_ZONES[zone] ?? [];
+}
+
+function importSpecifiers(text) {
+  return [...codeLines(text).join("\n").matchAll(IMPORT_SPECIFIER)].map((m) => m[1] ?? m[2] ?? m[3]);
+}
+
+function crossesBoundary(zone, specifier, path) {
+  if (!specifier.startsWith(".")) return zone === "verbs.mts";
+  const target = zoneOf(posix.join(posix.dirname(path), specifier));
+  return target === null || !allowedZones(zone).some((allowed) => (allowed.endsWith("/") ? target.startsWith(allowed) : target === allowed));
+}
+
+function importViolations(path, text) {
+  const zone = zoneOf(path);
+  if (zone === null) return [];
+  return importSpecifiers(text)
+    .filter((specifier) => crossesBoundary(zone, specifier, path))
+    .map((specifier) => `${path}: imports ${specifier}`);
+}
+
+function directionSources() {
+  const lib = sourcesUnder(resolve("src/lib"));
+  const scripts = readdirSync(resolve("src/skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(resolve("src/skills", entry.name, "scripts")))
+    .flatMap((entry) => sourcesUnder(resolve("src/skills", entry.name, "scripts")));
+  return [...lib, ...scripts];
+}
+
+function sourcesUnder(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return sourcesUnder(full);
+    return isKernelSource(entry.name) ? [full] : [];
+  });
+}
+
+test("the direction scan reports each import that crosses the layer rules (T-3.2)", () => {
+  const reported = (path, text) => importViolations(path, text).length;
+  assert.equal(reported("src/lib/shared/a.mjs", 'import { route } from "../verbs/route/route.mjs";'), 1);
+  assert.equal(reported("src/lib/util/a.mts", 'import { WORK_DIR } from "../shared/paths.mts";'), 1);
+  assert.equal(reported("src/lib/verbs/a/index.mts", 'import { verb } from "../b/index.mts";'), 1);
+  assert.equal(reported("src/lib/verbs.mts", 'import { x } from "./verbs/leave/index.mts";'), 1);
+  assert.equal(reported("src/lib/verbs.mts", 'import { readFileSync } from "node:fs";'), 1);
+  assert.equal(reported("src/lib/shared/a.mjs", 'import { main } from "../cli/main.mts";'), 1);
+  assert.equal(reported("src/lib/shared/a.mjs", 'import {\n  route,\n  VERDICTS,\n} from "../verbs/route/route.mjs";'), 1);
+  assert.equal(reported("src/lib/shared/a.mjs", 'const { verb } = await import("../verbs/x/index.mts");'), 1);
+  assert.equal(reported("src/lib/shared/a.mjs", 'export { route } from "../verbs/route/route.mjs";'), 1);
+  assert.equal(reported("src/skills/x/scripts/a.mjs", 'import { route } from "../../../lib/verbs/route/route.mjs";'), 1);
+});
+
+test("the direction scan allows each layer its own imports (T-3.2)", () => {
+  const reported = (path, text) => importViolations(path, text).length;
+  assert.equal(reported("src/lib/hooks/route.verdict.mjs", 'import { route } from "../verbs/route/route.mjs";'), 0);
+  assert.equal(reported("src/lib/verbs/a/index.mts", 'import { b } from "./b.mts";\nimport { done } from "../../shared/action.mts";\nimport { str } from "../../util/args.mts";'), 0);
+  assert.equal(reported("src/lib/cli/main.mts", 'import { REGISTRY } from "./registry.mts";\nimport { VERB_NAMES } from "../verbs.mts";'), 0);
+  assert.equal(reported("src/lib/shared/a.mjs", 'import { join } from "node:path";\nimport { parse } from "../util/yaml-lite.mjs";'), 0);
+  assert.equal(reported("src/skills/x/scripts/a.mjs", 'import { b } from "./b.mjs";\nimport { comments } from "../../../lib/shared/comments.mjs";'), 0);
+  assert.equal(reported("src/lib/shared/a.mjs", '// import { route } from "../verbs/route/route.mjs";'), 0);
+});
+
+test("no module under src/lib or a skill's scripts crosses the layer rules (T-3.2)", () => {
+  const files = directionSources().map(repoPath);
+  assert.ok(files.includes("src/lib/hooks/route.verdict.mjs") && files.includes("src/skills/reviewing/scripts/lint.craft.mjs"), files.join(", "));
+  const violations = directionSources().flatMap((file) => importViolations(repoPath(file), readFileSync(file, "utf8")));
+  assert.deepEqual(violations, []);
 });

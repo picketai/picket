@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createWork } from "../../dist/lib/shared/work/work.mjs";
-import { onPath } from "../../dist/lib/preflight.mjs";
+import { onPath } from "../../dist/lib/verbs/preflight/preflight.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 

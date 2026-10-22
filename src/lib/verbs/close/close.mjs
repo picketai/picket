@@ -1,10 +1,10 @@
-import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, productLinesAdded, repoPrefix, stagedFiles } from "./shared/git.mjs";
-import { phasePaths } from "./shared/work/gate.mjs";
-import { blockFiles } from "./packet.mjs";
-import { appendLedger } from "./shared/ledger.mjs";
-import { next } from "./shared/work/next-step.mjs";
-import { listWork, readArtifact, readState, readVerdicts, writeState } from "./shared/work/work.mjs";
-import { readLeft } from "./shared/work/left.mjs";
+import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, repoPrefix, stagedFiles } from "../../shared/git.mjs";
+import { phasePaths } from "../../shared/work/gate.mjs";
+import { blockFiles } from "../../shared/work/block.mjs";
+import { recordAccept } from "../../shared/ledger.mjs";
+import { next } from "../../shared/work/next-step.mjs";
+import { listWork, readArtifact, readState, readVerdicts, writeState } from "../../shared/work/work.mjs";
+import { readLeft } from "../../shared/work/left.mjs";
 
 export class CloseRefused extends Error {
   constructor(message, pending) {
@@ -53,12 +53,6 @@ function refuseUnlessClosable(id, root) {
   if (nextAllowsClose(state.lane, pending)) return;
   const { action, actor, phase, detail } = pending;
   throw new CloseRefused(`next is ${action}, not close`, { action, actor, phase, detail });
-}
-
-export function recordAccept(root, id, commit, phase = null) {
-  try {
-    appendLedger(root, { event: "accept", session: null, agent: null, work_id: id, phase, commit, lines_added: productLinesAdded(root, commit) });
-  } catch {}
 }
 
 const MIN_REPEATS = 2;

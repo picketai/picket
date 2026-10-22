@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { NO_LANE, admit, recheck, mentionedPaths, forcedLane } from "../../dist/lib/admit.mjs";
+import { NO_LANE, admit, recheck, mentionedPaths, forcedLane } from "../../dist/lib/verbs/admit/admit.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function repo() {

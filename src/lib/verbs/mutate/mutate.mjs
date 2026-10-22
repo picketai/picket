@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { check } from "./shared/checks.mjs";
-import { LANGS, MARKUP, commentOf, extOf, maskStrings } from "./shared/comments.mjs";
-import * as git from "./shared/git.mjs";
-import { STATE_FILES, stateDir, statePath } from "./shared/paths.mjs";
-import { detectTooling } from "./shared/tooling.mjs";
-import { isTestPath } from "./shared/silenced.mjs";
-import { projectRoot, readState, workDir } from "./shared/work/work.mjs";
+import { check } from "../../shared/checks.mjs";
+import { LANGS, MARKUP, commentOf, extOf, maskStrings } from "../../shared/comments.mjs";
+import * as git from "../../shared/git.mjs";
+import { STATE_FILES, stateDir, statePath } from "../../shared/paths.mjs";
+import { detectTooling } from "../../shared/tooling.mjs";
+import { isTestPath } from "../../shared/silenced.mjs";
+import { projectRoot, readState, workDir } from "../../shared/work/work.mjs";
 
 const OPERATOR = /(?<=\s)(?:<=|>=|<|>)(?=\s)|===|!==|==|!=|&&|\|\||\btrue\b|\bfalse\b/g;
 

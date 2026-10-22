@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../dist/lib/shared/git.mjs";
 import { gitRead, gitRun } from "../../dist/lib/util/git.mjs";
-import { liveProbe } from "../../dist/lib/statusline.mjs";
+import { liveProbe } from "../../dist/lib/verbs/statusline/statusline.mjs";
 
 function gitIn(root, ...args) {
   execFileSync("git", ["-C", root, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args], { stdio: "ignore" });

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
-import { rowCosts, summarize } from "../../dist/lib/cost.mjs";
+import { rowCosts, summarize } from "../../dist/lib/verbs/cost/cost.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 

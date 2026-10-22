@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { workingState } from "./shared/git.mjs";
-import { PICKET_DIR, sessionCostPath } from "./shared/paths.mjs";
-import { BRAND, rgb } from "./shared/styling/palette.mjs";
-import { readTail } from "./shared/transcript/transcript.mjs";
+import { workingState } from "../../shared/git.mjs";
+import { PICKET_DIR, sessionCostPath } from "../../shared/paths.mjs";
+import { BRAND, rgb } from "../../shared/styling/palette.mjs";
+import { readTail } from "../../shared/transcript/transcript.mjs";
 
 export const EDGE_COLUMNS = 2;
 const DEFAULT_COLUMNS = 80;

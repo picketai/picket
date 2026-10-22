@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createWork, deriveState } from "../../dist/lib/shared/work/work.mjs";
-import { route } from "../../dist/lib/route.mjs";
+import { route } from "../../dist/lib/verbs/route/route.mjs";
 import { findVerdict } from "../../dist/lib/shared/verdicts.mjs";
-import { saveBlock } from "../../dist/lib/packet.mjs";
+import { saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { bareAgentName } from "../../dist/lib/shared/agent-name.mjs";
 import { statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
@@ -152,6 +152,21 @@ test("a staged file only the block's full Files: line names is committed with th
     route({ id, verdict: "approved", agent: "user", phase: 1, root });
     const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
     for (const path of ["src/a.js", ...Object.keys(extra)]) assert.ok(committed.includes(path), path);
+    assert.equal(git("diff", "--cached", "--name-only"), "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a staged dot-file the block lists is committed with the phase (B11, T-3.3)", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    stage(root, git, { "src/a.js": "a\n", ".gitattributes": "* text=auto\n" });
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    saveBlock(id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js, .gitattributes\n\nPHASE DONE", root);
+    route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+    assert.ok(committed.includes(".gitattributes"), committed.join(", "));
     assert.equal(git("diff", "--cached", "--name-only"), "");
   } finally {
     rmSync(root, { recursive: true, force: true });

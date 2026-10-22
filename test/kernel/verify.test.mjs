@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createWork } from "../../dist/lib/shared/work/work.mjs";
-import { verify, mustHaves } from "../../dist/lib/verify.mjs";
+import { verify, mustHaves } from "../../dist/lib/verbs/verify/verify.mjs";
 import { stateDir, statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
 function setup() {

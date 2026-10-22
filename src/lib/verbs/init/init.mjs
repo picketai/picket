@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./shared/paths.mjs";
-import { STATUS_LINE } from "./shared/styling/statusline-setting.mjs";
+import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "../../shared/paths.mjs";
+import { STATUS_LINE } from "../../shared/styling/statusline-setting.mjs";
 
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };

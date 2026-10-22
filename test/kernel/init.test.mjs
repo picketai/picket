@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { init, marketplaceRoot } from "../../dist/lib/init.mjs";
+import { init, marketplaceRoot } from "../../dist/lib/verbs/init/init.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 const TEMPLATE = readFileSync(resolve("src/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");

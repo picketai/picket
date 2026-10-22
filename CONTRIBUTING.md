@@ -8,7 +8,7 @@ Name the product Picket in any text a user reads. "Harness" is the internal word
 
 The `## Layout` section of `README.md` maps every top-level folder. New things go here:
 
-- A kernel module goes in `src/lib/`, with its tests in `test/kernel/` as `<module>.test.mjs`.
+- A kernel module goes in `src/lib/`, in the folder its role names: `src/lib/cli/` for the command line, `src/lib/verbs/<verb>/` for one verb's code, `src/lib/shared/` for Picket code two verbs or a hook use, `src/lib/util/` for code with no Picket knowledge, `src/lib/hooks/` for hook handlers and their helpers. Imports point one way, `cli` to `verbs` to `shared` to `util`, with hooks beside the verbs; the direction scan in `test/kernel/conventions.test.mjs` enforces it. Its tests go in `test/kernel/` as `<module>.test.mjs`.
 - A hook goes in `src/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`) and is registered in `src/hooks/hooks.json`. Its logic is a handler in `src/lib/hooks/` under the same name, and the file in `src/hooks/` is a shell that passes the handler to `runHook` (`src/lib/hooks/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items`, `security-paths` and `untrusted`.
 

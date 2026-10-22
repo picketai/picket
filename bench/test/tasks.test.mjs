@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { admit } from "../../dist/lib/admit.mjs";
+import { admit } from "../../dist/lib/verbs/admit/admit.mjs";
 
 const TASKS = resolve("bench", "tasks");
 const HIDDEN = resolve("bench", "hidden");

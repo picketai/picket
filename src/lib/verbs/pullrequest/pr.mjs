@@ -6,8 +6,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { reviewSummaryRange } from "./shared/review-summary.mjs";
-import { hostPath } from "./shared/paths.mjs";
+import { reviewSummaryRange } from "../../shared/review-summary.mjs";
+import { hostPath } from "../../shared/paths.mjs";
 
 export const PAT_VARS = ["AZDO_PAT", "AZURE_DEVOPS_EXT_PAT"];
 

@@ -1,9 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { readTurn, latestHints, blockLines, agentTranscript } from "../shared/transcript/transcript.mjs";
-import { route } from "../route.mjs";
+import { route } from "../verbs/route/route.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
 import { stateDir, statePath, stateRel } from "../shared/paths.mjs";
-import { saveBlock } from "../packet.mjs";
+import { saveBlock } from "../shared/work/block.mjs";
 
 const HEADINGS = [
   [/^##\s+Phase\s+(\d+)\s+of\s+([a-z0-9-]+)/m, (m) => ({ agent: "developer", phase: Number(m[1]), id: m[2] })],
