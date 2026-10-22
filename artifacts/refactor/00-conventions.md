@@ -46,6 +46,9 @@ The plugin root is found by walking up to `.claude-plugin/plugin.json`; no code 
 ### C-014: Five folders under `src/lib`, imports flow one way
 `cli/`, `hooks/`, `verbs.mts`, `verbs/<verb>/`, `shared/`, `util/`. `util/` imports only `node:` and `util/`; `shared/` only `shared/` and `util/`; a verb folder never imports another verb folder; hooks are entry points and may import a verb's `index.mts`; only `bin/` imports `cli/`. From item 03, X-2 and X-3.
 
+### C-015: No barrel files
+An import names the file that defines the symbol. `verbs/<verb>/index.mts` defines the verb, so it is not a barrel. A top-level barrel is added only if the CLI needs one for a cleaner import, and it never re-exports from `verbs/`. From item 04a, W-2; the user's rule.
+
 ## Revision log
 
 - 2026-10-22: C-004 (r2): floor raised from Node 20 to 22 for shipped code, 24 for tooling; item 01 L-5 (r2).

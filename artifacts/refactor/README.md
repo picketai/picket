@@ -9,7 +9,10 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 01 | [Layout and build](01-layout-and-build.md) | approved 2026-10-22 |
 | 02 | [Code conventions](02-code-conventions.md) | approved 2026-10-22 |
 | 03 | [Kernel CLI and source layout](03-kernel-cli.md) | approved 2026-10-22 |
-| 04 | Kernel modules | discussing |
+| 04a | [Work item model](04a-work-item-model.md) | approved 2026-10-22 |
+| 04b | Sources and intake | discussing |
+| 04c | Running things: drive, check, verify, mutate, preflight | todo |
+| 04d | Reading and reporting: admit, review summary, pr, cost, statusline, transcript | todo |
 | 05 | Hooks: guard rules and structure | todo |
 | 06 | Tests | todo |
 | 07 | Mods and styling | todo |
