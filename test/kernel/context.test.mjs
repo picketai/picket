@@ -15,16 +15,15 @@ function withSessionEnv(value, fn) {
   }
 }
 
-test("edgeContext reads the root, environment, home folder and clock of the process", () => {
-  const context = withSessionEnv("s-1", () => edgeContext("/project"));
-  assert.equal(context.root, "/project");
+test("edgeContext reads the root, environment, home folder, clock and session of the process (T-1.8)", () => {
+  const context = withSessionEnv("s-1", () => edgeContext("/r"));
+  assert.equal(context.root, "/r");
   assert.equal(context.env, process.env);
   assert.equal(context.home, homedir());
   assert.equal(context.session, "s-1");
-  const before = Date.now();
-  assert.ok(context.now().getTime() >= before);
+  assert.ok(Math.abs(context.now().getTime() - Date.now()) < 1000);
 });
 
-test("edgeContext gives a null session when CLAUDE_CODE_SESSION_ID is unset", () => {
-  assert.equal(withSessionEnv(undefined, () => edgeContext("/project")).session, null);
+test("edgeContext gives a null session when CLAUDE_CODE_SESSION_ID is unset (T-1.8)", () => {
+  assert.equal(withSessionEnv(undefined, () => edgeContext("/r")).session, null);
 });

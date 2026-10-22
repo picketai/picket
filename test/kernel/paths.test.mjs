@@ -28,7 +28,7 @@ test("the vendored tokenizer lives under src/lib/vendor and the scans leave it o
   assert.equal(kernelModules().includes(tokenizer), false);
 });
 
-test("the kernel scans read .mjs and .mts sources and leave declaration and test files out (T-1.8)", () => {
+test("the kernel scans read .mjs and .mts sources and leave declaration and test files out (T-1.6)", () => {
   const modules = kernelModules();
   assert.equal(modules.includes(resolve("src/lib/action.mts")), true);
   assert.equal(modules.includes(resolve("src/bin/picket.mts")), true);
