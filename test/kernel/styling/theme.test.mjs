@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { manifestPath, readManifest, removeItems } from "../../../dist/lib/styling/manifest.mjs";
-import { setupTerminal } from "../../../dist/lib/styling/setup.mjs";
-import { theme } from "../../../dist/lib/styling/theme.mjs";
+import { manifestPath, readManifest, removeItems } from "../../../dist/lib/shared/styling/manifest.mjs";
+import { setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
+import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
 import { fakeHost, homeFiles, writeHomeFile } from "./host-fixture.mjs";
 
 test("the theme copy is kept while PicketAI is still the theme setting, and goes once the setting does (T-9.2)", async () => {

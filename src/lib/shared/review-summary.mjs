@@ -4,14 +4,14 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { deriveState, itemWaivers, projectRoot } from "./work.mjs";
+import { deriveState, itemWaivers, projectRoot } from "./work/work.mjs";
 import { loadConfig, securityPaths } from "./config.mjs";
-import { liveDrift } from "./sources.mjs";
+import { liveDrift } from "./sources/sources.mjs";
 import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
-import { readMutation } from "./mutate.mjs";
+import { readMutation } from "./mutation.mjs";
 
 export const SIZE = Object.freeze({ small: { files: 3, lines: 50 }, medium: { files: 10, lines: 400 } });
 

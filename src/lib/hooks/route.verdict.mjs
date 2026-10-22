@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { readTurn, latestHints, blockLines, agentTranscript } from "../transcript.mjs";
-import { findVerdict, route } from "../route.mjs";
-import { stateDir, statePath, stateRel } from "../paths.mjs";
+import { readTurn, latestHints, blockLines, agentTranscript } from "../shared/transcript/transcript.mjs";
+import { route } from "../route.mjs";
+import { findVerdict } from "../shared/verdicts.mjs";
+import { stateDir, statePath, stateRel } from "../shared/paths.mjs";
 import { saveBlock } from "../packet.mjs";
 
 const HEADINGS = [

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { checkNodeFloor } from "../lib/node-floor.mjs";
+import { checkNodeFloor } from "../lib/util/node-floor.mjs";
 
 const refusal = checkNodeFloor(process.versions.node);
 if (refusal) {

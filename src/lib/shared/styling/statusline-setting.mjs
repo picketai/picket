@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { STATUS_LINE } from "../init.mjs";
 import { HOST_DIR } from "../paths.mjs";
 import { installedAt, sha256File } from "./manifest.mjs";
+
+export const STATUS_LINE = { type: "command", command: "picket statusline" };
 
 const NAME = "statusline";
 

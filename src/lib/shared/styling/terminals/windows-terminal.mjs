@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { applyEdits, modify, parse } from "../../vendor/jsonc-parser.mjs";
+import { applyEdits, modify, parse } from "../../../util/vendor/jsonc-parser.mjs";
 import { installedAt, sha256File } from "../manifest.mjs";
 import { ANSI, TERMINAL } from "../palette.mjs";
 

@@ -1,23 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
-import { projectRoot } from "./work.mjs";
-import { statePath, STATE_FILES } from "./paths.mjs";
-import { notRunAsks } from "./escalation.mjs";
-
-export function readLedger(root = projectRoot()) {
-  const p = statePath(root, STATE_FILES.ledger);
-  if (!existsSync(p)) return [];
-  return readFileSync(p, "utf8")
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .map((l) => {
-      try {
-        return JSON.parse(l);
-      } catch {
-        return null;
-      }
-    })
-    .filter((r) => r && r.v === 2);
-}
+import { projectRoot } from "./shared/work/work.mjs";
+import { notRunAsks } from "./shared/escalation.mjs";
+import { readLedger } from "./shared/ledger.mjs";
 
 function sumUsage(rows) {
   const u = { input_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, output_tokens: 0 };

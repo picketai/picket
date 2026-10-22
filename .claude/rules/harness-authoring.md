@@ -11,7 +11,7 @@ These rules apply when editing the harness itself, not when using it. Layout, te
 
 Budgets are tests, not guidance (`test/budgets.test.mjs`): CLAUDE.md at most 2048 bytes; an agent shell at most 120 lines; a SKILL.md at most 150 lines; a step file at most 80 lines; a rule at most 60 lines; a hook at most 200 ms cold. Raising a number needs a one-line rationale next to it in the test.
 
-Names: agents are `analyst`, `architect`, `developer`, `reviewer`. Skills are verbs ending in `-ing` (`picket:ordering`, `picket:consulting`, `picket:benchmarking`). Verdict tokens are the closed list in CLAUDE.md; add one only in `src/lib/route.mjs` first.
+Names: agents are `analyst`, `architect`, `developer`, `reviewer`. Skills are verbs ending in `-ing` (`picket:ordering`, `picket:consulting`, `picket:benchmarking`). Verdict tokens are the closed list in CLAUDE.md; add one only in `src/lib/shared/verdicts.mjs` first.
 
 Code decides what code can decide. Before writing a rule in prose, ask whether `picket` can compute it: lane admission, next action, must_haves, verdict routing, cost. A rule that can be a function is a function with a test, and the prose says only "run the verb".
 

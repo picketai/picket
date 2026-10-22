@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../dist/lib/work.mjs";
+import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../dist/lib/shared/work/work.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 

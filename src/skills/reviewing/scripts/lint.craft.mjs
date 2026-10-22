@@ -14,8 +14,8 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../../../lib/comments.mjs';
-import { isTestPath } from '../../../lib/silenced.mjs';
+import { LANGS, MARKUP, DIRECTIVE_MARKERS, extOf, commentOf } from '../../../lib/shared/comments.mjs';
+import { isTestPath } from '../../../lib/shared/silenced.mjs';
 
 // ---------------------------------------------------------------- args
 

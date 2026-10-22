@@ -8,7 +8,7 @@ const SOURCE_ROOT = "src";
 const LIB_PREFIX = "src/lib/";
 
 const PROCESS_READS = ["projectRoot(", "process.cwd(", "process.env", "homedir(", "new Date("];
-const PROCESS_READ_EXEMPT = ["src/lib/shared/context.mts", "src/lib/paths.mts", "src/lib/cli/"];
+const PROCESS_READ_EXEMPT = ["src/lib/shared/context.mts", "src/lib/shared/paths.mts", "src/lib/cli/"];
 
 const SHELL_FORMS = [/\bexecSync\(/, /\bshell:\s*true\b/, /\b(?:exec|execFile|execFileSync|spawn|spawnSync)\(\s*`/];
 const SHELL_EXEMPT = ["src/lib/util/process.mts"];
@@ -75,7 +75,7 @@ function asComments(lines) {
 
 const SCANS = [
   { name: "process reads", scan: processReads, samples: PROCESS_READ_SAMPLES, path: "src/lib/util/io.mts", exempt: PROCESS_READ_EXEMPT },
-  { name: "shell calls", scan: shellCalls, samples: SHELL_SAMPLES, path: "src/lib/git.mts", exempt: SHELL_EXEMPT },
+  { name: "shell calls", scan: shellCalls, samples: SHELL_SAMPLES, path: "src/lib/util/git.mts", exempt: SHELL_EXEMPT },
   { name: "work path templates", scan: workPathTemplates, samples: WORK_PATH_SAMPLES, path: "src/lib/util/io.mts", exempt: WORK_PATH_EXEMPT },
   { name: "built-name imports", scan: builtNameImports, samples: BUILT_NAME_SAMPLES, path: "src/lib/util/args.mts", exempt: [] },
 ];
@@ -97,7 +97,7 @@ test("each scan reports the sample for an ordinary module and nothing for its ex
   assert.deepEqual(processReads("src/lib/util/io.mts", "const t = new Date();"), ["const t = new Date();"]);
   assert.deepEqual(processReads("src/lib/shared/context.mts", "const t = new Date();"), []);
   assert.deepEqual(processReads("src/lib/cli/main.mts", "const r = projectRoot();"), []);
-  assert.deepEqual(shellCalls("src/lib/git.mts", 'execSync("ls")'), ['execSync("ls")']);
+  assert.deepEqual(shellCalls("src/lib/util/git.mts", 'execSync("ls")'), ['execSync("ls")']);
   assert.deepEqual(shellCalls("src/lib/util/process.mts", 'execSync("ls")'), []);
   assert.deepEqual(workPathTemplates("src/lib/util/io.mts", "`work/${id}`"), ["`work/${id}`"]);
   assert.deepEqual(workPathTemplates("src/lib/shared/work/files.mts", "`work/${id}`"), []);

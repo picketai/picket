@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { rulesDir } from "../paths.mjs";
+import { rulesDir } from "../shared/paths.mjs";
 
 export const INJECTED_RULES = Object.freeze(["prose.md", "comments.md", "work-items.md", "security-paths.md", "untrusted.md"]);
 

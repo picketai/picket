@@ -4,7 +4,7 @@
 // `git worktree list` (lib/sources.mjs); a test keeps the two in step.
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { loadConfig } from "./config.mjs";
+import { loadConfig } from "../config.mjs";
 
 const WIN = process.platform === "win32";
 

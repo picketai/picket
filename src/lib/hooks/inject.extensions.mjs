@@ -1,5 +1,5 @@
-import { bareAgentName } from "../agent-name.mjs";
-import { loadExtensions } from "../extensions.mjs";
+import { bareAgentName } from "../shared/agent-name.mjs";
+import { loadExtensions } from "../shared/extensions.mjs";
 
 export const EXTENSION_CHARS = 10_000;
 

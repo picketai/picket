@@ -1,18 +1,18 @@
-import { repoRelative } from "../paths.mjs";
-import { editTexts } from "../edit-texts.mjs";
-import { hasThresholds, normaliseLine, scansPath, silencedMoves } from "../silenced.mjs";
+import { repoRelative } from "../shared/paths.mjs";
+import { editTexts } from "./edit-texts.mjs";
+import { hasThresholds, normaliseLine, scansPath, silencedMoves } from "../shared/silenced.mjs";
 
 const QUOTED_LIMIT = 3;
 const QUOTE_WIDTH = 80;
 
 async function qualityBar(rel, root) {
   if (!hasThresholds(rel)) return {};
-  const { loadConfig } = await import("../config.mjs");
+  const { loadConfig } = await import("../shared/config.mjs");
   return loadConfig(root).quality;
 }
 
 async function unwaived(moves, rel, root) {
-  const { waiversFor } = await import("../work.mjs");
+  const { waiversFor } = await import("../shared/work/work.mjs");
   const waived = new Set(waiversFor(rel, root).filter((entry) => !entry.deleted).map((entry) => normaliseLine(entry.text)));
   return moves.filter((move) => !waived.has(move.text));
 }

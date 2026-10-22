@@ -1,13 +1,13 @@
 import { appendFileSync, mkdirSync } from "node:fs";
-import { isDriveCommand } from "../drive-evidence.mjs";
-import { listWork, deriveState } from "../work.mjs";
-import { stateDir, statePath, STATE_FILES } from "../paths.mjs";
-import { bareAgentName } from "../agent-name.mjs";
-import { kernelVerbStart } from "../kernel-call.mjs";
-import { parse } from "../vendor/shell-quote-parse.mjs";
-import { commandKey, escalationMarker, notRunBefore, recordEscalation, withoutMarker } from "../escalation.mjs";
-import { readLedger } from "../cost.mjs";
-import { readPowerShell } from "../powershell-text.mjs";
+import { isDriveCommand } from "./drive-evidence.mjs";
+import { listWork, deriveState } from "../shared/work/work.mjs";
+import { stateDir, statePath, STATE_FILES } from "../shared/paths.mjs";
+import { bareAgentName } from "../shared/agent-name.mjs";
+import { kernelVerbStart } from "./kernel-call.mjs";
+import { parse } from "../util/vendor/shell-quote-parse.mjs";
+import { commandKey, escalationMarker, notRunBefore, recordEscalation, withoutMarker } from "../shared/escalation.mjs";
+import { readLedger } from "../shared/ledger.mjs";
+import { readPowerShell } from "./powershell-text.mjs";
 
 const LOGGED_COMMAND_CHARS = 200;
 const POWERSHELL_TOOL = "PowerShell";

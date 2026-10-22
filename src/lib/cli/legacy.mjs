@@ -6,28 +6,29 @@ import { join } from "node:path";
 import { packet } from "../packet.mjs";
 import { iconsMode, liveProbe, recordSessionCost, renderStatusline, workspaceDir } from "../statusline.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../pr.mjs";
-import { reviewSummaryRange } from "../review.mjs";
+import { reviewSummaryRange } from "../shared/review-summary.mjs";
 import { admit } from "../admit.mjs";
 import { drive, renderDrive } from "../drive.mjs";
-import { check, renderCheck } from "../check.mjs";
+import { check, renderCheck } from "../shared/checks.mjs";
 import { migrate, renderMigrate } from "../migrate.mjs";
-import { dirtyPaths } from "../git.mjs";
+import { dirtyPaths } from "../shared/git.mjs";
 import { close } from "../close.mjs";
 import { leftLine } from "../shared/work/left.mjs";
 import { init, initRoot, InitRefused, renderInit } from "../init.mjs";
-import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../extensions.mjs";
-import { appendComment, appendWaiver, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../work.mjs";
-import { latest, next } from "../next.mjs";
-import { configRel } from "../paths.mjs";
+import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../shared/extensions.mjs";
+import { appendComment, appendWaiver, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../shared/work/work.mjs";
+import { latest, next } from "../shared/work/next-step.mjs";
+import { configRel } from "../shared/paths.mjs";
 import { preflight } from "../preflight.mjs";
 import { verify } from "../verify.mjs";
-import { route, findVerdict } from "../route.mjs";
+import { route } from "../route.mjs";
+import { findVerdict } from "../shared/verdicts.mjs";
 import { cost } from "../cost.mjs";
-import { reviewSummary } from "../review.mjs";
-import { loadConfig } from "../config.mjs";
+import { reviewSummary } from "../shared/review-summary.mjs";
+import { loadConfig } from "../shared/config.mjs";
 import { parseArgs } from "../util/args.mjs";
 import { mutate, renderMutation } from "../mutate.mjs";
-import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../sources.mjs";
+import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../shared/sources/sources.mjs";
 
 function out(value, opt, text) {
   if (opt.human && text) console.log(text(value));
@@ -303,8 +304,8 @@ export async function legacyMain(argv) {
       return 0;
     }
     case "setup-terminal": {
-      const { COMPONENTS, renderReport, setupTerminal } = await import("../styling/setup.mjs");
-      const { realHost } = await import("../styling/host.mjs");
+      const { COMPONENTS, renderReport, setupTerminal } = await import("../shared/styling/setup.mjs");
+      const { realHost } = await import("../shared/styling/host.mjs");
       const only = onlyComponents(opt, COMPONENTS.map((component) => component.name));
       const report = await setupTerminal(realHost(), { only, dryRun: opt["dry-run"] === true, yes: opt.yes === true, revert: opt.revert === true });
       if (opt.json) console.log(opt.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report));
@@ -312,9 +313,9 @@ export async function legacyMain(argv) {
       return report.changes.some((change) => change.result === "failed") ? 2 : 0;
     }
     case "uninstall": {
-      const { uninstall } = await import("../styling/uninstall.mjs");
-      const { renderReport } = await import("../styling/setup.mjs");
-      const { realHost } = await import("../styling/host.mjs");
+      const { uninstall } = await import("../shared/styling/uninstall.mjs");
+      const { renderReport } = await import("../shared/styling/setup.mjs");
+      const { realHost } = await import("../shared/styling/host.mjs");
       const report = await uninstall(realHost(), { yes: opt.yes === true });
       if (opt.json) console.log(opt.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report));
       else console.log(renderReport(report));

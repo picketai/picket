@@ -138,7 +138,7 @@ export function detectBlock(text) {
   return null;
 }
 
-export const VERDICTS = new Set(["ALIGNED", "DRIFT DETECTED", "APPROVED", "CHANGES REQUIRED"]);
+const VERDICTS = new Set(["ALIGNED", "DRIFT DETECTED", "APPROVED", "CHANGES REQUIRED"]);
 
 export function blockLines(text) {
   const lines = text.split(/\r?\n/).filter((l) => !/^\s*```/.test(l.trim()));

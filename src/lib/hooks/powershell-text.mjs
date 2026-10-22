@@ -1,5 +1,5 @@
 import { normalizeRoot } from "./kernel-call.mjs";
-import { MARKER, POWERSHELL_FOLDABLE_MARKER, POWERSHELL_MARKER_STATEMENT } from "./escalation.mjs";
+import { MARKER, POWERSHELL_FOLDABLE_MARKER, POWERSHELL_MARKER_STATEMENT } from "../shared/escalation.mjs";
 
 const CANONICAL_GROUPS = [
   ["Remove-Item", ["remove-item", "ri", "rm", "rmdir", "rd", "del", "erase"]],

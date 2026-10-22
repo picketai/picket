@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
-import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "../transcript.mjs";
-import { findVerdict } from "../route.mjs";
-import { readState } from "../work.mjs";
-import { appendLedger } from "../ledger.mjs";
-import { sessionCostPath } from "../paths.mjs";
+import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "../shared/transcript/transcript.mjs";
+import { findVerdict } from "../shared/verdicts.mjs";
+import { readState } from "../shared/work/work.mjs";
+import { appendLedger } from "../shared/ledger.mjs";
+import { sessionCostPath } from "../shared/paths.mjs";
 
 const HEADING = /^##\s+(Phase\s+(\d+)\s+of\s+([a-z0-9-]+)|Review:\s+([a-z0-9-]+)|(?:Order|Design|Amendment):\s+([a-z0-9-]+)|Report:\s+([a-z0-9-]+)|Expedited:\s+([a-z0-9-]+))/m;
 

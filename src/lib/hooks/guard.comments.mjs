@@ -1,12 +1,12 @@
-import { repoRelative } from "../paths.mjs";
-import { LANGS, addedComments, extOf, normalise } from "../comments.mjs";
-import { editTexts } from "../edit-texts.mjs";
+import { repoRelative } from "../shared/paths.mjs";
+import { LANGS, addedComments, extOf, normalise } from "../shared/comments.mjs";
+import { editTexts } from "./edit-texts.mjs";
 
 const QUOTED_LIMIT = 3;
 const QUOTE_WIDTH = 80;
 
 async function unapproved(added, rel, root) {
-  const { approvedCommentsFor } = await import("../work.mjs");
+  const { approvedCommentsFor } = await import("../shared/work/work.mjs");
   const approved = new Set(approvedCommentsFor(rel, root).flatMap((entry) => String(entry.text).split(/\r?\n/).map(normalise)));
   return added.filter((body) => !approved.has(body));
 }

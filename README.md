@@ -33,7 +33,7 @@ src/skills/                lane skills, consulting, documenting, reviewing, tick
 src/output-styles/         picket:custom, the response rules
 src/bin/picket             the kernel CLI on the Bash tool's PATH; picket.mts checks the Node version, then
                            loads src/lib/cli/main.mts; src/lib/ holds its modules
-src/lib/styling/           what picket setup-terminal installs and picket uninstall removes
+src/lib/shared/styling/    what picket setup-terminal installs and picket uninstall removes
 src/themes/                the PicketAI Claude Code theme setup-terminal copies
 src/hooks/                 fourteen hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
                            state, rule and extension injection, verdict router, ledger, notifier
@@ -49,7 +49,7 @@ markdown/                  picket-markdown: a read-only pane for a Markdown path
 .claude-plugin/            the root marketplace picketai: picket from ./dist, picket-status from ./status,
                            picket-session from ./session, picket-markdown from ./markdown
 .picket/config.json        project settings (tracked): security paths, sources, lane caps, commands;
-                           the contract is src/lib/config.schema.json
+                           the contract is src/lib/shared/config.schema.json
 .picket/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml
 work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)

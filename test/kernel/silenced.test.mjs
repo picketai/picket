@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DIRECTIVE_MARKERS, SUPPRESSION_MARKERS } from "../../dist/lib/comments.mjs";
-import { THRESHOLDS, hasThresholds, isTestPath, normaliseLine, scansPath, silencedMoves } from "../../dist/lib/silenced.mjs";
+import { DIRECTIVE_MARKERS, SUPPRESSION_MARKERS } from "../../dist/lib/shared/comments.mjs";
+import { THRESHOLDS, hasThresholds, isTestPath, normaliseLine, scansPath, silencedMoves } from "../../dist/lib/shared/silenced.mjs";
 
 const lines = (...rows) => rows.join("\n");
 const kinds = (rel, before, after, bar) => silencedMoves({ rel, before, after, bar }).map((m) => m.kind);

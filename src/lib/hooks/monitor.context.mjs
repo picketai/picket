@@ -1,4 +1,4 @@
-import { toolStats, agentTranscript } from "../transcript.mjs";
+import { toolStats, agentTranscript } from "../shared/transcript/transcript.mjs";
 
 const STALL_AFTER = 6;
 const LOOK = new Set(["Read", "Grep", "Glob", "WebFetch", "WebSearch"]);

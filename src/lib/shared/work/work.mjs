@@ -14,12 +14,12 @@
 // Nothing in here is remembered by a model. Everything is derived from the files on each call.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { frontmatter, parse, stringify } from "./yaml-lite.mjs";
+import { frontmatter, parse, stringify } from "../../util/yaml-lite.mjs";
 import { execFileSync } from "node:child_process";
-import { recordBases } from "./repos.mjs";
-import { loadConfig } from "./config.mjs";
-import { IntakeError, resolveReferences, writeIntake } from "./sources.mjs";
-import { projectRoot, workRoot } from "./paths.mjs";
+import { recordBases } from "../repos.mjs";
+import { loadConfig } from "../config.mjs";
+import { IntakeError, resolveReferences, writeIntake } from "../sources/sources.mjs";
+import { projectRoot, workRoot } from "../paths.mjs";
 
 function gitHead(root) {
   try {

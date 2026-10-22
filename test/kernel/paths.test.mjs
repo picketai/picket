@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
-import * as paths from "../../dist/lib/paths.mjs";
+import * as paths from "../../dist/lib/shared/paths.mjs";
 import { codeLines, isKernelSource, isPathsModule, kernelModules } from "./kernel-sources.mjs";
 
 const { projectRoot } = paths;
@@ -21,8 +21,8 @@ test("the self-location ban flags every forbidden form", () => {
   assert.deepEqual(selfLocationUses('const mod = await import("./vendor/x.mjs");'), []);
 });
 
-test("the vendored tokenizer lives under src/lib/vendor and the scans leave it out (T-7.5)", () => {
-  const tokenizer = resolve("src/lib/vendor/shell-quote-parse.mjs");
+test("the vendored tokenizer lives under src/lib/util/vendor and the scans leave it out (T-7.5)", () => {
+  const tokenizer = resolve("src/lib/util/vendor/shell-quote-parse.mjs");
   assert.equal(existsSync(tokenizer), true);
   assert.equal(existsSync(resolve("src/hooks/vendor")), false);
   assert.equal(kernelModules().includes(tokenizer), false);
@@ -178,13 +178,13 @@ test("relative locations read as POSIX paths and absolute ones sit under the roo
 test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits under it", () => {
   const root = paths.pluginRoot();
   assert.equal(root, resolve("dist"));
-  assert.equal(existsSync(join(root, "lib", "paths.mjs")), true);
+  assert.equal(existsSync(join(root, "lib", "shared", "paths.mjs")), true);
   assert.equal(existsSync(join(root, "rules", "prose.md")), true);
   assert.equal(paths.rulesDir(), join(root, "rules"));
 });
 
 test("pluginRoot walks up from any built folder to dist/ (T-1.6)", () => {
-  for (const from of ["dist/lib", "dist/lib/styling", "dist/hooks", "dist/bin"]) {
+  for (const from of ["dist/lib", "dist/lib/shared/styling", "dist/hooks", "dist/bin"]) {
     assert.equal(paths.pluginRoot(resolve(from)), resolve("dist"), from);
   }
 });

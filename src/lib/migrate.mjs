@@ -1,7 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { CONFIG_VERSION } from "./config.mjs";
-import { LEGACY, STATE_FILES, configPath, configRel, legacyPath, statePath, stateRel } from "./paths.mjs";
+import { CONFIG_VERSION } from "./shared/config.mjs";
+import { LEGACY, STATE_FILES, configPath, configRel, legacyPath, statePath, stateRel } from "./shared/paths.mjs";
 
 const APPENDABLE = /\.(jsonl|log)$/;
 const REPLACEABLE = /^check-.*\.log$|\.review\.md$/;

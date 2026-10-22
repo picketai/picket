@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { configPath, configRel, hostRel } from "./paths.mjs";
-import { assertNotDestructive } from "./unsafe.mjs";
+import { assertNotDestructive } from "./destructive.mjs";
 
 /** Paths whose change always means the heavy lane. Extend per project with `security_paths`. */
 export const DEFAULT_SECURITY_PATHS = ["src/auth/", "src/crypto/", "src/security/", "Authentication/", "Authorization/"];

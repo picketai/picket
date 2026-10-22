@@ -5,7 +5,7 @@
 // that would start with report, summary, findings or analysis gets an about- prefix).
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { projectRoot } from '../../../lib/paths.mjs';
+import { projectRoot } from '../../../lib/shared/paths.mjs';
 
 function die(msg) {
   process.stderr.write(`error: ${msg}\n`);

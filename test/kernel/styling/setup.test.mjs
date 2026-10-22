@@ -2,12 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { STATUS_LINE } from "../../../dist/lib/init.mjs";
-import { manifestPath } from "../../../dist/lib/styling/manifest.mjs";
-import { renderReport, setupTerminal } from "../../../dist/lib/styling/setup.mjs";
-import { statuslineSetting } from "../../../dist/lib/styling/statusline-setting.mjs";
-import { terminalComponent } from "../../../dist/lib/styling/terminal.mjs";
-import { theme } from "../../../dist/lib/styling/theme.mjs";
+import { STATUS_LINE } from "../../../dist/lib/shared/styling/statusline-setting.mjs";
+import { manifestPath } from "../../../dist/lib/shared/styling/manifest.mjs";
+import { renderReport, setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
+import { statuslineSetting } from "../../../dist/lib/shared/styling/statusline-setting.mjs";
+import { terminalComponent } from "../../../dist/lib/shared/styling/terminal.mjs";
+import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
 import { exited, fakeExec, fakeHost, homeFiles, textsOf, writeHomeFile } from "./host-fixture.mjs";
 
 const SETTINGS = ".claude/settings.json";

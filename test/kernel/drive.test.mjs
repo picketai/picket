@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { portOpen, parseHit } from "../../dist/lib/drive.mjs";
-import { statePath, stateRel, STATE_FILES } from "../../dist/lib/paths.mjs";
+import { statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { bareAgentName } from "./agent-name.mjs";
-import { appendLedger } from "./ledger.mjs";
-import { checkNodeFloor } from "./node-floor.mjs";
-import { projectRoot } from "./paths.mjs";
+import { bareAgentName } from "../shared/agent-name.mjs";
+import { appendLedger } from "../shared/ledger.mjs";
+import { checkNodeFloor } from "../util/node-floor.mjs";
+import { projectRoot } from "../shared/paths.mjs";
 
 const REASON_LIMIT = 300;
 
@@ -36,7 +36,7 @@ async function recordDenial(handler, root, event, output) {
   const denial = denialOf(output);
   if (denial === null) return;
   try {
-    const { openWorkItem } = await import("./hooks/observe.drive.mjs");
+    const { openWorkItem } = await import("./observe.drive.mjs");
     appendLedger(root, {
       event: denial.event,
       session: event.session_id ?? null,

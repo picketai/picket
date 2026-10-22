@@ -4,11 +4,11 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync,
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { loadExtensions, MANIFEST_KEYS, SUPPORTED_SCHEMAS } from "../../dist/lib/extensions.mjs";
+import { loadExtensions, MANIFEST_KEYS, SUPPORTED_SCHEMAS } from "../../dist/lib/shared/extensions.mjs";
 import { codeLines, sourceOf } from "./kernel-sources.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
-const EXTENSIONS_MODULE = resolve("src/lib/extensions.mjs");
+const EXTENSIONS_MODULE = resolve("src/lib/shared/extensions.mjs");
 
 function project(extensions) {
   const root = mkdtempSync(join(tmpdir(), "picket-ext-"));
@@ -91,7 +91,7 @@ test("each broken manifest refuses its extension with one reason, and a refused 
 });
 
 test("the published manifest schema names exactly the loader's manifest keys and schema 1", () => {
-  const schema = JSON.parse(readFileSync(resolve("src/lib/extension.schema.json"), "utf8"));
+  const schema = JSON.parse(readFileSync(resolve("src/lib/shared/extension.schema.json"), "utf8"));
   assert.deepEqual(Object.keys(schema.properties).sort(), [...MANIFEST_KEYS].sort());
   assert.equal(schema.additionalProperties, false);
   assert.deepEqual(SUPPORTED_SCHEMAS, [1]);
@@ -121,8 +121,8 @@ test("no module reachable from routing, gates, next or the guards imports the ex
   const hooks = resolve("src/lib/hooks");
   const starts = [
     resolve("src/lib/route.mjs"),
-    resolve("src/lib/gate.mjs"),
-    resolve("src/lib/next.mjs"),
+    resolve("src/lib/shared/work/gate.mjs"),
+    resolve("src/lib/shared/work/next-step.mjs"),
     resolve(hooks, "route.verdict.mjs"),
     ...readdirSync(hooks).filter((f) => /^guard\..+\.mjs$/.test(f)).map((f) => resolve(hooks, f)),
   ];

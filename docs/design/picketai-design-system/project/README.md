@@ -2,7 +2,7 @@
 
 PicketAI is the look of Picket: a warm near-black terminal, fence cream text and one orange that marks what is active. It covers the Claude Code theme, the terminal profiles that `picket setup-terminal` writes, the status line, the status band and the Markdown pane, and every page or mockup made about Picket.
 
-The values come from `src/themes/picketai.json` (the Claude Code theme) and `src/lib/styling/palette.mjs` (the terminal profiles). When those files change, this system changes with them.
+The values come from `src/themes/picketai.json` (the Claude Code theme) and `src/lib/shared/styling/palette.mjs` (the terminal profiles). When those files change, this system changes with them.
 
 ## Principles
 

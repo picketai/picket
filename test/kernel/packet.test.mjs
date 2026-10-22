@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork, setMarker } from "../../dist/lib/work.mjs";
+import { createWork, setMarker } from "../../dist/lib/shared/work/work.mjs";
 import { packet, parseBlock, saveBlock, cut, WIDTH } from "../../dist/lib/packet.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 

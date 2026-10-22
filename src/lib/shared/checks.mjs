@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { projectRoot } from "./work.mjs";
+import { projectRoot } from "./work/work.mjs";
 import { stateDir, statePath, stateRel } from "./paths.mjs";
-import { detectTooling } from "./preflight.mjs";
-import { assertNotDestructive } from "./unsafe.mjs";
+import { detectTooling } from "./tooling.mjs";
+import { assertNotDestructive } from "./destructive.mjs";
 
 const ORDER = ["test", "lint", "build"];
 

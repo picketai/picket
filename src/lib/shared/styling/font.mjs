@@ -14,7 +14,7 @@ const MACHINE_FONTS_KEY = "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion
 const RESTART = "your terminal, so it sees JetBrainsMono Nerd Font Mono";
 
 export function readPin() {
-  return JSON.parse(readFileSync(join(pluginRoot(), "lib", "styling", "nerd-font.json"), "utf8"));
+  return JSON.parse(readFileSync(join(pluginRoot(), "lib", "shared", "styling", "nerd-font.json"), "utf8"));
 }
 
 function failure(message, manual) {

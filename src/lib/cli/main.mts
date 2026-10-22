@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { pluginManifestPath, projectRoot } from "../paths.mts";
+import { pluginManifestPath, projectRoot } from "../shared/paths.mts";
 import { describeExit, EXIT, type ExitCode, type Outcome } from "../shared/action.mts";
 import { edgeContext } from "../shared/context.mts";
 import type { VerbSpec } from "../shared/verb-spec.mts";

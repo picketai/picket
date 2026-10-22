@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { frontmatter } from "../yaml-lite.mjs";
-import { loadConfig } from "../config.mjs";
+import { frontmatter } from "../util/yaml-lite.mjs";
+import { loadConfig } from "../shared/config.mjs";
 
 const ARTIFACT = /^work\/[^/]+\/(order|design)\.md$/;
 

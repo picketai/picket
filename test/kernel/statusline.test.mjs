@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { cacheLeft, compactTokens, contextColor, displayWidth, factsOf, iconsMode, lastSkill, recordSessionCost, renderStatusline } from "../../dist/lib/statusline.mjs";
-import { rgb } from "../../dist/lib/styling/palette.mjs";
-import { sessionCostPath, statePath, STATE_FILES } from "../../dist/lib/paths.mjs";
+import { rgb } from "../../dist/lib/shared/styling/palette.mjs";
+import { sessionCostPath, statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 

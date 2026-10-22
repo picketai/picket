@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { migrate, renderMigrate } from "../../dist/lib/migrate.mjs";
 import { preflight } from "../../dist/lib/preflight.mjs";
-import { createWork } from "../../dist/lib/work.mjs";
-import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../dist/lib/paths.mjs";
+import { createWork } from "../../dist/lib/shared/work/work.mjs";
+import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../dist/lib/shared/paths.mjs";
 
 const LEGACY_LEDGER = `${LEGACY.stateDir}/${STATE_FILES.ledger}`;
 const LEGACY_GUARD_LOG = `${LEGACY.stateDir}/guard-bash.log`;

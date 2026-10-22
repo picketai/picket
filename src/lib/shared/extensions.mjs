@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSyn
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig } from "./config.mjs";
 import { PICKET_DIR, configPath } from "./paths.mjs";
-import { VERDICTS } from "./route.mjs";
+import { VERDICTS } from "./verdicts.mjs";
 
 export const SUPPORTED_SCHEMAS = Object.freeze([1]);
 export const MANIFEST_FILE = "extension.json";

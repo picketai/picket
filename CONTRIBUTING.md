@@ -9,7 +9,7 @@ Name the product Picket in any text a user reads. "Harness" is the internal word
 The `## Layout` section of `README.md` maps every top-level folder. New things go here:
 
 - A kernel module goes in `src/lib/`, with its tests in `test/kernel/` as `<module>.test.mjs`.
-- A hook goes in `src/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`) and is registered in `src/hooks/hooks.json`. Its logic is a handler in `src/lib/hooks/` under the same name, and the file in `src/hooks/` is a shell that passes the handler to `runHook` (`src/lib/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
+- A hook goes in `src/hooks/` as `<kind>.<name>.mjs` (for example `guard.comments.mjs`) and is registered in `src/hooks/hooks.json`. Its logic is a handler in `src/lib/hooks/` under the same name, and the file in `src/hooks/` is a shell that passes the handler to `runHook` (`src/lib/hooks/hook.mjs`). The handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items`, `security-paths` and `untrusted`.
 
 ## Installing from a local checkout
@@ -32,7 +32,7 @@ Contributors run Node 24 or newer, the version in `.nvmrc`; users of the publish
 
 ## Code
 
-Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`, built to `.mjs` by esbuild. The one exception is `src/lib/node-floor.mjs`: the hook runtime, itself still `.mjs`, imports it, so it can only use a name that exists in both `src/` and `dist/`. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/vendor/jsonc-parser.mjs` for JSON with comments.
+Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`, built to `.mjs` by esbuild. The one exception is `src/lib/util/node-floor.mjs`: the hook runtime, itself still `.mjs`, imports it, so it can only use a name that exists in both `src/` and `dist/`. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/util/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/util/vendor/jsonc-parser.mjs` for JSON with comments.
 
 Comments follow `src/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 
@@ -44,11 +44,12 @@ The foundation modules:
 
 - `src/lib/shared/action.mts`: the `Action` and `Outcome` types, `done`, `failed`, `refuse`, `Refused`, and the exit code table.
 - `src/lib/shared/context.mts`: the `Context` an entry point builds from the process with `edgeContext(root)`.
-- `src/lib/paths.mts`: every project, state and plugin location, and the project root lookup.
+- `src/lib/shared/paths.mts`: every project, state and plugin location, and the project root lookup.
 - `src/lib/shared/work/files.mts`: the `WorkId` check and every path inside `work/<id>/`.
 - `src/lib/util/args.mts`: `parseArgs`, the typed flag getters (`str`, `need`, `list`, `many`, `int`, `seconds`, `flag`, `pairs`) and `UsageError`.
 - `src/lib/util/io.mts`: reading text, JSON and JSONL files, and appending a JSONL row.
-- `src/lib/git.mts`: `gitRead` for answers that may be missing, `gitRun` for commands that must succeed, and the git helpers built on them.
+- `src/lib/util/git.mts`: `gitRead` for answers that may be missing and `gitRun` for commands that must succeed.
+- `src/lib/shared/git.mts`: the git helpers built on them, such as `commitOwned` and the bookkeeping paths.
 - `src/lib/util/process.mts`: `runShell`, the one way to run a command the user or the project supplies.
 
 The CLI lives in `src/lib/cli/`: `src/lib/cli/main.mts` parses the flags, runs the verb and prints its outcome; `src/lib/cli/registry.mts` loads each verb from its folder under `src/lib/verbs/`, whose names `src/lib/verbs.mts` lists. A verb not yet converted runs through `src/lib/cli/legacy.mjs`.

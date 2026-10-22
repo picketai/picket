@@ -3,13 +3,21 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/config.mjs";
-import { detectTooling } from "../../dist/lib/preflight.mjs";
-import { configRel, hostPath } from "../../dist/lib/paths.mjs";
+import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/shared/config.mjs";
+import { detectTooling } from "../../dist/lib/shared/tooling.mjs";
+import { configRel, hostPath } from "../../dist/lib/shared/paths.mjs";
 import { codeLines, isKernelSource } from "./kernel-sources.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
-const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/config.schema.json"), "utf8"));
+const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/shared/config.schema.json"), "utf8"));
+
+function kernelSourcesUnder(dir, rel = "") {
+  return readdirSync(join(dir, rel), { withFileTypes: true }).flatMap((entry) => {
+    const path = rel ? `${rel}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) return kernelSourcesUnder(dir, path);
+    return isKernelSource(entry.name) ? [path] : [];
+  });
+}
 
 function projectWith(config) {
   const root = mkdtempSync(join(tmpdir(), "harness-config-"));
@@ -33,9 +41,8 @@ test("paths.mts is the only file under src/lib whose code names the config file 
   assert.equal(configName.test('const f = ".picketai/config.json";'), false);
   assert.equal(configName.test('const f = ".picket/config.json";'), true);
   const lib = resolve("src/lib");
-  const naming = readdirSync(lib)
-    .filter((f) => isKernelSource(f) && codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));
-  assert.deepEqual(naming, ["paths.mts"]);
+  const naming = kernelSourcesUnder(lib).filter((f) => codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));
+  assert.deepEqual(naming, ["shared/paths.mts"]);
 });
 
 test("an unset env var gives the source with root null and a reason naming the variable (T-3.2)", () => {

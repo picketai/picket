@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalRoot, readPowerShell } from "../../dist/lib/powershell-text.mjs";
+import { canonicalRoot, readPowerShell } from "../../dist/lib/hooks/powershell-text.mjs";
 
 const segments = (text) => readPowerShell(text)?.segments ?? null;
 

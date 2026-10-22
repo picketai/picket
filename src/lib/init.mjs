@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./paths.mjs";
+import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "./shared/paths.mjs";
+import { STATUS_LINE } from "./shared/styling/statusline-setting.mjs";
 
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };
@@ -12,7 +13,6 @@ const MARKETPLACE_NAME = "picketai";
 const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
 const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
 const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
-export const STATUS_LINE = { type: "command", command: "picket statusline" };
 const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
 const STATUS_PLUGIN_ID = `picket-status@${MARKETPLACE_NAME}`;
 const MARKDOWN_PLUGIN_ID = `picket-markdown@${MARKETPLACE_NAME}`;

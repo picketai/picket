@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { extractEntry, readEntries } from "../../../dist/lib/styling/zip.mjs";
+import { extractEntry, readEntries } from "../../../dist/lib/shared/styling/zip.mjs";
 import { buildZip } from "./host-fixture.mjs";
 
 function withZip(entries, fn) {

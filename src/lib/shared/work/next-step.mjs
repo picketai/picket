@@ -2,7 +2,7 @@
 // Every branch returns { action, actor, phase, detail, options } where `options` is the bracket menu
 // the gate packet shows the user (empty when no user decision is due).
 import { deriveState, isSessionId, listOpenWork, workDir } from "./work.mjs";
-import { ambiguousRefs } from "./sources.mjs";
+import { ambiguousRefs } from "../sources/sources.mjs";
 import { ownGate } from "./gate.mjs";
 
 export const ACTIONS = Object.freeze([

@@ -12,9 +12,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { deriveState, readArtifact, projectRoot } from "./work.mjs";
-import { statePath, STATE_FILES } from "./paths.mjs";
-import { detectTooling } from "./preflight.mjs";
+import { deriveState, readArtifact, projectRoot } from "./shared/work/work.mjs";
+import { statePath, STATE_FILES } from "./shared/paths.mjs";
+import { detectTooling } from "./shared/tooling.mjs";
 
 export function mustHaves(id, n, root = projectRoot()) {
   const art = readArtifact(id, root);

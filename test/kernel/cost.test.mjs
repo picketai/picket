@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { statePath, STATE_FILES } from "../../dist/lib/paths.mjs";
+import { statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 import { rowCosts, summarize } from "../../dist/lib/cost.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");

@@ -3,7 +3,7 @@
 // summary diffs each one in its own work tree, against the HEAD it had when the work item opened.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parse, stringify } from "./yaml-lite.mjs";
+import { parse, stringify } from "../util/yaml-lite.mjs";
 import { revParse } from "./git.mjs";
 import { branchingManifestPath } from "./paths.mjs";
 

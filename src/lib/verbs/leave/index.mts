@@ -4,7 +4,7 @@ import { workFile, workId, type WorkId } from "../../shared/work/files.mts";
 import { leftLine, type LeftEntry } from "../../shared/work/left.mts";
 import { appendJsonl } from "../../util/io.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
-import { readState } from "../../work.mjs";
+import { readState } from "../../shared/work/work.mjs";
 
 export type LeaveInput = { id: WorkId; command: string; why: string | null };
 

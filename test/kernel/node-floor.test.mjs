@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { checkNodeFloor } from "../../dist/lib/node-floor.mjs";
+import { checkNodeFloor } from "../../dist/lib/util/node-floor.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 const RULES_HOOK = resolve("dist/hooks/inject.rules.mjs");

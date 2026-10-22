@@ -3,17 +3,15 @@
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
-import { protectionScope } from "./source-paths.mjs";
-import { deriveState, projectRoot } from "./work.mjs";
-import * as git from "./git.mjs";
-import { loadConfig } from "./config.mjs";
-import { listWorktrees } from "./sources.mjs";
-import { LEGACY_LOCATIONS, hostPath, legacyPath } from "./paths.mjs";
-import { loadExtensions } from "./extensions.mjs";
-import { detectTooling } from "./tooling.mjs";
-import { escalationAllowRules } from "./saved-rules.mjs";
-
-export { detectTooling };
+import { protectionScope } from "./shared/sources/source-paths.mjs";
+import { deriveState, projectRoot } from "./shared/work/work.mjs";
+import * as git from "./shared/git.mjs";
+import { loadConfig } from "./shared/config.mjs";
+import { listWorktrees } from "./shared/sources/sources.mjs";
+import { LEGACY_LOCATIONS, hostPath, legacyPath } from "./shared/paths.mjs";
+import { loadExtensions } from "./shared/extensions.mjs";
+import { detectTooling } from "./shared/tooling.mjs";
+import { escalationAllowRules } from "./shared/saved-rules.mjs";
 
 /** What the guards protect for a root that is not a top level, so the user can see the effect. */
 function scopeText({ kind, paths }) {

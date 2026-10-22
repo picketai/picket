@@ -4,9 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../dist/lib/sources.mjs";
-import { parse as parseYaml } from "../../dist/lib/yaml-lite.mjs";
-import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/source-paths.mjs";
+import { candidates, contentHash, find, grep, listWorktrees, localBranches, tokens } from "../../dist/lib/shared/sources/sources.mjs";
+import { parse as parseYaml } from "../../dist/lib/util/yaml-lite.mjs";
+import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/shared/sources/source-paths.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");

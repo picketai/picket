@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { check } from "./check.mjs";
-import { LANGS, MARKUP, commentOf, extOf, maskStrings } from "./comments.mjs";
-import * as git from "./git.mjs";
-import { STATE_FILES, stateDir, statePath } from "./paths.mjs";
-import { detectTooling } from "./preflight.mjs";
-import { isTestPath } from "./silenced.mjs";
-import { projectRoot, readState, workDir } from "./work.mjs";
+import { check } from "./shared/checks.mjs";
+import { LANGS, MARKUP, commentOf, extOf, maskStrings } from "./shared/comments.mjs";
+import * as git from "./shared/git.mjs";
+import { STATE_FILES, stateDir, statePath } from "./shared/paths.mjs";
+import { detectTooling } from "./shared/tooling.mjs";
+import { isTestPath } from "./shared/silenced.mjs";
+import { projectRoot, readState, workDir } from "./shared/work/work.mjs";
 
 const OPERATOR = /(?<=\s)(?:<=|>=|<|>)(?=\s)|===|!==|==|!=|&&|\|\||\btrue\b|\bfalse\b/g;
 
@@ -137,11 +137,6 @@ export function mutate(id, { root = projectRoot() } = {}) {
   const result = { ts: new Date().toISOString(), base, mutant, command, outcome, rebuild, ms: Date.now() - started };
   writeFileSync(join(workDir(id, root), "mutation.json"), JSON.stringify(result, null, 2) + "\n");
   return { ...result, restored };
-}
-
-export function readMutation(id, root = projectRoot()) {
-  const file = join(workDir(id, root), "mutation.json");
-  return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
 }
 
 export function renderMutation(v) {

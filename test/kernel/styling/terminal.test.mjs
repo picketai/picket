@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { iconsMode } from "../../../dist/lib/statusline.mjs";
-import { readPin } from "../../../dist/lib/styling/font.mjs";
-import { renderReport, setupTerminal } from "../../../dist/lib/styling/setup.mjs";
-import { detectTerminal, terminalComponent } from "../../../dist/lib/styling/terminal.mjs";
-import { parse } from "../../../dist/lib/vendor/jsonc-parser.mjs";
+import { readPin } from "../../../dist/lib/shared/styling/font.mjs";
+import { renderReport, setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
+import { detectTerminal, terminalComponent } from "../../../dist/lib/shared/styling/terminal.mjs";
+import { parse } from "../../../dist/lib/util/vendor/jsonc-parser.mjs";
 import { fakeExec, fakeHost, fakeRegistry, homeFiles, writeHomeFile } from "./host-fixture.mjs";
 
 const FAMILY = "JetBrainsMono Nerd Font Mono";
@@ -157,7 +157,7 @@ test("with the font present the status line switches to nerd icons and revert pu
 });
 
 test("the vendored jsonc-parser keeps Microsoft's MIT licence and names its version (T-5.7)", () => {
-  const head = readFileSync("src/lib/vendor/jsonc-parser.mjs", "utf8").split("\n").slice(0, 30).join("\n");
+  const head = readFileSync("src/lib/util/vendor/jsonc-parser.mjs", "utf8").split("\n").slice(0, 30).join("\n");
   assert.match(head, /^\/\*\*/);
   assert.match(head, /jsonc-parser v\d+\.\d+\.\d+/);
   assert.match(head, /MIT License/);

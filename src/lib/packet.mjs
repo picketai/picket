@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ARTIFACT_BY_LANE, deriveState, projectRoot, readArtifact, workDir } from "./work.mjs";
-import { next } from "./next.mjs";
-import { loadConfig } from "./config.mjs";
-import { ambiguousRefs, candidates } from "./sources.mjs";
+import { ARTIFACT_BY_LANE, deriveState, projectRoot, readArtifact, workDir } from "./shared/work/work.mjs";
+import { next } from "./shared/work/next-step.mjs";
+import { loadConfig } from "./shared/config.mjs";
+import { ambiguousRefs, candidates } from "./shared/sources/sources.mjs";
 
 export const WIDTH = 100;
 const LABEL = 10;

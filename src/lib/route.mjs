@@ -1,12 +1,13 @@
 // What a verdict means for the state machine. Called by the route.verdict hook on every agent stop
 // and by the lane skills. Exact-match tokens only; near misses are recorded but change nothing.
-import { appendVerdict, deriveState, hasMarker, isSessionId, projectRoot, readState, setMarker, writeState } from "./work.mjs";
-import { next } from "./next.mjs";
-import { ownGate, phasePaths } from "./gate.mjs";
-import { commitOwned, listedPathMatcher } from "./git.mjs";
+import { appendVerdict, deriveState, hasMarker, isSessionId, projectRoot, readState, setMarker, writeState } from "./shared/work/work.mjs";
+import { next } from "./shared/work/next-step.mjs";
+import { ownGate, phasePaths } from "./shared/work/gate.mjs";
+import { commitOwned, listedPathMatcher } from "./shared/git.mjs";
 import { recordAccept } from "./close.mjs";
 import { blockFiles, readBlock, parseBlock } from "./packet.mjs";
-import { bareAgentName } from "./agent-name.mjs";
+import { bareAgentName } from "./shared/agent-name.mjs";
+import { VERDICTS } from "./shared/verdicts.mjs";
 
 /**
  * Approval turns the developer's staged work into a commit. The message is the one the developer
@@ -44,34 +45,6 @@ function claimForSession(id, session, root) {
   if (String(st.session) === String(session)) return;
   st.session = session;
   writeState(st, root);
-}
-
-export const VERDICTS = Object.freeze({
-  // reviewer
-  APPROVED: { agent: "reviewer", effect: "phase_reviewed" },
-  "CHANGES REQUIRED": { agent: "reviewer", effect: "rejection" },
-  ALIGNED: { agent: "reviewer", effect: "crosscheck_ok" },
-  "DRIFT DETECTED": { agent: "reviewer", effect: "drift" },
-  // developer
-  "PHASE DONE": { agent: "developer", effect: "phase_done" },
-  "PHASE STALLED": { agent: "developer", effect: "stall" },
-  // architect
-  "ARTIFACT WRITTEN": { agent: "architect", effect: "artifact" },
-  "AMENDED": { agent: "architect", effect: "amended" },
-  // analyst
-  "REPORT WRITTEN": { agent: "analyst", effect: "artifact" },
-  // user
-  approved: { agent: "user", effect: "phase_approved" },
-  rejected: { agent: "user", effect: "rejection" },
-});
-
-const TOKEN_RE = new RegExp(`^\\s*(${Object.keys(VERDICTS).map((k) => k.replace(/ /g, "\\s+")).join("|")})\\b`, "m");
-
-/** Finds the first verdict token that starts a line in a block of text. */
-export function findVerdict(text) {
-  const m = String(text ?? "").match(TOKEN_RE);
-  if (!m) return null;
-  return m[1].replace(/\s+/g, " ").trim();
 }
 
 const CLASSED_VERDICT = "CHANGES REQUIRED";

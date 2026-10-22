@@ -1,9 +1,9 @@
-import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, productLinesAdded, repoPrefix, stagedFiles } from "./git.mjs";
-import { phasePaths } from "./gate.mjs";
+import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, productLinesAdded, repoPrefix, stagedFiles } from "./shared/git.mjs";
+import { phasePaths } from "./shared/work/gate.mjs";
 import { blockFiles } from "./packet.mjs";
-import { appendLedger } from "./ledger.mjs";
-import { next } from "./next.mjs";
-import { listWork, readArtifact, readState, readVerdicts, writeState } from "./work.mjs";
+import { appendLedger } from "./shared/ledger.mjs";
+import { next } from "./shared/work/next-step.mjs";
+import { listWork, readArtifact, readState, readVerdicts, writeState } from "./shared/work/work.mjs";
 import { readLeft } from "./shared/work/left.mjs";
 
 export class CloseRefused extends Error {

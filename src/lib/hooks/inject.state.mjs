@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
-import { listOpenWork, deriveState } from "../work.mjs";
-import { hostPath, hostRel } from "../paths.mjs";
-import { next } from "../next.mjs";
-import { loadConfig } from "../config.mjs";
+import { listOpenWork, deriveState } from "../shared/work/work.mjs";
+import { hostPath, hostRel } from "../shared/paths.mjs";
+import { next } from "../shared/work/next-step.mjs";
+import { loadConfig } from "../shared/config.mjs";
 
 const SHOWN_ITEMS = 8;
 const GLOSSARY_CHARS = 6000;

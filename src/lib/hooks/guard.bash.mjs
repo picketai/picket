@@ -22,18 +22,18 @@
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { isAbsolute, join, relative, resolve } from "path";
-import { sourceRoots, underSource } from "../source-paths.mjs";
-import { LANGS, extOf } from "../comments.mjs";
-import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
-import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
+import { sourceRoots, underSource } from "../shared/sources/source-paths.mjs";
+import { LANGS, extOf } from "../shared/comments.mjs";
+import { stateDir, statePath, stateRel, STATE_FILES } from "../shared/paths.mjs";
+import { kernelVerbStart, normalizeRoot } from "./kernel-call.mjs";
 import { parseArgs } from "../util/args.mjs";
 import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
-import { detectTooling } from "../tooling.mjs";
-import { bareAgentName } from "../agent-name.mjs";
-import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, POWERSHELL_MARKER_TEXT, recordEscalation, withoutMarker } from "../escalation.mjs";
-import { readLedger } from "../cost.mjs";
-import { escalationAllowRules } from "../saved-rules.mjs";
-import { readPowerShell } from "../powershell-text.mjs";
+import { detectTooling } from "../shared/tooling.mjs";
+import { bareAgentName } from "../shared/agent-name.mjs";
+import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, POWERSHELL_MARKER_TEXT, recordEscalation, withoutMarker } from "../shared/escalation.mjs";
+import { readLedger } from "../shared/ledger.mjs";
+import { escalationAllowRules } from "../shared/saved-rules.mjs";
+import { readPowerShell } from "./powershell-text.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
 const POWERSHELL_TOOL = "PowerShell";
@@ -57,7 +57,7 @@ function trace(root, rawCommand, outcome, tool) {
 
 async function loadTokenizer() {
   try {
-    return (await import("../vendor/shell-quote-parse.mjs")).parse;
+    return (await import("../util/vendor/shell-quote-parse.mjs")).parse;
   } catch {
     return null;
   }

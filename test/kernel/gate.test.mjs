@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "../../dist/lib/work.mjs";
-import { ownGate, phasePaths } from "../../dist/lib/gate.mjs";
+import { createWork } from "../../dist/lib/shared/work/work.mjs";
+import { ownGate, phasePaths } from "../../dist/lib/shared/work/gate.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function withDesign({ entry, body = "t\n", config }, fn) {

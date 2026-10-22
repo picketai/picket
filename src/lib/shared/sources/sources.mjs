@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { basename, dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { parse, stringify } from "./yaml-lite.mjs";
+import { parse, stringify } from "../../util/yaml-lite.mjs";
 
 export const HIT_CAP = 200;
 export const TOKEN_CAP = 200;

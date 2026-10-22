@@ -4,10 +4,10 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { fontComponent, fontDir, readPin, registryName } from "../../../dist/lib/styling/font.mjs";
-import { manifestPath } from "../../../dist/lib/styling/manifest.mjs";
-import { setupTerminal } from "../../../dist/lib/styling/setup.mjs";
-import { theme } from "../../../dist/lib/styling/theme.mjs";
+import { fontComponent, fontDir, readPin, registryName } from "../../../dist/lib/shared/styling/font.mjs";
+import { manifestPath } from "../../../dist/lib/shared/styling/manifest.mjs";
+import { setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
+import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
 import { buildZip, exited, fakeExec, fakeHost, fakeRegistry, servingFetch } from "./host-fixture.mjs";
 
 const FONTS_KEY = "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";

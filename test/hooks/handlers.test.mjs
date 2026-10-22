@@ -4,8 +4,8 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createWork, writeState } from "../../dist/lib/work.mjs";
-import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/paths.mjs";
+import { createWork, writeState } from "../../dist/lib/shared/work/work.mjs";
+import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 import { emitLedger } from "../../dist/lib/hooks/emit.ledger.mjs";
 import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route.verdict.mjs";
 import { injectState } from "../../dist/lib/hooks/inject.state.mjs";
@@ -13,11 +13,11 @@ import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject.rules.m
 import { injectExtensions } from "../../dist/lib/hooks/inject.extensions.mjs";
 import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../dist/lib/hooks/guard.scope.mjs";
-import { ASKING_MODES, commandKey } from "../../dist/lib/escalation.mjs";
+import { ASKING_MODES, commandKey } from "../../dist/lib/shared/escalation.mjs";
 import { observeDrive } from "../../dist/lib/hooks/observe.drive.mjs";
 import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify.user.mjs";
-import { branchingManifestPath } from "../../dist/lib/paths.mjs";
-import { latestHints, spawnHints } from "../../dist/lib/transcript.mjs";
+import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
+import { latestHints, spawnHints } from "../../dist/lib/shared/transcript/transcript.mjs";
 import { VERB_NAMES } from "../../dist/lib/verbs.mjs";
 import { LEGACY_VERBS } from "../../dist/lib/cli/legacy.mjs";
 
@@ -90,13 +90,15 @@ test("every shell imports only runHook and its handler, in at most five lines (T
     const lines = readFileSync(join(HOOK_SHELLS, file), "utf8").split(/\r?\n/).filter((l) => l.trim());
     assert.ok(lines.length <= MAX_SHELL_LINES, `${file}: ${lines.length} lines`);
     const imports = lines.filter((l) => l.startsWith("import "));
-    assert.deepEqual(imports, [`import { runHook } from "../lib/hook.mjs";`, `import { ${handler} } from "../lib/hooks/${file}";`], file);
+    assert.deepEqual(imports, [`import { runHook } from "../lib/hooks/hook.mjs";`,`import { ${handler} } from "../lib/hooks/${file}";`], file);
     assert.ok(lines.some((l) => l.includes(`runHook(${handler}`)), file);
   }
 });
 
+const HANDLER_FILE = /^[a-z]+\.[a-z]+\.mjs$/;
+
 test("no handler reads stdin, writes stdout or exits the process (T-6.2)", () => {
-  for (const file of readdirSync(HANDLERS).filter((f) => f.endsWith(".mjs"))) {
+  for (const file of readdirSync(HANDLERS).filter((f) => HANDLER_FILE.test(f))) {
     const code = readFileSync(join(HANDLERS, file), "utf8");
     for (const banned of ["process.exit", "readFileSync(0", "process.stdout"]) assert.equal(code.includes(banned), false, `${file} contains ${banned}`);
   }
@@ -384,7 +386,7 @@ test("latestHints skips a later message without a work line (T-2.3)", () => {
 test("no helper is left under .claude/hooks/lib; all four live in src/lib (T-6.4)", () => {
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
-  for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
+  for (const helper of ["shared/transcript/transcript.mjs", "shared/transcript/turn-block.mjs", "shared/sources/source-paths.mjs", "hooks/drive-evidence.mjs"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
 });
 
 test("guardBash allows a compound of read-only pieces and bare picket calls that wrap nothing", () => {
@@ -407,7 +409,7 @@ test("guardBash allows a compound of read-only pieces and bare picket calls that
 });
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
-  const executed = ["src/lib/drive.mjs", "src/lib/check.mjs"].flatMap((file) =>
+  const executed = ["src/lib/drive.mjs", "src/lib/shared/checks.mjs"].flatMap((file) =>
     [...readFileSync(resolve(file), "utf8").matchAll(/assertNotDestructive\(o\.\w+, "picket \w+ (--[\w-]+)"\)/g)].map((m) => m[1]),
   );
   assert.deepEqual(executed.sort(), ["--only", "--run", "--start"]);

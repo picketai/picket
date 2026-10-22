@@ -1,5 +1,5 @@
 import { readArtifact } from "./work.mjs";
-import { securityPaths } from "./config.mjs";
+import { securityPaths } from "../config.mjs";
 
 export function ownGate(id, n, root) {
   const art = readArtifact(id, root);
