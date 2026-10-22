@@ -22,9 +22,17 @@ node <path to this checkout>/dist/bin/picket.mjs init
 
 It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore`, and in `.claude/settings.json` the permission allow and ask rules, `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and the `picket statusline` status line (unless one is already set). Then it runs `claude plugin marketplace add` and `claude plugin install` for `picket@picketai`, `picket-status@picketai` and `picket-markdown@picketai`, all with `--scope project`. A second run changes nothing; `--no-install` skips the four `claude` commands. To undo it, run `claude plugin uninstall` for `picket-markdown@picketai`, `picket-status@picketai` and `picket@picketai` with `--scope project`, then `claude plugin marketplace remove picketai --scope project`. A copy stays under `~/.claude/plugins/cache/picketai/`, marked orphaned.
 
+## Building
+
+Contributors run Node 24 or newer, the version in `.nvmrc`; users of the published package need Node 22 or newer. `npm install` installs the build tools and builds once.
+
+`src/` is the source. `npm run build` deletes `dist/` and writes it again from `src/` in under a second, and `npm run watch` keeps it current while you edit: it rebuilds an `.mts` module or a hook when its source changes and copies any other changed file. `npm run typecheck` runs `tsc` over `src/` and writes nothing. `npm test` builds and type-checks before it runs the tests, and `npm run claude` builds before it starts the session.
+
+`dist/` is generated and ignored by git. Never edit it: the next build deletes the change. Every `.mjs` file in it starts with a banner that says so, and `.claude/settings.json` denies Edit and Write there.
+
 ## Code
 
-Code is Node ESM in `.mjs` files. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/vendor/jsonc-parser.mjs` for JSON with comments.
+Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`, built to `.mjs` by esbuild. The one exception is `src/lib/node-floor.mjs`: the hook runtime, itself still `.mjs`, imports it, so it can only use a name that exists in both `src/` and `dist/`. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/vendor/jsonc-parser.mjs` for JSON with comments.
 
 Comments follow `src/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 
@@ -60,7 +68,7 @@ The workflow publishes through npm trusted publishing, so it needs a one-time se
 
 To check a release before tagging, start the `release` workflow by hand from the Actions tab. It runs the same tests on Linux and ends with `npm publish --dry-run`, which publishes nothing. Read the file list it prints: no path may contain `.test.`.
 
-Publish only from the workflow. It packs a Linux checkout, where `src/bin/picket` keeps its executable bit and its LF line ends; a pack made on Windows drops the bit.
+Publish only from the workflow. Its `prepack` script builds `dist/` before the publish packs it. It packs a Linux checkout, where `src/bin/picket` keeps its executable bit and its LF line ends, and the build copies both into `dist/bin/picket`; a pack made on Windows drops the bit.
 
 ## Folders outside the product
 

@@ -56,7 +56,7 @@ const ELSEWHERE = [
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
   { why: "planned by SDR-00001", paths: ["rules/"] },
-  { why: "built by `npm run build`, ignored by git", paths: ["dist/"] },
+  { why: "built by `npm run build`, ignored by git", paths: ["dist/", "dist/hooks/"] },
 ];
 
 const NOT_A_PATH_CHAR = /[\s<>*{}[\]$~|"'=(),…]/;
