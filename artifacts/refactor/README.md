@@ -19,7 +19,7 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 07b | [Terminal styling, and removing Picket](07b-styling.md) | approved 2026-10-22 |
 | 08a | [Instructions](08a-instructions.md) | approved 2026-10-22 |
 | 08b | [Docs](08b-docs.md) | approved 2026-10-22 |
-| 09 | Hygiene | discussing |
+| 09 | [Hygiene](09-hygiene.md) | approved 2026-10-22 |
 
 Each area item carries the bug fixes found in that area (B1 to B10 in the source list).
 
