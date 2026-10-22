@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 export const HOST_DIR = ".claude";
 export const PICKET_DIR = ".picket";
@@ -8,6 +7,7 @@ export const WORK_DIR = "work";
 
 const STATE_REL = `${PICKET_DIR}/state`;
 const CONFIG_REL = `${PICKET_DIR}/config.json`;
+const PLUGIN_MANIFEST = [".claude-plugin", "plugin.json"] as const;
 
 export const STATE_FILES = Object.freeze({
   ledger: "ledger.jsonl",
@@ -36,19 +36,21 @@ export const BOOKKEEPING_PREFIXES = Object.freeze([`${WORK_DIR}/`, `${HOST_DIR}/
 
 const ROOT_MARKERS = [PICKET_DIR, HOST_DIR];
 
-function posixJoin(...segments) {
+export type RepoPath = { root: string; abs: string; rel: string; outside: boolean };
+
+function posixJoin(...segments: string[]): string {
   return segments.filter((s) => s !== "").join("/");
 }
 
-function underRoot(root, rel) {
+function underRoot(root: string, rel: string): string {
   return join(root, ...rel.split("/"));
 }
 
-function isMarkedRoot(dir) {
+function isMarkedRoot(dir: string): boolean {
   return ROOT_MARKERS.some((marker) => existsSync(join(dir, marker)));
 }
 
-export function projectRoot(from = process.cwd()) {
+export function projectRoot(from: string = process.cwd()): string {
   if (process.env.CLAUDE_PROJECT_DIR) return resolve(process.env.CLAUDE_PROJECT_DIR);
   const start = resolve(from);
   for (let dir = start; ; dir = dirname(dir)) {
@@ -57,13 +59,13 @@ export function projectRoot(from = process.cwd()) {
   }
 }
 
-function insideRootIgnoringCase(abs, root) {
+function insideRootIgnoringCase(abs: string, root: string): boolean {
   const a = abs.replaceAll("\\", "/").toLowerCase();
   const r = root.replaceAll("\\", "/").replace(/\/$/, "").toLowerCase();
   return a.startsWith(r + "/");
 }
 
-export function repoRelative(event, filePath) {
+export function repoRelative(event: { cwd?: string } | null | undefined, filePath: string): RepoPath {
   const root = projectRoot(event?.cwd);
   const base = event?.cwd ?? root;
   const abs = isAbsolute(filePath) ? filePath : resolve(base, filePath);
@@ -76,59 +78,66 @@ export function repoRelative(event, filePath) {
   return { root, abs, rel, outside };
 }
 
-export function stateRel(name) {
+export function stateRel(name: string): string {
   return posixJoin(STATE_REL, name);
 }
 
-export function stateDir(root) {
+export function stateDir(root: string): string {
   return underRoot(root, STATE_REL);
 }
 
-export function statePath(root, name) {
+export function statePath(root: string, name: string): string {
   return join(stateDir(root), name);
 }
 
-export function sessionCostPath(root, session) {
+export function sessionCostPath(root: string, session: unknown): string | null {
   if (typeof session !== "string" || !SESSION_ID.test(session)) return null;
   return join(statePath(root, STATE_FILES.sessions), `${session}.json`);
 }
 
-export function configRel() {
+export function configRel(): string {
   return CONFIG_REL;
 }
 
-export function configPath(root) {
+export function configPath(root: string): string {
   return underRoot(root, CONFIG_REL);
 }
 
-export function branchingManifestPath(root) {
+export function branchingManifestPath(root: string): string {
   return statePath(root, STATE_FILES.branchingManifest);
 }
 
-export function legacyPath(root, rel) {
+export function legacyPath(root: string, rel: string): string {
   return underRoot(root, rel);
 }
 
-export function hostRel(...segments) {
+export function hostRel(...segments: string[]): string {
   return posixJoin(HOST_DIR, ...segments);
 }
 
-export function hostPath(root, ...segments) {
+export function hostPath(root: string, ...segments: string[]): string {
   return join(root, HOST_DIR, ...segments);
 }
 
-export function workRoot(root = projectRoot()) {
+export function workRoot(root: string = projectRoot()): string {
   return join(root, WORK_DIR);
 }
 
-export function pluginRoot() {
-  return dirname(dirname(fileURLToPath(import.meta.url)));
+function holdsPluginManifest(dir: string): boolean {
+  return existsSync(join(dir, ...PLUGIN_MANIFEST));
 }
 
-export function pluginManifestPath() {
-  return join(pluginRoot(), ".claude-plugin", "plugin.json");
+export function pluginRoot(from: string = import.meta.dirname): string {
+  for (let dir = resolve(from); ; dir = dirname(dir)) {
+    if (holdsPluginManifest(dir)) return dir;
+    if (dirname(dir) === dir) throw new Error(`no ${PLUGIN_MANIFEST.join("/")} at or above ${from}`);
+  }
 }
 
-export function rulesDir() {
+export function pluginManifestPath(): string {
+  return join(pluginRoot(), ...PLUGIN_MANIFEST);
+}
+
+export function rulesDir(): string {
   return join(pluginRoot(), "rules");
 }

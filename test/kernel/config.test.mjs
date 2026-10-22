@@ -6,7 +6,7 @@ import { basename, join, resolve } from "node:path";
 import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/config.mjs";
 import { detectTooling } from "../../dist/lib/preflight.mjs";
 import { configRel, hostPath } from "../../dist/lib/paths.mjs";
-import { codeLines } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource } from "./kernel-sources.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/config.schema.json"), "utf8"));
@@ -27,15 +27,15 @@ function withProject(config, fn) {
   }
 }
 
-test("paths.mjs is the only file under src/lib whose code names the config file (T-2.4)", () => {
+test("paths.mts is the only file under src/lib whose code names the config file (T-2.4)", () => {
   const configName = new RegExp(`(?<![\\w.-]|\\.picketai/)${basename(configRel()).replaceAll(".", "\\.")}`);
   assert.equal(configName.test('const f = "tsconfig.json";'), false);
   assert.equal(configName.test('const f = ".picketai/config.json";'), false);
   assert.equal(configName.test('const f = ".picket/config.json";'), true);
   const lib = resolve("src/lib");
   const naming = readdirSync(lib)
-    .filter((f) => f.endsWith(".mjs") && codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));
-  assert.deepEqual(naming, ["paths.mjs"]);
+    .filter((f) => isKernelSource(f) && codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));
+  assert.deepEqual(naming, ["paths.mts"]);
 });
 
 test("an unset env var gives the source with root null and a reason naming the variable (T-3.2)", () => {

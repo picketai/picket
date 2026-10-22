@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
 import * as paths from "../../dist/lib/paths.mjs";
-import { codeLines, isPathsModule, kernelModules } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource, isPathsModule, kernelModules } from "./kernel-sources.mjs";
 
 const { projectRoot } = paths;
 
@@ -28,7 +28,16 @@ test("the vendored tokenizer lives under src/lib/vendor and the scans leave it o
   assert.equal(kernelModules().includes(tokenizer), false);
 });
 
-test("no kernel, hook or bin module but paths.mjs builds a path from its own location (T-1.1)", () => {
+test("the kernel scans read .mjs and .mts sources and leave declaration and test files out (T-1.8)", () => {
+  const modules = kernelModules();
+  assert.equal(modules.includes(resolve("src/lib/action.mts")), true);
+  assert.equal(modules.includes(resolve("src/bin/picket.mts")), true);
+  assert.deepEqual(modules.filter((file) => file.endsWith(".d.mts") || file.endsWith(".test.mts")), []);
+  assert.deepEqual(["a.mjs", "a.mts", "a.d.mts", "a.test.mts", "a.json"].filter(isKernelSource), ["a.mjs", "a.mts"]);
+  assert.deepEqual(["paths.mjs", "paths.mts", "paths.d.mts"].map((name) => isPathsModule(join("src", "lib", name))), [true, true, false]);
+});
+
+test("no kernel, hook or bin module but paths.mts builds a path from its own location (T-1.1)", () => {
   const offenders = kernelModules()
     .filter((file) => !isPathsModule(file))
     .map((file) => ({ file, uses: selfLocationUses(readFileSync(file, "utf8")) }))
@@ -45,7 +54,7 @@ test("the host-folder ban flags a code line and skips comment lines", () => {
   assert.deepEqual(hostLiteralLines(["// see .claude/hooks", "/* .claude */", " * .claude/x", "const a = 1;"].join("\n")), []);
 });
 
-test("only paths.mjs spells the host folder in kernel, hook and bin code (T-2.1)", () => {
+test("only paths.mts spells the host folder in kernel, hook and bin code (T-2.1)", () => {
   const offenders = kernelModules()
     .filter((file) => !isPathsModule(file))
     .flatMap((file) => hostLiteralLines(readFileSync(file, "utf8")).map((line) => `${file}: ${line.trim()}`));
@@ -172,6 +181,21 @@ test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits und
   assert.equal(existsSync(join(root, "lib", "paths.mjs")), true);
   assert.equal(existsSync(join(root, "rules", "prose.md")), true);
   assert.equal(paths.rulesDir(), join(root, "rules"));
+});
+
+test("pluginRoot walks up from any built folder to dist/ (T-1.6)", () => {
+  for (const from of ["dist/lib", "dist/lib/styling", "dist/hooks", "dist/bin"]) {
+    assert.equal(paths.pluginRoot(resolve(from)), resolve("dist"), from);
+  }
+});
+
+test("pluginRoot throws, naming the start folder, when no manifest sits above it (T-1.6)", () => {
+  const start = mkdtempSync(join(tmpdir(), "picket-noplugin-"));
+  try {
+    assert.throws(() => paths.pluginRoot(start), (err) => err.message.includes(start));
+  } finally {
+    rmSync(start, { recursive: true, force: true });
+  }
 });
 
 test("pluginManifestPath names the plugin manifest the marketplace serves", () => {

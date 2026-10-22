@@ -24,7 +24,7 @@ function commitPhase(id, phase, root, applied) {
   const reported = listedPathMatcher(root, blockFiles(id, phase, root));
   let result;
   try {
-    result = commitOwned(root, message, { add: [`work/${id}`], owns: (path) => listed(path) || reported(path) });
+    result = commitOwned(root, message, { add: [`work/${id}`], owns: (path) => listed(path) || reported(path), env: process.env });
   } catch (err) {
     applied.push(err.message);
     return;

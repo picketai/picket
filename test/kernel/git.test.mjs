@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../dist/lib/git.mjs";
+import { commitOwned, dirtyPaths, gitRead, gitRun, head, isRepo, productLinesAdded, workingState } from "../../dist/lib/git.mjs";
 import { liveProbe } from "../../dist/lib/statusline.mjs";
 
 function gitIn(root, ...args) {
@@ -113,7 +113,24 @@ test("workingState names a detached head by 7 hex characters and is null outside
   withTempDir("picket-norepo-", (root) => assert.equal(workingState(root), null));
 });
 
-const IDENTITY_ENV = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
+test("gitRead is null outside a repo and gitRun throws there, naming the subcommand (T-1.5)", () => {
+  withTempDir("picket-norepo-", (root) => {
+    assert.equal(gitRead(root, ["rev-parse", "--show-toplevel"]), null);
+    assert.throws(() => gitRun(root, ["--literal-pathspecs", "rev-parse", "--show-toplevel"]), /^Error: git rev-parse failed: .+/);
+  });
+});
+
+test("gitRead end-trims its answer and gitRun returns the raw output inside a repo (T-1.5)", () => {
+  withCommittedRepo((root) => {
+    assert.equal(gitRead(root, ["rev-parse", "--abbrev-ref", "HEAD"]), "main");
+    assert.equal(gitRun(root, ["rev-parse", "--abbrev-ref", "HEAD"]), "main\n");
+    assert.equal(gitRun(root, ["hash-object", "--stdin"], { input: "one\n" }).trim(), gitOut(root, "rev-parse", "HEAD:a.txt"));
+    const env = { ...process.env, GIT_AUTHOR_NAME: "Env Author", GIT_AUTHOR_EMAIL: "env@example.com" };
+    assert.match(gitRun(root, ["var", "GIT_AUTHOR_IDENT"], { env }), /^Env Author <env@example\.com> /);
+  });
+});
+
+const IDENTITY_ENV ={ GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
 function withIdentity(fn) {
   const saved = Object.fromEntries(Object.keys(IDENTITY_ENV).map((k) => [k, process.env[k]]));
@@ -141,7 +158,7 @@ test("commitOwned commits the owned staged paths and leaves every other staged p
     writeIn(root, "src/a.js", "a\n");
     writeIn(root, "README.md", "foreign\n");
     gitIn(root, "add", "-A");
-    const r = withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc }));
+    const r = withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc, env: process.env }));
     assert.deepEqual([r.committed, r.left_staged, r.warnings], [["src/a.js"], ["README.md"], []]);
     assert.equal(r.sha, head(root));
     assert.deepEqual(committedNames(root), ["src/a.js"]);
@@ -154,7 +171,7 @@ test("commitOwned commits the staged content, not a later working tree edit (T-1
     writeIn(root, "src/a.js", "A\n");
     gitIn(root, "add", "-A");
     writeIn(root, "src/a.js", "B\n");
-    withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc }));
+    withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc, env: process.env }));
     assert.equal(gitOut(root, "show", "HEAD:src/a.js"), "A");
     assert.equal(readFileSync(join(root, "src", "a.js"), "utf8"), "B\n");
     assert.deepEqual(stagedNames(root), []);
@@ -174,7 +191,7 @@ test("commitOwned commits a staged deletion and treats a bracketed name as a lit
     writeIn(root, "src/i/page.tsx", "other 2\n");
     gitIn(root, "add", "-A");
     const owns = (path) => path === "src/old.js" || path === "src/[id]/page.tsx";
-    withIdentity(() => commitOwned(root, "feat: pages", { owns }));
+    withIdentity(() => commitOwned(root, "feat: pages", { owns, env: process.env }));
     assert.deepEqual(committedNames(root), ["src/[id]/page.tsx", "src/old.js"]);
     assert.throws(() => gitOut(root, "cat-file", "-e", "HEAD:src/old.js"));
     assert.deepEqual(stagedNames(root), ["src/i/page.tsx"]);
@@ -186,7 +203,7 @@ test("commitOwned with nothing owned commits nothing and reports what stays stag
     const before = head(root);
     writeIn(root, "README.md", "foreign\n");
     gitIn(root, "add", "-A");
-    assert.deepEqual(commitOwned(root, "feat: none", { owns: ownsSrc }), { sha: null, committed: [], left_staged: ["README.md"], warnings: [] });
+    assert.deepEqual(commitOwned(root, "feat: none", { owns: ownsSrc, env: process.env }), { sha: null, committed: [], left_staged: ["README.md"], warnings: [] });
     assert.equal(head(root), before);
   });
 });
@@ -200,7 +217,7 @@ test("a failed commit leaves HEAD and the real index as they were and removes th
     writeIn(root, "src/a.js", "a\n");
     writeIn(root, "README.md", "foreign\n");
     gitIn(root, "add", "-A");
-    assert.throws(() => withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc })), /git commit failed/);
+    assert.throws(() => withIdentity(() => commitOwned(root, "feat: a", { owns: ownsSrc, env: process.env })), /git commit failed/);
     assert.equal(head(root), before);
     assert.deepEqual(stagedNames(root), ["README.md", "src/a.js"]);
     assert.equal(existsSync(join(root, ".git", "picket-commit.index")), false);

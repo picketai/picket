@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { loadExtensions, MANIFEST_KEYS, SUPPORTED_SCHEMAS } from "../../dist/lib/extensions.mjs";
-import { codeLines } from "./kernel-sources.mjs";
+import { codeLines, sourceOf } from "./kernel-sources.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 const EXTENSIONS_MODULE = resolve("src/lib/extensions.mjs");
@@ -102,7 +102,7 @@ test("the published manifest schema names exactly the loader's manifest keys and
 function relativeImports(file) {
   const code = codeLines(readFileSync(file, "utf8")).join("\n");
   const specifiers = [...code.matchAll(/\bfrom\s+["'](\.[^"']+)["']|\bimport\s*\(\s*["'](\.[^"']+)["']\s*\)|\bimport\s+["'](\.[^"']+)["']/g)].map((m) => m[1] ?? m[2] ?? m[3]);
-  return specifiers.map((s) => resolve(dirname(file), s));
+  return specifiers.map((s) => sourceOf(resolve(dirname(file), s)));
 }
 
 function reachable(starts, importsOf) {
