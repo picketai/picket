@@ -242,3 +242,7 @@ Two phases. Phase 1 has no verb changes; phase 2 moves the verbs.
 ## Open questions
 
 None.
+
+## Revision log
+
+- 2026-10-22: `compactTokens`, `prettyModel` and the time formats come from `src/lib/shared/format.mts`, shared with the mods; `compactTokens` prints `200k`, one decimal below 10k (item 07a, M-4, M-8).
