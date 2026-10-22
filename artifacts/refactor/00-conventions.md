@@ -19,6 +19,30 @@ Code under `src/` that ships uses no API newer than Node 22 (`@types/node` at th
 ### C-005: Generated files carry a banner
 Every built JavaScript file starts with `// generated from src/ by scripts/build.mjs; edit the source`. This is the only comment the build adds. From item 01, L-7.
 
+### C-006: Verbs are actions
+A verb is an `Action<I, O>` built with `action(...)`, async, taking `(input, context)` and returning `Outcome<O>` (`done`, `failed`, `refused`). Helpers are plain functions taking `root` first. From item 02, K-1 and K-2.
+
+### C-007: Only entry points touch the process
+The CLI, hook handlers and skill scripts build a `Context`; nothing else under `src/lib` reads `projectRoot()`, `process.cwd()`, `process.env`, `homedir()` or `new Date()`. From item 02, K-1.
+
+### C-008: Refusals are values at the boundary
+Helpers may throw `Refused`; `action()` turns it into `refused`. `UsageError` only while parsing arguments. Exit codes: done 0, failed 2, refused 2, usage or crash 1. An action never calls an action. From item 02, K-2 and K-3.
+
+### C-009: Closed lists are types
+Each closed word list has one owner exporting its values `as const` and its union type; typed literals are fine anywhere. From item 02, K-4.
+
+### C-010: Paths, files and processes through their modules
+Work item paths through `work-files.mts` with a branded `WorkId`; files through `io.mts`, where a bad JSONL line is skipped and counted; processes with argument arrays through `git.mts` and `process.mts`, `runShell` only for user commands. From item 02, K-5 to K-7.
+
+### C-011: Erasable syntax, owner types, naming
+`erasableSyntaxOnly`; no shared types file; generic helpers as `function` declarations; kebab-case module nouns, verb-first functions, PascalCase types, `UPPER_SNAKE` closed lists, no default exports. From item 02, K-8 and K-9.
+
+### C-012: One-word verbs in a registry
+Verbs are one lowercase word, group verbs take one one-word subverb; every verb has a registry entry with `usage`, `readOnly`, `parse`, `run`, `render`; the `Verb` type and the guard's lists derive from it. From item 02, K-10 to K-12.
+
+### C-013: No assumed locations
+The plugin root is found by walking up to `.claude-plugin/plugin.json`; no code assumes how deep it sits. From item 02, K-13.
+
 ## Revision log
 
 - 2026-10-22: C-004 (r2): floor raised from Node 20 to 22 for shipped code, 24 for tooling; item 01 L-5 (r2).

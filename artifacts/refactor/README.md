@@ -7,8 +7,8 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | # | Item | Status |
 |---|---|---|
 | 01 | [Layout and build](01-layout-and-build.md) | approved 2026-10-22 |
-| 02 | Code conventions: verb shape, results, errors, constants, I/O helpers | discussing |
-| 03 | Kernel CLI | todo |
+| 02 | [Code conventions](02-code-conventions.md) | approved 2026-10-22 |
+| 03 | Kernel CLI | discussing |
 | 04 | Kernel modules | todo |
 | 05 | Hooks: guard rules and structure | todo |
 | 06 | Tests | todo |
@@ -17,3 +17,5 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 09 | Hygiene | todo |
 
 Each area item carries the bug fixes found in that area (B1 to B7 in the source list).
+
+Implementation rule set by the user (2026-10-22): when the work starts, the first verb written in the new structure is shown to the user for feedback before any other verb is converted.
