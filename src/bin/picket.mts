@@ -6,4 +6,5 @@ if (refusal) {
   process.stderr.write(`${refusal}\n`);
   process.exit(1);
 }
-await import("./dispatch.mjs");
+const { main } = await import("../lib/cli/main.mts");
+process.exitCode = await main(process.argv.slice(2));

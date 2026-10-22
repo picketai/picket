@@ -40,15 +40,18 @@ Comments follow `src/rules/comments.md`: write none, and let names, small functi
 
 New and converted code follows the conventions C-006 to C-013 in `artifacts/refactor/00-conventions.md`: verbs are actions with three outcomes, only entry points read the process, closed word lists are types, and work item paths, files, git and commands each go through one module. The scans in `test/kernel/conventions.test.mjs` enforce the mechanical rules over every `.mts` file under `src/`, and `test/kernel/type-rules.test.mjs` checks that the type checker rejects the common mistakes.
 
-The foundation modules in `src/lib/`:
+The foundation modules:
 
-- `action.mts`: the `Action` and `Outcome` types, `done`, `failed`, `refuse`, `Refused`, `UsageError`, and the exit code table.
-- `context.mts`: the `Context` an entry point builds from the process with `edgeContext(root)`.
-- `paths.mts`: every project, state and plugin location, and the project root lookup.
-- `work-files.mts`: the `WorkId` check and every path inside `work/<id>/`.
-- `io.mts`: reading text, JSON and JSONL files, and appending a JSONL row.
-- `git.mts`: `gitRead` for answers that may be missing, `gitRun` for commands that must succeed, and the git helpers built on them.
-- `process.mts`: `runShell`, the one way to run a command the user or the project supplies.
+- `src/lib/shared/action.mts`: the `Action` and `Outcome` types, `done`, `failed`, `refuse`, `Refused`, and the exit code table.
+- `src/lib/shared/context.mts`: the `Context` an entry point builds from the process with `edgeContext(root)`.
+- `src/lib/paths.mts`: every project, state and plugin location, and the project root lookup.
+- `src/lib/shared/work/files.mts`: the `WorkId` check and every path inside `work/<id>/`.
+- `src/lib/util/args.mts`: `parseArgs`, the typed flag getters (`str`, `need`, `list`, `many`, `int`, `seconds`, `flag`, `pairs`) and `UsageError`.
+- `src/lib/util/io.mts`: reading text, JSON and JSONL files, and appending a JSONL row.
+- `src/lib/git.mts`: `gitRead` for answers that may be missing, `gitRun` for commands that must succeed, and the git helpers built on them.
+- `src/lib/util/process.mts`: `runShell`, the one way to run a command the user or the project supplies.
+
+The CLI lives in `src/lib/cli/`: `src/lib/cli/main.mts` parses the flags, runs the verb and prints its outcome; `src/lib/cli/registry.mts` loads each verb from its folder under `src/lib/verbs/`, whose names `src/lib/verbs.mts` lists. A verb not yet converted runs through `src/lib/cli/legacy.mjs`.
 
 ## Tests
 

@@ -32,7 +32,7 @@ src/skills/                lane skills, consulting, documenting, reviewing, tick
                            resuming, inspecting
 src/output-styles/         picket:custom, the response rules
 src/bin/picket             the kernel CLI on the Bash tool's PATH; picket.mts checks the Node version, then
-                           loads dispatch.mjs; src/lib/ holds its modules
+                           loads src/lib/cli/main.mts; src/lib/ holds its modules
 src/lib/styling/           what picket setup-terminal installs and picket uninstall removes
 src/themes/                the PicketAI Claude Code theme setup-terminal copies
 src/hooks/                 fourteen hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,

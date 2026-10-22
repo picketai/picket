@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join, resolve } from "node:path";
-import { UsageError } from "../../dist/lib/action.mjs";
-import { MARKERS, WORK_FILES, phaseMarker, workDir, workFile, workId, workRel } from "../../dist/lib/work-files.mjs";
+import { UsageError } from "../../dist/lib/util/args.mjs";
+import { MARKERS, WORK_FILES, phaseMarker, workDir, workFile, workId, workRel } from "../../dist/lib/shared/work/files.mjs";
 
 const root = resolve("some-root");
 

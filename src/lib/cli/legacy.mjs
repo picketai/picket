@@ -1,34 +1,33 @@
-#!/usr/bin/env node
 // The kernel CLI. Every verb prints JSON on stdout (add --pretty for an indented copy, --human for a
 // one-line human summary) and exits 0 on success, 1 on a usage error, 2 on a failed check.
 import { readFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { packet } from "../lib/packet.mjs";
-import { iconsMode, liveProbe, recordSessionCost, renderStatusline, workspaceDir } from "../lib/statusline.mjs";
-import { preparePullRequest, parsePullRequestUrl, postReview } from "../lib/pr.mjs";
-import { reviewSummaryRange } from "../lib/review.mjs";
-import { admit } from "../lib/admit.mjs";
-import { drive, renderDrive } from "../lib/drive.mjs";
-import { check, renderCheck } from "../lib/check.mjs";
-import { migrate, renderMigrate } from "../lib/migrate.mjs";
-import { dirtyPaths } from "../lib/git.mjs";
-import { close } from "../lib/close.mjs";
-import { leave, leftLine } from "../lib/leave.mjs";
-import { init, initRoot, InitRefused, renderInit } from "../lib/init.mjs";
-import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../lib/extensions.mjs";
-import { appendComment, appendWaiver, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../lib/work.mjs";
-import { latest, next } from "../lib/next.mjs";
-import { configRel, pluginManifestPath } from "../lib/paths.mjs";
-import { preflight } from "../lib/preflight.mjs";
-import { verify } from "../lib/verify.mjs";
-import { route, findVerdict } from "../lib/route.mjs";
-import { cost } from "../lib/cost.mjs";
-import { reviewSummary } from "../lib/review.mjs";
-import { loadConfig } from "../lib/config.mjs";
-import { parseArgs } from "../lib/cli-args.mjs";
-import { mutate, renderMutation } from "../lib/mutate.mjs";
-import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../lib/sources.mjs";
+import { packet } from "../packet.mjs";
+import { iconsMode, liveProbe, recordSessionCost, renderStatusline, workspaceDir } from "../statusline.mjs";
+import { preparePullRequest, parsePullRequestUrl, postReview } from "../pr.mjs";
+import { reviewSummaryRange } from "../review.mjs";
+import { admit } from "../admit.mjs";
+import { drive, renderDrive } from "../drive.mjs";
+import { check, renderCheck } from "../check.mjs";
+import { migrate, renderMigrate } from "../migrate.mjs";
+import { dirtyPaths } from "../git.mjs";
+import { close } from "../close.mjs";
+import { leftLine } from "../shared/work/left.mjs";
+import { init, initRoot, InitRefused, renderInit } from "../init.mjs";
+import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../extensions.mjs";
+import { appendComment, appendWaiver, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../work.mjs";
+import { latest, next } from "../next.mjs";
+import { configRel } from "../paths.mjs";
+import { preflight } from "../preflight.mjs";
+import { verify } from "../verify.mjs";
+import { route, findVerdict } from "../route.mjs";
+import { cost } from "../cost.mjs";
+import { reviewSummary } from "../review.mjs";
+import { loadConfig } from "../config.mjs";
+import { parseArgs } from "../util/args.mjs";
+import { mutate, renderMutation } from "../mutate.mjs";
+import { IntakeError, LookupError, addRef as addSource, find as findInSource, grep as grepInSource, pick as pickSource } from "../sources.mjs";
 
 function out(value, opt, text) {
   if (opt.human && text) console.log(text(value));
@@ -80,27 +79,11 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
-const VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "leave", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "waive", "mutate", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+export const LEGACY_VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "waive", "mutate", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
 
-function usage() {
-  return ["usage: picket <verb> [args] [--pretty | --human]", "", `verbs: ${VERBS.join(" ")}`, "", "picket --version   print the installed version"].join("\n");
-}
-
-function installedVersion() {
-  return JSON.parse(readFileSync(pluginManifestPath(), "utf8")).version;
-}
-
-async function main(argv) {
+export async function legacyMain(argv) {
   const { pos, opt } = parseArgs(argv);
   const [verb, ...rest] = pos;
-  if ("version" in opt) {
-    console.log(installedVersion());
-    return 0;
-  }
-  if ("help" in opt || verb === "help" || verb === undefined) {
-    console.log(usage());
-    return 0;
-  }
   const root = opt.root ?? projectRoot();
   switch (verb) {
     case "extension": {
@@ -213,12 +196,6 @@ async function main(argv) {
         return 2;
       }
     }
-    case "leave": {
-      if (!rest[0]) throw new Error('leave needs <id> --command "<command>"');
-      const entry = leave(rest[0], root, { command: opt.command, why: opt.why });
-      out(entry, opt, leftLine);
-      return 0;
-    }
     case "next": {
       if (!rest[0] && opt.latest) {
         const session = typeof opt.session === "string" ? opt.session : undefined;
@@ -326,8 +303,8 @@ async function main(argv) {
       return 0;
     }
     case "setup-terminal": {
-      const { COMPONENTS, renderReport, setupTerminal } = await import("../lib/styling/setup.mjs");
-      const { realHost } = await import("../lib/styling/host.mjs");
+      const { COMPONENTS, renderReport, setupTerminal } = await import("../styling/setup.mjs");
+      const { realHost } = await import("../styling/host.mjs");
       const only = onlyComponents(opt, COMPONENTS.map((component) => component.name));
       const report = await setupTerminal(realHost(), { only, dryRun: opt["dry-run"] === true, yes: opt.yes === true, revert: opt.revert === true });
       if (opt.json) console.log(opt.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report));
@@ -335,9 +312,9 @@ async function main(argv) {
       return report.changes.some((change) => change.result === "failed") ? 2 : 0;
     }
     case "uninstall": {
-      const { uninstall } = await import("../lib/styling/uninstall.mjs");
-      const { renderReport } = await import("../lib/styling/setup.mjs");
-      const { realHost } = await import("../lib/styling/host.mjs");
+      const { uninstall } = await import("../styling/uninstall.mjs");
+      const { renderReport } = await import("../styling/setup.mjs");
+      const { realHost } = await import("../styling/host.mjs");
       const report = await uninstall(realHost(), { yes: opt.yes === true });
       if (opt.json) console.log(opt.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report));
       else console.log(renderReport(report));
@@ -411,14 +388,6 @@ async function main(argv) {
       return r.ok ? 0 : 2;
     }
     default:
-      throw new Error(`unknown verb "${verb}". Verbs: ${VERBS.join(" ")}`);
+      throw new Error(`unknown verb "${verb}". Verbs: ${LEGACY_VERBS.join(" ")}`);
   }
 }
-
-main(process.argv.slice(2)).then(
-  (code) => process.exit(code),
-  (err) => {
-    console.error(`picket: ${err.message}`);
-    process.exit(1);
-  },
-);

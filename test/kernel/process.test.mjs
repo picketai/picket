@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runShell } from "../../dist/lib/process.mjs";
+import { runShell } from "../../dist/lib/util/process.mjs";
 
 const NODE = JSON.stringify(process.execPath);
 const OPTIONS = { cwd: process.cwd(), env: process.env, timeoutMs: 10_000 };

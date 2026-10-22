@@ -26,7 +26,7 @@ import { sourceRoots, underSource } from "../source-paths.mjs";
 import { LANGS, extOf } from "../comments.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "../kernel-call.mjs";
-import { parseArgs } from "../cli-args.mjs";
+import { parseArgs } from "../util/args.mjs";
 import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
 import { detectTooling } from "../tooling.mjs";
 import { bareAgentName } from "../agent-name.mjs";

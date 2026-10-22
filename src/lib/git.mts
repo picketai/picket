@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { BOOKKEEPING_PREFIXES } from "./paths.mjs";
+import { BOOKKEEPING_PREFIXES } from "./paths.mts";
 
 const FILE_BUFFER = 64 * 1024 * 1024;
 

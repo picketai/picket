@@ -96,13 +96,13 @@ test("leave records a command for the user, close lists it, and a closed item re
   assert.deepEqual(rows.map(({ command, why }) => ({ command, why })), [{ command: "git worktree remove .worktrees/x", why: "cleanup" }]);
   assert.equal(picket(root, "leave", id, "--command", "").code, 1);
   assert.equal(picket(root, "leave", id).code, 1);
-  assert.equal(picket(root, "leave", id, "--command", "x".repeat(301)).code, 1);
+  assert.equal(picket(root, "leave", id, "--command", "x".repeat(301)).code, 2);
 
   const closed = picket(root, "close", id, "--human");
   assert.equal(closed.code, 0, closed.stdout);
   assert.match(closed.stdout, /^left for you: git worktree remove \.worktrees\/x \(cleanup\)$/m);
   assert.ok(git("show", "--name-only", "--format=", "HEAD").split("\n").includes(`work/${id}/left.jsonl`));
-  assert.equal(picket(root, "leave", id, "--command", "git push origin v1").code, 1);
+  assert.equal(picket(root, "leave", id, "--command", "git push origin v1").code, 2);
   rmSync(root, { recursive: true, force: true });
 });
 

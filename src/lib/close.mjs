@@ -4,7 +4,7 @@ import { blockFiles } from "./packet.mjs";
 import { appendLedger } from "./ledger.mjs";
 import { next } from "./next.mjs";
 import { listWork, readArtifact, readState, readVerdicts, writeState } from "./work.mjs";
-import { readLeft } from "./leave.mjs";
+import { readLeft } from "./shared/work/left.mjs";
 
 export class CloseRefused extends Error {
   constructor(message, pending) {
@@ -83,12 +83,12 @@ export function close(id, root, { message, touched = [] } = {}) {
   const repeats = repeatedClasses(root);
   if (!isRepo(root)) {
     markDone(id, root);
-    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(id, root), repeats };
+    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats };
   }
   const { lane } = readState(id, root);
   refuseUntouchedFastClose(id, root, lane, touched);
   markDone(id, root);
   const { sha: commit, left_staged, warnings } = commitOwned(root, commitMessage, { add: [`work/${id}`], owns: itemOwner(id, root, lane, touched), env: process.env });
   if (commit) recordAccept(root, id, commit);
-  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(id, root), repeats };
+  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats };
 }

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { homedir } from "node:os";
-import { edgeContext } from "../../dist/lib/context.mjs";
+import { edgeContext } from "../../dist/lib/shared/context.mjs";
 
 function withSessionEnv(value, fn) {
   const saved = process.env.CLAUDE_CODE_SESSION_ID;

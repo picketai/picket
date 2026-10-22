@@ -18,6 +18,8 @@ import { observeDrive } from "../../dist/lib/hooks/observe.drive.mjs";
 import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify.user.mjs";
 import { branchingManifestPath } from "../../dist/lib/paths.mjs";
 import { latestHints, spawnHints } from "../../dist/lib/transcript.mjs";
+import { VERB_NAMES } from "../../dist/lib/verbs.mjs";
+import { LEGACY_VERBS } from "../../dist/lib/cli/legacy.mjs";
 
 const HOOKS = resolve("dist/hooks");
 const HOOK_SHELLS = resolve("src/hooks");
@@ -413,8 +415,7 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
 });
 
 test("every picket verb is placed in exactly one of the read and other verb sets", () => {
-  const list = readFileSync(resolve("src/bin/dispatch.mjs"), "utf8").match(/^const VERBS = \[([^\]]+)\];$/m)[1];
-  const verbs = [...list.matchAll(/"([\w-]+)"/g)].map((m) => m[1]);
+  const verbs = [...Object.keys(VERB_NAMES), ...LEGACY_VERBS];
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const verb of verbs) {
     assert.ok(

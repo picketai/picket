@@ -1,6 +1,6 @@
-import type { Outcome } from "../../src/lib/action.mjs";
-import { workFile, workId } from "../../src/lib/work-files.mjs";
-import type { Marker, WorkId } from "../../src/lib/work-files.mjs";
+import type { Outcome } from "../../src/lib/shared/action.mts";
+import { workFile, workId } from "../../src/lib/shared/work/files.mts";
+import type { Marker, WorkId } from "../../src/lib/shared/work/files.mts";
 
 const root = "/r";
 const id: WorkId = workId("20261022-x");

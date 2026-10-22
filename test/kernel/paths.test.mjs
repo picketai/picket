@@ -30,7 +30,7 @@ test("the vendored tokenizer lives under src/lib/vendor and the scans leave it o
 
 test("the kernel scans read .mjs and .mts sources and leave declaration and test files out (T-1.6)", () => {
   const modules = kernelModules();
-  assert.equal(modules.includes(resolve("src/lib/action.mts")), true);
+  assert.equal(modules.includes(resolve("src/lib/shared/action.mts")), true);
   assert.equal(modules.includes(resolve("src/bin/picket.mts")), true);
   assert.deepEqual(modules.filter((file) => file.endsWith(".d.mts") || file.endsWith(".test.mts")), []);
   assert.deepEqual(["a.mjs", "a.mts", "a.d.mts", "a.test.mts", "a.json"].filter(isKernelSource), ["a.mjs", "a.mts"]);

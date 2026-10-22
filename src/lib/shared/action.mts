@@ -1,4 +1,4 @@
-import type { Context } from "./context.mjs";
+import type { Context } from "./context.mts";
 
 export type Details = Record<string, unknown>;
 
@@ -30,8 +30,6 @@ export class Refused extends Error {
     this.details = details;
   }
 }
-
-export class UsageError extends Error {}
 
 export function action<I, O>(run: Action<I, O>): Action<I, O> {
   return async (input, context) => {

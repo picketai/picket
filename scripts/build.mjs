@@ -11,8 +11,21 @@ export const BANNER = "// generated from src/ by scripts/build.mjs; edit the sou
 
 const SHARED_OPTIONS = { format: "esm", platform: "node", target: "node22", outbase: SRC, outdir: DIST, outExtension: { ".js": ".mjs" }, banner: { js: BANNER }, logLevel: "warning" };
 
+const RELATIVE_PATH = /^\.\.?\//;
+
+function builtName(path) {
+  return path.replace(/\.mts$/, ".mjs");
+}
+
+const runtimeExtension = {
+  name: "runtime-extension",
+  setup(build) {
+    build.onResolve({ filter: RELATIVE_PATH }, (args) => (args.kind === "entry-point" ? undefined : { path: builtName(args.path), external: true }));
+  },
+};
+
 export function moduleOptions(entryPoints) {
-  return { ...SHARED_OPTIONS, entryPoints };
+  return { ...SHARED_OPTIONS, entryPoints, bundle: true, packages: "external", plugins: [runtimeExtension] };
 }
 
 export function hookOptions(entryPoints) {

@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { UsageError } from "./action.mjs";
-import { WORK_DIR } from "./paths.mjs";
+import { WORK_DIR } from "../../paths.mts";
+import { UsageError } from "../../util/args.mts";
 
 export type WorkId = string & { readonly __brand: "WorkId" };
 

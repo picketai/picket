@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { EXIT, Refused, UsageError, action, describeExit, done, failed, refuse } from "../../dist/lib/action.mjs";
+import { EXIT, Refused, action, describeExit, done, failed, refuse } from "../../dist/lib/shared/action.mjs";
+import { UsageError } from "../../dist/lib/util/args.mjs";
 
 const CONTEXT = { root: "/r", now: () => new Date(0), env: {}, home: "/h", session: null };
 

@@ -55,6 +55,21 @@ test("dist/ holds no TypeScript source and no declaration output", () => {
   assert.deepEqual(distFiles().map(distRel).filter((path) => /\.(mts|d\.mjs)$/.test(path)), []);
 });
 
+const TYPED_IMPORT = /(?:\bfrom\s*|\bimport\s*\(?\s*)["'][^"']+\.mts["']/;
+
+test("no module in dist/ imports a path ending in .mts (T-1.2)", () => {
+  const importing = distFiles()
+    .filter((file) => file.endsWith(".mjs") && TYPED_IMPORT.test(readFileSync(file, "utf8")))
+    .map(distRel);
+  assert.deepEqual(importing, []);
+});
+
+test("a built module imports its relative dependencies instead of inlining them (T-1.2)", () => {
+  const leave = readFileSync(join(DIST, "lib", "verbs", "leave", "index.mjs"), "utf8");
+  assert.match(leave, /from "\.\.\/\.\.\/util\/io\.mjs"/);
+  assert.doesNotMatch(leave, /function appendJsonl/);
+});
+
 test("every copied file in dist/ is its source, with only the banner added to .mjs files", () => {
   const changed = sourceFiles()
     .filter(isCopied)
