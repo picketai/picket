@@ -1,6 +1,6 @@
-# Manual test checklist: picket setup-terminal
+# Manual test checklist: picket style
 
-The unit tests run against a fake host, so they never touch a real registry, dconf, `defaults` or font cache. This checklist covers what only a real machine shows. Run it before a release that changes `picket setup-terminal` or `picket uninstall`, once per platform below, and note the platform, the terminal version and the Claude Code version with each result.
+The unit tests run against a fake host, so they never touch a real registry, dconf, `defaults` or font cache. This checklist covers what only a real machine shows. Run it before a release that changes `picket style apply` or `picket style remove`, once per platform below, and note the platform, the terminal version and the Claude Code version with each result.
 
 ## Before every platform
 
@@ -10,16 +10,16 @@ The unit tests run against a fake host, so they never touch a real registry, dco
 
 ## Steps on every platform
 
-1. `picket setup-terminal --dry-run` lists the theme, font, terminal and status line changes and writes nothing: `~/.picketai/` does not exist afterwards.
-2. `picket setup-terminal` shows the same plan and asks before writing. Answer yes to everything. The summary names what changed, what needs a restart, and any manual steps.
+1. `picket style apply --dry-run` lists the theme, font, terminal and status line changes and writes nothing: `~/.picketai/` does not exist afterwards.
+2. `picket style apply` shows the same plan and asks before writing. Answer yes to everything. The summary names what changed, what needs a restart, and any manual steps.
 3. Restart the terminal, open Claude Code in the test project, run `/theme` and check that PicketAI is selected. The prompt border is warm grey, Claude's accent colour (logo and spinner) is orange `#F9782B`, and the background stays the terminal's.
 4. The status line shows `PICKETAI >_` on line 1 with the folder and branch at the right edge. In a wide window (about 150 columns) it has 2 lines; narrow the window to about 80 columns and it has 3. The folder and branch icons, the icons before `5h`, `7d` and the reset times, and the round caps on the context bar draw as single-width Nerd Font icons, not boxes or question marks, and the right edge does not wrap.
 5. Make an unstaged change, then stage it, then create a merge conflict: the branch turns amber, green, then red within about 5 seconds each time.
-6. Run `picket setup-terminal` again: it reports nothing to change and asks nothing.
-7. `picket setup-terminal --revert` asks once, then removes everything. After a terminal restart, the terminal looks as it did before step 2, `/theme` is back on the previous theme, and `~/.claude/settings.json` is byte for byte what it was. In a project where `picket init` set the status line, the project setting still shows it, now with plain icons.
-8. Run setup again, then change one setting by hand in a file Picket edited (for example add a key to `~/.claude/settings.json`). `picket uninstall`, answer `all` and yes to the font: your hand-made change is still there and every Picket entry is gone.
-9. Run setup again, then `picket uninstall` and answer `none`: nothing is removed and `~/.picketai/styling-manifest.json` is unchanged. Answer with one number: only that item is removed.
-10. Unplug the network and run `picket setup-terminal --font-only` on an account without the font: the font change fails with the download link and the folder to copy into, and nothing else breaks.
+6. Run `picket style apply` again: it reports nothing to change and asks nothing.
+7. `picket style remove --all` asks once, then removes everything. After a terminal restart, the terminal looks as it did before step 2, `/theme` is back on the previous theme, and `~/.claude/settings.json` is byte for byte what it was. In a project where `picket init` set the status line, the project setting still shows it, now with plain icons.
+8. Run setup again, then change one setting by hand in a file Picket edited (for example add a key to `~/.claude/settings.json`). `picket style remove`, answer `all` and yes to the font: your hand-made change is still there and every Picket entry is gone.
+9. Run setup again, then `picket style remove` and answer `none`: nothing is removed and `~/.picketai/styling-manifest.json` is unchanged. Answer with one number: only that item is removed.
+10. Unplug the network and run `picket style apply --only font` on an account without the font: the font change fails with the download link and the folder to copy into, and nothing else breaks.
 
 ## Windows 11 with Windows Terminal
 

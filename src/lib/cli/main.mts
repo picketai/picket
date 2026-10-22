@@ -19,9 +19,10 @@ const RENAMED: Record<string, string | null> = {
   extensions: "extension list",
   "extension new": "extension add",
   "find-verdict": null,
+  "setup-terminal": "style apply",
+  uninstall: "style remove",
+  pr: "pullrequest prepare",
 };
-
-const loadLegacy = () => import("./legacy.mjs");
 
 const readStdin = (): string => readFileSync(0, "utf8");
 
@@ -37,22 +38,21 @@ function summaryOf(command: Command): string {
   return isGroup(entry) ? (entry.subverbs[sub]?.summary ?? "") : entry.summary;
 }
 
-function resolveCommand(pos: string[]): Resolved | null {
+function verbNames(): string[] {
+  return Object.keys(VERB_NAMES);
+}
+
+function unknownVerb(name: string): UsageError {
+  return new UsageError(`unknown verb "${name}". Verbs: ${verbNames().join(" ")}`);
+}
+
+function resolveCommand(pos: string[]): Resolved {
   const [name, sub, ...afterSub] = pos;
   const entry = entryOf(name);
-  if (!entry) return null;
+  if (!entry) throw unknownVerb(name);
   if (!isGroup(entry)) return { command: name as Command, rest: pos.slice(1) };
   if (sub === undefined || !Object.hasOwn(entry.subverbs, sub)) throw new UsageError(`${name} needs one of: ${Object.keys(entry.subverbs).join(", ")}`);
   return { command: `${name} ${sub}` as Command, rest: afterSub };
-}
-
-async function verbNames(): Promise<string[]> {
-  const { LEGACY_VERBS } = await loadLegacy();
-  return [...Object.keys(VERB_NAMES), ...LEGACY_VERBS];
-}
-
-async function unknownVerb(name: string): Promise<UsageError> {
-  return new UsageError(`unknown verb "${name}". Verbs: ${(await verbNames()).join(" ")}`);
 }
 
 async function commandHelp(command: Command): Promise<string> {
@@ -62,15 +62,14 @@ async function commandHelp(command: Command): Promise<string> {
 
 async function fullHelp(): Promise<string> {
   const commands = await Promise.all(listCommands().map(commandHelp));
-  return [USAGE_LINE, "", `verbs: ${(await verbNames()).join(" ")}`, "", VERSION_LINE, "", commands.join("\n\n")].join("\n");
+  return [USAGE_LINE, "", `verbs: ${verbNames().join(" ")}`, "", VERSION_LINE, "", commands.join("\n\n")].join("\n");
 }
 
 async function helpFor(name: string | undefined): Promise<string> {
   if (name === undefined) return fullHelp();
   const commands = listCommands().filter((command) => command === name || command.startsWith(`${name} `));
-  if (commands.length > 0) return (await Promise.all(commands.map(commandHelp))).join("\n\n");
-  if ((await verbNames()).includes(name)) return fullHelp();
-  throw await unknownVerb(name);
+  if (commands.length === 0) throw unknownVerb(name);
+  return (await Promise.all(commands.map(commandHelp))).join("\n\n");
 }
 
 function installedVersion(): string {
@@ -110,12 +109,6 @@ function renamed(old: string): UsageError {
   return new UsageError(now === null ? `"${old}" was removed` : `"${old}" is now "${now}"`);
 }
 
-async function runLegacy(name: string, argv: string[]): Promise<number> {
-  const { LEGACY_VERBS, legacyMain } = await loadLegacy();
-  if (!LEGACY_VERBS.includes(name)) throw await unknownVerb(name);
-  return legacyMain(argv);
-}
-
 async function dispatch(argv: string[]): Promise<number> {
   const args = parseArgs(argv, readStdin);
   const [name, topic] = args.pos;
@@ -129,8 +122,7 @@ async function dispatch(argv: string[]): Promise<number> {
   }
   const old = renamedFrom(args.pos);
   if (old !== undefined) throw renamed(old);
-  const resolved = resolveCommand(args.pos);
-  return resolved ? runCommand(resolved, args) : runLegacy(name, argv);
+  return runCommand(resolveCommand(args.pos), args);
 }
 
 export async function main(argv: string[]): Promise<number> {

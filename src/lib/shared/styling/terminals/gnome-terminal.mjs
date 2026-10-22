@@ -76,7 +76,7 @@ export function removeFromList(host, key, uuid, previous, implicit) {
 }
 
 export function dconfMissing(writer, terminal) {
-  return [{ id: `${writer}-no-dconf`, summary: `dconf is not available, so ${terminal} cannot be set up`, manual: `install dconf (the dconf-cli package), then run picket setup-terminal again` }];
+  return [{ id: `${writer}-no-dconf`, summary: `dconf is not available, so ${terminal} cannot be set up`, manual: `install dconf (the dconf-cli package), then run picket style apply again` }];
 }
 
 export function externalItem(host, { id, backup, previous, data }) {

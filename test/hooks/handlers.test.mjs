@@ -19,7 +19,6 @@ import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify.use
 import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
 import { latestHints, spawnHints } from "../../dist/lib/shared/transcript/transcript.mjs";
 import { VERB_NAMES } from "../../dist/lib/verbs.mjs";
-import { LEGACY_VERBS } from "../../dist/lib/cli/legacy.mjs";
 
 const HOOKS = resolve("dist/hooks");
 const HOOK_SHELLS = resolve("src/hooks");
@@ -417,7 +416,7 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
 });
 
 test("every picket verb is placed in exactly one of the read and other verb sets", () => {
-  const verbs = [...Object.keys(VERB_NAMES), ...LEGACY_VERBS];
+  const verbs = Object.keys(VERB_NAMES);
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const verb of verbs) {
     assert.ok(
@@ -554,7 +553,7 @@ test("guardBash allows a lone read-only picket verb and leaves a mutating one to
       assert.equal(decision(command), "allow", command);
     }
 
-    for (const command of ["picket route x --verdict APPROVED --agent user", "picket set x status=done", "picket open --lane fast --title t", "picket extension add local", "picket source add x ref", "picket source pick x", "picket source", "picket pr https://h/pr/1 --post f.md", "picket constructor x", 'picket drive --run "node .picket/state/scratch/drive-x.mjs" 2>&1 | tail -20']) {
+    for (const command of ["picket route x --verdict APPROVED --agent user", "picket set x status=done", "picket open --lane fast --title t", "picket extension add local", "picket source add x ref", "picket source pick x", "picket source", "picket pullrequest post https://h/pr/1 --file f.md", "picket pullrequest prepare https://h/pr/1", "picket style apply", "picket constructor x", 'picket drive --run "node .picket/state/scratch/drive-x.mjs" 2>&1 | tail -20']) {
       assert.equal(decision(command), null, command);
     }
     assert.equal(decision("picket next x; ls"), "allow");

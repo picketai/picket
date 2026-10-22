@@ -28,6 +28,10 @@ import { verb as open } from "../../dist/lib/verbs/open/index.mjs";
 import { verb as summary } from "../../dist/lib/verbs/summary/index.mjs";
 import { verb as extensionAdd } from "../../dist/lib/verbs/extension/add.mjs";
 import { verb as extensionList } from "../../dist/lib/verbs/extension/list.mjs";
+import { verb as styleApply } from "../../dist/lib/verbs/style/apply.mjs";
+import { verb as styleRemove } from "../../dist/lib/verbs/style/remove.mjs";
+import { verb as pullrequestPrepare } from "../../dist/lib/verbs/pullrequest/prepare.mjs";
+import { verb as pullrequestPost } from "../../dist/lib/verbs/pullrequest/post.mjs";
 
 const ID = "20261023-x";
 
@@ -166,6 +170,22 @@ test("extension add checks the name before anything is written, and extension li
   for (const name of ["Local", "../x"]) assert.throws(() => parse(extensionAdd, [name]), (err) => err instanceof UsageError && /must match/.test(err.message), name);
   assert.throws(() => parse(extensionAdd, []), UsageError);
   assert.deepEqual(parse(extensionList, []), {});
+});
+
+test("style apply checks --only against the components and style remove needs --all for a dry run", () => {
+  assert.deepEqual(parse(styleApply, ["--only", "font,statusline", "--dry-run"]), { only: ["font", "statusline"], dryRun: true, yes: false });
+  assert.deepEqual(parse(styleApply, ["--yes"]), { only: null, dryRun: false, yes: true });
+  assert.throws(() => parse(styleApply, ["--only", "bogus"]), (err) => err instanceof UsageError && /"bogus"/.test(err.message) && /statusline/.test(err.message));
+  assert.deepEqual(parse(styleRemove, ["--all", "--dry-run"]), { all: true, dryRun: true, yes: false });
+  assert.deepEqual(parse(styleRemove, ["--yes"]), { all: false, dryRun: false, yes: true });
+  assert.throws(() => parse(styleRemove, ["--dry-run"]), UsageError);
+});
+
+test("pullrequest prepare needs a url and post needs a url and a file", () => {
+  assert.deepEqual(parse(pullrequestPrepare, ["https://h/pr/1", "--repo", "src/Orders"]), { url: "https://h/pr/1", repo: "src/Orders" });
+  assert.throws(() => parse(pullrequestPrepare, []), UsageError);
+  assert.deepEqual(parse(pullrequestPost, ["https://h/pr/1", "--file", "r.md", "--dry-run"]), { url: "https://h/pr/1", file: "r.md", dryRun: true });
+  assert.throws(() => parse(pullrequestPost, ["https://h/pr/1"]), (err) => err instanceof UsageError && err.message.includes("--file"));
 });
 
 test("the source subverbs read their positional arguments (T-6.4)", () => {

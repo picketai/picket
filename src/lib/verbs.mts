@@ -25,6 +25,13 @@ export const VERB_NAMES = {
   open: { summary: "open a work item in a lane", readOnly: false },
   packet: { summary: "print the gate packet the lead shows the user", readOnly: true },
   preflight: { summary: "check the inputs, the tree and the tooling before a lane starts", readOnly: true },
+  pullrequest: {
+    summary: "review a pull request with the same summary a phase gets",
+    subverbs: {
+      prepare: { summary: "fetch a pull request and summarize its diff for the reviewer", readOnly: false },
+      post: { summary: "post a review file to a pull request as threads", readOnly: false },
+    },
+  },
   route: { summary: "apply a verdict to a work item", readOnly: false },
   set: { summary: "change a work item's status, blocked reason, branch, title or run grant", readOnly: false },
   source: {
@@ -38,6 +45,13 @@ export const VERB_NAMES = {
   },
   state: { summary: "print a work item's derived state", readOnly: true },
   statusline: { summary: "print the Claude Code status line", readOnly: false },
+  style: {
+    summary: "give Claude Code and the terminal the PicketAI look, or take it away",
+    subverbs: {
+      apply: { summary: "install the theme, font, terminal colours and status line", readOnly: false },
+      remove: { summary: "remove the styling items you choose, or all of them with --all", readOnly: false },
+    },
+  },
   summary: { summary: "summarize a work item's diff, or a commit range, for the reviewer", readOnly: true },
   verify: { summary: "check one phase against its must_haves", readOnly: true },
   waive: { summary: "record the user's approval of one silenced check", readOnly: false, leadOnly: true },

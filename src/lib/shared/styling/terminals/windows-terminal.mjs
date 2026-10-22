@@ -153,7 +153,7 @@ function planFile(file, options) {
 function plan(host, manifest, options) {
   const files = settingsFiles(host);
   if (files.length === 0) {
-    return [note(`${WRITER}-missing`, "no Windows Terminal settings.json found", `open Windows Terminal, choose Settings > Open JSON file once, then run picket setup-terminal again`)];
+    return [note(`${WRITER}-missing`, "no Windows Terminal settings.json found", `open Windows Terminal, choose Settings > Open JSON file once, then run picket style apply again`)];
   }
   return files.flatMap((file) => planFile(file, options));
 }

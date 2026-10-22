@@ -1,6 +1,6 @@
 # PicketAI
 
-PicketAI is the look of Picket: a warm near-black terminal, fence cream text and one orange that marks what is active. It covers the Claude Code theme, the terminal profiles that `picket setup-terminal` writes, the status line, the status band and the Markdown pane, and every page or mockup made about Picket.
+PicketAI is the look of Picket: a warm near-black terminal, fence cream text and one orange that marks what is active. It covers the Claude Code theme, the terminal profiles that `picket style apply` writes, the status line, the status band and the Markdown pane, and every page or mockup made about Picket.
 
 The values come from `src/themes/picketai.json` (the Claude Code theme) and `src/lib/shared/styling/palette.mjs` (the terminal profiles). When those files change, this system changes with them.
 
@@ -74,7 +74,7 @@ Body text needs 7:1 against its background, secondary text 4.5:1, lines and icon
 
 ## Type
 
-Terminals use **JetBrainsMono Nerd Font Mono** 3.5.1, which `picket setup-terminal` installs, with JetBrains Mono as the fallback. Every mockup of a terminal uses the `terminal` style at 13px with a line height of 1.65, so one character is one column.
+Terminals use **JetBrainsMono Nerd Font Mono** 3.5.1, which `picket style apply` installs, with JetBrains Mono as the fallback. Every mockup of a terminal uses the `terminal` style at 13px with a line height of 1.65, so one character is one column.
 
 Pages and artboards use **IBM Plex Sans**: `display` for the one title, `eyebrow` above it in `accent`, `body` in `inactive-shimmer`.
 

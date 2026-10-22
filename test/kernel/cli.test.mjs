@@ -231,20 +231,20 @@ function withTempHome(fn) {
   }
 }
 
-test("setup-terminal --dry-run --statusline-only prints the plan and writes nothing (T-2.6)", () => {
+test("style apply --dry-run --only statusline prints the plan and writes nothing (T-2.6)", () => {
   withTempHome((home, env) => {
-    const result = spawnSync("node", [BIN, "setup-terminal", "--dry-run", "--statusline-only"], { encoding: "utf8", env });
+    const result = spawnSync("node", [BIN, "style", "apply", "--dry-run", "--only", "statusline"], { encoding: "utf8", env });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /planned\s+statusline: set statusLine to "picket statusline"/);
     assert.deepEqual(readdirSync(home), []);
   });
 });
 
-test("setup-terminal rejects a component flag it does not know (T-2.6)", () => {
+test("style apply rejects a component it does not know (T-2.6)", () => {
   withTempHome((home, env) => {
-    const result = spawnSync("node", [BIN, "setup-terminal", "--bogus-only"], { encoding: "utf8", env });
+    const result = spawnSync("node", [BIN, "style", "apply", "--only", "bogus"], { encoding: "utf8", env });
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /--bogus-only/);
+    assert.match(result.stderr, /bogus/);
     assert.deepEqual(readdirSync(home), []);
   });
 });
@@ -259,13 +259,13 @@ function fontItem(files) {
   return { id: "font", component: "font", kind: "external", data: { preexisting: false, via: "files", files, registry: [] }, installedAt: "2026-10-17T12:00:00.000Z" };
 }
 
-test("uninstall without a terminal keeps everything and names the commands that remove Picket (T-8.7)", () => {
+test("style remove without a terminal keeps everything and names the commands that remove Picket (T-8.7)", () => {
   withTempHome((home, env) => {
     const font = join(home, "JetBrainsMonoNerdFontMono-Regular.ttf");
     writeFileSync(font, "font");
     writeManifest(home, [fontItem([font])]);
     const before = readFileSync(join(home, ".picketai", "styling-manifest.json"), "utf8");
-    const result = spawnSync("node", [BIN, "uninstall"], { encoding: "utf8", env, input: "" });
+    const result = spawnSync("node", [BIN, "style", "remove"], { encoding: "utf8", env, input: "" });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /kept\s+font/);
     assert.match(result.stdout, /claude plugin uninstall picket@picketai/);
@@ -274,20 +274,20 @@ test("uninstall without a terminal keeps everything and names the commands that 
   });
 });
 
-test("uninstall --yes exits 2 when a chosen removal fails (T-8.6)", () => {
+test("style remove --yes exits 2 when a chosen removal fails (T-8.6)", () => {
   withTempHome((home, env) => {
     const stuck = join(home, "JetBrainsMonoNerdFontMono-Regular.ttf");
     mkdirSync(stuck);
     writeFileSync(join(stuck, "keep"), "x");
     writeManifest(home, [fontItem([stuck])]);
-    const result = spawnSync("node", [BIN, "uninstall", "--yes"], { encoding: "utf8", env, input: "" });
+    const result = spawnSync("node", [BIN, "style", "remove", "--yes"], { encoding: "utf8", env, input: "" });
     assert.equal(result.status, 2, result.stdout);
     assert.match(result.stdout, /failed\s+font/);
   });
 });
 
 const USAGE_LINE = "usage: picket <verb> [args] [--pretty | --human]";
-const VERBS_NAMED = ["init", "admit", "open", "next", "verify", "route", "drive", "check", "statusline", "setup-terminal", "uninstall", "source"];
+const VERBS_NAMED = ["init", "admit", "open", "next", "verify", "route", "drive", "check", "statusline", "style", "pullrequest", "source"];
 
 function picket(args, options = {}) {
   return spawnSync("node", [BIN, ...args], { encoding: "utf8", ...options });
@@ -342,6 +342,9 @@ test("a renamed or removed verb exits 1 naming its new form (T-7.1)", () => {
     [["extensions"], 'picket: "extensions" is now "extension list"'],
     [["extension", "new", "local"], 'picket: "extension new" is now "extension add"'],
     [["find-verdict"], 'picket: "find-verdict" was removed'],
+    [["setup-terminal"], 'picket: "setup-terminal" is now "style apply"'],
+    [["uninstall"], 'picket: "uninstall" is now "style remove"'],
+    [["pr", "x"], 'picket: "pr" is now "pullrequest prepare"'],
   ];
   for (const [args, message] of answers) {
     const result = picket(args);

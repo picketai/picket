@@ -52,7 +52,7 @@ The foundation modules:
 - `src/lib/shared/git.mts`: the git helpers built on them, such as `commitOwned` and the bookkeeping paths.
 - `src/lib/util/process.mts`: `runShell`, the one way to run a command the user or the project supplies.
 
-The CLI lives in `src/lib/cli/`: `src/lib/cli/main.mts` parses the flags, runs the verb and prints its outcome; `src/lib/cli/registry.mts` loads each verb from its folder under `src/lib/verbs/`, whose names `src/lib/verbs.mts` lists. A verb not yet converted runs through `src/lib/cli/legacy.mjs`.
+The CLI lives in `src/lib/cli/`: `src/lib/cli/main.mts` parses the flags, runs the verb and prints its outcome; `src/lib/cli/registry.mts` loads each verb from its folder under `src/lib/verbs/`, whose names `src/lib/verbs.mts` lists.
 
 ## Tests
 
