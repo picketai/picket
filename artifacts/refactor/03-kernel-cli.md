@@ -384,3 +384,4 @@ Phases 1 and 3 are small; phase 2 is the bulk and may split into read-only verbs
 ## Revision log
 
 - 2026-10-22: the tree's `shared/block.mts`, `shared/gate.mts` and `shared/next-step.mts` move under `shared/work/`; the leave example imports from `shared/work/state.mts` and `shared/work/files.mts`, since there are no barrels (item 04a, W-2, C-015).
+- 2026-10-22: X-8 gains two renames: `new` becomes `open` and `extension new` becomes `extension add`; the tree has `verbs/open/` instead of `verbs/new/` (item 04b, S-10).

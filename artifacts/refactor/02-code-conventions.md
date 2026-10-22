@@ -325,3 +325,4 @@ None. Q-1 (the refusal JSON) and Q-2 (helpers take `root` first) from the first 
 
 - 2026-10-22: K-3: the example `nextStep(root, id)` becomes `nextStep(snapshot, securityPaths)` (item 04a, W-4).
 - 2026-10-22: K-8: the claim that `src/` runs under Node type stripping now holds, because source imports name `.mts` (item 03, X-11). `UsageError` moves from `action.mts` to `util/args.mts` (item 03, X-5). K-10 gains a fourth rename: `extensions` becomes `extension list` (item 03, X-8).
+- 2026-10-22: K-10 gains the naming rule: a verb that changes something is an action word, a verb that only prints may be named after what it shows, a group is a noun followed by an action; `new` becomes `open` and `extension new` becomes `extension add` (item 04b, S-10).

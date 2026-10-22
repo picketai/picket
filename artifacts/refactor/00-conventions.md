@@ -37,8 +37,8 @@ Work item paths through `work-files.mts` with a branded `WorkId`; files through 
 ### C-011: Erasable syntax, owner types, naming
 `erasableSyntaxOnly`; no shared types file; generic helpers as `function` declarations; kebab-case module nouns, verb-first functions, PascalCase types, `UPPER_SNAKE` closed lists, no default exports. From item 02, K-8 and K-9.
 
-### C-012: One-word verbs in a registry
-Verbs are one lowercase word, group verbs take one one-word subverb; every verb has a registry entry with `usage`, `readOnly`, `parse`, `run`, `render`; the `Verb` type and the guard's lists derive from it. From item 02, K-10 to K-12.
+### C-012 (r2): One-word verbs in a registry, named by what they do
+Verbs are one lowercase word, group verbs take one one-word subverb. A verb that changes something is an action word (`open`, `close`, `route`); a verb that only prints may be named after what it shows (`state`, `next`, `cost`); a group is a noun followed by an action (`source add`). The shape is tested; the naming is checked in review. Every verb has a registry entry with `usage`, `readOnly`, `parse`, `run`, `render`; the `Verb` type and the guard's lists derive from it. From item 02, K-10 to K-12; naming from item 04b, S-10.
 
 ### C-013: No assumed locations
 The plugin root is found by walking up to `.claude-plugin/plugin.json`; no code assumes how deep it sits. From item 02, K-13.
@@ -52,4 +52,5 @@ An import names the file that defines the symbol. `verbs/<verb>/index.mts` defin
 ## Revision log
 
 - 2026-10-22: C-004 (r2): floor raised from Node 20 to 22 for shipped code, 24 for tooling; item 01 L-5 (r2).
+- 2026-10-22: C-012 (r2): naming rule for actions, queries and groups; the user chose it over strict grammatical verbs (item 04b, S-10).
 - 2026-10-22: C-002 (r2): source imports name `.mts`, the build rewrites them to `.mjs`; item 03 X-11, user approved.
