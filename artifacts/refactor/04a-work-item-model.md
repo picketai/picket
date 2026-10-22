@@ -321,3 +321,4 @@ Two phases, after item 03's skeleton exists. Order inside follows C-003: files w
 ## Revision log
 
 - 2026-10-22: `shared/work/state.mts` gains `currentItem(root, { session })`, the one current-item rule (item 04c, E-4).
+- 2026-10-22: `shared/work/block.mts` gains the block heading table from `turn-block` (item 04d, P-6).

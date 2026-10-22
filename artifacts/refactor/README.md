@@ -12,8 +12,8 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 04a | [Work item model](04a-work-item-model.md) | approved 2026-10-22 |
 | 04b | [Sources and intake](04b-sources-and-intake.md) | approved 2026-10-22 |
 | 04c | [Running things](04c-running-things.md) | approved 2026-10-22 |
-| 04d | Reading and reporting: admit, review summary, pr, cost, statusline, transcript | discussing |
-| 05 | Hooks: guard rules and structure | todo |
+| 04d | [Reading and reporting](04d-reading-and-reporting.md) | approved 2026-10-22 |
+| 05 | Hooks: guard rules and structure | discussing |
 | 06 | Tests | todo |
 | 07 | Mods and styling | todo |
 | 08 | Instructions and docs | todo |
