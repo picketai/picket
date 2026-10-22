@@ -134,13 +134,13 @@ test("no module reachable from routing, gates, next or the guards imports the ex
   assert.equal(reachable(["a"], (f) => planted[f]).has("loader"), true, "an import added two hops away is found");
 });
 
-test("picket extensions --human lists enabled, refused and unlisted extensions with reasons", () => {
+test("picket extension list --human lists enabled, refused and unlisted extensions with reasons", () => {
   const root = project(["acme", "ghost", "future"]);
   try {
     extension(root, "acme", valid("acme", { rules: ["r.md"] }), { "r.md": "Use pnpm.\n" });
     extension(root, "future", valid("future", { schema: 2 }));
     extension(root, "stray", valid("stray"));
-    const r = spawnSync("node", [BIN, "extensions", "--root", root, "--human"], { encoding: "utf8" });
+    const r = spawnSync("node", [BIN, "extension", "list", "--root", root, "--human"], { encoding: "utf8" });
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /^enabled  acme 0\.1\.0 \(schema 1\)/m);
     assert.match(r.stdout, /^refused  ghost: no folder/m);
@@ -156,13 +156,13 @@ function cli(root, ...args) {
   return { code: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
-test("extension new writes the manifest and appends the name, keeping the other config keys", () => {
+test("extension add writes the manifest and appends the name, keeping the other config keys", () => {
   const root = mkdtempSync(join(tmpdir(), "picket-ext-new-"));
   try {
     mkdirSync(join(root, ".picket"));
     writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "SRC" } }, extensions: ["acme"] }));
     extension(root, "acme", valid("acme"));
-    const r = cli(root, "extension", "new", "local");
+    const r = cli(root, "extension", "add", "local");
     assert.equal(r.code, 0, r.stderr);
     const manifest = readFileSync(join(root, ".picket", "extensions", "local", "extension.json"), "utf8");
     assert.deepEqual(JSON.parse(manifest), { name: "local", version: "0.1.0", schema: 1, rules: [] });
@@ -170,23 +170,23 @@ test("extension new writes the manifest and appends the name, keeping the other 
     const config = JSON.parse(readFileSync(join(root, ".picket", "config.json"), "utf8"));
     assert.deepEqual(config.extensions, ["acme", "local"]);
     assert.deepEqual(config.sources, { analysis: { env: "SRC" } });
-    assert.match(cli(root, "extensions", "--human").stdout, /^enabled  local 0\.1\.0 \(schema 1\)/m);
+    assert.match(cli(root, "extension", "list", "--human").stdout, /^enabled  local 0\.1\.0 \(schema 1\)/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("extension new refuses a bad name or a repeat and writes nothing", () => {
+test("extension add refuses a bad name or a repeat and writes nothing", () => {
   const root = mkdtempSync(join(tmpdir(), "picket-ext-new-"));
   try {
-    assert.equal(cli(root, "extension", "new", "local").code, 0);
+    assert.equal(cli(root, "extension", "add", "local").code, 0);
     const config = readFileSync(join(root, ".picket", "config.json"), "utf8");
     for (const name of ["Local", "../x"]) {
-      const r = cli(root, "extension", "new", name);
+      const r = cli(root, "extension", "add", name);
       assert.equal(r.code, 1, name);
       assert.match(r.stderr, /must match/, name);
     }
-    const again = cli(root, "extension", "new", "local");
+    const again = cli(root, "extension", "add", "local");
     assert.equal(again.code, 1);
     assert.match(again.stderr, /already exists/);
     assert.equal(readFileSync(join(root, ".picket", "config.json"), "utf8"), config);
@@ -196,10 +196,10 @@ test("extension new refuses a bad name or a repeat and writes nothing", () => {
   }
 });
 
-test("extension new creates the config with version 1 and the one name when none exists", () => {
+test("extension add creates the config with version 1 and the one name when none exists", () => {
   const root = mkdtempSync(join(tmpdir(), "picket-ext-new-"));
   try {
-    assert.equal(cli(root, "extension", "new", "local").code, 0);
+    assert.equal(cli(root, "extension", "add", "local").code, 0);
     assert.deepEqual(JSON.parse(readFileSync(join(root, ".picket", "config.json"), "utf8")), { version: 1, extensions: ["local"] });
   } finally {
     rmSync(root, { recursive: true, force: true });

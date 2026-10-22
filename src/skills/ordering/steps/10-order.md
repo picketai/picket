@@ -3,13 +3,13 @@
 Open the item (skip when a `--id` from an escalating lane already exists):
 
 ```
-picket new --lane order --title "<six-word title>" --text "<the request, verbatim>"
+picket open --lane order --title "<six-word title>" --text "<the request, verbatim>"
 picket preflight <id> --human
 ```
 
 The kernel saves the request as `work/<id>/request.md`, which the cumulative review traces against. A request with quotes or newlines goes on stdin through a quoted heredoc with `--request -` instead.
 
-A request that names a Jira key (`SHOP-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file under `.picket/state/scratch/`, and add `--ticket <KEY> --story <file>` to `picket new`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
+A request that names a Jira key (`SHOP-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file under `.picket/state/scratch/`, and add `--ticket <KEY> --story <file>` to `picket open`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
 
 Preflight `fail` lines stop you here; print them and ask. `warn` lines are passed to the architect verbatim.
 

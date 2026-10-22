@@ -24,6 +24,10 @@ import { verb as sourceFind } from "../../dist/lib/verbs/source/find.mjs";
 import { verb as sourceGrep } from "../../dist/lib/verbs/source/grep.mjs";
 import { verb as sourcePick } from "../../dist/lib/verbs/source/pick.mjs";
 import { verb as sourceAdd } from "../../dist/lib/verbs/source/add.mjs";
+import { verb as open } from "../../dist/lib/verbs/open/index.mjs";
+import { verb as summary } from "../../dist/lib/verbs/summary/index.mjs";
+import { verb as extensionAdd } from "../../dist/lib/verbs/extension/add.mjs";
+import { verb as extensionList } from "../../dist/lib/verbs/extension/list.mjs";
 
 const ID = "20261023-x";
 
@@ -135,6 +139,33 @@ test("mutate needs an id, and statusline reads its input from standard input", (
   assert.deepEqual(parse(statusline, [], () => '{"cwd":"/p"}'), { cwd: "/p" });
   assert.deepEqual(parse(statusline, [], () => "not json"), {});
   assert.deepEqual(parse(statusline, [], () => ""), {});
+});
+
+test("open needs a lane and a title, and takes the request from --text, a file or standard input", () => {
+  const base = { lane: "order", title: "Fees", id: undefined, request: null, ticket: undefined, story: undefined, source: undefined, session: undefined };
+  assert.deepEqual(parse(open, ["--lane", "order", "--title", "Fees"]), base);
+  assert.deepEqual(parse(open, ["--lane", "order", "--title", "Fees", "--text", "add a fee"]).request, { text: "add a fee" });
+  assert.deepEqual(parse(open, ["--lane", "order", "--title", "Fees", "--request", "req.md"]).request, { file: "req.md" });
+  assert.deepEqual(parse(open, ["--lane", "order", "--title", "Fees", "--request", "-"], () => "piped").request, { text: "piped" });
+  assert.throws(() => parse(open, ["--lane", "order"]), (err) => err instanceof UsageError && /needs --lane and --title/.test(err.message));
+  assert.throws(() => parse(open, ["--lane", "order", "--title", "Fees", "--text", ""]), UsageError);
+  assert.throws(() => parse(open, ["--lane", "order", "--title", "Fees", "--request", "-"], () => ""), UsageError);
+  assert.throws(() => parse(open, ["--lane", "order", "--title", "Fees", "--ticket", "SHOP-1"]), UsageError);
+});
+
+test("summary reads an id with an optional base, or a range, and refuses a malformed range", () => {
+  assert.deepEqual(parse(summary, [ID, "--base", "HEAD"]), { id: ID, base: "HEAD" });
+  assert.deepEqual(parse(summary, ["--range", "HEAD~1..HEAD"]), { range: { base: "HEAD~1", head: "HEAD" } });
+  assert.deepEqual(parse(summary, ["--range", "a...b"]), { range: { base: "a", head: "b" } });
+  assert.throws(() => parse(summary, ["--range", "nope"]), UsageError);
+  assert.throws(() => parse(summary, []), UsageError);
+});
+
+test("extension add checks the name before anything is written, and extension list takes no arguments", () => {
+  assert.deepEqual(parse(extensionAdd, ["local"]), { name: "local" });
+  for (const name of ["Local", "../x"]) assert.throws(() => parse(extensionAdd, [name]), (err) => err instanceof UsageError && /must match/.test(err.message), name);
+  assert.throws(() => parse(extensionAdd, []), UsageError);
+  assert.deepEqual(parse(extensionList, []), {});
 });
 
 test("the source subverbs read their positional arguments (T-6.4)", () => {

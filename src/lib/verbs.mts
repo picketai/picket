@@ -9,12 +9,20 @@ export const VERB_NAMES = {
   comment: { summary: "record the user's approval of one code comment", readOnly: false, leadOnly: true },
   cost: { summary: "sum the ledger: turns, spend, cache, stops, bounces, escalations", readOnly: true },
   drive: { summary: "start the app or run a command, exercise it, stop it and log the evidence", readOnly: false },
+  extension: {
+    summary: "manage the project's extensions",
+    subverbs: {
+      add: { summary: "write a new extension's manifest and enable it", readOnly: false },
+      list: { summary: "list the enabled, refused and unlisted extensions", readOnly: true },
+    },
+  },
   init: { summary: "set up Picket in a project", readOnly: false },
   leave: { summary: "record a command the user runs after the item closes", readOnly: false },
   list: { summary: "list the work items with their lane, status, phases and next action", readOnly: true },
   migrate: { summary: "move state from the old locations to .picket/", readOnly: false },
   mutate: { summary: "plant one mutant in the phase's code and check the tests catch it", readOnly: false },
   next: { summary: "print the next action for a work item, or for the latest open one", readOnly: true },
+  open: { summary: "open a work item in a lane", readOnly: false },
   packet: { summary: "print the gate packet the lead shows the user", readOnly: true },
   preflight: { summary: "check the inputs, the tree and the tooling before a lane starts", readOnly: true },
   route: { summary: "apply a verdict to a work item", readOnly: false },
@@ -30,6 +38,7 @@ export const VERB_NAMES = {
   },
   state: { summary: "print a work item's derived state", readOnly: true },
   statusline: { summary: "print the Claude Code status line", readOnly: false },
+  summary: { summary: "summarize a work item's diff, or a commit range, for the reviewer", readOnly: true },
   verify: { summary: "check one phase against its must_haves", readOnly: true },
   waive: { summary: "record the user's approval of one silenced check", readOnly: false, leadOnly: true },
 } as const satisfies Record<string, VerbEntry | GroupEntry>;

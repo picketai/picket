@@ -13,6 +13,14 @@ const VERSION_LINE = "picket --version   print the installed version";
 type Resolved = { command: Command; rest: string[] };
 type Printing = { asText: boolean; pretty: boolean };
 
+const RENAMED: Record<string, string | null> = {
+  new: "open",
+  "review-summary": "summary",
+  extensions: "extension list",
+  "extension new": "extension add",
+  "find-verdict": null,
+};
+
 const loadLegacy = () => import("./legacy.mjs");
 
 const readStdin = (): string => readFileSync(0, "utf8");
@@ -93,6 +101,15 @@ async function runCommand({ command, rest }: Resolved, args: Args): Promise<Exit
   return describeExit(outcome).code;
 }
 
+function renamedFrom([name, sub]: string[]): string | undefined {
+  return [`${name} ${sub}`, name].find((old) => Object.hasOwn(RENAMED, old));
+}
+
+function renamed(old: string): UsageError {
+  const now = RENAMED[old];
+  return new UsageError(now === null ? `"${old}" was removed` : `"${old}" is now "${now}"`);
+}
+
 async function runLegacy(name: string, argv: string[]): Promise<number> {
   const { LEGACY_VERBS, legacyMain } = await loadLegacy();
   if (!LEGACY_VERBS.includes(name)) throw await unknownVerb(name);
@@ -110,6 +127,8 @@ async function dispatch(argv: string[]): Promise<number> {
     console.log(await helpFor(name === "help" ? topic : undefined));
     return EXIT.done;
   }
+  const old = renamedFrom(args.pos);
+  if (old !== undefined) throw renamed(old);
   const resolved = resolveCommand(args.pos);
   return resolved ? runCommand(resolved, args) : runLegacy(name, argv);
 }

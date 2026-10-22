@@ -60,7 +60,7 @@ export function guardScope(event, { root }) {
   if (!filePath) return null;
   const abs = resolve(event.cwd ?? root, filePath);
   const rel = relative(realPath(root), realPath(abs)).replaceAll("\\", "/");
-  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`picket new\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`);
+  if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`picket open\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`);
   if (isHookOnlyState(rel)) return deny(`${rel} is written by the hooks only`);
   if (isLegacyState(rel)) return deny(`${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`);
   const source = underSource(abs, sourceRoots(root));

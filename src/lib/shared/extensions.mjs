@@ -12,7 +12,7 @@ export const REVIEW_SIZES = Object.freeze(["small", "medium", "large"]);
 export const PREFLIGHT_KINDS = Object.freeze(["path_exists", "env_set", "command_on_path"]);
 export const PREFLIGHT_LEVELS = Object.freeze(["warn", "fail"]);
 
-const NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
+export const NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const VERDICT_LINES = new Set(Object.keys(VERDICTS));
 const PREFLIGHT_KEYS = ["id", "kind", "value", "level", "message"];

@@ -26,7 +26,7 @@ test("picket leave answers JSON with the recorded entry and close returns it und
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   try {
     mkdirSync(join(root, ".claude"));
-    const { id } = run(root, ["new", "--lane", "fast", "--title", "Leave probe"]);
+    const { id } = run(root, ["open","--lane", "fast", "--title", "Leave probe"]);
     const entry = run(root, ["leave", id, "--command", "git branch -D old-feature"]);
     assert.equal(entry.command, "git branch -D old-feature");
     assert.equal(entry.why, null);
@@ -46,7 +46,7 @@ test("the CLI walks a work item end to end and speaks JSON", () => {
   const adm = run(root, ["admit", "--text", "Fix the typo in `src/a.ts`."]);
   assert.equal(adm.lane, "fast");
 
-  const created = run(root, ["new", "--lane", "order", "--title", "Summary endpoint"]);
+  const created = run(root, ["open","--lane", "order", "--title", "Summary endpoint"]);
   assert.match(created.id, /^\d{8}-summary-endpoint$/);
   assert.equal(created.next.action, "write_artifact");
 
@@ -80,7 +80,7 @@ test("the CLI walks a work item end to end and speaks JSON", () => {
   assert.equal(unsettable.status, 2);
   assert.match(unsettable.stdout, /field lane is not settable/);
 
-  const rs = run(root, ["review-summary", created.id, "--base", "HEAD"]);
+  const rs = run(root, ["summary", created.id, "--base", "HEAD"]);
   assert.equal(rs.size, "small");
   assert.deepEqual(rs.changed_files, []);
   rmSync(root, { recursive: true, force: true });
@@ -89,7 +89,7 @@ test("the CLI walks a work item end to end and speaks JSON", () => {
 test("comment records an approval and needs both --path and --text (T-1.4)", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));
-  const { id } = run(root, ["new", "--lane", "order", "--title", "Fee rounding"]);
+  const { id } = run(root, ["open","--lane", "order", "--title", "Fee rounding"]);
   const fails = (args) => assert.throws(() => execFileSync("node", [BIN, "comment", ...args, "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && /comment needs/.test(err.stderr));
   fails([id, "--text", "why"]);
   fails([id, "--path", "src/fee.ts"]);
@@ -109,7 +109,7 @@ test("waive records a waiver, needs exactly one of --text or --deleted, and refu
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   try {
     mkdirSync(join(root, ".claude"));
-    const { id } = run(root, ["new", "--lane", "order", "--title", "Flaky fee test"]);
+    const { id } = run(root, ["open","--lane", "order", "--title", "Flaky fee test"]);
     const fails = (args, pattern) => assert.throws(() => execFileSync("node", [BIN, "waive", ...args, "--root", root], { stdio: "pipe" }), (err) => err.status === 1 && pattern.test(err.stderr));
     fails([id, "--text", "it.skip("], /waive needs/);
     fails([id, "--path", "test/fee.test.ts"], /waive needs/);
@@ -133,7 +133,7 @@ test("next --latest prints the newest open item with the fixed key set; next alo
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));
   assert.equal(run(root, ["next", "--latest"]).action, "none");
-  const { id } = run(root, ["new", "--lane", "order", "--title", "Summary endpoint"]);
+  const { id } = run(root, ["open","--lane", "order", "--title", "Summary endpoint"]);
   const n = run(root, ["next", "--latest"]);
   assert.equal(n.id, id);
   assert.deepEqual(
@@ -148,7 +148,7 @@ test("new takes --session over the environment, route claims for the environment
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   try {
     mkdirSync(join(root, ".claude"));
-    const { id } = run(root, ["new", "--lane", "order", "--title", "Flagged", "--session", "flag"], "env");
+    const { id } = run(root, ["open","--lane", "order", "--title", "Flagged", "--session", "flag"], "env");
     assert.equal(run(root, ["state", id]).session, "flag");
     writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
     run(root, ["route", id, "--verdict", "PHASE DONE", "--agent", "developer", "--phase", "1"], "s9");
@@ -287,7 +287,7 @@ test("uninstall --yes exits 2 when a chosen removal fails (T-8.6)", () => {
 });
 
 const USAGE_LINE = "usage: picket <verb> [args] [--pretty | --human]";
-const VERBS_NAMED = ["init", "admit", "new", "next", "verify", "route", "drive", "check", "statusline", "setup-terminal", "uninstall", "source"];
+const VERBS_NAMED = ["init", "admit", "open", "next", "verify", "route", "drive", "check", "statusline", "setup-terminal", "uninstall", "source"];
 
 function picket(args, options = {}) {
   return spawnSync("node", [BIN, ...args], { encoding: "utf8", ...options });
@@ -335,10 +335,25 @@ test("an unknown verb names the same verb list the usage block prints", () => {
   assert.ok(result.stderr.includes(`Verbs: ${listed}`), result.stderr);
 });
 
+test("a renamed or removed verb exits 1 naming its new form (T-7.1)", () => {
+  const answers = [
+    [["new", "--lane", "fast", "--title", "x"], 'picket: "new" is now "open"'],
+    [["review-summary", "x"], 'picket: "review-summary" is now "summary"'],
+    [["extensions"], 'picket: "extensions" is now "extension list"'],
+    [["extension", "new", "local"], 'picket: "extension new" is now "extension add"'],
+    [["find-verdict"], 'picket: "find-verdict" was removed'],
+  ];
+  for (const [args, message] of answers) {
+    const result = picket(args);
+    assert.equal(result.status, 1, args.join(" "));
+    assert.equal(result.stderr.trim(), message);
+  }
+});
+
 test("usage errors exit 1 with a message on stderr", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-cli-"));
   mkdirSync(join(root, ".claude"));
   assert.throws(() => execFileSync("node", [BIN, "bogus", "--root", root], { stdio: "pipe" }), /unknown verb/);
-  assert.throws(() => execFileSync("node", [BIN, "new", "--lane", "order", "--root", root], { stdio: "pipe" }), /needs --lane and --title/);
+  assert.throws(() => execFileSync("node", [BIN, "open", "--lane", "order", "--root", root], { stdio: "pipe" }), /needs --lane and --title/);
   rmSync(root, { recursive: true, force: true });
 });

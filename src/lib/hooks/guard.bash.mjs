@@ -417,9 +417,9 @@ function withSubstitutedOutput(seg, plain, carriesOutput) {
 // Flags of the kernel CLI whose value is a shell command the kernel will execute.
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 const BARE_KERNEL = "picket";
-export const KERNEL_READ_VERBS = new Set(["state", "next", "packet", "list", "review-summary", "cost", "preflight", "extensions", "admit", "find-verdict", "verify"]);
-export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "new", "set", "close", "leave", "route", "drive", "comment", "waive", "mutate", "pr", "migrate", "check", "source", "statusline", "setup-terminal", "uninstall"]);
-export const KERNEL_READ_SUBVERBS = { source: ["find", "grep"] };
+export const KERNEL_READ_VERBS = new Set(["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify"]);
+export const KERNEL_OTHER_VERBS = new Set(["init", "extension", "open", "set", "close", "leave", "route", "drive", "comment", "waive", "mutate", "pr", "migrate", "check", "source", "statusline", "setup-terminal", "uninstall"]);
+export const KERNEL_READ_SUBVERBS = { source: ["find", "grep"], extension: ["list"] };
 export const LEAD_ONLY_VERBS = new Set(["comment", "waive"]);
 const SPAWNED_AGENTS = new Set(["analyst", "architect", "developer", "reviewer"]);
 

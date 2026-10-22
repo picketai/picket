@@ -1,13 +1,13 @@
 # Designing, step 1: open the work item and get the record written
 
 ```
-picket new --lane design --title "<six-word title>" --text "<the request, verbatim>"
+picket open --lane design --title "<six-word title>" --text "<the request, verbatim>"
 picket preflight <id> --human
 ```
 
 The kernel saves the request as `work/<id>/request.md`, which the cumulative review traces against. A request with quotes or newlines goes on stdin through a quoted heredoc with `--request -` instead; an item escalated from ordering passes the same request again.
 
-A request that names a Jira key (`SHOP-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file under `.picket/state/scratch/`, and add `--ticket <KEY> --story <file>` to `picket new`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
+A request that names a Jira key (`SHOP-123`): fetch it with `getJiraIssue` (`view: full`), write its description and acceptance-criteria fields unedited, in that order, to a file under `.picket/state/scratch/`, and add `--ticket <KEY> --story <file>` to `picket open`. Never summarise or reword the story: the reviewer quotes it. Exit 2 means a pinned reference (`analysis@<branch>:<path>`) matched nothing; print the places it lists and ask. Remote-only branches are not searched.
 
 When `picket next <id>` says `resolve_sources`, this is the opening gate: print `picket packet <id>` verbatim and stop. Apply each reply with `picket source pick <id> <ref> <label>`, then spawn the architect, adding `sources: work/<id>/sources.yaml` to its message when that file exists.
 

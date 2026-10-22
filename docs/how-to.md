@@ -257,10 +257,10 @@ Agents read a source with `picket source find specs <name>` and `picket source g
 An extension adds text and checks to Picket without changing its core: rules every agent reads, notes for one role, extra review checklist steps, and preflight checks. Create one with:
 
 ```sh
-picket extension new house-style
+picket extension add house-style
 ```
 
-This creates the manifest `.picket/extensions/<name>/extension.json`, here with `house-style` as the name, and enables the extension in the config. List your Markdown files in its `rules`, `agents`, `review_steps` or `preflight` keys. `picket extensions` shows what is loaded. An extension cannot change the verdicts, the gates, the guards or the budgets.
+This creates the manifest `.picket/extensions/<name>/extension.json`, here with `house-style` as the name, and enables the extension in the config. List your Markdown files in its `rules`, `agents`, `review_steps` or `preflight` keys. `picket extension list` shows what is loaded. An extension cannot change the verdicts, the gates, the guards or the budgets.
 
 ## Terminal styling
 

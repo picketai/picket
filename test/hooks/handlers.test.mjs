@@ -550,11 +550,11 @@ test("guardBash allows a lone read-only picket verb and leaves a mutating one to
   withProject((root) => {
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
 
-    for (const command of ["picket verify 20261012-touring-deleteorder-blank-input-returns-500 1", "picket state x", "picket next x", "picket packet x", "picket review-summary x", "picket source grep analysis foo", "picket source find analysis Foo", "picket verify x 1 2>&1 | tail -20"]) {
+    for (const command of ["picket verify 20261012-touring-deleteorder-blank-input-returns-500 1", "picket state x", "picket next x", "picket packet x", "picket summary x", "picket extension list", "picket source grep analysis foo", "picket source find analysis Foo", "picket verify x 1 2>&1 | tail -20"]) {
       assert.equal(decision(command), "allow", command);
     }
 
-    for (const command of ["picket route x --verdict APPROVED --agent user", "picket set x status=done", "picket new --lane fast --title t", "picket source add x ref", "picket source pick x", "picket source", "picket pr https://h/pr/1 --post f.md", "picket constructor x", 'picket drive --run "node .picket/state/scratch/drive-x.mjs" 2>&1 | tail -20']) {
+    for (const command of ["picket route x --verdict APPROVED --agent user", "picket set x status=done", "picket open --lane fast --title t", "picket extension add local", "picket source add x ref", "picket source pick x", "picket source", "picket pr https://h/pr/1 --post f.md", "picket constructor x", 'picket drive --run "node .picket/state/scratch/drive-x.mjs" 2>&1 | tail -20']) {
       assert.equal(decision(command), null, command);
     }
     assert.equal(decision("picket next x; ls"), "allow");

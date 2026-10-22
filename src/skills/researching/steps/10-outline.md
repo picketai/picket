@@ -1,7 +1,7 @@
 # Researching, step 1: the outline turn
 
 ```
-picket new --lane research --title "<six-word title>"
+picket open --lane research --title "<six-word title>"
 ```
 
 Spawn the analyst once (type `picket:analyst`), named `analyst`:

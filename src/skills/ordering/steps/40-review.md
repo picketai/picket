@@ -4,7 +4,7 @@
 
 ```
 picket mutate <id>
-picket review-summary <id>
+picket summary <id>
 ```
 
 The summary prints `{ size, frameworks, concerns, security_path, changed_files, base, request, repos, silenced, mutation }` from the diff between the work item's base and HEAD, across the root and every nested repo. A checkpoint skips `picket mutate`; its `mutation` is whatever an earlier run left, or null.

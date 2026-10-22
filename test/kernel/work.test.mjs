@@ -49,7 +49,7 @@ test("listOpenWork keeps open and blocked ids in listWork order (T-4.1)", () => 
 test("harness new saves --text and --request byte for byte as request.md, and nothing without them (T-1.5)", () => {
   const root = tempRoot();
   const text = 'Add a "fee" rule\nline two, with a trailing space ';
-  const run = (...args) => JSON.parse(execFileSync("node", [BIN, "new", "--lane", "order", ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } }));
+  const run = (...args) => JSON.parse(execFileSync("node", [BIN, "open", "--lane", "order", ...args, "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } }));
   const a = run("--title", "With text", "--text", text);
   assert.equal(readFileSync(join(root, "work", a.id, "request.md"), "utf8"), text);
   const file = join(root, "req.txt");
@@ -68,10 +68,10 @@ function envWithSession(session) {
   return env;
 }
 
-test("picket new stamps the session from CLAUDE_CODE_SESSION_ID and writes no session line without it (T-2.1)", () => {
+test("picket open stamps the session from CLAUDE_CODE_SESSION_ID and writes no session line without it (T-2.1)", () => {
   const root = tempRoot();
   try {
-    const create = (title, session) => JSON.parse(execFileSync("node", [BIN, "new", "--lane", "fast", "--title", title, "--root", root], { encoding: "utf8", env: { ...envWithSession(session), CLAUDE_PROJECT_DIR: root } })).id;
+    const create = (title, session) => JSON.parse(execFileSync("node", [BIN, "open", "--lane", "fast", "--title", title, "--root", root], { encoding: "utf8", env: { ...envWithSession(session), CLAUDE_PROJECT_DIR: root } })).id;
     const stamped = create("Stamped", "s1");
     assert.match(readFileSync(join(root, "work", stamped, "state.yaml"), "utf8"), /^session: s1$/m);
     const unstamped = create("Unstamped", undefined);

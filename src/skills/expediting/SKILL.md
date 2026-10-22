@@ -24,7 +24,7 @@ If the admit answer does not say `lane: fast`, stop here and run the named lane 
 
 ## Step 1: open the work item, read the touch set
 
-One tool batch: `picket new --lane fast --title "<six-word title>"`, plus a Read of every file the request names, plus a Grep for the symbol or route it names when no file is given. The id the first command prints is `<id>` for the rest of this lane.
+One tool batch: `picket open --lane fast --title "<six-word title>"`, plus a Read of every file the request names, plus a Grep for the symbol or route it names when no file is given. The id the first command prints is `<id>` for the rest of this lane.
 
 Name the touch set before editing: the files you will change, at most three. Ask the user only when the request is ambiguous in a way that changes which file you edit: one question, your recommended default, then stop. Never guess between two readings that touch different code.
 

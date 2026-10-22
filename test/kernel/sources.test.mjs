@@ -121,7 +121,7 @@ test("an undeclared source exits 1 naming the declared ones; an unset root exits
 test("preflight warns on an unset source and reports the worktree count when it is reachable (T-3.5)", () => {
   const { base, main } = tempSource();
   const root = tempProject();
-  const id = JSON.parse(cli(root, ["new", "--lane", "order", "--title", "Fees"]).out).id;
+  const id = JSON.parse(cli(root, ["open","--lane", "order", "--title", "Fees"]).out).id;
   const unset = cli(root, ["preflight", id, "--human"]);
   assert.match(unset.out, /^warn source:analysis: unreachable: HARNESS_SOURCE_ANALYSIS is not set/m);
   const set = cli(root, ["preflight", id, "--human"], main);
@@ -142,7 +142,7 @@ test("a root inside this project protects that folder only; a subfolder of anoth
   assert.equal(underSource(join(plain, "a.md"), roots), "analysis");
   assert.equal(underSource(join(root, "src", "a.ts"), roots), null, "the project stays writable");
   assert.equal(underSource(join(main, "README.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: join(main, "docs") })), "analysis");
-  const id = JSON.parse(cli(root, ["new", "--lane", "order", "--title", "Fees"]).out).id;
+  const id = JSON.parse(cli(root, ["open","--lane", "order", "--title", "Fees"]).out).id;
   assert.match(cli(root, ["preflight", id, "--human"], plain).out, /^warn source:analysis: .+ is not a repository top level; .+ that folder only/m);
   assert.match(cli(root, ["preflight", id, "--human"], join(main, "docs")).out, /^warn source:analysis: .+ is not a repository top level; the guards protect its whole repository/m);
   rmSync(base, { recursive: true, force: true });
@@ -153,7 +153,7 @@ test("a root inside this project protects that folder only; a subfolder of anoth
 function openWithStory(root, story, sourceRoot) {
   const file = join(root, "story.txt");
   writeFileSync(file, story);
-  return cli(root, ["new", "--lane", "order", "--title", "Fees", "--ticket", "SHOP-1", "--story", file], sourceRoot);
+  return cli(root, ["open","--lane", "order", "--title", "Fees", "--ticket", "SHOP-1", "--story", file], sourceRoot);
 }
 
 function readYaml(root, id) {
@@ -312,7 +312,7 @@ test("snapshot bytes are ignored by git and sources.yaml is not (T-4.7)", () => 
 
 /** An order item opened without a story, so sources.yaml starts absent. */
 function openPlain(root) {
-  return JSON.parse(cli(root, ["new", "--lane", "order", "--title", "Later refs"]).out).id;
+  return JSON.parse(cli(root, ["open","--lane", "order", "--title", "Later refs"]).out).id;
 }
 
 test("source add appends a single-candidate document once; a second add changes nothing (T-5.1)", () => {
@@ -351,13 +351,13 @@ test("source add of a document with two versions exits 2 with both labels and wr
   rmSync(root, { recursive: true, force: true });
 });
 
-test("review-summary reports moved: true with both hashes after the worktree file is edited (T-5.3)", () => {
+test("summary reports moved: true with both hashes after the worktree file is edited (T-5.3)", () => {
   const { base, main } = tempSource();
   writeFileSync(join(main, "docs", "a.md"), "# A\n");
   const root = tempProject();
   const id = openPlain(root);
   cli(root, ["source", "add", id, "docs/a.md"], main);
-  const summary = () => JSON.parse(cli(root, ["review-summary", id], main).out).sources;
+  const summary = () => JSON.parse(cli(root, ["summary", id], main).out).sources;
   const [still] = summary();
   assert.deepEqual([still.ref, still.moved, still.live_sha256 === still.snapshot_sha256], ["docs/a.md", false, true]);
   writeFileSync(join(main, "docs", "a.md"), "# A, revised\n");
@@ -377,7 +377,7 @@ test("a removed linked worktree reports live_sha256 null, moved true and a reaso
   const added = JSON.parse(cli(root, ["source", "add", id, "docs/only-feat.md"], main).out);
   assert.equal(added.ref.branch, "feat-x");
   git(main, "worktree", "remove", "--force", feat);
-  const [ref] = JSON.parse(cli(root, ["review-summary", id], main).out).sources;
+  const [ref] = JSON.parse(cli(root, ["summary", id], main).out).sources;
   assert.deepEqual([ref.live_sha256, ref.moved], [null, true]);
   assert.match(ref.reason, /worktree .* no longer exists/);
   rmSync(base, { recursive: true, force: true });
