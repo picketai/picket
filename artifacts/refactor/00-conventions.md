@@ -49,6 +49,9 @@ The plugin root is found by walking up to `.claude-plugin/plugin.json`; no code 
 ### C-015: No barrel files
 An import names the file that defines the symbol. `verbs/<verb>/index.mts` defines the verb, so it is not a barrel. A top-level barrel is added only if the CLI needs one for a cleaner import, and it never re-exports from `verbs/`. From item 04a, W-2; the user's rule.
 
+### C-016: Hooks are listed like verbs
+`src/lib/hooks.mts` lists every hook with its events and matcher and imports nothing; each hook is a folder `hooks/<kind>/<name>/` whose `index.mts` exports a `HookSpec`; the name `<kind>.<name>` is the path; the build generates the entries and `hooks.json`; outputs come from `output.mts`. From item 05, H-5, H-6, H-10.
+
 ## Revision log
 
 - 2026-10-22: C-004 (r2): floor raised from Node 20 to 22 for shipped code, 24 for tooling; item 01 L-5 (r2).

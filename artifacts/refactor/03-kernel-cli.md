@@ -387,3 +387,4 @@ Phases 1 and 3 are small; phase 2 is the bulk and may split into read-only verbs
 - 2026-10-22: X-8 gains two renames: `new` becomes `open` and `extension new` becomes `extension add`; the tree has `verbs/open/` instead of `verbs/new/` (item 04b, S-10).
 - 2026-10-22: the tree gains `shared/drive-log.mts` (item 04c, E-8).
 - 2026-10-22: X-8 gains the rename `pr` to the group verb `pullrequest prepare` and `pullrequest post`; the tree has `verbs/pullrequest/` (item 04d, P-3).
+- 2026-10-22: `verbs.mts` gains `leadOnly` (comment, waive), read by the guard (item 05, H-4).
