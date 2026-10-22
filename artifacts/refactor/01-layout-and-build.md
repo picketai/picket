@@ -259,3 +259,4 @@ One item, three phases.
 - 2026-10-22: tsconfig gains `erasableSyntaxOnly` (item 02, K-8); R-4 closed by item 02, K-13.
 - 2026-10-22: L-2 (r2): per-module build runs with `bundle: true`, `packages: "external"` and a plugin rewriting `.mts` imports to `.mjs`; item 03, X-11.
 - 2026-10-22: the build also generates one bundled entry per hook and `dist/hooks/hooks.json` from `src/lib/hooks.mts`; `src/hooks/` and the hand-written `hooks.json` go; the shell-shape test becomes a name-to-path test (item 05, H-10).
+- 2026-10-22: `devEngines` `>=24` means CI tests on Node 24 and checks the built `dist/` on Node 22 in a second job; the build leaves `*.test.mts` out of `dist/` (item 06, T-1, T-8).

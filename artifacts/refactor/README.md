@@ -14,8 +14,8 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 04c | [Running things](04c-running-things.md) | approved 2026-10-22 |
 | 04d | [Reading and reporting](04d-reading-and-reporting.md) | approved 2026-10-22 |
 | 05 | [Hooks](05-hooks.md) | approved 2026-10-22 |
-| 06 | Tests | discussing |
-| 07 | Mods and styling | todo |
+| 06 | [Tests](06-tests.md) | approved 2026-10-22 |
+| 07 | Mods and styling | discussing |
 | 08 | Instructions and docs | todo |
 | 09 | Hygiene | todo |
 
