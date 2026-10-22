@@ -246,3 +246,4 @@ None.
 ## Revision log
 
 - 2026-10-22: `compactTokens`, `prettyModel` and the time formats come from `src/lib/shared/format.mts`, shared with the mods; `compactTokens` prints `200k`, one decimal below 10k (item 07a, M-4, M-8).
+- 2026-10-22: `pullrequest post` parses findings as `path:line: text` and still reads an old em dash form; Picket never writes the dash (item 08a, I-6).

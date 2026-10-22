@@ -17,9 +17,14 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 06 | [Tests](06-tests.md) | approved 2026-10-22 |
 | 07a | [The mods](07a-mods.md) | approved 2026-10-22 |
 | 07b | [Terminal styling, and removing Picket](07b-styling.md) | approved 2026-10-22 |
-| 08 | Instructions and docs | discussing |
+| 08a | [Instructions](08a-instructions.md) | approved 2026-10-22 |
+| 08b | Docs | discussing |
 | 09 | Hygiene | todo |
 
-Each area item carries the bug fixes found in that area (B1 to B7 in the source list).
+Each area item carries the bug fixes found in that area (B1 to B10 in the source list).
 
 Implementation rule set by the user (2026-10-22): when the work starts, the first verb written in the new structure is shown to the user for feedback before any other verb is converted.
+
+## Follow-ups after this refactor
+
+- F-1 (asked by the user on 2026-10-22, during item 08a): agents stop referencing a skill's files directly. Agents share common behaviour through `agents/shared/**/*.md`, skills through `skills/shared/**`, and each side keeps to its own folder, as far as the instructions actually need. A separate work item, after the refactor; item 08a moves forward without it.

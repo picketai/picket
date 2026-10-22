@@ -58,6 +58,9 @@ A test of one module is `<module>.test.mts` beside it and imports its `src/` fil
 ### C-018: Mods are listed like verbs and hooks
 `src/lib/mods.mts` lists every mod; each mod is `src/mods/<name>/` with `hooks/index.tsx` and `types/index.d.ts`; the build writes manifests, `hooks.json` and marketplace entries and copies shared files in; mods read Picket data only through the kernel; mods keep Claude Code mod style (TSX on Bun, extensionless imports). From item 07a, M-2 to M-5, M-9.
 
+### C-019: Instructions have one owner per fact
+Shared steps live in `skills/shared/procedures/`; a `SKILL.md` or step references its own folders and the procedures; an agent references procedures, its preloaded skills, and the step its message names; step and checklist files are `NN-<name>.md`; no em or en dash anywhere, with no protocol exception. From item 08a, I-2, I-3, I-6, I-7.
+
 ## Revision log
 
 - 2026-10-22: C-004 (r2): floor raised from Node 20 to 22 for shipped code, 24 for tooling; item 01 L-5 (r2).

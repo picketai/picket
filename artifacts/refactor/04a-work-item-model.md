@@ -322,3 +322,4 @@ Two phases, after item 03's skeleton exists. Order inside follows C-003: files w
 
 - 2026-10-22: `shared/work/state.mts` gains `currentItem(root, { session })`, the one current-item rule (item 04c, E-4).
 - 2026-10-22: `shared/work/block.mts` gains the block heading table from `turn-block` (item 04d, P-6).
+- 2026-10-22: `nextStep` gains `resolve_rejections` after a third cumulative `CHANGES REQUIRED`, lane-aware `resolve_block` options, and `[i] confirm the irreversible step` for an irreversible phase (item 08a, I-4, I-5).
