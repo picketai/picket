@@ -1,1 +1,1 @@
-core/bin/picket text eol=lf
+src/bin/picket text eol=lf
