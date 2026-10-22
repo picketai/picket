@@ -13,6 +13,8 @@ A list for readability and maintainability, gathered from four read-only audits 
 | B5 | `core/lib/tooling.mjs:20` | `["*.sln"].some(...)` never looks for a `.sln` file. |
 | B6 | `core/lib/styling/terminal.mjs:57` | Terminal.app never sets `run.fontSet`, so the Nerd Font icons step is always skipped there. |
 | B7 | `scripts/test.mjs:5`, release workflow | `npm test` and CI never run the mod suites; a broken mod can be published. |
+| B8 | `core/lib/tooling.mjs:12` | A malformed `package.json` makes `detectTooling` throw, crashing `check`, `drive`, `verify`, `mutate`, `preflight` and the `guard.bash` test lookup. Found 2026-10-22 in item 04c. |
+| B9 | `core/lib/drive.mjs:35`, `hooks/observe.drive.mjs:15` | Drive evidence goes to the alphabetically last open item, while `next --latest` names the most recently active one. Found 2026-10-22 in item 04c. |
 
 ## Bundles
 

@@ -317,3 +317,7 @@ Two phases, after item 03's skeleton exists. Order inside follows C-003: files w
 ## Open questions
 
 - Q-1: resolved 2026-10-22, the user chose that a single folder name matches at any depth (W-7).
+
+## Revision log
+
+- 2026-10-22: `shared/work/state.mts` gains `currentItem(root, { session })`, the one current-item rule (item 04c, E-4).

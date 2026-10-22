@@ -11,8 +11,8 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 03 | [Kernel CLI and source layout](03-kernel-cli.md) | approved 2026-10-22 |
 | 04a | [Work item model](04a-work-item-model.md) | approved 2026-10-22 |
 | 04b | [Sources and intake](04b-sources-and-intake.md) | approved 2026-10-22 |
-| 04c | Running things: drive, check, verify, mutate, preflight | discussing |
-| 04d | Reading and reporting: admit, review summary, pr, cost, statusline, transcript | todo |
+| 04c | [Running things](04c-running-things.md) | approved 2026-10-22 |
+| 04d | Reading and reporting: admit, review summary, pr, cost, statusline, transcript | discussing |
 | 05 | Hooks: guard rules and structure | todo |
 | 06 | Tests | todo |
 | 07 | Mods and styling | todo |
