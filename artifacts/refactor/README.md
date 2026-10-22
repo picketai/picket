@@ -18,8 +18,8 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 07a | [The mods](07a-mods.md) | approved 2026-10-22 |
 | 07b | [Terminal styling, and removing Picket](07b-styling.md) | approved 2026-10-22 |
 | 08a | [Instructions](08a-instructions.md) | approved 2026-10-22 |
-| 08b | Docs | discussing |
-| 09 | Hygiene | todo |
+| 08b | [Docs](08b-docs.md) | approved 2026-10-22 |
+| 09 | Hygiene | discussing |
 
 Each area item carries the bug fixes found in that area (B1 to B10 in the source list).
 

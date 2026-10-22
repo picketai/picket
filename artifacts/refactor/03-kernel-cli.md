@@ -389,3 +389,4 @@ Phases 1 and 3 are small; phase 2 is the bulk and may split into read-only verbs
 - 2026-10-22: X-8 gains the rename `pr` to the group verb `pullrequest prepare` and `pullrequest post`; the tree has `verbs/pullrequest/` (item 04d, P-3).
 - 2026-10-22: `verbs.mts` gains `leadOnly` (comment, waive), read by the guard (item 05, H-4).
 - 2026-10-22: `style` becomes a group verb (`style apply`, `style remove`) replacing `setup-terminal`, its `--revert` and the old `uninstall`; a new `uninstall` removes Picket from the project (item 07b, Y-6, Y-8).
+- 2026-10-22: each list entry (verbs, hooks, mods) gains a one-line `summary`, which `picket help` prints and `docs/reference/` is generated from (item 08b, G-2).
