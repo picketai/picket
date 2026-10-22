@@ -16,8 +16,8 @@ Each draft has: Today, Target (tree, signatures, code before and after), Evidenc
 | 05 | [Hooks](05-hooks.md) | approved 2026-10-22 |
 | 06 | [Tests](06-tests.md) | approved 2026-10-22 |
 | 07a | [The mods](07a-mods.md) | approved 2026-10-22 |
-| 07b | Terminal styling | discussing |
-| 08 | Instructions and docs | todo |
+| 07b | [Terminal styling, and removing Picket](07b-styling.md) | approved 2026-10-22 |
+| 08 | Instructions and docs | discussing |
 | 09 | Hygiene | todo |
 
 Each area item carries the bug fixes found in that area (B1 to B7 in the source list).
