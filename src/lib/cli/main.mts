@@ -5,7 +5,7 @@ import { edgeContext } from "../shared/context.mts";
 import type { VerbSpec } from "../shared/verb-spec.mts";
 import { flag, parseArgs, str, UsageError, type Args } from "../util/args.mts";
 import { isGroup, listCommands, VERB_NAMES, type Command, type GroupEntry, type VerbEntry } from "../verbs.mts";
-import { REGISTRY } from "./registry.mts";
+import { REGISTRY, type SpecModule } from "./registry.mts";
 
 const USAGE_LINE = "usage: picket <verb> [args] [--pretty | --human]";
 const VERSION_LINE = "picket --version   print the installed version";
@@ -84,7 +84,7 @@ function formatOutcome<I, O>(spec: VerbSpec<I, O>, outcome: Outcome<O>, { asText
 }
 
 async function runCommand({ command, rest }: Resolved, args: Args): Promise<ExitCode> {
-  const { verb: spec } = await REGISTRY[command]();
+  const { verb: spec }: SpecModule = await REGISTRY[command]();
   const verbArgs = { ...args, pos: rest };
   const print = printing(spec, verbArgs);
   const root = str(verbArgs, "root") ?? projectRoot();

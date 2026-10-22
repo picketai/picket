@@ -3,11 +3,9 @@
 import { readFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { packet } from "../verbs/packet/packet.mjs";
 import { iconsMode, liveProbe, recordSessionCost, renderStatusline, workspaceDir } from "../verbs/statusline/statusline.mjs";
 import { preparePullRequest, parsePullRequestUrl, postReview } from "../verbs/pullrequest/pr.mjs";
 import { reviewSummaryRange } from "../shared/review-summary.mjs";
-import { admit } from "../verbs/admit/admit.mjs";
 import { drive, renderDrive } from "../verbs/drive/drive.mjs";
 import { check, renderCheck } from "../shared/checks.mjs";
 import { migrate, renderMigrate } from "../verbs/migrate/migrate.mjs";
@@ -16,14 +14,11 @@ import { close } from "../verbs/close/close.mjs";
 import { leftLine } from "../shared/work/left.mjs";
 import { init, initRoot, InitRefused, renderInit } from "../verbs/init/init.mjs";
 import { describeExtensions, loadExtensions, renderExtensions, scaffoldExtension } from "../shared/extensions.mjs";
-import { appendComment, appendWaiver, createWork, deriveState, listWork, projectRoot, readState, workDir, writeState } from "../shared/work/work.mjs";
-import { latest, next } from "../shared/work/next-step.mjs";
+import { appendComment, appendWaiver, createWork, projectRoot, readState, workDir, writeState } from "../shared/work/work.mjs";
+import { next } from "../shared/work/next-step.mjs";
 import { configRel } from "../shared/paths.mjs";
-import { preflight } from "../verbs/preflight/preflight.mjs";
-import { verify } from "../verbs/verify/verify.mjs";
 import { route } from "../verbs/route/route.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
-import { cost } from "../verbs/cost/cost.mjs";
 import { reviewSummary } from "../shared/review-summary.mjs";
 import { loadConfig } from "../shared/config.mjs";
 import { parseArgs } from "../util/args.mjs";
@@ -80,7 +75,7 @@ function readRequest(opt, verb) {
   throw new Error(`${verb} needs --text "<request>" or --request <file|->`);
 }
 
-export const LEGACY_VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "check", "migrate", "comment", "waive", "mutate", "packet", "statusline", "setup-terminal", "uninstall", "pr", "source"];
+export const LEGACY_VERBS = ["init", "extension", "extensions", "new", "set", "close", "route", "review-summary", "find-verdict", "drive", "check", "migrate", "comment", "waive", "mutate", "statusline", "setup-terminal", "uninstall", "pr", "source"];
 
 export async function legacyMain(argv) {
   const { pos, opt } = parseArgs(argv);
@@ -110,16 +105,6 @@ export async function legacyMain(argv) {
       out(report, opt, renderInit);
       return report.steps.some((s) => s.result === "failed") ? 2 : 0;
     }
-    case "admit": {
-      const text = opt.text === true || opt.text === "" || (!opt.text && !opt.request) ? "" : readRequest(opt, "admit");
-      if (!text.trim()) {
-        out({ lane: null, reasons: ["no request text given"], signals: {} }, opt, () => "lane: (none) · re-run with the request text: picket admit --text \"<request>\"");
-        return 0;
-      }
-      const r = admit(text, { root, touched: opt.touched ? String(opt.touched).split(",").filter(Boolean) : [] });
-      out(r, opt, (v) => `lane: ${v.lane}${v.skill ? ` · skill: picket:${v.skill}` : ""} (${v.reasons.join("; ")})`);
-      return 0;
-    }
     case "new": {
       if (!opt.lane || !opt.title) throw new Error("new needs --lane and --title");
       const given = "text" in opt || "request" in opt;
@@ -140,19 +125,6 @@ export async function legacyMain(argv) {
       const why = sources.map((x) => `${x.name}: ${x.reason}`).join("; ") || `none declared in ${configRel()}`;
       const warnings = noSource ? [`story.md saved without snapshots: no reachable source (${why})`] : [];
       out({ ...s, dir: `work/${s.id}`, warnings, next: next(s.id, root) }, opt, (v) => `created work/${v.id} (${v.lane}) · next: ${v.next.action} by ${v.next.actor}${v.warnings.map((w) => `\nWARNING: ${w}`).join("")}`);
-      return 0;
-    }
-    case "list": {
-      const items = listWork(root).map((id) => {
-        const d = deriveState(id, root);
-        return { id, lane: d.lane, status: d.status, title: d.title, phases: `${d.phases_approved}/${d.phase_count}`, next: next(id, root).action };
-      });
-      out(items, opt, (v) => v.map((i) => `${i.id}  ${i.lane.padEnd(8)} ${i.status.padEnd(9)} ${i.phases.padEnd(5)} ${i.next.padEnd(16)} ${i.title}`).join("\n") || "(no work items)");
-      return 0;
-    }
-    case "state": {
-      if (!rest[0]) throw new Error("state needs <id>");
-      out(deriveState(rest[0], root), opt);
       return 0;
     }
     case "set": {
@@ -197,28 +169,6 @@ export async function legacyMain(argv) {
         return 2;
       }
     }
-    case "next": {
-      if (!rest[0] && opt.latest) {
-        const session = typeof opt.session === "string" ? opt.session : undefined;
-        out(latest(root, { session }), opt, (v) => (v.id ? `${v.id}: ${v.action} · ${v.actor ?? "-"} · ${v.detail}${v.other_session ? " (other session)" : ""}` : "(no open work item)"));
-        return 0;
-      }
-      if (!rest[0]) throw new Error("next needs <id> or --latest");
-      out(next(rest[0], root), opt, (v) => `${v.action} · ${v.actor ?? "-"}${v.phase ? ` · phase ${v.phase}` : ""} · ${v.detail}${v.options.length ? ` · ${v.options.join(" · ")}` : ""}`);
-      return 0;
-    }
-    case "preflight": {
-      if (!rest[0]) throw new Error("preflight needs <id>");
-      const r = preflight(rest[0], root);
-      out(r, opt, (v) => v.checks.map((c) => `${c.level.padEnd(4)} ${c.name}: ${c.detail}`).join("\n") + `\n${v.ok ? "PREFLIGHT OK" : "PREFLIGHT FAILED"}`);
-      return r.ok ? 0 : 2;
-    }
-    case "verify": {
-      if (!rest[0] || !rest[1]) throw new Error("verify needs <id> <phase>");
-      const r = verify(rest[0], Number(rest[1]), { root, runTests: !opt["no-tests"] });
-      out(r, opt, (v) => v.results.map((c) => `${c.ok ? "ok  " : "FAIL"} ${c.name}${c.detail ? ": " + c.detail : ""}`).join("\n") + `\n${v.ok ? "VERIFIED" : "NOT VERIFIED"}`);
-      return r.ok ? 0 : 2;
-    }
     case "route": {
       if (!rest[0] || !opt.verdict || !opt.agent) throw new Error("route needs <id> --verdict <TOKEN> --agent <name>");
       const r = route({ id: rest[0], verdict: String(opt.verdict), agent: String(opt.agent), phase: opt.phase ? Number(opt.phase) : undefined, scope: opt.scope, through: opt.through ? Number(opt.through) : undefined, reason: opt.reason, session: sessionOf(opt), root });
@@ -236,10 +186,6 @@ export async function legacyMain(argv) {
       if (!rest[0]) throw new Error("review-summary needs <id> or --range <base>..<head>");
       const r = reviewSummary(rest[0], { root, base: opt.base });
       out(r, opt, (v) => `${v.size} · ${v.changed_files.length} file(s), +${v.lines_added}/-${v.lines_removed} · frameworks ${v.frameworks.join(",") || "-"} · concerns ${v.concerns.join(",") || "-"} · security ${v.security_path ? "yes" : "no"} · base ${v.base.slice(0, 8)} · repos ${v.repos.length}`);
-      return 0;
-    }
-    case "cost": {
-      out(cost({ root, session: opt.session, work_id: opt.work }), opt, (v) => `${v.rows} turns · $${v.cost_usd == null ? "-" : v.cost_usd.toFixed(2)} · cache ${v.cache_hit_ratio == null ? "-" : Math.round(v.cache_hit_ratio * 100) + "%"} · ${v.tokens_per_accepted_line == null ? "-" : Math.round(v.tokens_per_accepted_line)} tok/line · stops ${v.stops} · bounces ${v.bounces} · escalations ${v.escalations.asked} asked, ${v.escalations.ran} ran, ${v.escalations.not_run} not run, ${v.escalations.denied} denied`);
       return 0;
     }
     case "find-verdict": {
@@ -284,14 +230,6 @@ export async function legacyMain(argv) {
       if (!rest[0] || typeof opt.path !== "string" || hasText === deleted) throw new Error('waive needs <id> --path <p> and exactly one of --text "<added line>" or --deleted');
       const entry = appendWaiver(rest[0], { path: opt.path, text: hasText ? opt.text : null, deleted }, root);
       out(entry, opt, (v) => `waived for ${v.path}: ${v.deleted ? "its deletion" : `"${v.text}"`}`);
-      return 0;
-    }
-    case "packet": {
-      // A rendering verb: text by default, since the lead prints it verbatim.
-      if (!rest[0]) throw new Error("packet needs <id>");
-      const r = packet(rest[0], root, { width: opt.width ? Number(opt.width) : undefined });
-      if (opt.json) console.log(opt.pretty ? JSON.stringify(r, null, 2) : JSON.stringify(r));
-      else console.log(r.text);
       return 0;
     }
     case "statusline": {

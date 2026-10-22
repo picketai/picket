@@ -19,18 +19,20 @@ function assertCosts(actual, expected) {
   actual.forEach((value, i) => (expected[i] === null ? assert.equal(value, null) : assert.ok(Math.abs(value - expected[i]) < 1e-9, `${i}: ${value} vs ${expected[i]}`)));
 }
 
-function costLine(rows) {
+function costRun(rows, args = ["--human"]) {
   const root = mkdtempSync(join(tmpdir(), "picket-cost-"));
   try {
     const ledger = statePath(root, STATE_FILES.ledger);
     mkdirSync(dirname(ledger), { recursive: true });
     writeFileSync(ledger, rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
     const { CLAUDE_PROJECT_DIR, ...env } = process.env;
-    return spawnSync("node", [BIN, "cost", "--root", root, "--human"], { encoding: "utf8", env }).stdout;
+    return spawnSync("node", [BIN, "cost", "--root", root, ...args], { encoding: "utf8", env });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
+
+const costLine = (rows) => costRun(rows).stdout;
 
 test("rowCosts gives each row its session's spend since the previous snapshot (T-1.4)", () => {
   const rows = [0.4, 0.4, 1.1, 0.3].map((c) => stop("s1", "main", c));
@@ -61,6 +63,18 @@ test("cost is null overall and per agent when no scoped row carries a snapshot",
 test("picket cost --human prints $- without snapshots and the last snapshot of one session (T-1.6)", () => {
   assert.match(costLine([stop("s1", "main", null), stop("s1", "developer", null)]), /^2 turns · \$- · cache - · /);
   assert.match(costLine([stop("s1", "main", 0.4), stop("s1", "developer", 1.1)]), /^2 turns · \$1\.10 · /);
+});
+
+test("picket cost --session with no value exits 1 naming the flag (T-4.2)", () => {
+  const r = costRun([stop("s-1", "main", 0.4)], ["--session"]);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /--session/);
+});
+
+test("picket cost --session s-1 counts only that session's turns (T-4.2)", () => {
+  const r = costRun([stop("s-1", "main", 0.4), stop("s-2", "main", 0.9), stop("s-1", "developer", 1)], ["--session", "s-1"]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout).rows, 2);
 });
 
 test("blocks and bounces count their own rows, per agent too, inside the scope (T-2.5)", () => {
