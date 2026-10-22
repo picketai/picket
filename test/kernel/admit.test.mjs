@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { NO_LANE, admit, recheck, mentionedPaths, forcedLane } from "../../core/lib/admit.mjs";
+import { NO_LANE, admit, recheck, mentionedPaths, forcedLane } from "../../dist/lib/admit.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function repo() {
@@ -167,7 +167,7 @@ test("mentionedPaths finds an unbackticked dot-directory path that exists", () =
   const root = repo();
   assert.deepEqual(mentionedPaths("Edit .claude/settings.json.", root), [".claude/settings.json"]);
   assert.deepEqual(mentionedPaths("Edit .claude/nope.json", root), []);
-  assert.deepEqual(mentionedPaths("Edit core/.claude/settings.json", root), []);
+  assert.deepEqual(mentionedPaths("Edit src/.claude/settings.json", root), []);
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -333,7 +333,7 @@ test("adding a skill, hook or verb is new surface and leaves the fast lane (T-3.
 
 test("naming a surface without adding one keeps its lane, and diagnosis requests still answer none (T-3.2)", () => {
   const root = repo();
-  assert.equal(admit("Fix the typo in the hook table of `core/hooks/README.md`", { root }).lane, "fast");
+  assert.equal(admit("Fix the typo in the hook table of `src/hooks/README.md`", { root }).lane, "fast");
   assert.equal(admit("Rename the `--deleted` flag of the waive verb in one file", { root }).lane, "fast");
   assert.equal(admit("how is a new hook registered?", { root }).lane, "research");
   assert.equal(admit("How does a new skill get added? Write a report, no code changes.", { root }).lane, "research");
@@ -351,7 +351,7 @@ test("no lane never escalates on a recheck", () => {
 
 test("picket admit --human names the skill for a diagnosis request (T-2.3)", () => {
   const root = repo();
-  const printed = execFileSync("node", [resolve("core/bin/picket.mjs"), "admit", "--text", "debug the flaky invoice test", "--human", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } }).trim();
+  const printed = execFileSync("node", [resolve("dist/bin/picket.mjs"), "admit", "--text", "debug the flaky invoice test", "--human", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root } }).trim();
   assert.match(printed, /^lane: none · skill: picket:debugging \(asks for a diagnosis/);
   rmSync(root, { recursive: true, force: true });
 });

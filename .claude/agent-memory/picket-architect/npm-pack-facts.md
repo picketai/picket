@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-A `!` entry in `package.json` `files` is an exclusion across every included folder: a scratch package with `"files": ["core/", "status/hooks/", "!**/*.test.*"]` packed `a.mjs` and `b.ts` and left out `a.test.mjs` and `b.test.tsx` (npm 10.4.0, 2026-10-17). The release workflow uses npm 11.21.0 on ubuntu, untested for this, so its manual run's `npm publish --dry-run` list is the check.
+A `!` entry in `package.json` `files` is an exclusion across every included folder: a scratch package with `"files": ["dist/", "status/hooks/", "!**/*.test.*"]` packed `a.mjs` and `b.ts` and left out `a.test.mjs` and `b.test.tsx` (npm 10.4.0, 2026-10-17). The release workflow uses npm 11.21.0 on ubuntu, untested for this, so its manual run's `npm publish --dry-run` list is the check.
 
 **Why:** the mods keep their `*.test.ts(x)` beside the hooks, so `files` entries like `status/hooks/` ship them unless excluded.
 

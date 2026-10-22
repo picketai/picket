@@ -6,13 +6,13 @@ import { dirname, join, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { codeLines } from "./kernel-sources.mjs";
 
-const CORE = resolve("core");
+const SRC = resolve("src");
 const SETTINGS = resolve(".claude/settings.json");
-const PLUGIN_HOOKS = join(CORE, "hooks", "hooks.json");
+const PLUGIN_HOOKS = join(SRC, "hooks", "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const PACKAGE = resolve("package.json");
 const MOD_FOLDERS = ["status", "session", "markdown"];
-const LAUNCHER = "core/bin/picket";
+const LAUNCHER = "src/bin/picket";
 const EXECUTABLE_MODE = "100755";
 
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
@@ -27,7 +27,7 @@ function modulesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) return modulesUnder(full);
-    return entry.name.endsWith(".mjs") ? [full] : [];
+    return /\.m[jt]s$/.test(entry.name) ? [full] : [];
   });
 }
 
@@ -46,10 +46,10 @@ function staysInside(root, file, specifier) {
   return resolve(dirname(file), specifier).startsWith(root + sep);
 }
 
-function importsLeavingCore() {
-  return modulesUnder(CORE).flatMap((file) =>
+function importsLeavingSrc() {
+  return modulesUnder(SRC).flatMap((file) =>
     importSpecifiers(readFileSync(file, "utf8"))
-      .filter((specifier) => !staysInside(CORE, file, specifier))
+      .filter((specifier) => !staysInside(SRC, file, specifier))
       .map((specifier) => `${file}: ${specifier}`),
   );
 }
@@ -60,10 +60,10 @@ function registeredShells(hooks) {
 }
 
 function shellsOnDisk() {
-  return readdirSync(join(CORE, "hooks")).filter((file) => file.endsWith(".mjs"));
+  return readdirSync(join(SRC, "hooks")).filter((file) => file.endsWith(".mjs"));
 }
 
-test("core/hooks/hooks.json registers every hook shell and only shells that exist", () => {
+test("src/hooks/hooks.json registers every hook shell and only shells that exist", () => {
   const registered = registeredShells(readJson(PLUGIN_HOOKS).hooks);
   assert.deepEqual([...registered].sort(), shellsOnDisk().sort());
 });
@@ -95,34 +95,34 @@ test(".claude/ tracks no skills, agents or output styles", () => {
 });
 
 test("the manifest lists every skill folder once, in name order", () => {
-  const folders = readdirSync(join(CORE, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => `./skills/${e.name}`).sort();
-  const manifest = readJson(join(CORE, ".claude-plugin", "plugin.json"));
+  const folders = readdirSync(join(SRC, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => `./skills/${e.name}`).sort();
+  const manifest = readJson(join(SRC, ".claude-plugin", "plugin.json"));
   assert.equal(manifest.name, "picket");
   assert.deepEqual(manifest.skills, folders);
 });
 
-test("every import under core/ is a Node built-in or a path inside core/", () => {
-  assert.deepEqual(importsLeavingCore(), []);
+test("every import under src/ is a Node built-in or a path inside src/", () => {
+  assert.deepEqual(importsLeavingSrc(), []);
 });
 
-test("the import check flags a module that reaches outside core/ or into a package", () => {
-  const module = join(CORE, "lib", "planted.mjs");
+test("the import check flags a module that reaches outside src/ or into a package", () => {
+  const module = join(SRC, "lib", "planted.mjs");
   const planted = 'import { run } from "../../bench/run.mjs";\nimport parse from "shell-quote";\nimport { x } from "./hook.mjs";\nimport { readFileSync } from "node:fs";\nimport path from "path";';
-  const leaving = importSpecifiers(planted).filter((specifier) => !staysInside(CORE, module, specifier));
+  const leaving = importSpecifiers(planted).filter((specifier) => !staysInside(SRC, module, specifier));
   assert.deepEqual(leaving, ["../../bench/run.mjs", "shell-quote"]);
 });
 
 test("the import scan reads static, side-effect and dynamic imports and skips comment lines", () => {
-  const text = 'import "../../core/hooks/a.mjs";\nconst m = await import("./b.mjs");\nexport { c } from "./c.mjs";\n// import "./d.mjs";\nspawnSync("pandoc", ["--from", "markdown"]);';
-  assert.deepEqual(importSpecifiers(text).sort(), ["../../core/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
+  const text = 'import "../../src/hooks/a.mjs";\nconst m = await import("./b.mjs");\nexport { c } from "./c.mjs";\n// import "./d.mjs";\nspawnSync("pandoc", ["--from", "markdown"]);';
+  assert.deepEqual(importSpecifiers(text).sort(), ["../../src/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picketai serves picket from core/, picket-status from status/, picket-session from session/ and picket-markdown from markdown/", () => {
+test("the root marketplace picketai serves picket from dist/, picket-status from status/, picket-session from session/ and picket-markdown from markdown/", () => {
   const marketplace = readJson(MARKETPLACE);
   assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
   assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [
-    { name: "picket", source: "./core" },
+    { name: "picket", source: "./dist" },
     { name: "picket-status", source: "./status" },
     { name: "picket-session", source: "./session" },
     { name: "picket-markdown", source: "./markdown" },
@@ -136,13 +136,22 @@ test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin
   assert.deepEqual(allow.filter((rule) => /\.claude\/(bin|skills)\//.test(rule)), []);
 });
 
+test(".claude/settings.json denies Edit and Write under the generated dist/", () => {
+  const deny = readJson(SETTINGS).permissions.deny;
+  assert.ok(deny.includes("Edit(dist/**)"), "Edit(dist/**)");
+  assert.ok(deny.includes("Write(dist/**)"), "Write(dist/**)");
+});
+
 test("the npm package ships the plugin and its marketplace at the plugin's version, with no runtime dependencies", () => {
   const pkg = readJson(PACKAGE);
-  assert.equal(pkg.version, readJson(join(CORE, ".claude-plugin", "plugin.json")).version);
-  assert.ok(pkg.files.includes("core/"), "files ships core/");
-  assert.ok(pkg.files.includes(".claude-plugin/marketplace.json"), "files ships the marketplace init looks for beside core/");
+  assert.equal(pkg.version, readJson(join(SRC, ".claude-plugin", "plugin.json")).version);
+  assert.equal(pkg.bin.picket, "dist/bin/picket.mjs");
+  assert.ok(pkg.files.includes("dist/"), "files ships dist/");
+  assert.equal(pkg.files.includes("src/"), false, "files leaves the source out");
+  assert.ok(pkg.files.includes(".claude-plugin/marketplace.json"), "files ships the marketplace init looks for beside dist/");
   assert.equal("dependencies" in pkg, false);
-  assert.deepEqual(pkg.engines, { node: ">=20" });
+  assert.deepEqual(pkg.engines, { node: ">=22" });
+  assert.deepEqual(pkg.devEngines, { runtime: { name: "node", version: ">=24", onFail: "error" } });
   assert.equal(pkg.files.at(-1), "!**/*.test.*", "files ends by excluding test files from every shipped folder");
 });
 

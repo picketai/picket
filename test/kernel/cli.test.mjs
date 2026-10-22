@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 
 function sessionEnv(root, session) {
   const env = { ...process.env, CLAUDE_PROJECT_DIR: root };
@@ -301,7 +301,7 @@ function assertUsage(result) {
 test("--version prints the plugin manifest version alone, also outside any project", () => {
   const outside = mkdtempSync(join(tmpdir(), "picket-outside-"));
   try {
-    const expected = `${JSON.parse(readFileSync(resolve("core/.claude-plugin/plugin.json"), "utf8")).version}\n`;
+    const expected = `${JSON.parse(readFileSync(resolve("src/.claude-plugin/plugin.json"), "utf8")).version}\n`;
     for (const cwd of [process.cwd(), outside]) {
       const result = picket(["--version"], { cwd });
       assert.equal(result.status, 0, result.stderr);

@@ -4,11 +4,11 @@ import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { cacheLeft, compactTokens, contextColor, displayWidth, factsOf, iconsMode, lastSkill, recordSessionCost, renderStatusline } from "../../core/lib/statusline.mjs";
-import { rgb } from "../../core/lib/styling/palette.mjs";
-import { sessionCostPath, statePath, STATE_FILES } from "../../core/lib/paths.mjs";
+import { cacheLeft, compactTokens, contextColor, displayWidth, factsOf, iconsMode, lastSkill, recordSessionCost, renderStatusline } from "../../dist/lib/statusline.mjs";
+import { rgb } from "../../dist/lib/styling/palette.mjs";
+import { sessionCostPath, statePath, STATE_FILES } from "../../dist/lib/paths.mjs";
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 const MINUTE = 60_000;

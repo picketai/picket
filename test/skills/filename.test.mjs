@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const script = fileURLToPath(new URL("../../core/skills/documenting/scripts/filename.mjs", import.meta.url));
+const script = fileURLToPath(new URL("../../dist/skills/documenting/scripts/filename.mjs", import.meta.url));
 
 function name(kind, subject) {
   return execFileSync(process.execPath, [script, "--kind", kind, subject], { encoding: "utf8" }).trim();

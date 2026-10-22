@@ -4,10 +4,10 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { createWork } from "../../core/lib/work.mjs";
-import { onPath } from "../../core/lib/preflight.mjs";
+import { createWork } from "../../dist/lib/work.mjs";
+import { onPath } from "../../dist/lib/preflight.mjs";
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 
 function project(extensions, manifests) {
   const root = mkdtempSync(join(tmpdir(), "picket-preflight-"));

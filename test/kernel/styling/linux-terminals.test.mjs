@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { setupTerminal } from "../../../core/lib/styling/setup.mjs";
-import { terminalComponent } from "../../../core/lib/styling/terminal.mjs";
+import { setupTerminal } from "../../../dist/lib/styling/setup.mjs";
+import { terminalComponent } from "../../../dist/lib/styling/terminal.mjs";
 import { exited, fakeDconf, fakeExec, fakeHost, homeFiles, textsOf, writeHomeFile } from "./host-fixture.mjs";
 
 const FAMILY = "JetBrainsMono Nerd Font Mono";

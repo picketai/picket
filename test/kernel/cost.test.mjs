@@ -4,10 +4,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { statePath, STATE_FILES } from "../../core/lib/paths.mjs";
-import { rowCosts, summarize } from "../../core/lib/cost.mjs";
+import { statePath, STATE_FILES } from "../../dist/lib/paths.mjs";
+import { rowCosts, summarize } from "../../dist/lib/cost.mjs";
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 
 const stop = (session, agent, session_cost_usd, work_id = "w1") => ({ v: 2, session, event: "stop", agent, work_id, duration_ms: 1000, session_cost_usd, tool_calls: 3 });
 const escalation = (session, outcome, key, extra = {}) => ({ v: 2, session, event: "escalation", outcome, why: null, key, command: `git push origin ${key}`, reason: "you asked", agent: "developer", work_id: "w1", ...extra });

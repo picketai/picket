@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { bareAgentName } from "./agent-name.mjs";
 import { appendLedger } from "./ledger.mjs";
+import { checkNodeFloor } from "./node-floor.mjs";
 import { projectRoot } from "./paths.mjs";
 
 const REASON_LIMIT = 300;
@@ -48,6 +49,11 @@ async function recordDenial(handler, root, event, output) {
 }
 
 export async function runHook(handler, { onBadInput = "exit" } = {}) {
+  const refusal = checkNodeFloor(process.versions.node);
+  if (refusal) {
+    process.stderr.write(`${refusal}\n`);
+    process.exit(0);
+  }
   const event = readEvent(onBadInput);
   const root = event ? projectRoot(event.cwd) : null;
   const output = event ? await handle(handler, event, root) : null;

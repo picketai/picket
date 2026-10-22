@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { migrate, renderMigrate } from "../../core/lib/migrate.mjs";
-import { preflight } from "../../core/lib/preflight.mjs";
-import { createWork } from "../../core/lib/work.mjs";
-import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../core/lib/paths.mjs";
+import { migrate, renderMigrate } from "../../dist/lib/migrate.mjs";
+import { preflight } from "../../dist/lib/preflight.mjs";
+import { createWork } from "../../dist/lib/work.mjs";
+import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../dist/lib/paths.mjs";
 
 const LEGACY_LEDGER = `${LEGACY.stateDir}/${STATE_FILES.ledger}`;
 const LEGACY_GUARD_LOG = `${LEGACY.stateDir}/guard-bash.log`;

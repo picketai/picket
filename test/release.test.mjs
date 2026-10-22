@@ -19,7 +19,7 @@ function manifestPath(root, plugin) {
 function project(manifest, version, statusManifest = STATUS_MANIFEST) {
   const root = mkdtempSync(join(tmpdir(), "picket-release-"));
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "@picketai/picket", version }));
-  for (const [plugin, text] of [["core", manifest], ["status", statusManifest], ["session", SESSION_MANIFEST], ["markdown", MARKDOWN_MANIFEST]]) {
+  for (const [plugin, text] of [["src", manifest], ["status", statusManifest], ["session", SESSION_MANIFEST], ["markdown", MARKDOWN_MANIFEST]]) {
     mkdirSync(join(root, plugin, ".claude-plugin"), { recursive: true });
     writeFileSync(manifestPath(root, plugin), text);
   }
@@ -47,6 +47,12 @@ test("distTag is latest for a stable version and the prerelease identifier other
   assert.throws(() => distTag("1.0.0-0"), /prerelease identifier "0"/);
 });
 
+test("the version script stages the picket manifest under src/, and the release job runs Node 24", () => {
+  const { scripts } = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
+  assert.match(scripts.version, /git add src\/\.claude-plugin\/plugin\.json /);
+  assert.match(readFileSync(resolve(".github/workflows/release.yml"), "utf8"), /^\s+node-version: 24$/m);
+});
+
 test("checkTag accepts only the v-prefixed package version", () => {
   assert.doesNotThrow(() => checkTag("v1.0.0-alpha.1", "1.0.0-alpha.1"));
   assert.throws(() => checkTag("1.0.0-alpha.1", "1.0.0-alpha.1"), /expected v1\.0\.0-alpha\.1/);
@@ -59,7 +65,7 @@ test("sync-version rewrites all four plugin manifests from package.json, and fai
   try {
     const r = syncVersionCli(ok);
     assert.equal(r.status, 0, r.stderr);
-    assert.equal(readFileSync(manifestPath(ok, "core"), "utf8"), MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
+    assert.equal(readFileSync(manifestPath(ok, "src"), "utf8"), MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
     assert.equal(readFileSync(manifestPath(ok, "status"), "utf8"), STATUS_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
     assert.equal(readFileSync(manifestPath(ok, "session"), "utf8"), SESSION_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
     assert.equal(readFileSync(manifestPath(ok, "markdown"), "utf8"), MARKDOWN_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
@@ -78,7 +84,7 @@ test("sync-version writes no manifest when the status manifest is malformed", ()
     const r = syncVersionCli(root);
     assert.equal(r.status, 1);
     assert.match(r.stderr, /status\/\.claude-plugin\/plugin\.json holds 0 version values/);
-    assert.equal(readFileSync(manifestPath(root, "core"), "utf8"), MANIFEST);
+    assert.equal(readFileSync(manifestPath(root, "src"), "utf8"), MANIFEST);
     assert.equal(readFileSync(manifestPath(root, "session"), "utf8"), SESSION_MANIFEST);
     assert.equal(readFileSync(manifestPath(root, "markdown"), "utf8"), MARKDOWN_MANIFEST);
   } finally {

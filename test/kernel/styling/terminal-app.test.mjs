@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { setupTerminal } from "../../../core/lib/styling/setup.mjs";
-import { terminalComponent } from "../../../core/lib/styling/terminal.mjs";
-import { profileColors, profileFile } from "../../../core/lib/styling/terminals/terminal-app.mjs";
+import { setupTerminal } from "../../../dist/lib/styling/setup.mjs";
+import { terminalComponent } from "../../../dist/lib/styling/terminal.mjs";
+import { profileColors, profileFile } from "../../../dist/lib/styling/terminals/terminal-app.mjs";
 import { exited, fakeDefaults, fakeExec, fakeHost } from "./host-fixture.mjs";
 
 const TERMINAL_ONLY = [terminalComponent()];

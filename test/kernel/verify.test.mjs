@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "../../core/lib/work.mjs";
-import { verify, mustHaves } from "../../core/lib/verify.mjs";
-import { stateDir, statePath, STATE_FILES } from "../../core/lib/paths.mjs";
+import { createWork } from "../../dist/lib/work.mjs";
+import { verify, mustHaves } from "../../dist/lib/verify.mjs";
+import { stateDir, statePath, STATE_FILES } from "../../dist/lib/paths.mjs";
 
 function setup() {
   const root = mkdtempSync(join(tmpdir(), "harness-verify-"));

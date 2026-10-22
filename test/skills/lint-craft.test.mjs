@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const script = fileURLToPath(new URL("../../core/skills/reviewing/scripts/lint.craft.mjs", import.meta.url));
+const script = fileURLToPath(new URL("../../dist/skills/reviewing/scripts/lint.craft.mjs", import.meta.url));
 
 function lintAdded(source) {
   const root = mkdtempSync(join(tmpdir(), "picket-craft-"));

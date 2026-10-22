@@ -11,10 +11,10 @@ const UNBALANCED = 'Add a `picket close <id>` verb that prints "done';
 const ADMIT = "picket admit --request - --human";
 const PROSE_STEP = "If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.";
 const OLD_INLINE = 'picket admit --text "$ARGUMENTS" --human';
-const BIN_DIR = resolve("core/bin");
+const BIN_DIR = resolve("dist/bin");
 
 function skillText(lane) {
-  return readFileSync(resolve("core/skills", lane, "SKILL.md"), "utf8").replace(/\r\n/g, "\n");
+  return readFileSync(resolve("src/skills", lane, "SKILL.md"), "utf8").replace(/\r\n/g, "\n");
 }
 
 function heredocAdmit(request) {

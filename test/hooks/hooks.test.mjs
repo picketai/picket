@@ -5,12 +5,12 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, exist
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, setMarker } from "../../core/lib/work.mjs";
-import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
+import { createWork, deriveState, setMarker } from "../../dist/lib/work.mjs";
+import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/paths.mjs";
 import { writeConfig } from "../kernel/config-fixture.mjs";
-import { recordEscalation } from "../../core/lib/escalation.mjs";
+import { recordEscalation } from "../../dist/lib/escalation.mjs";
 
-const HOOKS = resolve("core/hooks");
+const HOOKS = resolve("dist/hooks");
 
 function run(hook, payload, root, env = {}) {
   const out = execFileSync("node", [join(HOOKS, hook)], { input: JSON.stringify(payload), encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root, ...env } });
@@ -229,7 +229,7 @@ test("guard.scope keeps the comment approvals kernel-owned (T-1.5)", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 const lines = (...rows) => rows.join("\n");
 
 function commentEdit(root, path, old_string, new_string) {
@@ -518,8 +518,8 @@ test("guard.bash judges the command a picket verb would run, by launcher or by s
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
   assert.equal(decision('picket drive --run "rm -rf src"'), "deny");
-  assert.equal(decision('node core/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
-  assert.equal(decision('core/bin/picket drive --start "sudo node server.mjs" --hit /health'), "deny");
+  assert.equal(decision('node dist/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
+  assert.equal(decision('dist/bin/picket drive --start "sudo node server.mjs" --hit /health'), "deny");
   assert.equal(decision('picket drive --run "npm run cli -- list"'), null);
   assert.equal(decision("picket state x"), "allow");
   assert.equal(JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1)).outcome, "allow");
@@ -531,7 +531,7 @@ test("guard.bash looks past leading env assignments to the picket verb and what 
   const { root } = project();
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
   assert.equal(decision('FOO=1 picket drive --run "rm -rf src"'), "deny");
-  assert.equal(decision('FOO=1 BAR=2 node core/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
+  assert.equal(decision('FOO=1 BAR=2 node dist/bin/picket.mjs check --only "git push --force origin trunk"'), "deny");
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -545,8 +545,8 @@ test("observe.drive counts a command as a kernel call only when a segment starts
   assert.equal(kind("picket next x"), "inspect");
   assert.equal(kind("cd repo && picket check"), "inspect");
   assert.equal(kind('API_KEY=k picket drive --hit "GET /h"'), "inspect");
-  assert.equal(kind("node core/bin/picket.mjs state x"), "inspect");
-  assert.equal(kind('node "D:/My Projects/x/core/bin/picket.mjs" next x'), "inspect");
+  assert.equal(kind("node dist/bin/picket.mjs state x"), "inspect");
+  assert.equal(kind('node "D:/My Projects/x/dist/bin/picket.mjs" next x'), "inspect");
   assert.equal(kind('"/c/Users/John Smith/.claude/plugins/picket/bin/picket" next x'), "inspect");
   assert.equal(kind("{ picket next x; }"), "inspect");
   assert.equal(kind('curl -s "http://127.0.0.1:8080/picket ok"'), "drive");
@@ -870,7 +870,7 @@ test("observe.drive appends one ran escalation row for an asked marked command, 
 });
 
 test("observe.drive is registered for PostToolUse and PostToolUseFailure on Bash and PowerShell", () => {
-  const hooks = JSON.parse(readFileSync(resolve("core/hooks/hooks.json"), "utf8")).hooks;
+  const hooks = JSON.parse(readFileSync(resolve("src/hooks/hooks.json"), "utf8")).hooks;
   for (const event of ["PostToolUse", "PostToolUseFailure"]) {
     const observers = hooks[event].filter((entry) => entry.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/observe.drive.mjs"))));
     assert.deepEqual(observers.map((entry) => entry.matcher), ["Bash|PowerShell"], event);
@@ -919,7 +919,7 @@ test("observe.drive records a failed escalation as ran, with no drive-log row", 
 });
 
 test("guard.bash is registered for Bash and PowerShell, and the spawned hook denies a destructive cmdlet with a PowerShell log row", () => {
-  const hooks = JSON.parse(readFileSync(resolve("core/hooks/hooks.json"), "utf8")).hooks;
+  const hooks = JSON.parse(readFileSync(resolve("src/hooks/hooks.json"), "utf8")).hooks;
   const guards = hooks.PreToolUse.filter((entry) => entry.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/guard.bash.mjs"))));
   assert.deepEqual(guards.map((entry) => entry.matcher), ["Bash|PowerShell"]);
 

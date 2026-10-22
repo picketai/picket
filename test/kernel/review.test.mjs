@@ -4,10 +4,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { appendWaiver, createWork, readState, writeState } from "../../core/lib/work.mjs";
-import { branchingManifestPath } from "../../core/lib/paths.mjs";
-import { reviewSummary, reviewSummaryRange } from "../../core/lib/review.mjs";
-import { nestedRepos, readBases } from "../../core/lib/repos.mjs";
+import { appendWaiver, createWork, readState, writeState } from "../../dist/lib/work.mjs";
+import { branchingManifestPath } from "../../dist/lib/paths.mjs";
+import { reviewSummary, reviewSummaryRange } from "../../dist/lib/review.mjs";
+import { nestedRepos, readBases } from "../../dist/lib/repos.mjs";
 
 function git(dir, ...args) {
   return execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();

@@ -4,7 +4,7 @@ Picket is a software-development workflow for Claude Code: four lanes, four agen
 
 To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md). [The agents](docs/agents.md) reference says what each agent does and when it runs, and [the skills](docs/skills.md) reference does the same for each skill.
 
-Picket ships as a Claude Code plugin in `core/`. In this repository, start every session with `npm run claude`: it runs `claude --plugin-dir core` with this checkout's `core/bin` first on `PATH`, so `picket` is the checkout's kernel, not the installed one.
+Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it ships to `dist/`. In this repository, start every session with `npm run claude`: it builds, then runs `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH`, so `picket` is the checkout's kernel, not the installed one.
 
 Code decides what code can decide. Lane admission, the next action, phase verification, verdict routing and cost all come from `picket <verb>`; the model fills in what remains. State is the filesystem: one directory per work item under `work/<id>/`, read fresh on every call, never remembered.
 
@@ -23,26 +23,26 @@ Code decides what code can decide. Lane admission, the next action, phase verifi
 
 ```
 CLAUDE.md                  under 2 KB, loaded on every turn
-core/.claude-plugin/       the plugin manifest: name picket, version, the skills list
-core/rules/                work-items, security-paths, prose, comments, untrusted: injected into the lead and every agent
-core/agents/               picket:analyst, architect, developer, reviewer (shells, at most 120 lines)
-core/skills/               lane skills, consulting, documenting, reviewing, ticketing, branching,
+src/.claude-plugin/       the plugin manifest: name picket, version, the skills list
+src/rules/                work-items, security-paths, prose, comments, untrusted: injected into the lead and every agent
+src/agents/               picket:analyst, architect, developer, reviewer (shells, at most 120 lines)
+src/skills/               lane skills, consulting, documenting, reviewing, ticketing, branching,
                            understanding, proofreading, explaining, debugging, summarizing, benchmarking,
                            resuming, inspecting
-core/output-styles/        picket:custom, the response rules
-core/bin/picket            the kernel CLI on the Bash tool's PATH; core/bin/picket.mjs runs it; core/lib/ its modules
-core/lib/styling/          what picket setup-terminal installs and picket uninstall removes
-core/themes/               the PicketAI Claude Code theme setup-terminal copies
-core/hooks/                fourteen hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
+src/output-styles/        picket:custom, the response rules
+src/bin/picket            the kernel CLI on the Bash tool's PATH; src/bin/dispatch.mjs runs it; src/lib/ its modules
+src/lib/styling/          what picket setup-terminal installs and picket uninstall removes
+src/themes/               the PicketAI Claude Code theme setup-terminal copies
+src/hooks/                fourteen hooks registered in hooks.json: guards, schema lint, drive observer, stall monitor,
                            state, rule and extension injection, verdict router, ledger, notifier
 status/                    picket-status: the open work item and its agents, above the prompt
 session/                   picket-session: this project's sessions and agents in a docked sidebar (opt-in)
 markdown/                  picket-markdown: a read-only pane for a Markdown path clicked in a reply
 .claude/rules/             harness-authoring (repository-only, never installed)
-.claude-plugin/            the root marketplace picketai: picket from ./core, picket-status from ./status,
+.claude-plugin/            the root marketplace picketai: picket from ./dist, picket-status from ./status,
                            picket-session from ./session, picket-markdown from ./markdown
 .picket/config.json        project settings (tracked): security paths, sources, lane caps, commands;
-                           the contract is core/lib/config.schema.json
+                           the contract is src/lib/config.schema.json
 .picket/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml
 work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)

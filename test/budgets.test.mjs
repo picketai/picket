@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { joinedRules } from "../core/lib/hooks/inject.rules.mjs";
+import { joinedRules } from "../dist/lib/hooks/inject.rules.mjs";
 import { skillDescriptions } from "./skills/routing.mjs";
 
 const ROOT = resolve(".");
@@ -21,7 +21,7 @@ const BUDGETS = {
   inject_chars: 10000,
 };
 
-const RULE_FOLDERS = [join(ROOT, ".claude", "rules"), join(ROOT, "core", "rules")];
+const RULE_FOLDERS = [join(ROOT, ".claude", "rules"), join(ROOT, "src", "rules")];
 
 function lines(p) {
   return readFileSync(p, "utf8").split(/\r?\n/).length;
@@ -45,9 +45,9 @@ test("CLAUDE.md stays under the always-on budget", { skip: !existsSync(join(ROOT
 
 test("agent shells, skills, step files and rules stay within their line budgets", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const over = [];
-  for (const p of walk(join(ROOT, "core", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
-  for (const p of walk(join(ROOT, "core", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
-  for (const p of walk(join(ROOT, "core", "skills"), (f) => /[\\/]steps[\\/].*\.md$/.test(f))) if (lines(p) > BUDGETS.step_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.step_lines}`);
+  for (const p of walk(join(ROOT, "src", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
+  for (const p of walk(join(ROOT, "src", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
+  for (const p of walk(join(ROOT, "src", "skills"), (f) => /[\\/]steps[\\/].*\.md$/.test(f))) if (lines(p) > BUDGETS.step_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.step_lines}`);
   for (const p of RULE_FOLDERS.flatMap((dir) => walk(dir, (f) => f.endsWith(".md")))) if (lines(p) > BUDGETS.rule_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.rule_lines}`);
   assert.deepEqual(over, []);
 });
@@ -65,11 +65,11 @@ test("every skill has a description with a 'Use when' trigger and one declared r
   assert.deepEqual(problems, []);
 });
 
-test("hooks start cold under the budget", { skip: !existsSync(join(ROOT, "core", "hooks", "route.verdict.mjs")) && "phase 3 not landed" }, () => {
+test("hooks start cold under the budget", { skip: !existsSync(join(ROOT, "dist", "hooks", "route.verdict.mjs")) && "phase 3 not landed" }, () => {
   const slow = [];
   // Best of three: the budget is the hook's own start-up, not the machine's load while the other
   // test files run in parallel (a single start measured 180 ms alone and 260 ms inside npm test).
-  for (const p of walk(join(ROOT, "core", "hooks"), (f) => f.endsWith(".mjs"))) {
+  for (const p of walk(join(ROOT, "dist", "hooks"), (f) => f.endsWith(".mjs"))) {
     let best = Infinity;
     for (let i = 0; i < 3; i++) {
       const t0 = Date.now();
@@ -89,7 +89,7 @@ function injectionOverBudget(text) {
 
 test("the injected rule text fits one hook's additionalContext limit", () => {
   const text = joinedRules();
-  assert.ok(text, "core/rules holds no injected rule");
+  assert.ok(text, "dist/rules holds no injected rule");
   assert.equal(injectionOverBudget(text), null);
 });
 
@@ -115,7 +115,7 @@ test("inject.extensions starts cold under the budget with three extensions enabl
     let best = Infinity;
     for (let i = 0; i < 3; i++) {
       const t0 = Date.now();
-      execFileSync("node", [join(ROOT, "core", "hooks", "inject.extensions.mjs")], { input, stdio: ["pipe", "ignore", "ignore"], timeout: 5000, env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+      execFileSync("node", [join(ROOT, "dist", "hooks", "inject.extensions.mjs")], { input, stdio: ["pipe", "ignore", "ignore"], timeout: 5000, env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
       best = Math.min(best, Date.now() - t0);
     }
     assert.ok(best <= BUDGETS.hook_cold_ms, `inject.extensions with three extensions: ${best} ms`);

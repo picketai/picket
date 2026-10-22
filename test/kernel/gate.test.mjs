@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "../../core/lib/work.mjs";
-import { ownGate, phasePaths } from "../../core/lib/gate.mjs";
+import { createWork } from "../../dist/lib/work.mjs";
+import { ownGate, phasePaths } from "../../dist/lib/gate.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function withDesign({ entry, body = "t\n", config }, fn) {
@@ -70,13 +70,13 @@ test("a configured security path in frontmatter files gates the phase", () => {
 test("an [IRREVERSIBLE] marker counts in prose and not inside inline code or a fenced block (T-1.4)", () => {
   const plain = "- **T-1.1** drop the legacy column [IRREVERSIBLE]\n";
   assert.equal(gateFor({ entry: plainFiles, body: plain })?.kind, "irreversible");
-  const inline = "**Touch set:**\n- `core/skills/designing/steps/15-migration.md`: the contract step marked `[IRREVERSIBLE]`\n\n- **T-1.1** the step file names `[IRREVERSIBLE]`\n";
+  const inline = "**Touch set:**\n- `src/skills/designing/steps/15-migration.md`: the contract step marked `[IRREVERSIBLE]`\n\n- **T-1.1** the step file names `[IRREVERSIBLE]`\n";
   assert.equal(gateFor({ entry: plainFiles, body: inline }), null);
   const fenced = "Example:\n\n```\n## Phase 3: Drop the column [IRREVERSIBLE]\n```\n\n~~~md\n[IRREVERSIBLE]\n~~~\n";
   assert.equal(gateFor({ entry: plainFiles, body: fenced }), null);
   assert.equal(gateFor({ entry: plainFiles, body: `${inline}\nThe real step: [IRREVERSIBLE]\n` })?.kind, "irreversible", "a plain marker beside a quoted one still gates");
   const paths = withDesign({ entry: plainFiles, body: inline }, (id, root) => phasePaths(id, 1, root));
-  assert.ok(paths.includes("core/skills/designing/steps/15-migration.md"), "touch-set paths in backticks still read");
+  assert.ok(paths.includes("src/skills/designing/steps/15-migration.md"), "touch-set paths in backticks still read");
   const unclosed = "- **T-1.1** a stray ` backtick here\n- **T-1.2** drop the column [IRREVERSIBLE]\n- **T-1.3** a later `code` span\n";
   assert.equal(gateFor({ entry: plainFiles, body: unclosed })?.kind, "irreversible", "an unclosed backtick never hides a marker on a later line");
   const sameLine = "- **T-1.1** a stray ` backtick, then drop the column [IRREVERSIBLE] and a `code` span\n";

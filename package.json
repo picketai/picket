@@ -14,10 +14,10 @@
   "author": "Vlad Apetre",
   "type": "commonjs",
   "bin": {
-    "picket": "core/bin/picket.mjs"
+    "picket": "dist/bin/picket.mjs"
   },
   "files": [
-    "core/",
+    "dist/",
     ".claude-plugin/marketplace.json",
     "status/.claude-plugin/plugin.json",
     "status/hooks/",
@@ -33,11 +33,23 @@
     "!**/*.test.*"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=24",
+      "onFail": "error"
+    }
   },
   "scripts": {
-    "test": "node scripts/test.mjs",
-    "version": "node .github/scripts/release.mjs sync-version && git add core/.claude-plugin/plugin.json status/.claude-plugin/plugin.json session/.claude-plugin/plugin.json markdown/.claude-plugin/plugin.json",
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/watch.mjs",
+    "typecheck": "tsc -p .",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
+    "test": "npm run build && npm run typecheck && node scripts/test.mjs",
+    "version": "node .github/scripts/release.mjs sync-version && git add src/.claude-plugin/plugin.json status/.claude-plugin/plugin.json session/.claude-plugin/plugin.json markdown/.claude-plugin/plugin.json",
     "test:status": "claude plugin validate --strict status && claude plugin test status",
     "test:session": "claude plugin validate --strict session && claude plugin test session",
     "test:markdown": "claude plugin validate --strict markdown && claude plugin test markdown",
@@ -46,10 +58,13 @@
     "bench:integration": "node --test bench/integration/",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
-    "picket": "node core/bin/picket.mjs",
-    "claude": "node scripts/claude.mjs"
+    "picket": "node dist/bin/picket.mjs",
+    "claude": "npm run build && node scripts/claude.mjs"
   },
   "devDependencies": {
-    "opensrc": "^0.7.2"
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "opensrc": "^0.7.2",
+    "typescript": "7.0.2"
   }
 }

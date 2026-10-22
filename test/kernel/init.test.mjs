@@ -4,10 +4,10 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { init, marketplaceRoot } from "../../core/lib/init.mjs";
+import { init, marketplaceRoot } from "../../dist/lib/init.mjs";
 
-const BIN = resolve("core/bin/picket.mjs");
-const TEMPLATE = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
+const BIN = resolve("dist/bin/picket.mjs");
+const TEMPLATE = readFileSync(resolve("src/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
 
 function tempDir(prefix = "picket-init-") {
   return mkdtempSync(join(tmpdir(), prefix));
@@ -136,7 +136,7 @@ test("init writes at the git top level from a subfolder, in the cwd outside git,
 
 test("this repository's CLAUDE.md carries the shipped block verbatim, with no repository-only text in it", () => {
   const own = readFileSync(resolve("CLAUDE.md"), "utf8").replace(/\r\n/g, "\n");
-  assert.ok(own.startsWith(TEMPLATE), "CLAUDE.md must start with core/templates/claude-block.md");
+  assert.ok(own.startsWith(TEMPLATE), "CLAUDE.md must start with src/templates/claude-block.md");
   assert.equal(TEMPLATE.includes("--plugin-dir"), false);
   assert.equal(TEMPLATE.includes("harness-authoring"), false);
 });

@@ -12,7 +12,7 @@ test("a plugin install is what picket init writes: the shipped block, config, wo
   try {
     plugin.install(repo, resolve("."));
     for (const path of ["CLAUDE.md", ".picket/config.json", "work"]) assert.ok(existsSync(join(repo, path)), path);
-    const block = readFileSync(resolve("core/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
+    const block = readFileSync(resolve("src/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
     assert.ok(readFileSync(join(repo, "CLAUDE.md"), "utf8").replace(/\r\n/g, "\n").startsWith(block));
     const { statusLine, ...settings } = JSON.parse(readFileSync(join(repo, ".claude", "settings.json"), "utf8"));
     assert.equal("hooks" in settings, false);
@@ -21,7 +21,7 @@ test("a plugin install is what picket init writes: the shipped block, config, wo
       permissions: { allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"], ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"] },
     });
     assert.deepEqual(JSON.parse(readFileSync(join(repo, ".picket", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".picket/config.json"), "utf8")));
-    for (const path of [".claude/rules", ".claude/skills", "core"]) assert.equal(existsSync(join(repo, path)), false, path);
+    for (const path of [".claude/rules", ".claude/skills", "dist"]) assert.equal(existsSync(join(repo, path)), false, path);
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }
@@ -38,8 +38,8 @@ test("a plugin install refuses a root without the plugin manifest", () => {
   }
 });
 
-test("the plugin loads from core/ and may call the picket CLI", () => {
-  assert.equal(plugin.pluginDir(resolve(".")), join(resolve("."), "core"));
+test("the plugin loads from dist/ and may call the picket CLI", () => {
+  assert.equal(plugin.pluginDir(resolve(".")), join(resolve("."), "dist"));
   assert.ok(plugin.allowedTools.includes("Bash(picket *)"));
 });
 
@@ -94,13 +94,13 @@ test("plugin signals read the research lane from the packet and closing heading 
   assert.equal(plugin.signals(["▶ outline ready · 20261007-pricing"], { subagents: 1 }).lane, "research");
 });
 
-test("a plugin install lets the run read the harness's core/ through an absolute read rule", () => {
+test("a plugin install lets the run read the harness's dist/ through an absolute read rule", () => {
   const repo = mkdtempSync(join(tmpdir(), "bench-install-"));
   try {
     plugin.install(repo, resolve("."));
     plugin.install(repo, resolve("."));
-    const rule = plugin.absoluteReadRule(resolve("core"));
-    assert.match(rule, /^Read\(\/\/.+\/core\/\*\*\)$/);
+    const rule = plugin.absoluteReadRule(resolve("dist"));
+    assert.match(rule, /^Read\(\/\/.+\/dist\/\*\*\)$/);
     assert.equal(plugin.allowedTools.filter((t) => t === rule).length, 1);
   } finally {
     rmSync(repo, { recursive: true, force: true });

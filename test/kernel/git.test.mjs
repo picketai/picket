@@ -4,8 +4,8 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../core/lib/git.mjs";
-import { liveProbe } from "../../core/lib/statusline.mjs";
+import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../dist/lib/git.mjs";
+import { liveProbe } from "../../dist/lib/statusline.mjs";
 
 function gitIn(root, ...args) {
   execFileSync("git", ["-C", root, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args], { stdio: "ignore" });

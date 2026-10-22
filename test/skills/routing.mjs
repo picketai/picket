@@ -15,7 +15,7 @@ function frontmatterDescription(text) {
 }
 
 export function skillDescriptions(root) {
-  const dir = join(root, "core", "skills");
+  const dir = join(root, "src", "skills");
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, "SKILL.md")))
     .map((entry) => {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
-import * as paths from "../../core/lib/paths.mjs";
+import * as paths from "../../dist/lib/paths.mjs";
 import { codeLines, isPathsModule, kernelModules } from "./kernel-sources.mjs";
 
 const { projectRoot } = paths;
@@ -21,10 +21,10 @@ test("the self-location ban flags every forbidden form", () => {
   assert.deepEqual(selfLocationUses('const mod = await import("./vendor/x.mjs");'), []);
 });
 
-test("the vendored tokenizer lives under core/lib/vendor and the scans leave it out (T-7.5)", () => {
-  const tokenizer = resolve("core/lib/vendor/shell-quote-parse.mjs");
+test("the vendored tokenizer lives under src/lib/vendor and the scans leave it out (T-7.5)", () => {
+  const tokenizer = resolve("src/lib/vendor/shell-quote-parse.mjs");
   assert.equal(existsSync(tokenizer), true);
-  assert.equal(existsSync(resolve("core/hooks/vendor")), false);
+  assert.equal(existsSync(resolve("src/hooks/vendor")), false);
   assert.equal(kernelModules().includes(tokenizer), false);
 });
 
@@ -168,18 +168,18 @@ test("relative locations read as POSIX paths and absolute ones sit under the roo
 
 test("pluginRoot is the folder that holds rules/ and lib/, and rulesDir sits under it", () => {
   const root = paths.pluginRoot();
-  assert.equal(root, resolve("core"));
+  assert.equal(root, resolve("dist"));
   assert.equal(existsSync(join(root, "lib", "paths.mjs")), true);
   assert.equal(existsSync(join(root, "rules", "prose.md")), true);
   assert.equal(paths.rulesDir(), join(root, "rules"));
 });
 
 test("pluginManifestPath names the plugin manifest the marketplace serves", () => {
-  assert.equal(paths.pluginManifestPath(), resolve("core", ".claude-plugin", "plugin.json"));
+  assert.equal(paths.pluginManifestPath(), resolve("dist", ".claude-plugin", "plugin.json"));
   assert.equal(existsSync(paths.pluginManifestPath()), true);
 });
 
-const PROMPT_FOLDERS = ["core/skills", "core/agents", ".claude/rules", "core/rules"];
+const PROMPT_FOLDERS = ["src/skills", "src/agents", ".claude/rules", "src/rules"];
 
 function filesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

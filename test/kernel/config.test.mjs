@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../core/lib/config.mjs";
-import { detectTooling } from "../../core/lib/preflight.mjs";
-import { configRel, hostPath } from "../../core/lib/paths.mjs";
+import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/config.mjs";
+import { detectTooling } from "../../dist/lib/preflight.mjs";
+import { configRel, hostPath } from "../../dist/lib/paths.mjs";
 import { codeLines } from "./kernel-sources.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
-const SCHEMA = JSON.parse(readFileSync(resolve("core/lib/config.schema.json"), "utf8"));
+const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/config.schema.json"), "utf8"));
 
 function projectWith(config) {
   const root = mkdtempSync(join(tmpdir(), "harness-config-"));
@@ -27,12 +27,12 @@ function withProject(config, fn) {
   }
 }
 
-test("paths.mjs is the only file under core/lib whose code names the config file (T-2.4)", () => {
+test("paths.mjs is the only file under src/lib whose code names the config file (T-2.4)", () => {
   const configName = new RegExp(`(?<![\\w.-]|\\.picketai/)${basename(configRel()).replaceAll(".", "\\.")}`);
   assert.equal(configName.test('const f = "tsconfig.json";'), false);
   assert.equal(configName.test('const f = ".picketai/config.json";'), false);
   assert.equal(configName.test('const f = ".picket/config.json";'), true);
-  const lib = resolve("core/lib");
+  const lib = resolve("src/lib");
   const naming = readdirSync(lib)
     .filter((f) => f.endsWith(".mjs") && codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));
   assert.deepEqual(naming, ["paths.mjs"]);

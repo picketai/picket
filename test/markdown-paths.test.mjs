@@ -9,9 +9,9 @@ const ROOT = resolve(".");
 const UNSCANNED_PREFIXES = ["work/", "artifacts/", "bench/results/"];
 const PROJECT_MEMORY = ".claude/MEMORY.md";
 const SUPERSEDED = "[superseded";
-const SKILL_EXAMPLES = /^core\/skills\/[^/]+\/examples\//;
-const PLUGIN_DIR = "core/";
-const PLUGIN_SKILLS_DIR = "core/skills";
+const SKILL_EXAMPLES = /^src\/skills\/[^/]+\/examples\//;
+const PLUGIN_DIR = "src/";
+const PLUGIN_SKILLS_DIR = "src/skills";
 
 const ELSEWHERE = [
   {
@@ -46,7 +46,6 @@ const ELSEWHERE = [
       "Infrastructure/",
       "Presentation/",
       "Shared/",
-      "src/",
       "src/auth.ts",
       "src/auth/",
       "src/crypto/",
@@ -57,6 +56,7 @@ const ELSEWHERE = [
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },
   { why: "planned by SDR-00001", paths: ["rules/"] },
+  { why: "built by `npm run build`, ignored by git", paths: ["dist/"] },
 ];
 
 const NOT_A_PATH_CHAR = /[\s<>*{}[\]$~|"'=(),…]/;
@@ -150,17 +150,17 @@ test("spans inside fenced blocks are not cited", () => {
 
 test("records are not scanned: artifacts/ and the superseded lines of the project memory", () => {
   assert.equal(isScanned("artifacts/strategy/decisions/00001-a.md"), false);
-  assert.equal(isScanned("core/skills/ordering/SKILL.md"), true);
+  assert.equal(isScanned("src/skills/ordering/SKILL.md"), true);
   assert.equal(isScanned("README.md"), true);
   const memory = "- old `gone/a.md` [superseded 2026-10-10 by B]\n- current `kept/b.md`";
   assert.deepEqual(citedPaths(currentText(PROJECT_MEMORY, memory)), ["kept/b.md"]);
   assert.deepEqual(citedPaths(currentText("README.md", memory)), ["gone/a.md", "kept/b.md"]);
 });
 
-test("a missing path cited from core/ or README.md is a miss", () => {
+test("a missing path cited from src/ or README.md is a miss", () => {
   const listing = repositoryListing();
-  for (const file of ["core/skills/ordering/SKILL.md", "README.md"]) {
-    const [path] = citedPaths("see `core/lib/no-such-module.mjs`");
+  for (const file of ["src/skills/ordering/SKILL.md", "README.md"]) {
+    const [path] = citedPaths("see `src/lib/no-such-module.mjs`");
     assert.equal(resolvesFrom(file, path, listing) || elsewhere.has(path), false, file);
   }
 });

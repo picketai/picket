@@ -5,9 +5,9 @@ import { join, relative, resolve } from "node:path";
 import { codeLines } from "./kernel-sources.mjs";
 
 const ROOT = resolve(".");
-const CORE = join(ROOT, "core");
-const SKILLS_DIR = join(CORE, "skills");
-const LIB_DIR = join(CORE, "lib");
+const SRC = join(ROOT, "src");
+const SKILLS_DIR = join(SRC, "skills");
+const LIB_DIR = join(SRC, "lib");
 const SKIPPED_DIRS = new Set(["examples", "vendor"]);
 const CLI_VERBS = ["init", "extension", "extensions", "admit", "new", "list", "state", "set", "close", "next", "preflight", "verify", "route", "review-summary", "cost", "find-verdict", "drive", "comment", "packet", "pr", "source", "migrate", "check"];
 
@@ -47,8 +47,8 @@ function offenders(files, check) {
   return files.flatMap((file) => check(readFileSync(file, "utf8")).map((v) => `${relative(ROOT, file)}: ${v}`));
 }
 
-test("every Markdown file under core/ and CLAUDE.md uses picket verbs and prefixed names", () => {
-  const files = [...filesUnder(CORE, ".md"), join(ROOT, "CLAUDE.md")];
+test("every Markdown file under src/ and CLAUDE.md uses picket verbs and prefixed names", () => {
+  const files = [...filesUnder(SRC, ".md"), join(ROOT, "CLAUDE.md")];
   assert.deepEqual(offenders(files, markdownViolations), []);
 });
 

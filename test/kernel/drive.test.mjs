@@ -4,10 +4,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { portOpen, parseHit } from "../../core/lib/drive.mjs";
-import { statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
+import { portOpen, parseHit } from "../../dist/lib/drive.mjs";
+import { statePath, stateRel, STATE_FILES } from "../../dist/lib/paths.mjs";
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 
 function run(root, args, env = {}) {
   try {

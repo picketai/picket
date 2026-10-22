@@ -45,3 +45,5 @@ tmp/
 status/tsconfig.json
 session/tsconfig.json
 markdown/tsconfig.json
+
+dist/

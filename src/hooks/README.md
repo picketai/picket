@@ -19,10 +19,10 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 | `emit.ledger.mjs` | Stop, SubagentStop | one v2 ledger row per turn (`bench/schema/ledger-v2.schema.json`) |
 | `notify.user.mjs` | Notification permission_prompt, idle_prompt | an OS notification in a detached process (a Windows toast through powershell.exe, osascript, notify-send); `PICKET_NOTIFY=off` skips it |
 
-Every hook, guards included, is a thin shell: it imports `runHook` from `core/lib/hook.mjs` and its handler from `core/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
+Every hook, guards included, is a thin shell: it imports `runHook` from `src/lib/hook.mjs` and its handler from `src/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
 
-Libraries in `core/lib/`: `transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `turn-block.mjs` and `drive-evidence.mjs` (kept from the earlier copy-in version for their tested parsers), `source-paths.mjs` (what a source protects), `powershell-text.mjs` (the PowerShell reader `guard.bash` uses for the PowerShell tool), and `core/lib/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses for Bash.
+Libraries in `src/lib/`: `transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `turn-block.mjs` and `drive-evidence.mjs` (kept from the earlier copy-in version for their tested parsers), `source-paths.mjs` (what a source protects), `powershell-text.mjs` (the PowerShell reader `guard.bash` uses for the PowerShell tool), and `src/lib/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses for Bash.
 
-Standalone: `node core/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
+Standalone: `node dist/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
 
 A blocked call or a bounced turn is Picket working. Fix the violation; do not retry variants.

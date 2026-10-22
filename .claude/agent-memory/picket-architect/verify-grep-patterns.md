@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-`picket verify` tests each `greps` pattern as `new RegExp(pattern, "m")` (core/lib/verify.mjs). In JS, `$` under `m` matches only before `\n`, so `'^## picket:analyst$'` fails on a CRLF file. Anchor heading greps with `\b` (or `\s*$`) instead.
+`picket verify` tests each `greps` pattern as `new RegExp(pattern, "m")` (src/lib/verify.mjs). In JS, `$` under `m` matches only before `\n`, so `'^## picket:analyst$'` fails on a CRLF file. Anchor heading greps with `\b` (or `\s*$`) instead.
 
 **Why:** developers on this Windows repo may write CRLF; a `$`-anchored grep would fail a correct phase.
 

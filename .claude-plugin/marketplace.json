@@ -5,7 +5,7 @@
   "plugins": [
     {
       "name": "picket",
-      "source": "./core",
+      "source": "./dist",
       "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel."
     },
     {

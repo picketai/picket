@@ -4,13 +4,13 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { createWork } from "../../core/lib/work.mjs";
-import { mutate, pickMutant, renderMutation } from "../../core/lib/mutate.mjs";
-import { STATE_FILES, statePath } from "../../core/lib/paths.mjs";
-import { reviewSummary } from "../../core/lib/review.mjs";
+import { createWork } from "../../dist/lib/work.mjs";
+import { mutate, pickMutant, renderMutation } from "../../dist/lib/mutate.mjs";
+import { STATE_FILES, statePath } from "../../dist/lib/paths.mjs";
+import { reviewSummary } from "../../dist/lib/review.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
-const BIN = resolve("core/bin/picket.mjs");
+const BIN = resolve("dist/bin/picket.mjs");
 const SOURCE = "export function same(a, b) {\n  return 0;\n}\n";
 const CHANGED = "export function same(a, b) {\n  if (a === b) return 1;\n  return 0;\n}\n";
 const PROBE = 'const text = require("fs").readFileSync("src/same.js", "utf8");\nprocess.exit(text.includes("!==") ? 1 : 0);\n';

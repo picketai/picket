@@ -38,6 +38,10 @@
       "Bash(git submodule*)",
       "PowerShell(picket drive *)",
       "PowerShell(picket check *)"
+    ],
+    "deny": [
+      "Edit(dist/**)",
+      "Write(dist/**)"
     ]
   },
   "disableClaudeAiConnectors": true,

@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-`picket route --verdict approved` commits `work/<id>/` with the phase (core/lib/route.mjs, `add: [work/${id}]`). On 2026-10-18 the user approved phase 4 of 20261018-fix-follow-ups-from-the-two-items while I was mid-amendment. Commit 87fea42 took my D-005 heading bump to (r3) without its body or log line, and the phase I meant to amend was then approved.
+`picket route --verdict approved` commits `work/<id>/` with the phase (src/lib/route.mjs, `add: [work/${id}]`). On 2026-10-18 the user approved phase 4 of 20261018-fix-follow-ups-from-the-two-items while I was mid-amendment. Commit 87fea42 took my D-005 heading bump to (r3) without its body or log line, and the phase I meant to amend was then approved.
 
 `lint.schema` compares decision markers with the HEAD copy, so after that the next bump had to be (r4).
 

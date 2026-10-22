@@ -11,7 +11,7 @@ function pathKey(env) {
 
 export function checkoutEnv(env, repo) {
   const key = pathKey(env);
-  const bin = join(repo, "core", "bin");
+  const bin = join(repo, "dist", "bin");
   const others = String(env[key] ?? "")
     .split(delimiter)
     .filter((entry) => entry && resolve(entry) !== resolve(bin));
@@ -19,7 +19,7 @@ export function checkoutEnv(env, repo) {
 }
 
 function launch(args) {
-  const child = spawn("claude", ["--plugin-dir", "core", ...args], {
+  const child = spawn("claude", ["--plugin-dir", "dist", ...args], {
     cwd: REPO,
     env: checkoutEnv(process.env, REPO),
     stdio: "inherit",

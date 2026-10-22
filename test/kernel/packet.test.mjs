@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork, setMarker } from "../../core/lib/work.mjs";
-import { packet, parseBlock, saveBlock, cut, WIDTH } from "../../core/lib/packet.mjs";
+import { createWork, setMarker } from "../../dist/lib/work.mjs";
+import { packet, parseBlock, saveBlock, cut, WIDTH } from "../../dist/lib/packet.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 // The block the user's screenshot came from, in the developer's contract shape.

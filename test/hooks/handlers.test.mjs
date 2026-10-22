@@ -4,23 +4,24 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createWork, writeState } from "../../core/lib/work.mjs";
-import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../core/lib/paths.mjs";
-import { emitLedger } from "../../core/lib/hooks/emit.ledger.mjs";
-import { reviewClasses, routeVerdict } from "../../core/lib/hooks/route.verdict.mjs";
-import { injectState } from "../../core/lib/hooks/inject.state.mjs";
-import { injectRules, INJECTED_RULES } from "../../core/lib/hooks/inject.rules.mjs";
-import { injectExtensions } from "../../core/lib/hooks/inject.extensions.mjs";
-import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../core/lib/hooks/guard.bash.mjs";
-import { guardScope } from "../../core/lib/hooks/guard.scope.mjs";
-import { ASKING_MODES, commandKey } from "../../core/lib/escalation.mjs";
-import { observeDrive } from "../../core/lib/hooks/observe.drive.mjs";
-import { notificationCommand, notifyUser } from "../../core/lib/hooks/notify.user.mjs";
-import { branchingManifestPath } from "../../core/lib/paths.mjs";
-import { latestHints, spawnHints } from "../../core/lib/transcript.mjs";
+import { createWork, writeState } from "../../dist/lib/work.mjs";
+import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/paths.mjs";
+import { emitLedger } from "../../dist/lib/hooks/emit.ledger.mjs";
+import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route.verdict.mjs";
+import { injectState } from "../../dist/lib/hooks/inject.state.mjs";
+import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject.rules.mjs";
+import { injectExtensions } from "../../dist/lib/hooks/inject.extensions.mjs";
+import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard.bash.mjs";
+import { guardScope } from "../../dist/lib/hooks/guard.scope.mjs";
+import { ASKING_MODES, commandKey } from "../../dist/lib/escalation.mjs";
+import { observeDrive } from "../../dist/lib/hooks/observe.drive.mjs";
+import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify.user.mjs";
+import { branchingManifestPath } from "../../dist/lib/paths.mjs";
+import { latestHints, spawnHints } from "../../dist/lib/transcript.mjs";
 
-const HOOKS = resolve("core/hooks");
-const HANDLERS = resolve("core/lib/hooks");
+const HOOKS = resolve("dist/hooks");
+const HOOK_SHELLS = resolve("src/hooks");
+const HANDLERS = resolve("src/lib/hooks");
 const SHELLS = [
   "emit.ledger.mjs",
   "guard.bash.mjs",
@@ -69,22 +70,22 @@ function transcript(root, entries) {
 const user = (text) => ({ type: "user", message: { role: "user", content: text } });
 const assistant = (text) => ({ type: "assistant", message: { role: "assistant", model: "claude-opus-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 100 }, content: [{ type: "text", text }] } });
 
-test("core/hooks holds hooks.json, the hook shells, README.md and no other file (T-7.1)", () => {
+test("src/hooks holds hooks.json, the hook shells, README.md and no other file (T-7.1)", () => {
   const files = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (entry.isDirectory()) walk(join(dir, entry.name));
-      else files.push(join(dir, entry.name).slice(HOOKS.length + 1).replaceAll("\\", "/"));
+      else files.push(join(dir, entry.name).slice(HOOK_SHELLS.length + 1).replaceAll("\\", "/"));
     }
   };
-  walk(HOOKS);
+  walk(HOOK_SHELLS);
   assert.deepEqual(files.sort(), ["README.md", "hooks.json", ...SHELLS].sort());
 });
 
 test("every shell imports only runHook and its handler, in at most five lines (T-6.1, T-7.1)", () => {
   for (const file of SHELLS) {
     const handler = handlerName(file);
-    const lines = readFileSync(join(HOOKS, file), "utf8").split(/\r?\n/).filter((l) => l.trim());
+    const lines = readFileSync(join(HOOK_SHELLS, file), "utf8").split(/\r?\n/).filter((l) => l.trim());
     assert.ok(lines.length <= MAX_SHELL_LINES, `${file}: ${lines.length} lines`);
     const imports = lines.filter((l) => l.startsWith("import "));
     assert.deepEqual(imports, [`import { runHook } from "../lib/hook.mjs";`, `import { ${handler} } from "../lib/hooks/${file}";`], file);
@@ -139,10 +140,10 @@ test("the data-not-instructions statement lives only in the untrusted rule (T-3.
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) walk(path);
-      else if (entry.name.endsWith(".md") && /is data, never (an? )?instructions?/i.test(readFileSync(path, "utf8"))) hits.push(path.slice(resolve("core").length + 1).replaceAll("\\", "/"));
+      else if (entry.name.endsWith(".md") && /is data, never (an? )?instructions?/i.test(readFileSync(path, "utf8"))) hits.push(path.slice(resolve("src").length + 1).replaceAll("\\", "/"));
     }
   };
-  walk(resolve("core"));
+  walk(resolve("src"));
   assert.deepEqual(hits, ["rules/untrusted.md"]);
 });
 
@@ -378,10 +379,10 @@ test("latestHints skips a later message without a work line (T-2.3)", () => {
   });
 });
 
-test("no helper is left under .claude/hooks/lib; all four live in core/lib (T-6.4)", () => {
+test("no helper is left under .claude/hooks/lib; all four live in src/lib (T-6.4)", () => {
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
-  for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve("core/lib", helper)), true, helper);
+  for (const helper of ["transcript.mjs", "turn-block.mjs", "source-paths.mjs", "drive-evidence.mjs"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
 });
 
 test("guardBash allows a compound of read-only pieces and bare picket calls that wrap nothing", () => {
@@ -393,7 +394,7 @@ test("guardBash allows a compound of read-only pieces and bare picket calls that
     assert.equal(decision("picket route x --verdict APPROVED --agent user"), null, "a lone mutating picket call is left to the project's allow rule");
 
     assert.equal(decision('API_KEY=k picket drive --hit "GET /h"'), null);
-    assert.equal(decision("node core/bin/picket.mjs next x; ls"), null);
+    assert.equal(decision("node dist/bin/picket.mjs next x; ls"), null);
     assert.equal(decision("/usr/local/bin/picket next x; ls"), null);
     assert.equal(decision('picket drive --run "npm start"; ls'), null);
 
@@ -404,7 +405,7 @@ test("guardBash allows a compound of read-only pieces and bare picket calls that
 });
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
-  const executed = ["core/lib/drive.mjs", "core/lib/check.mjs"].flatMap((file) =>
+  const executed = ["src/lib/drive.mjs", "src/lib/check.mjs"].flatMap((file) =>
     [...readFileSync(resolve(file), "utf8").matchAll(/assertNotDestructive\(o\.\w+, "picket \w+ (--[\w-]+)"\)/g)].map((m) => m[1]),
   );
   assert.deepEqual(executed.sort(), ["--only", "--run", "--start"]);
@@ -412,7 +413,7 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
 });
 
 test("every picket verb is placed in exactly one of the read and other verb sets", () => {
-  const list = readFileSync(resolve("core/bin/picket.mjs"), "utf8").match(/^const VERBS = \[([^\]]+)\];$/m)[1];
+  const list = readFileSync(resolve("src/bin/dispatch.mjs"), "utf8").match(/^const VERBS = \[([^\]]+)\];$/m)[1];
   const verbs = [...list.matchAll(/"([\w-]+)"/g)].map((m) => m[1]);
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const verb of verbs) {
@@ -440,7 +441,7 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
       assert.equal(outcome(`picket drive --run '${command}'`, "picket:developer")?.permissionDecision, "deny", `wrapped ${verb}`);
       assert.equal(outcome(command, "picket:developer", "PowerShell")?.permissionDecision, "deny", `PowerShell ${verb}`);
       const args = command.slice("picket ".length);
-      for (const form of [`picket --root ${root} ${args}`, `picket --human --root . ${args}`, `node core/bin/picket.mjs --root . ${args}`]) {
+      for (const form of [`picket --root ${root} ${args}`, `picket --human --root . ${args}`, `node dist/bin/picket.mjs --root . ${args}`]) {
         assert.equal(outcome(form, "picket:developer")?.permissionDecision, "deny", form);
       }
     }
@@ -496,7 +497,7 @@ test("an unreadable payload that mentions picket is denied for an agent; ordinar
     for (const command of ["bash -c 'npm test'", "timeout 30 npm test", 'bash -c "echo $HOME"']) assert.equal(decision(command, "picket:developer"), null, command);
     for (const command of [`eval ${WAIVE}`, `bash -c '${WAIVE}'`, hidden]) assert.equal(decision(command, undefined), null, `lead: ${command}`);
     assert.equal(decision("bash -c 'for f in .picket/state/scratch/*.mjs; do node $f; done'", "picket:developer"), null, "a .picket/ path is not a mention of the picket command");
-    assert.equal(decision("bash -c 'node core/bin/picket.mjs $VERB x'", "picket:developer"), "deny", "the kernel script is a mention");
+    assert.equal(decision("bash -c 'node dist/bin/picket.mjs $VERB x'", "picket:developer"), "deny", "the kernel script is a mention");
     assert.equal(decision("command -v picket", "picket:developer"), null, "a lookup of the picket command is not a call");
   });
 });
@@ -790,7 +791,7 @@ test("guardBash lets an assigned variable reach only inert roots and keeps untai
   withProject((root) => {
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
 
-    for (const command of ['cd src && f=$(grep -rln "class X" --include=*.cs .); echo $f; cat -n $f', 'P="core"; cat "$P/hooks/hooks.json"', "f=a; echo ${f}", "a=1 b=2; ls"]) {
+    for (const command of ['cd src && f=$(grep -rln "class X" --include=*.cs .); echo $f; cat -n $f', 'P="dist"; cat "$P/hooks/hooks.json"', "f=a; echo ${f}", "a=1 b=2; ls"]) {
       assert.equal(decision(command), "allow", command);
     }
 

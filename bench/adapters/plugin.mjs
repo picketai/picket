@@ -29,7 +29,7 @@ export function copyConfig(repo, harnessRoot) {
 }
 
 export function pluginDir(harnessRoot) {
-  return join(harnessRoot, "core");
+  return join(harnessRoot, "dist");
 }
 
 function runInit(repo, harnessRoot) {

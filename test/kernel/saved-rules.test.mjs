@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { couldMatchEscalation, couldMatchPowerShellEscalation, escalationAllowRules } from "../../core/lib/saved-rules.mjs";
+import { couldMatchEscalation, couldMatchPowerShellEscalation, escalationAllowRules } from "../../dist/lib/saved-rules.mjs";
 
 function settings(dir, file, allow) {
   mkdirSync(join(dir, ".claude"), { recursive: true });
