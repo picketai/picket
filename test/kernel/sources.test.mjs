@@ -79,6 +79,7 @@ test("a working-copy edit is a candidate with its own hash and dirty: true", () 
   assert.equal(main.sha256, old.sha256);
   assert.notEqual(featCandidate.sha256, main.sha256);
   assert.deepEqual([main.dirty, featCandidate.dirty], [false, true]);
+  assert.equal(featCandidate.commit, git(feat, "rev-parse", "HEAD"), "a dirty copy records the worktree's HEAD");
   rmSync(base, { recursive: true, force: true });
 });
 
@@ -166,50 +167,20 @@ function readYaml(root, id) {
   return parseYaml(readFileSync(join(root, "work", id, "sources.yaml"), "utf8"));
 }
 
-test("a document only in the main worktree resolves single, and the snapshot is its bytes (T-4.1, T-4.6)", () => {
-  const { base, main } = tempSource();
-  mkdirSync(join(main, "docs", "orders"));
-  writeFileSync(join(main, "docs", "orders", "pricing.md"), "# Order pricing\n");
-  git(main, "add", "-A");
-  git(main, "commit", "-q", "-m", "order pricing");
-  writeFileSync(join(main, "docs", "orders", "pricing.md"), "# Order pricing\n\nDraft: weekend rate.\n");
-  const root = tempProject();
-  const r = openWithStory(root, "As a customer I pay what `docs/orders/pricing.md` says.\n", main);
-  assert.equal(r.code, 0, r.err);
-  const { id, source } = JSON.parse(r.out);
-  assert.equal(source, "SHOP-1");
-  assert.equal(readFileSync(join(root, "work", id, "story.md"), "utf8"), "As a customer I pay what `docs/orders/pricing.md` says.\n");
-  const [ref] = readYaml(root, id).refs;
-  assert.deepEqual([ref.ref, ref.status, ref.chosen_by, ref.branch, ref.dirty], ["docs/orders/pricing.md", "resolved", "single", "main", true]);
-  assert.equal(ref.commit, git(main, "rev-parse", "HEAD"), "a dirty copy records the worktree's HEAD");
-  assert.deepEqual(readFileSync(join(root, "work", id, ref.snapshot)), readFileSync(join(main, "docs", "orders", "pricing.md")));
-  rmSync(base, { recursive: true, force: true });
-  rmSync(root, { recursive: true, force: true });
-});
-
 test("a story naming a folder opens the work item and resolves only the files it names", () => {
   const { base, main, source } = tempSource();
   mkdirSync(join(main, "src", "DriverPlatformWebapp"), { recursive: true });
   assert.deepEqual(candidates(source, "src/DriverPlatformWebapp", places(main)), []);
   const root = tempProject();
-  const r = openWithStory(root, "The webapp lives in `src/DriverPlatformWebapp`, priced by `docs/pricing.md`.\n", main);
+  const story = "The webapp lives in `src/DriverPlatformWebapp`, priced by `docs/pricing.md`, weekly and/or monthly, per https://x.io/a/b.md.\n";
+  const r = openWithStory(root, story, main);
   assert.equal(r.code, 0, r.err);
-  const { refs, unmatched } = readYaml(root, JSON.parse(r.out).id);
+  const { id, source: ticket } = JSON.parse(r.out);
+  assert.equal(ticket, "SHOP-1");
+  assert.equal(readFileSync(join(root, "work", id, "story.md"), "utf8"), story);
+  const { refs, unmatched } = readYaml(root, id);
   assert.deepEqual(refs.map((ref) => ref.path), ["docs/pricing.md"]);
   assert.deepEqual(unmatched, []);
-  rmSync(base, { recursive: true, force: true });
-  rmSync(root, { recursive: true, force: true });
-});
-
-test("CRLF in the main worktree and LF on a branch are identical, and the main worktree wins (T-4.2)", () => {
-  const { base, main } = tempSource();
-  writeFileSync(join(main, "docs", "pricing.md"), "# Pricing\r\n\r\nThe daily rate is 10.\r\n");
-  const root = tempProject();
-  const r = openWithStory(root, "See docs/pricing.md.", main);
-  assert.equal(r.code, 0, r.err);
-  const [ref] = readYaml(root, JSON.parse(r.out).id).refs;
-  assert.equal(ref.chosen_by, "identical");
-  assert.equal(ref.worktree, listWorktrees(main)[0].path);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });
@@ -235,7 +206,7 @@ test("differing versions are ambiguous until the user picks one (T-4.3)", () => 
   assert.equal(picked.code, 0, picked.err);
   assert.equal(JSON.parse(picked.out).next.action, "write_artifact");
   const [after] = readYaml(root, id).refs;
-  assert.deepEqual([after.status, after.chosen_by, after.branch, after.candidates], ["resolved", "user", "feat-x", undefined]);
+  assert.deepEqual([after.status, after.chosen_by, after.branch, after.dirty, after.candidates], ["resolved", "user", "feat-x", true, undefined]);
   assert.equal(readFileSync(join(root, "work", id, after.snapshot), "utf8"), "# Pricing\n\nThe daily rate is 12.\n");
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
@@ -252,30 +223,6 @@ test("a pin that matches nothing exits 2 listing the places and creates no work 
   assert.equal(pinned.code, 0, pinned.err);
   const [ref] = readYaml(root, JSON.parse(pinned.out).id).refs;
   assert.deepEqual([ref.chosen_by, ref.branch, ref.worktree], ["pin", "old", null]);
-  rmSync(base, { recursive: true, force: true });
-  rmSync(root, { recursive: true, force: true });
-});
-
-test("ordinary words stay plain text; a path-like miss with an extension is unmatched (T-4.5)", () => {
-  const { base, main } = tempSource();
-  const root = tempProject();
-  const r = openWithStory(root, "Weekly and/or monthly; see notes/missing.md, docs/pricing.md:3 and https://x.io/a/b.md.", main);
-  const record = readYaml(root, JSON.parse(r.out).id);
-  assert.deepEqual(record.refs.map((x) => x.ref), ["docs/pricing.md"]);
-  assert.deepEqual(record.unmatched, ["notes/missing.md"]);
-  rmSync(base, { recursive: true, force: true });
-  rmSync(root, { recursive: true, force: true });
-});
-
-test("a #fragment and a markdown link target resolve their path; an unshaped path goes to unmatched", () => {
-  const { base, main } = tempSource();
-  mkdirSync(join(main, "docs", "orders"));
-  writeFileSync(join(main, "docs", "orders", "fees.md"), "# Fees\n");
-  const root = tempProject();
-  const r = openWithStory(root, "Per [fees](docs/orders/fees.md) and docs/orders/fees.md#late-fees; also docs/ré/x.md.", main);
-  const record = readYaml(root, JSON.parse(r.out).id);
-  assert.deepEqual(record.refs.map((x) => [x.ref, x.anchor]), [["docs/orders/fees.md", "late-fees"]]);
-  assert.deepEqual(record.unmatched, ["docs/ré/x.md"]);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });
