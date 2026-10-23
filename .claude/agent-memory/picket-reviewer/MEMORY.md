@@ -9,4 +9,5 @@
 - [Route commit keeps subject only](route-commit-keeps-subject-only.md) — a block's multi-line Commit body never reaches git log; it lives in the block
 - [New next action: check the band](new-next-action-check-band.md) — band.ts renders any user action as "approve phase"; probes go to the scratchpad only
 - [Probe links at parent segments](probe-links-at-parent-segments.md) — removers checking only the leaf delete through a linked .picket or .claude
+- [Compare .gitignore by ignored set](compare-gitignore-by-ignored-set.md) — diff ls-files -o -i under old and new file, via scratchpad copies
 - [Lead-only verbs denied to the reviewer](lead-only-verbs-denied-to-reviewer.md) — uninstall dry run is denied even in scratch; verify from code

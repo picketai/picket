@@ -50,7 +50,7 @@
     "test:markdown": "claude plugin validate --strict dist/mods/markdown && claude plugin test dist/mods/markdown",
     "test:session": "claude plugin validate --strict dist/mods/session && claude plugin test dist/mods/session",
     "bench:test": "node --test \"bench/test/*.test.mjs\"",
-    "bench:integration": "node --test bench/integration/",
+    "bench:integration": "node --test \"bench/integration/*.test.mjs\"",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
     "picket": "node dist/bin/picket.mjs",
