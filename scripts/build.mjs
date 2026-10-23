@@ -4,6 +4,7 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOOKS } from "../src/lib/hooks.mts";
 import { MODS } from "../src/lib/mods.mts";
+import { writeReferencePages } from "./docs.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const SRC = join(REPO, "src");
@@ -239,6 +240,7 @@ export async function buildAll() {
   await build(moduleOptions(files.filter(isBuiltModule)));
   await Promise.all(Object.keys(HOOKS).map((name) => build(entryOptions(name))));
   buildMods();
+  await writeReferencePages();
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
