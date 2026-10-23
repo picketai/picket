@@ -30,4 +30,4 @@ Evidence rules 2 and 3 of the skill apply: never infer a section's content from 
 
 Each row is a skill finding line with the record anchor as its location, for example `work/<id>/design.md#D-003`. Name the check in the first sentence. `ALIGNED` when no Critical or Major row exists; `DRIFT DETECTED` otherwise. The token stands alone on the last line.
 
-Example row: `- [Critical] artifacts/plans/00012-payments.md#D-003 — Decision coverage: D-003 mandates idempotent retries and no phase criterion implements them. Retries will duplicate payments on timeout. Add a phase with a T-criterion for the idempotency key, or withdraw D-003.`
+Example row: `- [Critical] artifacts/plans/00012-payments.md#D-003: Decision coverage: D-003 mandates idempotent retries and no phase criterion implements them. Retries will duplicate payments on timeout. Add a phase with a T-criterion for the idempotency key, or withdraw D-003.`

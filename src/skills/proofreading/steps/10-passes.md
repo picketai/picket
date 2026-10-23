@@ -12,7 +12,7 @@ Run the mechanical sweeps with tools:
 f=<path>
 grep -nEi '\b([a-z]+) \1\b' "$f"                                  # doubled words
 grep -nE '\b(its|it.s|affect|effect|their|there|they.re|your|you.re|then|than|principle|principal|complement|compliment|ensure|insure)\b' "$f"
-grep -nE '[—–]' "$f"                                              # dashes (house style)
+grep -nE $'\xe2\x80\x93|\xe2\x80\x94' "$f"                         # en and em dashes as UTF-8 bytes (house style)
 grep -nE ' +$' "$f"                                               # trailing whitespace
 grep -nE '\b(TODO|TBD|FIXME|XXX|Lorem ipsum)\b' "$f"             # leftovers that must never ship
 grep -cE '^```' "$f"                                              # fence count must be even

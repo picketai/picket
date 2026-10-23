@@ -1,4 +1,4 @@
-# Template — Large Body of Work (Epic)
+# Template: Large Body of Work (Epic)
 
 Use this scaffold for every `--epic` issue. An epic groups stories, tasks and spikes under one business outcome; it is never implemented directly. Follow the structure exactly. Omit no required section.
 
@@ -8,8 +8,8 @@ _Example: `[Orders] Replace the legacy order handshake`_
 ---
 
 **Issue Type:** Epic
-**Input provided by:** [Stakeholder / Product Manager / Programme Lead] — [one sentence describing what they requested and why]
-**Priority:** [Critical / High / Medium / Low] — [one-sentence justification]
+**Input provided by:** [Stakeholder / Product Manager / Programme Lead]: [one sentence describing what they requested and why]
+**Priority:** [Critical / High / Medium / Low]: [one-sentence justification]
 **Target release / quarter:** [Release name, quarter, or `REQUIRES INPUT: confirm the target window`]
 **Labels:** `epic`, [module label e.g. `orders`, `logistics`, `payments`]
 
@@ -48,9 +48,9 @@ _Example: `[Orders] Replace the legacy order handshake`_
 
 [Milestone-shaped, not implementation-shaped. Each criterion is an observable capability, verifiable without reading code. Aim for 3 to 6; an epic with one criterion is a story.]
 
-- [ ] **AC1 — [short label]:** [Observable capability that exists when this milestone is reached.]
-- [ ] **AC2 — [short label]:** [Another milestone.]
-- [ ] **AC-Retire — [short label]:** [Where the epic replaces something, state explicitly that the old path is removed or disabled. Epics that add without retiring leave both paths live forever.]
+- [ ] **AC1, [short label]:** [Observable capability that exists when this milestone is reached.]
+- [ ] **AC2, [short label]:** [Another milestone.]
+- [ ] **AC-Retire, [short label]:** [Where the epic replaces something, state explicitly that the old path is removed or disabled. Epics that add without retiring leave both paths live forever.]
 
 ### Child Items (suggested breakdown)
 

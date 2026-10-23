@@ -1,4 +1,4 @@
-# Template — Technical Debt
+# Template: Technical Debt
 
 Use this scaffold for every `--debt` issue. Follow the structure exactly. Omit no required section.
 
@@ -8,8 +8,8 @@ _Example: `[DEBT] [Common/Infrastructure] Replace synchronous HTTP client calls 
 ---
 
 **Issue Type:** Task
-**Input provided by:** [Principal Engineer / Architect / Tech Lead] — [one sentence characterising the technical concern they raised and how they identified it]
-**Priority:** [Critical / High / Medium / Low] — [one-sentence justification linking to business risk]
+**Input provided by:** [Principal Engineer / Architect / Tech Lead]: [one sentence characterising the technical concern they raised and how they identified it]
+**Priority:** [Critical / High / Medium / Low]: [one-sentence justification linking to business risk]
 **Labels:** `technical-debt`, [module label], [category e.g. `performance`, `security`, `maintainability`, `testability`]
 
 ---
@@ -17,7 +17,7 @@ _Example: `[DEBT] [Common/Infrastructure] Replace synchronous HTTP client calls 
 ### Business Context
 
 > Why is this technical debt being surfaced now? What triggered the decision to prioritise it?
-> Write 2–3 paragraphs for a non-technical stakeholder explaining the risk in business terms: what could happen if this debt continues to accumulate, how it slows the team down, or what incident/near-miss motivated addressing it now.
+> Write 2 to 3 paragraphs for a non-technical stakeholder explaining the risk in business terms: what could happen if this debt continues to accumulate, how it slows the team down, or what incident/near-miss motivated addressing it now.
 
 ### Risk of NOT Doing This
 
@@ -27,7 +27,7 @@ _Example: `[DEBT] [Common/Infrastructure] Replace synchronous HTTP client calls 
 
 - **Incident risk:** [What failure mode does this debt create? How likely is it to cause a production incident?]
 - **Velocity impact:** [How much is this debt currently slowing the team down? In what specific ways?]
-- **Cost of delay:** [Does this debt compound over time — i.e., does it get more expensive to address the longer it is left?]
+- **Cost of delay:** [Does this debt compound over time, that is, does it get more expensive to address the longer it is left?]
 - **Security / compliance risk:** [If applicable]
 
 ### Current State
@@ -36,16 +36,16 @@ _Example: `[DEBT] [Common/Infrastructure] Replace synchronous HTTP client calls 
 
 **Key locations:**
 
-- `[file path or module path]` — [what is here and what is wrong with it]
-- `[file path or module path]` — [what is here and what is wrong with it]
+- `[file path or module path]`: [what is here and what is wrong with it]
+- `[file path or module path]`: [what is here and what is wrong with it]
 
 ### Desired State
 
-[Precise description of the target state after the debt is resolved. Describe the pattern, architecture, or behaviour that should exist. This is not an implementation guide — it is the definition of what "clean" looks like.]
+[Precise description of the target state after the debt is resolved. Describe the pattern, architecture, or behaviour that should exist. This is not an implementation guide; it is the definition of what "clean" looks like.]
 
 ### Proposed Approach
 
-[High-level description of how to get from current state to desired state. Written from the PO/architect perspective — enough detail for estimation and planning, not a step-by-step implementation guide. Reference any ADRs, architectural patterns, or prior decisions that apply.]
+[High-level description of how to get from current state to desired state. Written from the PO/architect perspective: enough detail for estimation and planning, not a step-by-step implementation guide. Reference any ADRs, architectural patterns, or prior decisions that apply.]
 
 ### Constraints & Risks
 
@@ -53,10 +53,10 @@ _Example: `[DEBT] [Common/Infrastructure] Replace synchronous HTTP client calls 
 
 ### Acceptance Criteria
 
-- [ ] **AC1 — Target pattern:** [Describe the specific pattern or behaviour that must be present after the work is done, verifiable by code review or automated test.]
-- [ ] **AC2 — No regression:** Existing behaviour is preserved — all existing tests pass and no new errors are introduced in error monitoring.
-- [ ] **AC3 — Coverage:** [Specific test coverage requirement for the refactored code, if applicable.]
-- [ ] **AC4 — Architecture compliance:** The project's architecture/contract test suite passes with no new violations.
+- [ ] **AC1, Target pattern:** [Describe the specific pattern or behaviour that must be present after the work is done, verifiable by code review or automated test.]
+- [ ] **AC2, No regression:** Existing behaviour is preserved: all existing tests pass and no new errors are introduced in error monitoring.
+- [ ] **AC3, Coverage:** [Specific test coverage requirement for the refactored code, if applicable.]
+- [ ] **AC4, Architecture compliance:** The project's architecture/contract test suite passes with no new violations.
 - [ ] [Add issue-specific criteria]
 
 ### Out of Scope

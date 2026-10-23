@@ -1,4 +1,4 @@
-# Template — New Functionality (User Story)
+# Template: New Functionality (User Story)
 
 Use this scaffold for every `--story` issue. Follow the structure exactly. Omit no required section.
 
@@ -8,8 +8,8 @@ _Example: `[Orders] As a support agent, I want to confirm a book order so that t
 ---
 
 **Issue Type:** Story
-**Input provided by:** [Stakeholder / Product Manager / Business Analyst] — [one sentence describing what they requested and why]
-**Priority:** [Critical / High / Medium / Low] — [one-sentence justification]
+**Input provided by:** [Stakeholder / Product Manager / Business Analyst]: [one sentence describing what they requested and why]
+**Priority:** [Critical / High / Medium / Low]: [one-sentence justification]
 **Epic Link:** [Epic name or key, or `REQUIRES INPUT: confirm which epic this belongs to`]
 **Labels:** `new-feature`, [module label e.g. `orders`, `logistics`, `payments`]
 
@@ -18,7 +18,7 @@ _Example: `[Orders] As a support agent, I want to confirm a book order so that t
 ### Business Context
 
 > Why does this feature need to exist? What business problem or user need is being addressed?
-> Write 2–4 paragraphs that a new team member could read to understand the motivation completely.
+> Write 2 to 4 paragraphs that a new team member could read to understand the motivation completely.
 > Include: who is affected, what currently happens without this feature, and what value it delivers when implemented.
 
 ### User Story
@@ -31,7 +31,7 @@ _Example: `[Orders] As a support agent, I want to confirm a book order so that t
 
 #### In Scope
 
-[Bulleted list of exactly what this story covers. Be specific — name the screens, endpoints, modules, data changes, or user interactions that ARE included.]
+[Bulleted list of exactly what this story covers. Be specific: name the screens, endpoints, modules, data changes, or user interactions that ARE included.]
 
 #### Out of Scope
 
@@ -41,10 +41,10 @@ _Example: `[Orders] As a support agent, I want to confirm a book order so that t
 
 [Write each criterion as a checkbox. Use Given/When/Then where behaviour is conditional. Be precise about field names, status codes, UI labels, and data values.]
 
-- [ ] **AC1 — [short label]:** Given [context/precondition], when [action], then [observable, testable outcome].
-- [ ] **AC2 — [short label]:** Given [context/precondition], when [action], then [observable, testable outcome].
-- [ ] **AC3 — [short label]:** [Add as many as needed. There is no maximum. A story with 2 ACs is almost certainly under-specified.]
-- [ ] **AC-Edge — [edge case label]:** [Cover the most important error conditions and boundary cases explicitly.]
+- [ ] **AC1, [short label]:** Given [context/precondition], when [action], then [observable, testable outcome].
+- [ ] **AC2, [short label]:** Given [context/precondition], when [action], then [observable, testable outcome].
+- [ ] **AC3, [short label]:** [Add as many as needed. There is no maximum. A story with 2 ACs is almost certainly under-specified.]
+- [ ] **AC-Edge, [edge case label]:** [Cover the most important error conditions and boundary cases explicitly.]
 
 ### UX / Design Notes
 
@@ -52,7 +52,7 @@ _Example: `[Orders] As a support agent, I want to confirm a book order so that t
 
 ### Technical Notes
 
-[Any architectural constraints, API contracts, data model changes, migration requirements, performance budgets, or technical decisions that constrain implementation. Written from the PO perspective based on architect/lead input — not implementation instructions.]
+[Any architectural constraints, API contracts, data model changes, migration requirements, performance budgets, or technical decisions that constrain implementation. Written from the PO perspective based on architect/lead input, not implementation instructions.]
 
 ### Dependencies
 

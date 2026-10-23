@@ -4,11 +4,11 @@ description: >
   Severity vocabulary, finding format, verdict rule, and the per-size load table for the
   checklist files under checklists/. Reads the kernel's review summary (size, frameworks,
   concerns, security_path, changed_files) and turns it into a code review or a
-  design-record cross-check. Use when a developer phase summary or All Phases Complete
-  lands and an APPROVED or CHANGES REQUIRED verdict is due, when the user says "review
-  this phase", "review the diff", or "run an alignment check", or when CROSS_CHECK_REQUESTED
-  or /cross-check asks whether a design record's decisions and phases agree (ALIGNED or
-  DRIFT DETECTED). `/picket:reviewing <pull request URL>` reviews a pull request on Azure DevOps
+  design-record cross-check. Use when `picket next` says `review_cumulative` or
+  `review_checkpoint`, when a review of scope `phase n`, `cumulative` or `pr` is due with an
+  APPROVED or CHANGES REQUIRED verdict, when the user says "review this phase", "review the
+  diff", or "run an alignment check", or when scope `crosscheck` asks whether a design
+  record's decisions and phases agree (ALIGNED or DRIFT DETECTED). `/picket:reviewing <pull request URL>` reviews a pull request on Azure DevOps
   (Server or Services) or GitHub from the local clone, and posts the findings back only when asked.
 user-invocable: true
 ---
@@ -30,7 +30,7 @@ Field meaning:
 - `size`: the diff class, from changed files and changed lines. Never recompute it.
 - `frameworks`: detected frameworks that have a checklist. An unlisted framework has no file to load.
 - `concerns`: detected architecture concerns, already tie-broken. Load exactly what is listed.
-- `security_path`: true when any changed file sits under a CLAUDE.md `## Security paths` entry.
+- `security_path`: true when any changed file sits under a security path: the list in the `security-paths` rule plus the project's `security_paths` in `.picket/config.json`.
 - `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
 - `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
 - `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`checklists/12-bar.md`).
@@ -82,10 +82,10 @@ A false Critical costs more than a missed Minor. Before a finding is written:
 One line per finding, Critical first, then Major, Minor, Nit:
 
 ```
-- [Severity] path:line — one sentence what, one sentence why it matters, one sentence the fix
+- [Severity] path:line: <what>. <why it matters>. <the fix>.
 ```
 
-The em dash after the location is the protocol separator and the only place one appears. Cap: 25 findings per review. Past the cap, add one line `+N more not shown (Minor a, Nit b)`; Critical and Major are never the ones cut. Cross-check findings use the same line with `record.md#D-003` or `record.md#phase-2` as the location.
+The location ends with a colon. A finding with no line is `- [Severity] path: <text>`. Cross-check findings use the same line with `record.md#D-003` or `record.md#phase-2` as the location: `- [Major] design.md#D-003: <text>`. Cap: 25 findings per review. Past the cap, add one line `+N more not shown (Minor a, Nit b)`; Critical and Major are never the ones cut, and Minor findings past five become a count by category.
 
 ## Verdict rule
 

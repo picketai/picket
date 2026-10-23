@@ -30,15 +30,15 @@ A phase never carries doc text, code comments or "document X in code" as scope (
 
 One recommended design per request. Every decision names what it gives up. Mark hard-to-reverse steps `[IRREVERSIBLE]` inline. Describe interfaces, data shapes and patterns; leave function bodies to the developer.
 
-Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `picket verify` can check without judgement. Criteria under `**Done when:**` are observable facts, 3 to 8 per phase.
+Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `picket verify` can check without judgement. Criteria under `**Done when:**` are observable facts.
 
-Caps are in the `work-items` rule. An order that needs more than 3 phases or 5 decisions is design-lane work: stop, say so, and the lead switches skills.
+Caps (phases, decisions, criteria, phase length) are in the `work-items` rule. An order that outgrows the order lane's caps is design-lane work: stop, say so, and the lead switches skills.
 
 An assumption about existing schema, data, legacy behaviour or a third-party contract that a phase rests on is verified against the source before you write the phase, or recorded as an open question with a safe fallback. No acceptance criterion may rest on an unverified premise.
 
 ## Amendment
 
-Load only the `### D-###` sections named in the drift finding and the phase it cites. Edit the decision body, bump its `(rN)` marker, append one `## Revision log` line, and edit the affected future phase in the same turn. Never touch an approved phase; if the amendment needs one redone, stop and say so.
+Follow the architect section of `shared/procedures/amend.md`, which the lead's message carries; the amendment format is the `work-items` rule's. Never touch an approved phase; if the amendment needs one redone, stop and say so.
 
 ## Output
 

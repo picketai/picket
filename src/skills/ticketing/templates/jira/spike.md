@@ -1,4 +1,4 @@
-# Template — Analysis Report (SPIKE)
+# Template: Analysis Report (SPIKE)
 
 Use this scaffold for every `--spike` issue. Follow the structure exactly. Omit no required section.
 
@@ -8,8 +8,8 @@ _Example: `[SPIKE] [Payments] Investigate Stripe vs Adyen integration options to
 ---
 
 **Issue Type:** Task
-**Input provided by:** [Architect / Principal Engineer / Product Manager] — [one sentence describing what question or decision triggered this investigation]
-**Priority:** [Critical / High / Medium / Low] — [one-sentence justification for why this investigation is urgent]
+**Input provided by:** [Architect / Principal Engineer / Product Manager]: [one sentence describing what question or decision triggered this investigation]
+**Priority:** [Critical / High / Medium / Low]: [one-sentence justification for why this investigation is urgent]
 **Timebox:** [e.g. 3 days / 1 sprint / by [date]]
 **Labels:** `spike`, `analysis`, [module label]
 
@@ -18,11 +18,11 @@ _Example: `[SPIKE] [Payments] Investigate Stripe vs Adyen integration options to
 ### Business Context
 
 > What decision, risk, or uncertainty triggered this SPIKE?
-> Write 2–3 paragraphs explaining: what the team is trying to decide or understand, why that decision cannot be made without investigation, and what the consequence of making a wrong decision would be.
+> Write 2 to 3 paragraphs explaining: what the team is trying to decide or understand, why that decision cannot be made without investigation, and what the consequence of making a wrong decision would be.
 
 ### Problem Statement
 
-[One precise paragraph stating the open question or uncertainty that this SPIKE must resolve. This is the "north star" for the investigation — everything done during the SPIKE should contribute to answering this question.]
+[One precise paragraph stating the open question or uncertainty that this SPIKE must resolve. This is the "north star" for the investigation: everything done during the SPIKE should contribute to answering this question.]
 
 ### Research Questions
 
@@ -30,7 +30,7 @@ _Example: `[SPIKE] [Payments] Investigate Stripe vs Adyen integration options to
 
 1. **[Question 1]:** [Detailed question that can be answered with a clear finding]
 2. **[Question 2]:** [Detailed question that can be answered with a clear finding]
-3. **[Question 3]:** [Continue for all questions. Typical SPIKEs have 3–8 research questions. More is fine — vague is not.]
+3. **[Question 3]:** [Continue for all questions. Typical SPIKEs have 3 to 8 research questions. More is fine; vague is not.]
 
 ### Investigation Scope
 
@@ -53,11 +53,11 @@ _Example: `[SPIKE] [Payments] Investigate Stripe vs Adyen integration options to
 
 ### Acceptance Criteria
 
-- [ ] **AC1 — All research questions answered:** The output report explicitly answers every research question listed above with a clear finding (not "it depends" without elaboration).
-- [ ] **AC2 — Recommendation present:** A clear recommendation is made (or, if no clear winner exists, the trade-offs are documented with a recommended next step).
-- [ ] **AC3 — Deliverables complete:** All expected deliverables listed above are present and reviewed.
-- [ ] **AC4 — Timebox respected:** The investigation is completed within the agreed timebox.
-- [ ] **AC5 — Follow-up tickets created:** Any implementation work identified by the SPIKE has been created as separate Jira tickets linked to this one.
+- [ ] **AC1, All research questions answered:** The output report explicitly answers every research question listed above with a clear finding (not "it depends" without elaboration).
+- [ ] **AC2, Recommendation present:** A clear recommendation is made (or, if no clear winner exists, the trade-offs are documented with a recommended next step).
+- [ ] **AC3, Deliverables complete:** All expected deliverables listed above are present and reviewed.
+- [ ] **AC4, Timebox respected:** The investigation is completed within the agreed timebox.
+- [ ] **AC5, Follow-up tickets created:** Any implementation work identified by the SPIKE has been created as separate Jira tickets linked to this one.
 
 ### Constraints
 

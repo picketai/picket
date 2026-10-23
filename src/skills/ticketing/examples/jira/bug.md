@@ -1,4 +1,4 @@
-# Reference Example — Bug Report / Development Defect
+# Reference Example: Bug Report / Development Defect
 
 This is a **complete, finished output sample**. Use it to calibrate reproduction step precision, evidence formatting, root cause depth, and fix-verification AC style.
 Do NOT reproduce this in output unless the user is actually working on stock availability caching bugs.
@@ -6,9 +6,9 @@ Do NOT reproduce this in output unless the user is actually working on stock ava
 ---
 
 **Issue Type:** Bug
-**Input provided by:** QA Engineer (Dana K.) — discovered during regression testing of sprint 14 that the stock availability endpoint returns stale data when the same book is requested within 60 seconds of a status change.
-**Priority:** High — affects all consumers of the availability endpoint; could lead to overselling the last copy in production
-**Severity:** Major — incorrect data returned but system does not crash; an order can still proceed on stale result
+**Input provided by:** QA Engineer (Dana K.): discovered during regression testing of sprint 14 that the stock availability endpoint returns stale data when the same book is requested within 60 seconds of a status change.
+**Priority:** High: affects all consumers of the availability endpoint; could lead to overselling the last copy in production
+**Severity:** Major: incorrect data returned but system does not crash; an order can still proceed on stale result
 **Labels:** `bug`, `orders`, `caching`, `staging`
 **Affected Version:** v2.14.0-rc1
 
@@ -16,7 +16,7 @@ Do NOT reproduce this in output unless the user is actually working on stock ava
 
 ### Bug Summary
 
-The `GET /api/stock/availability` endpoint returns stale book availability data for up to 60 seconds after a copy's status changes (e.g., from `Available` to `Reserved`). This creates a window during which a second order for the same last copy succeeds at the API layer, producing an oversold copy that is only caught (and rejected) at the database constraint level — resulting in a 500 error rather than a user-friendly 409 conflict response.
+The `GET /api/stock/availability` endpoint returns stale book availability data for up to 60 seconds after a copy's status changes (e.g., from `Available` to `Reserved`). This creates a window during which a second order for the same last copy succeeds at the API layer, producing an oversold copy that is only caught (and rejected) at the database constraint level, resulting in a 500 error rather than a user-friendly 409 conflict response.
 
 ### Environment
 
@@ -28,13 +28,13 @@ The `GET /api/stock/availability` endpoint returns stale book availability data 
 | User role           | Any authenticated support agent                           |
 | Tenant / Account    | All tenants                                               |
 | Date first observed | 2026-03-16                                                |
-| Frequency           | Always — reproducible within the 60-second TTL window     |
+| Frequency           | Always: reproducible within the 60-second TTL window      |
 
 ### Steps to Reproduce
 
 **Preconditions:** Two browser sessions authenticated as different support agents; the last copy of the book with ISBN `978-1-4028-9462-6` must have status `Available`.
 
-1. In Session A: Call `GET /api/stock/availability?date=2026-03-20&genreId=3` — confirm ISBN `978-1-4028-9462-6` appears in the response with `"status": "Available"`.
+1. In Session A: Call `GET /api/stock/availability?date=2026-03-20&genreId=3`, and confirm ISBN `978-1-4028-9462-6` appears in the response with `"status": "Available"`.
 2. In Session A: Submit an order for ISBN `978-1-4028-9462-6` for date `2026-03-20`. Confirm the order succeeds and the copy's status changes to `Reserved`.
 3. **Immediately** (within 60 seconds of step 2): In Session B: Call `GET /api/stock/availability?date=2026-03-20&genreId=3`.
 4. **Observe:** ISBN `978-1-4028-9462-6` still appears in the response with `"status": "Available"` despite being ordered in step 2.
@@ -45,8 +45,8 @@ The `GET /api/stock/availability` endpoint returns stale book availability data 
 
 ### Expected Behaviour
 
-- In step 3: the availability response should reflect the updated status — ISBN `978-1-4028-9462-6` should either be absent from the results or marked `"status": "Reserved"`.
-- In step 5 (even if stale data is shown): if a second order for the last copy reaches the database, the system should return `409 Conflict` with a human-readable message — not `500 Internal Server Error`.
+- In step 3: the availability response should reflect the updated status: ISBN `978-1-4028-9462-6` should either be absent from the results or marked `"status": "Reserved"`.
+- In step 5 (even if stale data is shown): if a second order for the last copy reaches the database, the system should return `409 Conflict` with a human-readable message, not `500 Internal Server Error`.
 
 ### Actual Behaviour
 
@@ -55,7 +55,7 @@ The `GET /api/stock/availability` endpoint returns stale book availability data 
 
 ### Evidence
 
-- **Sentry issue:** `SHOP-1847` — `Npgsql.PostgresException: duplicate key value violates unique constraint "IX_OrderLines_CopyId_Date"`
+- **Sentry issue:** `SHOP-1847`: `Npgsql.PostgresException: duplicate key value violates unique constraint "IX_OrderLines_CopyId_Date"`
 - **Screenshot / recording:** [attached in Sentry issue SHOP-1847]
 - **Log excerpt:**
 
@@ -71,11 +71,11 @@ Likely cause: `StockAvailabilityQuery` results are cached with a hard-coded 60-s
 
 ### Acceptance Criteria (Fix Verification)
 
-- [ ] **AC1 — Defect resolved:** After an order is confirmed for the last copy of ISBN `978-1-4028-9462-6`, a subsequent call to `GET /api/stock/availability` within 60 seconds no longer returns that book as `Available`.
-- [ ] **AC2 — Expected behaviour confirmed:** Cache is invalidated (or bypassed) for the affected book/date combination when an `OrderConfirmedEvent` is processed.
-- [ ] **AC3 — Conflict response:** If a race condition does result in a second order for the last copy reaching the database, the API returns `409 Conflict` with `ProblemDetails` body — not `500 Internal Server Error`.
-- [ ] **AC4 — Regression:** All existing stock availability endpoint tests pass; no performance regression on the endpoint (response time P95 < 200ms with cache warm).
-- [ ] **AC5 — Monitoring:** No new `23505` constraint violation errors appear in Sentry in the 24 hours after deployment to staging.
+- [ ] **AC1, Defect resolved:** After an order is confirmed for the last copy of ISBN `978-1-4028-9462-6`, a subsequent call to `GET /api/stock/availability` within 60 seconds no longer returns that book as `Available`.
+- [ ] **AC2, Expected behaviour confirmed:** Cache is invalidated (or bypassed) for the affected book/date combination when an `OrderConfirmedEvent` is processed.
+- [ ] **AC3, Conflict response:** If a race condition does result in a second order for the last copy reaching the database, the API returns `409 Conflict` with `ProblemDetails` body, not `500 Internal Server Error`.
+- [ ] **AC4, Regression:** All existing stock availability endpoint tests pass; no performance regression on the endpoint (response time P95 < 200ms with cache warm).
+- [ ] **AC5, Monitoring:** No new `23505` constraint violation errors appear in Sentry in the 24 hours after deployment to staging.
 
 ### Out of Scope
 

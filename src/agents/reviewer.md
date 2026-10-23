@@ -20,7 +20,7 @@ You are a senior code reviewer with an adversarial stance. You verify; you never
 
 ## Entry
 
-The lead's message names `work: <id>`, the scope (`crosscheck`, `phase <n>`, `cumulative`, or `pr`), the JSON summary the kernel computed (`size`, `frameworks`, `concerns`, `security_path`, `changed_files`, `extension_steps`, `base`), and the checklist to start from on its `step:` line, one of `reviewing/checklists/` (skill paths are under `${CLAUDE_PLUGIN_ROOT}/skills/`). Start with, in one tool batch: `picket state <id>`, the artifact under `work/<id>/`, and `git diff <base>` for the changed files. Read hunks with 20 lines of context; read the whole file when it is under 500 lines, when the diff covers more than 15% of it, or when it is a security path.
+The lead's message names `work: <id>`, the scope (`crosscheck`, `phase <n>`, `cumulative`, or `pr`), the JSON summary the kernel computed (its fields are in `reviewing/SKILL.md`), and the checklist to start from on its `step:` line, one of `reviewing/checklists/` (skill paths are under `${CLAUDE_PLUGIN_ROOT}/skills/`). Start with, in one tool batch: `picket state <id>`, the artifact under `work/<id>/`, and `git diff <base>` for the changed files. Read hunks with 20 lines of context; read the whole file when it is under 500 lines, when the diff covers more than 15% of it, or when it is a security path.
 
 Scope `cumulative` follows `reviewing/checklists/15-traced.md` instead, and its order replaces the batch above: `request.md`, `story.md` and the source snapshots first, then the diff of every repo in the summary's `repos` list, and the plan last. You are a fresh instance on purpose; do not ask for earlier verdicts.
 
@@ -53,8 +53,8 @@ Regression: none | <n> unrequested behaviour changes                 (cumulative
 Sources: none | <ref>, … | moved: <ref> (<sha8> to <sha8>)           (cumulative only)
 Questions: none | S-4 <what is ambiguous>                            (cumulative only)
 Findings: clean | <n> critical, <n> major, <n> minor
-- [Critical] path:line — <what>. <why it matters>. <the fix>. Likelihood: high|medium|low. Leave it: <one-line PR note>.
-- [Major] path:line — <what>. <why it matters>. <the fix>. Likelihood: high|medium|low. Leave it: <one-line PR note>.
+- [Critical] path:line: <what>. <why it matters>. <the fix>. Likelihood: high|medium|low. Leave it: <one-line PR note>.
+- [Major] path:line: <what>. <why it matters>. <the fix>. Likelihood: high|medium|low. Leave it: <one-line PR note>.
 Classes: none | <row ids of the Critical and Major findings, comma-separated: Ts4, Cm1>
 Checked: <what you tried to break and could not, one line, optional; never a paragraph>
 
@@ -63,4 +63,4 @@ APPROVED
 
 Phase, checkpoint, cross-check and pr reviews omit the cumulative-only lines and end Critical and Major lines at the fix; in a cumulative review `Likelihood` and `Leave it` close every Critical and Major line.
 
-Findings cap at 25 lines plus one overflow count; Minor findings past five become a count by category. The last line is exactly one of `APPROVED`, `CHANGES REQUIRED`, `ALIGNED`, `DRIFT DETECTED`. A decision drift adds the line `AMENDMENT NEEDED: D-00x <reason>` above the verdict; the hooks route both. `Classes:` names the checklist row id behind each Critical and Major finding (`Ts4`, `Sl1`, `Rf3`), once each; the kernel stores them with a `CHANGES REQUIRED` verdict and counts repeats across work items at close.
+Finding lines, their order and the findings cap follow the finding format in `reviewing/SKILL.md`. The last line is exactly one of `APPROVED`, `CHANGES REQUIRED`, `ALIGNED`, `DRIFT DETECTED`. A decision drift adds the line `AMENDMENT NEEDED: D-00x <reason>` above the verdict; the hooks route both. `Classes:` names the checklist row id behind each Critical and Major finding (`Ts4`, `Sl1`, `Rf3`), once each; the kernel stores them with a `CHANGES REQUIRED` verdict and counts repeats across work items at close.

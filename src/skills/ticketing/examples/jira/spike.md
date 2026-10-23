@@ -1,4 +1,4 @@
-# Reference Example — Analysis Report (SPIKE)
+# Reference Example: Analysis Report (SPIKE)
 
 This is a **complete, finished output sample**. Use it to calibrate research question precision, deliverable specificity, constraint and assumption framing, and the neutral-investigative tone.
 Do NOT reproduce this in output unless the user is actually working on MassTransit/RabbitMQ durability analysis.
@@ -6,9 +6,9 @@ Do NOT reproduce this in output unless the user is actually working on MassTrans
 ---
 
 **Issue Type:** Task
-**Input provided by:** Architect (Tech Radar session, March 2026) — raised concern that the current MassTransit + RabbitMQ message broker setup has no dead-letter queue strategy and no observability beyond Sentry errors; before implementing the next generation of event-driven features, the team needs a clear decision on message durability and replay capabilities.
-**Priority:** High — three upcoming features (low-stock alerts, billing automation, shipment delay) all depend on reliable event delivery; building them on an unvalidated foundation creates compounding risk
-**Story Points:** 0 — SPIKE: time-boxed at 3 days. Output is an analysis report and ADR draft.
+**Input provided by:** Architect (Tech Radar session, March 2026): raised concern that the current MassTransit + RabbitMQ message broker setup has no dead-letter queue strategy and no observability beyond Sentry errors; before implementing the next generation of event-driven features, the team needs a clear decision on message durability and replay capabilities.
+**Priority:** High: three upcoming features (low-stock alerts, billing automation, shipment delay) all depend on reliable event delivery; building them on an unvalidated foundation creates compounding risk
+**Story Points:** 0 (SPIKE, time-boxed at 3 days). Output is an analysis report and ADR draft.
 **Timebox:** 3 days (by 2026-03-21)
 **Labels:** `spike`, `analysis`, `messaging`, `infrastructure`
 
@@ -18,7 +18,7 @@ Do NOT reproduce this in output unless the user is actually working on MassTrans
 
 The `Shop.WebApi` and `Shop.WebRealtime` services communicate via MassTransit on RabbitMQ. This works well for the current load (< 50 events/minute) but the architecture was designed and deployed in 2024 without a formal decision on message durability, dead-letter handling, or observability. The team has been aware of this gap but has deferred the decision because existing features are not critically dependent on guaranteed delivery.
 
-This changes in Q2 2026. Three upcoming features on the roadmap — real-time low-stock alerts (sales-critical), billing event automation (financial accuracy), and shipment delay notifications (operational) — all require reliable, ordered, and observable event delivery. Designing these features without a clear understanding of the broker's capabilities and limitations risks building on a brittle foundation that will require expensive rework when the first production message loss event occurs.
+This changes in Q2 2026. Three upcoming features on the roadmap (real-time low-stock alerts, sales-critical; billing event automation, financial accuracy; shipment delay notifications, operational) all require reliable, ordered, and observable event delivery. Designing these features without a clear understanding of the broker's capabilities and limitations risks building on a brittle foundation that will require expensive rework when the first production message loss event occurs.
 
 This SPIKE will produce a definitive, evidence-backed recommendation that the architecture group can use to make a binding decision before sprint planning for Q2 begins.
 
@@ -52,30 +52,30 @@ The team must decide: given the current MassTransit + RabbitMQ setup, what chang
 
 #### Out of Scope
 
-- Evaluating alternative message brokers (Kafka, Azure Service Bus) — not in scope; RabbitMQ is the constraint
-- Implementing any changes — this SPIKE produces a recommendation only; implementation is a separate sprint item
+- Evaluating alternative message brokers (Kafka, Azure Service Bus): not in scope; RabbitMQ is the constraint
+- Implementing any changes: this SPIKE produces a recommendation only; implementation is a separate sprint item
 - Consumer performance optimisation
 
 ### Expected Deliverables
 
 - [ ] Written analysis report answering all 6 research questions, with evidence from staging tests
-- [ ] Side-by-side comparison table: current setup vs. outbox pattern vs. hardened retry config — comparing effort, risk, and capability gaps
+- [ ] Side-by-side comparison table: current setup vs. outbox pattern vs. hardened retry config, comparing effort, risk, and capability gaps
 - [ ] Clear recommendation: which approach the team should adopt for Q2, with rationale
 - [ ] Draft ADR (Architecture Decision Record) for the recommended approach, ready for architecture group review
 - [ ] Follow-up Jira tickets created for any identified implementation work
 
 ### Acceptance Criteria
 
-- [ ] **AC1 — All research questions answered:** The output report provides a clear, evidence-backed finding for each of the 6 research questions — no "it depends" answers without full elaboration.
-- [ ] **AC2 — Recommendation present:** A single recommended approach is stated with explicit reasoning; if a hybrid approach is recommended, each component is justified separately.
-- [ ] **AC3 — Deliverables complete:** All 5 expected deliverables are present and have been reviewed by at least one other engineer before the report is shared with the architecture group.
-- [ ] **AC4 — Timebox respected:** Investigation completed by 2026-03-21.
-- [ ] **AC5 — Follow-up tickets created:** Any implementation work identified by this SPIKE is captured as separate Jira tickets (minimum: one ticket per recommended change) and linked to this SPIKE.
+- [ ] **AC1, All research questions answered:** The output report provides a clear, evidence-backed finding for each of the 6 research questions, with no "it depends" answers without full elaboration.
+- [ ] **AC2, Recommendation present:** A single recommended approach is stated with explicit reasoning; if a hybrid approach is recommended, each component is justified separately.
+- [ ] **AC3, Deliverables complete:** All 5 expected deliverables are present and have been reviewed by at least one other engineer before the report is shared with the architecture group.
+- [ ] **AC4, Timebox respected:** Investigation completed by 2026-03-21.
+- [ ] **AC5, Follow-up tickets created:** Any implementation work identified by this SPIKE is captured as separate Jira tickets (minimum: one ticket per recommended change) and linked to this SPIKE.
 
 ### Constraints
 
-- Investigation must use the existing staging RabbitMQ instance — no new infrastructure may be provisioned for this SPIKE
-- The recommendation must be compatible with MassTransit v8.x (currently used) — no major version upgrade in scope
+- Investigation must use the existing staging RabbitMQ instance; no new infrastructure may be provisioned for this SPIKE
+- The recommendation must be compatible with MassTransit v8.x (currently used); no major version upgrade in scope
 - Any recommended approach must have a clear migration path that does not require a maintenance window
 
 ### Assumptions
@@ -89,7 +89,7 @@ The team must decide: given the current MassTransit + RabbitMQ setup, what chang
 | Dependency                                   | Type          | Status      | Notes                                          |
 | -------------------------------------------- | ------------- | ----------- | ---------------------------------------------- |
 | RabbitMQ staging instance admin access       | Blocking      | Open        | Request from DevOps before SPIKE starts        |
-| MassTransit v8 outbox documentation          | Informational | Available   | See MassTransit docs — persistence/saga        |
+| MassTransit v8 outbox documentation          | Informational | Available   | See MassTransit docs: persistence/saga         |
 | Q2 feature specs (stock alerts, billing)     | Informational | In Progress | Needed to validate volume projections in RQ6   |
 
 ### Definition of Done

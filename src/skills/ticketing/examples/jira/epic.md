@@ -1,4 +1,4 @@
-# Reference Example — Large Body of Work (Epic)
+# Reference Example: Large Body of Work (Epic)
 
 This is a **complete, finished output sample**. Use it to calibrate tone, section depth, metric specificity, and how far a child-item breakdown should go.
 Do NOT reproduce this in output unless the user is actually working on the legacy order confirmation handshake.
@@ -6,8 +6,8 @@ Do NOT reproduce this in output unless the user is actually working on the legac
 ---
 
 **Issue Type:** Epic
-**Input provided by:** Programme Lead — asked for a single umbrella covering removal of the synchronous legacy confirmation call, after the Q1 2026 incident review found it responsible for 3 of the 5 highest-impact support outages.
-**Priority:** Critical — the legacy endpoint is the last synchronous dependency in the confirmation path, and its vendor support contract ends 2026-12-31
+**Input provided by:** Programme Lead: asked for a single umbrella covering removal of the synchronous legacy confirmation call, after the Q1 2026 incident review found it responsible for 3 of the 5 highest-impact support outages.
+**Priority:** Critical: the legacy endpoint is the last synchronous dependency in the confirmation path, and its vendor support contract ends 2026-12-31
 **Target release / quarter:** Q4 2026 (hard deadline: vendor support ends 2026-12-31)
 **Labels:** `epic`, `orders`, `legacy-retirement`
 
@@ -57,11 +57,11 @@ The agreed direction is to make Shop the authority for order numbers, publish co
 
 ### Acceptance Criteria (epic level)
 
-- [ ] **AC1 — Shop owns the number:** Given the legacy client is disabled, when an agent confirms a book order, then the order is created with a valid `SHOP-YYYY-NNNNN` number and no outbound request to LFS occurs during the agent request.
-- [ ] **AC2 — LFS still receives every confirmation:** Given a full business day of confirmations, when both datasets are reconciled, then every order confirmed in Shop is present in LFS within 5 minutes and no row is missing.
-- [ ] **AC3 — Degrades instead of failing:** Given LFS is fully unavailable for one hour, when agents confirm during that hour, then every confirmation succeeds, and each one reaches LFS within 15 minutes of LFS returning.
-- [ ] **AC4 — Backfill complete:** Given orders confirmed before the cutover, when any consumer queries them, then every row carries a Shop-side number and no query returns null.
-- [ ] **AC-Retire — Legacy path removed:** Given the transition has closed, when the codebase is searched for the synchronous LFS client type, then no production reference exists: the client, its configuration keys, and the transition flag are deleted rather than switched off.
+- [ ] **AC1, Shop owns the number:** Given the legacy client is disabled, when an agent confirms a book order, then the order is created with a valid `SHOP-YYYY-NNNNN` number and no outbound request to LFS occurs during the agent request.
+- [ ] **AC2, LFS still receives every confirmation:** Given a full business day of confirmations, when both datasets are reconciled, then every order confirmed in Shop is present in LFS within 5 minutes and no row is missing.
+- [ ] **AC3, Degrades instead of failing:** Given LFS is fully unavailable for one hour, when agents confirm during that hour, then every confirmation succeeds, and each one reaches LFS within 15 minutes of LFS returning.
+- [ ] **AC4, Backfill complete:** Given orders confirmed before the cutover, when any consumer queries them, then every row carries a Shop-side number and no query returns null.
+- [ ] **AC-Retire, Legacy path removed:** Given the transition has closed, when the codebase is searched for the synchronous LFS client type, then no production reference exists: the client, its configuration keys, and the transition flag are deleted rather than switched off.
 
 ### Child Items (suggested breakdown)
 

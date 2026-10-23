@@ -1,4 +1,4 @@
-# Template — Change Request
+# Template: Change Request
 
 Use this scaffold for every `--change` issue. Follow the structure exactly. Omit no required section.
 
@@ -8,8 +8,8 @@ _Example: `[CR] [Orders] Change delivery type selection from manual input to dro
 ---
 
 **Issue Type:** Story
-**Input provided by:** [Business Analyst / Stakeholder / Domain Expert] — [one sentence describing the change they requested and the trigger for it]
-**Priority:** [Critical / High / Medium / Low] — [one-sentence justification]
+**Input provided by:** [Business Analyst / Stakeholder / Domain Expert]: [one sentence describing the change they requested and the trigger for it]
+**Priority:** [Critical / High / Medium / Low]: [one-sentence justification]
 **Epic Link:** [Epic name or key]
 **Labels:** `change-request`, [module label]
 
@@ -18,7 +18,7 @@ _Example: `[CR] [Orders] Change delivery type selection from manual input to dro
 ### Business Context
 
 > What triggered this change request? What changed in the business, regulation, or user need that makes the current behaviour insufficient?
-> Write 2–4 paragraphs covering: the history/context, who requested it, what the business impact of NOT changing is, and what the expected outcome looks like.
+> Write 2 to 4 paragraphs covering: the history/context, who requested it, what the business impact of NOT changing is, and what the expected outcome looks like.
 
 ### Current Behaviour
 
@@ -52,8 +52,8 @@ _Example: `[CR] [Orders] Change delivery type selection from manual input to dro
 
 ### Acceptance Criteria
 
-- [ ] **AC1 — [label]:** Given [context], when [action], then [outcome].
-- [ ] **AC-Migration — Data integrity:** If migration is required, all existing records are transformed correctly with zero data loss, verified by [specific check].
+- [ ] **AC1, [label]:** Given [context], when [action], then [outcome].
+- [ ] **AC-Migration, Data integrity:** If migration is required, all existing records are transformed correctly with zero data loss, verified by [specific check].
 - [ ] **AC-Rollback:** The change can be rolled back within [time window] without data loss.
 - [ ] [Add issue-specific criteria]
 

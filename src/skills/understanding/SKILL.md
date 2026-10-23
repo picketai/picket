@@ -1,6 +1,6 @@
 ---
 name: understanding
-description: Structured questioning session that stress-tests a plan, design, or feature description against the project's existing language and code, sharpens fuzzy terminology, and captures every resolved term or decision inline to `.claude/MEMORY.md`. Use when the user says "question me on this", "stress-test this plan", "challenge my thinking", "help me think this through", "interview me", or "sharpen the terminology", or wants shared understanding built before implementation. Invoke via `/picket:understanding <plan, design, or idea>`. Not preloaded into any agent; the consultant, analyst, and architect read it on demand.
+description: Structured questioning session that stress-tests a plan, design, or feature description against the project's existing language and code, sharpens fuzzy terminology, and captures every resolved term or decision inline to `.claude/MEMORY.md`. Use when the user says "question me on this", "stress-test this plan", "challenge my thinking", "help me think this through", "interview me", or "sharpen the terminology", or wants shared understanding built before implementation. Invoke via `/picket:understanding <plan, design, or idea>`. Not preloaded into any agent; the analyst and the architect read it on demand.
 user-invocable: true
 ---
 

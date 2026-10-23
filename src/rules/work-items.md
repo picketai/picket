@@ -2,7 +2,7 @@
 
 A work item is the directory `work/<id>/`. Its files are the state; nothing about it is remembered elsewhere.
 
-`state.yaml` carries only `id`, `lane`, `title`, `status` (open | blocked | done | abandoned), `created`, `updated`, and `blocked_reason` when blocked. Change it through `picket state` and `picket route`, never by hand.
+`state.yaml` carries only these 12 fields: `id`, `lane`, `title`, `status` (open | blocked | done | abandoned), `created`, `updated`, `blocked_reason` when blocked, `branch`, `run_through`, `source`, `base` and `session`. `picket open` writes the first state; after that only `picket set` (`status`, `blocked_reason`, `branch`, `title`, `run_through`) and `picket route` (`status`, `blocked_reason`, `run_through` and `session` as verdicts land) change it. `picket state` only reads. Never edit it by hand.
 
 The lane artifact is `order.md` (order lane), `design.md` (design lane) or `research.md` (research lane, a document of kind `report`); the fast lane has none. Order and design artifacts follow `documenting/templates/{order,design}.md`: a YAML frontmatter block whose `phases:` list carries one entry per phase with `n`, `files`, optional `greps`, `tests`, `drive`, and `security` (required in design records; `true` gives the phase its own gate, so no run grant crosses it). `files` to `drive` are the must_haves that `picket verify <id> <n>` checks. The body carries `## Decisions` with `### D-###` entries, then `## Phase N: <title>` headings in execution order, each with `**Touch set:**`, `**Changes:**` and `**Done when:**` bullets numbered `T-N.1`, `T-N.2`.
 

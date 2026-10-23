@@ -32,7 +32,7 @@ The table:
 Every Critical and Major finding keeps the shape from `SKILL.md` and ends with two fields:
 
 ```
-- [Major] src/Orders/Fees.cs:42 — <what>. <why it matters>. <the fix>. Likelihood: medium. Leave it: <one-line PR note if the team ships it as is>.
+- [Major] src/Orders/Fees.cs:42: <what>. <why it matters>. <the fix>. Likelihood: medium. Leave it: <one-line PR note if the team ships it as is>.
 ```
 
 `Likelihood` is how likely the failure scenario is in production (`high`, `medium`, `low`), judged from the callers and data you read. `Leave it` is the note a reviewer would put on the PR if the finding is accepted, so the user can choose to ship with it.
