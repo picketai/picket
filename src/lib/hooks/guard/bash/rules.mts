@@ -44,15 +44,13 @@ export type Dialect<S> = {
 export type ClassifyText = (text: string, cwd: string | null, depth: number) => Classification;
 export type SegmentScope = { cwd: string | null; depth: number; hookRoot: string | null; platform: NodeJS.Platform; classifyText: ClassifyText };
 
-export const SAFE_ROOTS = new Set([
-  "cd", "pwd", "ls", "dir", "cat", "head", "tail", "wc", "tree", "stat",
-  "file", "diff", "echo", "printf", "find", "grep", "rg", "which",
-  "Get-ChildItem", "Select-String", "Select-Object", "Sort-Object",
-  "Measure-Object",
-  "tsc", "eslint", "prettier", "jest", "vitest", "mocha", "cypress",
-  "webpack", "rollup", "esbuild", "vite", "next", "react-scripts",
-  "babel", "playwright",
-]);
+export type RootRule = {
+  class: "safe" | "unknown" | "deny" | "meta" | "check";
+  check?: (tokens: Segment, scope: SegmentScope) => Classification;
+  writeFlags?: RegExp;
+  inert?: true;
+  sourceReader?: true;
+};
 
 const SAFE_GIT_SUBCOMMANDS = new Set([
   "status", "log", "diff", "show", "blame", "branch", "remote", "tag",
@@ -63,38 +61,67 @@ const SAFE_GIT_SUBCOMMANDS = new Set([
 
 const DENY_GIT_SUBCOMMANDS = new Set(["push", "reset", "rebase", "checkout", "merge", "clean", "branch"]);
 
-export const DENY_ROOTS = new Set([
+const DENIED_NAMES = [
   "sudo", "rm", "rmdir", "chmod", "chown", "chgrp", "dd", "mkfs",
   "shutdown", "reboot", "kill", "killall", "del", "erase",
   "Remove-Item", "ri",
   "Stop-Process", "Clear-Content", "Clear-Item", "Remove-ItemProperty",
   "Format-Volume", "Clear-Disk", "Stop-Computer", "Restart-Computer",
-]);
+];
 
-export const META_ROOTS = new Set([
+const META_NAMES = [
   "xargs", "eval", "sh", "bash", "zsh", "ksh", "dash", "env", "nohup",
   "timeout", "watch", "perl", "python", "python3", "node", "ruby",
   "powershell", "powershell.exe", "cmd", "cmd.exe", "pwsh",
   "npx", "ts-node", "tsx", "deno", "bun",
-]);
+];
 
-export const INERT_ROOTS = new Set(["cat", "head", "tail", "wc", "ls", "dir", "grep", "echo", "printf", "stat", "diff", "pwd"]);
+const INERT_READER: RootRule = { class: "safe", inert: true, sourceReader: true };
+const DENY: RootRule = { class: "deny" };
+const META: RootRule = { class: "meta" };
 
-export const SOURCE_READERS = new Set(["cd", "pwd", "cat", "head", "tail", "wc", "ls", "dir", "stat", "tree", "file", "diff", "grep", "rg", "Get-ChildItem", "Select-String", "Get-Content"]);
+export const ROOTS: Readonly<Record<string, RootRule>> = {
+  cd: { class: "safe", sourceReader: true },
+  pwd: INERT_READER,
+  ls: INERT_READER,
+  dir: INERT_READER,
+  cat: INERT_READER,
+  head: INERT_READER,
+  tail: INERT_READER,
+  wc: INERT_READER,
+  stat: INERT_READER,
+  diff: INERT_READER,
+  grep: INERT_READER,
+  echo: { class: "safe", inert: true },
+  printf: { class: "safe", inert: true },
+  which: { class: "safe" },
+  find: { class: "safe", writeFlags: /^-(delete|exec|execdir|ok|okdir|fprint0?|fprintf|fls)$/, sourceReader: true },
+  rg: { class: "safe", writeFlags: /^--pre(=|$)/, sourceReader: true },
+  tree: { class: "safe", writeFlags: /^(-o|--output)/, sourceReader: true },
+  file: { class: "safe", writeFlags: /^(-C|--compile)$/, sourceReader: true },
+  "Get-ChildItem": { class: "safe", sourceReader: true },
+  "Select-String": { class: "safe", sourceReader: true },
+  "Get-Content": { class: "unknown", sourceReader: true },
+  git: { class: "check", check: checkGit },
+  sed: { class: "check", check: checkSed },
+  dotnet: { class: "check", check: checkDotnet },
+  npm: { class: "check", check: checkNpmFamily },
+  yarn: { class: "check", check: checkNpmFamily },
+  pnpm: { class: "check", check: checkNpmFamily },
+  ...Object.fromEntries(DENIED_NAMES.map((root) => [root, DENY])),
+  ...Object.fromEntries(META_NAMES.map((root) => [root, META])),
+};
+
 export const SOURCE_GIT_READS = new Set(["log", "show", "diff", "blame", "status", "ls-files", "ls-tree", "rev-parse", "grep", "cat-file"]);
 export const SOURCE_LISTING_FLAGS = new Set(["--list", "-l", "-a", "-r", "-v"]);
 export const SOURCE_GIT_GLOBALS = new Set(["-C", "--git-dir", "--work-tree", "--no-pager"]);
-export const FIND_ACTIONS = /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/;
-export const READER_WRITE_FLAGS: Readonly<Record<string, RegExp>> = { rg: /^--pre(=|$)/, tree: /^-o/, file: /^(-C|--compile)$/ };
-
 const WORKTREE_DIR = ".worktrees";
 const DELETE_ROOTS = new Set(["rm", "rmdir", "Remove-Item", "ri"]);
-const NPM_FAMILY = ["npm", "yarn", "pnpm"];
 const GIT_GLOBALS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"]);
+const GIT_OUTPUT_FLAG = /^--output(=|$)/;
 const SED_QUIET_FLAGS = ["-n", "--quiet", "--silent"];
-const SED_GENERAL_PRINT = /^(?:\d+(?:,(?:\d+|\$))?|\/[^/]*\/(?:,\/[^/]*\/)?)[p=]$/;
 const SED_ADDRESS = String.raw`(\d+|\$|\/[^/]*\/)`;
-const SED_SOURCE_PRINT = new RegExp(`^(${SED_ADDRESS}(,${SED_ADDRESS})?)?p$`);
+const SED_PRINT = new RegExp(`^(${SED_ADDRESS}(,${SED_ADDRESS})?)?[p=]$`);
 const DOTNET_SAFE_SUBCOMMANDS = new Set(["build", "test", "restore", "clean", "list", "--version", "--info", "--list-sdks", "--list-runtimes"]);
 const NPM_DENY_SUBCOMMANDS = new Set(["publish", "unpublish", "deprecate", "owner", "adduser", "login", "logout", "token"]);
 const NPM_READ_SUBCOMMANDS = new Set(["list", "ls", "outdated", "view", "why", "--version", "-v"]);
@@ -158,6 +185,12 @@ function checkGitConfig(tokens: Token[]): Classification {
 
 function checkGit(rawTokens: Segment): Classification {
   const tokens = stripGitGlobalOpts(rawTokens);
+  const verdict = checkGitSubcommand(tokens);
+  const writesOutput = tokens.slice(2).some((t) => typeof t === "string" && GIT_OUTPUT_FLAG.test(t));
+  return verdict === "safe" && writesOutput ? "unknown" : verdict;
+}
+
+function checkGitSubcommand(tokens: Token[]): Classification {
   const sub = tokens[1];
   if (sub === "stash") return tokens[2] === "list" ? "safe" : "unknown";
   if (sub === "branch") return checkGitBranch(tokens);
@@ -184,31 +217,28 @@ function isWorktreeTeardown(tokens: Segment): boolean {
   return operands.length > 0 && operands.every(namesWorktree);
 }
 
-function checkSed(tokens: Segment): Classification {
-  const args = strings(tokens.slice(1));
-  const flags = args.filter((a) => a.startsWith("-") && a !== "-");
-  const rest = args.filter((a) => !a.startsWith("-") || a === "-");
-  if (!flags.some((f) => SED_QUIET_FLAGS.includes(f))) return "unknown";
-  if (flags.some((f) => !SED_QUIET_FLAGS.includes(f))) return "unknown";
-  if (!rest.length) return "unknown";
-  return SED_GENERAL_PRINT.test(rest[0]) ? "safe" : "unknown";
-}
-
 export function sedPrintOnly(seg: Segment): boolean {
   const args = seg.slice(1);
-  if (!args.includes("-n")) return false;
-  const scripts: (Token | undefined)[] = [];
-  const files: string[] = [];
+  const scripts: string[] = [];
+  const positional: string[] = [];
+  let quiet = false;
   for (let i = 0; i < args.length; i++) {
     const t = args[i];
     if (typeof t !== "string") return false;
-    if (t === "-n") continue;
-    if (t === "-e") scripts.push(args[++i]);
-    else if (t.startsWith("-")) return false;
-    else files.push(t);
+    if (SED_QUIET_FLAGS.includes(t)) quiet = true;
+    else if (t === "-e") {
+      const script = args[++i];
+      if (typeof script !== "string") return false;
+      scripts.push(script);
+    } else if (t.startsWith("-") && t !== "-") return false;
+    else positional.push(t);
   }
-  if (!scripts.length) scripts.push(files.shift());
-  return scripts.every((s) => typeof s === "string" && SED_SOURCE_PRINT.test(s));
+  if (!scripts.length && positional.length) scripts.push(positional[0]);
+  return quiet && scripts.length > 0 && scripts.every((s) => SED_PRINT.test(s));
+}
+
+function checkSed(tokens: Segment): Classification {
+  return sedPrintOnly(tokens) ? "safe" : "unknown";
 }
 
 function checkDotnet(tokens: Segment): Classification {
@@ -250,9 +280,13 @@ function checkNpmFamily(tokens: Segment, scope: SegmentScope): Classification {
   return resolvePackageScript(sub, scope);
 }
 
-function checkFind(tokens: Segment): Classification {
-  const runsOrDeletes = tokens.some((t) => typeof t === "string" && /^-(exec|execdir|ok|okdir|delete)$/.test(t));
-  return runsOrDeletes ? "unknown" : "safe";
+export function ruleOf(root: unknown): RootRule | undefined {
+  return typeof root === "string" && Object.hasOwn(ROOTS, root) ? ROOTS[root] : undefined;
+}
+
+export function writesWith(rule: RootRule, tokens: Segment): boolean {
+  const flags = rule.writeFlags;
+  return flags !== undefined && tokens.some((t) => typeof t === "string" && flags.test(t));
 }
 
 export function classifySegment(tokens: Segment, scope: SegmentScope): Classification {
@@ -260,13 +294,10 @@ export function classifySegment(tokens: Segment, scope: SegmentScope): Classific
   if (tokens[0] === BARE_KERNEL && !wrappedCommands(tokens).length) return classifyKernelCall(tokens, scope);
   const root = normalizeRoot(tokens[0]);
   if (typeof root !== "string") return "unknown";
-  if (root === "sed") return checkSed(tokens);
-  if (root === "git") return checkGit(tokens);
-  if (root === "dotnet") return checkDotnet(tokens);
-  if (NPM_FAMILY.includes(root)) return checkNpmFamily(tokens, scope);
+  const rule = ruleOf(root);
+  if (rule?.check) return rule.check(tokens, scope);
   if (DELETE_ROOTS.has(root) && isWorktreeTeardown(tokens)) return "unknown";
-  if (DENY_ROOTS.has(root)) return "deny";
-  if (META_ROOTS.has(root)) return "unknown";
-  if (root === "find") return checkFind(tokens);
-  return SAFE_ROOTS.has(root) ? "safe" : "unknown";
+  if (rule?.class === "deny") return "deny";
+  if (rule?.class === "safe") return writesWith(rule, tokens) ? "unknown" : "safe";
+  return "unknown";
 }

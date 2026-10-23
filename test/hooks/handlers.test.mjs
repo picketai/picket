@@ -12,6 +12,8 @@ import { injectState } from "../../dist/lib/hooks/inject/state/index.mjs";
 import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject/rules/index.mjs";
 import { injectExtensions } from "../../dist/lib/hooks/inject/extensions/index.mjs";
 import { guardBash, isLeadOnly, kernelClass, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard/bash/index.mjs";
+import { ROOTS } from "../../dist/lib/hooks/guard/bash/rules.mjs";
+import { CANONICAL_GROUPS } from "../../dist/lib/shared/shell/powershell.mjs";
 import { guardScope } from "../../dist/lib/hooks/guard/scope/index.mjs";
 import { quotedList } from "../../dist/lib/hooks/guard/edit-target.mjs";
 import { guardComments } from "../../dist/lib/hooks/guard/comments/index.mjs";
@@ -213,7 +215,7 @@ test("guardBash called directly decides, falls through, and traces once per call
     const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("rm -rf x"), "deny");
     assert.equal(decision("git status"), "allow");
-    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "git status --short" } }));
     assert.equal(decision(`npm test > ${stateRel("p.log")} 2>&1`), "allow");
     assert.equal(decision("cat a > b"), null);
     const trace = readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n");
@@ -223,6 +225,48 @@ test("guardBash called directly decides, falls through, and traces once per call
 });
 
 const decisionUnder = (root, tool_name) => (command) => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
+
+const B1_FORMS = ["find . -fprint out.txt", "find . -fls x", "tree -o out.txt", "rg --pre ./x foo", "git log --output=x", "git diff --output=x", "git show --output=x HEAD"];
+
+test("the B1 forms that write a file or run a program fall through, and inside a source they are denied (T-6.1)", () => {
+  withProject((root) => {
+    for (const command of B1_FORMS) assert.equal(decisionUnder(root, "Bash")(command), null, command);
+    const source = join(root, "analysis");
+    execFileSync("git", ["init", "-q", source]);
+    mkdirSync(join(root, ".picket"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "PICKET_TEST_SOURCE_ANALYSIS" } } }));
+    const ctx = hookContext(root, { env: { ...process.env, PICKET_TEST_SOURCE_ANALYSIS: source } });
+    for (const command of B1_FORMS) {
+      const out = guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: source }, ctx)?.hookSpecificOutput;
+      assert.equal(out?.permissionDecision, "deny", command);
+      assert.match(out.permissionDecisionReason, /inside source analysis/, command);
+    }
+  });
+});
+
+test("project tools fall through to the permission prompt, directly or through an npm script (T-6.2)", () => {
+  withProject((root) => {
+    for (const command of ["prettier --write src", "eslint --fix src", "tsc", "vitest run"]) assert.equal(decisionUnder(root, "Bash")(command), null, command);
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+    assert.equal(decisionUnder(root, "Bash")("npm test"), null);
+  });
+});
+
+test("read-only forms stay allowed and only print-only sed scripts pass the one sed checker (T-6.3)", () => {
+  withProject((root) => {
+    for (const command of ["cat a.txt | head -5", "find . -name x", "rg foo src", "tree -L 2", "git log --oneline -5", "sed -n '$p' a.txt", "sed -n -e 1p a.txt"]) {
+      assert.equal(decisionUnder(root, "Bash")(command), "allow", command);
+    }
+    for (const command of ["sed -n 's/a/b/w out' a.txt", "sed -i 1p a.txt", "sed -n 1p -i a.txt"]) assert.equal(decisionUnder(root, "Bash")(command), null, command);
+  });
+});
+
+test("every mixed-case root in the rule table is the canonical name of a PowerShell command group (T-6.4)", () => {
+  const canonical = new Set(CANONICAL_GROUPS.map(([name]) => name));
+  const mixed = Object.keys(ROOTS).filter((root) => /[A-Z]/.test(root));
+  assert.ok(mixed.includes("Remove-Item"), mixed.join(", "));
+  assert.deepEqual(mixed.filter((root) => !canonical.has(root)), []);
+});
 
 test("a destructive command denies under both the Bash and the PowerShell tool", () => {
   withProject((root) => {

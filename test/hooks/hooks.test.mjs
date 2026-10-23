@@ -652,7 +652,7 @@ test("guard.bash allows a redirect into the state log sink and falls through on 
 
 test("guard.bash sinks test logs into the new state folder only (T-4.4)", () => {
   const { root } = project();
-  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
+  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "git status --short" } }));
   const decision = (command) => run("guard.bash.mjs", { hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, root)?.hookSpecificOutput?.permissionDecision ?? null;
   assert.equal(stateRel("phase-1.log"), ".picket/state/phase-1.log");
   assert.equal(decision(`npm test > ${stateRel("phase-1.log")} 2>&1`), "allow");

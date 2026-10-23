@@ -76,6 +76,7 @@ New since 1.0.0-alpha.1:
 - The skill `picket:explaining` walks one scenario or concept through worked data.
 - `guard.bash` checks PowerShell commands too, and in the default, acceptEdits and auto modes a destructive command can be escalated to you with `PICKET_ESCALATE`.
 - `picket init` installs the mods picket-status and picket-markdown beside picket; picket-session is opt-in.
+- `guard.bash` now asks you (through Claude Code's permission prompt) for `find -fprint`/`-fprint0`/`-fprintf`/`-fls`, `tree -o`, `rg --pre` and `git log`/`diff`/`show --output`, which write a file or run a program, and for the project tools `tsc`, `eslint`, `prettier`, `jest`, `vitest`, `mocha`, `cypress`, `webpack`, `rollup`, `esbuild`, `vite`, `next`, `react-scripts`, `babel` and `playwright`, directly or through an npm script; a project that wants them unprompted allows them in its own Claude Code permission settings.
 
 `bench/results/comparison-clean.md` is the head-to-head against the previous harness (clean run of 2026-09-14). Headline: 14 of 14 tasks pass against trunk's 13, every task on its intended lane against 57%, cost per task $2.97 against $3.37 at equal wall time, first reviewable output 96 s against 130 s, 0.4 permission prompts per task against 3.1, cache 97% against 91%. The research lane is the one lane that costs more (outline gate).
 

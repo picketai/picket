@@ -6,7 +6,7 @@ import {
   classifyPrefixedCommand,
   classifySegment,
   fallThrough,
-  INERT_ROOTS,
+  ruleOf,
   type Classification,
   type ClassifyText,
   type Dialect,
@@ -258,8 +258,7 @@ function classifyAssignment(names: string[], env: NodeJS.ProcessEnv): Classifica
 function withSubstitutedOutput(seg: Segment, plain: Classification, carriesOutput: (token: Token) => boolean): Classification {
   if (plain === "deny" || !seg.some(carriesOutput)) return plain;
   if (carriesOutput(seg[0])) return "unknown";
-  const root = normalizeRoot(seg[0]);
-  return plain === "safe" && typeof root === "string" && INERT_ROOTS.has(root) ? "safe" : "unknown";
+  return plain === "safe" && ruleOf(normalizeRoot(seg[0]))?.inert === true ? "safe" : "unknown";
 }
 
 function isClobberPipe(token: ParseEntry | undefined): boolean {

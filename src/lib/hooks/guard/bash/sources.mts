@@ -3,14 +3,13 @@ import { normalizeRoot } from "../../../shared/shell/kernel-call.mts";
 import { sourceRoots, underSource, type SourceRoot } from "../../../shared/sources/protection.mts";
 import { nodePath } from "./bash.mts";
 import {
-  FIND_ACTIONS,
-  READER_WRITE_FLAGS,
+  ruleOf,
   sedPrintOnly,
   SOURCE_GIT_GLOBALS,
   SOURCE_GIT_READS,
   SOURCE_LISTING_FLAGS,
-  SOURCE_READERS,
   stripGitGlobalOpts,
+  writesWith,
   type Refusal,
   type Segment,
 } from "./rules.mts";
@@ -48,10 +47,8 @@ export function sourceAllowed(seg: Segment): boolean {
   if (typeof root !== "string") return false;
   if (root === "git") return sourceGitAllowed(seg);
   if (root === "sed") return sedPrintOnly(seg);
-  if (root === "find") return !seg.some((t) => typeof t === "string" && FIND_ACTIONS.test(t));
-  const writesOrRuns = READER_WRITE_FLAGS[root];
-  if (writesOrRuns && seg.some((t) => typeof t === "string" && writesOrRuns.test(t))) return false;
-  return SOURCE_READERS.has(root);
+  const rule = ruleOf(root);
+  return rule?.sourceReader === true && !writesWith(rule, seg);
 }
 
 export function segmentSource(seg: Segment, cwd: string | null, roots: SourceRoot[], platform: NodeJS.Platform): string | null {
