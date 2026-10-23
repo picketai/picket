@@ -6,12 +6,13 @@ import { VERDICTS } from "../../shared/verdicts.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { ownGate } from "../../shared/work/gate.mts";
+import { hasMarker } from "../../shared/work/markers.mts";
 import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { currentPhase, phaseOf, readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 import type { VerdictEntry } from "../../shared/work/verdict-log.mts";
 import { int, need, str, UsageError, type Args } from "../../util/args.mts";
 import { applyChanges } from "./apply.mts";
-import { EFFECTS, type Effect, type GateOf, type PlannedVerdict, type RouteInput } from "./plan.mts";
+import { EFFECTS, type Effect, type GateOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
 
 export type { RouteInput };
 export type RouteResult = { id: WorkId; verdict: string; phase: number | null; applied: string[]; next: NextView };
@@ -37,11 +38,17 @@ function gateOf(root: string, snap: WorkSnapshot): GateOf {
   return (n) => ownGate(phaseOf(snap, n), securityPaths(root));
 }
 
+function marksOnDisk(root: string, id: WorkId, phase: number | null): MarksOnDisk {
+  if (phase === null) return { done: false, approved: false };
+  return { done: hasMarker(root, id, phase, "done"), approved: hasMarker(root, id, phase, "approved") };
+}
+
 export function route(input: RouteInput, ctx: Context): RouteResult {
   const agent = bareAgentName(input.agent);
   const spec = verdictSpec(input.verdict, agent);
   const snap = readSnapshot(ctx.root, input.id);
-  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, phase: input.phase ?? currentPhase(snap)?.n ?? null };
+  const phase = input.phase ?? currentPhase(snap)?.n ?? null;
+  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, phase, marks: marksOnDisk(ctx.root, input.id, phase) };
   const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap));
   const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned) });
   return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id) };

@@ -424,6 +424,18 @@ test("another plugin's developer may not route PHASE DONE", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
+test("approved trusts the done marker on disk for a phase the record has no heading for", () => {
+  const { root, id } = setup();
+  try {
+    writeFileSync(join(root, "work", id, "phases", "5.done"), "2026-10-23T10:00:00.000Z\n");
+    const r = route({ id, verdict: "approved", agent: "user", phase: 5, root });
+    assert.equal(r.applied[0], "phases/5.approved");
+    assert.equal(existsSync(join(root, "work", id, "phases", "5.approved")), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 function countingCalls(name, run) {
   const original = fs[name];
   const counts = {};

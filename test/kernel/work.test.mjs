@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { listOpenWork, listWork } from "../../dist/lib/shared/work/state.mjs";
 import { readVerdicts } from "../../dist/lib/shared/work/verdict-log.mjs";
+import { readSnapshot, stateView } from "../../dist/lib/shared/work/snapshot.mjs";
 import { appendComment } from "../../dist/lib/shared/work/approvals.mjs";
 import { parseBlock, proposedCommit } from "../../dist/lib/shared/work/block.mjs";
 import { createWork, deriveState, newId, readState, setMarker, appendVerdict, writeState } from "./work-fixture.mjs";
@@ -161,6 +162,40 @@ test("appendComment records the path relative to the root when run from a subfol
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+const READABLE_ROW = '{"ts":"2026-10-23T10:00:00Z","agent":"architect","verdict":"ARTIFACT WRITTEN","phase":null}';
+
+function withTruncatedLog(run) {
+  const root = tempRoot();
+  try {
+    const s = createWork({ lane: "order", title: "Truncated", root });
+    writeFileSync(join(root, "work", s.id, "verdicts.jsonl"), `${READABLE_ROW}\n{"ts":"2026`);
+    return run(root, s.id);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test("a verdict appended after a truncated last line starts on its own line and stays readable", () => {
+  withTruncatedLog((root, id) => {
+    appendVerdict(id, { agent: "developer", verdict: "PHASE DONE", phase: 1, scope: null, through: null }, root);
+    const read = readVerdicts(root, id);
+    assert.deepEqual(read.rows.map((r) => r.verdict), ["ARTIFACT WRITTEN", "PHASE DONE"]);
+    assert.equal(read.skipped, 1);
+  });
+});
+
+test("readSnapshot reports a skipped verdict line, and stateView prints it with the last readable row", () => {
+  withTruncatedLog((root, id) => {
+    const snap = readSnapshot(root, id);
+    assert.deepEqual(snap.warnings, ["verdicts.jsonl: 1 unreadable line skipped"]);
+    const view = stateView(snap);
+    assert.deepEqual(view.warnings, ["verdicts.jsonl: 1 unreadable line skipped"]);
+    assert.equal(view.last_verdict.verdict, "ARTIFACT WRITTEN");
+    writeFileSync(join(root, "work", id, "verdicts.jsonl"), `{"ts"\n${READABLE_ROW}\n{"ts":"2026`);
+    assert.deepEqual(readSnapshot(root, id).warnings, ["verdicts.jsonl: 2 unreadable lines skipped"]);
+  });
 });
 
 test("proposedCommit drops the staged tail and is null without a Commit field", () => {

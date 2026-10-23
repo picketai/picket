@@ -2,7 +2,7 @@ import { Refused } from "../../shared/action.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import type { Gate } from "../../shared/work/gate.mts";
 import type { PhaseMark } from "../../shared/work/markers.mts";
-import { phaseOf, type WorkSnapshot } from "../../shared/work/snapshot.mts";
+import type { WorkSnapshot } from "../../shared/work/snapshot.mts";
 import type { WorkState } from "../../shared/work/state.mts";
 
 export type Effect = "phase_done" | "phase_approved" | "phase_reviewed" | "rejection" | "drift" | "stall" | "crosscheck_ok" | "artifact" | "amended";
@@ -19,7 +19,8 @@ export type RouteInput = {
   classes?: string[];
 };
 
-export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null };
+export type MarksOnDisk = { done: boolean; approved: boolean };
+export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk };
 
 export type Change =
   | { kind: "marker"; phase: number; mark: PhaseMark; line: string | null }
@@ -40,9 +41,9 @@ function marker(phase: number, mark: PhaseMark, line: string | null = `phases/${
   return { kind: "marker", phase, mark, line };
 }
 
-function runGrantChanges(snap: WorkSnapshot, n: number, gateOf: GateOf): Change[] {
+function runGrantChanges(snap: WorkSnapshot, n: number, marks: MarksOnDisk, gateOf: GateOf): Change[] {
   const through = snap.state.run_through;
-  if (!through || n > through || phaseOf(snap, n)?.approved) return [];
+  if (!through || n > through || marks.approved) return [];
   const gate = gateOf(n);
   if (gate) return [{ kind: "state", unset: ["run_through"], line: `run grant stops here: phase ${n} ${gate.reason}; it takes its own approval` }];
   return [marker(n, "approved", `phases/${n}.approved (run grant through ${through})`), { kind: "commit", phase: n }];
@@ -50,12 +51,12 @@ function runGrantChanges(snap: WorkSnapshot, n: number, gateOf: GateOf): Change[
 
 const phaseDone: Plan = (snap, planned, gateOf) => {
   const n = needPhase(planned);
-  return [marker(n, "done"), ...runGrantChanges(snap, n, gateOf)];
+  return [marker(n, "done"), ...runGrantChanges(snap, n, planned.marks, gateOf)];
 };
 
-const phaseApproved: Plan = (snap, planned) => {
+const phaseApproved: Plan = (_snap, planned) => {
   const n = needPhase(planned);
-  if (!phaseOf(snap, n)?.done) throw new Refused(`phase ${n} is not done; cannot approve`);
+  if (!planned.marks.done) throw new Refused(`phase ${n} is not done; cannot approve`);
   const grant: Change[] = planned.through && planned.through > n ? [{ kind: "state", set: { run_through: planned.through }, line: `run_through=${planned.through}` }] : [];
   return [marker(n, "approved"), ...grant, { kind: "commit", phase: n }];
 };

@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, closeSync, fstatSync, mkdirSync, openSync, readFileSync, readSync } from "node:fs";
 import { dirname } from "node:path";
 
 export type JsonlRead<T> = { rows: T[]; skipped: number };
@@ -40,7 +40,33 @@ export function readJsonl<T>(path: string): JsonlRead<T> {
   return { rows, skipped };
 }
 
+const NEWLINE = 0x0a;
+
+function lastByteOf(path: string): number | null {
+  let fd: number;
+  try {
+    fd = openSync(path, "r");
+  } catch (err) {
+    if (isMissing(err)) return null;
+    throw err;
+  }
+  try {
+    const { size } = fstatSync(fd);
+    if (size === 0) return null;
+    const byte = Buffer.alloc(1);
+    readSync(fd, byte, 0, 1, size - 1);
+    return byte[0];
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function endsMidLine(path: string): boolean {
+  const last = lastByteOf(path);
+  return last !== null && last !== NEWLINE;
+}
+
 export function appendJsonl(path: string, row: object): void {
   mkdirSync(dirname(path), { recursive: true });
-  appendFileSync(path, `${JSON.stringify(row)}\n`);
+  appendFileSync(path, `${endsMidLine(path) ? "\n" : ""}${JSON.stringify(row)}\n`);
 }

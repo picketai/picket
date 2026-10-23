@@ -11,7 +11,8 @@ const SECURITY_PATHS = ["src/auth/"];
 
 function plan(verdict, snap, planned) {
   const gateOf = (n) => ownGate(phaseOf(snap, n), SECURITY_PATHS);
-  return EFFECTS[VERDICTS[verdict].effect](snap, { id: snap.state.id, verdict, agent: VERDICTS[verdict].agent, phase: null, ...planned }, gateOf);
+  const marks = { done: false, approved: false };
+  return EFFECTS[VERDICTS[verdict].effect](snap, { id: snap.state.id, verdict, agent: VERDICTS[verdict].agent, phase: null, marks, ...planned }, gateOf);
 }
 
 test("PHASE DONE without a run grant marks the phase done and nothing else", () => {
@@ -40,14 +41,19 @@ test("PHASE DONE with no phase is refused", () => {
   assert.throws(() => plan("PHASE DONE", snapshotOf(), {}), (err) => err instanceof Refused && /PHASE DONE needs a phase/.test(err.message));
 });
 
-test("approved on a phase that is not done is refused", () => {
-  const snap = snapshotOf({ phases: [{ n: 1 }] });
+test("approved without a done marker on disk is refused, whatever the record says", () => {
+  const snap = snapshotOf({ phases: [{ n: 1, done: true }] });
   assert.throws(() => plan("approved", snap, { phase: 1 }), (err) => err instanceof Refused && /not done/.test(err.message));
 });
 
+test("PHASE DONE under a run grant leaves a phase already approved on disk alone", () => {
+  const snap = snapshotOf({ run_through: 2, phases: [{ n: 1 }, { n: 2 }] });
+  assert.deepEqual(plan("PHASE DONE", snap, { phase: 1, marks: { done: false, approved: true } }), [{ kind: "marker", phase: 1, mark: "done", line: "phases/1.done" }]);
+});
+
 test("approved with through past the phase records the run grant and commits", () => {
-  const snap = snapshotOf({ phases: [{ n: 1, done: true }, { n: 2 }, { n: 3 }] });
-  assert.deepEqual(plan("approved", snap, { phase: 1, through: 3 }), [
+  const snap = snapshotOf({ phases: [{ n: 1 }, { n: 2 }, { n: 3 }] });
+  assert.deepEqual(plan("approved", snap, { phase: 1, through: 3, marks: { done: true, approved: false } }), [
     { kind: "marker", phase: 1, mark: "approved", line: "phases/1.approved" },
     { kind: "state", set: { run_through: 3 }, line: "run_through=3" },
     { kind: "commit", phase: 1 },

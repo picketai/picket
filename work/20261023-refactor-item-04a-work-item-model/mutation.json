@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-23T07:17:53.689Z",
+  "base": "c7ee39df0a5867d7c5168340c71e82027a647918",
+  "mutant": {
+    "path": "src/lib/shared/security-paths.mts",
+    "line": 13,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 240605
+}
