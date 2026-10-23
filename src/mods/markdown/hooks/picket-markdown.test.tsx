@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { candidatePaths, fromHref, linkPaths, resolvePath, toHref } from './links'
 import { changedRows, layout, sliceSpans, wrap } from './markdown'
 import type { Row } from './markdown'
-import { field, markerCount, phaseCount, statusLine, workId } from './work'
+import { statusLine, workId } from './work'
 
 const REPO = 'D:/repo'
 const REPORT = 'D:/repo/artifacts/reports/latency.md'
@@ -262,12 +262,9 @@ test('front matter becomes a table, wide tables keep their width, changed rows a
   expect([...changedRows(layout('a\n\nb', 20).rows, layout('a\n\nc', 20).rows)]).toEqual([2])
 })
 
-test('work item status reads the lane, status and phase markers', async () => {
+test('a work item path names its id, and its status line reads lane, status and phases', async () => {
   expect(workId('work/abc/order.md')).toBe('abc')
   expect(workId('artifacts/x.md')).toBeUndefined()
-  expect(field('lane: order\nstatus: open\n', 'status')).toBe('open')
-  expect(phaseCount('---\nphases:\n  - n: 1\n  - n: 2\n---\n# x')).toBe(2)
-  expect(markerCount(['1.done', '1.approved', '2.done', 'x.md'], 'done')).toBe(2)
   expect(statusLine({ id: 'w1', lane: 'order', status: 'open', approved: 1, done: 2, total: 3 })).toBe(
     'work w1 · order · open · phase 1/3 approved · 1 awaiting review',
   )
@@ -279,6 +276,17 @@ const W_FILES: Record<string, string> = {
   [W_ORDER]: `---\nphases:\n  - n: 1\n  - n: 2\n---\n# Order\n\n## Plan\n\nSee [notes](notes.md).\n\n| col | other |\n| --- | --- |\n| ${'z'.repeat(80)} | q |`,
   [W_NOTES]: '# Notes',
   'D:/repo/work/w1/state.yaml': 'id: w1\nlane: order\nstatus: open\n',
+}
+const W1_STATE = {
+  id: 'w1',
+  lane: 'order',
+  status: 'open',
+  phases: [
+    { n: 1, title: 'One', done: true, approved: true, reviewed: false },
+    { n: 2, title: 'Two', done: false, approved: false, reviewed: false },
+  ],
+  phase_count: 2,
+  phases_approved: 1,
 }
 
 test('work status, back, ask about a section, open in editor and wide table scrolling', async ($, on) => {
@@ -308,7 +316,8 @@ test('work status, back, ask about a section, open in editor and wide table scro
   })
   on('process.run', ($, e) => {
     runs.push(e.argv)
-    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    const stdout = e.argv.includes('state') ? JSON.stringify(W1_STATE) : ''
+    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
 
   const reply = await $.ui.mount({
@@ -344,7 +353,7 @@ test('work status, back, ask about a section, open in editor and wide table scro
   expect(filled[0]).toBe('About work/w1/order.md:\n> ## Plan\n>\n> See [notes](notes.md).\n>\n> | col | other |\n> | --- | --- |\n> | ' + 'z'.repeat(80) + ' | q |\n\n')
 
   await pane.press({ key: 'editor' })
-  expect(runs[0]).toEqual(['cmd', '/c', 'code', 'D:\\repo\\work\\w1\\order.md'])
+  expect(runs.at(-1)).toEqual(['cmd', '/c', 'code', 'D:\\repo\\work\\w1\\order.md'])
 
   await pane.press({ key: 'link:0' })
   expect(await pane.find({ type: 'Text', text: 'Notes' })).toBeDefined()

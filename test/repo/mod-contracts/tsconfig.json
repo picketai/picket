@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "status-contract": ["../../../src/mods/status/types/index.d.ts"],
+      "picket-views": ["../../../src/lib/shared/views.mts"]
+    }
+  },
+  "include": ["check.mts", "claude-code.d.ts"]
+}

@@ -1,6 +1,7 @@
 import { readText } from "../../util/io.mts";
 import { ambiguousRefs } from "../sources/intake.mts";
 import type { AmbiguousRef } from "../sources/resolve.mts";
+import type { PhaseView as WirePhaseView, StateView as WireStateView } from "../views.mts";
 import { parseArtifact, type ArtifactPhase } from "./artifact.mts";
 import { workFile, type WorkFile, type WorkId } from "./files.mts";
 import { hasMarker } from "./markers.mts";
@@ -19,19 +20,14 @@ export type WorkSnapshot = {
   warnings: string[];
 };
 
-export type PhaseView = { n: number; title: string; done: boolean; approved: boolean; reviewed: boolean };
+export type PhaseView = WirePhaseView;
 
-export type StateView = WorkState & {
-  artifact: string | null;
-  artifact_expected: WorkFile | null;
-  phases: PhaseView[];
-  phase_count: number;
-  phases_approved: number;
-  current_phase: number | null;
-  verdicts: VerdictRow[];
-  last_verdict: VerdictRow | null;
-  warnings?: string[];
-};
+export type StateView = WireStateView &
+  WorkState & {
+    artifact_expected: WorkFile | null;
+    verdicts: VerdictRow[];
+    last_verdict: VerdictRow | null;
+  };
 
 function readArtifactFile(root: string, id: WorkId, expected: WorkFile | null): { artifact: SnapshotArtifact; phases: ArtifactPhase[] } | null {
   if (!expected) return null;

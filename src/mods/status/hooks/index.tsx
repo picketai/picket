@@ -1,7 +1,8 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, ProcessRunResult, Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 import { roleOf } from '../../../lib/shared/format.mts'
+import { resetLaunchers, runPicket } from '../../shared/kernel'
 import type { AgentRow, Work } from '../types'
 import { agentsLine, isEnded, isWorking, rows, workLine } from './band'
 
@@ -34,9 +35,7 @@ const syncRoster = async ($: EngineInterface): Promise<number> => {
 const stamp = ($: EngineInterface, matches: (row: AgentRow) => boolean, clocks: Partial<AgentRow>) =>
   update($, agents, known => known.map(row => (matches(row) ? { ...row, ...clocks } : row)))
 
-const LAUNCHERS: readonly (readonly string[])[] = [['picket'], ['cmd', '/c', 'picket']]
-
-const runner = { launchers: LAUNCHERS, isBusy: false }
+const runner = { isBusy: false }
 
 const sessionArgs = async ($: EngineInterface): Promise<string[]> => {
   try {
@@ -47,40 +46,16 @@ const sessionArgs = async ($: EngineInterface): Promise<string[]> => {
   }
 }
 
-const runLatest = async ($: EngineInterface): Promise<ProcessRunResult | null> => {
-  const session = await sessionArgs($)
-  for (const launcher of runner.launchers) {
-    try {
-      const result = await $.process.run([...launcher, 'next', '--latest', ...session], { timeoutMs: 10_000 })
-      runner.launchers = [launcher]
-      return result
-    } catch {
-      continue
-    }
-  }
-  runner.launchers = []
-  return null
-}
-
-const parseWork = (result: ProcessRunResult | null): Work | null => {
-  if (result === null || result.exitCode !== 0) {
-    return null
-  }
-  try {
-    const answer = JSON.parse(result.stdout) as Work
-    return answer.action === 'none' || answer.id === null ? null : answer
-  } catch {
-    return null
-  }
-}
+const openWork = (latest: Work | null): Work | null =>
+  latest === null || latest.id === null || latest.action === 'none' ? null : latest
 
 const refreshWork = async ($: EngineInterface) => {
-  if (runner.isBusy || runner.launchers.length === 0) {
+  if (runner.isBusy) {
     return
   }
   runner.isBusy = true
   try {
-    const latest = parseWork(await runLatest($))
+    const latest = openWork(await runPicket<Work>($, ['next', '--latest', ...(await sessionArgs($))]))
     await update($, work, () => latest)
   } finally {
     runner.isBusy = false
@@ -92,7 +67,7 @@ export const register: Register = on => {
     const started = await next(e)
     const now = await $.clock.now()
     await update($, time, () => now)
-    runner.launchers = LAUNCHERS
+    resetLaunchers()
     await refreshWork($)
     $.clock.every(30_000, async () => {
       const tick = await $.clock.now()

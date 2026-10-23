@@ -1,13 +1,15 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PressedLink, Register, UiPressArgument } from 'claude-code'
 
+import type { StateView } from '../../../lib/shared/views.mts'
+import { resetLaunchers, runPicket } from '../../shared/kernel'
 import type { DocWork, ViewedDoc } from '../types'
 import { baseName, candidatePaths, dirOf, fromHref, isMarkdownPath, linkPaths, resolvePath } from './links'
 import { changedRows, layout, sliceSpans, width } from './markdown'
 import type { Row, Span } from './markdown'
 import { SURFACES, TONES } from './palette'
 import { folderOf, folders, relative, treeRows } from './tree'
-import { field, markerCount, phaseCount, statusLine, workId } from './work'
+import { statusLine, workId } from './work'
 
 const PANE = 'picket-markdown'
 const MAX_FILES = 500
@@ -25,8 +27,11 @@ const TABLE_STEP = 8
 const FOOTER_START = '── '
 const FOOTER_END = ' Files │ Outline  ✎ ──'
 
+const WORK_ARTIFACTS = ['order.md', 'design.md', 'research.md']
+
 type View = { path: string; treeTop: number; maxOffset: number; maxTreeOffset: number; listRows: number }
 let lastView: View | undefined
+const askedWork = new Map<string, { signature: string; work: DocWork | undefined }>()
 
 function clamp(value: number, low: number, high: number): number {
   return Math.min(Math.max(value, low), Math.max(low, high))
@@ -91,11 +96,39 @@ async function link($: EngineInterface, text: string, base: string) {
   return linkPaths(text, base, await existing($, base, paths))
 }
 
-async function readOr($: EngineInterface, path: string): Promise<string | undefined> {
+async function modifiedAt($: EngineInterface, path: string): Promise<number | null> {
   try {
-    return await $.fs.read(path)
+    return (await $.fs.stat(path)).mtimeMs
   } catch {
-    return undefined
+    return null
+  }
+}
+
+async function entryCount($: EngineInterface, dir: string): Promise<number> {
+  try {
+    return (await $.fs.list(dir)).length
+  } catch {
+    return 0
+  }
+}
+
+async function workSignature($: EngineInterface, base: string): Promise<string | null> {
+  const state = await modifiedAt($, `${base}/state.yaml`)
+  if (state === null) return null
+  const artifacts = await Promise.all(WORK_ARTIFACTS.map(name => modifiedAt($, `${base}/${name}`)))
+  return JSON.stringify([state, ...artifacts, await entryCount($, `${base}/phases`)])
+}
+
+async function askKernel($: EngineInterface, id: string): Promise<DocWork | undefined> {
+  const state = await runPicket<StateView>($, ['state', id])
+  if (state === null) return undefined
+  return {
+    id,
+    lane: state.lane,
+    status: state.status,
+    approved: state.phases_approved,
+    done: state.phases.filter(phase => phase.done).length,
+    total: state.phase_count,
   }
 }
 
@@ -103,22 +136,13 @@ async function workOf($: EngineInterface, path: string): Promise<DocWork | undef
   const cwd = (await $.session.cwd()).replace(/\\/g, '/').replace(/\/$/, '')
   const id = workId(relative(cwd, path))
   if (id === undefined) return undefined
-  const base = `${cwd}/work/${id}`
-  const state = await readOr($, `${base}/state.yaml`)
-  if (state === undefined) return undefined
-  let names: string[] = []
-  try {
-    names = (await $.fs.list(`${base}/phases`)).map(entry => entry.name)
-  } catch {}
-  const artifact = (await readOr($, `${base}/order.md`)) ?? (await readOr($, `${base}/design.md`)) ?? ''
-  return {
-    id,
-    lane: field(state, 'lane'),
-    status: field(state, 'status'),
-    approved: markerCount(names, 'approved'),
-    done: markerCount(names, 'done'),
-    total: phaseCount(artifact),
-  }
+  const signature = await workSignature($, `${cwd}/work/${id}`)
+  if (signature === null) return undefined
+  const cached = askedWork.get(id)
+  if (cached !== undefined && cached.signature === signature) return cached.work
+  const work = await askKernel($, id)
+  askedWork.set(id, { signature, work })
+  return work
 }
 
 async function load($: EngineInterface, path: string): Promise<ViewedDoc> {
@@ -247,6 +271,8 @@ function scrollTo($: EngineInterface, path: string, row: number) {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    resetLaunchers()
+    askedWork.clear()
     await $.command.register({
       name: 'md',
       description: 'Open a markdown file read-only in the side pane',

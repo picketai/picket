@@ -52,15 +52,6 @@ export const parseWork = (prompt: string): { workId: string | null; phase: numbe
   return { workId, phase: phase === undefined ? null : Number(phase) }
 }
 
-export const countPhases = (artifact: string): number | null => {
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(artifact)?.[1]
-  if (frontmatter === undefined) {
-    return null
-  }
-  const count = (frontmatter.match(/^\s*-\s*n:\s*\d+/gm) ?? []).length
-  return count > 0 ? count : null
-}
-
 export const progressOf = (agent: AgentRow): { label: string; fraction: number; isMeasured: boolean } => {
   const done = isFinished(agent.status)
   const step = agent.tool ?? agent.lastTool

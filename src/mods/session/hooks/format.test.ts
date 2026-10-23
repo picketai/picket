@@ -3,7 +3,6 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { AgentRow } from '../types'
 import {
   contextPercent,
-  countPhases,
   groupAgents,
   isBlinking,
   tally,
@@ -42,12 +41,6 @@ describe('format', () => {
     const message = 'Phase 2 next.\nwork: 20261010-ship-x\nphase: 2\nrun through 2'
     expect(parseWork(message)).toEqual({ workId: '20261010-ship-x', phase: 2 })
     expect(parseWork('no fields here')).toEqual({ workId: null, phase: null })
-  })
-
-  test('phases are counted from the artifact frontmatter', async () => {
-    const order = '---\nlane: order\nphases:\n  - n: 1\n    files: [a]\n  - n: 2\n    files: [b]\n---\n## Phase 1\n- n: 9'
-    expect(countPhases(order)).toBe(2)
-    expect(countPhases('# no frontmatter')).toBe(null)
   })
 
   test('progress shows phase n of total, and context fill without one', async () => {

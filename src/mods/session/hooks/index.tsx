@@ -2,12 +2,13 @@ import { atom, read, update } from 'claude-code'
 import type { AgentInfo, EngineInterface, Register } from 'claude-code'
 
 import { clock, compactTokens, prettyModel, roleOf } from '../../../lib/shared/format.mts'
+import type { StateView } from '../../../lib/shared/views.mts'
+import { resetLaunchers, runPicket } from '../../shared/kernel'
 import type { AgentGroup, AgentRow, Session, SessionEntry, Sessions, View } from '../types'
 import { age, clampOffset, projectSlug, TITLE_RECORD, titleOf, visible, windowLabel } from './sessions'
 import {
   AGENT_GROUPS,
   contextPercent,
-  countPhases,
   groupAgents,
   isFinished,
   ordered,
@@ -283,17 +284,8 @@ const merge = (agents: AgentRow[], infos: AgentInfo[], now: number): AgentRow[] 
 }
 
 const phasesOf = async ($: EngineInterface, workId: string): Promise<number | null> => {
-  for (const artifact of ['order.md', 'design.md']) {
-    try {
-      const text = await $.fs.read(`work/${workId}/${artifact}`)
-      if (typeof text === 'string') {
-        return countPhases(text)
-      }
-    } catch {
-      continue
-    }
-  }
-  return null
+  const state = await runPicket<StateView>($, ['state', workId])
+  return state === null || state.phase_count === 0 ? null : state.phase_count
 }
 
 const workChange = async ($: EngineInterface, text: string): Promise<Partial<AgentRow>> => {
@@ -309,6 +301,7 @@ const openPane = ($: EngineInterface) => $.ui.open({ id: PANE, title: TITLE, col
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
+    resetLaunchers()
     await $.command.register({ name: 'picket-session', description: 'Show or hide the agents sidebar' })
     void openPane($)
     $.clock.every(TICK_MS, async () => {

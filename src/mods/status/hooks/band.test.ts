@@ -16,12 +16,16 @@ const WORK: Work = {
   action: 'approve_phase',
   actor: 'user',
   phase: 1,
+  options: ['a', 'r', 'x'],
+  own_gate: null,
   detail: 'phase 1 of 2 is done and awaits your decision',
   phases_approved: 1,
   phase_count: 2,
   blocked_reason: null,
   since: new Date(NOW - 6 * MINUTE).toISOString(),
   by: 'developer',
+  session: null,
+  other_session: false,
 }
 
 describe('rows', () => {

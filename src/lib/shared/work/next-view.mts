@@ -4,32 +4,18 @@ import type { Gate } from "./gate.mts";
 import { nextStep, type NextAction, type NextStep } from "./next-step.mts";
 import { readSnapshot, stateView, type StateView, type WorkSnapshot } from "./snapshot.mts";
 import { currentItem, isSessionId, lastActivity, type Lane, type Status } from "./state.mts";
+import type { LatestView as WireLatestView, NextView as WireNextView } from "../views.mts";
 
-export type NextView = {
+export type NextView = WireNextView & {
   id: WorkId;
   lane: Lane;
   status: Status;
-  phase: number | null;
-  options: string[];
   own_gate: Gate | null;
   action: NextAction;
   actor: NextStep["actor"];
-  detail: string;
-  warnings?: string[];
 };
 
-export type LatestView =
-  | { id: null; action: "none"; actor: null; phase: null; detail: string; options: string[] }
-  | (NextView & {
-      title: string;
-      phases_approved: number;
-      phase_count: number;
-      blocked_reason: string | null;
-      since: string;
-      by: string | null;
-      session: string | null;
-      other_session: boolean;
-    });
+export type LatestView = WireLatestView & ({ id: null } | NextView);
 
 export function nextView(snap: WorkSnapshot, step: NextStep): NextView {
   const { id, lane, status } = snap.state;

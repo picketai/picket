@@ -48,20 +48,23 @@ phases:
     drive: true
     security: false
   - n: 3
-    files: [src/lib/shared/views.mts, src/lib/shared/work/snapshot.mts, src/lib/shared/work/next-view.mts, src/mods/shared/kernel.ts, src/mods/shared/kernel.test.ts, src/mods/status/hooks/index.tsx, src/mods/status/hooks/band.ts, src/mods/status/types/index.d.ts, src/mods/markdown/hooks/picket-markdown.test.tsx, src/mods/session/hooks/index.tsx, src/mods/session/hooks/index.test.tsx, src/mods/markdown/hooks/index.tsx, src/mods/markdown/hooks/index.test.tsx, scripts/build.mjs]
+    files: [src/lib/shared/views.mts, src/lib/shared/work/snapshot.mts, src/lib/shared/work/next-view.mts, src/mods/shared/kernel.ts, src/mods/shared/kernel.test.ts, src/mods/status/hooks/index.tsx, src/mods/status/hooks/band.ts, src/mods/status/types/index.d.ts, src/mods/markdown/hooks/picket-markdown.test.tsx, src/mods/session/hooks/index.tsx, src/mods/session/hooks/index.test.tsx, src/mods/markdown/hooks/index.tsx, src/mods/markdown/hooks/index.test.tsx, scripts/build.mjs, test/repo/mod-contracts.test.mjs, test/repo/mod-contracts/tsconfig.json, test/repo/mod-contracts/check.mts, test/repo/mod-contracts/claude-code.d.ts]
     greps:
       - path: src/lib/shared/views.mts
         pattern: 'export type StateView\b'
+      - path: test/repo/mod-contracts/check.mts
+        pattern: 'LatestView'
       - path: src/lib/shared/work/snapshot.mts
         pattern: 'views\.mts'
       - path: src/lib/shared/work/next-view.mts
         pattern: 'views\.mts'
       - path: src/mods/shared/kernel.ts
-        pattern: 'export (const|function) runPicket\b'
+        pattern: 'export (async function|function|const) runPicket\b'
       - path: src/mods/session/hooks/index.test.tsx
         pattern: 'phase_count'
       - path: src/mods/status/types/index.d.ts
-        pattern: 'lib/shared/views\.mts'
+        pattern: '^(?![\s\S]*\bimport\b)'
+        flags: i
     tests: true
     drive: true
     security: false
@@ -141,14 +144,15 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 - **RISK-005** The rewrite is a text change in TSX the engine compiles (draft R-1). Mitigation: two fixed forms, the leak test, and `claude plugin test` on the built folders.
 - **RISK-006** A copied kernel file gains an import later. Mitigation: the leak test fails in every mod on the unresolved path.
 
-### D-004: The kernel's JSON shapes are one import-free type file
-**Decision:** Carrying M-4 and M-5. `src/lib/shared/views.mts` declares the published read model of the work item aggregate: `PhaseView`, `VerdictView`, `StateView`, `NextView`, `LatestView`, with JSON-level types (`string` where the kernel has a branded `WorkId` or a closed word list). The aggregate itself (`WorkState`, `WorkSnapshot`) stays kernel-internal. `src/lib/shared/work/snapshot.mts` and `next-view.mts` declare their exported view types as the wire type intersected with the narrow kernel fields (`WorkId`, `Lane`, `Status`, `NextAction`), so renaming, removing or retyping a wire field fails `npm run typecheck`. Mods import the wire types from `'../../../lib/shared/views.mts'`; status's hand-written `Work` type goes.
+### D-004 (r2): The kernel's JSON shapes are one import-free type file
+**Decision:** Carrying M-4 and M-5. `src/lib/shared/views.mts` declares the published read model of the work item aggregate: `PhaseView`, `VerdictView`, `StateView`, `NextView`, `LatestView`, with JSON-level types (`string` where the kernel has a branded `WorkId` or a closed word list). The aggregate itself (`WorkState`, `WorkSnapshot`) stays kernel-internal. `src/lib/shared/work/snapshot.mts` and `next-view.mts` declare their exported view types as the wire type intersected with the narrow kernel fields (`WorkId`, `Lane`, `Status`, `NextAction`), so renaming, removing or retyping a wire field fails `npm run typecheck`. Mod code under `hooks/` imports the wire types from `'../../../lib/shared/views.mts'`. A mod's `types/index.d.ts` cannot: `claude plugin validate --strict` rejects any import there ("the contract must be self-contained") and requires the file itself to declare the mod's `PluginState`. So `status`'s `types/index.d.ts` keeps its own `Work` type, and `test/repo/mod-contracts.test.mjs` holds it to `views.mts`: it runs `tsc` on a fixture that, beside a stub ambient `claude-code` module, imports `Work` from the contract and `LatestView` from `views.mts`, and fails unless every key of `Work` is a key of the non-empty `LatestView` branch and that branch's `Pick` over those keys is assignable to `Work`. The one-copy rule holds for the contract by test, not by import.
 **Instead of:** moving the kernel's own types into `views.mts`: they carry brands and closed lists owned elsewhere (C-009), and the file must import nothing to be copied.
 **Risks:**
 - **RISK-007** A field the kernel adds without adding it to `views.mts` escapes the check. Mitigation: a mod cannot read a field it has no type for; the reviewer checks additions to `stateView` and `latest`.
+- **RISK-014** `status`'s contract is a second hand-written copy of part of `LatestView`. Mitigation: the contract test fails on a renamed, removed or retyped field; a planted copy proves it fails.
 
-### D-005 (r2): Mods read Picket data only through the kernel
-**Decision:** Infrastructural decision, carrying M-5. `src/mods/shared/kernel.ts` exports `runPicket<T>($: EngineInterface, args: readonly string[], options?: { timeoutMs?: number }): Promise<T | null>`: it tries `['picket']`, then `['cmd', '/c', 'picket']`, keeps the first launcher that starts for later calls, and returns `null` when none starts, the exit code is not 0, or stdout is not JSON. `status` keeps its busy flag and `--session` argument around it. `session` reads `phase_count` from `picket state <id>` (0 becomes `null`, today's unmeasured card). `markdown` builds its `DocWork` from `picket state <id>` (`phases_approved`, the count of phases with `done`, `phase_count`). No mod works out Picket data itself: a work item's state, phase markers and artifact fields (lane, status, phase count) come only from the kernel. `markdown` still reads and displays a work item's documents as text, as it does any markdown file, and may stat a work file or count the entries of `phases/` for the signature below. `markdown`'s 2-second poll asks the kernel again only when a signature changes: the modification times of `state.yaml` and of the lane artifact, and the number of entries in `phases/`. `countPhases`, `phaseCount`, `field` and `markerCount` go.
+### D-005 (r3): Mods read Picket data only through the kernel
+**Decision:** Infrastructural decision, carrying M-5. `src/mods/shared/kernel.ts` exports, as an async function declaration (the validator follows `$` only into a function declaration), `runPicket<T>($: EngineInterface, args: readonly string[], options?: { timeoutMs?: number }): Promise<T | null>`: it tries `['picket']`, then `['cmd', '/c', 'picket']`, keeps the first launcher that starts for later calls, and returns `null` when none starts, the exit code is not 0, or stdout is not JSON. `status` keeps its busy flag and `--session` argument around it. `session` reads `phase_count` from `picket state <id>` (0 becomes `null`, today's unmeasured card). `markdown` builds its `DocWork` from `picket state <id>` (`phases_approved`, the count of phases with `done`, `phase_count`). No mod works out Picket data itself: a work item's state, phase markers and artifact fields (lane, status, phase count) come only from the kernel. `markdown` still reads and displays a work item's documents as text, as it does any markdown file, and may stat a work file or count the entries of `phases/` for the signature below. `markdown`'s 2-second poll asks the kernel again only when a signature changes: the modification times of `state.yaml` and of the lane artifact, and the number of entries in `phases/`. `countPhases`, `phaseCount`, `field` and `markerCount` go.
 **Instead of:** asking the kernel on every poll tick: one process every 2 seconds while a work item file is open, against the draft's R-2 promise of calls only on change.
 **Risks:**
 - **RISK-008** A process per refresh (draft R-2). Mitigation: the signature above for `markdown`; `session` asks only on `agent.spawn` and `SendMessage`.
@@ -263,7 +267,10 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 - `src/lib/shared/views.mts`: new wire types (D-004)
 - `src/lib/shared/work/snapshot.mts`, `src/lib/shared/work/next-view.mts`: view types extend the wire types
 - `src/mods/shared/kernel.ts`, `src/mods/shared/kernel.test.ts`: new, `runPicket` (D-005)
-- `src/mods/status/hooks/index.tsx`, `src/mods/status/hooks/band.ts`, `src/mods/status/types/index.d.ts`: `runPicket`, `LatestView`
+- `src/mods/status/hooks/index.tsx`, `src/mods/status/hooks/band.ts`: `runPicket`
+- `src/mods/status/types/index.d.ts`: keeps a self-contained `Work` (D-004 r2)
+- `test/repo/mod-contracts.test.mjs`, `test/repo/mod-contracts/tsconfig.json`, `test/repo/mod-contracts/check.mts`, `test/repo/mod-contracts/claude-code.d.ts`: new, the contract check
+- `test/repo/type-rules.test.mjs`, `test/repo/type-rules/tsconfig.json`: the pattern to follow
 - `src/mods/session/hooks/index.tsx`, `src/mods/session/hooks/format.ts`, `src/mods/session/hooks/format.test.ts`: `phasesOf` through the kernel; `countPhases` goes
 - `src/mods/session/hooks/index.test.tsx`: new, the register test (M-6)
 - `src/mods/markdown/hooks/index.tsx`, `src/mods/markdown/hooks/work.ts`, `src/mods/markdown/hooks/picket-markdown.test.tsx`: work status through the kernel
@@ -273,7 +280,7 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 **Changes:**
 - `views.mts` as D-004, added to `MOD_LIB_SHARED` in `scripts/build.mjs`; `snapshot.mts` and `next-view.mts` intersect their exported `StateView`, `PhaseView`, `NextView`, `LatestView` with it. `picket state` and `picket next` print the same bytes as before (the golden test in `snapshot.test.mts` stays unchanged).
 - `kernel.ts` exports `runPicket` as D-005; its tests mock `process.run` for a launcher that fails to start, a non-zero exit, bad JSON and a good answer.
-- `status`: `runLatest` and `parseWork` become a `runPicket<LatestView>` call; the `Work` type in `types/index.d.ts` is replaced by `LatestView` imported from `'../../../lib/shared/views.mts'`.
+- `status`: `runLatest` and `parseWork` become a `runPicket<Work>` call; `types/index.d.ts` keeps `Work` with no import, and the contract test of D-004 (r2) checks it against `LatestView`. `test/repo/mod-contracts/tsconfig.json` extends the root config and includes only `check.mts` and `claude-code.d.ts`; the test also runs `tsc` on a temporary copy whose `Work` renames `phase_count`, and on one that retypes it to `string`, and expects both to fail.
 - `session`: `phasesOf` asks `picket state <id>`; `countPhases` and its tests go; `parseWork` stays (it reads the prompt, not a work file). `index.test.tsx` covers: the pane opens on start; `/picket-session` closes and reopens it; an agent spawned with `work: <id>` and `phase: 2` shows `2/3` when the mocked `picket state` answers `phase_count: 3`, and no phase fraction when it exits 2; a lead `SendMessage` to a live agent carrying `work: <id>` asks `picket state <id>` once and updates that agent's phase count, while a message with no `work:` line asks nothing; archiving a session moves it to the archived tab.
 - `markdown`: `workOf` asks `picket state <id>` behind the signature of D-005; `field`, `phaseCount`, `markerCount` and their tests go; `workId` and `statusLine` stay. `index.test.tsx` covers: `/md work/<id>/design.md` shows `work <id> · design · open · phase 1/3 approved`; an unchanged signature runs no second `picket state`; a changed `state.yaml` time runs one.
 
@@ -283,7 +290,8 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 - **T-3.3** `src/mods/shared/kernel.test.ts` passes in each built mod: a failed `picket` start falls back to `cmd /c picket` and keeps it; a non-zero exit and bad JSON give `null`.
 - **T-3.4** `src/mods/session/hooks/index.test.tsx` and `src/mods/markdown/hooks/index.test.tsx` pass with the cases listed under Changes.
 - **T-3.5** In `src/mods/session/hooks/index.test.tsx`, `picket state` runs on `agent.spawn` and on a lead `SendMessage` with a `work:` line, and on no other event (RISK-008).
-- **T-3.6** Driven: `node scripts/test.mjs build mods` exits 0 with more passing tests than after phase 2 (OQ-002); `npm test` exits 0.
+- **T-3.6** `src/mods/status/types/index.d.ts` holds no import and declares `picket-status` `now`, `work` and `agents`; `test/repo/mod-contracts.test.mjs` passes against it, and its two planted copies (`phase_count` renamed, `phase_count` as `string`) fail `tsc`.
+- **T-3.7** Driven: `node scripts/test.mjs build mods` exits 0 with more passing tests than after phase 2 (OQ-002); `npm test` exits 0.
 
 ## Phase 4: session's `register` becomes wiring
 
@@ -366,3 +374,5 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 ## Revision log
 
 - 2026-10-23: D-005 (r2): rule limited to Picket data, markdown still displays work documents; files and absence criteria for phases 2 to 6; cacheLeft and SendMessage criteria.
+- 2026-10-23: D-004 (r2): validate --strict rejects contract imports; status keeps a self-contained Work, checked against LatestView by test/repo/mod-contracts.test.mjs; phase 3 greps and T-3.6 follow.
+- 2026-10-23: D-005 (r3): runPicket is an async function declaration, since the validator follows `$` only into one; phase 3 grep accepts `export async function`.
