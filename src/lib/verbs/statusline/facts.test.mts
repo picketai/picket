@@ -8,8 +8,16 @@ const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 const MINUTE = 60_000;
 const ESCAPE = /\x1b\[[0-9;]*m/g;
 
-function normal(): any {
-  const input = JSON.parse(readFileSync(new URL("./statusline-input.test.json", import.meta.url), "utf8"));
+type RateWindow = NonNullable<NonNullable<StatuslineInput["rate_limits"]>["five_hour"]>;
+type Fixture = StatuslineInput & {
+  workspace: { current_dir?: string };
+  rate_limits: { five_hour: RateWindow; seven_day: RateWindow };
+  context_window: NonNullable<StatuslineInput["context_window"]>;
+  prompt_cache: NonNullable<StatuslineInput["prompt_cache"]>;
+};
+
+function normal(): Fixture {
+  const input: Fixture = JSON.parse(readFileSync(new URL("./statusline-input.test.json", import.meta.url), "utf8"));
   input.workspace = { current_dir: "D:/work/AISpec" };
   input.rate_limits.five_hour.resets_at = (NOW + 134 * MINUTE) / 1000;
   input.rate_limits.seven_day.resets_at = (NOW + 78 * 60 * MINUTE) / 1000;
@@ -17,7 +25,7 @@ function normal(): any {
   return input;
 }
 
-function busy(): any {
+function busy(): Fixture {
   const input = normal();
   input.rate_limits.five_hour.used_percentage = 74;
   input.rate_limits.seven_day.used_percentage = 71;
@@ -27,7 +35,7 @@ function busy(): any {
   return input;
 }
 
-function hot(): any {
+function hot(): Fixture {
   const input = normal();
   input.rate_limits.five_hour.used_percentage = 93;
   input.rate_limits.seven_day.used_percentage = 91;

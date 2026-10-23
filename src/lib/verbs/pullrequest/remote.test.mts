@@ -48,13 +48,13 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   assert.equal(refs.base, base);
   assert.equal(refs.source, source);
 
-  const prep: any = await preparePullRequest(work, pr.url, PREPARE);
+  const prep = await preparePullRequest(work, pr.url, PREPARE);
   assert.equal(prep.review_id, "pr-7");
   assert.deepEqual(prep.summary.changed_files, ["src/b.ts"]);
   assert.equal(prep.summary.size, "small");
   assert.deepEqual(prep.summary.frameworks, ["typescript"]);
   assert.equal(prep.meta, null);
-  assert.match(prep.meta_reason, /no PAT/);
+  assert.match(prep.meta_reason ?? "", /no PAT/);
 
   // an umbrella whose src/Orders is the clone: the kernel finds the nested repository on its own
   const umbrella = join(dir, "umbrella");
@@ -64,7 +64,7 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   g(join(umbrella, "src", "Orders"), "remote", "set-url", "origin", server);
   const nested = locateRepo(umbrella, pr);
   assert.equal(nested.repo_root, join(umbrella, "src", "Orders"));
-  const viaUmbrella: any = await preparePullRequest(umbrella, pr.url, PREPARE);
+  const viaUmbrella = await preparePullRequest(umbrella, pr.url, PREPARE);
   assert.equal(viaUmbrella.repo_root, join(umbrella, "src", "Orders"));
   assert.deepEqual(viaUmbrella.summary.changed_files, ["src/b.ts"]);
 

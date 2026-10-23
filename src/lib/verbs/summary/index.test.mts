@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { itemSummary, rangeSummary, verb } from "./index.mts";
+import { itemSummary, rangeSummary, verb, type RepoReport } from "./index.mts";
 import { branchingManifestPath } from "../../shared/paths.mts";
 import { nestedRepos, readBases } from "../../shared/repos.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
@@ -14,6 +14,11 @@ import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 
 const ITEM = { base: undefined, env: process.env, platform: process.platform };
+
+function diffed(report: RepoReport) {
+  assert.ok("files" in report, JSON.stringify(report));
+  return report;
+}
 
 function commitFile(dir: string, file: string, text: string, message: string) {
   writeIn(dir, file, text);
@@ -63,7 +68,7 @@ test("a commit in the nested repo after createWork is diffed from the recorded b
   const r = itemSummary(root, id, ITEM);
   assert.ok(r.changed_files.includes("src/Orders/fees.cs"));
   assert.equal(r.repos.length, 1);
-  const repo: any = r.repos[0];
+  const repo = diffed(r.repos[0]);
   assert.deepEqual({ path: repo.path, base: repo.base, base_from: repo.base_from, files: repo.files }, { path: "src/Orders", base: recorded, base_from: "recorded", files: 1 });
 });
 
@@ -87,7 +92,7 @@ test("without repos.yaml the nested repo is diffed from merge-base with its defa
   const id = open(root, "order", "Orders pricing");
   rmSync(join(root, "work", id, "repos.yaml"));
   const r = itemSummary(root, id, ITEM);
-  assert.equal((r.repos[0] as any).base_from, "merge-base");
+  assert.equal(diffed(r.repos[0]).base_from, "merge-base");
   assert.equal(r.repos[0].base, gitOut(orders, "rev-parse", "main"));
   assert.ok(r.changed_files.includes("src/Orders/fees.cs"));
 });

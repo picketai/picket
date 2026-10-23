@@ -2,16 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rowCosts, summarizeLedger as summarize, verb } from "./index.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
+import type { AcceptRow, DenialRow, EscalationRow, LedgerRow, TurnRow } from "../../shared/ledger.mts";
 
-type Row = Record<string, unknown>;
+type Row = Partial<TurnRow> | Partial<EscalationRow> | Partial<DenialRow> | Partial<AcceptRow>;
 
-const stop = (session: string, agent: string, session_cost_usd: number | null | undefined, work_id = "w1"): Row => ({ v: 2, session, event: "stop", agent, work_id, duration_ms: 1000, session_cost_usd, tool_calls: 3 });
-const escalation = (session: string, outcome: string, key: string, extra: Row = {}): Row => ({ v: 2, session, event: "escalation", outcome, why: null, key, command: `git push origin ${key}`, reason: "you asked", agent: "developer", work_id: "w1", ...extra });
+const stop = (session: string, agent: string, session_cost_usd: number | null | undefined, work_id = "w1"): Partial<TurnRow> => ({ v: 2, session, event: "stop", agent, work_id, duration_ms: 1000, session_cost_usd, tool_calls: 3 });
+const escalation = (session: string, outcome: EscalationRow["outcome"], key: string, extra: Partial<EscalationRow> = {}): Partial<EscalationRow> => ({ v: 2, session, event: "escalation", outcome, why: null, key, command: `git push origin ${key}`, reason: "you asked", agent: "developer", work_id: "w1", ...extra });
 
 const ROWS = [stop("s1", "main", 0.5), escalation("s1", "ask", "a"), escalation("s1", "ran", "a"), stop("s1", "developer", 1), escalation("s1", "denied", "b", { why: "mode" })];
 
-const costsOf = (rows: Row[]) => rowCosts(rows as any);
-const summarizeRows = (rows: Row[], scope?: { work_id?: string }) => summarize(rows as any, scope);
+const costsOf = (rows: Row[]) => rowCosts(rows as LedgerRow[]);
+const summarizeRows = (rows: Row[], scope?: { work_id?: string }) => summarize(rows as LedgerRow[], scope);
 
 function assertCosts(actual: (number | null)[], expected: (number | null)[]) {
   assert.equal(actual.length, expected.length);
@@ -58,7 +59,7 @@ test("cost is null overall and per agent when no scoped row carries a snapshot",
 });
 
 test("blocks and bounces count their own rows, per agent too, inside the scope (T-2.5)", () => {
-  const denial = (event: string, agent: string, work_id = "w1"): Row => ({ v: 2, session: "s1", event, agent, hook: "guard.scope", work_id, reason: "r" });
+  const denial = (event: DenialRow["event"], agent: string, work_id = "w1"): Partial<DenialRow> => ({ v: 2, session: "s1", event, agent, hook: "guard.scope", work_id, reason: "r" });
   const rows = [stop("s1", "developer", 0.4), denial("block", "developer"), denial("block", "lead"), denial("bounce", "lead"), denial("block", "developer", "w2")];
   const summary = summarizeRows(rows, { work_id: "w1" });
   assert.deepEqual([summary.blocks, summary.bounces, summary.turns], [2, 1, 1]);
@@ -71,7 +72,7 @@ test("blocks and bounces count their own rows, per agent too, inside the scope (
 
 test("lines come from the item's accept rows and divide its turn tokens (T-3.4)", () => {
   const turn = { ...stop("s1", "developer", null), usage: { input_tokens: 4000, cache_read_input_tokens: 5000, cache_creation_input_tokens: 0, output_tokens: 1000 }, lines_added: 999 };
-  const accept = (lines_added: number, work_id = "w1"): Row => ({ v: 2, event: "accept", session: null, agent: null, work_id, phase: 1, commit: "abc1234", lines_added });
+  const accept = (lines_added: number, work_id = "w1"): Partial<AcceptRow> => ({ v: 2, event: "accept", session: null, agent: null, work_id, phase: 1, commit: "abc1234", lines_added });
   const summary = summarizeRows([turn, accept(40), accept(60), accept(500, "w2")], { work_id: "w1" });
   assert.equal(summary.lines_added, 100);
   assert.equal(summary.tokens_per_accepted_line, 100);
@@ -93,5 +94,5 @@ test("an ask with no later ran row for its session and key counts as not run, an
   const { escalations } = summarizeRows(rows);
   assert.equal(escalations.asked, 2);
   assert.equal(escalations.not_run, 1);
-  assert.deepEqual(escalations.recent.map((r: { key: string }) => r.key), ["b", "b", "d1", "d2", "d3"]);
+  assert.deepEqual(escalations.recent.map((r) => r.key), ["b", "b", "d1", "d2", "d3"]);
 });

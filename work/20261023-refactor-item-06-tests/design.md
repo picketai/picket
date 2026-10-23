@@ -7,7 +7,7 @@ audience: developer
 sources: [request.md, artifacts/refactor/06-tests.md, artifacts/refactor/00-conventions.md, artifacts/refactor/07a-mods.md, work/20261022-refactor-item-01-layout-and-build/design.md, work/20261022-refactor-item-03-kernel-cli-and-layout/design.md, work/20261023-refactor-item-05-hooks/design.md, package.json, tsconfig.json, scripts/build.mjs, scripts/watch.mjs, scripts/test.mjs, .github/workflows/release.yml, test (every file listed, imports and spawns of each), bench/test, test/kernel/kernel-sources.mjs, test/kernel/conventions.test.mjs, test/kernel/leave.test.mjs, test/kernel/names.test.mjs, test/kernel/work-fixture.mjs, test/hooks/hook-context.mjs, src/lib/shared/context.mts, CONTRIBUTING.md, README.md, src/lib/hooks/README.md, Node 24.22.1 probe importing every src/lib module from a scratch copy, esbuild 0.28.2 probe building .mjs entries, parallel timing of today's suite, claude plugin test on status, session and markdown (Claude Code 2.1.308)]
 phases:
   - n: 1
-    files: [src/lib/shared/config.mjs, src/lib/shared/extensions.mjs, src/lib/shared/mutation.mjs, src/lib/shared/saved-rules.mjs, src/lib/shared/styling/font.mjs, src/lib/shared/styling/statusline-setting.mjs, src/lib/shared/styling/terminal.mjs, src/lib/shared/styling/theme.mjs, src/lib/verbs/init/init.mjs, src/lib/verbs/migrate/migrate.mjs, src/lib/verbs/packet/packet.mjs, src/skills/documenting/scripts/filename.mjs, scripts/build.mjs, scripts/test.mjs, package.json, tsconfig.json, test/support/project.mts, test/support/context.mts, src/lib/verbs/leave/index.test.mts, test/timing/budgets.test.mjs, test/repo/support.test.mjs, test/build.test.mjs, test/kernel/conventions.test.mjs, CONTRIBUTING.md, src/lib/hooks/README.md]
+    files: [src/lib/shared/config.mjs, src/lib/shared/extensions.mjs, src/lib/shared/mutation.mjs, src/lib/shared/saved-rules.mjs, src/lib/shared/styling/font.mjs, src/lib/shared/styling/statusline-setting.mjs, src/lib/shared/styling/terminal.mjs, src/lib/shared/styling/theme.mjs, src/lib/verbs/init/init.mjs, src/lib/verbs/migrate/migrate.mjs, src/lib/verbs/packet/packet.mjs, src/skills/documenting/scripts/filename.mjs, scripts/build.mjs, scripts/test.mjs, package.json, tsconfig.json, test/support/project.mts, test/support/context.mts, src/lib/verbs/leave/index.test.mts, test/timing/budgets.test.mjs, test/repo/support.test.mjs, test/repo/build.test.mjs, test/repo/conventions.test.mjs, CONTRIBUTING.md, src/lib/hooks/README.md]
     greps:
       - path: package.json
         pattern: '"#test/\*": "\./test/support/\*"'
@@ -31,7 +31,7 @@ phases:
     drive: true
     security: false
   - n: 2
-    files: [test/repo/build.test.mjs, test/repo/claude-launcher.test.mjs, test/repo/markdown-paths.test.mjs, test/repo/names-picket.test.mjs, test/repo/package.test.mjs, test/repo/release.test.mjs, test/repo/conventions.test.mjs, test/repo/plugin-layout.test.mjs, test/repo/type-rules.test.mjs, test/repo/type-rules/mistakes.mts, test/repo/type-rules/tsconfig.json, test/repo/names.test.mjs, test/repo/descriptions.test.mjs, test/repo/description-cases.json, test/repo/hook-list.test.mjs, test/cli/cli.test.mjs, test/cli/close.test.mjs, test/cli/check.test.mjs, test/cli/node-floor.test.mjs, test/cli/lane-check.test.mjs, test/cli/filename.test.mjs, test/cli/lint-craft.test.mjs, test/support/kernel-sources.mts, test/support/routing.mts, test/support/cli.mts, test/kernel/config.test.mjs, test/kernel/extensions.test.mjs, test/kernel/paths.test.mjs, test/timing/budgets.test.mjs, CONTRIBUTING.md]
+    files: [test/repo/build.test.mjs, test/repo/claude-launcher.test.mjs, test/repo/markdown-paths.test.mjs, test/repo/names-picket.test.mjs, test/repo/package.test.mjs, test/repo/release.test.mjs, test/repo/conventions.test.mjs, test/repo/plugin-layout.test.mjs, test/repo/type-rules.test.mjs, test/repo/type-rules/mistakes.mts, test/repo/type-rules/tsconfig.json, test/repo/names.test.mjs, test/repo/descriptions.test.mjs, test/repo/description-cases.json, test/repo/hook-list.test.mjs, test/cli/cli.test.mjs, test/cli/close.test.mjs, test/cli/check.test.mjs, test/cli/node-floor.test.mjs, test/cli/lane-check.test.mjs, test/cli/filename.test.mjs, test/cli/lint-craft.test.mjs, test/support/kernel-sources.mts, test/support/routing.mts, test/support/cli.mts, test/kernel/config.test.mjs, test/kernel/extensions.test.mjs, src/lib/shared/paths.test.mts, test/repo/paths.test.mjs, test/timing/budgets.test.mjs, CONTRIBUTING.md]
     greps:
       - path: test/repo/names.test.mjs
         pattern: 'VERB_NAMES'
@@ -211,7 +211,7 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 
 **Done when:**
 - **T-1.1** The built-name scan reads `.mjs` and `.mts` under `src/lib` and `src/skills/*/scripts` and passes; its self-test reports `import { x } from "./paths.mjs"` in `src/lib/shared/a.mjs` and nothing for `./verdicts.mjs` there.
-- **T-1.2** `node --test "src/**/*.test.mts"` passes before any build, and `git grep -n "dist/" -- "src/**/*.test.mts" test/support` prints nothing.
+- **T-1.2** `node --test "src/**/*.test.mts"` passes before any build, and `git grep -n "dist/" -- "src/**/*.test.mts" test/support/project.mts test/support/context.mts` prints nothing (`test/support/cli.mts`, from phase 2, names the bin it spawns, as D-004 allows).
 - **T-1.3** After `npm run build`, `dist/lib/shared/config.mjs` imports `./paths.mjs`, no `dist/**/*.mjs` contains `.mts"` or `.mts'`, no `dist/` path contains `.test.`, and `test/build.test.mjs` asserts all three; `test/skills/filename.test.mjs` passes unchanged against the compiled script.
 - **T-1.4** In `test/repo/support.test.mjs`, the child `node --test` exits non-zero and the root it printed no longer exists.
 - **T-1.5** `npm test` exits 0 in under 60 s on this machine and prints one line per step, with `timing` running only `test/timing/budgets.test.mjs`; the block gives each step's time and the passing count, not below the count at `4f6ae61` plus the new tests.
@@ -309,7 +309,7 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 - **T-5.2** `git grep -nE "inject\.|emit\.|notify\.|observe\.|route\.verdict|guard\.(scope|comments|silenced|block)|lint\.|monitor\." -- test/hooks/handlers.test.mjs test/hooks/hooks.test.mjs` prints nothing.
 - **T-5.3** `git grep -n "dist/" -- "src/lib/hooks/**/*.test.mts"` prints nothing; every `test/hooks/*.test.mjs` other than the two old files spawns only through `runHookBundle`.
 - **T-5.4** The passing count equals phase 4's, and the block maps every moved test name to its new file.
-- **T-5.5** `npm test` passes in under 60 s; the cold-start step passes; the block gives each step's time.
+- **T-5.5** `npm test` passes in under 75 s (OQ-003); the cold-start step passes; the block gives each step's time and the slowest file of `unit` and of `product`.
 
 ## Phase 6: `guard.bash` tests per module; the old fixtures go
 
@@ -331,7 +331,7 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 - **T-6.2** `git grep -n "const decision =" -- src test` prints nothing.
 - **T-6.3** The passing count equals phase 5's; the block maps every `guard.bash` test name to its new file and gives the count per file.
 - **T-6.4** `git grep -n mkdtempSync -- src test/cli test/hooks test/repo test/timing` prints nothing; temp folders there come from `test/support/`.
-- **T-6.5** `npm test` exits 0 in under 60 s; the block gives each step's time and names the slowest file with its time.
+- **T-6.5** `npm test` exits 0 in under 75 s (OQ-003); the block gives each step's time and names the slowest file with its time.
 
 ## Phase 7: CI on two Node lines, the mods, and the docs
 
@@ -351,12 +351,13 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 - **T-7.1** `test/repo/release.test.mjs` passes with the assertions above.
 - **T-7.2** Driven: after a build, `npx -y node@22.23.4 --test "test/cli/**/*.test.mjs" "test/hooks/**/*.test.mjs"` passes; the block gives the Node version printed and the count (OQ-002).
 - **T-7.3** `README.md` and `CONTRIBUTING.md` say where unit, product, repository and timing tests live and what each CI job runs; `test/repo/markdown-paths.test.mjs` passes.
-- **T-7.4** `npm test` exits 0 in under 60 s with all five steps run, `mods` included.
+- **T-7.4** `npm test` exits 0 in under 75 s (OQ-003) with all five steps run, `mods` included.
 
 ## Open questions
 
 - **OQ-001** Does `claude plugin test` run on a GitHub runner without sign-in, with the hooks-modules switch on? Unverified here, and running CI is the user's outward action. Owner: the user, through a `workflow_dispatch` run after phase 7. Fallback: the `mods` job keeps `continue-on-error: true` and `publish` does not need it; making it blocking is a one-line change once a run passes.
 - **OQ-002** Does Node 22.23.4 strip types from the `#test/*` helpers and their `src/` imports by default? No Node 22 is installed on this machine (nvm holds 20.11.1 and 24.22.1). Owner: the developer in phase 7. Fallback: if `npx` cannot fetch it, T-7.2 becomes the `build-on-22` job of the user's dispatch run; if it fetches but does not strip, `build-on-22` runs `node --experimental-strip-types --test ...`.
+- **OQ-003** [closed 2026-10-23: the lead set 75 s for T-5.5, T-6.5 and T-7.4. The suite runs 1048 tests against the 728 of the 34 s prototype, and `unit` now runs before the build; the lead puts the number to the user in the final summary.] Should the 60 s limit in T-5.5, T-6.5 and T-7.4 move? After phase 4, `npm test` took 57.3 s: unit 15.7 s, build 0.4 s, product 31.7 s, timing 2.9 s, mods 5.2 s, plus the type check. Phases 5 and 6 split `test/hooks/hooks.test.mjs` and `handlers.test.mjs`, the longest `product` files, which should shorten that step, while their handler tests add files to `unit`. Owner: the user, through the lead. Fallback: the limit stays 60 s. If phase 5 or 6 measures between 60 and 75 s, the block gives each step's time and the slowest file of `unit` and `product`, and the lead offers 75 s as the new limit. The limit only catches a return to serial runs (118 to 144 s), and 75 s still does that.
 
 ## Revision log
 
@@ -366,3 +367,6 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 - 2026-10-23: D-006 (r2): CI job `floor` renamed `build-on-22`, clashing with the glossary's Floor; phase 7, T-2.3 and OQ-002 follow; cross-check Minor.
 - 2026-10-23: D-005: text unchanged; phases 4 to 6 now list every test file it names; T-4.2 drops `test/cli` from the `dist/` grep; T-4.4 counts the T-4.3 test.
 - 2026-10-23: D-005: phase 4's one hook spawn in `sources.test.mjs` is `inject.state`, so it goes to `test/hooks/inject.state.test.mjs`; `guard.bash.test.mjs` starts in phase 6.
+- 2026-10-23: D-004: T-1.2 greps only the phase 1 helpers, since `cli.mts` may name `dist/`; checkpoint F-1.
+- 2026-10-23: D-007: phases 1 and 2 `files` name where later phases moved build, conventions and paths tests; checkpoint F-2. OQ-003 records 57.3 s against the 60 s limit.
+- 2026-10-23: D-007: OQ-003 closed; T-5.5, T-6.5 and T-7.4 allow 75 s, since 1048 tests replace the prototype's 728 and `unit` runs before the build.

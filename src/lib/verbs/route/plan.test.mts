@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { EFFECTS } from "./plan.mts";
+import { EFFECTS, type Change, type Effect, type PlannedVerdict } from "./plan.mts";
 import { ownGate } from "../../shared/work/gate.mts";
 import { phaseOf, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 import { Refused } from "../../shared/action.mts";
@@ -8,13 +8,18 @@ import { VERDICTS } from "../../shared/verdicts.mjs";
 import { snapshotOf } from "#test/snapshot.mts";
 
 const SECURITY_PATHS = ["src/auth/"];
+const VERDICT_TABLE = VERDICTS as Record<string, { effect: Effect; agent: string }>;
 
-function plan(verdict: string, snap: WorkSnapshot, planned: Record<string, unknown>): any[] {
+function plan(verdict: string, snap: WorkSnapshot, planned: Partial<PlannedVerdict>): Change[] {
   const gateOf = (n: number) => ownGate(phaseOf(snap, n), SECURITY_PATHS);
   const marks = { done: false, approved: false };
-  const { effect, agent } = (VERDICTS as Record<string, { effect: string; agent: string }>)[verdict];
-  const run = (EFFECTS as Record<string, (...args: any[]) => any[]>)[effect];
-  return run(snap, { id: snap.state.id, verdict, agent, phase: null, marks, ...planned }, gateOf);
+  const { effect, agent } = VERDICT_TABLE[verdict];
+  return EFFECTS[effect](snap, { id: snap.state.id, verdict, agent, phase: null, marks, ...planned }, gateOf);
+}
+
+function stateSet(change: Change | undefined) {
+  assert.ok(change?.kind === "state" && change.set, JSON.stringify(change));
+  return change.set;
 }
 
 test("PHASE DONE without a run grant marks the phase done and nothing else", () => {
@@ -78,7 +83,7 @@ test("CHANGES REQUIRED clears the run grant", () => {
 
 test("PHASE STALLED blocks the item with the phase in the reason, or the given reason", () => {
   assert.deepEqual(plan("PHASE STALLED", snapshotOf(), { phase: 2 }), [{ kind: "state", set: { status: "blocked", blocked_reason: "PHASE STALLED on phase 2" }, line: "status=blocked (PHASE STALLED on phase 2)" }]);
-  assert.equal(plan("DRIFT DETECTED", snapshotOf(), { reason: "AMENDMENT NEEDED: x" })[0].set.blocked_reason, "AMENDMENT NEEDED: x");
+  assert.equal(stateSet(plan("DRIFT DETECTED", snapshotOf(), { reason: "AMENDMENT NEEDED: x" })[0]).blocked_reason, "AMENDMENT NEEDED: x");
 });
 
 test("ARTIFACT WRITTEN, ALIGNED and AMENDED change nothing", () => {
@@ -86,5 +91,5 @@ test("ARTIFACT WRITTEN, ALIGNED and AMENDED change nothing", () => {
 });
 
 test("every effect in VERDICTS has a plan", () => {
-  for (const { effect } of Object.values(VERDICTS)) assert.equal(typeof (EFFECTS as Record<string, unknown>)[effect], "function", effect);
+  for (const { effect } of Object.values(VERDICT_TABLE)) assert.equal(typeof EFFECTS[effect], "function", effect);
 });
