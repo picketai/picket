@@ -12,6 +12,7 @@ const REASON_LIMIT = 300;
 
 type AnyHookSpec = { [E in HookEvent]: HookSpec<E> }[HookEvent];
 type Denial = { event: "block" | "bounce"; reason: string };
+type OutputShape = { decision?: unknown; reason?: unknown; hookSpecificOutput?: Record<string, unknown> | null };
 
 function readEvent(onBadInput: AnyHookSpec["onBadInput"]): CommonPayload | null {
   try {
@@ -29,17 +30,16 @@ async function handle(hook: AnyHookSpec, event: CommonPayload, ctx: HookContext)
   }
 }
 
-function denialOf(output: HookOutput): Denial | null {
-  if ("decision" in output) return { event: "bounce", reason: output.reason };
-  const specific = output.hookSpecificOutput;
-  if ("permissionDecision" in specific && specific.permissionDecision === "deny") return { event: "block", reason: specific.permissionDecisionReason };
+export function denialOf(output: OutputShape | null | undefined): Denial | null {
+  if (output?.decision === "block") return { event: "bounce", reason: String(output.reason ?? "") };
+  if (output?.hookSpecificOutput?.permissionDecision === "deny") return { event: "block", reason: String(output.hookSpecificOutput.permissionDecisionReason ?? "") };
   return null;
 }
 
 async function recordDenial(ctx: HookContext, event: CommonPayload, output: HookOutput): Promise<void> {
-  const denial = denialOf(output);
-  if (denial === null) return;
   try {
+    const denial = denialOf(output);
+    if (denial === null) return;
     const { currentItem } = await import("../shared/work/state.mts");
     const session = event.session_id ?? null;
     appendLedger(ctx.root, {

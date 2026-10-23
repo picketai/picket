@@ -3,9 +3,9 @@ import { normalizeRoot } from "../../../shared/shell/kernel-call.mts";
 import { sourceRoots, underSource, type SourceRoot } from "../../../shared/sources/protection.mts";
 import { nodePath } from "./bash.mts";
 import {
+  gitGlobalsAllowed,
   ruleOf,
   sedPrintOnly,
-  SOURCE_GIT_GLOBALS,
   SOURCE_GIT_READS,
   SOURCE_LISTING_FLAGS,
   stripGitGlobalOpts,
@@ -17,18 +17,6 @@ import {
 export type SourceCheck = { hit: string | null; refusal: Refusal | null };
 
 const SEGMENT_QUOTE_CHARS = 60;
-
-function gitGlobalsAllowed(seg: Segment): boolean {
-  const globals = seg.slice(1, seg.length - (stripGitGlobalOpts(seg).length - 1));
-  for (let i = 0; i < globals.length; i++) {
-    const t = globals[i];
-    if (typeof t !== "string") return false;
-    const [name, inline] = t.split(/=(.*)/s);
-    if (!SOURCE_GIT_GLOBALS.has(name)) return false;
-    if (inline === undefined && name !== "--no-pager") i++;
-  }
-  return true;
-}
 
 function sourceGitAllowed(seg: Segment): boolean {
   if (!gitGlobalsAllowed(seg)) return false;

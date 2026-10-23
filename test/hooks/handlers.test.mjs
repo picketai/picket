@@ -226,6 +226,16 @@ test("guardBash called directly decides, falls through, and traces once per call
 
 const decisionUnder = (root, tool_name) => (command) => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
 
+test("a git global option that can set config or run a program sends a read-only subcommand to the prompt", () => {
+  withProject((root) => {
+    for (const command of ["git -c core.pager='sh -c x' log", "git -c alias.l='!sh -c x' l", "git --config-env=core.pager=X log", "git -c diff.external=x diff", "git --exec-path=/tmp/x status", "git -p log"]) {
+      assert.equal(decisionUnder(root, "Bash")(command), null, command);
+    }
+    for (const command of ["git -C sub status", "git --no-pager log --oneline -3", "git --git-dir=.git --work-tree=. status"]) assert.equal(decisionUnder(root, "Bash")(command), "allow", command);
+    assert.equal(decisionUnder(root, "Bash")("git -c user.name=x push"), "deny");
+  });
+});
+
 const B1_FORMS = ["find . -fprint out.txt", "find . -fls x", "tree -o out.txt", "rg --pre ./x foo", "git log --output=x", "git diff --output=x", "git show --output=x HEAD"];
 
 test("the B1 forms that write a file or run a program fall through, and inside a source they are denied (T-6.1)", () => {

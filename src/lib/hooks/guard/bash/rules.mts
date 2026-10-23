@@ -114,7 +114,7 @@ export const ROOTS: Readonly<Record<string, RootRule>> = {
 
 export const SOURCE_GIT_READS = new Set(["log", "show", "diff", "blame", "status", "ls-files", "ls-tree", "rev-parse", "grep", "cat-file"]);
 export const SOURCE_LISTING_FLAGS = new Set(["--list", "-l", "-a", "-r", "-v"]);
-export const SOURCE_GIT_GLOBALS = new Set(["-C", "--git-dir", "--work-tree", "--no-pager"]);
+const SAFE_GIT_GLOBALS = new Set(["-C", "--git-dir", "--work-tree", "--no-pager"]);
 const WORKTREE_DIR = ".worktrees";
 const DELETE_ROOTS = new Set(["rm", "rmdir", "Remove-Item", "ri"]);
 const GIT_GLOBALS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"]);
@@ -170,6 +170,18 @@ export function stripGitGlobalOpts(tokens: readonly Token[]): Token[] {
   return ["git", ...rest.slice(i)];
 }
 
+export function gitGlobalsAllowed(seg: Segment): boolean {
+  const globals = seg.slice(1, seg.length - (stripGitGlobalOpts(seg).length - 1));
+  for (let i = 0; i < globals.length; i++) {
+    const t = globals[i];
+    if (typeof t !== "string") return false;
+    const [name, inline] = t.split(/=(.*)/s);
+    if (!SAFE_GIT_GLOBALS.has(name)) return false;
+    if (inline === undefined && name !== "--no-pager") i++;
+  }
+  return true;
+}
+
 function checkGitBranch(tokens: Token[]): Classification {
   const hasDeleteOrMove = tokens.some((t) => typeof t === "string" && /^-[a-zA-Z]*[DdMm]/.test(t));
   if (hasDeleteOrMove) return "deny";
@@ -186,8 +198,9 @@ function checkGitConfig(tokens: Token[]): Classification {
 function checkGit(rawTokens: Segment): Classification {
   const tokens = stripGitGlobalOpts(rawTokens);
   const verdict = checkGitSubcommand(tokens);
+  if (verdict !== "safe") return verdict;
   const writesOutput = tokens.slice(2).some((t) => typeof t === "string" && GIT_OUTPUT_FLAG.test(t));
-  return verdict === "safe" && writesOutput ? "unknown" : verdict;
+  return writesOutput || !gitGlobalsAllowed(rawTokens) ? "unknown" : "safe";
 }
 
 function checkGitSubcommand(tokens: Token[]): Classification {
