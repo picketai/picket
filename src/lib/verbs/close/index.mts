@@ -1,38 +1,14 @@
-import { action, done, Refused } from "../../shared/action.mts";
+import { action, done } from "../../shared/action.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
-import { leftLine, type LeftEntry } from "../../shared/work/left.mts";
+import { leftLine } from "../../shared/work/left.mts";
 import { list, str, UsageError, type Args } from "../../util/args.mts";
-import { close } from "./close.mjs";
+import { close, type CloseResult } from "./close.mts";
 
+export type { CloseResult, Repeat } from "./close.mts";
 export type CloseInput = { id: WorkId; message: string | undefined; touched: string[] };
-export type Repeat = { class: string; items: string[] };
-export type CloseResult = {
-  id: string;
-  commit: string | null;
-  message: string;
-  left_staged: string[];
-  warnings: string[];
-  dirty: string[];
-  left: LeftEntry[];
-  repeats: Repeat[];
-} & Record<string, unknown>;
 
-type CloseFailure = { message: string; next?: Record<string, unknown> };
-type Close = (id: string, root: string, options: { message: string | undefined; touched: string[] }) => CloseResult;
-
-const closeTyped = close as unknown as Close;
-
-function closeOrRefuse(input: CloseInput, root: string): CloseResult {
-  try {
-    return closeTyped(input.id, root, { message: input.message, touched: input.touched });
-  } catch (err) {
-    const failure = err as CloseFailure;
-    throw new Refused(failure.message, failure.next ? { id: input.id, next: failure.next } : { id: input.id });
-  }
-}
-
-export const closeItem = action<CloseInput, CloseResult>(async (input, { root }) => done(closeOrRefuse(input, root)));
+export const closeItem = action<CloseInput, CloseResult>(async ({ id, message, touched }, { root, now, env }) => done(close(root, id, { message, touched }, { now: now(), env })));
 
 function parseClose(args: Args): CloseInput {
   const [id] = args.pos;

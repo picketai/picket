@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import fs, { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { blockFiles, createWork, saveBlock, setMarker } from "./work-fixture.mjs";
 import { cut, packet, WIDTH } from "../../dist/lib/verbs/packet/packet.mjs";
 import { parseBlock } from "../../dist/lib/shared/work/block.mjs";
@@ -215,6 +216,37 @@ test("a research packet points at work/<id>/research.md", () => {
   const { text } = packet(s.id, root);
   assert.match(text, new RegExp(`^  report {4}work/${s.id}/research\\.md$`, "m"));
   rmSync(root, { recursive: true, force: true });
+});
+
+function countingReads(run) {
+  const original = fs.readFileSync;
+  const counts = {};
+  fs.readFileSync = function (path, ...rest) {
+    const file = basename(String(path));
+    counts[file] = (counts[file] ?? 0) + 1;
+    return original.call(this, path, ...rest);
+  };
+  syncBuiltinESMExports();
+  try {
+    return { result: run(), counts };
+  } finally {
+    fs.readFileSync = original;
+    syncBuiltinESMExports();
+  }
+}
+
+test("the packet for a done phase reads state.yaml and order.md once each", () => {
+  const { root, id } = setup();
+  try {
+    setMarker(id, 1, "done", root);
+    saveBlock(id, 1, BLOCK, root);
+    const { result, counts } = countingReads(() => packet(id, root));
+    assert.equal(result.next.action, "approve_phase");
+    assert.equal(counts["state.yaml"], 1);
+    assert.equal(counts["order.md"], 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("cut keeps short strings and ends long ones with an ellipsis inside the limit", () => {
