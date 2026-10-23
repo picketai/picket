@@ -7,7 +7,7 @@ import {
   dconfRead,
   dconfResetDir,
   dconfWrite,
-  externalItem,
+  externalFields,
   hasDconf,
   parseList,
   quote,
@@ -69,7 +69,7 @@ function profileChange(state) {
       dconfWrite(host, `${profilePath(uuid)}palette`, quote(PALETTE_ID));
       const list = appendToList(host, UUIDS, uuid, []);
       state.uuid = uuid;
-      return externalItem(host, { id, backup, previous: { list }, data: { writer: WRITER, part: "profile", uuid } });
+      return externalFields({ backup, previous: { list }, data: { writer: WRITER, part: "profile", uuid } });
     },
   };
 }
@@ -85,7 +85,7 @@ function defaultChange(state) {
       if (state.uuid === null) return null;
       const before = dconfRead(host, DEFAULT);
       dconfWrite(host, DEFAULT, quote(state.uuid));
-      return externalItem(host, { id, previous: { default: before }, data: { writer: WRITER, part: "default", uuid: state.uuid } });
+      return externalFields({ previous: { default: before }, data: { writer: WRITER, part: "default", uuid: state.uuid } });
     },
   };
 }
@@ -94,7 +94,7 @@ function fontValue(family) {
   return quote(`${family} 12`);
 }
 
-function fontChange(family, run) {
+function fontChange(family) {
   const id = `${WRITER}-font`;
   return {
     id,
@@ -106,13 +106,12 @@ function fontChange(family, run) {
       const previous = { useSystemFont: dconfRead(host, USE_SYSTEM_FONT), fontName: dconfRead(host, FONT_NAME) };
       dconfWrite(host, USE_SYSTEM_FONT, "false");
       dconfWrite(host, FONT_NAME, fontValue(family));
-      run.fontSet = true;
-      return externalItem(host, { id, previous, data: { writer: WRITER, part: "font", fontName: fontValue(family) } });
+      return externalFields({ previous, data: { writer: WRITER, part: "font", fontName: fontValue(family) } });
     },
   };
 }
 
-function plan(host, manifest, { family, run }) {
+function plan(host, manifest, { family }) {
   if (!hasDconf(host)) return dconfMissing(WRITER, "Ptyxis");
   const existing = findProfile(host);
   const state = { uuid: existing };
@@ -122,7 +121,7 @@ function plan(host, manifest, { family, run }) {
     ...keyfileChange({ id: `${WRITER}-palette`, path: palettePath(host), content: paletteFile(), writer: WRITER }),
     ...(existing === null ? [profileChange(state)] : []),
     ...(isDefault ? [] : [defaultChange(state)]),
-    ...(fontSet ? [] : [fontChange(family, run)]),
+    ...(fontSet ? [] : [fontChange(family)]),
   ];
 }
 

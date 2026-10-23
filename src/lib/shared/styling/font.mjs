@@ -4,7 +4,7 @@ import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rm
 import { finished } from "node:stream/promises";
 import { dirname, join } from "node:path";
 import { pluginRoot } from "../paths.mts";
-import { installedAt, picketHome } from "./manifest.mjs";
+import { picketHome } from "./manifest.mts";
 import { extractEntry, readEntries } from "./zip.mjs";
 
 const NAME = "font";
@@ -164,8 +164,8 @@ function installBrew(host) {
   if (!succeeded(run)) throw failure(`brew install --cask ${CASK} failed: ${run.stderr.trim()}`, `run brew install --cask ${CASK}`);
 }
 
-function item(host, data) {
-  return { id: NAME, component: NAME, kind: "external", data, installedAt: installedAt(host) };
+function external(data) {
+  return { kind: "external", data };
 }
 
 function recordChange(pin, where) {
@@ -173,7 +173,7 @@ function recordChange(pin, where) {
     id: NAME,
     summary: `${pin.family} is already installed (${where}); record it so removal never touches it`,
     restart: null,
-    apply: (host) => item(host, { preexisting: true, where }),
+    apply: () => external({ preexisting: true, where }),
   };
 }
 
@@ -186,9 +186,9 @@ function installChange(host, pin) {
     async apply(host) {
       if (brew) {
         installBrew(host);
-        return item(host, { preexisting: false, via: "brew", files: [], registry: [] });
+        return external({ preexisting: false, via: "brew", files: [], registry: [] });
       }
-      return item(host, { preexisting: false, via: "files", ...(await installFiles(host, pin)) });
+      return external({ preexisting: false, via: "files", ...(await installFiles(host, pin)) });
     },
   };
 }

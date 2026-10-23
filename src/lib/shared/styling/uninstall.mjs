@@ -1,4 +1,4 @@
-import { ManifestError, manifestPath, readManifest } from "./manifest.mjs";
+import { ManifestError, manifestPath, readManifest } from "./manifest.mts";
 import { COMPONENTS, line, removeChosen, report } from "./setup.mjs";
 
 const FONT_ID = "font";

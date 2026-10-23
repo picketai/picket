@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { applyEdits, modify, parse } from "../../../util/vendor/jsonc-parser.mjs";
-import { installedAt, sha256File } from "../manifest.mjs";
+import { writeTracked } from "../manifest.mts";
 import { ANSI, TERMINAL } from "../palette.mts";
 
 const WRITER = "windows-terminal";
@@ -60,20 +60,8 @@ function defaultsOf(settings) {
   return settings.profiles?.defaults ?? {};
 }
 
-function writeItem(host, { id, path, backup, text, previous, data }) {
-  const backupPath = backup(path);
-  writeFileSync(path, text);
-  return {
-    id,
-    component: "terminal",
-    kind: "edited",
-    path,
-    ...(backupPath ? { backup: backupPath } : {}),
-    sha256: sha256File(path),
-    previous,
-    data: { writer: WRITER, ...data },
-    installedAt: installedAt(host),
-  };
+function writeSettings({ path, backup, text, previous, data }) {
+  return { ...writeTracked(path, text, backup), previous, data: { writer: WRITER, ...data } };
 }
 
 function withScheme(text, settings) {
@@ -91,11 +79,11 @@ function schemeChange(file, settings) {
       id,
       summary: `add the PicketAI colour scheme to ${file.path}`,
       restart: null,
-      apply(host, backup) {
+      apply(host, { backup }) {
         const { text, settings: current } = readSettings(file.path);
         const index = schemeIndex(current);
         const previous = index >= 0 ? { scheme: current.schemes[index] } : {};
-        return writeItem(host, { id, path: file.path, backup, text: withScheme(text, current), previous, data: { part: "scheme" } });
+        return writeSettings({ path: file.path, backup, text: withScheme(text, current), previous, data: { part: "scheme" } });
       },
     },
   ];
@@ -114,7 +102,7 @@ function previousDefaults(defaults) {
   };
 }
 
-function defaultsChange(file, settings, { family, run }) {
+function defaultsChange(file, settings, { family }) {
   const defaults = defaultsOf(settings);
   if (defaults.colorScheme === SCHEME_NAME && defaults.font?.face === family) return [];
   const id = `${WRITER}-defaults@${file.flavor}`;
@@ -127,12 +115,11 @@ function defaultsChange(file, settings, { family, run }) {
       restart: null,
       setsFont: true,
       ...(ownLook.length ? { manual: `these Windows Terminal profiles set their own colour scheme or font and keep it: ${ownLook.join(", ")}` } : {}),
-      apply(host, backup) {
+      apply(host, { backup }) {
         const { text, settings: current } = readSettings(file.path);
         const withColor = edited(text, [...DEFAULTS, "colorScheme"], SCHEME_NAME);
         const withFont = edited(withColor, [...DEFAULTS, "font", "face"], family);
-        run.fontSet = true;
-        return writeItem(host, { id, path: file.path, backup, text: withFont, previous: previousDefaults(defaultsOf(current)), data: { part: "defaults", face: family } });
+        return writeSettings({ path: file.path, backup, text: withFont, previous: previousDefaults(defaultsOf(current)), data: { part: "defaults", face: family } });
       },
     },
   ];

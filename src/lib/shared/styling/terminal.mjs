@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { userConfigPath } from "../paths.mts";
 import { detectFont, readPin } from "./font.mjs";
-import { installedAt, sha256File } from "./manifest.mjs";
+import { writeTracked } from "./manifest.mts";
 import { gnomeTerminal } from "./terminals/gnome-terminal.mjs";
 import { konsole } from "./terminals/konsole.mjs";
 import { manualWriter } from "./terminals/manual.mjs";
@@ -33,16 +33,23 @@ function readConfig(path) {
   }
 }
 
-function writeConfig(path, config) {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+function configText(config) {
+  return `${JSON.stringify(config, null, 2)}\n`;
 }
 
-function iconsChange(host, manifest, { pin, run, changes, earlier }) {
+function writeConfig(path, config) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, configText(config));
+}
+
+function fontApplied(manifest, applied) {
+  return [...manifest.items, ...applied].some((item) => item.setsFont);
+}
+
+function iconsChange(host, manifest, { pin, changes, earlier }) {
   const path = userConfigPath(host.home);
   if (readConfig(path).config.statusline?.icons === "nerd") return [];
-  const fontSetBefore = manifest.items.some((item) => item.data?.setsFont);
-  if (!fontSetBefore && !changes.some((change) => change.setsFont)) return [];
+  if (!fontApplied(manifest, []) && !changes.some((change) => change.setsFont)) return [];
   const fontComing = earlier.some((change) => change.id === "font");
   if (!fontComing && !detectFont(host, pin).present) return [];
   return [
@@ -50,21 +57,13 @@ function iconsChange(host, manifest, { pin, run, changes, earlier }) {
       id: ICONS_ID,
       summary: `switch the status line to Nerd Font icons in ${path}`,
       restart: null,
-      apply(host, backup) {
-        if (!(fontSetBefore || run.fontSet) || !detectFont(host, pin).present) return null;
-        const { text, config } = readConfig(path);
-        const backupPath = text === null ? undefined : backup(path);
+      apply(host, { backup, applied }) {
+        if (!fontApplied(manifest, applied) || !detectFont(host, pin).present) return null;
+        const { config } = readConfig(path);
         const statusline = config.statusline ?? {};
-        writeConfig(path, { ...config, statusline: { ...statusline, icons: "nerd" } });
         return {
-          id: ICONS_ID,
-          component: NAME,
-          kind: text === null ? "created" : "edited",
-          path,
-          ...(backupPath ? { backup: backupPath } : {}),
-          sha256: sha256File(path),
+          ...writeTracked(path, configText({ ...config, statusline: { ...statusline, icons: "nerd" } }), backup),
           previous: { ...("icons" in statusline ? { icons: statusline.icons } : {}), hadStatusline: config.statusline !== undefined },
-          installedAt: installedAt(host),
         };
       },
     },
@@ -89,9 +88,8 @@ export function terminalComponent(pin = readPin()) {
     name: NAME,
     plan(host, manifest, earlier = []) {
       const writer = WRITERS[detectTerminal(host.env)] ?? fallback;
-      const run = { fontSet: false };
-      const changes = writer.plan(host, manifest, { family: pin.family, run });
-      return [...changes, ...iconsChange(host, manifest, { pin, run, changes, earlier })];
+      const changes = writer.plan(host, manifest, { family: pin.family });
+      return [...changes, ...iconsChange(host, manifest, { pin, changes, earlier })];
     },
     unapply(item, host) {
       if (item.id === ICONS_ID) return unapplyIcons(item);

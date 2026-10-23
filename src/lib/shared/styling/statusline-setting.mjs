@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { HOST_DIR } from "../paths.mts";
-import { installedAt, sha256File } from "./manifest.mjs";
+import { writeTracked } from "./manifest.mts";
 
 export const STATUS_LINE = { type: "command", command: "picket statusline" };
 
@@ -22,9 +22,13 @@ function readSettings(path) {
   }
 }
 
+function settingsText(settings) {
+  return `${JSON.stringify(settings, null, 2)}\n`;
+}
+
 function writeSettings(path, settings) {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`);
+  writeFileSync(path, settingsText(settings));
 }
 
 function describe(statusLine) {
@@ -42,19 +46,11 @@ function plan(host) {
       summary: `set statusLine to "${STATUS_LINE.command}" in ${path}`,
       ...(replacing ? { question: `Replace your status line "${describe(current)}" with Picket's?` } : {}),
       restart: null,
-      apply(host, backup) {
-        const { text, settings } = readSettings(path);
-        const backupPath = text === null ? undefined : backup(path);
-        writeSettings(path, { ...settings, statusLine: STATUS_LINE });
+      apply(host, { backup }) {
+        const { settings } = readSettings(path);
         return {
-          id: NAME,
-          component: NAME,
-          kind: text === null ? "created" : "edited",
-          path,
-          ...(backupPath ? { backup: backupPath } : {}),
-          sha256: sha256File(path),
+          ...writeTracked(path, settingsText({ ...settings, statusLine: STATUS_LINE }), backup),
           previous: replacing ? { statusLine: current } : {},
-          installedAt: installedAt(host),
         };
       },
     },

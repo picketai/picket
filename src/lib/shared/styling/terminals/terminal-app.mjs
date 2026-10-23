@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { installedAt, picketHome, sha256File } from "../manifest.mjs";
+import { existsSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { picketHome, writeTracked } from "../manifest.mts";
 import { ANSI, TERMINAL, rgb } from "../palette.mts";
 import { xmlPlist } from "./plist.mjs";
 
@@ -87,10 +87,6 @@ function readDefault(host, key) {
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
-function item(host, id, fields) {
-  return { id, component: "terminal", kind: "external", ...fields, installedAt: installedAt(host) };
-}
-
 function profileChange(host) {
   const path = profilePath(host);
   const id = `${WRITER}-profile`;
@@ -99,12 +95,10 @@ function profileChange(host) {
     summary: `write the ${PROFILE} Terminal.app profile to ${path} and import it`,
     restart: "Terminal.app, so it loads the PicketAI profile",
     manual: LOW_COLOUR_NOTE,
-    apply(host) {
-      const text = profileFile(archivedValues(host));
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, text);
+    apply(host, { backup }) {
+      const written = writeTracked(path, profileFile(archivedValues(host)), backup);
       run(host, "open", [path]);
-      return item(host, id, { path, sha256: sha256File(path), previous: {}, data: { writer: WRITER, part: "profile" } });
+      return { ...written, kind: "external", previous: {}, data: { writer: WRITER, part: "profile" } };
     },
   };
 }
@@ -120,7 +114,7 @@ function defaultChange() {
     apply(host) {
       const previous = Object.fromEntries(DEFAULT_KEYS.map((key) => [key, readDefault(host, key)]));
       for (const key of DEFAULT_KEYS) run(host, "defaults", ["write", DOMAIN, key, "-string", PROFILE]);
-      return item(host, id, { previous, data: { writer: WRITER, part: "default" } });
+      return { kind: "external", previous, data: { writer: WRITER, part: "default" } };
     },
   };
 }

@@ -98,6 +98,18 @@ test("revert writes the old defaults back, removes the profile entry and deletes
   });
 });
 
+test("a full run on macOS with the brew cask switches the status line to Nerd Font icons (B6)", async () => {
+  const defaults = basicDefaults();
+  const exec = fakeExec({ osascript, defaults: defaults.run, open: () => exited(0), brew: () => exited(0) });
+  await withMac(defaults, { exec }, async (host) => {
+    const report = await setupTerminal(host, { yes: true });
+    assert.equal(report.changes.find((change) => change.id === "statusline-icons")?.result, "applied", JSON.stringify(report.changes));
+    const config = JSON.parse(readFileSync(join(host.home, ".picketai", "config.json"), "utf8"));
+    assert.equal(config.statusline.icons, "nerd");
+    assert.equal(manifestItem(host, "terminal-app-default").setsFont, true);
+  });
+});
+
 test("the report asks for a Terminal restart and notes 24-bit colour; a second run changes nothing (T-7.5)", async () => {
   const defaults = basicDefaults();
   await withMac(defaults, {}, async (host) => {

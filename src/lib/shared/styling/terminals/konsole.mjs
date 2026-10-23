@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { installedAt, sha256File } from "../manifest.mjs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { writeTracked } from "../manifest.mts";
 import { ANSI, TERMINAL, rgb } from "../palette.mts";
 import { getKey, keptFile, keyfileChange, removeKey, renderIni, setKey } from "./ini.mjs";
 
@@ -41,7 +41,7 @@ export function profile(family) {
   ]);
 }
 
-function defaultChange(host, run) {
+function defaultChange(host) {
   const path = konsolerc(host);
   const current = existsSync(path) ? readFileSync(path, "utf8") : "";
   if (getKey(current, RC_SECTION, RC_KEY) === PROFILE_FILE) return [];
@@ -53,35 +53,24 @@ function defaultChange(host, run) {
       question: "Make PicketAI the default Konsole profile?",
       restart: "Konsole, so new windows open with PicketAI",
       setsFont: true,
-      apply(host, backup) {
-        const existed = existsSync(path);
-        const text = existed ? readFileSync(path, "utf8") : "";
+      apply(host, { backup }) {
+        const text = existsSync(path) ? readFileSync(path, "utf8") : "";
         const before = getKey(text, RC_SECTION, RC_KEY);
-        const backupPath = existed ? backup(path) : undefined;
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, setKey(text, RC_SECTION, RC_KEY, PROFILE_FILE));
-        run.fontSet = true;
         return {
-          id,
-          component: "terminal",
-          kind: existed ? "edited" : "created",
-          path,
-          ...(backupPath ? { backup: backupPath } : {}),
-          sha256: sha256File(path),
+          ...writeTracked(path, setKey(text, RC_SECTION, RC_KEY, PROFILE_FILE), backup),
           previous: before === undefined ? {} : { [RC_KEY]: before },
           data: { writer: WRITER, part: "default" },
-          installedAt: installedAt(host),
         };
       },
     },
   ];
 }
 
-function plan(host, manifest, { family, run }) {
+function plan(host, manifest, { family }) {
   return [
     ...keyfileChange({ id: `${WRITER}-colorscheme`, path: join(dataHome(host), "PicketAI.colorscheme"), content: colorscheme(), writer: WRITER }),
     ...keyfileChange({ id: `${WRITER}-profile`, path: join(dataHome(host), PROFILE_FILE), content: profile(family), writer: WRITER }),
-    ...defaultChange(host, run),
+    ...defaultChange(host),
   ];
 }
 

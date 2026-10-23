@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { installedAt, sha256File } from "../manifest.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { writeTracked } from "../manifest.mts";
 
 function eolOf(text) {
   return text.includes("\r\n") ? "\r\n" : "\n";
@@ -72,21 +71,8 @@ export function keyfileChange({ id, path, content, writer }) {
       summary: `write ${path}`,
       ...(current === null ? {} : { question: `Replace ${path}?` }),
       restart: null,
-      apply(host, backup) {
-        const backupPath = current === null ? undefined : backup(path);
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, content);
-        return {
-          id,
-          component: "terminal",
-          kind: current === null ? "created" : "edited",
-          path,
-          ...(backupPath ? { backup: backupPath } : {}),
-          sha256: sha256File(path),
-          previous: {},
-          data: { writer, part: "file" },
-          installedAt: installedAt(host),
-        };
+      apply(host, { backup }) {
+        return { ...writeTracked(path, content, backup), previous: {}, data: { writer, part: "file" } };
       },
     },
   ];

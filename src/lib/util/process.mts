@@ -27,6 +27,13 @@ export function runProgram(program: string, args: string[], { cwd, timeoutMs }: 
     throw new ProgramFailed(`${program} failed: ${lastLine}`, lastLine);
   }
 }
+export type ProgramResult = { status: number | null; stdout: string; stderr: string };
+
+export function spawnProgram(program: string, args: string[]): ProgramResult {
+  const run = spawnSync(program, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+  return { status: run.error ? null : run.status, stdout: run.stdout ?? "", stderr: run.stderr ?? run.error?.message ?? "" };
+}
+
 export type ShellResult = { exitCode: number; output: string; ms: number; timedOut: boolean };
 export type StartOptions = { cwd: string; env: NodeJS.ProcessEnv; platform: NodeJS.Platform };
 

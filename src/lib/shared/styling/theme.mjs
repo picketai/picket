@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { HOST_DIR, pluginRoot } from "../paths.mts";
-import { installedAt, sha256File } from "./manifest.mjs";
+import { writeTracked } from "./manifest.mts";
 
 const NAME = "theme";
 const THEME_VALUE = "custom:picketai";
@@ -29,9 +29,13 @@ function readJson(path, text) {
   }
 }
 
+function jsonText(value) {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
 function writeJson(path, value) {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+  writeFileSync(path, jsonText(value));
 }
 
 function globalTheme(host) {
@@ -59,19 +63,8 @@ function fileChange(host) {
       summary: `copy the PicketAI theme to ${path}`,
       ...(current === null ? {} : { question: `Replace ${path}?` }),
       restart: null,
-      apply(host, backup) {
-        const backupPath = current === null ? undefined : backup(path);
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(path, source);
-        return {
-          id: "theme-file",
-          component: NAME,
-          kind: current === null ? "created" : "edited",
-          path,
-          ...(backupPath ? { backup: backupPath } : {}),
-          sha256: sha256File(path),
-          installedAt: installedAt(host),
-        };
+      apply(host, { backup }) {
+        return writeTracked(path, source, backup);
       },
     },
   ];
@@ -89,20 +82,11 @@ function settingChange(host) {
       restart: null,
       manual: PROJECT_WINS,
       manualIfSkipped: PICK_BY_HAND,
-      apply(host, backup) {
-        const text = readText(path);
-        const before = readJson(path, text);
-        const backupPath = text === null ? undefined : backup(path);
-        writeJson(path, { ...before, theme: THEME_VALUE });
+      apply(host, { backup }) {
+        const before = readJson(path, readText(path));
         return {
-          id: "theme-setting",
-          component: NAME,
-          kind: text === null ? "created" : "edited",
-          path,
-          ...(backupPath ? { backup: backupPath } : {}),
-          sha256: sha256File(path),
+          ...writeTracked(path, jsonText({ ...before, theme: THEME_VALUE }), backup),
           previous: "theme" in before ? { theme: before.theme } : {},
-          installedAt: installedAt(host),
         };
       },
     },

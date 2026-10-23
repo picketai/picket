@@ -16,7 +16,7 @@ export function fakeHost({ platform = "linux", files = {}, env = {}, answers = [
     platform,
     home,
     env,
-    now: () => FIXED_NOW,
+    now: () => new Date(FIXED_NOW),
     calls: [],
     questions: [],
     interactive,

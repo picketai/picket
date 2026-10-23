@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { backupsDir, installedAt, stampOf } from "../manifest.mjs";
+import { backupsDir, stampOf } from "../manifest.mts";
 import { ANSI, TERMINAL } from "../palette.mts";
 
 const WRITER = "gnome-terminal";
@@ -79,8 +79,8 @@ export function dconfMissing(writer, terminal) {
   return [{ id: `${writer}-no-dconf`, summary: `dconf is not available, so ${terminal} cannot be set up`, manual: `install dconf (the dconf-cli package), then run picket style apply again` }];
 }
 
-export function externalItem(host, { id, backup, previous, data }) {
-  return { id, component: "terminal", kind: "external", ...(backup ? { backup } : {}), previous, data, installedAt: installedAt(host) };
+export function externalFields({ backup, previous, data }) {
+  return { kind: "external", ...(backup ? { backup } : {}), previous, data };
 }
 
 function profilePath(uuid) {
@@ -123,12 +123,12 @@ function profileChange(state, family) {
       for (const [key, value] of profileKeys(family)) dconfWrite(host, `${profilePath(uuid)}${key}`, value);
       const list = appendToList(host, LIST, uuid, [BUILT_IN_PROFILE]);
       state.uuid = uuid;
-      return externalItem(host, { id, backup, previous: { list }, data: { writer: WRITER, part: "profile", uuid } });
+      return externalFields({ backup, previous: { list }, data: { writer: WRITER, part: "profile", uuid } });
     },
   };
 }
 
-function defaultChange(state, run) {
+function defaultChange(state) {
   const id = `${WRITER}-default`;
   return {
     id,
@@ -140,18 +140,17 @@ function defaultChange(state, run) {
       if (state.uuid === null) return null;
       const before = dconfRead(host, DEFAULT);
       dconfWrite(host, DEFAULT, quote(state.uuid));
-      run.fontSet = true;
-      return externalItem(host, { id, previous: { default: before }, data: { writer: WRITER, part: "default", uuid: state.uuid } });
+      return externalFields({ previous: { default: before }, data: { writer: WRITER, part: "default", uuid: state.uuid } });
     },
   };
 }
 
-function plan(host, manifest, { family, run }) {
+function plan(host, manifest, { family }) {
   if (!hasDconf(host)) return dconfMissing(WRITER, "GNOME Terminal");
   const existing = findProfile(host);
   const state = { uuid: existing };
   const isDefault = existing !== null && unquote(dconfRead(host, DEFAULT)) === existing;
-  return [...(existing === null ? [profileChange(state, family)] : []), ...(isDefault ? [] : [defaultChange(state, run)])];
+  return [...(existing === null ? [profileChange(state, family)] : []), ...(isDefault ? [] : [defaultChange(state)])];
 }
 
 function undo(item, host) {

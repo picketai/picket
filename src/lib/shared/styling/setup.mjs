@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { backupFile, backupsDir, emptyManifest, keepCopy, ManifestError, manifestPath, readManifest, removeItems, sha256File, writeManifest } from "./manifest.mjs";
+import { backupFile, backupsDir, emptyManifest, keepCopy, ManifestError, manifestItem, manifestPath, readManifest, removeItems, sha256File, writeManifest } from "./manifest.mts";
 import { statuslineSetting } from "./statusline-setting.mjs";
 import { fontComponent } from "./font.mjs";
 import { terminalComponent } from "./terminal.mjs";
@@ -59,15 +59,17 @@ function editedSinceSetup(existing) {
   return Boolean(existing?.path && existing.sha256 && existsSync(existing.path) && sha256File(existing.path) !== existing.sha256);
 }
 
-async function applyEntry(host, manifest, { change }, yes) {
+async function applyEntry(host, manifest, { component, change }, { yes, applied }) {
   if (change.question && !(await confirmed(host, change.question, yes))) return line(change.id, change.summary, "skipped");
   const existing = manifest.items.find((recorded) => recorded.id === change.id);
   const backup = (path) => (existing ? existing.backup : backupFile(host, path, change.id));
   const copy = editedSinceSetup(existing) ? keepCopy(host, existing.path, change.id) : null;
   const copyNote = copy ? `your edited ${existing.path} is saved at ${copy}` : undefined;
   try {
-    const item = await change.apply(host, backup);
-    if (item === null) return line(change.id, change.summary, "skipped", "not needed after the earlier changes");
+    const fields = await change.apply(host, { backup, applied });
+    if (fields === null) return line(change.id, change.summary, "skipped", "not needed after the earlier changes");
+    const item = manifestItem(host, change, component.name, fields);
+    applied.push(item);
     recordItem(manifest, item);
     writeManifest(host, manifest);
     return { ...line(change.id, change.summary, "applied", copyNote), manual: copyNote };
@@ -96,8 +98,9 @@ async function install(host, manifest, components, { dryRun, yes }) {
   const changes = [...upfront];
   const restart = [];
   const manual = [...noteSteps];
+  const applied = [];
   for (const entry of entries) {
-    const { manual: entryManual, ...result } = await applyEntry(host, manifest, entry, yes);
+    const { manual: entryManual, ...result } = await applyEntry(host, manifest, entry, { yes, applied });
     changes.push(result);
     const { change } = entry;
     if (entryManual) manual.push(entryManual);
