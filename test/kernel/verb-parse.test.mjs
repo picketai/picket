@@ -124,10 +124,11 @@ test("migrate reads --dry-run and init reads --root and --no-install", () => {
 
 test("drive reads its flags with today's value types and refuses a bad timeout, env or bare --run (T-6.4)", () => {
   const input = parse(drive, ["--run", "node -e 0", "--env", "A=1", "--hit", "GET /a", "--hit", "GET /b", "--timeout", "30", "--keep-changes", "--work", ID, "--phase", "2"]);
-  assert.deepEqual(input, { env: { A: "1" }, run: "node -e 0", start: undefined, hits: ["GET /a", "GET /b"], port: undefined, wait: undefined, timeoutMs: 30000, keepChanges: true, work: ID, phase: "2" });
+  assert.deepEqual(input, { env: { A: "1" }, run: "node -e 0", start: undefined, hits: [{ method: "GET", path: "/a", body: undefined }, { method: "GET", path: "/b", body: undefined }], port: undefined, wait: undefined, timeoutMs: 30000, keepChanges: true, work: ID, phase: "2" });
   assert.throws(() => parse(drive, ["--run", "x", "--timeout", "abc"]), UsageError);
   assert.throws(() => parse(drive, ["--run", "x", "--env", "1A=2"]), (err) => err instanceof UsageError && err.message.includes("--env"));
   assert.throws(() => parse(drive, ["--run"]), UsageError);
+  assert.throws(() => parse(drive, ["--hit", " "]), (err) => err instanceof UsageError && err.message.includes("bad --hit"));
 });
 
 test("check reads its steps, a single command and a whole-second timeout (T-6.4)", () => {

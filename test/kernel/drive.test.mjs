@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { portOpen, parseHit } from "../../dist/lib/verbs/drive/drive.mjs";
+import { portOpen, parseHit } from "../../dist/lib/verbs/drive/server.mjs";
 import { statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
@@ -176,6 +176,19 @@ test("drive refuses a destructive --run or --start command on stdout with exit 2
   assert.equal(startRefusal.code, 2);
   assert.match(startRefusal.json.error, /^drive refuses to run a destructive command \(sudo\)/);
   assert.equal(existsSync(statePath(root, STATE_FILES.driveLog)), false, "a refused drive logs no evidence");
+});
+
+test("drive refuses with no --hit or no start command, and a blank --hit is a usage error", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-drive-"));
+  const noHit = run(root, ["drive"]);
+  assert.equal(noHit.code, 2);
+  assert.match(noHit.json.error, /^drive needs at least one --hit/);
+  const noStart = run(root, ["drive", "--hit", "/x"]);
+  assert.equal(noStart.code, 2);
+  assert.equal(noStart.json.error, 'no start command detected: pass --start "<command>"');
+  const blank = run(root, ["drive", "--hit", ""]);
+  assert.equal(blank.code, 1);
+  assert.match(blank.stderr, /^picket: /);
 });
 
 test("drive --env refuses a bad name or a missing equals sign with a usage error", () => {

@@ -28,6 +28,10 @@ test("edgeContext takes the working folder of the process", () => {
   assert.equal(edgeContext("/r").cwd, process.cwd());
 });
 
+test("edgeContext takes the platform of the process", () => {
+  assert.equal(edgeContext("/r").platform, process.platform);
+});
+
 test("edgeContext gives a null session when CLAUDE_CODE_SESSION_ID is unset (T-1.8)", () => {
   assert.equal(withSessionEnv(undefined, () => edgeContext("/r")).session, null);
 });
