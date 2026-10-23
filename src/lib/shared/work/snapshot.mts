@@ -1,13 +1,13 @@
 import { readText } from "../../util/io.mts";
-import { ambiguousRefs } from "../sources/sources.mjs";
+import { ambiguousRefs } from "../sources/intake.mts";
+import type { AmbiguousRef } from "../sources/resolve.mts";
 import { parseArtifact, type ArtifactPhase } from "./artifact.mts";
-import { workDir, workFile, type WorkFile, type WorkId } from "./files.mts";
+import { workFile, type WorkFile, type WorkId } from "./files.mts";
 import { hasMarker } from "./markers.mts";
 import { ARTIFACT_BY_LANE, readState, type WorkState } from "./state.mts";
 import { readVerdicts, type VerdictRow } from "./verdict-log.mts";
 
 export type PhaseStatus = ArtifactPhase & { done: boolean; approved: boolean; reviewed: boolean };
-export type AmbiguousRef = { ref: string; source: string; path: string; status: string; candidates?: string[] } & Record<string, unknown>;
 export type SnapshotArtifact = { path: string; expected: WorkFile; body: string };
 
 export type WorkSnapshot = {
@@ -60,7 +60,7 @@ export function readSnapshot(root: string, id: WorkId): WorkSnapshot {
     artifact: read?.artifact ?? null,
     phases: (read?.phases ?? []).map((phase) => withMarkers(root, id, phase)),
     verdicts: verdicts.rows,
-    ambiguousRefs: ambiguousRefs(workDir(root, id)) as AmbiguousRef[],
+    ambiguousRefs: ambiguousRefs(root, id),
     warnings: skippedWarning(verdicts.skipped),
   };
 }

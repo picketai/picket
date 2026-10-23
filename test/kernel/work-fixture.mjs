@@ -1,4 +1,5 @@
-import { createWork as createWorkAt, newId as newIdAt, readState as readStateAt, writeState as writeStateAt } from "../../dist/lib/shared/work/state.mjs";
+import { createItem, newId as newIdAt, readState as readStateAt, writeState as writeStateAt } from "../../dist/lib/shared/work/state.mjs";
+import { recordBases } from "../../dist/lib/shared/repos.mjs";
 import { setMarker as setMarkerAt } from "../../dist/lib/shared/work/markers.mjs";
 import { appendVerdict as appendVerdictAt } from "../../dist/lib/shared/work/verdict-log.mjs";
 import { appendWaiver as appendWaiverAt } from "../../dist/lib/shared/work/approvals.mjs";
@@ -11,8 +12,10 @@ import { readNext } from "../../dist/lib/shared/work/next-view.mjs";
 import { route as routeAt } from "../../dist/lib/verbs/route/index.mjs";
 import { edgeContext } from "../../dist/lib/shared/context.mjs";
 
-export function createWork({ root, now = new Date(), ...request }) {
-  return createWorkAt(root, request, now);
+export function createWork({ root, now = new Date(), ...item }) {
+  const state = createItem(root, item, now);
+  recordBases(root, state.id);
+  return state;
 }
 
 export function readState(id, root) {

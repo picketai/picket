@@ -46,13 +46,21 @@ test("a modified file in a nested repo is listed by its path, not as the repo di
 test("a commit in the nested repo after createWork is diffed from the recorded base (T-1.2)", () => {
   const { root, orders } = umbrella();
   const s = createWork({ lane: "order", title: "Orders pricing", root });
-  const recorded = readBases(s.id, root)["src/Orders"];
+  const recorded = readBases(root, s.id)["src/Orders"];
   assert.equal(recorded, git(orders, "rev-parse", "HEAD"));
   commitFile(orders, "fees.cs", "class Fees {}\n", "fees");
   const r = reviewSummary(s.id, { root });
   assert.ok(r.changed_files.includes("src/Orders/fees.cs"));
   assert.equal(r.repos.length, 1);
   assert.deepEqual({ path: r.repos[0].path, base: r.repos[0].base, base_from: r.repos[0].base_from, files: r.repos[0].files }, { path: "src/Orders", base: recorded, base_from: "recorded", files: 1 });
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("picket open records each nested repo's HEAD in repos.yaml (T-3.4)", () => {
+  const { root, orders } = umbrella();
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: root };
+  const { id } = JSON.parse(execFileSync("node", [resolve("dist/bin/picket.mjs"), "open", "--lane", "order", "--title", "x", "--root", root], { encoding: "utf8", env }));
+  assert.deepEqual(readBases(root, id), { "src/Orders": git(orders, "rev-parse", "HEAD") });
   rmSync(root, { recursive: true, force: true });
 });
 

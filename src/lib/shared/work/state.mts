@@ -1,12 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig } from "../config.mjs";
 import { revParse } from "../git.mts";
 import { workRoot } from "../paths.mts";
-import { recordBases } from "../repos.mjs";
-import { liveLookup } from "../sources/places.mts";
-import { resolveReferences } from "../sources/resolve.mts";
-import { IntakeError, writeIntake } from "../sources/sources.mjs";
 import { readText } from "../../util/io.mts";
 import { parse, stringify } from "../../util/yaml-lite.mjs";
 import { isWorkId, workDir, workFile, workId, type WorkFile, type WorkId } from "./files.mts";
@@ -33,7 +28,7 @@ export type WorkState = {
   session?: string;
 };
 
-export type NewWork = {
+export type NewItem = {
   lane: string;
   title: string;
   id?: string | null;
@@ -134,15 +129,7 @@ export function newId(title: string, now: Date): WorkId {
   return workId(`${day}-${slug(title) || "work"}`);
 }
 
-function storyIntake(text: string, root: string) {
-  const sources = loadConfig(root).sources;
-  if (!sources.some((s) => s.root)) return null;
-  const intake = resolveReferences(text, sources, liveLookup());
-  if (intake.failures.length) throw new IntakeError(intake.failures);
-  return intake;
-}
-
-function initialState(root: string, id: WorkId, { lane, title, source, session }: NewWork & { lane: Lane }, now: Date): WorkState {
+function initialState(root: string, id: WorkId, { lane, title, source, session }: NewItem & { lane: Lane }, now: Date): WorkState {
   const state: WorkState = { id, lane, title, status: "open", created: now.toISOString(), updated: now.toISOString() };
   if (source) state.source = source;
   if (isSessionId(session)) state.session = session;
@@ -151,17 +138,14 @@ function initialState(root: string, id: WorkId, { lane, title, source, session }
   return state;
 }
 
-export function createWork(root: string, request: NewWork, now: Date): WorkState {
-  const { lane, title, id, story } = request;
+export function createItem(root: string, item: NewItem, now: Date): WorkState {
+  const { lane, title, id, story } = item;
   if (!isLane(lane)) throw new Error(`lane must be one of ${LANES.join("|")}`);
   const wid = checkedId(id ?? newId(title, now));
   if (existsSync(workFile(root, wid, "state.yaml"))) throw new Error(`work item ${wid} already exists`);
-  const intake = story == null ? null : storyIntake(String(story), root);
-  const state = writeState(root, initialState(root, wid, { ...request, lane }, now), now);
+  const state = writeState(root, initialState(root, wid, { ...item, lane }, now), now);
   mkdirSync(join(workDir(root, wid), "phases"), { recursive: true });
-  if (typeof request.request === "string" && request.request !== "") writeFileSync(workFile(root, wid, "request.md"), request.request);
+  if (typeof item.request === "string" && item.request !== "") writeFileSync(workFile(root, wid, "request.md"), item.request);
   if (story != null) writeFileSync(workFile(root, wid, "story.md"), story);
-  if (intake) writeIntake(workDir(root, wid), intake);
-  recordBases(wid, root);
   return state;
 }

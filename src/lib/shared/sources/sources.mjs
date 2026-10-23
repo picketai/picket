@@ -2,24 +2,15 @@
 // stories refer to. A source has several worktrees and branches, so every lookup searches all of
 // them: each worktree's working copy, plus every local branch no worktree has checked out.
 // Nothing here writes to a source; every git call is a read.
-//
-// Intake (D-005, D-006): the story's path-like tokens become references, each resolved to one
-// version by a fixed rule and snapshotted into the work item, so the architect and the reviewer
-// read the same bytes even when the live file moves.
-//
-//   work/<id>/sources.yaml              refs: [...], unmatched: [...]
-//   work/<id>/sources/<source>/<path>   the raw bytes of each resolved document
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { gitRead } from "../../util/git.mjs";
-import { parse, stringify } from "../../util/yaml-lite.mjs";
+import { workFile } from "../work/files.mjs";
+import { readIntake, snapshotInto, writeRecord } from "./intake.mjs";
 import { extractReferences } from "./references.mjs";
-import { contentHash, liveLookup, places, SOURCE_MAX_BUFFER } from "./places.mjs";
+import { liveLookup, places, SOURCE_MAX_BUFFER } from "./places.mjs";
 import { resolveReferences, resolvedRef } from "./resolve.mjs";
 
 export const HIT_CAP = 200;
-export const SNAPSHOT_MAX_BYTES = 1024 * 1024;
 
 /** For `git grep`: exit 1 means no match; anything else (a bad regex) is an error the caller sees. */
 function gitGrep(repo, args) {
@@ -80,58 +71,11 @@ export class LookupError extends Error {
   exitCode = 2;
 }
 
-/** A pin that matches nothing: intake refuses to open the work item. */
-export class IntakeError extends LookupError {
-  constructor(failures) {
-    super(`source references not found:\n${failures.map((f) => `- ${f}`).join("\n")}`);
-    this.failures = failures;
-  }
-}
-
-function intakeFile(dir) {
-  return join(dir, "sources.yaml");
-}
-
-/** Copies the raw bytes into the work item and fills `snapshot`; a file over 1 MB is recorded without one. */
-function snapshotInto(dir, rec, bytes) {
-  if (bytes.length > SNAPSHOT_MAX_BYTES) {
-    rec.snapshot = null;
-    rec.snapshot_reason = `${bytes.length} bytes, over the ${SNAPSHOT_MAX_BYTES}-byte snapshot cap`;
-    return;
-  }
-  const rel = `sources/${rec.source}/${rec.path}`;
-  mkdirSync(dirname(join(dir, rel)), { recursive: true });
-  writeFileSync(join(dir, rel), bytes);
-  rec.snapshot = rel;
-}
-
-function writeRecord(dir, intake) {
-  writeFileSync(intakeFile(dir), stringify({ refs: intake.refs, unmatched: intake.unmatched }) + "\n");
-}
-
-/** Writes the snapshots and `sources.yaml` for a resolution from resolveReferences. */
-export function writeIntake(dir, { refs, unmatched, bytes }) {
-  for (const rec of refs) if (rec.status === "resolved" && bytes.has(rec.ref)) snapshotInto(dir, rec, bytes.get(rec.ref));
-  writeRecord(dir, { refs, unmatched });
-}
-
-/** @returns {{ refs: object[], unmatched: string[] }|null} null when the item has no intake record */
-export function readIntake(dir) {
-  const file = intakeFile(dir);
-  if (!existsSync(file)) return null;
-  const { refs, unmatched } = parse(readFileSync(file, "utf8"));
-  return { refs: refs ?? [], unmatched: unmatched ?? [] };
-}
-
-export function ambiguousRefs(dir) {
-  return (readIntake(dir)?.refs ?? []).filter((r) => r.status === "ambiguous");
-}
-
 /** The user's choice for an ambiguous reference: snapshot that candidate and record `chosen_by: user`. */
-export function pick(dir, ref, label, sources) {
-  const intake = readIntake(dir);
+export function pick(root, id, ref, label, sources) {
+  const intake = readIntake(root, id);
   const i = intake?.refs.findIndex((r) => r.ref === ref) ?? -1;
-  if (i < 0) throw new Error(`no reference ${ref} in ${intakeFile(dir)}`);
+  if (i < 0) throw new Error(`no reference ${ref} in ${workFile(root, id, "sources.yaml")}`);
   const entry = intake.refs[i];
   if (entry.status !== "ambiguous") throw new Error(`${ref} is already resolved (chosen_by: ${entry.chosen_by})`);
   const source = sources.find((s) => s.name === entry.source);
@@ -139,10 +83,9 @@ export function pick(dir, ref, label, sources) {
   const found = liveLookup().candidates(source, entry.path);
   const c = found.find((x) => x.label === label);
   if (!c) throw new Error(`no candidate ${label} for ${ref}; labels: ${found.map((x) => x.label).join(", ")}`);
-  const rec = resolvedRef({ ref: entry.ref, path: entry.path }, entry.source, c, "user");
-  snapshotInto(dir, rec, c.bytes);
+  const rec = snapshotInto(root, id, resolvedRef({ ref: entry.ref, path: entry.path }, entry.source, c, "user"), c.bytes);
   intake.refs[i] = rec;
-  writeRecord(dir, intake);
+  writeRecord(root, id, intake);
   return rec;
 }
 
@@ -152,8 +95,8 @@ export function pick(dir, ref, label, sources) {
  * found: LookupError, and nothing is written; the architect records an OQ instead of guessing.
  * @returns {{ added: boolean, ref: object }}
  */
-export function addRef(dir, ref, sources) {
-  const intake = readIntake(dir) ?? { refs: [], unmatched: [] };
+export function addRef(root, id, ref, sources) {
+  const intake = readIntake(root, id) ?? { refs: [], unmatched: [] };
   const [t] = extractReferences(`\`${ref}\``).refs;
   if (!t) throw new Error(`${ref} is not a path reference (expected <path>[#anchor] or <source>@<branch>:<path>)`);
   const present = intake.refs.find((r) => r.ref === t.ref);
@@ -167,35 +110,7 @@ export function addRef(dir, ref, sources) {
     throw new LookupError(`${ref}: not found; searched ${searched.join("; ") || "no reachable source"}`);
   }
   if (rec.status === "ambiguous") throw new LookupError(`${ref} differs across places: ${rec.candidates.join(", ")}; record an OQ, or pin it as ${rec.source}@<branch>:${rec.path}`);
-  snapshotInto(dir, rec, resolution.bytes.get(rec.ref));
-  writeRecord(dir, { refs: [...intake.refs, rec], unmatched: intake.unmatched.filter((u) => u !== rec.path) });
-  return { added: true, ref: rec };
-}
-
-/** The live bytes behind a resolved ref: its recorded worktree's file, else its branch's current tip. */
-function liveBytes(rec, source) {
-  if (rec.worktree) {
-    if (!existsSync(rec.worktree)) return { reason: `worktree ${rec.worktree} no longer exists` };
-    const file = join(rec.worktree, rec.path);
-    return existsSync(file) ? { bytes: readFileSync(file) } : { reason: `${rec.path} no longer exists in ${rec.worktree}` };
-  }
-  if (!source?.root) return { reason: `source ${rec.source} is unreachable${source?.reason ? `: ${source.reason}` : ""}` };
-  if (!gitRead(source.root, ["rev-parse", "--verify", "--quiet", `refs/heads/${rec.branch}`])) return { reason: `branch ${rec.branch} no longer exists` };
-  const bytes = gitRead(source.root, ["cat-file", "blob", `${rec.branch}:${rec.path}`], { maxBuffer: SOURCE_MAX_BUFFER, buffer: true });
-  return bytes ? { bytes } : { reason: `${rec.path} no longer exists on ${rec.branch}` };
-}
-
-/**
- * Whether each snapshotted document still matches its live version. A place that can no longer be
- * read counts as moved, with the reason: the reviewer reports drift, it never blocks on it.
- * @returns {Array<{ ref: string, snapshot_sha256: string, live_sha256: string|null, moved: boolean, reason?: string }>}
- */
-export function liveDrift(dir, sources) {
-  return (readIntake(dir)?.refs ?? [])
-    .filter((r) => r.status === "resolved")
-    .map((rec) => {
-      const { bytes, reason } = liveBytes(rec, sources.find((s) => s.name === rec.source));
-      const live = bytes ? contentHash(bytes) : null;
-      return { ref: rec.ref, snapshot_sha256: rec.sha256, live_sha256: live, moved: live !== rec.sha256, ...(reason ? { reason } : {}) };
-    });
+  const added = snapshotInto(root, id, rec, resolution.bytes.get(rec.ref));
+  writeRecord(root, id, { refs: [...intake.refs, added], unmatched: intake.unmatched.filter((u) => u !== added.path) });
+  return { added: true, ref: added };
 }

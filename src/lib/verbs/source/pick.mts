@@ -1,7 +1,7 @@
 import { action, done } from "../../shared/action.mts";
 import { pick } from "../../shared/sources/sources.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { workDir, workId, type WorkId } from "../../shared/work/files.mts";
+import { workId, type WorkId } from "../../shared/work/files.mts";
 import { readNext } from "../../shared/work/next-view.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 import { declaredSources, type Source } from "./reachable.mts";
@@ -10,12 +10,12 @@ export type PickInput = { id: WorkId; ref: string; label: string };
 export type PickedRecord = { ref: string; branch: string | null; worktree: string | null; commit: string } & Record<string, unknown>;
 export type PickedRef = PickedRecord & { next: { action: string } };
 
-type Pick = (dir: string, ref: string, label: string, sources: Source[]) => PickedRecord;
+type Pick = (root: string, id: WorkId, ref: string, label: string, sources: Source[]) => PickedRecord;
 
 const pickTyped = pick as unknown as Pick;
 
 export const pickVersion = action<PickInput, PickedRef>(async ({ id, ref, label }, { root }) => {
-  const record = pickTyped(workDir(root, id), ref, label, declaredSources(root));
+  const record = pickTyped(root, id, ref, label, declaredSources(root));
   return done({ ...record, next: readNext(root, id) });
 });
 

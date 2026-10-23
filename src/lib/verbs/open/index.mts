@@ -1,10 +1,14 @@
-import { action, done, Refused } from "../../shared/action.mts";
+import { action, done, refuse } from "../../shared/action.mts";
 import { loadConfig } from "../../shared/config.mjs";
 import { configRel, WORK_DIR } from "../../shared/paths.mts";
-import { IntakeError } from "../../shared/sources/sources.mjs";
+import { recordBases } from "../../shared/repos.mts";
+import { writeIntake } from "../../shared/sources/intake.mts";
+import { liveLookup } from "../../shared/sources/places.mts";
+import { resolveReferences, type Resolution } from "../../shared/sources/resolve.mts";
+import { isReachable, type Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { readNext } from "../../shared/work/next-view.mts";
-import { createWork, type WorkState } from "../../shared/work/state.mts";
+import { createItem } from "../../shared/work/state.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
 
@@ -20,8 +24,6 @@ export type OpenInput = {
   session: string | undefined;
 };
 export type Opened = { id: string; lane: string; dir: string; warnings: string[]; next: { action: string; actor: string | null } } & Record<string, unknown>;
-
-type Source = { name: string; root: string | null; reason: string };
 
 const STDIN = "-";
 const EMPTY_REQUEST = 'open: the request is empty; pass the request text with --text "<request>" or drop the flag';
@@ -39,38 +41,31 @@ function requestText(request: Request | null): string | null {
   return text;
 }
 
-function createOrRefuse(input: OpenInput, root: string, session: string | null, now: Date): WorkState {
-  try {
-    return createWork(
-      root,
-      {
-        lane: input.lane,
-        title: input.title,
-        id: input.id,
-        source: input.ticket ?? input.source,
-        request: requestText(input.request),
-        story: input.story === undefined ? null : readFile(input.story),
-        session: input.session ?? session,
-      },
-      now,
-    );
-  } catch (err) {
-    if (err instanceof IntakeError) throw new Refused(err.message, { failures: (err as IntakeError & { failures: string[] }).failures });
-    throw err;
-  }
+function storyResolution(story: string | null, sources: readonly Source[]): Resolution | null {
+  if (story === null || !sources.some(isReachable)) return null;
+  return resolveReferences(story, sources, liveLookup());
 }
 
-function sourceWarnings(root: string, story: string | undefined): string[] {
-  if (story === undefined) return [];
-  const sources = (loadConfig(root) as unknown as { sources: Source[] }).sources;
-  if (sources.some((s) => s.root)) return [];
+function notFoundMessage(failures: readonly string[]): string {
+  return `source references not found:\n${failures.map((f) => `- ${f}`).join("\n")}`;
+}
+
+function sourceWarnings(story: string | null, sources: readonly Source[]): string[] {
+  if (story === null || sources.some(isReachable)) return [];
   const why = sources.map((s) => `${s.name}: ${s.reason}`).join("; ") || `none declared in ${configRel()}`;
   return [`story.md saved without snapshots: no reachable source (${why})`];
 }
 
 export const openItem = action<OpenInput, Opened>(async (input, { root, session, now }) => {
-  const created = createOrRefuse(input, root, session, now());
-  return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(root, input.story), next: readNext(root, created.id) });
+  const request = requestText(input.request);
+  const story = input.story === undefined ? null : readFile(input.story);
+  const sources = (loadConfig(root) as unknown as { sources: Source[] }).sources;
+  const resolution = storyResolution(story, sources);
+  if (resolution?.failures.length) return refuse(notFoundMessage(resolution.failures), { failures: resolution.failures });
+  const created = createItem(root, { lane: input.lane, title: input.title, id: input.id, source: input.ticket ?? input.source, request, story, session: input.session ?? session }, now());
+  if (resolution) writeIntake(root, created.id, resolution);
+  recordBases(root, created.id);
+  return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(story, sources), next: readNext(root, created.id) });
 });
 
 function parseRequest(args: Args): Request | null {

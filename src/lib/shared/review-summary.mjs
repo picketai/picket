@@ -8,7 +8,7 @@ import { readSnapshot, stateView } from "./work/snapshot.mjs";
 import { itemWaivers } from "./work/approvals.mjs";
 import { projectRoot } from "./paths.mjs";
 import { loadConfig, securityPaths } from "./config.mjs";
-import { liveDrift } from "./sources/sources.mjs";
+import { liveDrift } from "./sources/drift.mjs";
 import * as git from "./git.mjs";
 import { nestedRepos, readBases } from "./repos.mjs";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
@@ -189,7 +189,7 @@ export function reviewSummary(id, o = {}) {
     phases: s.phase_count,
     repos: nested.filter((r) => r.skipped || r.changed.length).map(repoReport),
     // Each snapshot against its live version: snapshot_sha256, live_sha256, moved (and why).
-    sources: liveDrift(join(root, "work", id), config.sources),
+    sources: liveDrift(root, id, config.sources),
     silenced: withWaived(silenced, itemWaivers(root, id)),
     mutation: readMutation(id, root),
   };
@@ -202,7 +202,7 @@ function repoReport({ path, worktree, base, base_from, changed, skipped }) {
 }
 
 function nestedChanges(id, root, branch) {
-  const bases = readBases(id, root);
+  const bases = readBases(root, id);
   return nestedRepos(root).map((repo) => {
     const repoDir = join(root, repo.path);
     const entry = { path: repo.path, worktree: null, base: null, changed: [], added: 0, removed: 0 };
