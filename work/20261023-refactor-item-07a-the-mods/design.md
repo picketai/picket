@@ -158,8 +158,8 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 - **RISK-008** A process per refresh (draft R-2). Mitigation: the signature above for `markdown`; `session` asks only on `agent.spawn` and `SendMessage`.
 - **RISK-009** `picket` is not on the engine's PATH. Mitigation: `null` hides the phase count and work line, as `status` behaves today.
 
-### D-006: `register` becomes wiring
-**Decision:** Infrastructural decision, carrying M-6. `session/hooks/`: `index.tsx` (event subscriptions, the command, opening the pane; 100 to 170 lines), `view.tsx` (the pane render), `actions.ts` (switch, rename, delete, archive, tabs, groups, compact), `data.ts` (atoms, sessions and transcripts, agent rows, merge, grouping, progress), `sprite.ts`, `sessions.ts`. `markdown/hooks/`: `index.tsx`, `view.tsx` (pane and linked reply), `actions.ts` (show, back, refresh, copy, ask, editor, scroll), `data.ts` (atoms, load, work status, remembered files), `tree.ts`, `links.ts`, `markdown.ts`. Atoms live in `data.ts`, not in `index.tsx` as the draft drew, because view and actions read them and `index.tsx` imports both: atoms there would make an import cycle. Imports run `index.tsx` to `view.tsx` to `actions.ts` to `data.ts`; nothing imports `index.tsx`. Each split keeps behaviour: the `index.test.tsx` written in phase 3 passes unchanged.
+### D-006 (r2): `register` becomes wiring
+**Decision:** Infrastructural decision, carrying M-6. `session/hooks/`: `index.tsx` (event subscriptions, the command, opening the pane; at most 170 lines), `view.tsx` (the pane render), `actions.ts` (switch, rename, delete, archive, tabs, groups, compact), `data.ts` (atoms, sessions and transcripts, agent rows, merge, grouping, progress), `sprite.ts`, `sessions.ts`. `markdown/hooks/`: `index.tsx`, `view.tsx` (pane and linked reply), `actions.ts` (show, back, refresh, copy, ask, editor, scroll), `data.ts` (atoms, load, work status, remembered files), `tree.ts`, `links.ts`, `markdown.ts`. Atoms live in `data.ts`, not in `index.tsx` as the draft drew, because view and actions read them and `index.tsx` imports both: atoms there would make an import cycle. Imports run `index.tsx` to `view.tsx` to `actions.ts` to `data.ts`; nothing imports `index.tsx`. Each split keeps behaviour: the `index.test.tsx` written in phase 3 passes unchanged.
 **Instead of:** one module per event handler: more files, with the shared closures turned into parameters; `status/hooks/register.tsx` is the shape the user approved.
 **Risks:**
 - **RISK-010** Module-level mutable state (`limits` and `titles` in session, `lastView` in markdown) gains a second reader. Mitigation: each stays in `data.ts` with one writer; the index tests cover scroll clamping.
@@ -254,7 +254,7 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 
 **Done when:**
 - **T-2.1** `format.test.mts` passes with `compactTokens` giving `950`, `1.0k`, `9.5k`, `10k` (9 960), `46k`, `200k`, `999k`, `1.0M` (999 600), `1.5M`; `elapsed` giving `45s`, `3m05s`, `1h02m`; `minutes` giving `12m`, `1h05m`, `3d06h`; `clock` giving `0:16`, `1:02:05`.
-- **T-2.2** `git grep -nE "(const|function) (roleOf|prettyModel|compactTokens|elapsed|minutes|clock|untilReset)\b" -- src` lists only `src/lib/shared/format.mts`.
+- **T-2.2** `git grep -nE "(const|function) (roleOf|prettyModel|compactTokens|elapsed|minutes|clock|untilReset)\b" -- src ':(exclude)src/lib/hooks'` lists only `src/lib/shared/format.mts` (the `roleOf(event)` in `src/lib/hooks/inject/extensions/index.mts` is an unrelated function present at base).
 - **T-2.3** After `npm run build`, every `dist/mods/<name>/shared/` holds `format.ts` and `styling/palette.ts`, and no file under `dist/mods/` contains `lib/shared/` or an `.mts'` specifier.
 - **T-2.4** `src/lib/shared/styling/palette.mjs`, `src/mods/status/hooks/format.ts` and `src/mods/status/hooks/format.test.ts` no longer exist (the block lists them), and no file under `src/` names `palette.mjs`.
 - **T-2.5** Driven: `picket statusline` fed a status line input with a 200 000-token window prints `200k`, and its reset field reads in the `minutes` format.
@@ -313,10 +313,10 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 
 **Done when:**
 - **T-4.1** `src/mods/session/hooks/` holds `index.tsx`, `view.tsx`, `actions.ts`, `data.ts`, `sprite.ts`, `sessions.ts` and their tests; `src/mods/session/hooks/format.ts` and `src/mods/session/hooks/format.test.ts` no longer exist (the block lists them).
-- **T-4.2** `index.tsx` has 100 to 170 lines and declares no atom.
+- **T-4.2** `index.tsx` has at most 170 lines and declares no atom.
 - **T-4.3** No file imports `./index`; `data.ts` imports neither `./view` nor `./actions`; `actions.ts` does not import `./view`.
 - **T-4.4** `git diff <phase 3 commit> -- src/mods/session/hooks/index.test.tsx` is empty and the test passes.
-- **T-4.5** Driven: `node scripts/test.mjs build mods` exits 0 with the same passing count as after phase 3 (OQ-002); `npm test` exits 0.
+- **T-4.5** Driven: `node scripts/test.mjs build mods` exits 0 with no fewer passing tests than after phase 3 (OQ-002); `npm test` exits 0.
 
 ## Phase 5: markdown's `register` becomes wiring
 
@@ -337,10 +337,10 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 
 **Done when:**
 - **T-5.1** `src/mods/markdown/hooks/` holds `index.tsx`, `view.tsx`, `actions.ts`, `data.ts`, `tree.ts`, `links.ts`, `markdown.ts` and their tests; `src/mods/markdown/hooks/work.ts` no longer exists (the block lists it).
-- **T-5.2** `index.tsx` has 100 to 170 lines and declares no atom.
+- **T-5.2** `index.tsx` has at most 170 lines and declares no atom.
 - **T-5.3** No file imports `./index`; `data.ts` imports neither `./view` nor `./actions`; `actions.ts` does not import `./view`.
 - **T-5.4** `git diff <phase 3 commit> -- src/mods/markdown/hooks/index.test.tsx` is empty and the test passes.
-- **T-5.5** Driven: `node scripts/test.mjs build mods` exits 0 with the same passing count as after phase 4 (OQ-002); `npm test` exits 0.
+- **T-5.5** Driven: `node scripts/test.mjs build mods` exits 0 with no fewer passing tests than after phase 4 (OQ-002); `npm test` exits 0.
 
 ## Phase 6: Theme tokens and brand colours
 
@@ -376,3 +376,5 @@ The three mods (`status`, `session`, `markdown`) are Claude Code plugins that th
 - 2026-10-23: D-005 (r2): rule limited to Picket data, markdown still displays work documents; files and absence criteria for phases 2 to 6; cacheLeft and SendMessage criteria.
 - 2026-10-23: D-004 (r2): validate --strict rejects contract imports; status keeps a self-contained Work, checked against LatestView by test/repo/mod-contracts.test.mjs; phase 3 greps and T-3.6 follow.
 - 2026-10-23: D-005 (r3): runPicket is an async function declaration, since the validator follows `$` only into one; phase 3 grep accepts `export async function`.
+- 2026-10-23: D-006 (r2): wiring files at most 170 lines, no floor (T-4.2, T-5.2); T-2.2 excludes src/lib/hooks; T-4.5 allows more tests; cumulative review.
+- 2026-10-23: D-006 (r2): T-5.5 allows more passing tests, as T-4.5 does; the review fix adds one test.

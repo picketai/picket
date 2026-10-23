@@ -46,7 +46,10 @@ export const register: Register = on => {
 
   on('agent.spawn', async ($, e, next) => {
     const result = await next(e)
-    if (result.agentId !== undefined) {
+    if (result.agentId === undefined) {
+      return result
+    }
+    try {
       await addSpawned($, {
         id: result.agentId,
         type: e.subagentType,
@@ -54,18 +57,21 @@ export const register: Register = on => {
         model: result.model ?? null,
         prompt: e.prompt,
       })
-    }
+    } catch {}
     return result
-  }).catch(($, e, next) => next(e))
+  })
 
   on('tool.call', { tool: 'SendMessage' }, async ($, e, next) => {
     const sent = await next(e)
     const text = typeof e.message === 'string' ? e.message : ''
-    if (e.agentId === undefined && text !== '') {
-      await applyLeadMessage($, String(e.to), text)
+    if (e.agentId !== undefined || text === '') {
+      return sent
     }
+    try {
+      await applyLeadMessage($, String(e.to), text)
+    } catch {}
     return sent
-  }).catch(($, e, next) => next(e))
+  })
 
   on('turn.step', async function* ($, e, next) {
     const result = yield* next(e)
@@ -80,11 +86,15 @@ export const register: Register = on => {
     if (id === undefined) {
       return next(e)
     }
-    await recordTool($, id, { tool: e.tool })
+    try {
+      await recordTool($, id, { tool: e.tool })
+    } catch {}
     const ran = await next(e)
-    await recordTool($, id, { tool: null, lastTool: e.tool })
+    try {
+      await recordTool($, id, { tool: null, lastTool: e.tool })
+    } catch {}
     return ran
-  }).catch(($, e, next) => next(e))
+  })
 
   on('ui.scroll', { component: 'Pane', requestId: PANE }, async ($, e) => {
     await scrollPane($, { bodyRows: e.bodyRows, row: e.pointer?.row, by: e.by })
