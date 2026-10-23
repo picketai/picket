@@ -64,6 +64,17 @@ test("verify fails on missing files, passes when files, greps and a drive exist"
   rmSync(root, { recursive: true, force: true });
 });
 
+test("verify counts an unreadable drive-log line in the drive_observed detail", () => {
+  const { root, id } = setup();
+  const drive = JSON.stringify({ kind: "drive", command: "curl http://127.0.0.1:8080/invoices.csv", work_id: id, phase: 1 });
+  const detail = () => verify(id, 1, { root, runTests: false }).results.find((x) => x.name === "drive_observed");
+  writeFileSync(statePath(root, STATE_FILES.driveLog), drive + "\n");
+  assert.deepEqual(detail(), { name: "drive_observed", ok: true, detail: "1 drive-class command(s) observed, last: curl http://127.0.0.1:8080/invoices.csv" });
+  writeFileSync(statePath(root, STATE_FILES.driveLog), `{not json\n${drive}\n`);
+  assert.deepEqual(detail(), { name: "drive_observed", ok: true, detail: "1 drive-class command(s) observed, last: curl http://127.0.0.1:8080/invoices.csv (1 unreadable line skipped)" });
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("verify on a malformed package.json fails tests as undetected and carries the parse warning", () => {
   const { root, id } = setup(true);
   writeFileSync(join(root, "package.json"), '{ "scripts": { "test": "node t.js", }');

@@ -755,6 +755,17 @@ test("emit.ledger appends a v2 row and observe.drive tags commands with the open
   rmSync(root, { recursive: true, force: true });
 });
 
+test("observe.drive tags a command with the most recently active open item, not the last id", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-hooks-"));
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  createWork({ lane: "fast", title: "Older", id: "20261022-zeta-older", now: new Date("2026-10-22T08:00:00.000Z"), root });
+  createWork({ lane: "fast", title: "Newer", id: "20261022-alpha-newer", now: new Date("2026-10-22T15:00:00.000Z"), root });
+  run("observe.drive.mjs", { hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: "curl -s http://127.0.0.1:8080/health" }, cwd: root, session_id: "s1" }, root);
+  const drives = readFileSync(statePath(root, STATE_FILES.driveLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.equal(drives[0].work_id, "20261022-alpha-newer");
+  rmSync(root, { recursive: true, force: true });
+});
+
 test("route.verdict applies PHASE DONE from a picket:developer whose block has no phase heading", () => {
   const { root, id } = project();
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "Done.\n\nPHASE DONE" }])]);

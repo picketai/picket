@@ -17,12 +17,12 @@ export type DriveInput = {
 };
 export type DriveReport = { ok: boolean } & Record<string, unknown>;
 
-type Drive = (options: Omit<DriveInput, "work"> & { root: string; id: string | undefined }) => Promise<DriveReport>;
+type Drive = (options: Omit<DriveInput, "work"> & { root: string; id: string | undefined; session: string | null }) => Promise<DriveReport>;
 
 const driveTyped = drive as unknown as Drive;
 
-export const driveApp = action<DriveInput, DriveReport>(async ({ work, ...options }, { root }) => {
-  const report = await driveTyped({ ...options, id: work, root });
+export const driveApp = action<DriveInput, DriveReport>(async ({ work, ...options }, { root, session }) => {
+  const report = await driveTyped({ ...options, id: work, root, session });
   return report.ok ? done(report) : failed(report);
 });
 

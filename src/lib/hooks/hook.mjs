@@ -36,13 +36,14 @@ async function recordDenial(handler, root, event, output) {
   const denial = denialOf(output);
   if (denial === null) return;
   try {
-    const { openWorkItem } = await import("./observe.drive.mjs");
+    const { currentItem } = await import("../shared/work/state.mjs");
+    const session = event.session_id ?? null;
     appendLedger(root, {
       event: denial.event,
-      session: event.session_id ?? null,
+      session,
       agent: bareAgentName(event.agent_type) ?? "lead",
       hook: hookName(handler),
-      work_id: openWorkItem(root).work_id,
+      work_id: currentItem(root, { session })?.id ?? null,
       reason: String(denial.reason ?? "").slice(0, REASON_LIMIT),
     });
   } catch {}

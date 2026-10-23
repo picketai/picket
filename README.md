@@ -69,7 +69,7 @@ New since 1.0.0-alpha.1:
 - `picket style apply` gives Claude Code and the terminal the PicketAI look (theme, font, colour scheme, status line), and `picket style remove` removes only what you choose.
 - `picket statusline` renders the session line, and `picket init` sets it unless a status line is already set.
 - `picket leave` records cleanup a work item leaves for you; `picket close` lists it.
-- `picket next --latest` answers the newest open work item.
+- `picket next --latest` answers the current work item: the most recently active open or blocked item, this session's first.
 - `picket --help`, `picket help` and `picket --version`.
 - The skill `picket:explaining` walks one scenario or concept through worked data.
 - `guard.bash` checks PowerShell commands too, and in the default, acceptEdits and auto modes a destructive command can be escalated to you with `PICKET_ESCALATE`.

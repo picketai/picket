@@ -27,7 +27,8 @@ import { LANGS, extOf } from "../shared/comments.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../shared/paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "./kernel-call.mjs";
 import { parseArgs } from "../util/args.mjs";
-import { maskEnvValues, openWorkItem } from "./observe.drive.mjs";
+import { maskEnvValues } from "../shared/drive-log.mjs";
+import { currentItem } from "../shared/work/state.mjs";
 import { detectTooling } from "../shared/tooling.mjs";
 import { bareAgentName } from "../shared/agent-name.mjs";
 import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, POWERSHELL_MARKER_TEXT, recordEscalation, withoutMarker } from "../shared/escalation.mjs";
@@ -1340,7 +1341,7 @@ function escalationVerdict({ shapeProblem, commandClass, mode, savedRules, refus
 function logEscalation(command, rawReason, ctx, { outcome, why }) {
   const { root, escalation } = ctx;
   const reason = rawReason === null ? null : maskEnvValues(rawReason);
-  recordEscalation(root, { session: escalation.session, outcome, why, command, reason, agent: escalation.agent, work_id: openWorkItem(root).work_id });
+  recordEscalation(root, { session: escalation.session, outcome, why, command, reason, agent: escalation.agent, work_id: currentItem(root, { session: escalation.session ?? null })?.id ?? null });
   return reason;
 }
 

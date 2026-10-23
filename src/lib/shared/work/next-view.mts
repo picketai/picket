@@ -3,7 +3,7 @@ import type { WorkId } from "./files.mts";
 import type { Gate } from "./gate.mts";
 import { nextStep, type NextAction, type NextStep } from "./next-step.mts";
 import { readSnapshot, stateView, type StateView, type WorkSnapshot } from "./snapshot.mts";
-import { isSessionId, listOpenWork, type Lane, type Status } from "./state.mts";
+import { currentItem, isSessionId, lastActivity, type Lane, type Status } from "./state.mts";
 
 export type NextView = {
   id: WorkId;
@@ -31,8 +31,6 @@ export type LatestView =
       other_session: boolean;
     });
 
-type Seen = { snap: WorkSnapshot; view: StateView };
-
 export function nextView(snap: WorkSnapshot, step: NextStep): NextView {
   const { id, lane, status } = snap.state;
   const view: NextView = {
@@ -57,39 +55,23 @@ export function readNext(root: string, id: WorkId): NextView {
   return nextOf(readSnapshot(root, id), securityPaths(root));
 }
 
-function sinceOf(view: StateView): string {
-  const ts = view.last_verdict?.ts;
-  const updated = view.updated ?? view.created;
-  return ts && ts > updated ? ts : updated;
-}
-
-function newestOf(items: Seen[]): Seen {
-  return items.reduce((best, item) => {
-    const order = sinceOf(item.view).localeCompare(sinceOf(best.view)) || item.view.id.localeCompare(best.view.id);
-    return order > 0 ? item : best;
-  });
-}
-
 function stampOf(view: StateView): string | null {
   return isSessionId(view.session) ? view.session : null;
 }
 
 export function latest(root: string, { session }: { session?: string | null } = {}): LatestView {
-  const open = listOpenWork(root).map((id): Seen => {
-    const snap = readSnapshot(root, id);
-    return { snap, view: stateView(snap) };
-  });
-  if (!open.length) return { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] };
+  const current = currentItem(root, { session: session ?? null });
+  if (!current) return { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] };
+  const snap = readSnapshot(root, current.id);
+  const view = stateView(snap);
   const given = isSessionId(session);
-  const own = given ? open.filter(({ view }) => stampOf(view) === session) : [];
-  const { snap, view } = newestOf(own.length ? own : open);
   return {
     ...nextOf(snap, securityPaths(root)),
     title: view.title,
     phases_approved: view.phases_approved,
     phase_count: view.phase_count,
     blocked_reason: view.blocked_reason ?? null,
-    since: sinceOf(view),
+    since: lastActivity(view, view.last_verdict),
     by: view.last_verdict?.agent ?? null,
     session: stampOf(view),
     other_session: given && stampOf(view) !== session,

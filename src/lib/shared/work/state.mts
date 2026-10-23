@@ -5,6 +5,7 @@ import { workRoot } from "../paths.mts";
 import { readText } from "../../util/io.mts";
 import { parse, stringify } from "../../util/yaml-lite.mjs";
 import { isWorkId, workDir, workFile, workId, type WorkFile, type WorkId } from "./files.mts";
+import { readVerdicts, type VerdictRow } from "./verdict-log.mts";
 
 export const LANES = ["fast", "order", "design", "research"] as const;
 export const STATUSES = ["open", "blocked", "done", "abandoned"] as const;
@@ -114,6 +115,31 @@ export function listWork(root: string): WorkId[] {
 
 export function listOpenWork(root: string): WorkId[] {
   return listWork(root).filter((id) => isActive(readState(root, id).status));
+}
+
+export function lastActivity(state: WorkState, lastVerdict: VerdictRow | null): string {
+  const updated = state.updated ?? state.created;
+  const verdictTs = lastVerdict?.ts;
+  return verdictTs && verdictTs > updated ? verdictTs : updated;
+}
+
+type Activity = { state: WorkState; since: string };
+
+function activityOf(root: string, state: WorkState): Activity {
+  return { state, since: lastActivity(state, readVerdicts(root, state.id).rows.at(-1) ?? null) };
+}
+
+function isLater(a: Activity, b: Activity): boolean {
+  return (a.since.localeCompare(b.since) || a.state.id.localeCompare(b.state.id)) > 0;
+}
+
+export function currentItem(root: string, { session }: { session: string | null }): WorkState | null {
+  const active = listWork(root)
+    .map((id) => readState(root, id))
+    .filter((state) => isActive(state.status));
+  const own = isSessionId(session) ? active.filter((state) => state.session === session) : [];
+  const candidates = (own.length ? own : active).map((state) => activityOf(root, state));
+  return candidates.reduce<Activity | null>((best, item) => (best === null || isLater(item, best) ? item : best), null)?.state ?? null;
 }
 
 function slug(title: string): string {

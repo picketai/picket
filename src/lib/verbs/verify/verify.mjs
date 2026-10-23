@@ -13,23 +13,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { phaseOf, readSnapshot } from "../../shared/work/snapshot.mjs";
-import { projectRoot, statePath, STATE_FILES } from "../../shared/paths.mjs";
+import { projectRoot } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
+import { readDriveLog } from "../../shared/drive-log.mjs";
 
-export function readDriveLog(root = projectRoot()) {
-  const p = statePath(root, STATE_FILES.driveLog);
-  if (!existsSync(p)) return [];
-  return readFileSync(p, "utf8")
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .map((l) => {
-      try {
-        return JSON.parse(l);
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
+function skippedNote(skipped) {
+  return skipped ? ` (${skipped} unreadable line${skipped === 1 ? "" : "s"} skipped)` : "";
 }
 
 export function verify(id, n, { root = projectRoot(), runTests = true } = {}) {
@@ -69,8 +58,10 @@ export function verify(id, n, { root = projectRoot(), runTests = true } = {}) {
     }
   }
   if (mh.drive) {
-    const drives = readDriveLog(root).filter((e) => e.kind === "drive" && (e.work_id === id || !e.work_id) && (e.phase === Number(n) || e.phase == null));
-    add("drive_observed", drives.length > 0, drives.length ? `${drives.length} drive-class command(s) observed, last: ${drives.at(-1).command?.slice(0, 80)}` : "no drive-class command observed for this phase");
+    const log = readDriveLog(root);
+    const drives = log.rows.filter((e) => e.kind === "drive" && (e.work_id === id || !e.work_id) && (e.phase === Number(n) || e.phase == null));
+    const detail = drives.length ? `${drives.length} drive-class command(s) observed, last: ${drives.at(-1).command?.slice(0, 80)}` : "no drive-class command observed for this phase";
+    add("drive_observed", drives.length > 0, detail + skippedNote(log.skipped));
   }
 
   return { ok: results.every((r) => r.ok), phase: Number(n), results, ...(warnings.length ? { warnings } : {}) };

@@ -1,10 +1,9 @@
 import { spawn, execSync } from "node:child_process";
-import { appendFileSync, mkdirSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import net from "node:net";
-import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
-import { listWork } from "../../shared/work/state.mjs";
-import { projectRoot, stateDir, statePath, STATE_FILES } from "../../shared/paths.mjs";
+import { appendDriveRow, driveTarget } from "../../shared/drive-log.mjs";
+import { projectRoot } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
 import { assertNotDestructive } from "../../shared/destructive.mjs";
 
@@ -30,15 +29,6 @@ export function portOpen(port) {
     s.once("timeout", () => (s.destroy(), resolve(false)));
     s.once("error", () => resolve(false));
   });
-}
-
-/** The newest open work item, so a drive row lands on the phase it verifies. */
-export function currentWork(root) {
-  for (const id of listWork(root).reverse()) {
-    const s = stateView(readSnapshot(root, id));
-    if (s.status === "open") return { work_id: id, phase: s.current_phase ?? null };
-  }
-  return { work_id: null, phase: null };
 }
 
 export function parseHit(spec) {
@@ -133,11 +123,6 @@ function restoreSideEffects(root, before, keep) {
   return { dirtied, created, restored: checkout(root, dirtied), removed: removeFiles(root, created) };
 }
 
-function logRow(root, row) {
-  mkdirSync(stateDir(root), { recursive: true });
-  appendFileSync(statePath(root, STATE_FILES.driveLog), JSON.stringify(row) + "\n");
-}
-
 /**
  * @param {object} o
  * @param {string} [o.run]       a command to run and capture (CLI drive); wins over start/hits
@@ -147,13 +132,12 @@ function logRow(root, row) {
  * @param {string} [o.wait]      path polled until the server answers; default: the first hit's path
  * @param {number} [o.timeoutMs] boot and per-request timeout, default 20000
  * @param {boolean} [o.keepChanges] leave files the drive changed in place instead of restoring them
- * @param {string} [o.id]        work item the evidence belongs to; default: the newest open one
  * @param {number} [o.phase]
  * @param {string} [o.root]
  */
 export async function drive(o = {}) {
   const root = o.root ?? projectRoot();
-  const work = o.id ? { work_id: o.id, phase: null } : currentWork(root);
+  const work = o.id ? { work_id: o.id, phase: null } : driveTarget(root, { session: o.session ?? null });
   if (o.phase != null) work.phase = Number(o.phase);
   const timeoutMs = Number(o.timeoutMs ?? 20_000);
   const row = { ts: new Date().toISOString(), kind: "drive", source: "picket drive", work_id: work.work_id, phase: work.phase, env: Object.keys(o.env ?? {}) };
@@ -174,7 +158,7 @@ export async function drive(o = {}) {
     }
     const side = restoreSideEffects(root, before, o.keepChanges);
     const r = { ok: code === 0, mode: "run", command: o.run, exit_code: code, ms: Date.now() - t, output: String(output).slice(-4000), ...side };
-    logRow(root, { ...row, command: `picket drive --run ${o.run}`.slice(0, 200), ok: r.ok, exit_code: code });
+    appendDriveRow(root, { ...row, command: `picket drive --run ${o.run}`.slice(0, 200), ok: r.ok, exit_code: code });
     return r;
   }
 
@@ -221,7 +205,7 @@ export async function drive(o = {}) {
   result.stopped = !(await portOpen(port));
   result.server_log_tail = serverLog.slice(-1500);
   Object.assign(result, restoreSideEffects(root, before, o.keepChanges));
-  logRow(root, {
+  appendDriveRow(root, {
     ...row,
     command: `picket drive --start "${start}" ${hits.map((h) => `--hit "${h.method} ${h.path}"`).join(" ")}`.slice(0, 200),
     port,
