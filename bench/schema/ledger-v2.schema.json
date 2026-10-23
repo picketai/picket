@@ -9,7 +9,7 @@
   "properties": {
     "v": { "const": 2 },
     "ts": { "type": "string", "format": "date-time" },
-    "session": { "type": "string" },
+    "session": { "type": ["string", "null"] },
     "event": { "enum": ["stop", "subagent_stop", "gate", "bounce", "block"] },
     "agent": { "type": "string", "description": "lead | analyst | architect | developer | reviewer | <custom>" },
     "lane": { "enum": ["fast", "order", "design", "research", null] },

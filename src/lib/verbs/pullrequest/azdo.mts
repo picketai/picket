@@ -18,9 +18,25 @@ function basicAuth(pat: string): string {
   return Buffer.from(`:${pat}`).toString("base64");
 }
 
+const REGEX_SPECIAL = /[.*+?^${}()|[\]\\/-]/g;
+
+function hexOf(ch: string, width: number): string {
+  return (ch.codePointAt(0) ?? 0).toString(16).padStart(width, "0");
+}
+
+function anyEncodingOf(ch: string): string {
+  const forms = [ch.replace(REGEX_SPECIAL, "\\$&"), `\\\\u${hexOf(ch, 4)}`, encodeURIComponent(ch).replace(REGEX_SPECIAL, "\\$&"), `%${hexOf(ch, 2)}`];
+  if (ch === "/") forms.push("\\\\/");
+  return `(?:${forms.join("|")})`;
+}
+
+function encodedSecret(secret: string): RegExp {
+  return new RegExp([...secret].map(anyEncodingOf).join(""), "gi");
+}
+
 function withoutPat(text: string, pat: string): string {
   if (!pat) return text;
-  return text.replaceAll(pat, REDACTED).replaceAll(basicAuth(pat), REDACTED);
+  return [pat, basicAuth(pat)].reduce((redacted, secret) => redacted.replace(encodedSecret(secret), REDACTED), text);
 }
 
 function errorBody(text: string, pat: string): string {

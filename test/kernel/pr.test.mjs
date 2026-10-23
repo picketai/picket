@@ -241,6 +241,25 @@ for (const [form, secret] of [["the PAT", MARKER_PAT], ["its Basic form", Buffer
   });
 }
 
+function hexOf(ch, width) {
+  return ch.charCodeAt(0).toString(16).toUpperCase().padStart(width, "0");
+}
+
+const ENCODINGS = [
+  ["JSON-escaped", (text) => [...text].map((ch) => `\\u${hexOf(ch, 4)}`).join("")],
+  ["percent-encoded", (text) => [...text].map((ch) => `%${hexOf(ch, 2)}`).join("")],
+];
+
+for (const [encoding, encode] of ENCODINGS) {
+  for (const [form, secret] of [["the PAT", MARKER_PAT], ["its Basic form", Buffer.from(`:${MARKER_PAT}`).toString("base64")]]) {
+    test(`${form} echoed ${encoding} is not printed`, async () => {
+      const echoed = encode(secret);
+      const message = await deniedWith(JSON.stringify({ message: "denied" }).replace("denied", `denied ${echoed}`));
+      assert.ok(!message.includes(echoed) && !message.includes(echoed.toLowerCase()), message);
+    });
+  }
+}
+
 test("an empty PAT leaves the error body as the server wrote it", async () => {
   const { server, url } = await deniedServer(() => "denied");
   try {

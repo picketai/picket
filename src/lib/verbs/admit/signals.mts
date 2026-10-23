@@ -56,7 +56,7 @@ function normalisePath(p: string): string {
   return p.replace(/\\/g, "/").replace(/^(\.\/)+/, "");
 }
 
-function securityPathHits(paths: string[], securityPaths: readonly string[]): string[] {
+function pathHitsOf(paths: string[], securityPaths: readonly string[]): string[] {
   const hits = paths.map(normalisePath).filter((p) => securityPathOf(p, securityPaths) !== null);
   return [...new Set(hits)].sort();
 }
@@ -78,7 +78,7 @@ function isDiagnosis(text: string, signals: Pick<Signals, "declared_research" | 
 
 export function signalsOf(text: string, mentioned: string[], touched: string[], securityPaths: readonly string[]): Signals {
   const declaredResearch = DECLARED_RESEARCH.test(text);
-  const pathHits = securityPathHits([...mentioned, ...touched], securityPaths);
+  const pathHits = pathHitsOf([...mentioned, ...touched], securityPaths);
   const signals = {
     forced: forcedLane(text) ?? null,
     mentioned_paths: mentioned,
