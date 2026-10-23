@@ -5,7 +5,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createWork } from "./work-fixture.mjs";
-import { mutate, pickMutant, renderMutation } from "../../dist/lib/verbs/mutate/mutate.mjs";
+import { mutate, renderMutation } from "../../dist/lib/verbs/mutate/index.mjs";
+import { pickMutant } from "../../dist/lib/verbs/mutate/mutant.mjs";
 import { STATE_FILES, statePath } from "../../dist/lib/shared/paths.mjs";
 import { reviewSummary } from "../../dist/lib/shared/review-summary.mjs";
 import { writeConfig } from "./config-fixture.mjs";
@@ -16,6 +17,7 @@ const CHANGED = "export function same(a, b) {\n  if (a === b) return 1;\n  retur
 const PROBE = 'const text = require("fs").readFileSync("src/same.js", "utf8");\nprocess.exit(text.includes("!==") ? 1 : 0);\n';
 const BUILD = 'const fs = require("fs");\nfs.mkdirSync("out", { recursive: true });\nfs.copyFileSync("src/same.js", "out/same.js");\n';
 const NO_OPERATOR = SOURCE.replace("return 0;", "return 0;\n  const x = 1;");
+const OPTIONS = { env: process.env, now: () => new Date() };
 
 function git(dir, ...args) {
   return execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -62,10 +64,19 @@ test("a mutant the tests do not catch survives, is saved to mutation.json, and t
   });
 });
 
+test("mutate saves the clock's time and logs the baseline to mutate-test.log", () => {
+  withRepo({}, ({ root, id }) => {
+    write(root, "src/same.js", CHANGED);
+    mutate(root, id, { env: process.env, now: () => new Date("2026-10-23T10:00:00.000Z") });
+    assert.equal(JSON.parse(readFileSync(join(root, "work", id, "mutation.json"), "utf8")).ts, "2026-10-23T10:00:00.000Z");
+    assert.equal(existsSync(statePath(root, "mutate-test.log")), true);
+  });
+});
+
 test("a test that catches the inversion kills the mutant (T-6.2)", () => {
   withRepo({ testCommand: "node probe.cjs" }, ({ root, id }) => {
     write(root, "src/same.js", CHANGED);
-    assert.equal(mutate(id, { root }).outcome, "killed");
+    assert.equal(mutate(root, id, OPTIONS).outcome, "killed");
     assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), CHANGED);
   });
 });
@@ -73,13 +84,13 @@ test("a test that catches the inversion kills the mutant (T-6.2)", () => {
 test("no added operator is no candidate; no test command is no test command (T-6.2)", () => {
   withRepo({}, ({ root, id }) => {
     write(root, "src/same.js", SOURCE.replace("return 0;", "return 0;\n  const x = 1;"));
-    const none = mutate(id, { root });
+    const none = mutate(root, id, OPTIONS);
     assert.deepEqual([none.outcome, none.mutant], ["no candidate", null]);
     assert.equal(renderMutation(none), "mutant none: no candidate");
   });
   withRepo({ testCommand: null }, ({ root, id }) => {
     write(root, "src/same.js", CHANGED);
-    const result = mutate(id, { root });
+    const result = mutate(root, id, OPTIONS);
     assert.deepEqual([result.outcome, result.command], ["no test command", null]);
     assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), CHANGED);
   });
@@ -88,7 +99,7 @@ test("no added operator is no candidate; no test command is no test command (T-6
 test("a test command that builds leaves the mutant in the build output, so mutate rebuilds from the restored source", () => {
   withRepo({ testCommand: "node build.cjs", buildCommand: "node build.cjs" }, ({ root, id }) => {
     write(root, "src/same.js", CHANGED);
-    const result = mutate(id, { root });
+    const result = mutate(root, id, OPTIONS);
     assert.equal(result.outcome, "survived");
     assert.equal(result.rebuild, "passed");
     assert.equal(readFileSync(join(root, "out", "same.js"), "utf8"), CHANGED);
@@ -101,13 +112,13 @@ test("a file restored from an interrupted run is rebuilt even with no candidate,
     write(root, "out/same.js", "export const stale = 1;\n");
     mkdirSync(dirname(statePath(root, STATE_FILES.mutationRestore)), { recursive: true });
     writeFileSync(statePath(root, STATE_FILES.mutationRestore), JSON.stringify({ path: "src/same.js", original: Buffer.from(NO_OPERATOR).toString("base64") }));
-    const result = mutate(id, { root });
+    const result = mutate(root, id, OPTIONS);
     assert.deepEqual([result.outcome, result.rebuild], ["no candidate", "passed"]);
     assert.equal(readFileSync(join(root, "out", "same.js"), "utf8"), NO_OPERATOR);
   });
   withRepo({}, ({ root, id }) => {
     write(root, "src/same.js", CHANGED);
-    assert.equal(mutate(id, { root }).rebuild, "none detected");
+    assert.equal(mutate(root, id, OPTIONS).rebuild, "none detected");
   });
 });
 
@@ -121,7 +132,7 @@ test("a suite that is red before any mutant is baseline red, and no mutant is wr
   withRepo({ testCommand: "node probe.cjs" }, ({ root, id }) => {
     write(root, "src/same.js", CHANGED.replace("===", "!=="));
     const before = readFileSync(join(root, "src", "same.js"), "utf8");
-    const result = mutate(id, { root });
+    const result = mutate(root, id, OPTIONS);
     assert.deepEqual([result.outcome, result.mutant], ["baseline red", null]);
     assert.equal(renderMutation(result), "mutant none: baseline red");
     assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), before);
@@ -133,7 +144,7 @@ test("a restore record left by an interrupted run is applied before the next pic
     write(root, "src/same.js", CHANGED.replace("===", "!=="));
     mkdirSync(dirname(statePath(root, STATE_FILES.mutationRestore)), { recursive: true });
     writeFileSync(statePath(root, STATE_FILES.mutationRestore), JSON.stringify({ path: "src/same.js", original: Buffer.from(CHANGED).toString("base64") }));
-    const result = mutate(id, { root });
+    const result = mutate(root, id, OPTIONS);
     assert.equal(result.restored, "src/same.js");
     assert.equal(result.mutant.from, "===", "the pick saw the restored file, not the leftover mutant");
     assert.match(renderMutation(result), /^restored src\/same\.js from an interrupted run\nmutant src\/same\.js:2 === -> !==: survived$/);
@@ -167,7 +178,7 @@ test("the review summary carries the saved mutation (T-6.5)", () => {
   withRepo({}, ({ root, id }) => {
     assert.equal(reviewSummary(id, { root }).mutation, null);
     write(root, "src/same.js", CHANGED);
-    mutate(id, { root });
+    mutate(root, id, OPTIONS);
     assert.equal(reviewSummary(id, { root }).mutation.outcome, "survived");
   });
 });
