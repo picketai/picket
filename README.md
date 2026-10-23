@@ -55,7 +55,12 @@ markdown/                  picket-markdown: a read-only pane for a Markdown path
 .picket/state/             runtime state (ignored): ledger, drive log, guard log, check logs, branching.yaml
 work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)
-test/                      kernel, hook and budget tests: npm test
+src/**/*.test.mts          unit tests, beside the module each one tests; they run without a build
+test/cli/                  tests that spawn the built CLI and skill scripts
+test/hooks/                tests that spawn the built hook bundles, one file per hook
+test/repo/                 checks of the repository, the build and the package
+test/timing/               the prompt and cold-start budgets, run alone
+test/support/              the typed helpers every test imports through #test/*
 ```
 
 ## Benchmarks

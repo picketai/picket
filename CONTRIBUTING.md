@@ -60,6 +60,8 @@ Tests use `node:test` with `node:assert/strict`. `npm test` type-checks, then ru
 
 A unit test imports its module from `src/` and shared helpers through `#test/*`, which maps to `test/support/` (`import { withProject } from "#test/project.mts"`). It never imports `dist/`.
 
+CI runs `.github/workflows/release.yml` in four jobs. `test` runs `npm test` on Node 24 and keeps the built `dist/` for one day. `build-on-22` runs the `test/cli/` and `test/hooks/` tests against that `dist/` on Node 22, the oldest line the package supports. `mods` installs Claude Code and runs `node scripts/test.mjs mods`; it may fail without blocking anything until a run proves `claude plugin test` works on a runner. `publish` needs `test` and `build-on-22`.
+
 A test never depends on a gitignored file. A fresh clone must pass, so a test that reads a file only your machine has will fail for everyone else.
 
 ## Markdown
@@ -80,7 +82,7 @@ Agents never commit. The developer stages a phase and proposes a message, and th
 
 ## Releasing
 
-A release starts on `trunk` with a clean tree. Run `npm version prerelease --preid alpha`: it bumps the version in `package.json`, copies it into the four plugin manifests (`src/`, `status/`, `session/` and `markdown/`, through `.github/scripts/release.mjs sync-version`), commits them and tags the commit `v<version>`. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux, checks that the tag matches `package.json` and sits on `trunk`, and publishes under the `alpha` dist-tag. npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
+A release starts on `trunk` with a clean tree. Run `npm version prerelease --preid alpha`: it bumps the version in `package.json`, copies it into the four plugin manifests (`src/`, `status/`, `session/` and `markdown/`, through `.github/scripts/release.mjs sync-version`), commits them and tags the commit `v<version>`. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux on Node 24 and the build on Node 22, checks that the tag matches `package.json` and sits on `trunk`, and publishes under the `alpha` dist-tag. npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
 
 The workflow publishes through npm trusted publishing, so it needs a one-time setup on npmjs.com after the first version was published by hand. Open the package settings of `@picketai/picket` and add a trusted publisher for GitHub Actions with organization `picketai`, repository `picket`, workflow file `release.yml` and no environment.
 

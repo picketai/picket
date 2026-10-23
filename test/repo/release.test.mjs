@@ -53,6 +53,32 @@ test("the version script stages the picket manifest under src/, and the release 
   assert.match(readFileSync(resolve(".github/workflows/release.yml"), "utf8"), /^\s+node-version: 24$/m);
 });
 
+function workflowJobs() {
+  const text = readFileSync(resolve(".github/workflows/release.yml"), "utf8").replaceAll("\r\n", "\n");
+  const jobs = text.slice(text.indexOf("\njobs:\n") + "\njobs:\n".length);
+  return Object.fromEntries(jobs.split(/^(?= {2}\S)/m).map((body) => [body.match(/^ {2}([\w-]+):/)[1], body]));
+}
+
+test("the release workflow tests on Node 24, checks the build on Node 22, runs the mods beside, and publishes after both (D-006)", () => {
+  const jobs = workflowJobs();
+  assert.deepEqual(Object.keys(jobs), ["test", "build-on-22", "mods", "publish"]);
+  assert.match(jobs.test, /node-version: 24\n/);
+  assert.match(jobs.test, /run: npm test\n/);
+  assert.match(jobs.test, /actions\/upload-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n\s+retention-days: 1\n/);
+  assert.match(jobs["build-on-22"], /needs: test\n/);
+  assert.match(jobs["build-on-22"], /node-version: 22\n/);
+  assert.doesNotMatch(jobs["build-on-22"], /npm ci/);
+  assert.match(jobs["build-on-22"], /actions\/download-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n/);
+  assert.match(jobs["build-on-22"], /run: node --test "test\/cli\/\*\*\/\*\.test\.mjs" "test\/hooks\/\*\*\/\*\.test\.mjs"\n/);
+  assert.match(jobs.mods, /continue-on-error: true\n/);
+  assert.match(jobs.mods, /run: node scripts\/test\.mjs mods\n/);
+  assert.match(jobs.publish, /needs: \[test, build-on-22\]\n/);
+  assert.doesNotMatch(jobs.publish, /npm test/);
+  const uses = Object.values(jobs).join("").match(/uses: \S+/g);
+  assert.ok(uses.length >= 9, uses.join(", "));
+  assert.deepEqual(uses.filter((line) => !/@[0-9a-f]{40}$/.test(line)), []);
+});
+
 test("checkTag accepts only the v-prefixed package version", () => {
   assert.doesNotThrow(() => checkTag("v1.0.0-alpha.1", "1.0.0-alpha.1"));
   assert.throws(() => checkTag("1.0.0-alpha.1", "1.0.0-alpha.1"), /expected v1\.0\.0-alpha\.1/);
