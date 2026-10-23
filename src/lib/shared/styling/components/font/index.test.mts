@@ -4,18 +4,19 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { fontComponent, fontDir, readPin, registryName } from "../../../dist/lib/shared/styling/font.mjs";
-import { manifestPath } from "../../../dist/lib/shared/styling/manifest.mjs";
-import { setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
-import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
-import { buildZip, exited, fakeExec, fakeHost, fakeRegistry, servingFetch } from "#test/styling-host.mts";
+import { buildZip, exited, fakeExec, fakeRegistry, servingFetch, withFakeHost, type FakeHost, type FakeHostOptions, type ServingFetch } from "#test/styling-host.mts";
+import { manifestPath, type ManifestItem } from "../../manifest.mts";
+import { applyStyle, type ApplyOptions } from "../../plan.mts";
+import { removeAll } from "../../removal.mts";
+import { component as theme } from "../theme/index.mts";
+import { fontComponent, fontDir, readPin, registryName, type Pin } from "./index.mts";
 
 const FONTS_KEY = "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
 const CASK = "font-jetbrains-mono-nerd-font";
 const FAMILY = "JetBrainsMono Nerd Font Mono";
 const MONO_FILES = ["JetBrainsMonoNerdFontMono-Bold.ttf", "JetBrainsMonoNerdFontMono-Regular.ttf"];
 
-function testZip() {
+function testZip(): Buffer {
   const regular = Buffer.from("regular font bytes ".repeat(50));
   return buildZip([
     { name: "JetBrainsMonoNerdFontMono-Regular.ttf", data: regular, compressed: deflateRawSync(regular), method: 8 },
@@ -26,7 +27,7 @@ function testZip() {
 }
 
 const ZIP = testZip();
-const PIN = {
+const PIN: Pin = {
   version: "0.0.1",
   url: "https://github.com/ryanoasis/nerd-fonts/releases/download/v0.0.1/JetBrainsMono.zip",
   sha256: createHash("sha256").update(ZIP).digest("hex"),
@@ -35,28 +36,27 @@ const PIN = {
 };
 const FONT_ONLY = [fontComponent(PIN)];
 
-async function withHost(options, fn) {
-  const host = fakeHost({ fetch: servingFetch(ZIP), ...options });
-  try {
-    await fn(host);
-  } finally {
-    host.dispose();
-  }
+function withHost(options: FakeHostOptions, fn: (host: FakeHost) => Promise<void>): Promise<void> {
+  return withFakeHost({ fetch: servingFetch(ZIP), ...options }, fn);
 }
 
-function setupFont(host, options = {}) {
-  return setupTerminal(host, { yes: true, components: FONT_ONLY, ...options });
+function fetchedUrls(host: FakeHost): string[] {
+  return (host.fetch as ServingFetch).urls;
 }
 
-function revert(host) {
-  return setupTerminal(host, { revert: true, yes: true, components: FONT_ONLY });
+function setupFont(host: FakeHost, options: ApplyOptions = {}) {
+  return applyStyle(host, { yes: true, components: FONT_ONLY, ...options });
 }
 
-function fontItem(host) {
-  return JSON.parse(readFileSync(manifestPath(host.home), "utf8")).items.find((item) => item.id === "font");
+function revert(host: FakeHost) {
+  return removeAll(host, { yes: true, components: FONT_ONLY });
 }
 
-function listed(dir) {
+function fontItem(host: FakeHost): ManifestItem & { data: Record<string, unknown> } {
+  return JSON.parse(readFileSync(manifestPath(host.home), "utf8")).items.find((item: ManifestItem) => item.id === "font");
+}
+
+function listed(dir: string): string[] {
   return existsSync(dir) ? readdirSync(dir).sort() : [];
 }
 
@@ -87,12 +87,12 @@ test("on Windows only the Mono files land in the user font folder, each register
 test("a failed reg add rolls back the values already added and the files, leaving nothing behind", async () => {
   const registry = fakeRegistry();
   let adds = 0;
-  const reg = (args) => (args[0] === "add" && ++adds === 2 ? exited(1) : registry.run(args));
+  const reg = (args: string[]) => (args[0] === "add" && ++adds === 2 ? exited(1) : registry.run(args));
   await withHost({ platform: "win32", exec: fakeExec({ reg }) }, async (host) => {
     const report = await setupFont(host);
     assert.equal(report.changes[0].result, "failed");
-    assert.match(report.changes[0].detail, /reg add/);
-    assert.equal(registry.keys.get(FONTS_KEY).size, 0);
+    assert.match(report.changes[0].detail ?? "", /reg add/);
+    assert.equal(registry.keys.get(FONTS_KEY)?.size, 0);
     assert.deepEqual(listed(fontDir(host)), []);
     assert.equal(existsSync(manifestPath(host.home)), false);
   });
@@ -108,12 +108,12 @@ test("on Linux the files land in $XDG_DATA_HOME/fonts followed by fc-cache -f (T
 });
 
 test("on macOS brew installs the cask and nothing is fetched; without brew the files land in ~/Library/Fonts (T-4.2)", async () => {
-  const brew = (args) => (args[0] === "list" ? exited(1) : exited(0));
+  const brew = (args: string[]) => (args[0] === "list" ? exited(1) : exited(0));
   await withHost({ platform: "darwin", exec: fakeExec({ brew }) }, async (host) => {
     await setupFont(host);
     const installs = host.calls.filter(([, verb]) => verb === "install");
     assert.deepEqual(installs, [["brew", "install", "--cask", CASK]]);
-    assert.equal(host.fetch.urls.length, 0);
+    assert.equal(fetchedUrls(host).length, 0);
     assert.equal(fontItem(host).data.via, "brew");
   });
   await withHost({ platform: "darwin", exec: fakeExec({}) }, async (host) => {
@@ -128,7 +128,7 @@ test("a download with one changed byte fails on sha256, installs nothing and lea
   await withHost({ platform: "linux", exec: linuxExec(), fetch: servingFetch(tampered) }, async (host) => {
     const report = await setupFont(host);
     assert.equal(report.changes[0].result, "failed");
-    assert.match(report.changes[0].detail, /sha256/);
+    assert.match(report.changes[0].detail ?? "", /sha256/);
     assert.deepEqual(listed(fontDir(host)), []);
     assert.deepEqual(listed(join(host.home, ".picketai", "cache")), []);
     assert.equal(existsSync(manifestPath(host.home)), false);
@@ -136,11 +136,11 @@ test("a download with one changed byte fails on sha256, installs nothing and lea
 });
 
 test("a rejected download fails only the font change and names the release and the folder (T-4.3)", async () => {
-  const offline = async () => {
+  const offline = async (): Promise<Response> => {
     throw new TypeError("fetch failed");
   };
   await withHost({ platform: "linux", exec: linuxExec(), fetch: offline }, async (host) => {
-    const report = await setupTerminal(host, { yes: true, components: [theme, fontComponent(PIN)] });
+    const report = await applyStyle(host, { yes: true, components: [theme, fontComponent(PIN)] });
     const results = Object.fromEntries(report.changes.map((change) => [change.id, change.result]));
     assert.deepEqual(results, { "theme-file": "applied", "theme-setting": "applied", font: "failed" });
     const step = report.manual.find((line) => line.includes(PIN.url));
@@ -148,9 +148,9 @@ test("a rejected download fails only the font change and names the release and t
   });
 });
 
-async function assertPreexisting(host) {
+async function assertPreexisting(host: FakeHost): Promise<void> {
   await setupFont(host);
-  assert.equal(host.fetch.urls.length, 0);
+  assert.equal(fetchedUrls(host).length, 0);
   assert.equal(fontItem(host).data.preexisting, true);
   const report = await revert(host);
   assert.deepEqual(report.changes.map((change) => change.result), ["kept"]);
@@ -160,7 +160,7 @@ test("a font already present is recorded as preexisting, fetched never and kept 
   const registry = fakeRegistry({ [FONTS_KEY]: { [`${FAMILY} Regular (TrueType)`]: "C:\\Fonts\\x.ttf" } });
   await withHost({ platform: "win32", exec: fakeExec({ reg: registry.run }) }, async (host) => {
     await assertPreexisting(host);
-    assert.equal(registry.keys.get(FONTS_KEY).size, 1);
+    assert.equal(registry.keys.get(FONTS_KEY)?.size, 1);
   });
   await withHost({ platform: "linux", exec: fakeExec({ "fc-list": () => exited(0, `${FAMILY}\nDejaVu Sans\n`) }) }, assertPreexisting);
   await withHost({ platform: "darwin", exec: fakeExec({ brew: () => exited(0) }) }, async (host) => {
@@ -176,7 +176,7 @@ test("revert removes a Picket-installed font with the per-OS calls (T-4.5)", asy
     assert.deepEqual((await revert(host)).changes.map((change) => change.result), ["removed"]);
     assert.deepEqual(listed(fontDir(host)), []);
     assert.equal(host.calls.filter(([command, verb]) => command === "reg" && verb === "delete").length, 2);
-    assert.equal(registry.keys.get(FONTS_KEY).size, 0);
+    assert.equal(registry.keys.get(FONTS_KEY)?.size, 0);
   });
   await withHost({ platform: "linux", exec: linuxExec() }, async (host) => {
     await setupFont(host);
@@ -209,11 +209,11 @@ test("a font file that cannot be deleted fails with a manual step and stays reco
 test("a second run and a dry run fetch nothing (T-4.6)", async () => {
   await withHost({ platform: "linux", exec: linuxExec() }, async (host) => {
     assert.equal((await setupFont(host, { only: ["font"], dryRun: true })).changes[0].result, "planned");
-    assert.equal(host.fetch.urls.length, 0);
+    assert.equal(fetchedUrls(host).length, 0);
     await setupFont(host);
-    assert.equal(host.fetch.urls.length, 1);
+    assert.equal(fetchedUrls(host).length, 1);
     assert.deepEqual((await setupFont(host)).changes, []);
-    assert.equal(host.fetch.urls.length, 1);
+    assert.equal(fetchedUrls(host).length, 1);
   });
 });
 

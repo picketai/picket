@@ -1,6 +1,7 @@
 import { action } from "../../shared/action.mts";
-import { hostFrom, type Host } from "../../shared/styling/host.mts";
-import { COMPONENTS, renderReport, setupTerminal } from "../../shared/styling/setup.mjs";
+import { COMPONENT_NAMES } from "../../shared/styling/components.mts";
+import { hostFrom } from "../../shared/styling/host.mts";
+import { applyStyle, renderReport } from "../../shared/styling/plan.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { flag, list, UsageError, type Args } from "../../util/args.mts";
 import { terminalPrompt } from "../../util/prompt.mts";
@@ -8,17 +9,14 @@ import { reportOutcome, type StyleReport } from "./report.mts";
 
 export type ApplyInput = { only: string[] | null; dryRun: boolean; yes: boolean };
 
-type SetupTerminal = (host: Host, options: ApplyInput) => Promise<StyleReport>;
+const KNOWN: readonly string[] = COMPONENT_NAMES;
 
-const setupTyped = setupTerminal as unknown as SetupTerminal;
-const COMPONENT_NAMES = (COMPONENTS as { name: string }[]).map((component) => component.name);
-
-export const applyStyle = action<ApplyInput, StyleReport>(async (input, context) => reportOutcome(await setupTyped(hostFrom(context, terminalPrompt()), input)));
+export const apply = action<ApplyInput, StyleReport>(async (input, context) => reportOutcome(await applyStyle(hostFrom(context, terminalPrompt()), input)));
 
 function parseOnly(args: Args): string[] | null {
   const only = list(args, "only");
   if (only.length === 0) return null;
-  const unknown = only.find((name) => !COMPONENT_NAMES.includes(name));
+  const unknown = only.find((name) => !KNOWN.includes(name));
   if (unknown !== undefined) throw new UsageError(`style apply does not know "${unknown}"; use one of ${COMPONENT_NAMES.join(", ")}`);
   return only;
 }
@@ -31,6 +29,6 @@ export const verb: VerbSpec<ApplyInput, StyleReport> = {
   usage: "style apply [--only theme,font,terminal,statusline] [--dry-run] [--yes]",
   output: "text",
   parse: parseApply,
-  run: applyStyle,
+  run: apply,
   render: renderReport,
 };

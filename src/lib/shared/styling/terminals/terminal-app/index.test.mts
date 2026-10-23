@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { exited, fakeDefaults, fakeExec, withFakeHost, type FakeHost, type FakeHostOptions } from "#test/styling-host.mts";
-import { setupTerminal } from "../../setup.mjs";
-import { terminalComponent } from "../../terminal.mjs";
+import { terminalComponent } from "../../components/terminal/index.mts";
+import { applyStyle, type ApplyOptions } from "../../plan.mts";
+import { removeAll } from "../../removal.mts";
 import { profileColors, profileFile } from "./index.mts";
 
 type Defaults = ReturnType<typeof fakeDefaults>;
@@ -33,8 +34,12 @@ function withMac(defaults: Defaults, options: FakeHostOptions, fn: (host: FakeHo
   return withFakeHost({ platform: "darwin", env: { TERM_PROGRAM: "Apple_Terminal" }, exec: fakeExec({ osascript, defaults: defaults.run, open: () => exited(0) }), ...options }, fn);
 }
 
-function setup(host: FakeHost, options = {}) {
-  return setupTerminal(host, { yes: true, components: TERMINAL_ONLY, ...options });
+function setup(host: FakeHost, options: ApplyOptions = {}) {
+  return applyStyle(host, { yes: true, components: TERMINAL_ONLY, ...options });
+}
+
+function revert(host: FakeHost) {
+  return removeAll(host, { yes: true, components: TERMINAL_ONLY });
 }
 
 function callsOf(host: FakeHost, command: string, verb?: string): string[][] {
@@ -82,7 +87,7 @@ test("revert writes the old defaults back, removes the profile entry and deletes
   const defaults = basicDefaults();
   await withMac(defaults, {}, async (host) => {
     await setup(host);
-    await setupTerminal(host, { revert: true, yes: true, components: TERMINAL_ONLY });
+    await revert(host);
     for (const key of KEYS) assert.equal(defaults.values.get(`${DOMAIN} ${key}`), "Basic");
     assert.ok(callsOf(host, "osascript").at(-1)?.at(-1)?.includes('removeObjectForKey("PicketAI")'));
     assert.equal(existsSync(join(host.home, ...PROFILE.split("/"))), false);
@@ -90,7 +95,7 @@ test("revert writes the old defaults back, removes the profile entry and deletes
   const empty = fakeDefaults();
   await withMac(empty, {}, async (host) => {
     await setup(host);
-    await setupTerminal(host, { revert: true, yes: true, components: TERMINAL_ONLY });
+    await revert(host);
     assert.deepEqual(callsOf(host, "defaults", "delete"), KEYS.map((key) => ["defaults", "delete", DOMAIN, key]));
     assert.equal(empty.values.size, 0);
   });
@@ -100,8 +105,8 @@ test("a full run on macOS with the brew cask switches the status line to Nerd Fo
   const defaults = basicDefaults();
   const exec = fakeExec({ osascript, defaults: defaults.run, open: () => exited(0), brew: () => exited(0) });
   await withMac(defaults, { exec }, async (host) => {
-    const report = await setupTerminal(host, { yes: true });
-    assert.equal(report.changes.find((change: { id: string }) => change.id === "statusline-icons")?.result, "applied", JSON.stringify(report.changes));
+    const report = await applyStyle(host, { yes: true });
+    assert.equal(report.changes.find((change) => change.id === "statusline-icons")?.result, "applied", JSON.stringify(report.changes));
     const config = JSON.parse(readFileSync(join(host.home, ".picketai", "config.json"), "utf8"));
     assert.equal(config.statusline.icons, "nerd");
     assert.equal(recorded(host, "terminal-app-default").setsFont, true);

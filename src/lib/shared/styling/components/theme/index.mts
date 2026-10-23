@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { HOST_DIR, pluginRoot } from "../paths.mts";
-import { writeTracked } from "./manifest.mts";
+import { HOST_DIR, pluginRoot } from "../../../paths.mts";
+import type { Change, Component } from "../../change.mts";
+import type { Host } from "../../host.mts";
+import { writeTracked, type ManifestItem, type Unapplied } from "../../manifest.mts";
+
+type Settings = Record<string, unknown> & { theme?: unknown };
 
 const NAME = "theme";
 const THEME_VALUE = "custom:picketai";
@@ -9,36 +13,36 @@ const THEME_SOURCE = join(pluginRoot(), "themes", "picketai.json");
 const PICK_BY_HAND = "run /theme in Claude Code and pick PicketAI";
 const PROJECT_WINS = "a theme setting in a project's own settings outranks this user setting";
 
-function themeCopyPath(host) {
+function themeCopyPath(host: Host): string {
   return join(host.home, HOST_DIR, "themes", "picketai.json");
 }
 
-function settingsPath(host) {
+function settingsPath(host: Host): string {
   return join(host.home, HOST_DIR, "settings.json");
 }
 
-function readText(path) {
+function readText(path: string): Buffer | null {
   return existsSync(path) ? readFileSync(path) : null;
 }
 
-function readJson(path, text) {
+function readJson(path: string, text: Buffer | null): Settings {
   try {
     return text === null ? {} : JSON.parse(text.toString("utf8"));
   } catch (err) {
-    throw new Error(`${path} is not valid JSON, left as is: ${err.message}`);
+    throw new Error(`${path} is not valid JSON, left as is: ${(err as Error).message}`);
   }
 }
 
-function jsonText(value) {
+function jsonText(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-function writeJson(path, value) {
+function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, jsonText(value));
 }
 
-function globalTheme(host) {
+function globalTheme(host: Host): string | null {
   try {
     const global = JSON.parse(readFileSync(join(host.home, `${HOST_DIR}.json`), "utf8"));
     return typeof global?.theme === "string" ? global.theme : null;
@@ -47,12 +51,12 @@ function globalTheme(host) {
   }
 }
 
-function themeInEffect(host, settings) {
+function themeInEffect(host: Host, settings: Settings): string {
   if (typeof settings.theme === "string") return settings.theme;
   return globalTheme(host) ?? "dark";
 }
 
-function fileChange(host) {
+function fileChange(host: Host): Change[] {
   const path = themeCopyPath(host);
   const source = readFileSync(THEME_SOURCE);
   const current = readText(path);
@@ -63,14 +67,14 @@ function fileChange(host) {
       summary: `copy the PicketAI theme to ${path}`,
       ...(current === null ? {} : { question: `Replace ${path}?` }),
       restart: null,
-      apply(host, { backup }) {
+      apply(_host, { backup }) {
         return writeTracked(path, source, backup);
       },
     },
   ];
 }
 
-function settingChange(host) {
+function settingChange(host: Host): Change[] {
   const path = settingsPath(host);
   const settings = readJson(path, readText(path));
   if (settings.theme === THEME_VALUE) return [];
@@ -82,7 +86,7 @@ function settingChange(host) {
       restart: null,
       manual: PROJECT_WINS,
       manualIfSkipped: PICK_BY_HAND,
-      apply(host, { backup }) {
+      apply(_host, { backup }) {
         const before = readJson(path, readText(path));
         return {
           ...writeTracked(path, jsonText({ ...before, theme: THEME_VALUE }), backup),
@@ -93,26 +97,19 @@ function settingChange(host) {
   ];
 }
 
-function plan(host) {
-  return [...fileChange(host), ...settingChange(host)];
-}
-
-function unapplySetting(item) {
-  const settings = readJson(item.path, readText(item.path));
+function unapplySetting(item: ManifestItem): Unapplied {
+  const path = item.path as string;
+  const previous = item.previous ?? {};
+  const settings = readJson(path, readText(path));
   if (settings.theme !== THEME_VALUE) return { result: "kept", detail: "theme was changed after setup" };
   const restored = { ...settings };
-  if ("theme" in item.previous) restored.theme = item.previous.theme;
+  if ("theme" in previous) restored.theme = previous.theme;
   else delete restored.theme;
-  writeJson(item.path, restored);
+  writeJson(path, restored);
   return { result: "removed" };
 }
 
-function unapply(item) {
-  if (item.id === "theme-setting") return unapplySetting(item);
-  return { result: "kept", detail: "changed after setup", manual: `remove ${item.path} by hand if you no longer want it` };
-}
-
-function activeSetting(host) {
+function activeSetting(host: Host): unknown {
   try {
     return readJson(settingsPath(host), readText(settingsPath(host))).theme;
   } catch {
@@ -120,7 +117,7 @@ function activeSetting(host) {
   }
 }
 
-function blocks(item, host) {
+function blocks(item: ManifestItem, host: Host): string | null {
   if (item.id !== "theme-file") return null;
   const global = globalTheme(host);
   if (activeSetting(host) !== THEME_VALUE && global !== THEME_VALUE) return null;
@@ -128,4 +125,12 @@ function blocks(item, host) {
   return `PicketAI is still your Claude Code theme: run /theme, pick ${fallback}, then remove the theme again`;
 }
 
-export const theme = { name: NAME, plan, unapply, blocks };
+export const component: Component = {
+  name: NAME,
+  plan: (host) => [...fileChange(host), ...settingChange(host)],
+  unapply(item) {
+    if (item.id === "theme-setting") return unapplySetting(item);
+    return { result: "kept", detail: "changed after setup", manual: `remove ${item.path} by hand if you no longer want it` };
+  },
+  blocks,
+};

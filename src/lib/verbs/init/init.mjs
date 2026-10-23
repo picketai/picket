@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { MODS } from "../../mods.mts";
 import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "../../shared/paths.mts";
-import { STATUS_LINE } from "../../shared/styling/statusline-setting.mjs";
+import { STATUS_LINE } from "../../shared/styling/components/statusline/index.mts";
 
 const IGNORE_LINE = `${stateRel("")}/`;
 const DEFAULT_CONFIG = { version: 1 };

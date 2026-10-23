@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { exited, fakeDconf, fakeExec, homeFileExists, homeFiles, readHomeFile, withFakeHost, type Exec, type FakeHost } from "#test/styling-host.mts";
-import { setupTerminal } from "../../setup.mjs";
-import { terminalComponent } from "../../terminal.mjs";
+import { terminalComponent } from "../../components/terminal/index.mts";
+import { applyStyle, type ApplyOptions } from "../../plan.mts";
+import { removeAll } from "../../removal.mts";
 
 type Dconf = ReturnType<typeof fakeDconf>;
 
@@ -15,12 +16,12 @@ function withPtyxis(exec: Exec, fn: (host: FakeHost) => Promise<void>, answers: 
   return withFakeHost({ platform: "linux", env: { PTYXIS_VERSION: "47.0" }, exec, answers }, fn);
 }
 
-function setup(host: FakeHost, options = {}) {
-  return setupTerminal(host, { yes: true, components: TERMINAL_ONLY, ...options });
+function setup(host: FakeHost, options: ApplyOptions = {}) {
+  return applyStyle(host, { yes: true, components: TERMINAL_ONLY, ...options });
 }
 
 function revert(host: FakeHost) {
-  return setupTerminal(host, { revert: true, yes: true, components: TERMINAL_ONLY });
+  return removeAll(host, { yes: true, components: TERMINAL_ONLY });
 }
 
 function ptyxisDconf(): Dconf {

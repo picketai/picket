@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { exited, fakeDconf, fakeExec, homeFiles, readHomeFile, textsOf, withFakeHost, type Exec, type FakeHost } from "#test/styling-host.mts";
-import { setupTerminal } from "../../setup.mjs";
-import { terminalComponent } from "../../terminal.mjs";
+import { terminalComponent } from "../../components/terminal/index.mts";
+import { applyStyle, type ApplyOptions } from "../../plan.mts";
+import { removeAll } from "../../removal.mts";
 
 type Dconf = ReturnType<typeof fakeDconf>;
 
@@ -14,12 +15,12 @@ function withGnome(exec: Exec, fn: (host: FakeHost) => Promise<void>, answers: s
   return withFakeHost({ platform: "linux", env: { GNOME_TERMINAL_SCREEN: "/org/gnome/Terminal/screen/1" }, exec, answers }, fn);
 }
 
-function setup(host: FakeHost, options = {}) {
-  return setupTerminal(host, { yes: true, components: TERMINAL_ONLY, ...options });
+function setup(host: FakeHost, options: ApplyOptions = {}) {
+  return applyStyle(host, { yes: true, components: TERMINAL_ONLY, ...options });
 }
 
 function revert(host: FakeHost) {
-  return setupTerminal(host, { revert: true, yes: true, components: TERMINAL_ONLY });
+  return removeAll(host, { yes: true, components: TERMINAL_ONLY });
 }
 
 function gnomeDconf(): Dconf {

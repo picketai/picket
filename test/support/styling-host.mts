@@ -142,11 +142,11 @@ export function fakeDefaults(initial: Record<string, string> = {}) {
   return { values, run };
 }
 
-export function servingFetch(body: BodyInit): ServingFetch {
+export function servingFetch(body: Buffer): ServingFetch {
   const urls: string[] = [];
   const fetch = async (url: string | URL | Request) => {
     urls.push(String(url));
-    return new Response(body);
+    return new Response(Uint8Array.from(body));
   };
   return Object.assign(fetch, { urls }) as ServingFetch;
 }

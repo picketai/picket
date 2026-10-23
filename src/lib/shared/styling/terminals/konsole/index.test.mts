@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fakeExec, homeFileExists, readHomeFile, textsOf, withFakeHost, writeHomeFile, type FakeHost } from "#test/styling-host.mts";
-import { setupTerminal } from "../../setup.mjs";
-import { terminalComponent } from "../../terminal.mjs";
+import { terminalComponent } from "../../components/terminal/index.mts";
+import { applyStyle } from "../../plan.mts";
+import { removeAll } from "../../removal.mts";
 
 const FAMILY = "JetBrainsMono Nerd Font Mono";
 const TERMINAL_ONLY = [terminalComponent()];
@@ -14,11 +15,11 @@ function withKonsole(files: Record<string, string>, fn: (host: FakeHost) => Prom
 }
 
 function setup(host: FakeHost) {
-  return setupTerminal(host, { yes: true, components: TERMINAL_ONLY });
+  return applyStyle(host, { yes: true, components: TERMINAL_ONLY });
 }
 
 function revert(host: FakeHost) {
-  return setupTerminal(host, { revert: true, yes: true, components: TERMINAL_ONLY });
+  return removeAll(host, { yes: true, components: TERMINAL_ONLY });
 }
 
 test("Konsole gets a PicketAI colour scheme, a profile and, after a yes, the default (T-6.1)", async () => {
