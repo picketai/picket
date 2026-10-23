@@ -1,8 +1,8 @@
 import { action, done, Refused } from "../../shared/action.mts";
 import { addRef, LookupError } from "../../shared/sources/sources.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { workId, type WorkId } from "../../shared/work/files.mts";
-import { readState, workDir } from "../../shared/work/work.mjs";
+import { workDir, workId, type WorkId } from "../../shared/work/files.mts";
+import { readState } from "../../shared/work/state.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 import { declaredSources, type Source } from "./reachable.mts";
 
@@ -24,8 +24,8 @@ function addOrRefuse(dir: string, ref: string, sources: Source[]): Added {
 }
 
 export const addSourceRef = action<AddInput, Added>(async ({ id, ref }, { root }) => {
-  readState(id, root);
-  return done(addOrRefuse(workDir(id, root), ref, declaredSources(root)));
+  readState(root, id);
+  return done(addOrRefuse(workDir(root, id), ref, declaredSources(root)));
 });
 
 function parseAdd(args: Args): AddInput {

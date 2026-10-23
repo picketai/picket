@@ -4,7 +4,7 @@
 // (`recheck`), so a fast-lane change that grows past the cap escalates instead of silently overrunning.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { projectRoot } from "../../shared/work/work.mjs";
+import { projectRoot } from "../../shared/paths.mjs";
 import { DEFAULT_LANES, DEFAULT_SECURITY_PATHS, loadConfig } from "../../shared/config.mjs";
 
 export { DEFAULT_SECURITY_PATHS };

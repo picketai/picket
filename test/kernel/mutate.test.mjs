@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { createWork } from "../../dist/lib/shared/work/work.mjs";
+import { createWork } from "./work-fixture.mjs";
 import { mutate, pickMutant, renderMutation } from "../../dist/lib/verbs/mutate/mutate.mjs";
 import { STATE_FILES, statePath } from "../../dist/lib/shared/paths.mjs";
 import { reviewSummary } from "../../dist/lib/shared/review-summary.mjs";

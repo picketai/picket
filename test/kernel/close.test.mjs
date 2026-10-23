@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { appendVerdict, createWork, readState, setMarker, writeState } from "../../dist/lib/shared/work/work.mjs";
+import { appendVerdict, createWork, readState, setMarker, writeState } from "./work-fixture.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 const IDENTITY = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };

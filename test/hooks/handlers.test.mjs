@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createWork, writeState } from "../../dist/lib/shared/work/work.mjs";
+import { createWork, writeState } from "../kernel/work-fixture.mjs";
 import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 import { emitLedger } from "../../dist/lib/hooks/emit.ledger.mjs";
 import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route.verdict.mjs";

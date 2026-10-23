@@ -2,8 +2,9 @@ import { spawn, execSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import net from "node:net";
-import { projectRoot, listWork, deriveState } from "../../shared/work/work.mjs";
-import { stateDir, statePath, STATE_FILES } from "../../shared/paths.mjs";
+import { deriveState } from "../../shared/work/work.mjs";
+import { listWork } from "../../shared/work/state.mjs";
+import { projectRoot, stateDir, statePath, STATE_FILES } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
 import { assertNotDestructive } from "../../shared/destructive.mjs";
 

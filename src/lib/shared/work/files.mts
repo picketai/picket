@@ -29,8 +29,12 @@ export type Marker = (typeof MARKERS)[number];
 const WORK_ID = /^[a-z0-9][a-z0-9-]{2,80}$/;
 const PHASES_DIR = "phases";
 
+export function isWorkId(text: string): text is WorkId {
+  return WORK_ID.test(text);
+}
+
 export function workId(text: string): WorkId {
-  if (!WORK_ID.test(text)) throw new UsageError(`"${text}" is not a work item id: lowercase letters, digits and hyphens, 3 to 81 characters`);
+  if (!isWorkId(text)) throw new UsageError(`"${text}" is not a work item id: lowercase letters, digits and hyphens, 3 to 81 characters`);
   return text as WorkId;
 }
 

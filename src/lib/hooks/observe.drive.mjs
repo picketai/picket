@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { isDriveCommand } from "./drive-evidence.mjs";
-import { listWork, deriveState } from "../shared/work/work.mjs";
+import { deriveState } from "../shared/work/work.mjs";
+import { listWork } from "../shared/work/state.mjs";
 import { stateDir, statePath, STATE_FILES } from "../shared/paths.mjs";
 import { bareAgentName } from "../shared/agent-name.mjs";
 import { kernelVerbStart } from "./kernel-call.mjs";

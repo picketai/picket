@@ -1,18 +1,15 @@
 import { action, done } from "../../shared/action.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
-import { appendWaiver } from "../../shared/work/work.mjs";
+import { appendWaiver, type Approval } from "../../shared/work/approvals.mts";
 import { flag, str, UsageError, type Args } from "../../util/args.mts";
 
 export type WaiveInput = { id: WorkId; path: string; text: string | null; deleted: boolean };
-export type Waiver = { path: string; text: string | null; deleted: boolean } & Record<string, unknown>;
-
-type AppendWaiver = (id: string, entry: { path: string; text: string | null; deleted: boolean }, root: string) => Waiver;
+export type Waiver = Approval;
 
 const USAGE = 'waive needs <id> --path <p> and exactly one of --text "<added line>" or --deleted';
-const appendWaiverTyped = appendWaiver as unknown as AppendWaiver;
 
-export const waive = action<WaiveInput, Waiver>(async ({ id, path, text, deleted }, { root }) => done(appendWaiverTyped(id, { path, text, deleted }, root)));
+export const waive = action<WaiveInput, Waiver>(async ({ id, path, text, deleted }, { root, cwd, now }) => done(appendWaiver(root, id, { path, text, deleted }, { cwd, now: now() })));
 
 function parseWaive(args: Args): WaiveInput {
   const [id] = args.pos;

@@ -4,7 +4,12 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, listOpenWork, listWork, newId, readState, setMarker, appendVerdict, writeState } from "../../dist/lib/shared/work/work.mjs";
+import { deriveState } from "../../dist/lib/shared/work/work.mjs";
+import { listOpenWork, listWork } from "../../dist/lib/shared/work/state.mjs";
+import { readVerdicts } from "../../dist/lib/shared/work/verdict-log.mjs";
+import { appendComment } from "../../dist/lib/shared/work/approvals.mjs";
+import { parseBlock, proposedCommit } from "../../dist/lib/shared/work/block.mjs";
+import { createWork, newId, readState, setMarker, appendVerdict, writeState } from "./work-fixture.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 
@@ -119,4 +124,48 @@ test("deriveState reads phases from the artifact and markers from disk", () => {
   assert.equal(d.current_phase, 2);
   assert.equal(d.last_verdict.verdict, "APPROVED");
   rmSync(root, { recursive: true, force: true });
+});
+
+test("readVerdicts keeps the readable lines and counts a truncated last line as skipped", () => {
+  const root = tempRoot();
+  try {
+    const s = createWork({ lane: "order", title: "Truncated", root });
+    const rows = ['{"ts":"2026-10-23T10:00:00Z","agent":"developer","verdict":"PHASE DONE","phase":1}', '{"ts":"2026-10-23T10:05:00Z","agent":"user","verdict":"approved","phase":1}', '{"ts":"2026'];
+    writeFileSync(join(root, "work", s.id, "verdicts.jsonl"), rows.join("\n") + "\n");
+    const read = readVerdicts(root, s.id);
+    assert.deepEqual(read.rows.map((r) => r.verdict), ["PHASE DONE", "approved"]);
+    assert.equal(read.skipped, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("listWork skips a folder whose name is not a work item id", () => {
+  const root = tempRoot();
+  try {
+    const s = createWork({ lane: "fast", title: "Real", root });
+    mkdirSync(join(root, "work", "Bad_Name"));
+    writeFileSync(join(root, "work", "Bad_Name", "state.yaml"), readFileSync(join(root, "work", s.id, "state.yaml")));
+    assert.deepEqual(listWork(root), [s.id]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("appendComment records the path relative to the root when run from a subfolder", () => {
+  const root = tempRoot();
+  try {
+    const s = createWork({ lane: "fast", title: "Comment", root });
+    const entry = appendComment(root, s.id, { path: "a.ts", text: "t" }, { cwd: join(root, "src"), now: new Date("2026-10-23T10:00:00Z") });
+    assert.equal(entry.path, "src/a.ts");
+    assert.match(readFileSync(join(root, "work", s.id, "comments.jsonl"), "utf8"), /"path":"src\/a\.ts"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("proposedCommit drops the staged tail and is null without a Commit field", () => {
+  const block = (commit) => `## Phase 1 of 20261023-x: One\n\nDone.\n\nFiles: a.ts\n${commit}\nPHASE DONE\n`;
+  assert.equal(proposedCommit(parseBlock(block("Commit: feat(x): y (staged; approval commits it)"))), "feat(x): y");
+  assert.equal(proposedCommit(parseBlock(block(""))), null);
 });

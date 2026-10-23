@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { createWork } from "../../dist/lib/shared/work/work.mjs";
+import { createWork } from "./work-fixture.mjs";
 import { onPath } from "../../dist/lib/verbs/preflight/preflight.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");

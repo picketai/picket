@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { NO_LANE, admit } from "../../dist/lib/verbs/admit/admit.mjs";
-import { LANES } from "../../dist/lib/shared/work/work.mjs";
+import { LANES } from "../../dist/lib/shared/work/state.mjs";
 
 const MIN_SHARE = 0.9;
 const MIN_ENTRIES = 100;

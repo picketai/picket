@@ -1,6 +1,9 @@
-import { ARTIFACT_BY_LANE, deriveState, projectRoot, readArtifact, workDir } from "../../shared/work/work.mjs";
+import { deriveState, readArtifact } from "../../shared/work/work.mjs";
+import { ARTIFACT_BY_LANE } from "../../shared/work/state.mjs";
+import { workDir } from "../../shared/work/files.mjs";
+import { projectRoot } from "../../shared/paths.mjs";
 import { next } from "../../shared/work/next-step.mjs";
-import { parseBlock, readBlock } from "../../shared/work/block.mjs";
+import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mjs";
 import { loadConfig } from "../../shared/config.mjs";
 import { ambiguousRefs, candidates } from "../../shared/sources/sources.mjs";
 
@@ -95,7 +98,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   let options = n.options?.length ? n.options.join("   ") : null;
 
   if (n.action === "approve_phase" && s.lane !== "research") {
-    const raw = readBlock(id, n.phase, root);
+    const raw = readBlock(root, id, n.phase);
     const b = parseBlock(raw ?? "");
     const total = s.phase_count;
     lines.push(`▶ phase ${n.phase}/${total} done · ${id}`);
@@ -125,7 +128,8 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
       if (options) options += "   [w] waive <n>";
     }
     // The developer stages and proposes a message; approval is what commits.
-    if (b.fields.commit) lines.push(field("commit", `${b.fields.commit.replace(/\s*\(staged.*\)$/i, "")}  (staged; approval commits it)`, width));
+    const commit = proposedCommit(b);
+    if (commit !== null) lines.push(field("commit", `${commit}  (staged; approval commits it)`, width));
   } else if (n.action === "approve_phase") {
     const art = readArtifact(id, root);
     const summary = art.body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
@@ -139,12 +143,12 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   } else if (n.action === "resolve_sources") {
     lines.push(`▶ source references differ · ${id}`);
     lines.push(`  ${cut(`${n.detail}; pick one version of each`, width - 2)}`);
-    for (const ref of ambiguousRefs(workDir(id, root))) {
+    for (const ref of ambiguousRefs(workDir(root, id))) {
       lines.push("", `  ${cut(ref.ref, width - 2)}`);
       for (const c of describeCandidates(ref, root)) lines.push(`    ${cut(c, width - 4)}`);
     }
   } else if (n.action === "resolve_block") {
-    const raw = s.current_phase ? readBlock(id, s.current_phase, root) : null;
+    const raw = s.current_phase ? readBlock(root, id, s.current_phase) : null;
     const b = parseBlock(raw ?? "");
     lines.push(`▶ blocked · ${id}`);
     lines.push(`  ${cut(s.blocked_reason ?? n.detail, width - 2)}`);

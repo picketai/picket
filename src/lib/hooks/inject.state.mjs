@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
-import { listOpenWork, deriveState } from "../shared/work/work.mjs";
+import { deriveState } from "../shared/work/work.mjs";
+import { listOpenWork } from "../shared/work/state.mjs";
 import { hostPath, hostRel } from "../shared/paths.mjs";
 import { next } from "../shared/work/next-step.mjs";
 import { loadConfig } from "../shared/config.mjs";

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verb } from "../../dist/lib/verbs/leave/index.mjs";
 import { parseArgs, UsageError } from "../../dist/lib/util/args.mjs";
-import { createWork, readState, writeState } from "../../dist/lib/shared/work/work.mjs";
+import { createWork, readState, writeState } from "./work-fixture.mjs";
 
 const NOW = "2026-10-23T10:00:00.000Z";
 

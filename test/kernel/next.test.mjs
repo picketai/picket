@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork, setMarker, writeState, appendVerdict, readState } from "../../dist/lib/shared/work/work.mjs";
+import { createWork, setMarker, writeState, appendVerdict, readState } from "./work-fixture.mjs";
 import { latest, next } from "../../dist/lib/shared/work/next-step.mjs";
 
 function root() {

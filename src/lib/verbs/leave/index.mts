@@ -4,18 +4,16 @@ import { workFile, workId, type WorkId } from "../../shared/work/files.mts";
 import { leftLine, type LeftEntry } from "../../shared/work/left.mts";
 import { appendJsonl } from "../../util/io.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
-import { readState } from "../../shared/work/work.mjs";
+import { readState, type Status } from "../../shared/work/state.mts";
 
 export type LeaveInput = { id: WorkId; command: string; why: string | null };
 
-type ItemStatus = { status: string };
-
 const MAX_COMMAND_CHARS = 300;
-const CLOSED_STATUSES = ["done", "abandoned"];
+const CLOSED_STATUSES: readonly Status[] = ["done", "abandoned"];
 
 export const leave = action<LeaveInput, LeftEntry>(async ({ id, command, why }, { root, now }) => {
   if (command.length > MAX_COMMAND_CHARS) return refuse(`the command is longer than ${MAX_COMMAND_CHARS} characters`, { id });
-  const { status } = readState(id, root) as ItemStatus;
+  const { status } = readState(root, id);
   if (CLOSED_STATUSES.includes(status)) return refuse(`${id} is ${status}; only an open or blocked item records what is left`, { id, status });
   const entry = { ts: now().toISOString(), command, why };
   appendJsonl(workFile(root, id, "left.jsonl"), entry);

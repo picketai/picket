@@ -6,7 +6,9 @@ import * as git from "../../shared/git.mjs";
 import { STATE_FILES, stateDir, statePath } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
 import { isTestPath } from "../../shared/silenced.mjs";
-import { projectRoot, readState, workDir } from "../../shared/work/work.mjs";
+import { projectRoot } from "../../shared/paths.mjs";
+import { readState } from "../../shared/work/state.mjs";
+import { workFile } from "../../shared/work/files.mjs";
 
 const OPERATOR = /(?<=\s)(?:<=|>=|<|>)(?=\s)|===|!==|==|!=|&&|\|\||\btrue\b|\bfalse\b/g;
 
@@ -127,7 +129,7 @@ function baselineOutcome(root) {
 export function mutate(id, { root = projectRoot() } = {}) {
   const started = Date.now();
   const restored = restoreLeftover(root);
-  const base = readState(id, root).base ?? "HEAD";
+  const base = readState(root, id).base ?? "HEAD";
   const command = detectTooling(root).test ?? null;
   const baseline = command ? baselineOutcome(root) : null;
   const found = command && !baseline ? pickMutant(root, base) : null;
@@ -135,7 +137,7 @@ export function mutate(id, { root = projectRoot() } = {}) {
   const rebuild = found || restored ? stepStatus(root, "build") : null;
   const mutant = found ? { path: found.path, line: found.line, from: found.from, to: found.to } : null;
   const result = { ts: new Date().toISOString(), base, mutant, command, outcome, rebuild, ms: Date.now() - started };
-  writeFileSync(join(workDir(id, root), "mutation.json"), JSON.stringify(result, null, 2) + "\n");
+  writeFileSync(workFile(root, id, "mutation.json"), JSON.stringify(result, null, 2) + "\n");
   return { ...result, restored };
 }
 

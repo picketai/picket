@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { join, resolve } from "node:path";
 import { UsageError } from "../../dist/lib/util/args.mjs";
-import { MARKERS, WORK_FILES, phaseMarker, workDir, workFile, workId, workRel } from "../../dist/lib/shared/work/files.mjs";
+import { MARKERS, WORK_FILES, isWorkId, phaseMarker, workDir, workFile, workId, workRel } from "../../dist/lib/shared/work/files.mjs";
 
 const root = resolve("some-root");
 
@@ -14,6 +14,11 @@ test("workId refuses a path, a too-short id and other malformed text with a Usag
   for (const text of ["../etc", "ab", "", "-abc", "Abc", "a/b/c", "a".repeat(82)]) {
     assert.throws(() => workId(text), UsageError, text);
   }
+});
+
+test("isWorkId accepts a work item id and rejects a folder name that is not one", () => {
+  assert.equal(isWorkId("20261023-x"), true);
+  assert.equal(isWorkId("Bad_Name"), false);
 });
 
 test("work item paths sit under work/<id> (T-1.3)", () => {

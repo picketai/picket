@@ -3,7 +3,9 @@ import { phasePaths } from "../../shared/work/gate.mjs";
 import { blockFiles } from "../../shared/work/block.mjs";
 import { recordAccept } from "../../shared/ledger.mjs";
 import { next } from "../../shared/work/next-step.mjs";
-import { listWork, readArtifact, readState, readVerdicts, writeState } from "../../shared/work/work.mjs";
+import { readArtifact } from "../../shared/work/work.mjs";
+import { listWork, readState, writeState } from "../../shared/work/state.mjs";
+import { readVerdicts } from "../../shared/work/verdict-log.mjs";
 import { readLeft } from "../../shared/work/left.mjs";
 
 export class CloseRefused extends Error {
@@ -21,7 +23,7 @@ const PHASED_LANES = new Set(["order", "design"]);
 
 function itemOwner(id, root, lane, touched) {
   const phases = PHASED_LANES.has(lane) ? readArtifact(id, root).phases : [];
-  const phaseLists = phases.flatMap((p) => [...phasePaths(id, p.n, root), ...blockFiles(id, p.n, root)]);
+  const phaseLists = phases.flatMap((p) => [...phasePaths(id, p.n, root), ...blockFiles(root, id, p.n)]);
   return listedPathMatcher(root, [`work/${id}/`, ...phaseLists, ...touched]);
 }
 
@@ -33,11 +35,11 @@ function refuseUntouchedFastClose(id, root, lane, touched) {
 }
 
 function markDone(id, root) {
-  const state = readState(id, root);
+  const state = readState(root, id);
   if (state.status === "done") return;
   state.status = "done";
   delete state.blocked_reason;
-  writeState(state, root);
+  writeState(root, state, new Date());
 }
 
 function nextAllowsClose(lane, pending) {
@@ -46,7 +48,7 @@ function nextAllowsClose(lane, pending) {
 }
 
 function refuseUnlessClosable(id, root) {
-  const state = readState(id, root);
+  const state = readState(root, id);
   if (state.status === "abandoned") throw new CloseRefused(`${id} is abandoned; only an open, blocked or done item closes`);
   if (state.status === "done") return;
   const pending = next(id, root);
@@ -60,7 +62,7 @@ const MIN_REPEATS = 2;
 export function repeatedClasses(root) {
   const seen = new Map();
   for (const id of listWork(root)) {
-    for (const entry of readVerdicts(id, root)) {
+    for (const entry of readVerdicts(root, id).rows) {
       if (entry.verdict !== "CHANGES REQUIRED" || !Array.isArray(entry.classes)) continue;
       for (const cls of new Set(entry.classes)) seen.set(cls, [...(seen.get(cls) ?? []), id]);
     }
@@ -77,12 +79,12 @@ export function close(id, root, { message, touched = [] } = {}) {
   const repeats = repeatedClasses(root);
   if (!isRepo(root)) {
     markDone(id, root);
-    return { ...readState(id, root), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats };
+    return { ...readState(root, id), commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats };
   }
-  const { lane } = readState(id, root);
+  const { lane } = readState(root, id);
   refuseUntouchedFastClose(id, root, lane, touched);
   markDone(id, root);
   const { sha: commit, left_staged, warnings } = commitOwned(root, commitMessage, { add: [`work/${id}`], owns: itemOwner(id, root, lane, touched), env: process.env });
   if (commit) recordAccept(root, id, commit);
-  return { ...readState(id, root), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats };
+  return { ...readState(root, id), commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats };
 }

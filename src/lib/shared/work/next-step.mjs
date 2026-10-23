@@ -1,7 +1,9 @@
 // The single next action for a work item, computed from derived state. Never stored.
 // Every branch returns { action, actor, phase, detail, options } where `options` is the bracket menu
 // the gate packet shows the user (empty when no user decision is due).
-import { deriveState, isSessionId, listOpenWork, workDir } from "./work.mjs";
+import { deriveState } from "./work.mjs";
+import { isSessionId, listOpenWork } from "./state.mjs";
+import { workDir } from "./files.mjs";
 import { ambiguousRefs } from "../sources/sources.mjs";
 import { ownGate } from "./gate.mjs";
 
@@ -28,7 +30,7 @@ export function next(id, root) {
 
   // The opening gate: a story reference with differing versions across the source's worktrees is
   // the user's pick, before anyone reads it.
-  const ambiguous = ambiguousRefs(workDir(id, root));
+  const ambiguous = ambiguousRefs(workDir(root, id));
   if (ambiguous.length) {
     return { ...base, action: "resolve_sources", actor: "user", detail: `${ambiguous.length} reference(s) differ across worktrees`, options: [`[p] pick: picket source pick ${id} <ref> <label>`] };
   }

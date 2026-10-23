@@ -12,8 +12,8 @@ async function qualityBar(rel, root) {
 }
 
 async function unwaived(moves, rel, root) {
-  const { waiversFor } = await import("../shared/work/work.mjs");
-  const waived = new Set(waiversFor(rel, root).filter((entry) => !entry.deleted).map((entry) => normaliseLine(entry.text)));
+  const { waiversFor } = await import("../shared/work/approvals.mjs");
+  const waived = new Set(waiversFor(root, rel).filter((entry) => !entry.deleted).map((entry) => normaliseLine(entry.text)));
   return moves.filter((move) => !waived.has(move.text));
 }
 

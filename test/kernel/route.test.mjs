@@ -4,10 +4,10 @@ import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState } from "../../dist/lib/shared/work/work.mjs";
+import { deriveState } from "../../dist/lib/shared/work/work.mjs";
+import { createWork, saveBlock } from "./work-fixture.mjs";
 import { route } from "../../dist/lib/verbs/route/route.mjs";
 import { findVerdict } from "../../dist/lib/shared/verdicts.mjs";
-import { saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { bareAgentName } from "../../dist/lib/shared/agent-name.mjs";
 import { statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 

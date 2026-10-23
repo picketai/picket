@@ -3,14 +3,14 @@ import { dirtyPaths } from "../../shared/git.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { next } from "../../shared/work/next-step.mjs";
-import { readState, writeState } from "../../shared/work/work.mjs";
+import { readState, writeState, type WorkState } from "../../shared/work/state.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 
 export type Assignment = { field: string; value: string };
 export type SetInput = { id: WorkId; assignments: Assignment[] };
 export type SetResult = { id: string; status: string; blocked_reason?: string; dirty: string[]; next: { action: string } } & Record<string, unknown>;
 
-type ItemState = Record<string, unknown> & { id: string; status: string };
+type ItemState = Record<string, unknown> & WorkState;
 
 const SETTABLE = ["status", "blocked_reason", "branch", "title", "run_through"];
 const ASSIGNMENT = /^([a-z_]+)=(.*)$/;
@@ -21,13 +21,13 @@ function applyAssignment(st: ItemState, { field, value }: Assignment): void {
   else st[field] = field === "run_through" ? Number(value) : value;
 }
 
-export const setFields = action<SetInput, SetResult>(async ({ id, assignments }, { root }) => {
+export const setFields = action<SetInput, SetResult>(async ({ id, assignments }, { root, now }) => {
   const unknown = assignments.find(({ field }) => !SETTABLE.includes(field));
   if (unknown) return refuse(`field ${unknown.field} is not settable`, { id });
-  const st = readState(id, root) as ItemState;
+  const st = readState(root, id) as ItemState;
   for (const assignment of assignments) applyAssignment(st, assignment);
   if (st.status !== "blocked") delete st.blocked_reason;
-  writeState(st, root);
+  writeState(root, st, now());
   const dirty = st.status === "done" ? (dirtyPaths(root) ?? []) : [];
   return done({ ...st, dirty, next: next(st.id, root) } as SetResult);
 });

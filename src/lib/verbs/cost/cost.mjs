@@ -1,4 +1,4 @@
-import { projectRoot } from "../../shared/work/work.mjs";
+import { projectRoot } from "../../shared/paths.mjs";
 import { notRunAsks } from "../../shared/escalation.mjs";
 import { readLedger } from "../../shared/ledger.mjs";
 

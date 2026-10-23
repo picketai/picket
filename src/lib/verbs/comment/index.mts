@@ -1,20 +1,18 @@
 import { action, done } from "../../shared/action.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
-import { appendComment, readState } from "../../shared/work/work.mjs";
+import { appendComment, type Approval } from "../../shared/work/approvals.mts";
+import { readState } from "../../shared/work/state.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 
 export type CommentInput = { id: WorkId; path: string; text: string };
-export type CommentApproval = { path: string; text: string } & Record<string, unknown>;
-
-type AppendComment = (id: string, entry: { path: string; text: string }, root: string) => CommentApproval;
+export type CommentApproval = Approval;
 
 const USAGE = 'comment needs <id> --path <p> --text "<t>"';
-const appendCommentTyped = appendComment as unknown as AppendComment;
 
-export const approveComment = action<CommentInput, CommentApproval>(async ({ id, path, text }, { root }) => {
-  readState(id, root);
-  return done(appendCommentTyped(id, { path, text }, root));
+export const approveComment = action<CommentInput, CommentApproval>(async ({ id, path, text }, { root, cwd, now }) => {
+  readState(root, id);
+  return done(appendComment(root, id, { path, text }, { cwd, now: now() }));
 });
 
 function field(args: Args, name: string): string | undefined {

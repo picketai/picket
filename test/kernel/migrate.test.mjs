@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { migrate, renderMigrate } from "../../dist/lib/verbs/migrate/migrate.mjs";
 import { preflight } from "../../dist/lib/verbs/preflight/preflight.mjs";
-import { createWork } from "../../dist/lib/shared/work/work.mjs";
+import { createWork } from "./work-fixture.mjs";
 import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../dist/lib/shared/paths.mjs";
 
 const LEGACY_LEDGER = `${LEGACY.stateDir}/${STATE_FILES.ledger}`;

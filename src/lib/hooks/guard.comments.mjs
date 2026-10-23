@@ -6,8 +6,8 @@ const QUOTED_LIMIT = 3;
 const QUOTE_WIDTH = 80;
 
 async function unapproved(added, rel, root) {
-  const { approvedCommentsFor } = await import("../shared/work/work.mjs");
-  const approved = new Set(approvedCommentsFor(rel, root).flatMap((entry) => String(entry.text).split(/\r?\n/).map(normalise)));
+  const { approvedCommentsFor } = await import("../shared/work/approvals.mjs");
+  const approved = new Set(approvedCommentsFor(root, rel).flatMap((entry) => String(entry.text).split(/\r?\n/).map(normalise)));
   return added.filter((body) => !approved.has(body));
 }
 

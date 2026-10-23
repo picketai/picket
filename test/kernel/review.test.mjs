@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { appendWaiver, createWork, readState, writeState } from "../../dist/lib/shared/work/work.mjs";
+import { appendWaiver, createWork, readState, writeState } from "./work-fixture.mjs";
 import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
 import { reviewSummary, reviewSummaryRange } from "../../dist/lib/shared/review-summary.mjs";
 import { nestedRepos, readBases } from "../../dist/lib/shared/repos.mjs";

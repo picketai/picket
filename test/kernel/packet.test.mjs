@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork, setMarker } from "../../dist/lib/shared/work/work.mjs";
+import { blockFiles, createWork, saveBlock, setMarker } from "./work-fixture.mjs";
 import { cut, packet, WIDTH } from "../../dist/lib/verbs/packet/packet.mjs";
-import { blockFiles, parseBlock, saveBlock } from "../../dist/lib/shared/work/block.mjs";
+import { parseBlock } from "../../dist/lib/shared/work/block.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 // The block the user's screenshot came from, in the developer's contract shape.

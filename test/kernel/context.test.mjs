@@ -24,6 +24,10 @@ test("edgeContext reads the root, environment, home folder, clock and session of
   assert.ok(Math.abs(context.now().getTime() - Date.now()) < 1000);
 });
 
+test("edgeContext takes the working folder of the process", () => {
+  assert.equal(edgeContext("/r").cwd, process.cwd());
+});
+
 test("edgeContext gives a null session when CLAUDE_CODE_SESSION_ID is unset (T-1.8)", () => {
   assert.equal(withSessionEnv(undefined, () => edgeContext("/r")).session, null);
 });

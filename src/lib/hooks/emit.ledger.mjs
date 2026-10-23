@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "../shared/transcript/transcript.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
-import { readState } from "../shared/work/work.mjs";
+import { readState } from "../shared/work/state.mjs";
 import { appendLedger } from "../shared/ledger.mjs";
 import { sessionCostPath } from "../shared/paths.mjs";
 
@@ -10,7 +10,7 @@ const HEADING = /^##\s+(Phase\s+(\d+)\s+of\s+([a-z0-9-]+)|Review:\s+([a-z0-9-]+)
 function laneOf(hints, workId, root) {
   if (hints.lane || !workId) return hints.lane ?? null;
   try {
-    return readState(workId, root).lane ?? null;
+    return readState(root, workId).lane ?? null;
   } catch {
     return null;
   }

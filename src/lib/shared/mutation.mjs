@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { projectRoot, workDir } from "./work/work.mjs";
+import { projectRoot } from "./paths.mjs";
+import { workFile } from "./work/files.mjs";
 
 export function readMutation(id, root = projectRoot()) {
-  const file = join(workDir(id, root), "mutation.json");
+  const file = workFile(root, id, "mutation.json");
   return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
 }

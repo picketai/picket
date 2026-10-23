@@ -4,7 +4,9 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { deriveState, itemWaivers, projectRoot } from "./work/work.mjs";
+import { deriveState } from "./work/work.mjs";
+import { itemWaivers } from "./work/approvals.mjs";
+import { projectRoot } from "./paths.mjs";
 import { loadConfig, securityPaths } from "./config.mjs";
 import { liveDrift } from "./sources/sources.mjs";
 import * as git from "./git.mjs";
@@ -188,7 +190,7 @@ export function reviewSummary(id, o = {}) {
     repos: nested.filter((r) => r.skipped || r.changed.length).map(repoReport),
     // Each snapshot against its live version: snapshot_sha256, live_sha256, moved (and why).
     sources: liveDrift(join(root, "work", id), config.sources),
-    silenced: withWaived(silenced, itemWaivers(id, root)),
+    silenced: withWaived(silenced, itemWaivers(root, id)),
     mutation: readMutation(id, root),
   };
 }

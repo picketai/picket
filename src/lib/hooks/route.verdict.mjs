@@ -44,7 +44,7 @@ function unsavedBlockNote(info, verdict) {
 function saveDeveloperBlock(info, id, phase, text, root) {
   if (info?.agent !== "developer" || phase == null) return;
   try {
-    saveBlock(id, phase, text, root);
+    saveBlock(root, id, phase, text);
   } catch {}
 }
 

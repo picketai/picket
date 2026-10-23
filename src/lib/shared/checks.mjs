@@ -1,7 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { projectRoot } from "./work/work.mjs";
-import { stateDir, statePath, stateRel } from "./paths.mjs";
+import { projectRoot, stateDir, statePath, stateRel } from "./paths.mjs";
 import { detectTooling } from "./tooling.mjs";
 import { assertNotDestructive } from "./destructive.mjs";
 

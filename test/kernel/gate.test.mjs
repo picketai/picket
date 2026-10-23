@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "../../dist/lib/shared/work/work.mjs";
+import { createWork } from "./work-fixture.mjs";
 import { ownGate, phasePaths } from "../../dist/lib/shared/work/gate.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 

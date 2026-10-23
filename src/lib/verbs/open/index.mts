@@ -4,7 +4,7 @@ import { configRel, WORK_DIR } from "../../shared/paths.mts";
 import { IntakeError } from "../../shared/sources/sources.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { next } from "../../shared/work/next-step.mjs";
-import { createWork } from "../../shared/work/work.mjs";
+import { createWork, type WorkState } from "../../shared/work/state.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
 
@@ -22,21 +22,9 @@ export type OpenInput = {
 export type Opened = { id: string; lane: string; dir: string; warnings: string[]; next: { action: string; actor: string | null } } & Record<string, unknown>;
 
 type Source = { name: string; root: string | null; reason: string };
-type Created = { id: string; lane: string } & Record<string, unknown>;
-type CreateWork = (options: {
-  lane: string;
-  title: string;
-  id: string | undefined;
-  source: string | undefined;
-  request: string | null;
-  story: string | null;
-  session: string | null;
-  root: string;
-}) => Created;
 
 const STDIN = "-";
 const EMPTY_REQUEST = 'open: the request is empty; pass the request text with --text "<request>" or drop the flag';
-const createWorkTyped = createWork as unknown as CreateWork;
 
 function readFile(path: string): string {
   const text = readText(path);
@@ -51,18 +39,21 @@ function requestText(request: Request | null): string | null {
   return text;
 }
 
-function createOrRefuse(input: OpenInput, root: string, session: string | null): Created {
+function createOrRefuse(input: OpenInput, root: string, session: string | null, now: Date): WorkState {
   try {
-    return createWorkTyped({
-      lane: input.lane,
-      title: input.title,
-      id: input.id,
-      source: input.ticket ?? input.source,
-      request: requestText(input.request),
-      story: input.story === undefined ? null : readFile(input.story),
-      session: input.session ?? session,
+    return createWork(
       root,
-    });
+      {
+        lane: input.lane,
+        title: input.title,
+        id: input.id,
+        source: input.ticket ?? input.source,
+        request: requestText(input.request),
+        story: input.story === undefined ? null : readFile(input.story),
+        session: input.session ?? session,
+      },
+      now,
+    );
   } catch (err) {
     if (err instanceof IntakeError) throw new Refused(err.message, { failures: (err as IntakeError & { failures: string[] }).failures });
     throw err;
@@ -77,8 +68,8 @@ function sourceWarnings(root: string, story: string | undefined): string[] {
   return [`story.md saved without snapshots: no reachable source (${why})`];
 }
 
-export const openItem = action<OpenInput, Opened>(async (input, { root, session }) => {
-  const created = createOrRefuse(input, root, session);
+export const openItem = action<OpenInput, Opened>(async (input, { root, session, now }) => {
+  const created = createOrRefuse(input, root, session, now());
   return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(root, input.story), next: next(created.id, root) });
 });
 

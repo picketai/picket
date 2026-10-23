@@ -5,7 +5,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, exist
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, setMarker } from "../../dist/lib/shared/work/work.mjs";
+import { deriveState } from "../../dist/lib/shared/work/work.mjs";
+import { createWork, setMarker } from "../kernel/work-fixture.mjs";
 import { LEGACY, branchingManifestPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 import { writeConfig } from "../kernel/config-fixture.mjs";
 import { recordEscalation } from "../../dist/lib/shared/escalation.mjs";
