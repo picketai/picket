@@ -2,6 +2,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { AgentInfo, On } from 'claude-code'
 
+import { ROLE_TONES } from '../../shared/theme'
+
 const NOW = Date.parse('2026-10-23T10:00:00Z')
 const START = { cwd: 'D:/repo', surface: 'terminal', isInteractive: true } as const
 const CONFIG = 'D:/home/.claude'
@@ -98,6 +100,15 @@ test('a spawned agent with a work line shows its phase of the phase_count picket
 
   expect(w.runs.filter(isStateCall)).toEqual([['picket', 'state', 'w1']])
   expect(await shows($, /^2\/3/)).toBe(true)
+})
+
+test("a developer card's name takes the developer role tone", async ($, on) => {
+  world(on, { roster: [developer()] })
+  await $.session.start(START)
+  await $.agent.spawn(SPAWN)
+
+  const nameLine = await (await pane($)).find({ type: 'Text', text: 'developer Opus 5.5' })
+  expect(nameLine?.children[0]).toMatchObject({ props: { color: ROLE_TONES.developer }, children: ['developer'] })
 })
 
 test('a picket state that exits 2 leaves the card with no phase fraction', async ($, on) => {

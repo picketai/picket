@@ -1,4 +1,4 @@
-import type { Tone } from './palette'
+import type { Tone } from '../../shared/theme'
 
 export type SpanStyle = {
   bold?: boolean

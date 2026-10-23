@@ -1,15 +1,14 @@
 import { roleOf } from '../../../lib/shared/format.mts'
+import { ANSI, BRAND } from '../../../lib/shared/styling/palette.mts'
 
-const ROLE_COLORS: Record<string, string> = {
-  architect: '#4a9eff',
-  developer: '#3fb950',
-  reviewer: '#db61a2',
-  analyst: '#a371f7',
+const ROLE_STRIPES: Record<string, string> = {
+  architect: ANSI.blue[0],
+  developer: ANSI.green[0],
+  reviewer: ANSI.red[0],
+  analyst: ANSI.purple[0],
 }
 
-const OTHER_COLOR = '#8b949e'
-
-export const roleColor = (type: string): string => ROLE_COLORS[roleOf(type)] ?? OTHER_COLOR
+export const roleStripe = (type: string): string => ROLE_STRIPES[roleOf(type)] ?? BRAND.muted
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -51,9 +50,9 @@ const BLINK_EVERY = 4
 
 const DEFAULT_COLOR = 0x01000000
 
-const FINISHED_TINT = 0x30363d
+const colorOf =(hex: string): number => Number.parseInt(hex.slice(1), 16)
 
-const hex = (color: string): number => Number.parseInt(color.slice(1), 16)
+const FINISHED_TINT = colorOf(BRAND.barEmpty)
 
 const mixWith = (color: number, other: number, t: number): number => {
   const channel = (shift: number) => {
@@ -72,11 +71,11 @@ export const isBlinking = (frame: number): boolean => frame % BLINK_EVERY === BL
 export const sprite = (type: string, frame: number, isFinishedSprite: boolean): string => {
   const tint = (color: number) => (isFinishedSprite ? mixWith(color, FINISHED_TINT, 0.5) : color)
   const palette: Record<string, number> = {
-    K: tint(0x412214),
-    O: tint(0xff9139),
-    C: tint(0xfff2d3),
-    E: tint(0x1f1d1a),
-    S: tint(hex(roleColor(type))),
+    K: tint(colorOf(BRAND.selection)),
+    O: tint(colorOf(BRAND.orange)),
+    C: tint(colorOf(BRAND.cream)),
+    E: tint(colorOf(BRAND.background)),
+    S: tint(colorOf(roleStripe(type))),
   }
   const pixels = [...PICKET]
   if (isFinishedSprite || isBlinking(frame)) {

@@ -1,5 +1,6 @@
 import type { EngineInterface, RenderInput } from 'claude-code'
 
+import { SURFACES, TONES } from '../../shared/theme'
 import type { BrowseMode, ViewedDoc } from '../types'
 import { ask, chooseMode, copy, goBack, openInEditor, openPressed, scrollTable, scrollTo, showOrToast, toggleFolder } from './actions'
 import {
@@ -22,7 +23,6 @@ import {
 import { baseName, dirOf, isMarkdownPath, resolvePath } from './links'
 import { changedRows, layout, sliceSpans, width } from './markdown'
 import type { Row, Span } from './markdown'
-import { SURFACES, TONES } from './palette'
 import { folderOf, folders, treeRows } from './tree'
 
 const FOOTER_START = '── '

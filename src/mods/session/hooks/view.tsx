@@ -1,6 +1,7 @@
 import type { EngineInterface, RenderInput } from 'claude-code'
 
 import { clock, compactTokens, prettyModel, roleOf } from '../../../lib/shared/format.mts'
+import { ROLE_TONES, SURFACES, TONES } from '../../shared/theme'
 import type { AgentGroup, AgentRow, Session, SessionEntry, View } from '../types'
 import {
   askDelete,
@@ -30,17 +31,13 @@ import {
   tally,
 } from './data'
 import { age, clampOffset, visible, windowLabel } from './sessions'
-import { roleColor, sprite, SPRITE_COLUMNS, SPRITE_ROWS } from './sprite'
+import { sprite, SPRITE_COLUMNS, SPRITE_ROWS } from './sprite'
 
 const TITLE_INDENT = 2
 const CARD_ROWS = 7
 const LABEL_ROWS = 2
-const UNMEASURED_BAR = '#3a3f47'
-const TAB_BACKGROUND = '#1f2630'
-const CURRENT_BACKGROUND = '#161b22'
-const CONFIRM_BACKGROUND = '#2d1517'
-const DELETE_TEXT = '#ffa198'
-const DIVIDER = '#30363d'
+
+const roleTone = (type: string): string => ROLE_TONES[roleOf(type)] ?? TONES.muted
 
 type PaneInput = RenderInput<'Pane'>
 
@@ -56,11 +53,11 @@ type Pane = {
 const fit = (text: string, room: number) => (text.length <= room ? text : `${text.slice(0, Math.max(1, room - 1))}…`)
 
 function statusMark({ ui: { Text } }: Pane, agent: AgentRow) {
-  if (agent.status === 'completed') return <Text color="success">✓</Text>
-  if (agent.status === 'failed') return <Text color="error">✗</Text>
-  if (agent.status === 'killed') return <Text color="inactive">■</Text>
-  if (agent.status === 'idle' || agent.status === 'waiting') return <Text color="warning">○</Text>
-  return <Text color={roleColor(agent.type)}>●</Text>
+  if (agent.status === 'completed') return <Text color={TONES.success}>✓</Text>
+  if (agent.status === 'failed') return <Text color={TONES.error}>✗</Text>
+  if (agent.status === 'killed') return <Text color={TONES.muted}>■</Text>
+  if (agent.status === 'idle' || agent.status === 'waiting') return <Text color={TONES.warning}>○</Text>
+  return <Text color={roleTone(agent.type)}>●</Text>
 }
 
 function compactCard(pane: Pane, agent: AgentRow) {
@@ -71,7 +68,7 @@ function compactCard(pane: Pane, agent: AgentRow) {
         {statusMark(pane, agent)}
         <Text> </Text>
         <Text wrap="truncate-end">
-          <Text color={roleColor(agent.type)}>{agent.name ?? roleOf(agent.type)}</Text>
+          <Text color={roleTone(agent.type)}>{agent.name ?? roleOf(agent.type)}</Text>
           <Text> </Text>
           <Text dimColor={isFinished(agent.status)}>{agent.description}</Text>
         </Text>
@@ -88,7 +85,7 @@ function fullCard(pane: Pane, agent: AgentRow) {
   const Raster = 'Raster' in pane.ui ? pane.ui.Raster : null
   const { contentWidth } = pane
   const done = isFinished(agent.status)
-  const color = roleColor(agent.type)
+  const color = roleTone(agent.type)
   const progress = progressOf(agent)
   const filled = Math.round(progress.fraction * contentWidth)
   const tokens = agent.contextTokens
@@ -132,10 +129,10 @@ function fullCard(pane: Pane, agent: AgentRow) {
           </Box>
         </Box>
         <Text>
-          <Text color={progress.isMeasured || !done ? color : UNMEASURED_BAR} dimColor={done}>
+          <Text color={progress.isMeasured || !done ? color : TONES.muted} dimColor={done}>
             {'━'.repeat(filled)}
           </Text>
-          <Text color={UNMEASURED_BAR}>{'━'.repeat(Math.max(0, contentWidth - filled))}</Text>
+          <Text color={TONES.muted}>{'━'.repeat(Math.max(0, contentWidth - filled))}</Text>
         </Text>
       </Box>
     </Box>
@@ -171,7 +168,7 @@ function tabButton($: EngineInterface, pane: Pane, key: View['tab'], label: stri
   const isSelected = pane.v.tab === key
   return (
     <Button key={`tab-${key}`} plain onPress={() => selectTab($, key)}>
-      <Text backgroundColor={isSelected ? TAB_BACKGROUND : undefined} bold={isSelected} dimColor={!isSelected}>
+      <Text backgroundColor={isSelected ? SURFACES.row : undefined} bold={isSelected} dimColor={!isSelected}>
         {` ${label} `}
       </Text>
     </Button>
@@ -186,7 +183,7 @@ function rowActions($: EngineInterface, pane: Pane, entry: SessionEntry) {
         <Button key={`restore-${entry.id}`} plain label="↺" onPress={() => toggleArchived($, entry.id)} />
         <Text> </Text>
         <Button key={`ask-delete-${entry.id}`} plain onPress={() => askDelete($, entry.id)}>
-          <Text color="error">⊘</Text>
+          <Text color={TONES.error}>⊘</Text>
         </Button>
       </Box>
     )
@@ -207,13 +204,13 @@ function rowActions($: EngineInterface, pane: Pane, entry: SessionEntry) {
 function confirmRow($: EngineInterface, pane: Pane, entry: SessionEntry) {
   const { Box, Button, Text } = pane.ui
   return (
-    <Box key={`confirm-${entry.id}`} justifyContent="space-between" width={pane.lineWidth} backgroundColor={CONFIRM_BACKGROUND}>
-      <Text color={DELETE_TEXT} wrap="truncate-end">
+    <Box key={`confirm-${entry.id}`} justifyContent="space-between" width={pane.lineWidth}>
+      <Text color={TONES.error} wrap="truncate-end">
         Delete "{fit(entry.title, 18)}" for good?
       </Text>
       <Box>
         <Button key={`delete-${entry.id}`} plain onPress={() => void deleteSession($, entry)}>
-          <Text color="error" bold>
+          <Text color={TONES.error} bold>
             Delete
           </Text>
         </Button>
@@ -252,10 +249,10 @@ function sessionRow($: EngineInterface, pane: Pane, entry: SessionEntry) {
       key={`row-${entry.id}`}
       justifyContent="space-between"
       width={lineWidth}
-      backgroundColor={entry.isCurrent ? CURRENT_BACKGROUND : undefined}
+      backgroundColor={entry.isCurrent ? SURFACES.row : undefined}
     >
       <Button key={`open-${entry.id}`} plain onPress={() => switchTo($, entry)}>
-        <Text color={entry.isCurrent ? 'success' : 'warning'}>{entry.isLive || entry.isCurrent ? '●' : ' '}</Text>
+        <Text color={entry.isCurrent ? TONES.success : TONES.warning}>{entry.isLive || entry.isCurrent ? '●' : ' '}</Text>
         <Text> </Text>
         <Text bold={entry.isCurrent}>{fit(entry.title, lineWidth - 12)}</Text>
       </Button>
@@ -316,7 +313,7 @@ export async function renderPane($: EngineInterface, e: PaneInput) {
           {sessionWindow.map(entry => sessionRow($, pane, entry))}
         </Box>
         <Box flexGrow={1} />
-        <Text color={DIVIDER}>{'─'.repeat(lineWidth)}</Text>
+        <Text color={TONES.rule}>{'─'.repeat(lineWidth)}</Text>
       </Box>
       <Box key="agents" flexDirection="column" height={rows - topRows} overflow="hidden">
         <Box justifyContent="space-between" width={lineWidth}>

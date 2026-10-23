@@ -1,11 +1,28 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { isBlinking, roleColor, sprite, toBase64 } from './sprite'
+import { ANSI, BRAND, rgb } from '../../../lib/shared/styling/palette.mts'
+import { isBlinking, roleStripe, sprite, SPRITE_COLUMNS, toBase64 } from './sprite'
+
+const packed = (hex: string): number => {
+  const [r, g, b] = rgb(hex)
+  return (r << 16) | (g << 8) | b
+}
+
+const topColor = (cells: string, row: number, col: number): number | undefined => {
+  const bytes = Uint8Array.from(atob(cells), char => char.charCodeAt(0))
+  return new Uint32Array(bytes.buffer)[(row * SPRITE_COLUMNS + col) * 3 + 1]
+}
 
 describe('sprite', () => {
-  test('roles get their own colors', async () => {
-    expect(roleColor('picket:reviewer')).toBe('#db61a2')
-    expect(roleColor('Explore')).toBe('#8b949e')
+  test('roles get their stripe from the terminal palette, others the muted brand colour', async () => {
+    expect(roleStripe('picket:reviewer')).toBe(ANSI.red[0])
+    expect(roleStripe('Explore')).toBe(BRAND.muted)
+  })
+
+  test('the body is brand orange and a developer stripe is the palette green', async () => {
+    const cells = sprite('picket:developer', 0, false)
+    expect(topColor(cells, 1, 2)).toBe(packed(BRAND.orange))
+    expect(topColor(cells, 4, 2)).toBe(packed(ANSI.green[0]))
   })
 
   test('base64 matches the standard alphabet with padding', async () => {

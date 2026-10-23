@@ -1,11 +1,11 @@
 import { elapsed, minutes } from '../../../lib/shared/format.mts'
+import { TONES } from '../../shared/theme'
 import type { AgentRow, Line, Piece, Work } from '../types'
-import { TONE } from './palette'
 
 const GAP = 2
 const INDENT: Piece = { text: '  ' }
-const DOT: Piece = { text: ' · ', color: TONE.rule }
-const OTHER_SESSION: Piece = { text: ' · other session', color: TONE.muted }
+const DOT: Piece = { text: ' · ', color: TONES.rule }
+const OTHER_SESSION: Piece = { text: ' · other session', color: TONES.muted }
 
 export const widthOf = (pieces: Piece[]): number =>
   pieces.reduce((sum, piece) => sum + [...piece.text].length, 0)
@@ -30,9 +30,9 @@ const progress = (work: Work): Piece[] => {
     return []
   }
   const dots = Array.from({ length: work.phase_count }, (_, index): Piece =>
-    index < work.phases_approved ? { text: '●', color: TONE.accent } : { text: '○', color: TONE.rule },
+    index < work.phases_approved ? { text: '●', color: TONES.accent } : { text: '○', color: TONES.rule },
   )
-  return [{ text: '  ' }, ...dots, { text: ` ${work.phases_approved}/${work.phase_count}`, color: TONE.muted }]
+  return [{ text: '  ' }, ...dots, { text: ` ${work.phases_approved}/${work.phase_count}`, color: TONES.muted }]
 }
 
 const WORKING = new Set(['running', 'pending', 'waiting'])
@@ -60,13 +60,13 @@ const agentPieces = (row: AgentRow, state: Exclude<AgentState, 'idle'>, now: num
   state === 'working'
     ? [
         { text: `${row.name} ` },
-        { text: 'working', color: TONE.accent, bold: true },
-        { text: ` (${elapsed(now - row.startedAt)})`, color: TONE.muted },
+        { text: 'working', color: TONES.accent, bold: true },
+        { text: ` (${elapsed(now - row.startedAt)})`, color: TONES.muted },
       ]
     : [
         { text: `${row.name} ` },
-        { text: 'waiting', color: TONE.warning, bold: true },
-        { text: ` (${minutes(now - (row.idleAt ?? now))})`, color: TONE.warning },
+        { text: 'waiting', color: TONES.warning, bold: true },
+        { text: ` (${minutes(now - (row.idleAt ?? now))})`, color: TONES.warning },
       ]
 
 export const agentsLine = (all: AgentRow[], work: Work | null, now: number): Line | null => {
@@ -113,19 +113,19 @@ const otherSessionStep = (work: Work): string => {
 
 export const stepText = (work: Work, now: number): Piece[] => {
   if (work.other_session === true) {
-    return [{ text: otherSessionStep(work), color: TONE.muted }]
+    return [{ text: otherSessionStep(work), color: TONES.muted }]
   }
   if (work.status === 'blocked') {
-    return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: TONE.error, bold: true }]
+    return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: TONES.error, bold: true }]
   }
   if (work.actor === 'user') {
     const ask = work.action === 'resolve_sources' ? 'you pick source versions' : `you approve phase ${work.phase}`
     return [
-      { text: `${ask} ◀`, color: TONE.warning, bold: true },
-      { text: ` ${minutes(now - Date.parse(work.since))}`, color: TONE.muted },
+      { text: `${ask} ◀`, color: TONES.warning, bold: true },
+      { text: ` ${minutes(now - Date.parse(work.since))}`, color: TONES.muted },
     ]
   }
-  return [{ text: `${work.actor ?? 'lead'} ${agentVerb(work)} ⋯`, color: TONE.accent }]
+  return [{ text: `${work.actor ?? 'lead'} ${agentVerb(work)} ⋯`, color: TONES.accent }]
 }
 
 export const workLine = (work: Work | null, now: number): Line | null => {
@@ -135,9 +135,9 @@ export const workLine = (work: Work | null, now: number): Line | null => {
   const isOther = work.other_session === true
   return {
     left: [
-      { text: `▶ ${work.lane}`, color: isOther ? TONE.muted : TONE.accent },
+      { text: `▶ ${work.lane}`, color: isOther ? TONES.muted : TONES.accent },
       { text: '  ' },
-      isOther ? { text: work.title, color: TONE.muted } : { text: work.title, bold: true },
+      isOther ? { text: work.title, color: TONES.muted } : { text: work.title, bold: true },
       ...progress(work),
       ...(isOther ? [OTHER_SESSION] : []),
     ],
