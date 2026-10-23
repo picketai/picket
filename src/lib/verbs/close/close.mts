@@ -1,7 +1,7 @@
 import { Refused } from "../../shared/action.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
-import { recordAccept } from "../../shared/ledger.mjs";
+import { recordAccept } from "../../shared/ledger.mts";
 import { phasePaths } from "../../shared/work/artifact.mts";
 import { blockFiles } from "../../shared/work/block.mts";
 import { workRel, type WorkId } from "../../shared/work/files.mts";
@@ -25,12 +25,9 @@ export type CloseResult = WorkState & {
   repeats: Repeat[];
 };
 
-type RecordAccept = (root: string, id: string, commit: string) => void;
-
 const PHASED_LANES: readonly Lane[] = ["order", "design"];
 const CLASSED_VERDICT = "CHANGES REQUIRED";
 const MIN_REPEATS = 2;
-const recordAcceptTyped = recordAccept as unknown as RecordAccept;
 
 export function defaultCloseMessage(id: WorkId): string {
   return `chore: close ${id}`;
@@ -108,6 +105,6 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   refuseUntouchedFastClose(root, snap.state, touched);
   const state = markDone(root, snap.state, now);
   const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env);
-  if (commit) recordAcceptTyped(root, id, commit);
+  if (commit) recordAccept(root, id, commit, null, now);
   return { ...state, commit, message: commitMessage, committed: commit ? filesInCommit(root, commit) : [], left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats };
 }

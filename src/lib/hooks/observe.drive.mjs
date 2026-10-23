@@ -51,8 +51,8 @@ function recordRanEscalation(root, command, segments, { session, agent, work_id,
   const reason = escalationReason(segments);
   if (reason === null) return;
   const escalated = maskEnvValues(withoutMarker(command));
-  if (!notRunBefore(readLedger(root), session, commandKey(escalated))) return;
-  recordEscalation(root, { session, outcome: "ran", why: failed ? "failed" : null, command: escalated, reason: maskEnvValues(reason), agent, work_id });
+  if (!notRunBefore(readLedger(root).rows, session, commandKey(escalated))) return;
+  recordEscalation(root, { session, outcome: "ran", why: failed ? "failed" : null, command: escalated, reason: maskEnvValues(reason), agent, work_id }, new Date());
 }
 
 export function observeDrive(event, { root }) {

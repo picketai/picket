@@ -41,6 +41,6 @@ export function applyChanges(root: string, snap: WorkSnapshot, changes: Change[]
   if (state) writeState(root, state, now);
   appendVerdict(root, id, row, now);
   const applied = changes.map(appliedLine).filter((line): line is string => line !== null);
-  for (const change of changes) if (change.kind === "commit") applied.push(...commitPhase(root, snap, change.phase, env));
+  for (const change of changes) if (change.kind === "commit") applied.push(...commitPhase(root, snap, change.phase, env, now));
   return applied;
 }

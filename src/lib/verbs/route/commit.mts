@@ -1,14 +1,11 @@
 import { commitOwned, listedPathMatcher, type CommitResult } from "../../shared/git.mts";
-import { recordAccept } from "../../shared/ledger.mjs";
+import { recordAccept } from "../../shared/ledger.mts";
 import { phasePaths } from "../../shared/work/artifact.mts";
 import { blockFiles, parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
 import { workRel } from "../../shared/work/files.mts";
 import { phaseOf, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 
-type RecordAccept = (root: string, id: string, commit: string, phase: number | null) => void;
-
 const COMMIT_SHA = /^[0-9a-f]{7,40}$/i;
-const recordAcceptTyped = recordAccept as unknown as RecordAccept;
 
 function commitMessage(root: string, snap: WorkSnapshot, phase: number): string {
   const id = snap.state.id;
@@ -25,7 +22,7 @@ function resultLines({ sha, committed, left_staged, warnings }: CommitResult, me
   return [...lines, ...warnings];
 }
 
-export function commitPhase(root: string, snap: WorkSnapshot, phase: number, env: NodeJS.ProcessEnv): string[] {
+export function commitPhase(root: string, snap: WorkSnapshot, phase: number, env: NodeJS.ProcessEnv, now: Date): string[] {
   const id = snap.state.id;
   const planned = phaseOf(snap, phase);
   const message = commitMessage(root, snap, phase);
@@ -38,6 +35,6 @@ export function commitPhase(root: string, snap: WorkSnapshot, phase: number, env
     return [(err as Error).message];
   }
   const lines = resultLines(result, message, phase, listed);
-  if (result.sha) recordAcceptTyped(root, id, result.sha, phase);
+  if (result.sha) recordAccept(root, id, result.sha, phase, now);
   return lines;
 }

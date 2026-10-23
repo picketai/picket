@@ -854,8 +854,27 @@ function driveLogRows(root) {
   return existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").filter(Boolean) : [];
 }
 
+test("emit.ledger writes a null session for a Stop event without one, and the id when it has one", () => {
+  const { root, id } = project();
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "ok" }])]);
+  run("emit.ledger.mjs", { hook_event_name: "Stop", transcript_path: tp, cwd: root }, root);
+  run("emit.ledger.mjs", { hook_event_name: "Stop", session_id: "s2", transcript_path: tp, cwd: root }, root);
+  assert.deepEqual(ledgerRows(root).map((row) => row.session), [null, "s2"]);
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("recordEscalation appends a v2 escalation row stamped with the given time and returns it", () => {
+  const { root } = project();
+  const now = new Date("2026-10-23T10:00:00.000Z");
+  const row = recordEscalation(root, { session: "s3", outcome: "ask", command: "git push origin v1", reason: "you asked for the tag" }, now);
+  assert.deepEqual(ledgerRows(root), [row]);
+  assert.deepEqual([row.v, row.ts, row.event, row.outcome], [2, "2026-10-23T10:00:00.000Z", "escalation", "ask"]);
+  assert.match(row.key, /^[0-9a-f]{64}$/);
+  rmSync(root, { recursive: true, force: true });
+});
+
 function asked(root, session) {
-  recordEscalation(root, { session, outcome: "ask", command: "git push origin v1", reason: "you asked for the tag" });
+  recordEscalation(root, { session, outcome: "ask", command: "git push origin v1", reason: "you asked for the tag" }, new Date());
 }
 
 test("observe.drive appends one ran escalation row for an asked marked command, and none for an unmarked or never asked one", () => {

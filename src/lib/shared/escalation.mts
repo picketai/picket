@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { appendFileSync, mkdirSync } from "node:fs";
-import { stateDir, statePath, STATE_FILES } from "./paths.mjs";
+import { appendLedger, type EscalationRow, type LedgerRow } from "./ledger.mts";
 
 export const MARKER = "PICKET_ESCALATE";
 export const ASKING_MODES = new Set(["default", "acceptEdits", "auto"]);
@@ -13,7 +12,7 @@ const LEADING_MARKER = new RegExp(`^\\s*${MARKER}=(?:"(?:[^"\\\\]|\\\\.)*"|'[^']
 const POWERSHELL_ENV_DRIVE = "$env:";
 export const POWERSHELL_MARKER_TEXT = `${POWERSHELL_ENV_DRIVE}${MARKER}`;
 
-function anyCase(text) {
+function anyCase(text: string): string {
   return [...text].map((ch) => (/[a-z]/i.test(ch) ? `[${ch.toLowerCase()}${ch.toUpperCase()}]` : `\\${ch}`)).join("");
 }
 
@@ -22,25 +21,38 @@ export const POWERSHELL_MARKER_STATEMENT = new RegExp(String.raw`^${POWERSHELL_M
 export const POWERSHELL_FOLDABLE_MARKER = new RegExp(String.raw`^${POWERSHELL_MARKER_ASSIGNMENT}[ \t]*;`);
 const POWERSHELL_LEADING_MARKER = new RegExp(String.raw`^\s*${POWERSHELL_MARKER_ASSIGNMENT}[ \t]*;`);
 
-export function leadingAssignments(segment) {
+export type ShellToken = string | object;
+export type Assignment = { name: string; value: string };
+export type EscalationMarker = { invalid: string } | { reason: string; command: ShellToken[] };
+export type EscalationInput = {
+  session?: string | null;
+  outcome: EscalationRow["outcome"];
+  why?: string | null;
+  command: string;
+  reason?: string | null;
+  agent?: string | null;
+  work_id?: string | null;
+};
+
+export function leadingAssignments(segment: ShellToken[]): { assignments: Assignment[]; command: ShellToken[] } {
   const firstCommandToken = segment.findIndex((token) => typeof token !== "string" || !ASSIGNMENT.test(token));
   const split = firstCommandToken === -1 ? segment.length : firstCommandToken;
-  const assignments = segment.slice(0, split).map((token) => ({ name: token.slice(0, token.indexOf("=")), value: token.slice(token.indexOf("=") + 1) }));
+  const assignments = (segment.slice(0, split) as string[]).map((token) => ({ name: token.slice(0, token.indexOf("=")), value: token.slice(token.indexOf("=") + 1) }));
   return { assignments, command: segment.slice(split) };
 }
 
-export function carriesMarker(segment) {
+export function carriesMarker(segment: ShellToken[]): boolean {
   return leadingAssignments(segment).assignments.some(({ name }) => name === MARKER);
 }
 
-function reasonProblem(reason, isOpaque) {
+function reasonProblem(reason: string, isOpaque: (reason: string) => boolean): string | null {
   if (!reason) return "the reason is empty";
   if (reason.length > MAX_REASON_CHARS) return `the reason is longer than ${MAX_REASON_CHARS} characters`;
   if (NON_LITERAL.test(reason) || isOpaque(reason)) return "the reason is not a literal (no newline, $ or backtick)";
   return null;
 }
 
-export function escalationMarker(segment, { isOpaque = () => false } = {}) {
+export function escalationMarker(segment: ShellToken[], { isOpaque = () => false }: { isOpaque?: (reason: string) => boolean } = {}): EscalationMarker | null {
   const { assignments, command } = leadingAssignments(segment);
   const marker = assignments.find(({ name }) => name === MARKER);
   if (!marker) return null;
@@ -50,48 +62,47 @@ export function escalationMarker(segment, { isOpaque = () => false } = {}) {
   return problem ? { invalid: problem } : { reason: marker.value, command };
 }
 
-export function withoutMarker(rawCommand) {
+export function withoutMarker(rawCommand: string): string {
   return rawCommand.replace(POWERSHELL_LEADING_MARKER, "").replace(LEADING_MARKER, "").trim();
 }
 
-export function commandKey(command) {
+export function commandKey(command: string): string {
   return createHash("sha256").update(withoutMarker(command).replace(/\s+/g, " ")).digest("hex");
 }
 
-function isEscalation(row) {
+function isEscalation(row: LedgerRow | null | undefined): row is EscalationRow {
   return row?.event === "escalation";
 }
 
-function ranAfter(rows, index) {
-  const { session, key } = rows[index];
+function ranAfter(rows: LedgerRow[], index: number, { session, key }: EscalationRow): boolean {
   return rows.slice(index + 1).some((row) => isEscalation(row) && row.outcome === "ran" && row.session === session && row.key === key);
 }
 
-export function notRunAsks(rows) {
+export function notRunAsks(rows: LedgerRow[]): EscalationRow[] {
   const escalations = rows.filter(isEscalation);
-  return escalations.filter((row, index) => row.outcome === "ask" && !ranAfter(escalations, index));
+  return escalations.filter((row, index) => row.outcome === "ask" && !ranAfter(escalations, index, row));
 }
 
-export function notRunBefore(rows, session, key) {
-  const latestAsk = rows.findLastIndex((row) => isEscalation(row) && row.outcome === "ask" && row.session === session && row.key === key);
-  return latestAsk !== -1 && !ranAfter(rows, latestAsk);
+export function notRunBefore(rows: LedgerRow[], session: string | null | undefined, key: string): boolean {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    if (isEscalation(row) && row.outcome === "ask" && row.session === session && row.key === key) return !ranAfter(rows, i, row);
+  }
+  return false;
 }
 
-export function recordEscalation(root, row) {
-  const entry = {
-    v: 2,
-    ts: new Date().toISOString(),
-    session: row.session ?? null,
-    event: "escalation",
-    outcome: row.outcome,
-    why: row.why ?? null,
-    key: commandKey(row.command),
-    command: row.command.slice(0, LOGGED_CHARS),
-    reason: row.reason?.slice(0, LOGGED_CHARS) ?? null,
-    agent: row.agent ?? null,
-    work_id: row.work_id ?? null,
+export function recordEscalation(root: string, input: EscalationInput, now: Date): EscalationRow {
+  const row = {
+    session: input.session ?? null,
+    event: "escalation" as const,
+    outcome: input.outcome,
+    why: input.why ?? null,
+    key: commandKey(input.command),
+    command: input.command.slice(0, LOGGED_CHARS),
+    reason: input.reason?.slice(0, LOGGED_CHARS) ?? null,
+    agent: input.agent ?? null,
+    work_id: input.work_id ?? null,
   };
-  mkdirSync(stateDir(root), { recursive: true });
-  appendFileSync(statePath(root, STATE_FILES.ledger), JSON.stringify(entry) + "\n");
-  return entry;
+  appendLedger(root, row, now);
+  return { v: 2, ts: now.toISOString(), ...row };
 }

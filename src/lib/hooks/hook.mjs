@@ -45,7 +45,7 @@ async function recordDenial(handler, root, event, output) {
       hook: hookName(handler),
       work_id: currentItem(root, { session })?.id ?? null,
       reason: String(denial.reason ?? "").slice(0, REASON_LIMIT),
-    });
+    }, new Date());
   } catch {}
 }
 

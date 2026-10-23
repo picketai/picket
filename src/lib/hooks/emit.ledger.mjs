@@ -56,7 +56,7 @@ export function emitLedger(event, { root }) {
   const work_id = heading?.[3] ?? heading?.[4] ?? heading?.[5] ?? heading?.[6] ?? heading?.[7] ?? hints.work_id ?? null;
   const gate = !isSub && /\[a\] approve|\[c\] continue|\[i\] confirm/.test(text);
   const row = {
-    session: event.session_id ?? "unknown",
+    session: event.session_id ?? null,
     event: gate ? "gate" : isSub ? "subagent_stop" : "stop",
     agent: agentName(event, path),
     lane: laneOf(hints, work_id, root),
@@ -73,6 +73,6 @@ export function emitLedger(event, { root }) {
     usage: ledgerUsage(span.usage),
     session_cost_usd: sessionCost(root, event.session_id),
   };
-  appendLedger(root, row);
+  appendLedger(root, row, new Date());
   return null;
 }

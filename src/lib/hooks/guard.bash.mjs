@@ -1341,7 +1341,7 @@ function escalationVerdict({ shapeProblem, commandClass, mode, savedRules, refus
 function logEscalation(command, rawReason, ctx, { outcome, why }) {
   const { root, escalation } = ctx;
   const reason = rawReason === null ? null : maskEnvValues(rawReason);
-  recordEscalation(root, { session: escalation.session, outcome, why, command, reason, agent: escalation.agent, work_id: currentItem(root, { session: escalation.session ?? null })?.id ?? null });
+  recordEscalation(root, { session: escalation.session, outcome, why, command, reason, agent: escalation.agent, work_id: currentItem(root, { session: escalation.session ?? null })?.id ?? null }, new Date());
   return reason;
 }
 
@@ -1363,7 +1363,7 @@ function judgeEscalation(rawCommand, segments, classifications, flags, ctx) {
   const commandClass = classifications[0];
   const passedMode = !shapeProblem && commandClass === "deny" && ASKING_MODES.has(escalation.mode);
   const savedRules = passedMode ? escalationAllowRules({ root, home: escalation.home, tool: ctx.tool, command }) : [];
-  const refusedBefore = passedMode && !savedRules.length && notRunBefore(readLedger(root), escalation.session, commandKey(command));
+  const refusedBefore = passedMode && !savedRules.length && notRunBefore(readLedger(root).rows, escalation.session, commandKey(command));
   const verdict = escalationVerdict({ shapeProblem, commandClass, mode: escalation.mode, savedRules, refusedBefore });
   if (!verdict) return fallThrough("escalation-not-destructive");
   const reason = logEscalation(command, rawReason, ctx, verdict);
