@@ -210,3 +210,23 @@ test("no module under src/lib or a skill's scripts crosses the layer rules (T-3.
   const violations = directionSources().flatMap((file) => importViolations(repoPath(file), readFileSync(file, "utf8")));
   assert.deepEqual(violations, []);
 });
+
+const ONE_WORD = /^[a-z]+$/;
+
+function verbNameViolations(names) {
+  return Object.entries(names).flatMap(([name, entry]) => {
+    const subverbs = "subverbs" in entry ? Object.keys(entry.subverbs).map((sub) => `${name} ${sub}`) : [];
+    return [name, ...subverbs].filter((command) => !command.split(" ").every((word) => ONE_WORD.test(word)));
+  });
+}
+
+test("the verb-name scan reports a name that is not one lowercase word (scan 4)", () => {
+  const plain = { summary: "x", readOnly: true };
+  assert.deepEqual(verbNameViolations({ "review-summary": plain, setupTerminal: plain, state: plain }), ["review-summary", "setupTerminal"]);
+  assert.deepEqual(verbNameViolations({ source: { summary: "x", subverbs: { find: plain, "find-all": plain } } }), ["source find-all"]);
+});
+
+test("every verb and subverb name is one lowercase word (scan 4)", async () => {
+  const { VERB_NAMES } = await import("../../dist/lib/verbs.mjs");
+  assert.deepEqual(verbNameViolations(VERB_NAMES), []);
+});

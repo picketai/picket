@@ -428,6 +428,34 @@ test("every picket verb is placed in exactly one of the read and other verb sets
   assert.ok(KERNEL_OTHER_VERBS.has("source"));
 });
 
+function guardSetsFrom(names) {
+  const entries = Object.entries(names);
+  const plain = entries.filter(([, entry]) => !("subverbs" in entry));
+  const groups = entries.filter(([, entry]) => "subverbs" in entry);
+  const readSubverbs = groups
+    .map(([name, entry]) => [name, Object.entries(entry.subverbs).filter(([, sub]) => sub.readOnly).map(([sub]) => sub)])
+    .filter(([, subs]) => subs.length > 0);
+  return {
+    read: plain.filter(([, entry]) => entry.readOnly).map(([name]) => name).sort(),
+    other: [...plain.filter(([, entry]) => !entry.readOnly), ...groups].map(([name]) => name).sort(),
+    readSubverbs: Object.fromEntries(readSubverbs),
+    leadOnly: plain.filter(([, entry]) => entry.leadOnly).map(([name]) => name).sort(),
+  };
+}
+
+test("the guard's verb lists say what VERB_NAMES says (D-007)", () => {
+  const expected = guardSetsFrom(VERB_NAMES);
+  assert.deepEqual([...KERNEL_READ_VERBS].sort(), expected.read);
+  assert.deepEqual([...KERNEL_OTHER_VERBS].sort(), expected.other);
+  assert.deepEqual(Object.fromEntries(Object.entries(KERNEL_READ_SUBVERBS).map(([group, subs]) => [group, [...subs].sort()])), Object.fromEntries(Object.entries(expected.readSubverbs).map(([group, subs]) => [group, subs.sort()])));
+  assert.deepEqual([...LEAD_ONLY_VERBS].sort(), expected.leadOnly);
+});
+
+test("the guard-set derivation puts a group in the other set and only its read-only subverbs in the read map", () => {
+  const sample = { a: { summary: "a", readOnly: true }, b: { summary: "b", readOnly: false, leadOnly: true }, g: { summary: "g", subverbs: { r: { summary: "r", readOnly: true }, w: { summary: "w", readOnly: false } } } };
+  assert.deepEqual(guardSetsFrom(sample), { read: ["a"], other: ["b", "g"], readSubverbs: { g: ["r"] }, leadOnly: ["b"] });
+});
+
 test("only the lead and the user run picket waive and picket comment; a spawned agent is denied", () => {
   withProject((root) => {
     const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput ?? null;
