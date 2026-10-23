@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
-import { codeLines, isKernelSource } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
 
 const SRC = resolve("src");
 const SETTINGS = resolve(".claude/settings.json");

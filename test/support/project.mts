@@ -6,12 +6,12 @@ import { HOST_DIR, PICKET_DIR } from "../../src/lib/shared/paths.mts";
 import { recordBases } from "../../src/lib/shared/repos.mts";
 import { createItem, type NewItem, type WorkState } from "../../src/lib/shared/work/state.mts";
 
-export type ProjectOptions = { host?: boolean };
+export type ProjectOptions = { host?: boolean; picket?: boolean };
 
-export function withProject(t: TestContext, { host = false }: ProjectOptions = {}): string {
+export function withProject(t: TestContext, { host = false, picket = true }: ProjectOptions = {}): string {
   const root = mkdtempSync(join(tmpdir(), "picket-test-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(join(root, PICKET_DIR));
+  if (picket) mkdirSync(join(root, PICKET_DIR));
   if (host) mkdirSync(join(root, HOST_DIR));
   return root;
 }

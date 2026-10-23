@@ -11,7 +11,7 @@ const OLD_TITLE = OLD_WORD[0].toUpperCase() + OLD_WORD.slice(1);
 const RECORD_FOLDERS = ["work/", "artifacts/", "bench/results/"];
 const PROJECT_MEMORY = ".claude/MEMORY.md";
 const SUPERSEDED = "[superseded";
-const THIS_FILE = "test/names-picket.test.mjs";
+const THIS_FILE = "test/repo/names-picket.test.mjs";
 
 function isRecord(file) {
   return RECORD_FOLDERS.some((folder) => file.startsWith(folder));

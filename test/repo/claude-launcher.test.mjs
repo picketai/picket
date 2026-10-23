@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { delimiter, join, resolve } from "node:path";
-import { checkoutEnv } from "../scripts/claude.mjs";
+import { checkoutEnv } from "../../scripts/claude.mjs";
 
 const PACKAGE = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
 

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
 import * as paths from "../../dist/lib/shared/paths.mjs";
-import { codeLines, isKernelSource, isPathsModule, kernelModules } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource, isPathsModule, kernelModules } from "#test/kernel-sources.mts";
 
 const { projectRoot } = paths;
 

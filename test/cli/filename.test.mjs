@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { withProject } from "#test/project.mts";
 
 const script = fileURLToPath(new URL("../../dist/skills/documenting/scripts/filename.mjs", import.meta.url));
 
@@ -43,9 +43,8 @@ test("the retired adr, plan and progress kinds are refused", () => {
   }
 });
 
-function installedProject() {
-  const root = mkdtempSync(join(tmpdir(), "picket-filename-"));
-  mkdirSync(join(root, ".picket"));
+function installedProject(t) {
+  const root = withProject(t);
   mkdirSync(join(root, "src"));
   mkdirSync(join(root, "artifacts", "strategy", "decisions"), { recursive: true });
   writeFileSync(join(root, "artifacts", "strategy", "decisions", "00003-x.md"), "# x\n");
@@ -58,23 +57,14 @@ function sdrName(cwd, projectDir) {
   return execFileSync(process.execPath, [script, "sdr", "pricing"], { cwd, env, encoding: "utf8" }).trim();
 }
 
-test("SDR numbering continues from the project the command runs in, at its root or in a subfolder", () => {
-  const root = installedProject();
-  try {
-    assert.equal(sdrName(root), "00004-pricing");
-    assert.equal(sdrName(join(root, "src")), "00004-pricing");
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+test("SDR numbering continues from the project the command runs in, at its root or in a subfolder", (t) => {
+  const root = installedProject(t);
+  assert.equal(sdrName(root), "00004-pricing");
+  assert.equal(sdrName(join(root, "src")), "00004-pricing");
 });
 
-test("SDR numbering follows CLAUDE_PROJECT_DIR from an unrelated folder", () => {
-  const root = installedProject();
-  const elsewhere = mkdtempSync(join(tmpdir(), "picket-elsewhere-"));
-  try {
-    assert.equal(sdrName(elsewhere, root), "00004-pricing");
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-    rmSync(elsewhere, { recursive: true, force: true });
-  }
+test("SDR numbering follows CLAUDE_PROJECT_DIR from an unrelated folder", (t) => {
+  const root = installedProject(t);
+  const elsewhere = withProject(t, { picket: false });
+  assert.equal(sdrName(elsewhere, root), "00004-pricing");
 });

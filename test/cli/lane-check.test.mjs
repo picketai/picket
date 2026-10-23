@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { delimiter, join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { delimiter, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { withProject } from "#test/project.mts";
 
 const LANES = ["designing", "expediting", "ordering", "researching"];
 const HOSTILE = 'Add a `picket close <id>` verb, say "done", keep $HOME and $(whoami) literal, it\'s fine';
@@ -48,24 +48,20 @@ for (const lane of LANES) {
   });
 }
 
-test("the heredoc admit the lane skills name survives backticks, quotes and dollar signs", () => {
-  const root = mkdtempSync(join(tmpdir(), "picket-lane-check-"));
-  try {
-    const hostile = bash(withRoot(heredocAdmit(HOSTILE), root), root);
-    assert.equal(hostile.code, 0, hostile.stderr);
-    assert.match(hostile.stdout, /^lane: order \(/);
+test("the heredoc admit the lane skills name survives backticks, quotes and dollar signs", (t) => {
+  const root = withProject(t, { picket: false });
+  const hostile = bash(withRoot(heredocAdmit(HOSTILE), root), root);
+  assert.equal(hostile.code, 0, hostile.stderr);
+  assert.match(hostile.stdout, /^lane: order \(/);
 
-    const carried = bash(heredocAdmit(HOSTILE).replace(ADMIT, "cat"), root);
-    assert.equal(carried.stdout, `${HOSTILE}\n`);
+  const carried = bash(heredocAdmit(HOSTILE).replace(ADMIT, "cat"), root);
+  assert.equal(carried.stdout, `${HOSTILE}\n`);
 
-    const unbalanced = bash(withRoot(heredocAdmit(UNBALANCED), root), root);
-    assert.equal(unbalanced.code, 0, unbalanced.stderr);
-    assert.match(unbalanced.stdout, /^lane: /);
+  const unbalanced = bash(withRoot(heredocAdmit(UNBALANCED), root), root);
+  assert.equal(unbalanced.code, 0, unbalanced.stderr);
+  assert.match(unbalanced.stdout, /^lane: /);
 
-    const empty = bash(withRoot(heredocAdmit(""), root), root);
-    assert.equal(empty.code, 0, empty.stderr);
-    assert.match(empty.stdout, /^lane: \(none\)/);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+  const empty = bash(withRoot(heredocAdmit(""), root), root);
+  assert.equal(empty.code, 0, empty.stderr);
+  assert.match(empty.stdout, /^lane: \(none\)/);
 });

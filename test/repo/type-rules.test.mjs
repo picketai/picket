@@ -25,7 +25,7 @@ function fixtureErrors(lines) {
 }
 
 test("the type checker rejects each mistake in the fixture on its own line and nothing else (T-2.3)", () => {
-  const r = spawnSync(process.execPath, [TSC, "-p", "test/type-rules", "--pretty", "false"], { encoding: "utf8" });
+  const r = spawnSync(process.execPath, [TSC, "-p", "test/repo/type-rules", "--pretty", "false"], { encoding: "utf8" });
   const lines = errorLines(`${r.stdout}${r.stderr}`);
   assert.notEqual(r.status, 0);
   assert.deepEqual(fixtureErrors(lines), EXPECTED);

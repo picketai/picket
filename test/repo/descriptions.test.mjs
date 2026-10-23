@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { rank, similarPairs, skillDescriptions, vectorise } from "./routing.mjs";
+import { rank, similarPairs, skillDescriptions, vectorise } from "#test/routing.mts";
 
 const MIN_SHARE = 0.95;
 const FAIL_SIMILARITY = 0.75;
@@ -13,7 +13,7 @@ const LANE_SKILLS = ["designing", "expediting", "ordering", "researching"];
 
 const DOCS = skillDescriptions(resolve("."));
 const MODEL = vectorise(DOCS);
-const CASES = JSON.parse(readFileSync(resolve("test", "skills", "description-cases.json"), "utf8"));
+const CASES = JSON.parse(readFileSync(resolve("test", "repo", "description-cases.json"), "utf8"));
 const NAMES = DOCS.map((d) => d.name);
 
 function outcomes() {

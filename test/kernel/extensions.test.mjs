@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { loadExtensions, MANIFEST_KEYS, SUPPORTED_SCHEMAS } from "../../dist/lib/shared/extensions.mjs";
-import { codeLines, sourceOf } from "./kernel-sources.mjs";
+import { codeLines, sourceOf } from "#test/kernel-sources.mts";
 
 const BIN = resolve("dist/bin/picket.mjs");
 const EXTENSIONS_MODULE = resolve("src/lib/shared/extensions.mjs");

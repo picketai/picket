@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, posix, relative, resolve } from "node:path";
-import { codeLines, isKernelSource } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
 
 const SOURCE_ROOT = "src";
 const LIB_PREFIX = "src/lib/";

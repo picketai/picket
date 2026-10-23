@@ -8,7 +8,7 @@ Name the product Picket in any text a user reads. "Harness" is the internal word
 
 The `## Layout` section of `README.md` maps every top-level folder. New things go here:
 
-- A kernel module goes in `src/lib/`, in the folder its role names: `src/lib/cli/` for the command line, `src/lib/verbs/<verb>/` for one verb's code, `src/lib/shared/` for Picket code two verbs or a hook use, `src/lib/util/` for code with no Picket knowledge, `src/lib/hooks/` for the hooks. Imports point one way, `cli` to `verbs` to `shared` to `util`, with hooks beside the verbs; the direction scan in `test/kernel/conventions.test.mjs` enforces it. A module's tests sit beside it as `<module>.test.mts` (`src/lib/verbs/leave/index.test.mts`); `test/` holds the tests that run `dist/` and the checks over the repository.
+- A kernel module goes in `src/lib/`, in the folder its role names: `src/lib/cli/` for the command line, `src/lib/verbs/<verb>/` for one verb's code, `src/lib/shared/` for Picket code two verbs or a hook use, `src/lib/util/` for code with no Picket knowledge, `src/lib/hooks/` for the hooks. Imports point one way, `cli` to `verbs` to `shared` to `util`, with hooks beside the verbs; the direction scan in `test/repo/conventions.test.mjs` enforces it. A module's tests sit beside it as `<module>.test.mts` (`src/lib/verbs/leave/index.test.mts`); `test/` holds the tests that run `dist/`: `test/cli/` spawns the CLI and the built skill scripts, `test/hooks/` the hook bundles, `test/repo/` checks the repository and the build, and `test/timing/` holds the cold-start budgets.
 - A hook is a folder `src/lib/hooks/<kind>/<name>/` (for example `src/lib/hooks/guard/comments/`) whose `index.mts` exports `hook`, listed with its events and a one-line summary in `src/lib/hooks.mts`. The build generates each hook's entry and `hooks.json` in `dist/hooks/` from that list; nothing is registered by hand. A hook imports its own folder, its kind folder, `hook-spec.mts` and `output.mts`, never another hook. Its handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items`, `security-paths` and `untrusted`.
 
@@ -32,13 +32,13 @@ Contributors run Node 24 or newer, the version in `.nvmrc`; users of the publish
 
 ## Code
 
-Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`. esbuild builds both to `.mjs`, so a `.mjs` module names the source file it imports, as `.mts` modules do (`import { configPath } from "./paths.mts"`), and `src/` runs without a build. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/util/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/util/vendor/jsonc-parser.mjs` for JSON with comments.
+Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`. esbuild builds both to `.mjs`, so a `.mjs` module names the source file it imports, as `.mts` modules do (`import { configPath } from "./paths.mts"`), and `src/` runs without a build. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/repo/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/util/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/util/vendor/jsonc-parser.mjs` for JSON with comments.
 
 Comments follow `src/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 
 ## Code conventions
 
-New and converted code follows the conventions C-006 to C-013 in `artifacts/refactor/00-conventions.md`: verbs are actions with three outcomes, only entry points read the process, closed word lists are types, and work item paths, files, git and commands each go through one module. The scans in `test/kernel/conventions.test.mjs` enforce the mechanical rules over every `.mts` file under `src/`, and `test/kernel/type-rules.test.mjs` checks that the type checker rejects the common mistakes.
+New and converted code follows the conventions C-006 to C-013 in `artifacts/refactor/00-conventions.md`: verbs are actions with three outcomes, only entry points read the process, closed word lists are types, and work item paths, files, git and commands each go through one module. The scans in `test/repo/conventions.test.mjs` enforce the mechanical rules over every `.mts` file under `src/`, and `test/repo/type-rules.test.mjs` checks that the type checker rejects the common mistakes.
 
 The foundation modules:
 
@@ -66,7 +66,7 @@ A test never depends on a gitignored file. A fresh clone must pass, so a test th
 
 Prose follows `src/rules/prose.md`: no em or en dashes, short paragraphs, plain English.
 
-Every backticked span in a scanned Markdown file that looks like a repository path must exist in a fresh checkout, resolved from the citing file's folder or any folder above it, or, for a file under `src/`, from `src/skills/`, the folder a skill path is relative to. `test/markdown-paths.test.mjs` enforces this. It skips fenced blocks, spans with placeholders such as `<id>` or globs, and Markdown under `work/`, `artifacts/`, `bench/results/` and the examples folder of each skill.
+Every backticked span in a scanned Markdown file that looks like a repository path must exist in a fresh checkout, resolved from the citing file's folder or any folder above it, or, for a file under `src/`, from `src/skills/`, the folder a skill path is relative to. `test/repo/markdown-paths.test.mjs` enforces this. It skips fenced blocks, spans with placeholders such as `<id>` or globs, and Markdown under `work/`, `artifacts/`, `bench/results/` and the examples folder of each skill.
 
 A path that is correct but cannot exist here (created at run time, machine-local, or part of a host project's layout) goes in the `ELSEWHERE` list of that test, inside the group whose `why` fits, or a new group with its own `why`. The same test fails when an `ELSEWHERE` path is no longer cited or starts to exist, so the list stays short.
 

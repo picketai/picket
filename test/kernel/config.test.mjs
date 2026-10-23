@@ -6,7 +6,7 @@ import { basename, join, resolve } from "node:path";
 import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/shared/config.mjs";
 import { detectTooling } from "../../dist/lib/shared/tooling.mjs";
 import { configRel, hostPath } from "../../dist/lib/shared/paths.mjs";
-import { codeLines, isKernelSource } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
 import { writeConfig } from "./config-fixture.mjs";
 
 const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/shared/config.schema.json"), "utf8"));

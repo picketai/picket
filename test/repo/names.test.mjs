@@ -2,20 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { codeLines } from "./kernel-sources.mjs";
+import { codeLines } from "#test/kernel-sources.mts";
+import { VERB_NAMES } from "../../src/lib/verbs.mts";
 
 const ROOT = resolve(".");
 const SRC = join(ROOT, "src");
 const SKILLS_DIR = join(SRC, "skills");
 const LIB_DIR = join(SRC, "lib");
 const SKIPPED_DIRS = new Set(["examples", "vendor"]);
-const CLI_VERBS = ["init", "extension", "admit", "open", "list", "state", "set", "close", "next", "preflight", "verify", "route", "summary", "cost", "drive", "comment", "packet", "pullrequest", "style", "source", "migrate", "check"];
 
 const SKILLS = readdirSync(SKILLS_DIR).filter((name) => statSync(join(SKILLS_DIR, name)).isDirectory());
 const SKILL_ALTERNATION = SKILLS.join("|");
 
 const OLD_CLI = { name: "old CLI path", pattern: /node \.claude\/bin\/harness\.mjs/ };
-const HARNESS_VERB = { name: "harness verb", pattern: new RegExp(`\\bharness (?:${CLI_VERBS.join("|")})\\b`) };
+const HARNESS_VERB = { name: "harness verb", pattern: new RegExp(`\\bharness (?:${Object.keys(VERB_NAMES).join("|")})\\b`) };
 const HOST_PROMPT_PATH = { name: "host skill or agent path", pattern: /\.claude\/(?:skills|agents)\// };
 const SLASH_SKILL = { name: "unprefixed slash skill", pattern: new RegExp(`(?:^|[\\s(\`"'])\\/(?:${SKILL_ALTERNATION})\\b`, "m") };
 const BACKTICKED_SKILL = { name: "unprefixed skill in backticks", pattern: new RegExp(`\`(?:${SKILL_ALTERNATION})(?=[\`\\s])`) };

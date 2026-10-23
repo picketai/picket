@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { BANNER, DIST, SRC, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../scripts/build.mjs";
+import { BANNER, DIST, SRC, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../../scripts/build.mjs";
 
 const SHEBANG = "#!/usr/bin/env node";
 const RELATIVE_IMPORT = /(\bfrom\s+|\bimport\s*\(?\s*)["']\.\.?\//;

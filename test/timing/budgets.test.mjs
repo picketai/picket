@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { joinedRules } from "../../dist/lib/hooks/inject/rules/index.mjs";
-import { skillDescriptions } from "../skills/routing.mjs";
+import { skillDescriptions } from "#test/routing.mts";
 
 const ROOT = resolve(".");
 const BUDGETS = {
