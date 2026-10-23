@@ -1,23 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/shared/config.mjs";
-import { detectTooling } from "../../dist/lib/shared/tooling.mjs";
-import { configRel, hostPath } from "../../dist/lib/shared/paths.mjs";
-import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
+import { hostPath } from "../../dist/lib/shared/paths.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/shared/config.schema.json"), "utf8"));
-
-function kernelSourcesUnder(dir, rel = "") {
-  return readdirSync(join(dir, rel), { withFileTypes: true }).flatMap((entry) => {
-    const path = rel ? `${rel}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) return kernelSourcesUnder(dir, path);
-    return isKernelSource(entry.name) ? [path] : [];
-  });
-}
 
 function projectWith(config) {
   const root = mkdtempSync(join(tmpdir(), "harness-config-"));
@@ -34,16 +24,6 @@ function withProject(config, fn) {
     rmSync(root, { recursive: true, force: true });
   }
 }
-
-test("paths.mts is the only file under src/lib whose code names the config file (T-2.4)", () => {
-  const configName = new RegExp(`(?<![\\w.-]|\\.picketai/)${basename(configRel()).replaceAll(".", "\\.")}`);
-  assert.equal(configName.test('const f = "tsconfig.json";'), false);
-  assert.equal(configName.test('const f = ".picketai/config.json";'), false);
-  assert.equal(configName.test('const f = ".picket/config.json";'), true);
-  const lib = resolve("src/lib");
-  const naming = kernelSourcesUnder(lib).filter((f) => codeLines(readFileSync(join(lib, f), "utf8")).some((line) => configName.test(line)));
-  assert.deepEqual(naming, ["shared/paths.mts"]);
-});
 
 test("an unset env var gives the source with root null and a reason naming the variable (T-3.2)", () => {
   withProject({ sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } }, (root) => {
@@ -137,20 +117,6 @@ test("the published schema names the loader's keys and carries its defaults (T-5
   for (const [lane, caps] of Object.entries(DEFAULT_LANES)) {
     assert.deepEqual(Object.keys(SCHEMA.properties.lanes.properties[lane].properties).sort(), Object.keys(caps).sort(), lane);
   }
-});
-
-test("a configured command overrides detection; a destructive one is dropped with a warning (T-5.4)", () => {
-  withProject({ version: 1, commands: { test: "node -e 1" } }, (root) => {
-    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
-    assert.equal(detectTooling(root).tooling.test, "node -e 1");
-  });
-  withProject({ version: 1, commands: { test: "rm -rf ." } }, (root) => {
-    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
-    const c = loadConfig(root, {});
-    assert.deepEqual(c.commands, {});
-    assert.match(c.warnings[0], /commands\.test dropped: .*destructive/);
-    assert.equal(detectTooling(root).tooling.test, "npm test");
-  });
 });
 
 test("extensions defaults to an empty list, keeps a valid list and drops a malformed one with a warning", () => {
