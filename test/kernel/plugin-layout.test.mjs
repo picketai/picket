@@ -8,7 +8,8 @@ import { codeLines } from "./kernel-sources.mjs";
 
 const SRC = resolve("src");
 const SETTINGS = resolve(".claude/settings.json");
-const PLUGIN_HOOKS = join(SRC, "hooks", "hooks.json");
+const DIST_HOOKS = resolve("dist/hooks");
+const PLUGIN_HOOKS = join(DIST_HOOKS, "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const PACKAGE = resolve("package.json");
 const MOD_FOLDERS = ["status", "session", "markdown"];
@@ -54,24 +55,24 @@ function importsLeavingSrc() {
   );
 }
 
-function registeredShells(hooks) {
+function registeredBundles(hooks) {
   const commands = Object.values(hooks).flatMap((groups) => groups.flatMap((group) => group.hooks.flatMap((hook) => hook.args ?? [])));
   return new Set(commands.filter((arg) => arg.startsWith(PLUGIN_HOOK_PREFIX)).map((arg) => arg.slice(PLUGIN_HOOK_PREFIX.length)));
 }
 
-function shellsOnDisk() {
-  return readdirSync(join(SRC, "hooks")).filter((file) => file.endsWith(".mjs"));
+function bundlesOnDisk() {
+  return readdirSync(DIST_HOOKS).filter((file) => file.endsWith(".mjs"));
 }
 
-test("src/hooks/hooks.json registers every hook shell and only shells that exist", () => {
-  const registered = registeredShells(readJson(PLUGIN_HOOKS).hooks);
-  assert.deepEqual([...registered].sort(), shellsOnDisk().sort());
+test("dist/hooks/hooks.json registers every hook bundle and only bundles that exist", () => {
+  const registered = registeredBundles(readJson(PLUGIN_HOOKS).hooks);
+  assert.deepEqual([...registered].sort(), bundlesOnDisk().sort());
 });
 
-test("the registration check notices a shell that hooks.json drops", () => {
+test("the registration check notices a bundle that hooks.json drops", () => {
   const hooks = readJson(PLUGIN_HOOKS).hooks;
   const dropped = { ...hooks, Stop: [{ hooks: hooks.Stop[0].hooks.slice(1) }], SubagentStop: [{ hooks: hooks.SubagentStop[0].hooks.slice(1) }] };
-  assert.notDeepEqual([...registeredShells(dropped)].sort(), shellsOnDisk().sort());
+  assert.notDeepEqual([...registeredBundles(dropped)].sort(), bundlesOnDisk().sort());
 });
 
 test("hooks.json registers the eight events the plugin needs", () => {

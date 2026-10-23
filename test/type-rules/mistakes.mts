@@ -1,6 +1,8 @@
 import type { Outcome } from "../../src/lib/shared/action.mts";
 import { workFile, workId } from "../../src/lib/shared/work/files.mts";
 import type { Marker, WorkId } from "../../src/lib/shared/work/files.mts";
+import type { HookSpec } from "../../src/lib/hooks/hook-spec.mts";
+import { deny } from "../../src/lib/hooks/output.mts";
 
 const root = "/r";
 const id: WorkId = workId("20261022-x");
@@ -11,3 +13,4 @@ export const plainId = workFile(root, "20261022-x", "state.yaml");
 export const wrongValue: Outcome<number> = { status: "done", value: "x" };
 export class Point { constructor(readonly x: number) {} }
 export const same = <T>(value: T) => value;
+export const stopDenies: HookSpec<"Stop"> = { handler: async () => deny("x") };

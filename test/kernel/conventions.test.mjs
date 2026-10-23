@@ -8,7 +8,7 @@ const SOURCE_ROOT = "src";
 const LIB_PREFIX = "src/lib/";
 
 const PROCESS_READS = ["projectRoot(", "process.cwd(", "process.env", "homedir(", "new Date("];
-const PROCESS_READ_EXEMPT = ["src/lib/shared/context.mts", "src/lib/shared/paths.mts", "src/lib/cli/"];
+const PROCESS_READ_EXEMPT = ["src/lib/shared/context.mts", "src/lib/shared/paths.mts", "src/lib/cli/", "src/lib/hooks/run-hook.mts"];
 
 const SHELL_FORMS = [/\bexecSync\(/, /\bshell:\s*true\b/, /\b(?:exec|execFile|execFileSync|spawn|spawnSync)\(\s*`/];
 const SHELL_EXEMPT = ["src/lib/util/process.mts"];
@@ -127,7 +127,7 @@ const IMPORT_SPECIFIER = /\bfrom\s*["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)
 const ALLOWED_ZONES = {
   util: ["util"],
   shared: ["shared", "util"],
-  hooks: ["hooks", "shared", "util", "verbs/"],
+  hooks: ["hooks", "hooks.mts", "shared", "util", "verbs/"],
   cli: ["cli", "verbs.mts", "verbs/", "shared", "util"],
   "verbs.mts": [],
 };

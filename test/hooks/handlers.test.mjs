@@ -8,14 +8,15 @@ import { createWork, writeState } from "../kernel/work-fixture.mjs";
 import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 import { emitLedger } from "../../dist/lib/hooks/emit.ledger.mjs";
 import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route.verdict.mjs";
-import { injectState } from "../../dist/lib/hooks/inject.state.mjs";
-import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject.rules.mjs";
-import { injectExtensions } from "../../dist/lib/hooks/inject.extensions.mjs";
+import { injectState } from "../../dist/lib/hooks/inject/state/index.mjs";
+import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject/rules/index.mjs";
+import { injectExtensions } from "../../dist/lib/hooks/inject/extensions/index.mjs";
 import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../dist/lib/hooks/guard.scope.mjs";
 import { ASKING_MODES, commandKey } from "../../dist/lib/shared/escalation.mjs";
 import { observeDrive } from "../../dist/lib/hooks/observe.drive.mjs";
-import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify.user.mjs";
+import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify/user/index.mjs";
+import { hookContext } from "./hook-context.mjs";
 import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
 import { latestHints, spawnHints } from "../../dist/lib/shared/transcript/entries.mjs";
 import { VERB_NAMES } from "../../dist/lib/verbs.mjs";
@@ -30,12 +31,6 @@ const SHELLS = [
   "guard.comments.mjs",
   "guard.scope.mjs",
   "guard.silenced.mjs",
-  "inject.extensions.mjs",
-  "inject.rules.mjs",
-  "inject.state.mjs",
-  "lint.schema.mjs",
-  "monitor.context.mjs",
-  "notify.user.mjs",
   "observe.drive.mjs",
   "route.verdict.mjs",
 ];
@@ -96,8 +91,17 @@ test("every shell imports only runHook and its handler, in at most five lines (T
 
 const HANDLER_FILE = /^[a-z]+\.[a-z]+\.mjs$/;
 
+function handlerFiles() {
+  const flat = readdirSync(HANDLERS).filter((f) => HANDLER_FILE.test(f));
+  const kinds = readdirSync(HANDLERS, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const folders = kinds.flatMap((kind) => readdirSync(join(HANDLERS, kind)).map((name) => `${kind}/${name}/index.mts`)).filter((file) => existsSync(join(HANDLERS, file)));
+  return [...flat, ...folders];
+}
+
 test("no handler reads stdin, writes stdout or exits the process (T-6.2)", () => {
-  for (const file of readdirSync(HANDLERS).filter((f) => HANDLER_FILE.test(f))) {
+  const files = handlerFiles();
+  assert.ok(files.includes("inject/rules/index.mts"), files.join(", "));
+  for (const file of files) {
     const code = readFileSync(join(HANDLERS, file), "utf8");
     for (const banned of ["process.exit", "readFileSync(0", "process.stdout"]) assert.equal(code.includes(banned), false, `${file} contains ${banned}`);
   }
@@ -111,7 +115,7 @@ function headingOrder(text) {
 
 for (const event of [{ hook_event_name: "SubagentStart", agent_type: "picket:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
   test(`injectRules returns the five rules in order, untrusted last, for ${event.hook_event_name}`, () => {
-    const out = injectRules(event);
+    const out = injectRules(event, hookContext(resolve(".")));
     assert.equal(out.hookSpecificOutput.hookEventName, event.hook_event_name);
     const text = out.hookSpecificOutput.additionalContext;
     const positions = headingOrder(text);
@@ -126,7 +130,7 @@ test("injectRules joins the rule files with one blank line, in the injected orde
     const dir = join(root, "rules");
     mkdirSync(dir);
     INJECTED_RULES.forEach((file, i) => writeFileSync(join(dir, file), `# Rule ${i}\n\nbody ${i}\n`));
-    const out = injectRules({ hook_event_name: "SessionStart" }, { rules: dir });
+    const out = injectRules({ hook_event_name: "SessionStart" }, hookContext(root), dir);
     assert.equal(out.hookSpecificOutput.additionalContext, "# Rule 0\n\nbody 0\n\n# Rule 1\n\nbody 1\n\n# Rule 2\n\nbody 2\n\n# Rule 3\n\nbody 3\n\n# Rule 4\n\nbody 4");
   });
 });
@@ -152,7 +156,7 @@ test("the data-not-instructions statement lives only in the untrusted rule (T-3.
 
 test("injectRules returns null when the rules folder is missing", () => {
   withProject((root) => {
-    assert.equal(injectRules({ hook_event_name: "SubagentStart" }, { rules: join(root, "no-rules") }), null);
+    assert.equal(injectRules({ hook_event_name: "SubagentStart" }, hookContext(root), join(root, "no-rules")), null);
   });
 });
 
@@ -220,7 +224,7 @@ test("routeVerdict stores a reviewer's Classes on a CHANGES REQUIRED entry and n
 test("injectState with an empty event lists the open work items (T-6.3)", () => {
   withProject((root) => {
     const s = createWork({ lane: "order", title: "Csv export", root });
-    const out = injectState({}, { root });
+    const out = injectState({}, hookContext(root));
     assert.equal(out.hookSpecificOutput.hookEventName, "SessionStart");
     assert.match(out.hookSpecificOutput.additionalContext, new RegExp(`# Open work items\\n- ${s.id} · order · open`));
   });
@@ -233,7 +237,7 @@ test("injectState lists open and blocked items and leaves a done item out (T-4.2
     writeState({ ...blocked, status: "blocked", blocked_reason: "waiting" }, root);
     const done = createWork({ lane: "order", title: "Done one", root });
     writeState({ ...done, status: "done" }, root);
-    const context = injectState({}, { root }).hookSpecificOutput.additionalContext;
+    const context = injectState({}, hookContext(root)).hookSpecificOutput.additionalContext;
     assert.ok(context.includes(`- ${open} · order · open`));
     assert.ok(context.includes(`- ${blocked.id} · order · blocked`));
     assert.equal(context.includes(done.id), false);
@@ -628,7 +632,7 @@ function roleTexts(name) {
 }
 
 function extensionText(event, root) {
-  return injectExtensions(event, { root })?.hookSpecificOutput.additionalContext ?? null;
+  return injectExtensions(event, hookContext(root))?.hookSpecificOutput.additionalContext ?? null;
 }
 
 test("SessionStart gets each extension's rules then its lead text, in config order", () => {
@@ -672,7 +676,7 @@ test("a refused extension adds one line and no text; nothing enabled or refused 
   try {
     const text = extensionText({ hook_event_name: "SessionStart" }, root);
     assert.equal(text, "Extension broken refused: schema 2 is not supported by this Picket (supports 1)");
-    assert.equal(injectExtensions({ hook_event_name: "SessionStart" }, { root: empty }), null);
+    assert.equal(injectExtensions({ hook_event_name: "SessionStart" }, hookContext(empty)), null);
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(empty, { recursive: true, force: true });
@@ -1150,7 +1154,7 @@ test("the spawned guard.bash hook allows a stderr discard and traces the allow",
 
 function recordedNotifications(event, { platform = "win32", env = {} } = {}) {
   const calls = [];
-  const result = notifyUser(event, { spawn: (command, args, options) => calls.push({ command, args, options }), platform, env });
+  const result = notifyUser(event, hookContext(resolve("."), { platform, env }), (command, args, options) => calls.push({ command, args, options }));
   return { result, calls };
 }
 

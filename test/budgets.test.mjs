@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { joinedRules } from "../dist/lib/hooks/inject.rules.mjs";
+import { joinedRules } from "../dist/lib/hooks/inject/rules/index.mjs";
 import { skillDescriptions } from "./skills/routing.mjs";
 
 const ROOT = resolve(".");

@@ -1,5 +1,10 @@
-import { spawn as spawnProcess } from "node:child_process";
+import { spawn as spawnProcess, type SpawnOptions } from "node:child_process";
 import { basename } from "node:path";
+import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
+
+type NotificationTexts = { title: string; body: string };
+type NotificationCommand = { command: string; args: string[]; env: Record<string, string> };
+type Spawn = (command: string, args: string[], options: SpawnOptions) => void;
 
 const WAITING = new Set(["permission_prompt", "idle_prompt"]);
 const BODY_LIMIT = 200;
@@ -19,7 +24,7 @@ const ENCODED_TOAST_SCRIPT = Buffer.from(TOAST_SCRIPT, "utf16le").toString("base
 
 const APPLESCRIPT = ["on run argv", "display notification (item 2 of argv) with title (item 1 of argv)", "end run"];
 
-const COMMANDS = {
+const COMMANDS: Partial<Record<NodeJS.Platform, (texts: NotificationTexts) => NotificationCommand>> = {
   win32: ({ title, body }) => ({
     command: "cmd.exe",
     args: ["/d", "/c", "powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", ENCODED_TOAST_SCRIPT],
@@ -29,28 +34,32 @@ const COMMANDS = {
   linux: ({ title, body }) => ({ command: "notify-send", args: ["--app-name=Picket", "--", title, body], env: {} }),
 };
 
-export function notificationCommand(platform, texts) {
-  return Object.hasOwn(COMMANDS, platform) ? COMMANDS[platform](texts) : null;
+export function notificationCommand(platform: NodeJS.Platform, texts: NotificationTexts): NotificationCommand | null {
+  return COMMANDS[platform]?.(texts) ?? null;
 }
 
-function titleOf(event) {
+function titleOf(event: PayloadOf<"Notification">): string {
   return typeof event.cwd === "string" && event.cwd ? `Picket: ${basename(event.cwd)}` : "Picket";
 }
 
-function bodyOf(event) {
+function bodyOf(event: PayloadOf<"Notification">): string {
   const message = typeof event.message === "string" ? event.message.trim() : "";
   return message ? message.slice(0, BODY_LIMIT) : EMPTY_BODY;
 }
 
-function startDetached(command, args, options) {
+function startDetached(command: string, args: string[], options: SpawnOptions): void {
   const child = spawnProcess(command, args, options);
   child.on("error", () => {});
   child.unref();
 }
 
-export function notifyUser(event, { spawn = startDetached, platform = process.platform, env = process.env } = {}) {
-  if (!WAITING.has(event?.notification_type) || env.PICKET_NOTIFY === "off") return null;
+export function notifyUser(event: PayloadOf<"Notification">, { platform, env }: HookContext, spawn: Spawn = startDetached): null {
+  if (!WAITING.has(event.notification_type ?? "") || env.PICKET_NOTIFY === "off") return null;
   const notification = notificationCommand(platform, { title: titleOf(event), body: bodyOf(event) });
   if (notification) spawn(notification.command, notification.args, { detached: true, stdio: "ignore", windowsHide: true, env: { ...env, ...notification.env } });
   return null;
 }
+
+export const hook: HookSpec<"Notification"> = {
+  handler: async (event, ctx) => notifyUser(event, ctx),
+};

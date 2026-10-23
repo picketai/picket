@@ -1,19 +1,28 @@
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { frontmatter } from "../util/yaml-lite.mjs";
-import { loadConfig } from "../shared/config.mjs";
+import { loadConfig } from "../../../shared/config.mjs";
+import { frontmatter } from "../../../util/yaml-lite.mts";
+import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
+import { context, type ContextOutput } from "../../output.mts";
+
+type ArtifactLane = "order" | "design";
+type GrepEntry = { path?: string; pattern?: string; flags?: string };
+type PhaseEntry = { n?: unknown; files?: unknown; greps?: unknown; security?: unknown };
+type PhaseCheck = { problems: string[]; headings: number[] };
+type DecisionSection = { r: number; body: string };
 
 const ARTIFACT = /^work\/[^/]+\/(order|design)\.md$/;
 
-function hasValidSecurityMark(entry, lane) {
+function hasValidSecurityMark(entry: PhaseEntry | null, lane: ArtifactLane): boolean {
   if (entry == null || !Object.hasOwn(entry, "security")) return lane !== "design";
   return typeof entry.security === "boolean";
 }
 
-function grepProblems(p) {
-  const problems = [];
-  for (const g of Array.isArray(p.greps) ? p.greps : []) {
+function grepProblems(p: PhaseEntry): string[] {
+  const problems: string[] = [];
+  const greps: (GrepEntry | null)[] = Array.isArray(p.greps) ? p.greps : [];
+  for (const g of greps) {
     if (!g?.path || !g?.pattern) {
       problems.push(`phases[n=${p.n}].greps entries need path and pattern`);
       continue;
@@ -21,16 +30,16 @@ function grepProblems(p) {
     try {
       new RegExp(g.pattern, g.flags ?? "m");
     } catch (err) {
-      problems.push(`phases[n=${p.n}] grep pattern ${JSON.stringify(g.pattern)} is not a valid regex: ${err.message}`);
+      problems.push(`phases[n=${p.n}] grep pattern ${JSON.stringify(g.pattern)} is not a valid regex: ${(err as Error).message}`);
     }
     if (/\\\\/.test(g.pattern)) problems.push(`phases[n=${p.n}] grep pattern ${JSON.stringify(g.pattern)} contains a doubled backslash after parsing; write the regex once, e.g. pattern: lines\\[0\\]\\.quantity`);
   }
   return problems;
 }
 
-function phaseProblems(front, body, lane) {
-  const problems = [];
-  const fmPhases = Array.isArray(front.phases) ? front.phases : [];
+function phaseProblems(front: Record<string, unknown>, body: string, lane: ArtifactLane): PhaseCheck {
+  const problems: string[] = [];
+  const fmPhases: PhaseEntry[] = Array.isArray(front.phases) ? front.phases : [];
   const headings = [...body.matchAll(/^## Phase (\d+)/gm)].map((m) => Number(m[1]));
   headings.forEach((n, i) => {
     if (n !== i + 1) problems.push(`phase headings must run 1, 2, 3; found ${headings.join(", ")}`);
@@ -45,8 +54,8 @@ function phaseProblems(front, body, lane) {
   return { problems, headings };
 }
 
-function capProblems(body, lane, headings, root) {
-  const problems = [];
+function capProblems(body: string, lane: ArtifactLane, headings: number[], root: string): string[] {
+  const problems: string[] = [];
   const { max_phases: maxPhases, max_decisions: maxDecisions } = loadConfig(root).lanes[lane];
   if (headings.length > maxPhases) problems.push(`${headings.length} phases; the ${lane} cap is ${maxPhases}`);
   const ids = [...body.matchAll(/^### (D-\d{3})(?: \(r(\d+)\))?:/gm)].map((m) => m[1]);
@@ -60,14 +69,14 @@ function capProblems(body, lane, headings, root) {
   return problems;
 }
 
-function leftoverProblems(text) {
-  const problems = [];
+function leftoverProblems(text: string): string[] {
+  const problems: string[] = [];
   if (/\[REPLACE:/.test(text)) problems.push("unfilled [REPLACE:] placeholder left in the file");
   if (/<!--/.test(text)) problems.push("template comment left in the file");
   return problems;
 }
 
-function committedVersion(root, rel) {
+function committedVersion(root: string, rel: string): string | null {
   try {
     return execFileSync("git", ["-C", root, "show", `HEAD:${rel}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   } catch {
@@ -75,17 +84,17 @@ function committedVersion(root, rel) {
   }
 }
 
-function decisionSections(text) {
+function decisionSections(text: string): Record<string, DecisionSection> {
   return Object.fromEntries([...text.matchAll(/^### (D-\d{3})(?: \(r(\d+)\))?:[^\n]*\n([\s\S]*?)(?=^### |^## |\s*$)/gm)].map((m) => [m[1], { r: Number(m[2] ?? 1), body: m[3].trim() }]));
 }
 
-function revisionLogLines(text) {
+function revisionLogLines(text: string): number {
   return (text.match(/^- \d{4}-\d{2}-\d{2}:/gm) ?? []).length;
 }
 
-function revisionProblems(head, body) {
+function revisionProblems(head: string | null, body: string): string[] {
   if (!head) return [];
-  const problems = [];
+  const problems: string[] = [];
   const before = decisionSections(head);
   const after = decisionSections(body);
   let changed = 0;
@@ -103,10 +112,10 @@ function revisionProblems(head, body) {
   return problems;
 }
 
-function artifactProblems(abs, rel, root) {
+function artifactProblems(abs: string, rel: string, root: string): string[] {
   const text = readFileSync(abs, "utf8");
   const { front, body } = frontmatter(text);
-  const lane = rel.endsWith("order.md") ? "order" : "design";
+  const lane: ArtifactLane = rel.endsWith("order.md") ? "order" : "design";
   const problems = front.lane !== lane ? [`frontmatter lane must be ${lane}`] : [];
   const phases = phaseProblems(front, body, lane);
   problems.push(...phases.problems, ...capProblems(body, lane, phases.headings, root), ...leftoverProblems(text));
@@ -114,18 +123,22 @@ function artifactProblems(abs, rel, root) {
   return problems;
 }
 
-export function lintSchema(event, { root }) {
+export function lintSchema(event: PayloadOf<"PostToolUse">, { root }: HookContext): ContextOutput | null {
   const filePath = event.tool_input?.file_path;
   if (!filePath) return null;
   const abs = resolve(event.cwd ?? root, filePath);
   const rel = relative(root, abs).replaceAll("\\", "/");
   if (!ARTIFACT.test(rel) || !existsSync(abs)) return null;
-  let problems;
+  let problems: string[];
   try {
     problems = artifactProblems(abs, rel, root);
   } catch (err) {
-    problems = [`could not parse ${rel}: ${err.message}`];
+    problems = [`could not parse ${rel}: ${(err as Error).message}`];
   }
   if (!problems.length) return null;
-  return { hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: `lint.schema on ${rel}:\n- ${problems.join("\n- ")}\nFix these before ending the turn.` } };
+  return context("PostToolUse", `lint.schema on ${rel}:\n- ${problems.join("\n- ")}\nFix these before ending the turn.`);
 }
+
+export const hook: HookSpec<"PostToolUse"> = {
+  handler: async (event, ctx) => lintSchema(event, ctx),
+};

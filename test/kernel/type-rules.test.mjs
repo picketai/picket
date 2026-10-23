@@ -7,12 +7,13 @@ const TSC = resolve("node_modules/typescript/bin/tsc");
 const FIXTURE_ERROR = /mistakes\.mts\((\d+),\d+\): error TS(\d+):/;
 
 const EXPECTED = [
-  [8, 2367],
-  [9, 2345],
-  [10, 2345],
-  [11, 2322],
-  [12, 1294],
-  [13, 7060],
+  [10, 2367],
+  [11, 2345],
+  [12, 2345],
+  [13, 2322],
+  [14, 1294],
+  [15, 7060],
+  [16, 2322],
 ];
 
 function errorLines(output) {
