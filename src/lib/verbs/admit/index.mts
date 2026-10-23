@@ -1,14 +1,27 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { action, done } from "../../shared/action.mts";
+import { loadConfig } from "../../shared/config.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { list, str, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
-import { admit } from "./admit.mjs";
+import { laneOf, type Admission, type LaneCaps } from "./lane.mts";
+import { mentionedPaths, signalsOf } from "./signals.mts";
 
 export type AdmitInput = { text: string; file: null; touched: string[] } | { text: null; file: string; touched: string[] };
-export type Admission = { lane: string | null; skill?: string; reasons: string[]; signals: Record<string, unknown> };
+export type NoText = { lane: null; reasons: string[]; signals: Record<string, never> };
+export type AdmitResult = Admission | NoText;
+
+type AdmitConfig = { security_paths: string[]; lanes: LaneCaps };
 
 const STDIN = "-";
-const NO_TEXT: Admission = { lane: null, reasons: ["no request text given"], signals: {} };
+const NO_TEXT: NoText = { lane: null, reasons: ["no request text given"], signals: {} };
+
+export function admit(root: string, text: string, touched: string[] = []): Admission {
+  const config = loadConfig(root) as unknown as AdmitConfig;
+  const exists = (path: string) => existsSync(join(root, path));
+  return laneOf(signalsOf(text, mentionedPaths(text, exists), touched, config.security_paths), config.lanes);
+}
 
 function requestText(input: AdmitInput): string {
   if (input.file === null) return input.text;
@@ -17,10 +30,10 @@ function requestText(input: AdmitInput): string {
   return text;
 }
 
-export const admission = action<AdmitInput, Admission>(async (input, { root }) => {
+export const admission = action<AdmitInput, AdmitResult>(async (input, { root }) => {
   const text = requestText(input);
   if (!text.trim()) return done(NO_TEXT);
-  return done(admit(text, { root, touched: input.touched }) as Admission);
+  return done(admit(root, text, input.touched));
 });
 
 function parseAdmit(args: Args): AdmitInput {
@@ -33,12 +46,12 @@ function parseAdmit(args: Args): AdmitInput {
   return { text: "", file: null, touched };
 }
 
-function renderAdmission(v: Admission): string {
+function renderAdmission(v: AdmitResult): string {
   if (v.lane === null) return 'lane: (none) · re-run with the request text: picket admit --text "<request>"';
-  return `lane: ${v.lane}${v.skill ? ` · skill: picket:${v.skill}` : ""} (${v.reasons.join("; ")})`;
+  return `lane: ${v.lane}${"skill" in v && v.skill ? ` · skill: picket:${v.skill}` : ""} (${v.reasons.join("; ")})`;
 }
 
-export const verb: VerbSpec<AdmitInput, Admission> = {
+export const verb: VerbSpec<AdmitInput, AdmitResult> = {
   usage: 'admit --text "<request>" | admit --request <file|-> [--touched <p1,p2>]',
   output: "json",
   parse: parseAdmit,

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { admit } from "../../dist/lib/verbs/admit/admit.mjs";
+import { admit } from "../../dist/lib/verbs/admit/index.mjs";
 
 const TASKS = resolve("bench", "tasks");
 const HIDDEN = resolve("bench", "hidden");
@@ -23,9 +23,9 @@ test("every task file names its id, lane, budget, stops and checks, and its id l
 test("every task's lane is the one admit picks for its prompt, except none", () => {
   const ids = readdirSync(TASKS).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
   assert.ok(ids.length >= 18, `${ids.length} tasks`);
-  const misses = ids.map(load).filter((task) => task.lane !== "none").map((task) => ({ task, got: admit(task.prompt, { root: FIXTURE }).lane })).filter(({ task, got }) => got !== task.lane);
+  const misses = ids.map(load).filter((task) => task.lane !== "none").map((task) => ({ task, got: admit(FIXTURE, task.prompt).lane })).filter(({ task, got }) => got !== task.lane);
   assert.deepEqual(misses.map(({ task, got }) => `${task.id}: labelled ${task.lane}, admit ${got}`), []);
-  assert.equal(admit("Put the parsing in its own module under src/http/", { root: FIXTURE }).lane, "order", "placing code in its own module is new surface");
+  assert.equal(admit(FIXTURE, "Put the parsing in its own module under src/http/").lane, "order", "placing code in its own module is new surface");
 });
 
 test("the four new tasks carry the checks of their shape (T-8.1)", () => {

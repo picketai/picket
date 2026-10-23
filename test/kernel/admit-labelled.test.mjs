@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { NO_LANE, admit } from "../../dist/lib/verbs/admit/admit.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { NO_LANE, laneOf } from "../../dist/lib/verbs/admit/lane.mjs";
+import { mentionedPaths, signalsOf } from "../../dist/lib/verbs/admit/signals.mjs";
+import { DEFAULT_SECURITY_PATHS } from "../../dist/lib/shared/config.mjs";
 import { LANES } from "../../dist/lib/shared/work/state.mjs";
 
 const MIN_SHARE = 0.9;
@@ -38,7 +40,9 @@ function answer(result) {
 }
 
 test("admit agrees with the labels on at least the minimum share", () => {
-  const misses = LABELLED.map((entry) => ({ entry, got: answer(admit(entry.request, { root: FIXTURE })) })).filter(({ entry, got }) => got !== answer(entry));
+  const exists = (path) => existsSync(join(FIXTURE, path));
+  const admitted = (request) => laneOf(signalsOf(request, mentionedPaths(request, exists), [], DEFAULT_SECURITY_PATHS), { fast: { max_files: 3 } });
+  const misses = LABELLED.map((entry) => ({ entry, got: answer(admitted(entry.request)) })).filter(({ entry, got }) => got !== answer(entry));
   const share = (LABELLED.length - misses.length) / LABELLED.length;
   const listed = misses.map(({ entry, got }) => `${answer(entry)} -> ${got}: ${entry.request.slice(0, SHOWN_REQUEST)}`).join("\n");
   assert.ok(share >= MIN_SHARE, `admit agrees on ${share.toFixed(3)}, under the minimum share ${MIN_SHARE}; misses:\n${listed}`);
