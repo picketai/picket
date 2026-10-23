@@ -1,22 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { ANSI, TERMINAL } from "../palette.mts";
-import {
-  appendToList,
-  dconfMissing,
-  dconfRead,
-  dconfResetDir,
-  dconfWrite,
-  externalFields,
-  hasDconf,
-  parseList,
-  quote,
-  removeFromList,
-  restoreKey,
-  saveDump,
-  unquote,
-} from "./gnome-terminal.mjs";
-import { keptFile, keyfileChange, renderIni } from "./ini.mjs";
+import { renderIni } from "../../../../util/ini.mts";
+import type { Change } from "../../change.mts";
+import type { Host } from "../../host.mts";
+import type { ManifestItem, Unapplied } from "../../manifest.mts";
+import { ANSI, TERMINAL } from "../../palette.mts";
+import type { TerminalWriter } from "../../terminals.mts";
+import { appendToList, dconfMissing, dconfRead, dconfResetDir, dconfWrite, externalFields, hasDconf, parseList, quote, removeFromList, restoreKey, saveDump, unquote } from "../dconf.mts";
+import { keptFile, keyfileChange } from "../keyfile.mts";
 
 const WRITER = "ptyxis";
 const BASE = "/org/gnome/Ptyxis/";
@@ -27,11 +18,13 @@ const FONT_NAME = `${BASE}font-name`;
 const PALETTE_ID = "picketai";
 const NAME = "PicketAI";
 
-function palettePath(host) {
+type ProfileState = { uuid: string | null };
+
+function palettePath(host: Host): string {
   return join(host.env.XDG_DATA_HOME || join(host.home, ".local", "share"), "org.gnome.Ptyxis", "palettes", `${PALETTE_ID}.palette`);
 }
 
-export function paletteFile() {
+export function paletteFile(): string {
   const colors = [...Object.values(ANSI).map(([normal]) => normal), ...Object.values(ANSI).map(([, bright]) => bright)];
   return renderIni([
     ["Palette", [["Name", NAME]]],
@@ -42,21 +35,21 @@ export function paletteFile() {
         ["Background", TERMINAL.background],
         ["CursorBackground", TERMINAL.cursor],
         ["CursorForeground", TERMINAL.background],
-        ...colors.map((color, i) => [`Color${i}`, color]),
+        ...colors.map((color, i): [string, string] => [`Color${i}`, color]),
       ],
     ],
   ]);
 }
 
-function profilePath(uuid) {
+function profilePath(uuid: string): string {
   return `${BASE}Profiles/${uuid}/`;
 }
 
-function findProfile(host) {
+function findProfile(host: Host): string | null {
   return parseList(dconfRead(host, UUIDS)).find((uuid) => unquote(dconfRead(host, `${profilePath(uuid)}label`)) === NAME) ?? null;
 }
 
-function profileChange(state) {
+function profileChange(state: ProfileState): Change {
   const id = `${WRITER}-profile`;
   return {
     id,
@@ -74,10 +67,9 @@ function profileChange(state) {
   };
 }
 
-function defaultChange(state) {
-  const id = `${WRITER}-default`;
+function defaultChange(state: ProfileState): Change {
   return {
-    id,
+    id: `${WRITER}-default`,
     summary: `make ${NAME} the default Ptyxis profile`,
     question: "Make PicketAI the default Ptyxis profile?",
     restart: null,
@@ -90,14 +82,13 @@ function defaultChange(state) {
   };
 }
 
-function fontValue(family) {
+function fontValue(family: string): string {
   return quote(`${family} 12`);
 }
 
-function fontChange(family) {
-  const id = `${WRITER}-font`;
+function fontChange(family: string): Change {
   return {
-    id,
+    id: `${WRITER}-font`,
     summary: `set the app-wide Ptyxis font to ${family} 12`,
     question: `Use ${family} in every Ptyxis profile?`,
     restart: null,
@@ -111,10 +102,10 @@ function fontChange(family) {
   };
 }
 
-function plan(host, manifest, { family }) {
+function plan(host: Host, family: string): Change[] {
   if (!hasDconf(host)) return dconfMissing(WRITER, "Ptyxis");
   const existing = findProfile(host);
-  const state = { uuid: existing };
+  const state: ProfileState = { uuid: existing };
   const isDefault = existing !== null && unquote(dconfRead(host, DEFAULT)) === existing;
   const fontSet = dconfRead(host, USE_SYSTEM_FONT) === "false" && dconfRead(host, FONT_NAME) === fontValue(family);
   return [
@@ -125,26 +116,34 @@ function plan(host, manifest, { family }) {
   ];
 }
 
-function unapplyDefault(item, host) {
-  if (unquote(dconfRead(host, DEFAULT)) !== item.data.uuid) return { result: "kept", detail: "the default profile was changed after setup" };
-  restoreKey(host, DEFAULT, item.previous.default);
+function unapplyDefault(item: ManifestItem, host: Host): Unapplied {
+  if (unquote(dconfRead(host, DEFAULT)) !== item.data?.uuid) return { result: "kept", detail: "the default profile was changed after setup" };
+  restoreKey(host, DEFAULT, item.previous?.default as string | null);
   return { result: "removed" };
 }
 
-function unapplyFont(item, host) {
-  if (dconfRead(host, FONT_NAME) !== item.data.fontName) return { result: "kept", detail: "the Ptyxis font was changed after setup" };
-  restoreKey(host, USE_SYSTEM_FONT, item.previous.useSystemFont);
-  restoreKey(host, FONT_NAME, item.previous.fontName);
+function unapplyFont(item: ManifestItem, host: Host): Unapplied {
+  if (dconfRead(host, FONT_NAME) !== item.data?.fontName) return { result: "kept", detail: "the Ptyxis font was changed after setup" };
+  restoreKey(host, USE_SYSTEM_FONT, item.previous?.useSystemFont as string | null);
+  restoreKey(host, FONT_NAME, item.previous?.fontName as string | null);
   return { result: "removed" };
 }
 
-function unapply(item, host) {
-  if (item.data.part === "file") return keptFile(item);
-  if (item.data.part === "default") return unapplyDefault(item, host);
-  if (item.data.part === "font") return unapplyFont(item, host);
-  dconfResetDir(host, profilePath(item.data.uuid));
-  removeFromList(host, UUIDS, item.data.uuid, item.previous.list, []);
+function unapplyProfile(item: ManifestItem, host: Host): Unapplied {
+  const uuid = item.data?.uuid as string;
+  dconfResetDir(host, profilePath(uuid));
+  removeFromList(host, UUIDS, uuid, item.previous?.list as string | null, []);
   return { result: "removed" };
 }
 
-export const ptyxis = { id: WRITER, name: "Ptyxis", plan, unapply };
+function unapply(item: ManifestItem, host: Host): Unapplied {
+  if (item.data?.part === "file") return keptFile(item);
+  if (item.data?.part === "default") return unapplyDefault(item, host);
+  if (item.data?.part === "font") return unapplyFont(item, host);
+  return unapplyProfile(item, host);
+}
+
+export const writer: TerminalWriter = {
+  plan: (host, _manifest, { family }) => plan(host, family),
+  unapply,
+};

@@ -1,8 +1,11 @@
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { picketHome, writeTracked } from "../manifest.mts";
-import { ANSI, TERMINAL, rgb } from "../palette.mts";
-import { xmlPlist } from "./plist.mjs";
+import { xmlPlist, type PlistValue } from "../../../../util/plist.mts";
+import type { Change } from "../../change.mts";
+import type { Host } from "../../host.mts";
+import { picketHome, writeTracked, type Manifest, type ManifestItem, type Unapplied } from "../../manifest.mts";
+import { ANSI, TERMINAL, rgb } from "../../palette.mts";
+import type { TerminalWriter } from "../../terminals.mts";
 
 const WRITER = "terminal-app";
 const PROFILE = "PicketAI";
@@ -10,11 +13,11 @@ const DOMAIN = "com.apple.Terminal";
 const DEFAULT_KEYS = ["Default Window Settings", "Startup Window Settings"];
 const FONT_POSTSCRIPT_NAME = "JetBrainsMonoNFM-Regular";
 const FONT_SIZE = 13;
-const SLOT_NAMES = { black: "Black", red: "Red", green: "Green", yellow: "Yellow", blue: "Blue", purple: "Magenta", cyan: "Cyan", white: "White" };
+const SLOT_NAMES: Record<string, string> = { black: "Black", red: "Red", green: "Green", yellow: "Yellow", blue: "Blue", purple: "Magenta", cyan: "Cyan", white: "White" };
 const LOW_COLOUR_NOTE = "Terminal.app versions without 24-bit colour approximate the PicketAI hex values";
 
-export function profileColors() {
-  const colors = {
+export function profileColors(): Record<string, string> {
+  const colors: Record<string, string> = {
     BackgroundColor: TERMINAL.background,
     TextColor: TERMINAL.foreground,
     TextBoldColor: TERMINAL.foreground,
@@ -28,11 +31,11 @@ export function profileColors() {
   return colors;
 }
 
-function bridge(framework) {
+function bridge(framework: string): string {
   return `ObjC.import(${JSON.stringify(framework)});`;
 }
 
-export function archiveScript() {
+export function archiveScript(): string {
   const colors = Object.fromEntries(Object.entries(profileColors()).map(([key, hex]) => [key, rgb(hex)]));
   return [
     bridge("AppKit"),
@@ -50,7 +53,7 @@ export function archiveScript() {
   ].join("\n");
 }
 
-export function removalScript() {
+export function removalScript(): string {
   return [
     bridge("Foundation"),
     "const defaults = $.NSUserDefaults.standardUserDefaults;",
@@ -63,35 +66,34 @@ export function removalScript() {
   ].join("\n");
 }
 
-function profilePath(host) {
+function profilePath(host: Host): string {
   return join(picketHome(host.home), "terminal", `${PROFILE}.terminal`);
 }
 
-function run(host, command, args) {
+function run(host: Host, command: string, args: string[]): string {
   const result = host.exec(command, args);
   if (result.status !== 0) throw new Error(`${command} ${args[0]} failed: ${result.stderr.trim()}`);
   return result.stdout;
 }
 
-function archivedValues(host) {
-  const values = JSON.parse(run(host, "osascript", ["-l", "JavaScript", "-e", archiveScript()]));
+function archivedValues(host: Host): Record<string, PlistValue> {
+  const values: Record<string, string> = JSON.parse(run(host, "osascript", ["-l", "JavaScript", "-e", archiveScript()]));
   return Object.fromEntries(Object.entries(values).map(([key, base64]) => [key, { data: base64 }]));
 }
 
-export function profileFile(values) {
+export function profileFile(values: Record<string, PlistValue>): string {
   return xmlPlist({ name: PROFILE, type: "Window Settings", ProfileCurrentVersion: 2.07, ...values });
 }
 
-function readDefault(host, key) {
+function readDefault(host: Host, key: string): string | null {
   const result = host.exec("defaults", ["read", DOMAIN, key]);
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
-function profileChange(host) {
+function profileChange(host: Host): Change {
   const path = profilePath(host);
-  const id = `${WRITER}-profile`;
   return {
-    id,
+    id: `${WRITER}-profile`,
     summary: `write the ${PROFILE} Terminal.app profile to ${path} and import it`,
     restart: "Terminal.app, so it loads the PicketAI profile",
     manual: LOW_COLOUR_NOTE,
@@ -103,10 +105,9 @@ function profileChange(host) {
   };
 }
 
-function defaultChange() {
-  const id = `${WRITER}-default`;
+function defaultChange(): Change {
   return {
-    id,
+    id: `${WRITER}-default`,
     summary: `make ${PROFILE} the default and startup Terminal.app profile`,
     question: "Make PicketAI the default Terminal.app profile?",
     restart: "Terminal.app, so new windows open with PicketAI",
@@ -119,26 +120,29 @@ function defaultChange() {
   };
 }
 
-function plan(host, manifest) {
+function plan(host: Host, manifest: Manifest): Change[] {
   const imported = manifest.items.some((recorded) => recorded.id === `${WRITER}-profile`) && existsSync(profilePath(host));
   const isDefault = DEFAULT_KEYS.every((key) => readDefault(host, key) === PROFILE);
   return [...(imported ? [] : [profileChange(host)]), ...(isDefault ? [] : [defaultChange()])];
 }
 
-function unapplyDefault(item, host) {
+function unapplyDefault(item: ManifestItem, host: Host): Unapplied {
   for (const key of DEFAULT_KEYS) {
     if (readDefault(host, key) !== PROFILE) continue;
-    const before = item.previous[key];
+    const before = item.previous?.[key] as string | null;
     run(host, "defaults", before === null ? ["delete", DOMAIN, key] : ["write", DOMAIN, key, "-string", before]);
   }
   return { result: "removed" };
 }
 
-function unapply(item, host) {
-  if (item.data.part === "default") return unapplyDefault(item, host);
+function unapply(item: ManifestItem, host: Host): Unapplied {
+  if (item.data?.part === "default") return unapplyDefault(item, host);
   run(host, "osascript", ["-l", "JavaScript", "-e", removalScript()]);
-  rmSync(item.path, { force: true });
+  rmSync(item.path as string, { force: true });
   return { result: "removed" };
 }
 
-export const terminalApp = { id: WRITER, name: "Terminal.app", plan, unapply };
+export const writer: TerminalWriter = {
+  plan,
+  unapply,
+};

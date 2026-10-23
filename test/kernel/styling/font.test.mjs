@@ -8,7 +8,7 @@ import { fontComponent, fontDir, readPin, registryName } from "../../../dist/lib
 import { manifestPath } from "../../../dist/lib/shared/styling/manifest.mjs";
 import { setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
 import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
-import { buildZip, exited, fakeExec, fakeHost, fakeRegistry, servingFetch } from "./host-fixture.mjs";
+import { buildZip, exited, fakeExec, fakeHost, fakeRegistry, servingFetch } from "#test/styling-host.mts";
 
 const FONTS_KEY = "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
 const CASK = "font-jetbrains-mono-nerd-font";

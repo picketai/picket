@@ -1,6 +1,8 @@
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { inflateRawSync } from "node:zlib";
 
+export type ZipEntry = { name: string; method: number; compressedSize: number; size: number; offset: number };
+
 const END_SIGNATURE = 0x06054b50;
 const CENTRAL_SIGNATURE = 0x02014b50;
 const LOCAL_SIGNATURE = 0x04034b50;
@@ -14,7 +16,7 @@ const ENCRYPTED_FLAG = 0x1;
 const STORED = 0;
 const DEFLATED = 8;
 
-function withFile(path, read) {
+function withFile<T>(path: string, read: (fd: number) => T): T {
   const fd = openSync(path, "r");
   try {
     return read(fd);
@@ -23,12 +25,12 @@ function withFile(path, read) {
   }
 }
 
-function readAt(fd, position, length) {
+function readAt(fd: number, position: number, length: number): Buffer {
   const buffer = Buffer.alloc(length);
   return buffer.subarray(0, readSync(fd, buffer, 0, length, position));
 }
 
-function endRecord(fd) {
+function endRecord(fd: number): Buffer {
   const size = fstatSync(fd).size;
   const start = Math.max(0, size - END_LENGTH - MAX_COMMENT);
   const tail = readAt(fd, start, size - start);
@@ -38,7 +40,7 @@ function endRecord(fd) {
   throw new Error("not a zip file: no end of central directory record");
 }
 
-function centralEntry(directory, at) {
+function centralEntry(directory: Buffer, at: number): { entry: ZipEntry; length: number } {
   if (directory.readUInt32LE(at) !== CENTRAL_SIGNATURE) throw new Error(`broken central directory at byte ${at}`);
   const nameLength = directory.readUInt16LE(at + 28);
   const entry = {
@@ -54,7 +56,7 @@ function centralEntry(directory, at) {
   return { entry, length };
 }
 
-export function readEntries(path) {
+export function readEntries(path: string): ZipEntry[] {
   return withFile(path, (fd) => {
     const end = endRecord(fd);
     const count = end.readUInt16LE(10);
@@ -62,7 +64,7 @@ export function readEntries(path) {
     const directoryOffset = end.readUInt32LE(16);
     if (count === ZIP64_MARK_16 || directorySize === ZIP64_MARK_32 || directoryOffset === ZIP64_MARK_32) throw new Error("zip64 archives are not supported");
     const directory = readAt(fd, directoryOffset, directorySize);
-    const entries = [];
+    const entries: ZipEntry[] = [];
     let at = 0;
     for (let i = 0; i < count; i++) {
       const { entry, length } = centralEntry(directory, at);
@@ -73,13 +75,13 @@ export function readEntries(path) {
   });
 }
 
-function contentOf(entry, data) {
+function contentOf(entry: ZipEntry, data: Buffer): Buffer {
   if (entry.method === STORED) return data;
   if (entry.method === DEFLATED) return inflateRawSync(data, { maxOutputLength: Math.max(1, entry.size) });
   throw new Error(`${entry.name} uses compression method ${entry.method}; only stored and deflate are supported`);
 }
 
-export function extractEntry(path, entry) {
+export function extractEntry(path: string, entry: ZipEntry): Buffer {
   return withFile(path, (fd) => {
     const header = readAt(fd, entry.offset, LOCAL_LENGTH);
     if (header.length < LOCAL_LENGTH || header.readUInt32LE(0) !== LOCAL_SIGNATURE) throw new Error(`${entry.name}: no local header at byte ${entry.offset}`);

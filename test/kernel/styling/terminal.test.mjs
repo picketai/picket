@@ -7,7 +7,7 @@ import { readPin } from "../../../dist/lib/shared/styling/font.mjs";
 import { renderReport, setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
 import { detectTerminal, terminalComponent } from "../../../dist/lib/shared/styling/terminal.mjs";
 import { parse } from "../../../dist/lib/util/vendor/jsonc-parser.mjs";
-import { fakeExec, fakeHost, fakeRegistry, homeFiles, writeHomeFile } from "./host-fixture.mjs";
+import { fakeExec, fakeHost, fakeRegistry, homeFiles, writeHomeFile } from "#test/styling-host.mts";
 
 const FAMILY = "JetBrainsMono Nerd Font Mono";
 const WT_SETTINGS = "AppData/Local/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json";

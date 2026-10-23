@@ -5,7 +5,7 @@ import { finished } from "node:stream/promises";
 import { dirname, join } from "node:path";
 import { pluginRoot } from "../paths.mts";
 import { picketHome } from "./manifest.mts";
-import { extractEntry, readEntries } from "./zip.mjs";
+import { extractEntry, readEntries } from "../../util/zip.mts";
 
 const NAME = "font";
 const CASK = "font-jetbrains-mono-nerd-font";

@@ -8,7 +8,7 @@ import { renderReport, setupTerminal } from "../../../dist/lib/shared/styling/se
 import { statuslineSetting } from "../../../dist/lib/shared/styling/statusline-setting.mjs";
 import { terminalComponent } from "../../../dist/lib/shared/styling/terminal.mjs";
 import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
-import { exited, fakeExec, fakeHost, homeFiles, textsOf, writeHomeFile } from "./host-fixture.mjs";
+import { exited, fakeExec, fakeHost, homeFiles, textsOf, writeHomeFile } from "#test/styling-host.mts";
 
 const SETTINGS = ".claude/settings.json";
 const KONSOLERC = ".config/konsolerc";

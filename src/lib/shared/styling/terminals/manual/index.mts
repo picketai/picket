@@ -1,4 +1,5 @@
-import { ANSI, TERMINAL } from "../palette.mts";
+import { ANSI, TERMINAL } from "../../palette.mts";
+import type { TerminalWriter } from "../../terminals.mts";
 
 const STEPS = [
   "iTerm2: Settings > Profiles > Colors: enter the colours above; Text: pick the font",
@@ -8,7 +9,7 @@ const STEPS = [
   "Alacritty: set [colors.primary], [colors.cursor], [colors.normal], [colors.bright] and [font.normal] family",
 ];
 
-export function paletteText(family) {
+export function paletteText(family: string): string {
   const slots = Object.entries(ANSI).map(([slot, [normal, bright]]) => `  ${slot.padEnd(7)} ${normal}  bright ${bright}`);
   return [
     "PicketAI colours for your terminal:",
@@ -19,11 +20,7 @@ export function paletteText(family) {
   ].join("\n");
 }
 
-export function manualWriter(family) {
-  return {
-    id: "other",
-    name: "this terminal",
-    plan: () => [{ id: "terminal-manual", summary: "no terminal Picket can configure was detected; set the colours by hand", manual: paletteText(family) }],
-    unapply: () => ({ result: "removed" }),
-  };
-}
+export const writer: TerminalWriter = {
+  plan: (_host, _manifest, { family }) => [{ id: "terminal-manual", summary: "no terminal Picket can configure was detected; set the colours by hand", manual: paletteText(family) }],
+  unapply: () => ({ result: "removed" }),
+};

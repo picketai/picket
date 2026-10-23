@@ -10,7 +10,7 @@ import { statuslineSetting } from "../../../dist/lib/shared/styling/statusline-s
 import { terminalComponent } from "../../../dist/lib/shared/styling/terminal.mjs";
 import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
 import { uninstall } from "../../../dist/lib/shared/styling/uninstall.mjs";
-import { buildZip, exited, fakeExec, fakeHost, fakeRegistry, servingFetch, writeHomeFile } from "./host-fixture.mjs";
+import { buildZip, exited, fakeExec, fakeHost, fakeRegistry, servingFetch, writeHomeFile } from "#test/styling-host.mts";
 
 const FAMILY = "JetBrainsMono Nerd Font Mono";
 const FONTS_KEY = "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";

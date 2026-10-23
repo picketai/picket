@@ -4,10 +4,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
-import { extractEntry, readEntries } from "../../../dist/lib/shared/styling/zip.mjs";
-import { buildZip } from "./host-fixture.mjs";
+import { buildZip, type ZipSpec } from "#test/styling-host.mts";
+import { extractEntry, readEntries } from "./zip.mts";
 
-function withZip(entries, fn) {
+function withZip(entries: ZipSpec[], fn: (path: string) => void): void {
   const dir = mkdtempSync(join(tmpdir(), "picket-zip-"));
   try {
     const path = join(dir, "test.zip");

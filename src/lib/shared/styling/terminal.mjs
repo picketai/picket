@@ -3,25 +3,19 @@ import { dirname } from "node:path";
 import { userConfigPath } from "../paths.mts";
 import { detectFont, readPin } from "./font.mjs";
 import { writeTracked } from "./manifest.mts";
-import { gnomeTerminal } from "./terminals/gnome-terminal.mjs";
-import { konsole } from "./terminals/konsole.mjs";
-import { manualWriter } from "./terminals/manual.mjs";
-import { ptyxis } from "./terminals/ptyxis.mjs";
-import { terminalApp } from "./terminals/terminal-app.mjs";
-import { windowsTerminal } from "./terminals/windows-terminal.mjs";
+import { detectTerminal } from "./terminals.mts";
+import { writer as gnomeTerminal } from "./terminals/gnome-terminal/index.mts";
+import { writer as konsole } from "./terminals/konsole/index.mts";
+import { writer as manual } from "./terminals/manual/index.mts";
+import { writer as ptyxis } from "./terminals/ptyxis/index.mts";
+import { writer as terminalApp } from "./terminals/terminal-app/index.mts";
+import { writer as windowsTerminal } from "./terminals/windows-terminal/index.mts";
+
+export { detectTerminal };
 
 const NAME = "terminal";
 const ICONS_ID = "statusline-icons";
-const WRITERS = Object.fromEntries([windowsTerminal, terminalApp, konsole, gnomeTerminal, ptyxis].map((writer) => [writer.id, writer]));
-
-export function detectTerminal(env) {
-  if (env.WT_SESSION) return "windows-terminal";
-  if (env.TERM_PROGRAM === "Apple_Terminal") return "terminal-app";
-  if (env.KONSOLE_VERSION) return "konsole";
-  if (env.PTYXIS_VERSION) return "ptyxis";
-  if (env.GNOME_TERMINAL_SCREEN || env.GNOME_TERMINAL_SERVICE) return "gnome-terminal";
-  return "other";
-}
+const WRITERS = { "windows-terminal": windowsTerminal, "terminal-app": terminalApp, konsole, "gnome-terminal": gnomeTerminal, ptyxis, other: manual };
 
 function readConfig(path) {
   if (!existsSync(path)) return { text: null, config: {} };
@@ -83,11 +77,10 @@ function unapplyIcons(item) {
 }
 
 export function terminalComponent(pin = readPin()) {
-  const fallback = manualWriter(pin.family);
   return {
     name: NAME,
     plan(host, manifest, earlier = []) {
-      const writer = WRITERS[detectTerminal(host.env)] ?? fallback;
+      const writer = WRITERS[detectTerminal(host.env)];
       const changes = writer.plan(host, manifest, { family: pin.family });
       return [...changes, ...iconsChange(host, manifest, { pin, changes, earlier })];
     },

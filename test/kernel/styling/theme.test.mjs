@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { manifestPath, readManifest, removeItems } from "../../../dist/lib/shared/styling/manifest.mjs";
 import { setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
 import { theme } from "../../../dist/lib/shared/styling/theme.mjs";
-import { fakeHost, homeFiles, writeHomeFile } from "./host-fixture.mjs";
+import { fakeHost, homeFiles, writeHomeFile } from "#test/styling-host.mts";
 
 test("the theme copy is kept while PicketAI is still the theme setting, and goes once the setting does (T-9.2)", async () => {
   const host = fakeHost({});
