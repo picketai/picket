@@ -8,6 +8,7 @@ export const WORK_DIR = "work";
 const STATE_REL = `${PICKET_DIR}/state`;
 const CONFIG_REL = `${PICKET_DIR}/config.json`;
 const PLUGIN_MANIFEST = [".claude-plugin", "plugin.json"] as const;
+const USER_CONFIG_REL = ".picketai/config.json";
 
 export const STATE_FILES = Object.freeze({
   ledger: "ledger.jsonl",
@@ -57,6 +58,14 @@ export function projectRoot(from: string = process.cwd()): string {
     if (isMarkedRoot(dir)) return dir;
     if (dirname(dir) === dir) return start;
   }
+}
+
+export function workspaceRoot(dir: string | null, fallback: string): string {
+  return dir === null ? fallback : projectRoot(dir);
+}
+
+export function userConfigPath(home: string): string {
+  return join(home, USER_CONFIG_REL);
 }
 
 function insideRootIgnoringCase(abs: string, root: string): boolean {

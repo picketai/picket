@@ -4,7 +4,11 @@ import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { cacheLeft, compactTokens, contextColor, displayWidth, factsOf, iconsMode, lastSkill, recordSessionCost, renderStatusline } from "../../dist/lib/verbs/statusline/statusline.mjs";
+import { recordSessionCost, renderStatusline } from "../../dist/lib/verbs/statusline/index.mjs";
+import { factsOf } from "../../dist/lib/verbs/statusline/facts.mjs";
+import { cacheLeft, compactTokens, contextColor } from "../../dist/lib/verbs/statusline/layout.mjs";
+import { iconsMode, lastSkill } from "../../dist/lib/verbs/statusline/probe.mjs";
+import { displayWidth } from "../../dist/lib/util/text-width.mjs";
 import { rgb } from "../../dist/lib/shared/styling/palette.mjs";
 import { sessionCostPath, statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
@@ -277,7 +281,7 @@ test("sessionCostPath refuses ids that are not a plain file name", () => {
 test("recordSessionCost swallows a write error", () => {
   withTempRoot({ picket: true }, (root) => {
     writeFileSync(join(root, ".picket", "state"), "a file where the state folder should be");
-    assert.doesNotThrow(() => recordSessionCost(fixture(), { root }));
+    assert.doesNotThrow(() => recordSessionCost(root, fixture(), new Date()));
   });
 });
 

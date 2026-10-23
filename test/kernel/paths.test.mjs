@@ -155,8 +155,27 @@ test("paths exports locations only", () => {
     "stateDir",
     "statePath",
     "stateRel",
+    "userConfigPath",
     "workRoot",
+    "workspaceRoot",
   ]);
+});
+
+test("userConfigPath names the Picket config under the user's home", () => {
+  assert.equal(paths.userConfigPath("/h"), join("/h", ".picketai/config.json"));
+});
+
+test("workspaceRoot finds the marked project above a folder and falls back without one", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-paths-"));
+  try {
+    mkdirSync(join(root, paths.PICKET_DIR));
+    const deep = join(root, "a", "b");
+    mkdirSync(deep, { recursive: true });
+    assert.equal(withoutProjectDirEnv(() => paths.workspaceRoot(deep, "/f")), root);
+    assert.equal(paths.workspaceRoot(null, "/f"), "/f");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("relative locations read as POSIX paths and absolute ones sit under the root", () => {

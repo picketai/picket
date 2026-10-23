@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
+import { userConfigPath } from "../paths.mjs";
 import { detectFont, readPin } from "./font.mjs";
 import { installedAt, sha256File } from "./manifest.mjs";
 import { gnomeTerminal } from "./terminals/gnome-terminal.mjs";
@@ -22,10 +23,6 @@ export function detectTerminal(env) {
   return "other";
 }
 
-function userConfigPath(host) {
-  return join(host.home, ".picketai/config.json");
-}
-
 function readConfig(path) {
   if (!existsSync(path)) return { text: null, config: {} };
   const text = readFileSync(path, "utf8");
@@ -42,7 +39,7 @@ function writeConfig(path, config) {
 }
 
 function iconsChange(host, manifest, { pin, run, changes, earlier }) {
-  const path = userConfigPath(host);
+  const path = userConfigPath(host.home);
   if (readConfig(path).config.statusline?.icons === "nerd") return [];
   const fontSetBefore = manifest.items.some((item) => item.data?.setsFont);
   if (!fontSetBefore && !changes.some((change) => change.setsFont)) return [];

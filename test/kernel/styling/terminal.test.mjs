@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { iconsMode } from "../../../dist/lib/verbs/statusline/statusline.mjs";
+import { iconsMode } from "../../../dist/lib/verbs/statusline/probe.mjs";
 import { readPin } from "../../../dist/lib/shared/styling/font.mjs";
 import { renderReport, setupTerminal } from "../../../dist/lib/shared/styling/setup.mjs";
 import { detectTerminal, terminalComponent } from "../../../dist/lib/shared/styling/terminal.mjs";
