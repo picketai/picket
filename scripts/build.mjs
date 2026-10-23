@@ -8,9 +8,7 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const SRC = join(REPO, "src");
 export const DIST = join(REPO, "dist");
 export const HOOK_LIST = join(SRC, "lib", "hooks.mts");
-const HOOK_SHELLS = join(SRC, "hooks");
 const HOOK_FOLDERS = join(SRC, "lib", "hooks");
-const HOOK_ORACLE = join(HOOK_SHELLS, "hooks.json");
 const DIST_HOOKS = join(DIST, "hooks");
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
 export const BANNER = "// generated from src/ by scripts/build.mjs; edit the source";
@@ -35,17 +33,9 @@ export function moduleOptions(entryPoints) {
   return { ...SHARED_OPTIONS, entryPoints, bundle: true, packages: "external", plugins: [runtimeExtension] };
 }
 
-export function hookOptions(entryPoints) {
-  return { ...SHARED_OPTIONS, entryPoints, bundle: true };
-}
-
 export function hookFolder(name) {
   const [kind, leaf] = name.split(".");
   return join(HOOK_FOLDERS, kind, leaf, "index.mts");
-}
-
-function hookShell(name) {
-  return join(HOOK_SHELLS, `${name}.mjs`);
 }
 
 function srcImport(file) {
@@ -64,17 +54,10 @@ export function entryOptions(name) {
   return { ...OUTPUT_OPTIONS, bundle: true, outfile: join(DIST_HOOKS, `${name}.mjs`), stdin: { contents: entryCode(name), resolveDir: SRC, sourcefile: `${name}.entry.mjs`, loader: "js" } };
 }
 
-export function hookSources(hooks = HOOKS) {
-  const folders = [];
-  const problems = [];
-  for (const name of Object.keys(hooks)) {
-    const inFolder = existsSync(hookFolder(name));
-    const inShell = existsSync(hookShell(name));
-    if (inFolder && inShell) problems.push(`${name} has both ${repoPath(hookFolder(name))} and ${repoPath(hookShell(name))}`);
-    else if (!inFolder && !inShell) problems.push(`${name} has neither ${repoPath(hookFolder(name))} nor ${repoPath(hookShell(name))}`);
-    else if (inFolder) folders.push(name);
-  }
-  return { folders, problems };
+export function missingHooks(hooks = HOOKS) {
+  return Object.keys(hooks)
+    .filter((name) => !existsSync(hookFolder(name)))
+    .map((name) => `${name} has no ${repoPath(hookFolder(name))}`);
 }
 
 function groupFor(groups, matcher) {
@@ -108,16 +91,12 @@ export function sourceFiles(dir = SRC) {
   });
 }
 
-export function isHookShell(file) {
-  return dirname(file) === HOOK_SHELLS && file.endsWith(".mjs");
-}
-
 export function isBuiltModule(file) {
   return file.endsWith(".mts") && !file.endsWith(".d.mts") && !file.endsWith(".test.mts");
 }
 
 export function isCopied(file) {
-  return !file.endsWith(".mts") && !isHookShell(file) && file !== HOOK_ORACLE;
+  return !file.endsWith(".mts");
 }
 
 export function distPath(file) {
@@ -151,15 +130,13 @@ export function outputCollisions(files) {
 
 export async function buildAll() {
   const files = sourceFiles();
-  const { folders, problems } = hookSources();
-  const collisions = outputCollisions(files);
-  if (problems.length > 0 || collisions.length > 0) throw new Error([...problems, ...collisions].join("; "));
+  const problems = [...missingHooks(), ...outputCollisions(files)];
+  if (problems.length > 0) throw new Error(problems.join("; "));
   rmSync(DIST, { recursive: true, force: true });
   for (const file of files.filter(isCopied)) copySource(file);
   writeHooksJson();
   await build(moduleOptions(files.filter(isBuiltModule)));
-  await build(hookOptions(files.filter(isHookShell)));
-  await Promise.all(folders.map((name) => build(entryOptions(name))));
+  await Promise.all(Object.keys(HOOKS).map((name) => build(entryOptions(name))));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

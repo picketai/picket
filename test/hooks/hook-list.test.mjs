@@ -1,17 +1,36 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { HOOKS } from "../../dist/lib/hooks.mjs";
-import { DIST, hookFolder, hookSources, hooksJson } from "../../scripts/build.mjs";
+import { DIST, hookFolder, hooksJson, missingHooks } from "../../scripts/build.mjs";
 
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
-const ORACLE = resolve("src/hooks/hooks.json");
 const BUILT = join(DIST, "hooks", "hooks.json");
-const MOVED = ["inject.state", "inject.rules", "inject.extensions", "lint.schema", "monitor.context", "notify.user", "guard.block", "route.verdict", "emit.ledger", "observe.drive", "guard.scope", "guard.comments", "guard.silenced", "guard.bash"];
+const HOOK_FOLDERS = resolve("src/lib/hooks");
+
+const EXPECTED_GROUPS = [
+  ["SessionStart", undefined, ["inject.state", "inject.rules", "inject.extensions"]],
+  ["SubagentStart", undefined, ["inject.rules", "inject.extensions"]],
+  ["PreToolUse", "Write|Edit", ["guard.scope", "guard.comments", "guard.silenced"]],
+  ["PreToolUse", "Bash|PowerShell", ["guard.bash"]],
+  ["PostToolUse", "Write|Edit", ["lint.schema"]],
+  ["PostToolUse", "Bash|PowerShell", ["observe.drive"]],
+  ["PostToolUse", "Read|Grep|Glob|WebFetch|WebSearch", ["monitor.context"]],
+  ["PostToolUseFailure", "Bash|PowerShell", ["observe.drive"]],
+  ["Stop", undefined, ["guard.block", "route.verdict", "emit.ledger"]],
+  ["SubagentStop", undefined, ["guard.block", "route.verdict", "emit.ledger"]],
+  ["Notification", "permission_prompt|idle_prompt", ["notify.user"]],
+];
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function groupsOf(registration) {
+  return Object.entries(registration.hooks).flatMap(([event, groups]) =>
+    groups.map((group) => [event, group.matcher, group.hooks.map((hook) => hook.args[0].slice(PLUGIN_HOOK_PREFIX.length).replace(/\.mjs$/, ""))]),
+  );
 }
 
 function registeredFiles(hooks) {
@@ -19,11 +38,18 @@ function registeredFiles(hooks) {
   return [...new Set(args.map((arg) => arg.slice(PLUGIN_HOOK_PREFIX.length)))];
 }
 
-test("hooksJson(HOOKS) and the built hooks.json both equal the hand-written registration, events in its order (T-1.1)", () => {
-  const oracle = readJson(ORACLE);
-  for (const generated of [hooksJson(HOOKS), readJson(BUILT)]) {
-    assert.deepEqual(generated, oracle);
-    assert.deepEqual(Object.keys(generated.hooks), Object.keys(oracle.hooks));
+function folderNames() {
+  return readdirSync(HOOK_FOLDERS, { withFileTypes: true })
+    .filter((kind) => kind.isDirectory())
+    .flatMap((kind) => readdirSync(join(HOOK_FOLDERS, kind.name)).filter((name) => existsSync(join(HOOK_FOLDERS, kind.name, name, "index.mts"))).map((name) => `${kind.name}.${name}`));
+}
+
+test("hooksJson(HOOKS) and the built hooks.json register exactly the expected event, matcher and hook groups, in order (T-5.2)", () => {
+  for (const registration of [hooksJson(HOOKS), readJson(BUILT)]) {
+    assert.deepEqual(groupsOf(registration), EXPECTED_GROUPS);
+    for (const group of Object.values(registration.hooks).flat()) {
+      assert.deepEqual(group.hooks.map(({ type, command }) => [type, command]), group.hooks.map(() => ["command", "node"]));
+    }
   }
 });
 
@@ -45,24 +71,19 @@ test("hooksJson groups hooks by event and matcher in order of first appearance",
   });
 });
 
-test("every file the built hooks.json registers exists in dist/hooks/ (T-1.2)", () => {
-  const missing = registeredFiles(readJson(BUILT).hooks).filter((file) => !existsSync(join(DIST, "hooks", file)));
-  assert.deepEqual(missing, []);
+test("every file the built hooks.json registers exists in dist/hooks/, and dist/hooks/ holds nothing else (T-5.1)", () => {
+  const registered = registeredFiles(readJson(BUILT).hooks);
+  assert.deepEqual(registered.filter((file) => !existsSync(join(DIST, "hooks", file))), []);
+  assert.deepEqual(readdirSync(join(DIST, "hooks")).sort(), ["hooks.json", ...registered].sort());
 });
 
-test("every hook has exactly one source: each moved hook a folder, the others a shell (T-1.2)", () => {
-  const { folders, problems } = hookSources(HOOKS);
-  assert.deepEqual(problems, []);
-  assert.deepEqual(folders.sort(), [...MOVED].sort());
-  for (const name of MOVED) {
-    assert.equal(existsSync(resolve("src/hooks", `${name}.mjs`)), false, name);
-    assert.equal(existsSync(resolve("src/lib/hooks", `${name}.mjs`)), false, name);
-  }
+test("every HOOKS name has its folder and every hook folder has a HOOKS entry (T-5.2)", () => {
+  assert.deepEqual(missingHooks(HOOKS), []);
+  assert.deepEqual(folderNames().sort(), Object.keys(HOOKS).sort());
 });
 
-test("hookSources names a hook that has neither a folder nor a shell", () => {
-  const { problems } = hookSources({ "inject.rules": HOOKS["inject.rules"], "guard.nothing": { summary: "x", on: [] } });
-  assert.deepEqual(problems, ["guard.nothing has neither src/lib/hooks/guard/nothing/index.mts nor src/hooks/guard.nothing.mjs"]);
+test("missingHooks names a hook without a folder", () => {
+  assert.deepEqual(missingHooks({ "guard.nothing": { summary: "x", on: [] } }), ["guard.nothing has no src/lib/hooks/guard/nothing/index.mts"]);
   assert.match(hookFolder("inject.rules").replaceAll("\\", "/"), /src\/lib\/hooks\/inject\/rules\/index\.mts$/);
 });
 

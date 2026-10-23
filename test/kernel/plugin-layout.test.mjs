@@ -69,6 +69,10 @@ test("dist/hooks/hooks.json registers every hook bundle and only bundles that ex
   assert.deepEqual([...registered].sort(), bundlesOnDisk().sort());
 });
 
+test("no hook shell is left on disk: the build generates every entry from the hook list", () => {
+  assert.equal(existsSync(join(SRC, "hooks")), false);
+});
+
 test("the registration check notices a bundle that hooks.json drops", () => {
   const hooks = readJson(PLUGIN_HOOKS).hooks;
   const dropped = { ...hooks, Stop: [{ hooks: hooks.Stop[0].hooks.slice(1) }], SubagentStop: [{ hooks: hooks.SubagentStop[0].hooks.slice(1) }] };

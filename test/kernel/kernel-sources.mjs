@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 
-export const KERNEL_DIRS = ["src/lib", "src/hooks", "src/bin"];
+export const KERNEL_DIRS = ["src/lib", "src/bin"];
 const VENDOR_DIR = "vendor";
 const COMMENT_STARTS = ["//", "/*", "*"];
 const PATHS_MODULES = ["paths.mjs", "paths.mts"];

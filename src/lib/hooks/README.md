@@ -1,6 +1,6 @@
 # Hooks
 
-Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` deny or bounce, `lint.*` and `monitor.*` feed text back, `observe.*` and `emit.*` record, `inject.*` add context. Every hook exits 0 on its own failure except where a deny is the point; a hook must start in under 200 ms cold (`test/budgets.test.mjs`).
+Listed in `src/lib/hooks.mts`; the build generates `hooks.json` in `dist/hooks/` from that list, and Claude Code loads it with the plugin. `guard.*` deny or bounce, `lint.*` and `monitor.*` feed text back, `observe.*` and `emit.*` record, `inject.*` add context. Every hook exits 0 on its own failure except where a deny is the point; a hook must start in under 200 ms cold (`test/budgets.test.mjs`).
 
 | Hook | Event | Does |
 |---|---|---|
@@ -19,10 +19,10 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 | `emit.ledger.mjs` | Stop, SubagentStop | one v2 ledger row per turn (`bench/schema/ledger-v2.schema.json`) |
 | `notify.user.mjs` | Notification permission_prompt, idle_prompt | an OS notification in a detached process (a Windows toast through powershell.exe, osascript, notify-send); `PICKET_NOTIFY=off` skips it |
 
-Every hook, guards included, is a thin shell: it imports `runHook` from `src/lib/hooks/hook.mjs` and its handler from `src/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
+Every hook, guards included, is a folder `src/lib/hooks/<kind>/<name>/` whose `index.mts` exports `hook`, a `HookSpec` (`hook-spec.mts`): a handler that takes the event and a context and returns an output built with `output.mts`, or `null`. Code one hook uses stays in its folder, code one kind shares sits in the kind folder (`guard/edit-target.mts`), and no hook imports another. For each name in the list the build generates the entry `runHook("<name>", hook)` (`run-hook.mts`), which checks the Node version, reads stdin, prints, records a denial in the ledger, swallows errors and exits 0.
 
 Libraries: `src/lib/shared/transcript/` (`tail.mts` reads a transcript from its end, `entries.mts` holds spawn hints, tool statistics and the read-before-edit lookup, `turn.mts` the turn's block text and span, `agent.mts` the agent's name and transcript), `src/lib/hooks/observe/drive/evidence.mts` (kept from the earlier copy-in version for its tested parsers), `src/lib/shared/sources/protection.mts` (what a source protects), `src/lib/shared/shell/powershell.mts` (the PowerShell reader `guard.bash` and `observe.drive` use for the PowerShell tool), `src/lib/shared/shell/kernel-call.mts` (where a `picket` call starts in a command), and `src/lib/util/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses for Bash.
 
-At build time each shell is bundled with everything it imports into one file in `dist/hooks/`, so a hook opens one module, not one per import. Standalone, run the bundle: `node dist/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
+At build time each generated entry is bundled with everything it imports into one file, `dist/hooks/<kind>.<name>.mjs`, so a hook opens one module, not one per import. Standalone, run the bundle: `node dist/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
 
 A blocked call or a bounced turn is Picket working. Fix the violation; do not retry variants.

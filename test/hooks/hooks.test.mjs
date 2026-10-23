@@ -900,7 +900,7 @@ test("observe.drive appends one ran escalation row for an asked marked command, 
 });
 
 test("observe.drive is registered for PostToolUse and PostToolUseFailure on Bash and PowerShell", () => {
-  const hooks = JSON.parse(readFileSync(resolve("src/hooks/hooks.json"), "utf8")).hooks;
+  const hooks = JSON.parse(readFileSync(join(HOOKS, "hooks.json"), "utf8")).hooks;
   for (const event of ["PostToolUse", "PostToolUseFailure"]) {
     const observers = hooks[event].filter((entry) => entry.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/observe.drive.mjs"))));
     assert.deepEqual(observers.map((entry) => entry.matcher), ["Bash|PowerShell"], event);
@@ -949,7 +949,7 @@ test("observe.drive records a failed escalation as ran, with no drive-log row", 
 });
 
 test("guard.bash is registered for Bash and PowerShell, and the spawned hook denies a destructive cmdlet with a PowerShell log row", () => {
-  const hooks = JSON.parse(readFileSync(resolve("src/hooks/hooks.json"), "utf8")).hooks;
+  const hooks = JSON.parse(readFileSync(join(HOOKS, "hooks.json"), "utf8")).hooks;
   const guards = hooks.PreToolUse.filter((entry) => entry.hooks.some((hook) => hook.args.some((arg) => arg.endsWith("/hooks/guard.bash.mjs"))));
   assert.deepEqual(guards.map((entry) => entry.matcher), ["Bash|PowerShell"]);
 

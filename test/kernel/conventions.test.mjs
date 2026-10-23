@@ -112,7 +112,7 @@ test("the built-name scan reports an .mjs import of a typed sibling and nothing 
 
 test("the process-read scan covers src/lib only", () => {
   assert.deepEqual(processReads("src/bin/picket.mts", "const v = process.env.X;"), []);
-  assert.deepEqual(processReads("src/hooks/x.mts", "const v = process.env.X;"), []);
+  assert.deepEqual(processReads("src/other/x.mts", "const v = process.env.X;"), []);
 });
 
 test("the scans read typed sources only, never declaration files", () => {
@@ -127,10 +127,30 @@ const IMPORT_SPECIFIER = /\bfrom\s*["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)
 const ALLOWED_ZONES = {
   util: ["util"],
   shared: ["shared", "util"],
-  hooks: ["hooks", "hooks.mts", "shared", "util", "verbs.mts", "verbs/"],
   cli: ["cli", "verbs.mts", "verbs/", "shared", "util"],
   "verbs.mts": [],
+  "hooks.mts": [],
 };
+const IMPORT_FREE_ZONES = new Set(["verbs.mts", "hooks.mts"]);
+
+const HOOKS_PREFIX = "src/lib/hooks/";
+const HOOK_FRAME = ["hook-spec.mts", "output.mts"];
+const HOOK_OUTSIDE_ZONES = ["shared", "util", "verbs.mts"];
+const VERB_ENTRY = /^src\/lib\/verbs\/[^/]+\/index\.m[jt]s$/;
+
+function hookImportAllowed(path, targetPath) {
+  const from = path.slice(HOOKS_PREFIX.length).split("/");
+  if (!targetPath.startsWith(HOOKS_PREFIX)) {
+    const target = zoneOf(targetPath);
+    if (target === "hooks.mts") return from.length === 1;
+    return HOOK_OUTSIDE_ZONES.includes(target) || VERB_ENTRY.test(targetPath);
+  }
+  const to = targetPath.slice(HOOKS_PREFIX.length).split("/");
+  if (from.length === 1) return to.length === 1;
+  if (to.length === 1) return HOOK_FRAME.includes(to[0]);
+  if (to.length === 2) return to[0] === from[0];
+  return from.length > 2 && to[0] === from[0] && to[1] === from[1];
+}
 
 function zoneOf(path) {
   if (SKILL_SCRIPTS.test(path)) return path.match(SKILL_SCRIPTS)[0];
@@ -151,8 +171,10 @@ function importSpecifiers(text) {
 }
 
 function crossesBoundary(zone, specifier, path) {
-  if (!specifier.startsWith(".")) return zone === "verbs.mts";
-  const target = zoneOf(posix.join(posix.dirname(path), specifier));
+  if (!specifier.startsWith(".")) return IMPORT_FREE_ZONES.has(zone);
+  const targetPath = posix.join(posix.dirname(path), specifier);
+  if (zone === "hooks") return !hookImportAllowed(path, targetPath);
+  const target = zoneOf(targetPath);
   return target === null || !allowedZones(zone).some((allowed) => (allowed.endsWith("/") ? target.startsWith(allowed) : target === allowed));
 }
 
@@ -194,9 +216,22 @@ test("the direction scan reports each import that crosses the layer rules (T-3.2
   assert.equal(reported("src/skills/x/scripts/a.mjs", 'import { route } from "../../../lib/verbs/route/route.mjs";'), 1);
 });
 
+test("the direction scan keeps each hook in its folder and the hook list import-free (T-5.3)", () => {
+  const reported = (path, text) => importViolations(path, text).length;
+  assert.equal(reported("src/lib/hooks/observe/drive/index.mts", 'import { readPowerShell } from "../../guard/bash/powershell.mts";'), 1);
+  assert.equal(reported("src/lib/hooks.mts", 'import { readFileSync } from "node:fs";'), 1);
+  assert.equal(reported("src/lib/hooks/route/verdict/index.mts", 'import { route } from "../../../verbs/route/route.mts";'), 1);
+  assert.equal(reported("src/lib/hooks/guard/comments/index.mts", 'import { runHook } from "../../run-hook.mts";'), 1);
+  assert.equal(reported("src/lib/hooks/guard/edit-target.mts", 'import { hook } from "./scope/index.mts";'), 1);
+  assert.equal(reported("src/lib/hooks/guard/comments/index.mts", 'import { editTarget } from "../edit-target.mts";'), 0);
+  assert.equal(reported("src/lib/hooks/route/verdict/index.mts", 'import { route } from "../../../verbs/route/index.mts";\nimport { context } from "../../output.mts";\nimport type { HookSpec } from "../../hook-spec.mts";'), 0);
+  assert.equal(reported("src/lib/hooks/guard/bash/kernel.mts", 'import { VERB_NAMES } from "../../../verbs.mts";\nimport { x } from "./rules.mts";'), 0);
+  assert.equal(reported("src/lib/hooks/run-hook.mts", 'import type { HookName } from "../hooks.mts";\nimport type { HookSpec } from "./hook-spec.mts";'), 0);
+});
+
 test("the direction scan allows each layer its own imports (T-3.2)", () => {
   const reported = (path, text) => importViolations(path, text).length;
-  assert.equal(reported("src/lib/hooks/route.verdict.mjs", 'import { route } from "../verbs/route/route.mjs";'), 0);
+  assert.equal(reported("src/lib/hooks/route/verdict/index.mts", 'import { route } from "../../../verbs/route/index.mts";'), 0);
   assert.equal(reported("src/lib/verbs/a/index.mts", 'import { b } from "./b.mts";\nimport { done } from "../../shared/action.mts";\nimport { str } from "../../util/args.mts";'), 0);
   assert.equal(reported("src/lib/cli/main.mts", 'import { REGISTRY } from "./registry.mts";\nimport { VERB_NAMES } from "../verbs.mts";'), 0);
   assert.equal(reported("src/lib/shared/a.mjs", 'import { join } from "node:path";\nimport { parse } from "../util/yaml-lite.mjs";'), 0);

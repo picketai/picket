@@ -25,15 +25,7 @@ import { latestHints, spawnHints } from "../../dist/lib/shared/transcript/entrie
 import { VERB_NAMES } from "../../dist/lib/verbs.mjs";
 
 const HOOKS = resolve("dist/hooks");
-const HOOK_SHELLS = resolve("src/hooks");
 const HANDLERS = resolve("src/lib/hooks");
-const SHELLS = [];
-const MAX_SHELL_LINES = 5;
-
-function handlerName(shell) {
-  const [kind, name] = shell.replace(/\.mjs$/, "").split(".");
-  return kind + name[0].toUpperCase() + name.slice(1);
-}
 
 function project() {
   const root = mkdtempSync(join(tmpdir(), "harness-handlers-"));
@@ -60,36 +52,14 @@ function transcript(root, entries) {
 const user = (text) => ({ type: "user", message: { role: "user", content: text } });
 const assistant = (text) => ({ type: "assistant", message: { role: "assistant", model: "claude-opus-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 1000, cache_creation_input_tokens: 100 }, content: [{ type: "text", text }] } });
 
-test("src/hooks holds hooks.json, the hook shells, README.md and no other file (T-7.1)", () => {
-  const files = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) walk(join(dir, entry.name));
-      else files.push(join(dir, entry.name).slice(HOOK_SHELLS.length + 1).replaceAll("\\", "/"));
-    }
-  };
-  walk(HOOK_SHELLS);
-  assert.deepEqual(files.sort(), ["README.md", "hooks.json", ...SHELLS].sort());
+test("src/hooks/ is gone: no hand-written shells and no hand-written registration (T-5.1)", () => {
+  assert.equal(existsSync(resolve("src/hooks")), false);
+  assert.equal(existsSync(join(HANDLERS, "hook.mjs")), false);
 });
-
-test("every shell imports only runHook and its handler, in at most five lines (T-6.1, T-7.1)", () => {
-  for (const file of SHELLS) {
-    const handler = handlerName(file);
-    const lines = readFileSync(join(HOOK_SHELLS, file), "utf8").split(/\r?\n/).filter((l) => l.trim());
-    assert.ok(lines.length <= MAX_SHELL_LINES, `${file}: ${lines.length} lines`);
-    const imports = lines.filter((l) => l.startsWith("import "));
-    assert.deepEqual(imports, [`import { runHook } from "../lib/hooks/hook.mjs";`,`import { ${handler} } from "../lib/hooks/${file}";`], file);
-    assert.ok(lines.some((l) => l.includes(`runHook(${handler}`)), file);
-  }
-});
-
-const HANDLER_FILE = /^[a-z]+\.[a-z]+\.mjs$/;
 
 function handlerFiles() {
-  const flat = readdirSync(HANDLERS).filter((f) => HANDLER_FILE.test(f));
   const kinds = readdirSync(HANDLERS, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-  const folders = kinds.flatMap((kind) => readdirSync(join(HANDLERS, kind)).map((name) => `${kind}/${name}/index.mts`)).filter((file) => existsSync(join(HANDLERS, file)));
-  return [...flat, ...folders];
+  return kinds.flatMap((kind) => readdirSync(join(HANDLERS, kind)).map((name) => `${kind}/${name}/index.mts`)).filter((file) => existsSync(join(HANDLERS, file)));
 }
 
 test("no handler reads stdin, writes stdout or exits the process (T-6.2)", () => {

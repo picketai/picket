@@ -2,14 +2,10 @@ import { context } from "esbuild";
 import { existsSync, rmSync, statSync, watch } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { HOOK_LIST, SRC, buildAll, copySource, distPath, entryOptions, hookOptions, hookSources, isBuiltModule, isCopied, isHookShell, moduleOptions, sourceFiles, writeHooksJson } from "./build.mjs";
+import { HOOK_LIST, SRC, buildAll, copySource, distPath, entryOptions, isBuiltModule, isCopied, missingHooks, moduleOptions, sourceFiles, writeHooksJson } from "./build.mjs";
 
 let contexts = [];
 let entries = new Set();
-
-function isEntry(file) {
-  return isBuiltModule(file) || isHookShell(file);
-}
 
 function builtPath(file) {
   return distPath(file).replace(/\.mts$/, ".mjs");
@@ -22,25 +18,25 @@ async function currentHooks() {
 
 async function hookEntryContexts() {
   const hooks = await currentHooks();
-  const { folders, problems } = hookSources(hooks);
+  const problems = missingHooks(hooks);
   if (problems.length > 0) throw new Error(problems.join("; "));
   writeHooksJson(hooks);
-  return folders.map((name) => context(entryOptions(name)));
+  return Object.keys(hooks).map((name) => context(entryOptions(name)));
 }
 
 async function startContexts() {
   await Promise.all(contexts.map((ctx) => ctx.dispose()));
   contexts = [];
   const files = sourceFiles();
-  entries = new Set(files.filter(isEntry));
-  contexts = await Promise.all([context(moduleOptions(files.filter(isBuiltModule))), context(hookOptions(files.filter(isHookShell))), ...(await hookEntryContexts())]);
+  entries = new Set(files.filter(isBuiltModule));
+  contexts = await Promise.all([context(moduleOptions(files.filter(isBuiltModule))), ...(await hookEntryContexts())]);
   await Promise.all(contexts.map((ctx) => ctx.watch()));
 }
 
 function syncPresent(path) {
   const files = statSync(path).isDirectory() ? sourceFiles(path) : [path];
   for (const file of files.filter(isCopied)) copySource(file);
-  return path === HOOK_LIST || files.some((file) => isEntry(file) && !entries.has(file));
+  return path === HOOK_LIST || files.some((file) => isBuiltModule(file) && !entries.has(file));
 }
 
 function syncRemoved(path) {
