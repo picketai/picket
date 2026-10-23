@@ -3,7 +3,6 @@
 // the first (baseline) and --check exits 1 on a regression beyond two standard errors.
 //
 //   node bench/report.mjs bench/results/trunk.json
-//   node bench/report.mjs bench/results/trunk.json bench/results/rework.json --check
 //
 import { readFileSync } from "node:fs";
 import { agreement, cv, mean, passAt1, passHatK, percentile, round, stderr } from "./lib/metrics.mjs";

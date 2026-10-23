@@ -25,7 +25,7 @@ node bench/run.mjs --harness trunk --dry            # list tasks and the manifes
 node bench/run.mjs --harness trunk --tasks lane:fast --runs 1 --out bench/results/smoke.json
 node bench/run.mjs --harness trunk --tasks all --runs 5 --out bench/results/baseline-trunk.json
 node bench/report.mjs bench/results/baseline-trunk.json
-node bench/report.mjs bench/results/baseline-trunk.json bench/results/rework.json --check
+node bench/report.mjs bench/results/baseline-trunk.json bench/results/plugin-2026-10-18.json --check
 ```
 
 `--tasks` takes ids, `lane:<fast|order|design|research>`, or `all`. A results file is resumable:

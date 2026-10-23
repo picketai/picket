@@ -1,4 +1,4 @@
-const HARNESSES_WITH_LANES = ["plugin", "rework"];
+const HARNESSES_WITH_LANES = ["plugin"];
 
 export function laneMatches(r) {
   const lane = r.signals?.lane;

@@ -91,11 +91,10 @@ test("plugin gate detection reads bracket options and lane headings", () => {
   assert.deepEqual(d.verdicts, ["ALIGNED", "APPROVED"]);
 });
 
-test("a plugin run is graded on its own lane names, like the rework runs before it", () => {
+test("a plugin run is graded on its own lane names, a trunk run on trunk's", () => {
   const run = (harness, lane, lane_expected) => ({ harness, lane_expected, signals: { lane } });
   assert.equal(laneMatches(run("plugin", "order", "order")), true);
   assert.equal(laneMatches(run("plugin", "pipeline", "order")), false);
-  assert.equal(laneMatches(run("rework", "design", "design")), true);
   assert.equal(laneMatches(run("trunk", "pipeline", "order")), true);
   assert.equal(laneMatches(run("trunk", "expedited", "fast")), true);
 });
