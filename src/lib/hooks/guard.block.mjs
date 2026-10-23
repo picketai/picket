@@ -1,4 +1,4 @@
-import { readTurn, blockLines } from "../shared/transcript/transcript.mjs";
+import { readTurn, blockLines } from "../shared/transcript/turn.mjs";
 import { VERDICTS } from "../shared/verdicts.mjs";
 
 const CONTRACT = /^##\s+(Phase\s+\d+\s+of\s+[a-z0-9-]+|Review:\s+[a-z0-9-]+|(Order|Design|Amendment):\s+[a-z0-9-]+|Report:\s+[a-z0-9-]+)/m;

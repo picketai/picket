@@ -4,7 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { workingState } from "../../shared/git.mjs";
 import { PICKET_DIR, projectRoot, sessionCostPath } from "../../shared/paths.mjs";
 import { BRAND, rgb } from "../../shared/styling/palette.mjs";
-import { readTail } from "../../shared/transcript/transcript.mjs";
+import { TAIL_WINDOWS, tailText } from "../../shared/transcript/tail.mjs";
 
 export const EDGE_COLUMNS = 2;
 const DEFAULT_COLUMNS = 80;
@@ -323,8 +323,8 @@ function skillCalled(line) {
   }
 }
 
-export function lastSkill(path, maxBytes) {
-  const lines = readTail(path, maxBytes).split("\n");
+export function lastSkill(path, maxBytes = TAIL_WINDOWS[1]) {
+  const lines = tailText(path, maxBytes).split("\n");
   for (let i = lines.length - 1; i >= 0; i--) {
     if (!lines[i].includes(SKILL_CALL)) continue;
     const skill = skillCalled(lines[i]);

@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { wasRead, agentTranscript } from "../shared/transcript/transcript.mjs";
+import { agentTranscript } from "../shared/transcript/agent.mjs";
+import { wasRead } from "../shared/transcript/entries.mjs";
 import { sourceRoots, underSource } from "../shared/sources/protection.mjs";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../shared/paths.mjs";
 

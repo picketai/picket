@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { readTurn, turnSpan, toolStats, spawnHints, agentName, blockLines, isSubagentTurn, agentTranscript } from "../shared/transcript/transcript.mjs";
+import { agentName, agentTranscript, isSubagentTurn } from "../shared/transcript/agent.mjs";
+import { spawnHints, toolStats } from "../shared/transcript/entries.mjs";
+import { blockLines, readTurn, turnSpan } from "../shared/transcript/turn.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
 import { readState } from "../shared/work/state.mjs";
 import { appendLedger } from "../shared/ledger.mjs";

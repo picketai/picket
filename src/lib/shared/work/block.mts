@@ -3,6 +3,21 @@ import { dirname } from "node:path";
 import { readText } from "../../util/io.mts";
 import { phaseMarker, type WorkId } from "./files.mts";
 
+export type BlockKind = "phase" | "review" | "artifact" | "report" | "expedited";
+
+export const BLOCK_HEADINGS: readonly (readonly [BlockKind, RegExp])[] = [
+  ["phase", /^##\s+Phase\s+\d+\s+of\s+[a-z0-9-]+/m],
+  ["review", /^##\s+Review:\s+[a-z0-9-]+/m],
+  ["artifact", /^##\s+(Order|Design|Amendment):\s+[a-z0-9-]+/m],
+  ["report", /^##\s+Report:\s+[a-z0-9-]+/m],
+  ["expedited", /^##\s+Expedited:\s+[a-z0-9-]+/m],
+];
+
+export function detectBlock(text: string | null | undefined): BlockKind | null {
+  if (!text) return null;
+  return BLOCK_HEADINGS.find(([, heading]) => heading.test(text))?.[0] ?? null;
+}
+
 export type Block = { title: string | null; headline: string; fields: Record<string, string>; verdict: "PHASE DONE" | "PHASE STALLED" | null };
 
 const PATH_TOKEN = /^[\w.@\-\/\\]*\.[A-Za-z0-9]+$/;

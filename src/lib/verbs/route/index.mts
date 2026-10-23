@@ -1,5 +1,5 @@
 import { action, done, Refused } from "../../shared/action.mts";
-import { bareAgentName } from "../../shared/agent-name.mjs";
+import { bareAgentName } from "../../shared/agent-name.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import type { Context } from "../../shared/context.mts";
 import { VERDICTS } from "../../shared/verdicts.mjs";
