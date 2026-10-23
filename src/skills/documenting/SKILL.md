@@ -13,8 +13,6 @@ user-invocable: true
 
 # Documenting
 
-Paths cited here and in this skill's step files, such as `documenting/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Read the template for the kind before writing. Templates carry structure and constraints only; the rules below are shared by all kinds.
 
 ## Registry

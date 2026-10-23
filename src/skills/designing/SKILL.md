@@ -13,9 +13,7 @@ user-invocable: true
 
 # Designing
 
-Paths cited here and in this skill's step files, such as `designing/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
-Runs in the main session. You are the lead: one architect, one developer, one reviewer per work item, each spawned once and continued by `SendMessage`; the cumulative review alone gets a fresh reviewer (`ordering/steps/40-review.md`). Every routing decision comes from `picket next <id>`.
+Runs in the main session. You are the lead: one architect, one developer, one reviewer per work item, each spawned once and continued by `SendMessage`; the cumulative review alone gets a fresh reviewer (`../shared/procedures/cumulative-review.md`). Every routing decision comes from `picket next <id>`.
 
 Lane check for this request:
 
@@ -25,29 +23,30 @@ If this conversation has no `picket admit` answer for the request yet, run `pick
 
 ## Steps
 
-One step file at a time, each under 80 lines. The phase loop and the user gate are the order lane's, reused unchanged.
+One step file at a time, each under 80 lines. The phase loop, the gate and the reviews are shared procedures, the same in the order lane.
 
 | `picket next` says | Read |
 |---|---|
 | `write_artifact` by architect | `steps/10-design.md`: open the work item, spawn the architect with the design template |
 | `resolve_sources` by user | `steps/10-design.md`: the opening gate; print the packet, stop, apply each pick |
 | `implement_phase`, phase 1 | `steps/20-crosscheck.md`: start the developer AND the reviewer's cross-check in the same turn |
-| `implement_phase`, later phases | `ordering/steps/20-phase.md` |
-| `approve_phase` by user | `ordering/steps/30-gate.md` |
-| `review_checkpoint` by reviewer | `ordering/steps/40-review.md` with `scope: checkpoint` and `phase: <n>` |
-| `review_cumulative` by reviewer | `ordering/steps/40-review.md` |
-| `resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED` | `steps/40-amend.md`: continue the architect, then resume |
+| `implement_phase`, later phases | `../shared/procedures/phase-loop.md` |
+| `approve_phase` by user | `../shared/procedures/gate.md` |
+| `review_checkpoint` by reviewer | `../shared/procedures/cumulative-review.md` with `scope: checkpoint` and `phase: <n>` |
+| `review_cumulative` by reviewer | `../shared/procedures/cumulative-review.md` |
+| `resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED` | `../shared/procedures/amend.md`: continue the architect, then resume |
+| `resolve_block` otherwise, or `resolve_rejections` | `../shared/procedures/gate.md`: print the packet with the kernel's options, stop, apply the reply |
 | `close` | `picket close <id>`, print the closing block, stop |
 
 ## Rules of the lane
 
 Time to first reviewable output is the target: the architect emits the decisions and phase 1 before the remaining phases are polished, so the developer starts while the record is finished and cross-checked. `DRIFT DETECTED` arriving mid-phase blocks the item; the developer's phase 1 work is kept and re-checked after the amendment, never thrown away.
 
-A run grant stops at every phase that takes its own gate; `picket next` and the gate packet name the reason. `[IRREVERSIBLE]` steps take an explicit extra confirmation in the gate packet: add the line `⚠ irreversible: <step>` and the option `[i] confirm irreversible step`.
+A run grant stops at every phase that takes its own gate; `picket next` and the gate packet name the reason. A phase marked `[IRREVERSIBLE]` takes an explicit confirmation: `picket next` and the packet offer `[i]` in place of `[a]`, and the gate procedure maps the reply.
 
 Long plans (6 or more phases) get a checkpoint review before the phase after the midpoint; `picket next` schedules it.
 
-Three `DRIFT DETECTED` rounds or three cumulative `CHANGES REQUIRED` rounds are a user decision, not a fourth round: `[c] continue · [d] redesign · [x] abandon`.
+Three `DRIFT DETECTED` rounds, three amendments or three cumulative `CHANGES REQUIRED` rounds are a user decision, not a fourth round: `picket next` returns the options, and the gate prints them.
 
 ## Closing block
 

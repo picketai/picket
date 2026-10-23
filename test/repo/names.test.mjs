@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { codeLines } from "#test/kernel-sources.mts";
 import { VERB_NAMES } from "../../src/lib/verbs.mts";
@@ -11,7 +11,7 @@ const SKILLS_DIR = join(SRC, "skills");
 const LIB_DIR = join(SRC, "lib");
 const SKIPPED_DIRS = new Set(["examples", "vendor"]);
 
-const SKILLS = readdirSync(SKILLS_DIR).filter((name) => statSync(join(SKILLS_DIR, name)).isDirectory());
+const SKILLS = readdirSync(SKILLS_DIR).filter((name) => existsSync(join(SKILLS_DIR, name, "SKILL.md")));
 const SKILL_ALTERNATION = SKILLS.join("|");
 
 const OLD_CLI = { name: "old CLI path", pattern: /node \.claude\/bin\/harness\.mjs/ };
@@ -60,9 +60,9 @@ test("the Markdown scan flags each old name form", () => {
   assert.equal(markdownViolations("Run /ordering next.").length, 1);
   assert.equal(markdownViolations("Use `designing` for this.").length, 1);
   assert.equal(markdownViolations("node .claude/bin/harness.mjs next <id>").length, 1);
-  assert.equal(markdownViolations("Read `.claude/skills/ordering/steps/20-phase.md`.").length, 1);
+  assert.equal(markdownViolations("Read `.claude/skills/shared/procedures/phase-loop.md`.").length, 1);
   assert.equal(markdownViolations("Use `picket:designing`, then /picket:ordering and `picket next <id>`.").length, 0);
-  assert.equal(markdownViolations("Read `ordering/steps/20-phase.md` relative to the skills folder.").length, 0);
+  assert.equal(markdownViolations("Read `shared/procedures/phase-loop.md` relative to the skills folder.").length, 0);
   assert.equal(markdownViolations("Load `picket:ordering` first.").length, 0);
 });
 

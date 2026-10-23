@@ -10,8 +10,6 @@ user-invocable: true
 
 # Inspecting
 
-Paths cited here and in this skill's step files, such as `inspecting/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 `/picket:inspecting [<work-id>] [--session <id>]`
 
 Work items:

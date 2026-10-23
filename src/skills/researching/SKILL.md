@@ -14,8 +14,6 @@ user-invocable: true
 
 # Researching
 
-Paths cited here and in this skill's step files, such as `researching/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Runs in the main session. One analyst per work item, spawned for the outline and continued for the deep pass and for later delta questions on the same sources.
 
 Lane check for this request:

@@ -13,8 +13,6 @@ user-invocable: true
 
 # Consulting
 
-Paths cited here and in this skill's step files, such as `consulting/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Runs in the main session, no spawn: a conversation through a teammate costs a relay per reply. You are the consultant.
 
 ## Steps

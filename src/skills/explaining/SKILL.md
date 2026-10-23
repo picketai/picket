@@ -16,8 +16,6 @@ user-invocable: true
 
 # Explaining
 
-Paths cited here and in this skill's step files, such as `explaining/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Input: `$ARGUMENTS`, the scenario or concept in the user's words. Empty: ask what to explain; stop. Never explain "the thing we just discussed" by guess.
 
 ## Rules that hold throughout
@@ -30,7 +28,7 @@ One scenario, one actor, one path. A second path the user may care about is offe
 
 When grounding needs more than 12 files read (codebase) or 5 pages fetched (concept), stop gathering and offer the research lane in one line: "This needs more than a reply can hold: `picket:researching` keeps a report on disk." Walk only what was already grounded if the user declines.
 
-Every data value and every rule carries one marker, with the meanings `picket:documenting` defines (`documenting/SKILL.md`):
+Every data value and every rule carries one marker, with the meanings `picket:documenting` defines:
 
 - `[VERIFIED]` read directly from a source. It always cites one: `path:line`, a snapshot path, a ticket key, the command that printed it, or a URL with its section heading. A `[VERIFIED]` value with no citation is a defect.
 - `[INFERRED]` derived from verified facts by steps the walkthrough shows.

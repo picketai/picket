@@ -1,6 +1,6 @@
-# Prove before change
+# Prove before change, check, drive
 
-Read this before the first edit of a fast-lane change and of every developer phase. It decides what the block's `Red:` and `Root cause:` lines say.
+Read this before the first edit of a fast-lane change and of every developer phase. It decides what the block's `Red:`, `Root cause:`, `Tests:`, `Lint:` and `Verified:` lines say.
 
 ## Name the kind of change first
 
@@ -38,3 +38,22 @@ When you cannot name the cause, you have not found it yet: keep looking, or stop
 Prefer no new test over a bad one. A test that only asserts that a mock was called, or that the code runs without throwing, pins nothing and gets a reviewer finding.
 
 The red test and the fix land in the same phase commit.
+
+## Check
+
+Tests and lint, one command, no permission prompt: `picket check` (add `--human` in the main session). It runs the detected test and lint commands, logs to `.picket/state/check-*.log`, prints the failing tail only and stops at the first red step. Fix and re-run until `CHECK OK`. Never shell-redirect test output yourself; that shape costs a permission prompt every time.
+
+## Drive
+
+Drive the changed flow through its real entry point when the change touches one (endpoint, CLI, worker, startup wiring). One command does the whole loop and costs no permission prompt:
+
+```
+picket drive --hit "GET /invoices?page=2" --human   # start on a free port, hit, stop, restore, log
+picket drive --run "npm run cli -- list" --human    # a CLI: run and capture
+```
+
+Add one `--hit "POST /path <json>"` per request the change affects; `--start "<cmd>"` overrides the detected start script. Files the drive itself changes (a record the POST created) are restored so the tree stays yours.
+
+A drive longer than one simple command goes in a script file under `.picket/state/scratch/` (for example `.picket/state/scratch/drive.mjs`) and runs as `picket drive --run "node <file>"`, never as inline `node -e` code. When node fails with exit 126 and `Permission denied`, the machine refused that command line: move the code into a file instead of debugging the launcher. Set variables with `--env NAME=VALUE`, one flag per variable, and test values only; never write `NAME=value picket ...`, which the permission check refuses and which would log the value.
+
+Read the statuses and bodies it prints; loop drive, observe, fix until they match the request or the criteria. A green suite is not verification. A change with no runtime surface (a pure function, a test, docs) records `no drivable surface: <reason>` instead. Never describe a drive you did not run; `picket verify` and the ledger show the gap.

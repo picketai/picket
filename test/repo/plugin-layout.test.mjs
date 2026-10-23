@@ -99,11 +99,21 @@ test(".claude/ tracks no skills, agents or output styles", () => {
   assert.equal(tracked.trim(), "");
 });
 
+function skillFolders(skillsDir) {
+  return readdirSync(skillsDir, { withFileTypes: true }).filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, "SKILL.md"))).map((e) => `./skills/${e.name}`).sort();
+}
+
 test("the manifest lists every skill folder once, in name order", () => {
-  const folders = readdirSync(join(SRC, "skills"), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => `./skills/${e.name}`).sort();
+  const folders = skillFolders(join(SRC, "skills"));
   const manifest = readJson(join(SRC, ".claude-plugin", "plugin.json"));
   assert.equal(manifest.name, "picket");
   assert.deepEqual(manifest.skills, folders);
+});
+
+test("a folder under skills/ without a SKILL.md, such as shared/, is not a skill", () => {
+  assert.equal(existsSync(join(SRC, "skills", "shared", "procedures")), true);
+  assert.equal(skillFolders(join(SRC, "skills")).includes("./skills/shared"), false);
+  assert.equal(skillFolders(join(SRC, "skills")).length, 17);
 });
 
 test("every import under src/ is a Node built-in or a path inside src/", () => {

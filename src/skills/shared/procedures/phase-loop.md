@@ -1,4 +1,4 @@
-# Ordering, step 2: implement phase n
+# Phase loop: implement phase n
 
 `picket next <id>` said `implement_phase` with `phase: n`. Spawn the developer (type `picket:developer`) once per work item, named `developer`; every later phase is a `SendMessage` to that same instance.
 
@@ -7,19 +7,19 @@ First phase message, followed by the Developer section below pasted verbatim (it
 ```
 work: <id>
 phase: <n>
-artifact: work/<id>/order.md
-step: ordering/steps/20-phase.md, developer section follows
+artifact: <the artifact field picket state <id> prints>
+step: shared/procedures/phase-loop.md, developer section follows
 ```
 
 Later phases: `work: <id>` and `phase: <n>` only, plus `run through <m>` when the user granted a run.
 
-Wait for `PHASE DONE` or `PHASE STALLED`. The hook routes it. `PHASE DONE` moves you to `steps/30-gate.md` (or the next phase, inside a granted run, when `picket next` says `implement_phase`). `PHASE STALLED` makes the item `blocked`: print the developer's diagnosis and the options `[c] continue with a fresh developer · [d] redesign · [x] abandon`, then stop.
+Wait for `PHASE DONE` or `PHASE STALLED`. The hook routes it. Then run `picket next <id>` and follow your lane's table: after `PHASE DONE` it says `approve_phase` (or `implement_phase` for the next phase, inside a granted run); after `PHASE STALLED` the item is `blocked` and it says `resolve_block`.
 
 ## Developer section
 
 Your agent file carries the phase loop. Lane specifics:
 
-Read `work/<id>/order.md` once per work item; later phases re-read only the phase section you implement. Read every path in the phase's `**Touch set:**` before editing; the read-before-edit hook blocks the alternative.
+Read the artifact named on your message's `artifact:` line once per work item; later phases re-read only the phase section you implement. Read every path in the phase's `**Touch set:**` before editing; the read-before-edit hook blocks the alternative.
 
 Run `picket verify <id> <n> --no-tests` before you start to see the must_haves, and `picket verify <id> <n>` before you emit the block. Verify is the machine's view of done; `**Done when:**` is the human's. Both must hold.
 

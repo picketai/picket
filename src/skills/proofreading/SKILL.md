@@ -13,8 +13,6 @@ user-invocable: true
 
 # Proofreading
 
-Paths cited here and in this skill's step files, such as `proofreading/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Input: `$ARGUMENTS`, a path, a directory, a URL or pasted text. Empty: ask which document; stop. Never proofread "the last thing we discussed" by guess.
 
 ## Four rules that outrank every check

@@ -14,8 +14,6 @@ user-invocable: true
 
 # Summarizing
 
-Paths cited here and in this skill's step files, such as `summarizing/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Input: `$ARGUMENTS`, an optional branch, sub-repo path or work id. Empty: scope from the session's open work item; several unrelated branches → ask which.
 
 ## Repositories

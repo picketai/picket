@@ -4,7 +4,7 @@ Turn the localized cause into a failing test, grade every claim, and hand the fi
 
 ## The red test
 
-Write the smallest unit test that fails for the diagnosed reason, by the bug procedure in `expediting/steps/20-prove.md`: it names the behaviour, runs through `picket check`, and fails for the reason found, not on a typo or a missing import. Use the shrunk input from step 2. Keep its first failure line for the block. This test is the one file the skill writes, and the lane that fixes the bug runs it first instead of writing another.
+Write the smallest unit test that fails for the diagnosed reason, by the bug procedure in `../shared/procedures/prove.md`: it names the behaviour, runs through `picket check`, and fails for the reason found, not on a typo or a missing import. Use the shrunk input from step 2. Keep its first failure line for the block. This test is the one file the skill writes, and the lane that fixes the bug runs it first instead of writing another.
 
 The block lines take that file's forms exactly:
 

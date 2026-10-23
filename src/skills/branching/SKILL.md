@@ -14,8 +14,6 @@ user-invocable: true
 
 # Branching
 
-Paths cited here and in this skill's step files, such as `branching/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Scope: one branch per repo per feature, one worktree per (repo, branch). The branch name is the feature's identity across repos. No merge orchestration.
 
 ## Manifest

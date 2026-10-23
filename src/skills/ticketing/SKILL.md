@@ -13,8 +13,6 @@ user-invocable: true
 
 # Ticketing
 
-Paths cited here and in this skill's step files, such as `ticketing/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Input: `$ARGUMENTS`. Empty: list the item types below and ask what to draft, pull or update; stop.
 
 ## Routing

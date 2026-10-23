@@ -6,8 +6,6 @@ user-invocable: true
 
 # Skill: understanding
 
-Paths cited here and in this skill's step files, such as `understanding/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Walk the design tree of the user's plan one branch at a time. Resolve ambiguous terms against the project's existing language, check claims against the code, and write every resolved term or decision into `.claude/MEMORY.md` the moment it settles.
 
 ## User input
@@ -24,9 +22,9 @@ Read one step file at a time, in order.
 
 | Step | File | Read it when |
 |---|---|---|
-| 1 | `steps/01-prepare.md` | Starting a session: load the glossary and skim the code for prior art. An agent that has already validated its input joins here. |
-| 2 | `steps/02-interview.md` | Asking questions. Carries the questioning protocol and the four termination conditions. |
-| 3 | `steps/03-capture.md` | A term or decision has resolved and must be written to `.claude/MEMORY.md`; also at close, for the summary. |
+| 1 | `steps/10-prepare.md` | Starting a session: load the glossary and skim the code for prior art. An agent that has already validated its input joins here. |
+| 2 | `steps/20-interview.md` | Asking questions. Carries the questioning protocol and the four termination conditions. |
+| 3 | `steps/30-capture.md` | A term or decision has resolved and must be written to `.claude/MEMORY.md`; also at close, for the summary. |
 
 ## Rules that hold throughout
 
@@ -39,7 +37,7 @@ Never write implementation detail, code, or specs into `.claude/MEMORY.md`. Neve
 ```
 understanding/
   SKILL.md
-  steps/01-prepare.md
-  steps/02-interview.md
-  steps/03-capture.md
+  steps/10-prepare.md
+  steps/20-interview.md
+  steps/30-capture.md
 ```

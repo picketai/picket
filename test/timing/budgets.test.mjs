@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { joinedRules } from "../../dist/lib/hooks/inject/rules/index.mjs";
 import { withProject, writeConfig } from "#test/project.mts";
@@ -38,6 +38,14 @@ function walk(dir, pred) {
 }
 const rel = (p) => p.slice(ROOT.length + 1).replaceAll("\\", "/");
 
+const STEP_FILE = /[\\/](?:steps|checklists|shared[\\/]procedures)[\\/][^\\/]+\.md$/;
+
+function overStepBudget(skillsDir) {
+  return walk(skillsDir, (f) => STEP_FILE.test(f))
+    .filter((p) => lines(p) > BUDGETS.step_lines)
+    .map((p) => `${relative(skillsDir, p).replaceAll("\\", "/")}: ${lines(p)} > ${BUDGETS.step_lines}`);
+}
+
 test("CLAUDE.md stays under the always-on budget", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const size = statSync(join(ROOT, "CLAUDE.md")).size;
   assert.ok(size <= BUDGETS.claude_md_bytes, `CLAUDE.md is ${size} bytes, budget ${BUDGETS.claude_md_bytes}`);
@@ -47,9 +55,19 @@ test("agent shells, skills, step files and rules stay within their line budgets"
   const over = [];
   for (const p of walk(join(ROOT, "src", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
   for (const p of walk(join(ROOT, "src", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
-  for (const p of walk(join(ROOT, "src", "skills"), (f) => /[\\/]steps[\\/].*\.md$/.test(f))) if (lines(p) > BUDGETS.step_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.step_lines}`);
+  over.push(...overStepBudget(join(ROOT, "src", "skills")));
   for (const p of RULE_FOLDERS.flatMap((dir) => walk(dir, (f) => f.endsWith(".md")))) if (lines(p) > BUDGETS.rule_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.rule_lines}`);
   assert.deepEqual(over, []);
+});
+
+test("the step budget covers steps/, checklists/ and shared/procedures/", (t) => {
+  const skills = join(withProject(t), "src", "skills");
+  const planted = { "shared/procedures/long.md": 81, "reviewing/checklists/long.md": 81, "ordering/steps/long.md": 81, "ordering/steps/fits.md": 80, "ordering/SKILL.md": 81 };
+  for (const [path, count] of Object.entries(planted)) {
+    mkdirSync(join(skills, path, ".."), { recursive: true });
+    writeFileSync(join(skills, path), Array.from({ length: count }, (_, i) => `line ${i + 1}`).join("\n"));
+  }
+  assert.deepEqual(overStepBudget(skills).sort(), ["ordering/steps/long.md: 81 > 80", "reviewing/checklists/long.md: 81 > 80", "shared/procedures/long.md: 81 > 80"]);
 });
 
 test("every skill has a description with a 'Use when' trigger and one declared route", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {

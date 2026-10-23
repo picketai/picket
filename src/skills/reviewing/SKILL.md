@@ -2,7 +2,7 @@
 name: reviewing
 description: >
   Severity vocabulary, finding format, verdict rule, and the per-size load table for the
-  checklist files under steps/. Reads the kernel's review summary (size, frameworks,
+  checklist files under checklists/. Reads the kernel's review summary (size, frameworks,
   concerns, security_path, changed_files) and turns it into a code review or a
   design-record cross-check. Use when a developer phase summary or All Phases Complete
   lands and an APPROVED or CHANGES REQUIRED verdict is due, when the user says "review
@@ -15,9 +15,7 @@ user-invocable: true
 
 # Skill: reviewing
 
-Paths cited here and in this skill's step files, such as `reviewing/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
-Reference for the reviewer: what the kernel hands you, which checklist to open, how to grade and write a finding, and when a verdict may say APPROVED. Procedure (reading the diff, memory, the output block) belongs to the reviewer agent and its step files; this skill carries only the shared rules.
+Reference for the reviewer: what the kernel hands you, which checklist to open, how to grade and write a finding, and when a verdict may say APPROVED. Procedure (reading the diff, memory, the output block) belongs to the reviewer agent; this skill carries only the shared rules.
 
 ## The review summary
 
@@ -35,12 +33,12 @@ Field meaning:
 - `security_path`: true when any changed file sits under a CLAUDE.md `## Security paths` entry.
 - `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
 - `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
-- `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`steps/12-bar.md`).
-- `mutation`: the last `picket mutate` result (`{ mutant: { path, line, from, to }, outcome }`), or null when none ran; `survived` is row Mu1 in `steps/12-bar.md`.
+- `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`checklists/12-bar.md`).
+- `mutation`: the last `picket mutate` result (`{ mutant: { path, line, from, to }, outcome }`), or null when none ran; `survived` is row Mu1 in `checklists/12-bar.md`.
 
 Summary missing or a field absent: ask for it and stop. Do not fall back to your own detection.
 
-A cross-check request carries no summary because there is no diff. Load `steps/60-crosscheck.md` alone.
+A cross-check request carries no summary because there is no diff. Load `checklists/60-crosscheck.md` alone.
 
 ## Load table
 
@@ -95,7 +93,7 @@ The last line of a review is exactly `APPROVED` or `CHANGES REQUIRED`, alone. `A
 
 UNCLEAR blocks fail-closed because an unjudgeable criterion is a plan defect, not a developer defect: the verdict reason names the ambiguity so the team lead routes it to the architect, not back to the developer.
 
-Story rows (`S-N`, cumulative only, `steps/15-traced.md`) differ in one way: FAIL blocks, UNCLEAR does not. An ambiguous story is a question for the user, so it goes on the `Questions:` line instead.
+Story rows (`S-N`, cumulative only, `checklists/15-traced.md`) differ in one way: FAIL blocks, UNCLEAR does not. An ambiguous story is a question for the user, so it goes on the `Questions:` line instead.
 
 The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. Any Critical or Major row gives `DRIFT DETECTED`; Minor rows are recorded and do not block.
 
@@ -104,7 +102,7 @@ The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. 
 The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Orders` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
 
 1. `picket pullrequest prepare <url> --human` (the JSON form goes to the reviewer; keep the `repo_root` it names). It fetches `refs/pull/<id>/merge`, computes base and head, the review summary over that range, and the PR's title and description (Azure DevOps: a PAT in `AZDO_PAT`, set once with `setx AZDO_PAT <token>` or in the `env` block of the untracked `.claude/settings.local.json`, never in a tracked file; GitHub: the `gh` CLI). A missing PAT is reported, not fatal: the review runs code-only. Any other error: print it and stop.
-2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/steps/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
+2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/checklists/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
 3. Print the reviewer's block verbatim, then one options line: `[p] post to the PR   [d] done`. Nothing is written to the PR before `p`. When the block says `Alignment: N/A (no description)`, add one line under it: the PR carried no intent to check the diff against, so half the review is missing; a two-line description in the PR template restores it. Before `p`, check the finding line numbers against the file at head once (`git -C <repo_root> show <head>:<path> | sed -n '<line>,+3p'`); a wrong anchor puts the thread on the wrong code, and the first two live reviews were both off.
 4. On `p`: `picket pullrequest post <url> --file .picket/state/pr-<id>.review.md --dry-run --human` shows what would go; print it and ask once more with `[y] post   [n] keep local`; on `y`, the same command without `--dry-run`. Azure DevOps only; on GitHub, tell the user to use `gh pr review`.
 
@@ -113,15 +111,15 @@ The kernel finds the clone by the repository name in the URL: the project root, 
 ```
 reviewing/
   SKILL.md                                this file
-  steps/10-alignment.md                   criteria to evidence, plus the comment and test floors (always)
-  steps/12-bar.md                         silenced checks against the user's waivers (always)
-  steps/15-traced.md                      cumulative only, with 10's floors, 12-bar.md and criteria rules: request and story first, plan last
-  steps/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
-  steps/25-design-red-flags.md            eight shapes that hurt the next reader, Rf1 to Rf8 (medium and large)
-  steps/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
-  steps/40-framework-typescript.md        types, promises, errors, React, imports, leaks
-  steps/40-framework-dotnet.md            async, DI, EF Core, null safety, exceptions, disposal
-  steps/50-concern-clean-architecture.md  dependency direction, domain model, use cases, interfaces
-  steps/50-concern-vertical-slice.md      slice isolation, completeness, messaging, over-engineering
-  steps/60-crosscheck.md                  decisions versus phases inside one design record
+  checklists/10-alignment.md                   criteria to evidence, plus the comment and test floors (always)
+  checklists/12-bar.md                         silenced checks against the user's waivers (always)
+  checklists/15-traced.md                      cumulative only, with 10's floors, 12-bar.md and criteria rules: request and story first, plan last
+  checklists/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
+  checklists/25-design-red-flags.md            eight shapes that hurt the next reader, Rf1 to Rf8 (medium and large)
+  checklists/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
+  checklists/40-framework-typescript.md        types, promises, errors, React, imports, leaks
+  checklists/40-framework-dotnet.md            async, DI, EF Core, null safety, exceptions, disposal
+  checklists/50-concern-clean-architecture.md  dependency direction, domain model, use cases, interfaces
+  checklists/50-concern-vertical-slice.md      slice isolation, completeness, messaging, over-engineering
+  checklists/60-crosscheck.md                  decisions versus phases inside one design record
 ```

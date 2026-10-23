@@ -6,4 +6,4 @@ Skim the codebase for prior art. Grep for the key nouns in the user's plan and n
 
 Build a working list of the design tree's branches from the plan: each concept, relationship, or claim that has to hold for the plan to work. The interview walks this list depth-first.
 
-Next: `steps/02-interview.md`.
+Next: `steps/20-interview.md`.

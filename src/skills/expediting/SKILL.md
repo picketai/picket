@@ -12,8 +12,6 @@ user-invocable: true
 
 # Expediting
 
-Paths cited here and in this skill's step files, such as `expediting/SKILL.md`, are relative to `${CLAUDE_PLUGIN_ROOT}/skills/`.
-
 Admission is computed, not felt. The lane skill you are reading runs in the main session; no agent is spawned.
 
 Lane check for this request:
@@ -30,7 +28,7 @@ Name the touch set before editing: the files you will change, at most three. Ask
 
 ## Step 2: make the change
 
-Read `steps/20-prove.md` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
+Read `../shared/procedures/prove.md` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
 
 The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; no new comments (the `comments` rule), a needed why goes on the `Comments:` line for the user; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
 
@@ -38,7 +36,7 @@ Add or adjust unit tests for the behaviour you changed; the module's existing te
 
 ## Step 3: check, drive, commit, close
 
-Read `steps/30-check.md` once the change compiles.
+Run the check and the drive of `../shared/procedures/prove.md` once the change compiles, then read `steps/10-check.md`.
 
 ## Escalation
 
