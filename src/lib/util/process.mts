@@ -27,6 +27,19 @@ export function runProgram(program: string, args: string[], { cwd, timeoutMs }: 
     throw new ProgramFailed(`${program} failed: ${lastLine}`, lastLine);
   }
 }
+
+export type ProgramRunner = (program: string, args: string[], options: { cwd: string }) => string;
+
+function quotedIfSpaced(arg: string): string {
+  return /\s/.test(arg) ? `"${arg}"` : arg;
+}
+
+export function programRunner(platform: NodeJS.Platform): ProgramRunner {
+  const windows = platform === "win32";
+  return (program, args, { cwd }) =>
+    execFileSync(program, windows ? args.map(quotedIfSpaced) : args, { cwd, shell: windows, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+}
+
 export type ProgramResult = { status: number | null; stdout: string; stderr: string };
 
 export function spawnProgram(program: string, args: string[]): ProgramResult {

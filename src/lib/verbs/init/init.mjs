@@ -4,20 +4,14 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { MODS } from "../../mods.mts";
-import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "../../shared/paths.mts";
-import { STATUS_LINE } from "../../shared/styling/components/statusline/index.mts";
+import { claudeBlockSpan, INSTALL, isHomeFolder, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { HOST_DIR, hostPath, pluginRoot } from "../../shared/paths.mts";
+import { programRunner } from "../../util/process.mts";
 
-const IGNORE_LINE = `${stateRel("")}/`;
-const DEFAULT_CONFIG = { version: 1 };
-const HEADING = /^#{1,6} /;
-const MARKETPLACE_NAME = "picketai";
-const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
-const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
-const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
-const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
+const { claudeMd, config, gitignore, settings: SETTINGS } = INSTALL;
 const MOD_PLUGINS = Object.entries(MODS)
   .filter(([, { install }]) => install === "default")
-  .map(([name, { plugin }]) => ({ name, id: `${plugin}@${MARKETPLACE_NAME}` }));
+  .map(([name, { plugin }]) => ({ name, id: pluginId(plugin) }));
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";
 
@@ -31,14 +25,9 @@ function gitTopLevel(cwd) {
   }
 }
 
-function samePath(a, b) {
-  const norm = (p) => resolve(p).replaceAll("\\", "/").replace(/\/$/, "");
-  return process.platform === "win32" ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
-}
-
 export function initRoot({ root, cwd = process.cwd() } = {}) {
   const chosen = resolve(root ?? gitTopLevel(cwd) ?? cwd);
-  if (samePath(chosen, homedir())) throw new InitRefused(`refusing to set up the home folder ${chosen}; run init inside a project or pass --root <path>`);
+  if (isHomeFolder(chosen, homedir(), process.platform)) throw new InitRefused(`refusing to set up the home folder ${chosen}; run init inside a project or pass --root <path>`);
   return chosen;
 }
 
@@ -50,22 +39,12 @@ function eolOf(text) {
   return text.includes("\r\n") ? "\r\n" : "\n";
 }
 
-export function readTemplate() {
-  return lf(readFileSync(join(pluginRoot(), "templates", "claude-block.md"), "utf8"));
-}
-
-function templateHeadings(template) {
-  return new Set(template.split("\n").filter((line) => HEADING.test(line)));
-}
-
 export function mergeClaudeBlock(existing, template) {
-  if (existing === null) return `${template}\n## Project facts\n`;
+  if (existing === null) return `${template}\n${claudeMd.projectFacts}\n`;
   const lines = lf(existing).split("\n");
-  const start = lines.findIndex((line) => line === "# Picket");
-  if (start === -1) return `${lf(existing).replace(/\n*$/, "\n")}\n${template}`;
-  const own = templateHeadings(template);
-  let end = start + 1;
-  while (end < lines.length && !(HEADING.test(lines[end]) && !own.has(lines[end]))) end++;
+  const span = claudeBlockSpan(lines, template);
+  if (span === null) return `${lf(existing).replace(/\n*$/, "\n")}\n${template}`;
+  const { start, end } = span;
   const before = lines.slice(0, start).join("\n");
   const after = lines.slice(end).join("\n");
   return `${before ? `${before}\n` : ""}${template}${end < lines.length ? `\n${after}` : ""}`;
@@ -83,7 +62,7 @@ function readOrNull(path) {
 }
 
 function claudeMdStep(root) {
-  const path = join(root, "CLAUDE.md");
+  const path = join(root, claudeMd.file);
   const existing = readOrNull(path);
   const merged = mergeClaudeBlock(existing, readTemplate());
   const next = existing === null ? merged : merged.replaceAll("\n", eolOf(existing));
@@ -91,18 +70,18 @@ function claudeMdStep(root) {
 }
 
 function configStep(root) {
-  const path = configPath(root);
+  const path = join(root, config.file);
   if (existsSync(path)) return { name: "config", path, result: "unchanged" };
-  return { name: "config", path, result: writeIfChanged(path, null, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`) };
+  return { name: "config", path, result: writeIfChanged(path, null, `${JSON.stringify(config.initial, null, 2)}\n`) };
 }
 
 function gitignoreStep(root) {
-  const path = join(root, ".gitignore");
+  const path = join(root, gitignore.file);
   const existing = readOrNull(path);
-  if (existing !== null && lf(existing).split("\n").some((line) => line.trim() === IGNORE_LINE)) return { name: "gitignore", path, result: "unchanged" };
+  if (existing !== null && lf(existing).split("\n").some((line) => line.trim() === gitignore.line)) return { name: "gitignore", path, result: "unchanged" };
   const eol = existing === null ? "\n" : eolOf(existing);
   const base = existing === null || existing === "" ? "" : existing.endsWith("\n") ? existing : existing + eol;
-  return { name: "gitignore", path, result: writeIfChanged(path, existing, `${base}${IGNORE_LINE}${eol}`) };
+  return { name: "gitignore", path, result: writeIfChanged(path, existing, `${base}${gitignore.line}${eol}`) };
 }
 
 function union(existing, wanted) {
@@ -115,12 +94,12 @@ export function mergeSettings(settings, { statusLineAt = null } = {}) {
   const merged = structuredClone(settings);
   const permissions = { ...(merged.permissions ?? {}) };
   const denied = Array.isArray(permissions.deny) ? permissions.deny : [];
-  const blocked = SETTINGS_ALLOW.filter((rule) => denied.includes(rule));
-  merged.env = { ...(merged.env ?? {}), ...SETTINGS_ENV };
-  permissions.allow = union(permissions.allow, SETTINGS_ALLOW.filter((rule) => !blocked.includes(rule)));
-  permissions.ask = union(permissions.ask, SETTINGS_ASK);
+  const blocked = SETTINGS.allow.filter((rule) => denied.includes(rule));
+  merged.env = { ...(merged.env ?? {}), ...SETTINGS.env };
+  permissions.allow = union(permissions.allow, SETTINGS.allow.filter((rule) => !blocked.includes(rule)));
+  permissions.ask = union(permissions.ask, SETTINGS.ask);
   merged.permissions = permissions;
-  if (!("statusLine" in merged) && statusLineAt === null) merged.statusLine = STATUS_LINE;
+  if (!("statusLine" in merged) && statusLineAt === null) merged.statusLine = SETTINGS.statusLine;
   return { merged, blocked };
 }
 
@@ -137,7 +116,7 @@ function statusLineHolder(root, home) {
   const candidates = [hostPath(root, "settings.json"), hostPath(root, "settings.local.json"), join(home, HOST_DIR, "settings.json")];
   for (const path of candidates) {
     const statusLine = statusLineOf(path);
-    if (statusLine !== undefined) return { path, ours: path === candidates[0] && isDeepStrictEqual(statusLine, STATUS_LINE) };
+    if (statusLine !== undefined) return { path, ours: path === candidates[0] && isDeepStrictEqual(statusLine, SETTINGS.statusLine) };
   }
   return null;
 }
@@ -177,8 +156,8 @@ function projectSettings(root) {
 
 function installCommands(market) {
   return [
-    { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE_NAME]) },
-    { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), PLUGIN_ID, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[PLUGIN_ID]) },
+    { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE]) },
+    { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), INSTALL.plugin, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[INSTALL.plugin]) },
     ...MOD_PLUGINS.map(({ name, id }) => ({ name, args: [...INSTALL_PLUGIN.split(" "), id, "--scope", "project"], done: (s) => id in (s.enabledPlugins ?? {}) })),
   ];
 }
@@ -186,7 +165,7 @@ function installCommands(market) {
 const INSTALL_STEP_NAMES = installCommands(null).map(({ name }) => name);
 
 function byHand(market) {
-  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${PLUGIN_ID}`, ...MOD_PLUGINS.map(({ id }) => `${INSTALL_PLUGIN} ${id}`)];
+  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${INSTALL.plugin}`, ...MOD_PLUGINS.map(({ id }) => `${INSTALL_PLUGIN} ${id}`)];
   return `run by hand: ${commands.map((command) => `claude ${command} --scope project`).join(", then ")}`;
 }
 
@@ -210,17 +189,6 @@ function installSteps(root, { install, exec, market }) {
   });
 }
 
-export function claudeRunner() {
-  const windows = process.platform === "win32";
-  return (command, args, { cwd }) =>
-    execFileSync(command, windows ? args.map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)) : args, {
-      cwd,
-      shell: windows,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-}
-
 const STEPS = [
   ["claude-md", claudeMdStep],
   ["config", configStep],
@@ -228,7 +196,7 @@ const STEPS = [
   ["settings", settingsStep],
 ];
 
-export function init(root, { install = true, exec = claudeRunner(), market = marketplaceRoot(), home = homedir() } = {}) {
+export function init(root, { install = true, exec = programRunner(process.platform), market = marketplaceRoot(), home = homedir() } = {}) {
   const steps = STEPS.map(([name, step]) => {
     try {
       return step(root, { home });
