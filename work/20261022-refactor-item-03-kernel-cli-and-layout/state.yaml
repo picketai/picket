@@ -1,9 +1,9 @@
 id: 20261022-refactor-item-03-kernel-cli-and-layout
 lane: design
 title: "Refactor item 03: kernel CLI and layout"
-status: open
+status: done
 created: 2026-10-22T22:16:01.162Z
-updated: 2026-10-22T22:46:44.701Z
+updated: 2026-10-23T06:08:27.410Z
 session: 6db6a7c0-38e4-4fce-a69d-e1ac685fc391
 base: 399e1c9800ae417c7532fb8cd3fe0f0e36c87de1
 run_through: 9
