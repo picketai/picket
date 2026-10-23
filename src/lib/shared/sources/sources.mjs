@@ -14,9 +14,9 @@ import { basename, dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { parse, stringify } from "../../util/yaml-lite.mjs";
+import { extractReferences, hasExtension } from "./references.mjs";
 
 export const HIT_CAP = 200;
-export const TOKEN_CAP = 200;
 export const SNAPSHOT_MAX_BYTES = 1024 * 1024;
 
 function git(repo, args, { buffer = false } = {}) {
@@ -153,88 +153,6 @@ export function grep(source, regex, { path = null } = {}) {
 
 // ---- Intake: references in a story, resolved and snapshotted ----
 
-const SEGMENT = "[A-Za-z0-9_.-]+";
-const PATH_LIKE = new RegExp(`^${SEGMENT}(?:/${SEGMENT})+$`);
-const NAME_WITH_EXT = /^[A-Za-z0-9_.-]+\.[A-Za-z0-9]+$/;
-const PIN = /^([A-Za-z0-9_-]+)@([A-Za-z0-9_./-]+):(.+)$/;
-
-const hasExtension = (path) => /\.[A-Za-z0-9]+$/.test(basename(path));
-/** No `.`/`..` segment, so a snapshot path can never leave the work item. */
-const isSafe = (path) => !path.split("/").some((s) => s === "." || s === "..");
-
-const MARKDOWN_LINK = /\[[^\]\n]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
-
-function decodePercent(s) {
-  try {
-    return decodeURIComponent(s);
-  } catch {
-    return s;
-  }
-}
-
-/**
- * One raw token, cleaned: wrapping punctuation, then `#fragment` (kept as the anchor), `?query`
- * and a `:line` suffix stripped. `docs/fees.md#late-fees,` gives `docs/fees.md` and `late-fees`.
- */
-function cleanToken(raw) {
-  let word = raw.trim().replace(/^[("'[{<*]+/, "").replace(/[)"'\]}>.,;!?*]+$/, "");
-  let anchor = null;
-  const hash = word.indexOf("#");
-  if (hash >= 0) {
-    anchor = word.slice(hash + 1) || null;
-    word = word.slice(0, hash);
-  }
-  word = word.replace(/\?.*$/, "").replace(/:\d+(-\d+)?$/, "").replace(/[.,;:!?]+$/, "");
-  return { word, anchor };
-}
-
-/**
- * One cleaned word as a reference; `{ unshaped }` when it looks like a path (a slash and an
- * extension) but fails the path shape, so it is never looked up and goes to `unmatched`; null for
- * plain text. A backticked bare name with an extension counts; `<source>@<branch>:<path>` is a pin.
- */
-function classify(word, anchor, { backticked }) {
-  if (!word || word.includes("://")) return null;
-  const pin = word.match(PIN);
-  const path = pin ? pin[3] : word;
-  const shaped = (PATH_LIKE.test(path) || ((backticked || pin) && NAME_WITH_EXT.test(path))) && isSafe(path);
-  if (!shaped) return path.includes("/") && hasExtension(path) ? { unshaped: path } : null;
-  return pin ? { ref: word, source: pin[1], path, anchor, pin: pin[2] } : { ref: word, source: null, path, anchor, pin: null };
-}
-
-/**
- * The references in a story, in order: every markdown link target (percent-escapes decoded, a
- * leading `./` dropped), then the path-like words of the prose. Tokens with the same path merge;
- * at most TOKEN_CAP references.
- * @returns {{ refs: Array<{ ref, source, path, anchor, pin }>, unshaped: string[] }}
- */
-function extract(text) {
-  const refs = new Map();
-  const unshaped = new Set();
-  const take = (raw, backticked) => {
-    const { word, anchor } = cleanToken(raw);
-    const r = classify(word, anchor, { backticked });
-    if (!r) return;
-    if (r.unshaped) unshaped.add(r.unshaped);
-    else if (!refs.has(r.ref) && refs.size < TOKEN_CAP) refs.set(r.ref, r);
-    else if (refs.has(r.ref) && !refs.get(r.ref).anchor) refs.get(r.ref).anchor = r.anchor;
-  };
-  const prose = String(text).replace(MARKDOWN_LINK, (_, target) => {
-    take(decodePercent(target).replace(/^\.\//, ""), true);
-    return " ";
-  });
-  for (const m of prose.matchAll(/`([^`\n]+)`|(\S+)/g)) take(m[1] ?? m[2], m[1] !== undefined);
-  return { refs: [...refs.values()], unshaped: [...unshaped] };
-}
-
-/**
- * The references a story names (D-005): see extract.
- * @returns {Array<{ ref: string, source: string|null, path: string, anchor: string|null, pin: string|null }>}
- */
-export function tokens(text) {
-  return extract(text).refs;
-}
-
 /** A reference lookup that failed for a reason the caller must show: the CLI exits 2 on it. */
 export class LookupError extends Error {
   exitCode = 2;
@@ -278,7 +196,7 @@ export function resolveReferences(text, sources) {
     refs.push(rec);
     if (b) bytes.set(rec.ref, b);
   };
-  const { refs: found, unshaped } = extract(text);
+  const { refs: found, unshaped } = extractReferences(text);
   unmatched.push(...unshaped);
   for (const t of found) {
     if (t.pin) {
@@ -365,7 +283,7 @@ export function pick(dir, ref, label, sources) {
  */
 export function addRef(dir, ref, sources) {
   const intake = readIntake(dir) ?? { refs: [], unmatched: [] };
-  const [t] = extract(`\`${ref}\``).refs;
+  const [t] = extractReferences(`\`${ref}\``).refs;
   if (!t) throw new Error(`${ref} is not a path reference (expected <path>[#anchor] or <source>@<branch>:<path>)`);
   const present = intake.refs.find((r) => r.ref === t.ref);
   if (present) return { added: false, ref: present };

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { configPath, configRel, hostRel } from "./paths.mjs";
 import { assertNotDestructive } from "./destructive.mjs";
+import { isSourceName } from "./sources/source.mjs";
 
 /** Paths whose change always means the heavy lane. Extend per project with `security_paths`. */
 export const DEFAULT_SECURITY_PATHS = ["src/auth/", "src/crypto/", "src/security/", "Authentication/", "Authorization/"];
@@ -65,9 +66,16 @@ function checkSecurityPaths(value, warn) {
 
 function checkSourceDeclarations(value, warn) {
   if (value === undefined) return {};
-  if (isPlainObject(value)) return value;
-  warn("sources must be an object; no sources declared");
-  return {};
+  if (!isPlainObject(value)) {
+    warn("sources must be an object; no sources declared");
+    return {};
+  }
+  const declarations = {};
+  for (const [name, decl] of Object.entries(value)) {
+    if (isSourceName(name)) declarations[name] = decl;
+    else warn(`source "${name}" ignored: a source name may use letters, digits, "_" and "-"`);
+  }
+  return declarations;
 }
 
 function isPositiveInteger(value) {

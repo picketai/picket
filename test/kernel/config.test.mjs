@@ -56,6 +56,15 @@ test("an unset env var gives the source with root null and a reason naming the v
   });
 });
 
+test("a source name outside letters, digits, _ and - is left out with a warning (T-1.1)", () => {
+  withProject({ sources: { analysis: { env: "X_SRC" }, "my.docs": { env: "Y_SRC" } } }, (root) => {
+    const c = loadConfig(root, {});
+    assert.deepEqual(c.sources.map((s) => s.name), ["analysis"]);
+    assert.deepEqual(c.warnings, ['source "my.docs" ignored: a source name may use letters, digits, "_" and "-"']);
+  });
+  assert.equal(SCHEMA.properties.sources.propertyNames.pattern, "^[A-Za-z0-9_-]+$");
+});
+
 test("a set env var resolves to an absolute root; a missing directory is a reason, not a root", () => {
   withProject({ security_paths: ["src/pay/"], sources: { analysis: { env: "X_SRC" } } }, (root) => {
     assert.equal(loadConfig(root, { X_SRC: root }).sources[0].root, resolve(root));

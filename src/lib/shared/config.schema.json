@@ -17,6 +17,7 @@
     "sources": {
       "description": "Read-only repositories outside the project, by name. Each names the env var that holds its root on this machine.",
       "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_-]+$" },
       "additionalProperties": {
         "type": "object",
         "properties": { "env": { "type": "string", "minLength": 1 } },
