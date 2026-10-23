@@ -7,7 +7,7 @@ import { isSessionId, readState, writeState } from "../../shared/work/state.mjs"
 import { hasMarker, setMarker } from "../../shared/work/markers.mjs";
 import { appendVerdict } from "../../shared/work/verdict-log.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
-import { next } from "../../shared/work/next-step.mjs";
+import { readNext } from "../../shared/work/next-view.mjs";
 import { ownGate } from "../../shared/work/gate.mjs";
 import { commitOwned, listedPathMatcher } from "../../shared/git.mjs";
 import { recordAccept } from "../../shared/ledger.mjs";
@@ -154,5 +154,5 @@ export function route(o) {
   claimForSession(o.id, o.session, root);
   appendVerdict(root, o.id, { agent: o.agent, verdict: o.verdict, phase, scope: o.scope ?? null, through: o.through ?? null, ...mistakeClasses(o) }, new Date());
   if (commitAfter != null) commitPhase(o.id, commitAfter, root, applied);
-  return { id: o.id, verdict: o.verdict, phase, applied, next: next(o.id, root) };
+  return { id: o.id, verdict: o.verdict, phase, applied, next: readNext(root, o.id) };
 }

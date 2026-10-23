@@ -7,6 +7,7 @@ import { phaseOf, readSnapshot, stateView } from "../../dist/lib/shared/work/sna
 import { phasePaths as phasePathsOf } from "../../dist/lib/shared/work/artifact.mjs";
 import { ownGate as ownGateOf } from "../../dist/lib/shared/work/gate.mjs";
 import { securityPaths } from "../../dist/lib/shared/config.mjs";
+import { readNext } from "../../dist/lib/shared/work/next-view.mjs";
 
 export function createWork({ root, now = new Date(), ...request }) {
   return createWorkAt(root, request, now);
@@ -63,4 +64,8 @@ export function phasePaths(id, n, root) {
 
 export function mustHaves(id, n, root) {
   return phase(id, n, root)?.entry ?? null;
+}
+
+export function next(id, root) {
+  return readNext(root, id);
 }

@@ -2,21 +2,23 @@ import { existsSync, readFileSync } from "node:fs";
 import { readSnapshot, stateView } from "../shared/work/snapshot.mjs";
 import { listOpenWork } from "../shared/work/state.mjs";
 import { hostPath, hostRel } from "../shared/paths.mjs";
-import { next } from "../shared/work/next-step.mjs";
-import { loadConfig } from "../shared/config.mjs";
+import { nextOf } from "../shared/work/next-view.mjs";
+import { loadConfig, securityPaths } from "../shared/config.mjs";
 
 const SHOWN_ITEMS = 8;
 const GLOSSARY_CHARS = 6000;
 
-function openItemLine(s, root) {
-  const n = next(s.id, root);
+function openItemLine(snap, secured) {
+  const s = stateView(snap);
+  const n = nextOf(snap, secured);
   return `- ${s.id} · ${s.lane} · ${s.status}${s.phase_count ? ` · phases ${s.phases_approved}/${s.phase_count}` : ""} · next: ${n.action}${n.actor ? ` by ${n.actor}` : ""}${n.phase ? ` (phase ${n.phase})` : ""}`;
 }
 
 function openItemsPart(root) {
-  const open = listOpenWork(root).map((id) => stateView(readSnapshot(root, id)));
+  const open = listOpenWork(root).map((id) => readSnapshot(root, id));
   if (!open.length) return null;
-  const lines = open.slice(0, SHOWN_ITEMS).map((s) => openItemLine(s, root));
+  const secured = securityPaths(root);
+  const lines = open.slice(0, SHOWN_ITEMS).map((snap) => openItemLine(snap, secured));
   const more = open.length > SHOWN_ITEMS ? `\n- and ${open.length - SHOWN_ITEMS} more (picket list)` : "";
   return `# Open work items\n${lines.join("\n")}${more}\nResume with /picket:resuming <id>; never re-derive state from the conversation.`;
 }

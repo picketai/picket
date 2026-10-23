@@ -3,7 +3,7 @@ import { loadConfig } from "../../shared/config.mjs";
 import { configRel, WORK_DIR } from "../../shared/paths.mts";
 import { IntakeError } from "../../shared/sources/sources.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { next } from "../../shared/work/next-step.mjs";
+import { readNext } from "../../shared/work/next-view.mts";
 import { createWork, type WorkState } from "../../shared/work/state.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
@@ -70,7 +70,7 @@ function sourceWarnings(root: string, story: string | undefined): string[] {
 
 export const openItem = action<OpenInput, Opened>(async (input, { root, session, now }) => {
   const created = createOrRefuse(input, root, session, now());
-  return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(root, input.story), next: next(created.id, root) });
+  return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(root, input.story), next: readNext(root, created.id) });
 });
 
 function parseRequest(args: Args): Request | null {

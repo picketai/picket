@@ -1,9 +1,9 @@
 import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
-import { next } from "../../shared/work/next-step.mjs";
+import { nextOf } from "../../shared/work/next-view.mjs";
 import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mjs";
-import { loadConfig } from "../../shared/config.mjs";
+import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { candidates } from "../../shared/sources/sources.mjs";
 
 export const WIDTH = 100;
@@ -93,7 +93,7 @@ function describeCandidates(ref, root) {
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
-  const n = next(id, root);
+  const n = nextOf(snap, securityPaths(root));
   const lines = [];
   let options = n.options?.length ? n.options.join("   ") : null;
 

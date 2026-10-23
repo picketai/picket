@@ -2,7 +2,7 @@ import { action, done, refuse } from "../../shared/action.mts";
 import { dirtyPaths } from "../../shared/git.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
-import { next } from "../../shared/work/next-step.mjs";
+import { readNext } from "../../shared/work/next-view.mts";
 import { readState, writeState, type WorkState } from "../../shared/work/state.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 
@@ -29,7 +29,7 @@ export const setFields = action<SetInput, SetResult>(async ({ id, assignments },
   if (st.status !== "blocked") delete st.blocked_reason;
   writeState(root, st, now());
   const dirty = st.status === "done" ? (dirtyPaths(root) ?? []) : [];
-  return done({ ...st, dirty, next: next(st.id, root) } as SetResult);
+  return done({ ...st, dirty, next: readNext(root, st.id) } as SetResult);
 });
 
 function parseAssignment(token: string): Assignment {

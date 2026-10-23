@@ -3,7 +3,7 @@ import { phasePaths } from "../../shared/work/artifact.mjs";
 import { readSnapshot } from "../../shared/work/snapshot.mjs";
 import { blockFiles } from "../../shared/work/block.mjs";
 import { recordAccept } from "../../shared/ledger.mjs";
-import { next } from "../../shared/work/next-step.mjs";
+import { readNext } from "../../shared/work/next-view.mjs";
 import { listWork, readState, writeState } from "../../shared/work/state.mjs";
 import { readVerdicts } from "../../shared/work/verdict-log.mjs";
 import { readLeft } from "../../shared/work/left.mjs";
@@ -51,7 +51,7 @@ function refuseUnlessClosable(id, root) {
   const state = readState(root, id);
   if (state.status === "abandoned") throw new CloseRefused(`${id} is abandoned; only an open, blocked or done item closes`);
   if (state.status === "done") return;
-  const pending = next(id, root);
+  const pending = readNext(root, id);
   if (nextAllowsClose(state.lane, pending)) return;
   const { action, actor, phase, detail } = pending;
   throw new CloseRefused(`next is ${action}, not close`, { action, actor, phase, detail });

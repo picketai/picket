@@ -271,7 +271,7 @@ One verdict reads `state.yaml` nine times and `order.md` five times, because `ro
 - Object tests for `ownGate` build phases as plain objects: a security path from entry files, from the touch set, with backslashes; a mark of `true`, `"yes"` and `false`; an absent mark; `irreversible: true`; `undefined`.
 
 **Done when:**
-- **T-3.1** The paths in this phase's `files` exist and `work.mjs` and `gate.mjs` do not; `git grep -nE "deriveState|readArtifact|mustHaves|phaseEntry" -- src` finds nothing; `npm run typecheck` exits 0; `npm test` passes with existing test bodies unchanged.
+- **T-3.1** The paths in this phase's `files` exist and `work.mjs` and `gate.mjs` do not; `git grep -nE "\b(deriveState|readArtifact|mustHaves)\b|export function phaseEntry\b" -- src` finds nothing (private helpers such as `phaseEntry` and `readArtifactFile` may remain); `npm run typecheck` exits 0; `npm test` passes with existing test bodies unchanged.
 - **T-3.2** `state-view.test.mjs` shows `JSON.stringify(stateView(readSnapshot(root, id)))`, root replaced by `<root>`, equal to the stored string for each of the three items.
 - **T-3.3** `artifact.test.mjs` shows `parseArtifact` reading `## Phase 1: A` and `## Phase 2 - B` as titles `A` and `B`, each phase's frontmatter entry, the touch set's backticked paths and nothing from `**Changes:**`, `irreversible` true for a prose `[IRREVERSIBLE]` and false inside inline code or a fence, and `phasePaths` giving entry files then touch-set paths once each.
 - **T-3.4** `gate.test.mjs`'s object tests cover each branch listed in Changes and create no folder; its seven folder tests pass unchanged.
@@ -356,3 +356,5 @@ One verdict reads `state.yaml` nine times and `order.md` five times, because `ro
 - **OQ-002** Phase 1 changes when a run grant stops for a security path, which the template's `security` field counts as security-sensitive; the user's note for this item says to mark only a phase that touches a security path. Owner: the lead. Fallback: `security: false` on every phase, as the user directed; phase 1 is small and alone, so flipping it costs one extra gate.
 
 ## Revision log
+
+- 2026-10-23: T-3.1: grep narrowed to the removed exports; it matched the private helpers `phaseEntry` and `readArtifactFile`, which phase 3 rightly added.
