@@ -343,7 +343,7 @@ It removes what `picket init` added, in groups:
 
 When `.picket` or `.claude` is a link to a folder outside the project, `uninstall` leaves everything behind that link alone and says so. It also refuses to run in your home folder.
 
-Two things live on your machine rather than in the project, so `uninstall` does not remove them. When it is done, it prints the commands:
+Two things live on your machine rather than in the project, so `uninstall` does not remove them. After a full removal (every group removed, `work/` kept or not), its text output names the commands for them:
 
 ```sh
 picket style remove --all

@@ -38,7 +38,7 @@ Tests use `node:test` with `node:assert/strict`. `npm test` type-checks, then ru
 
 `node scripts/test.mjs unit build` runs only the named steps, and `npm run test:unit` runs the unit tests alone. Run `npm test` before proposing a commit.
 
-The pages `docs/reference/cli.md`, `docs/reference/hooks.md` and `docs/reference/mods.md` are generated from the three lists and each verb's `usage`. `npm run docs` writes them, and so does every build. A change to a summary or a usage changes a page: stage the regenerated page with your change, because `test/repo/docs.test.mjs` compares each page with the copy in the git index and fails with `run npm run docs and stage it` until you do.
+The pages `docs/reference/cli.md`, `docs/reference/hooks.md` and `docs/reference/mods.md` are generated from the three lists and each verb's `usage`. `npm run docs` writes them, and so does every build; `npm run watch` writes them once when it starts, not on each save. A change to a summary or a usage changes a page: stage the regenerated page with your change, because `test/repo/docs.test.mjs` compares each page with the copy in the git index and fails with `run npm run docs and stage it` until you do.
 
 A unit test imports its module from `src/` and shared helpers through `#test/*`, which maps to `test/support/` (`import { withProject } from "#test/project.mts"`). It never imports `dist/`. A test never depends on a gitignored file: a fresh clone must pass.
 

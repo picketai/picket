@@ -28,7 +28,7 @@ const SHARED_FLAGS = [
 const EXIT_MEANINGS = {
   done: "the verb did its work",
   failed: "the verb ran and reports a failure, such as a red check",
-  refused: 'the verb refused the request and prints `{ "ok": false, "error": ... }`',
+  refused: 'the verb refused the request: a JSON verb prints `{ "ok": false, "error": ... }`, a text verb prints `refused: <message>` unless you pass `--json`',
   usage: "the arguments are wrong or the verb is unknown",
   crash: "an unexpected error",
 };

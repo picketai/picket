@@ -9,7 +9,7 @@ Newest release first; each heading is a version.
 - Picket needs Node.js 22 or newer.
 - Six verbs have new names and one is gone. `new` is now `open`, `review-summary` is now `summary`, `setup-terminal` is now `style apply` (its `--revert` is now `style remove --all`), `pr <url>` is now `pullrequest prepare <url>`, `pr <url> --post <file>` is now `pullrequest post <url> --file <file>`, `extensions` is now `extension list` and `extension new` is now `extension add`. `find-verdict` is removed. An old name prints its new one, for example `picket: "new" is now "open"`.
 - `picket uninstall` now removes Picket from the project. The styling removal it used to run is `picket style remove`.
-- A refusal exits 2 and prints `{ "ok": false, "error": ... }`. This now covers `leave` on a closed item, `source pick` with an unknown label, `source grep` with an invalid regex, a source that is not declared, and a destructive command given to `check` or `drive`.
+- A refusal exits 2 and prints `{ "ok": false, "error": ... }`, or `refused: <message>` from a verb that prints text. This now covers `leave` on a closed item, `source pick` with an unknown label, `source grep` with an invalid regex, a source that is not declared, and a destructive command given to `check` or `drive`.
 - Security paths match the same way in `admit`, the phase gate and the review summary. An entry written as a glob (`src/payments/**`) now counts, an entry `src/pay` no longer matches the folder src/payment-ui, and a single folder name such as `Authentication/` matches at any depth.
 - The Bash guard asks before `find -fprint`, `find -fls`, `tree -o`, `rg --pre` and `git log`, `git diff` or `git show` with `--output`, before a read-only git command with `-c`, `--config-env`, `--exec-path` or `-p`, and before project tools such as `vitest`, `tsc`, `eslint` and `prettier`. Allow them in your own Claude Code permission settings if you want them unprompted.
 - Agents are denied `uninstall`, `waive` and `comment` in every form: through `npx`, as `picket.cmd` or `picket.ps1`, and with a flag before the verb (`--human`).
@@ -33,7 +33,7 @@ Newest release first; each heading is a version.
 
 ### Added
 
-- `picket uninstall` removes what `picket init` added. It shows its plan and asks per group, keeps `work/` unless you choose it or pass `--remove-work`, leaves a linked `.picket` or `.claude` folder alone, gives `CLAUDE.md` and `.gitignore` back byte for byte, and prints the two machine-level commands it does not run.
+- `picket uninstall` removes what `picket init` added. It shows its plan and asks per group, keeps `work/` unless you choose it or pass `--remove-work`, leaves a linked `.picket` or `.claude` folder alone, gives `CLAUDE.md` and `.gitignore` back byte for byte, and after a full removal prints the two machine-level commands it does not run.
 - `picket style remove`, to remove the styling items you choose, or all of them with `--all`.
 - `picket next` offers `[i] confirm the irreversible step` at an irreversible phase, gives the options at a stalled phase, and stops after every third cumulative review since the last approval that returns `CHANGES REQUIRED`.
 - `picket state` and `picket next` print a `warnings` key when a line of `verdicts.jsonl` cannot be read.
@@ -50,7 +50,7 @@ Newest release first; each heading is a version.
 
 New since 1.0.0-alpha.1:
 
-- `picket style apply` gives Claude Code and the terminal the PicketAI look (theme, font, colour scheme, status line), and `picket style remove` removes only what you choose.
+- `picket setup-terminal` gives Claude Code and the terminal the PicketAI look (theme, font, colour scheme, status line), and `picket uninstall` removes only what you choose.
 - `picket statusline` renders the session line, and `picket init` sets it unless a status line is already set.
 - `picket leave` records cleanup a work item leaves for you; `picket close` lists it.
 - `picket next --latest` answers the current work item: the most recently active open or blocked item, this session's first.

@@ -22,7 +22,7 @@ Usage: `picket <verb> [args] [--pretty | --human]`. Each verb prints JSON or tex
 | 1 | usage | the arguments are wrong or the verb is unknown |
 | 1 | crash | an unexpected error |
 | 2 | failed | the verb ran and reports a failure, such as a red check |
-| 2 | refused | the verb refused the request and prints `{ "ok": false, "error": ... }` |
+| 2 | refused | the verb refused the request: a JSON verb prints `{ "ok": false, "error": ... }`, a text verb prints `refused: <message>` unless you pass `--json` |
 
 ## picket admit
 
