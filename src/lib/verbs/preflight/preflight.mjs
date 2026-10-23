@@ -4,7 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { protectionScope } from "../../shared/sources/source-paths.mjs";
-import { deriveState } from "../../shared/work/work.mjs";
+import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
 import * as git from "../../shared/git.mjs";
 import { loadConfig } from "../../shared/config.mjs";
@@ -59,7 +59,7 @@ export function preflight(id, root = projectRoot(), home = homedir()) {
 
   let s = null;
   try {
-    s = deriveState(id, root);
+    s = stateView(readSnapshot(root, id));
     add("work_item", "ok", `${s.lane} · ${s.status} · ${s.title}`);
   } catch (err) {
     add("work_item", "fail", err.message);

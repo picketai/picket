@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "./work-fixture.mjs";
-import { verify, mustHaves } from "../../dist/lib/verbs/verify/verify.mjs";
+import { createWork, mustHaves } from "./work-fixture.mjs";
+import { verify } from "../../dist/lib/verbs/verify/verify.mjs";
 import { stateDir, statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 
 function setup() {

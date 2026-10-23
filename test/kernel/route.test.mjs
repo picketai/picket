@@ -4,8 +4,7 @@ import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { deriveState } from "../../dist/lib/shared/work/work.mjs";
-import { createWork, saveBlock } from "./work-fixture.mjs";
+import { createWork, deriveState, saveBlock } from "./work-fixture.mjs";
 import { route } from "../../dist/lib/verbs/route/route.mjs";
 import { findVerdict } from "../../dist/lib/shared/verdicts.mjs";
 import { bareAgentName } from "../../dist/lib/shared/agent-name.mjs";

@@ -1,12 +1,14 @@
 // What a verdict means for the state machine. Called by the route.verdict hook on every agent stop
 // and by the lane skills. Exact-match tokens only; near misses are recorded but change nothing.
-import { deriveState } from "../../shared/work/work.mjs";
+import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
+import { phasePaths } from "../../shared/work/artifact.mjs";
+import { securityPaths } from "../../shared/config.mjs";
 import { isSessionId, readState, writeState } from "../../shared/work/state.mjs";
 import { hasMarker, setMarker } from "../../shared/work/markers.mjs";
 import { appendVerdict } from "../../shared/work/verdict-log.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
 import { next } from "../../shared/work/next-step.mjs";
-import { ownGate, phasePaths } from "../../shared/work/gate.mjs";
+import { ownGate } from "../../shared/work/gate.mjs";
 import { commitOwned, listedPathMatcher } from "../../shared/git.mjs";
 import { recordAccept } from "../../shared/ledger.mjs";
 import { blockFiles, readBlock, parseBlock, proposedCommit } from "../../shared/work/block.mjs";
@@ -20,12 +22,12 @@ import { VERDICTS } from "../../shared/verdicts.mjs";
  * `git log -1 --format=%h -- work/<id>/phases/N.approved` names it, no marker needed.
  */
 function commitPhase(id, phase, root, applied) {
-  const s = deriveState(id, root);
+  const planned = phaseOf(readSnapshot(root, id), Number(phase));
   const b = parseBlock(readBlock(root, id, phase) ?? "");
   const proposed = b.fields.commit && !/^[0-9a-f]{7,40}$/i.test(b.fields.commit) ? proposedCommit(b) : null;
-  const title = s.phases.find((p) => p.n === Number(phase))?.title ?? `phase ${phase}`;
+  const title = planned?.title ?? `phase ${phase}`;
   const message = proposed ?? `${title}, phase ${phase} of ${id}`;
-  const listed = listedPathMatcher(root, [`work/${id}/`, ...phasePaths(id, phase, root)]);
+  const listed = listedPathMatcher(root, [`work/${id}/`, ...(planned ? phasePaths(planned) : [])]);
   const reported = listedPathMatcher(root, blockFiles(root, id, phase));
   let result;
   try {
@@ -74,7 +76,8 @@ export function route(o) {
   if (!spec) throw new Error(`unknown verdict "${o.verdict}"; exact tokens: ${Object.keys(VERDICTS).join(", ")}`);
   if (spec.agent !== o.agent && !(spec.agent === "user" && o.agent === "lead")) throw new Error(`"${o.verdict}" may only come from ${spec.agent}, not ${o.agent}`);
 
-  const s = deriveState(o.id, root);
+  const snap = readSnapshot(root, o.id);
+  const s = stateView(snap);
   const phase = o.phase ?? s.current_phase ?? null;
   const applied = [];
   let commitAfter = null; // the phase whose staged work this approval commits, once the verdict row is on disk
@@ -90,7 +93,7 @@ export function route(o) {
       // decided here in code, not left to the developer's reading of the step file.
       const st = readState(root, o.id);
       if (st.run_through && phase <= st.run_through && !hasMarker(root, o.id, phase, "approved")) {
-        const gate = ownGate(o.id, phase, root);
+        const gate = ownGate(phaseOf(snap, Number(phase)), securityPaths(root));
         if (gate) {
           delete st.run_through;
           writeState(root, st, new Date());

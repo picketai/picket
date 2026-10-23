@@ -1,10 +1,9 @@
 // The single next action for a work item, computed from derived state. Never stored.
 // Every branch returns { action, actor, phase, detail, options } where `options` is the bracket menu
 // the gate packet shows the user (empty when no user decision is due).
-import { deriveState } from "./work.mjs";
+import { phaseOf, readSnapshot, stateView } from "./snapshot.mjs";
 import { isSessionId, listOpenWork } from "./state.mjs";
-import { workDir } from "./files.mjs";
-import { ambiguousRefs } from "../sources/sources.mjs";
+import { securityPaths } from "../config.mjs";
 import { ownGate } from "./gate.mjs";
 
 export const ACTIONS = Object.freeze([
@@ -22,7 +21,8 @@ export const ACTIONS = Object.freeze([
 const HEAVY = new Set(["design"]);
 
 export function next(id, root) {
-  const s = deriveState(id, root);
+  const snap = readSnapshot(root, id);
+  const s = stateView(snap);
   const base = { id: s.id, lane: s.lane, status: s.status, phase: null, options: [], own_gate: null };
 
   if (s.status === "done" || s.status === "abandoned") return { ...base, action: "none", actor: null, detail: `work item is ${s.status}` };
@@ -30,7 +30,7 @@ export function next(id, root) {
 
   // The opening gate: a story reference with differing versions across the source's worktrees is
   // the user's pick, before anyone reads it.
-  const ambiguous = ambiguousRefs(workDir(root, id));
+  const ambiguous = snap.ambiguousRefs;
   if (ambiguous.length) {
     return { ...base, action: "resolve_sources", actor: "user", detail: `${ambiguous.length} reference(s) differ across worktrees`, options: [`[p] pick: picket source pick ${id} <ref> <label>`] };
   }
@@ -69,7 +69,7 @@ export function next(id, root) {
 
   const remaining = s.phases.filter((p) => p.n > current.n && !p.approved).map((p) => p.n);
   const runOffer = remaining.length ? `[r] run through ${remaining.at(-1)}` : null;
-  const own_gate = ownGate(id, current.n, root);
+  const own_gate = ownGate(phaseOf(snap, current.n), securityPaths(root));
   const awaiting = `phase ${current.n} of ${s.phase_count} is done and awaits your decision`;
   return {
     ...base,
@@ -99,7 +99,7 @@ function stampOf(s) {
 }
 
 export function latest(root, { session } = {}) {
-  const open = listOpenWork(root).map((id) => deriveState(id, root));
+  const open = listOpenWork(root).map((id) => stateView(readSnapshot(root, id)));
   if (!open.length) return { id: null, action: "none", actor: null, phase: null, detail: "no open work item", options: [] };
   const given = isSessionId(session);
   const own = given ? open.filter((s) => stampOf(s) === session) : [];

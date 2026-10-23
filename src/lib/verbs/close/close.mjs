@@ -1,9 +1,9 @@
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, listedPathMatcher, repoPrefix, stagedFiles } from "../../shared/git.mjs";
-import { phasePaths } from "../../shared/work/gate.mjs";
+import { phasePaths } from "../../shared/work/artifact.mjs";
+import { readSnapshot } from "../../shared/work/snapshot.mjs";
 import { blockFiles } from "../../shared/work/block.mjs";
 import { recordAccept } from "../../shared/ledger.mjs";
 import { next } from "../../shared/work/next-step.mjs";
-import { readArtifact } from "../../shared/work/work.mjs";
 import { listWork, readState, writeState } from "../../shared/work/state.mjs";
 import { readVerdicts } from "../../shared/work/verdict-log.mjs";
 import { readLeft } from "../../shared/work/left.mjs";
@@ -22,8 +22,8 @@ export function defaultCloseMessage(id) {
 const PHASED_LANES = new Set(["order", "design"]);
 
 function itemOwner(id, root, lane, touched) {
-  const phases = PHASED_LANES.has(lane) ? readArtifact(id, root).phases : [];
-  const phaseLists = phases.flatMap((p) => [...phasePaths(id, p.n, root), ...blockFiles(root, id, p.n)]);
+  const phases = PHASED_LANES.has(lane) ? readSnapshot(root, id).phases : [];
+  const phaseLists = phases.flatMap((p) => [...phasePaths(p), ...blockFiles(root, id, p.n)]);
   return listedPathMatcher(root, [`work/${id}/`, ...phaseLists, ...touched]);
 }
 

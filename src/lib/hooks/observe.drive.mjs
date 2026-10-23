@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { isDriveCommand } from "./drive-evidence.mjs";
-import { deriveState } from "../shared/work/work.mjs";
+import { readSnapshot, stateView } from "../shared/work/snapshot.mjs";
 import { listWork } from "../shared/work/state.mjs";
 import { stateDir, statePath, STATE_FILES } from "../shared/paths.mjs";
 import { bareAgentName } from "../shared/agent-name.mjs";
@@ -15,7 +15,7 @@ const POWERSHELL_TOOL = "PowerShell";
 
 export function openWorkItem(root) {
   for (const id of listWork(root).reverse()) {
-    const s = deriveState(id, root);
+    const s = stateView(readSnapshot(root, id));
     if (s.status === "open") return { work_id: id, phase: s.current_phase };
   }
   return { work_id: null, phase: null };

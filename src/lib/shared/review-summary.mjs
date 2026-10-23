@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { deriveState } from "./work/work.mjs";
+import { readSnapshot, stateView } from "./work/snapshot.mjs";
 import { itemWaivers } from "./work/approvals.mjs";
 import { projectRoot } from "./paths.mjs";
 import { loadConfig, securityPaths } from "./config.mjs";
@@ -158,7 +158,7 @@ export function reviewSummaryRange(root, base, head) {
  */
 export function reviewSummary(id, o = {}) {
   const root = o.root ?? projectRoot();
-  const s = deriveState(id, root);
+  const s = stateView(readSnapshot(root, id));
   const base = o.base ?? s.base ?? "HEAD";
   const nested = nestedChanges(id, root, s.branch);
   // The root sees a nested repo as one untracked directory entry; its files are counted below instead.

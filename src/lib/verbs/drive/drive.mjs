@@ -2,7 +2,7 @@ import { spawn, execSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import net from "node:net";
-import { deriveState } from "../../shared/work/work.mjs";
+import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
 import { listWork } from "../../shared/work/state.mjs";
 import { projectRoot, stateDir, statePath, STATE_FILES } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
@@ -35,7 +35,7 @@ export function portOpen(port) {
 /** The newest open work item, so a drive row lands on the phase it verifies. */
 export function currentWork(root) {
   for (const id of listWork(root).reverse()) {
-    const s = deriveState(id, root);
+    const s = stateView(readSnapshot(root, id));
     if (s.status === "open") return { work_id: id, phase: s.current_phase ?? null };
   }
   return { work_id: null, phase: null };

@@ -3,6 +3,10 @@ import { setMarker as setMarkerAt } from "../../dist/lib/shared/work/markers.mjs
 import { appendVerdict as appendVerdictAt } from "../../dist/lib/shared/work/verdict-log.mjs";
 import { appendWaiver as appendWaiverAt } from "../../dist/lib/shared/work/approvals.mjs";
 import { blockFiles as blockFilesAt, saveBlock as saveBlockAt } from "../../dist/lib/shared/work/block.mjs";
+import { phaseOf, readSnapshot, stateView } from "../../dist/lib/shared/work/snapshot.mjs";
+import { phasePaths as phasePathsOf } from "../../dist/lib/shared/work/artifact.mjs";
+import { ownGate as ownGateOf } from "../../dist/lib/shared/work/gate.mjs";
+import { securityPaths } from "../../dist/lib/shared/config.mjs";
 
 export function createWork({ root, now = new Date(), ...request }) {
   return createWorkAt(root, request, now);
@@ -38,4 +42,25 @@ export function blockFiles(id, n, root) {
 
 export function newId(title, now = new Date()) {
   return newIdAt(title, now);
+}
+
+export function deriveState(id, root) {
+  return stateView(readSnapshot(root, id));
+}
+
+function phase(id, n, root) {
+  return phaseOf(readSnapshot(root, id), Number(n));
+}
+
+export function ownGate(id, n, root) {
+  return ownGateOf(phase(id, n, root), securityPaths(root));
+}
+
+export function phasePaths(id, n, root) {
+  const found = phase(id, n, root);
+  return found ? phasePathsOf(found) : [];
+}
+
+export function mustHaves(id, n, root) {
+  return phase(id, n, root)?.entry ?? null;
 }

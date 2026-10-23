@@ -12,15 +12,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { deriveState, readArtifact } from "../../shared/work/work.mjs";
+import { phaseOf, readSnapshot } from "../../shared/work/snapshot.mjs";
 import { projectRoot, statePath, STATE_FILES } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
-
-export function mustHaves(id, n, root = projectRoot()) {
-  const art = readArtifact(id, root);
-  const list = Array.isArray(art.front?.phases) ? art.front.phases : [];
-  return list.find((p) => Number(p.n) === Number(n)) ?? null;
-}
 
 export function readDriveLog(root = projectRoot()) {
   const p = statePath(root, STATE_FILES.driveLog);
@@ -39,15 +33,16 @@ export function readDriveLog(root = projectRoot()) {
 }
 
 export function verify(id, n, { root = projectRoot(), runTests = true } = {}) {
-  const s = deriveState(id, root);
-  const mh = mustHaves(id, n, root);
+  const snap = readSnapshot(root, id);
+  const phase = phaseOf(snap, Number(n));
   const results = [];
   const add = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail });
 
-  if (!s.phases.some((p) => p.n === Number(n))) {
-    add("phase_exists", false, `no ## Phase ${n} in ${s.artifact}`);
+  if (!phase) {
+    add("phase_exists", false, `no ## Phase ${n} in ${snap.artifact?.path ?? null}`);
     return { ok: false, phase: Number(n), results };
   }
+  const mh = phase.entry;
   if (!mh) {
     add("must_haves_declared", false, `frontmatter has no phases[] entry for n: ${n}`);
     return { ok: false, phase: Number(n), results };

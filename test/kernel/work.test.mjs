@@ -4,12 +4,11 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { deriveState } from "../../dist/lib/shared/work/work.mjs";
 import { listOpenWork, listWork } from "../../dist/lib/shared/work/state.mjs";
 import { readVerdicts } from "../../dist/lib/shared/work/verdict-log.mjs";
 import { appendComment } from "../../dist/lib/shared/work/approvals.mjs";
 import { parseBlock, proposedCommit } from "../../dist/lib/shared/work/block.mjs";
-import { createWork, newId, readState, setMarker, appendVerdict, writeState } from "./work-fixture.mjs";
+import { createWork, deriveState, newId, readState, setMarker, appendVerdict, writeState } from "./work-fixture.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 

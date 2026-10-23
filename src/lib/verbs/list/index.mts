@@ -1,20 +1,15 @@
 import { action, done } from "../../shared/action.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { next } from "../../shared/work/next-step.mjs";
-import { deriveState } from "../../shared/work/work.mjs";
+import type { WorkId } from "../../shared/work/files.mts";
+import { readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { listWork } from "../../shared/work/state.mts";
 
 export type ListInput = Record<string, never>;
 export type ListRow = { id: string; lane: string; status: string; title: string; phases: string; next: string };
 
-type Summary = { lane: string; status: string; title: string; phases_approved: number; phase_count: number };
-
-function summaryOf(root: string, id: string): Summary {
-  return deriveState(id, root) as unknown as Summary;
-}
-
-function rowOf(root: string, id: string): ListRow {
-  const d = summaryOf(root, id);
+function rowOf(root: string, id: WorkId): ListRow {
+  const d = stateView(readSnapshot(root, id));
   return { id, lane: d.lane, status: d.status, title: d.title, phases: `${d.phases_approved}/${d.phase_count}`, next: next(id, root).action };
 }
 

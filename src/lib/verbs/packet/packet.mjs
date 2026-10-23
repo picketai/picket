@@ -1,11 +1,10 @@
-import { deriveState, readArtifact } from "../../shared/work/work.mjs";
+import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mjs";
-import { workDir } from "../../shared/work/files.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
 import { next } from "../../shared/work/next-step.mjs";
 import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mjs";
 import { loadConfig } from "../../shared/config.mjs";
-import { ambiguousRefs, candidates } from "../../shared/sources/sources.mjs";
+import { candidates } from "../../shared/sources/sources.mjs";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -92,7 +91,8 @@ function describeCandidates(ref, root) {
 }
 
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
-  const s = deriveState(id, root);
+  const snap = readSnapshot(root, id);
+  const s = stateView(snap);
   const n = next(id, root);
   const lines = [];
   let options = n.options?.length ? n.options.join("   ") : null;
@@ -131,10 +131,10 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     const commit = proposedCommit(b);
     if (commit !== null) lines.push(field("commit", `${commit}  (staged; approval commits it)`, width));
   } else if (n.action === "approve_phase") {
-    const art = readArtifact(id, root);
-    const summary = art.body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
-    const findings = (art.body.match(/^- \*\*R-\d{3}\*\*|^### R-\d{3}|^R-\d{3}/gm) ?? []).length;
-    const deep = !/pending deep pass/i.test(art.body);
+    const body = snap.artifact?.body ?? "";
+    const summary = body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
+    const findings = (body.match(/^- \*\*R-\d{3}\*\*|^### R-\d{3}|^R-\d{3}/gm) ?? []).length;
+    const deep = !/pending deep pass/i.test(body);
     lines.push(`▶ ${deep ? "report" : "outline"} ready · ${id}`);
     lines.push(`  ${firstSentence(summary || s.title, width - 2)}`);
     lines.push("");
@@ -143,7 +143,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   } else if (n.action === "resolve_sources") {
     lines.push(`▶ source references differ · ${id}`);
     lines.push(`  ${cut(`${n.detail}; pick one version of each`, width - 2)}`);
-    for (const ref of ambiguousRefs(workDir(root, id))) {
+    for (const ref of snap.ambiguousRefs) {
       lines.push("", `  ${cut(ref.ref, width - 2)}`);
       for (const c of describeCandidates(ref, root)) lines.push(`    ${cut(c, width - 4)}`);
     }

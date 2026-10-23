@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWork } from "./work-fixture.mjs";
-import { ownGate, phasePaths } from "../../dist/lib/shared/work/gate.mjs";
+import { createWork, ownGate, phasePaths } from "./work-fixture.mjs";
+import { ownGate as gateOf } from "../../dist/lib/shared/work/gate.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 function withDesign({ entry, body = "t\n", config }, fn) {
@@ -96,6 +96,34 @@ test("a configured entry with a leading ./ and a trailing /* gates the files und
 
 test("a configured entry gates only its own folder, not a sibling sharing its prefix", () => {
   assert.equal(gateFor({ entry: "    files: [src/payment-ui/button.tsx]\n", config: { security_paths: ["src/pay"] } }), null);
+});
+
+const SECURITY_PATHS = ["src/auth/"];
+
+function phaseObject({ files, security, touchSet = [], irreversible = false } = {}) {
+  const entry = { n: 1, ...(files ? { files } : {}), ...(security === undefined ? {} : { security }) };
+  return { entry, touchSet, irreversible };
+}
+
+test("ownGate on a phase object names the first entry file under a security path", () => {
+  assert.deepEqual(gateOf(phaseObject({ files: ["lib/a.ts", "src/auth/key.ts"] }), SECURITY_PATHS), { kind: "security_path", reason: "touches a security path (src/auth/key.ts)" });
+});
+
+test("ownGate on a phase object gates a touch-set path and a backslashed path under a security path", () => {
+  assert.equal(gateOf(phaseObject({ files: ["lib/a.ts"], touchSet: ["src/auth/token.ts"] }), SECURITY_PATHS)?.kind, "security_path");
+  assert.deepEqual(gateOf(phaseObject({ files: ["src\\auth\\key.ts"] }), SECURITY_PATHS), { kind: "security_path", reason: "touches a security path (src\\auth\\key.ts)" });
+});
+
+test("ownGate on a phase object reads a mark fail closed and lets false or no mark through", () => {
+  assert.deepEqual(gateOf(phaseObject({ files: ["lib/a.ts"], security: true }), SECURITY_PATHS), { kind: "security_mark", reason: "is marked security-sensitive in the record" });
+  assert.equal(gateOf(phaseObject({ files: ["lib/a.ts"], security: "yes" }), SECURITY_PATHS)?.kind, "security_mark");
+  assert.equal(gateOf(phaseObject({ files: ["lib/a.ts"], security: false }), SECURITY_PATHS), null);
+  assert.equal(gateOf(phaseObject({ files: ["lib/a.ts"] }), SECURITY_PATHS), null);
+});
+
+test("ownGate on a phase object gates an irreversible step and answers null for no phase", () => {
+  assert.deepEqual(gateOf(phaseObject({ files: ["lib/a.ts"], irreversible: true }), SECURITY_PATHS), { kind: "irreversible", reason: "carries an irreversible step" });
+  assert.equal(gateOf(undefined, SECURITY_PATHS), null);
 });
 
 test("a security path wins over a mark, and a mark wins over an irreversible step", () => {
