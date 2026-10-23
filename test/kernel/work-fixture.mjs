@@ -8,6 +8,8 @@ import { phasePaths as phasePathsOf } from "../../dist/lib/shared/work/artifact.
 import { ownGate as ownGateOf } from "../../dist/lib/shared/work/gate.mjs";
 import { securityPaths } from "../../dist/lib/shared/config.mjs";
 import { readNext } from "../../dist/lib/shared/work/next-view.mjs";
+import { route as routeAt } from "../../dist/lib/verbs/route/index.mjs";
+import { edgeContext } from "../../dist/lib/shared/context.mjs";
 
 export function createWork({ root, now = new Date(), ...request }) {
   return createWorkAt(root, request, now);
@@ -68,4 +70,8 @@ export function mustHaves(id, n, root) {
 
 export function next(id, root) {
   return readNext(root, id);
+}
+
+export function route({ root, ...input }) {
+  return routeAt(input, edgeContext(root));
 }

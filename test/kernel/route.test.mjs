@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
+import fs, { chmodSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createWork, deriveState, saveBlock } from "./work-fixture.mjs";
-import { route } from "../../dist/lib/verbs/route/route.mjs";
+import { createWork, deriveState, readState, route, saveBlock, writeState } from "./work-fixture.mjs";
 import { findVerdict } from "../../dist/lib/shared/verdicts.mjs";
 import { bareAgentName } from "../../dist/lib/shared/agent-name.mjs";
 import { statePath, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
@@ -422,4 +422,49 @@ test("another plugin's developer may not route PHASE DONE", () => {
   assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "other:developer", phase: 1, root }), /not other:developer/);
   assert.equal(existsSync(join(root, "work", id, "phases", "1.done")), false);
   rmSync(root, { recursive: true, force: true });
+});
+
+function countingCalls(name, run) {
+  const original = fs[name];
+  const counts = {};
+  fs[name] = function (path, ...rest) {
+    const file = basename(String(path));
+    counts[file] = (counts[file] ?? 0) + 1;
+    return original.call(this, path, ...rest);
+  };
+  syncBuiltinESMExports();
+  try {
+    return { result: run(), counts };
+  } finally {
+    fs[name] = original;
+    syncBuiltinESMExports();
+  }
+}
+
+test("one PHASE DONE under a run grant reads state.yaml and order.md at most twice each", () => {
+  const { root, id, git } = repoWithPhasedOrder();
+  try {
+    writeState({ ...readState(id, root), run_through: 2 }, root);
+    stage(root, git, { "src/a.js": "a\n" });
+    const { result, counts } = countingCalls("readFileSync", () => route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root }));
+    assert.ok(counts["state.yaml"] >= 1 && counts["state.yaml"] <= 2, `state.yaml read ${counts["state.yaml"]} times`);
+    assert.ok(counts["order.md"] >= 1 && counts["order.md"] <= 2, `order.md read ${counts["order.md"]} times`);
+    assert.deepEqual(result.applied.slice(0, 2), ["phases/1.done", "phases/1.approved (run grant through 2)"]);
+    assert.ok(result.applied[2].startsWith("committed "), result.applied.join(" | "));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("an approval that grants a run and claims a new session writes state.yaml once", () => {
+  const { root, id } = setup();
+  try {
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const { result, counts } = countingCalls("writeFileSync", () => route({ id, verdict: "approved", agent: "user", phase: 1, through: 3, session: "s-new", root }));
+    assert.equal(counts["state.yaml"], 1);
+    assert.deepEqual(result.applied.slice(0, 2), ["phases/1.approved", "run_through=3"]);
+    assert.deepEqual([readState(id, root).run_through, readState(id, root).session], [3, "s-new"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

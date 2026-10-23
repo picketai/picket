@@ -120,7 +120,7 @@ function reachable(starts, importsOf) {
 test("no module reachable from routing, gates, next or the guards imports the extension loader", () => {
   const hooks = resolve("src/lib/hooks");
   const starts = [
-    resolve("src/lib/verbs/route/route.mjs"),
+    resolve("src/lib/verbs/route/index.mts"),
     resolve("src/lib/shared/work/gate.mts"),
     resolve("src/lib/shared/work/next-step.mts"),
     resolve(hooks, "route.verdict.mjs"),

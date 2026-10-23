@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { readTurn, latestHints, blockLines, agentTranscript } from "../shared/transcript/transcript.mjs";
-import { route } from "../verbs/route/route.mjs";
+import { route } from "../verbs/route/index.mjs";
+import { edgeContext } from "../shared/context.mjs";
 import { findVerdict } from "../shared/verdicts.mjs";
 import { stateDir, statePath, stateRel } from "../shared/paths.mjs";
 import { saveBlock } from "../shared/work/block.mjs";
@@ -56,7 +57,7 @@ function applyVerdict({ event, info, hints, id, verdict, text, root }) {
   const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, root);
   const classes = info?.agent === "reviewer" ? reviewClasses(text) : [];
-  const routed = route({ id, verdict, agent, phase, scope, root, reason: amend ?? undefined, session: event.session_id, classes });
+  const routed = route({ id, verdict, agent, phase, scope, reason: amend ?? undefined, session: event.session_id, classes }, edgeContext(root));
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }

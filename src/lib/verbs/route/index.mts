@@ -1,28 +1,53 @@
-import { action, done } from "../../shared/action.mts";
+import { action, done, Refused } from "../../shared/action.mts";
+import { bareAgentName } from "../../shared/agent-name.mjs";
+import { securityPaths } from "../../shared/config.mjs";
+import type { Context } from "../../shared/context.mts";
+import { VERDICTS } from "../../shared/verdicts.mjs";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
+import { ownGate } from "../../shared/work/gate.mts";
+import { readNext, type NextView } from "../../shared/work/next-view.mts";
+import { currentPhase, phaseOf, readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
+import type { VerdictEntry } from "../../shared/work/verdict-log.mts";
 import { int, need, str, UsageError, type Args } from "../../util/args.mts";
-import { route } from "./route.mjs";
+import { applyChanges } from "./apply.mts";
+import { EFFECTS, type Effect, type GateOf, type PlannedVerdict, type RouteInput } from "./plan.mts";
 
-export type RouteInput = {
-  id: WorkId;
-  verdict: string;
-  agent: string;
-  phase: number | undefined;
-  scope: string | undefined;
-  through: number | undefined;
-  reason: string | undefined;
-  session: string | undefined;
-};
-export type RouteResult = { verdict: string; applied: string[]; next: { action: string; actor: string | null; phase: number | null } };
+export type { RouteInput };
+export type RouteResult = { id: WorkId; verdict: string; phase: number | null; applied: string[]; next: NextView };
 
-type Route = (request: RouteInput & { root: string }) => RouteResult;
+type VerdictSpec = { agent: string; effect: Effect };
 
-const routeTyped = route as unknown as Route;
+const CLASSED_VERDICT = "CHANGES REQUIRED";
+const SPECS = VERDICTS as Readonly<Record<string, VerdictSpec>>;
 
-export const routeVerdict = action<RouteInput, RouteResult>(async (input, { root, session }) =>
-  done(routeTyped({ ...input, session: input.session ?? session ?? undefined, root })),
-);
+function verdictSpec(verdict: string, agent: string | null): VerdictSpec {
+  const spec = Object.hasOwn(SPECS, verdict) ? SPECS[verdict] : undefined;
+  if (!spec) throw new Refused(`unknown verdict "${verdict}"; exact tokens: ${Object.keys(SPECS).join(", ")}`);
+  if (spec.agent !== agent && !(spec.agent === "user" && agent === "lead")) throw new Refused(`"${verdict}" may only come from ${spec.agent}, not ${agent}`);
+  return spec;
+}
+
+function verdictRow({ agent, verdict, phase, scope, through, classes }: PlannedVerdict): VerdictEntry {
+  const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed };
+}
+
+function gateOf(root: string, snap: WorkSnapshot): GateOf {
+  return (n) => ownGate(phaseOf(snap, n), securityPaths(root));
+}
+
+export function route(input: RouteInput, ctx: Context): RouteResult {
+  const agent = bareAgentName(input.agent);
+  const spec = verdictSpec(input.verdict, agent);
+  const snap = readSnapshot(ctx.root, input.id);
+  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, phase: input.phase ?? currentPhase(snap)?.n ?? null };
+  const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap));
+  const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned) });
+  return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id) };
+}
+
+export const routeVerdict = action<RouteInput, RouteResult>(async (input, ctx) => done(route({ ...input, session: input.session ?? ctx.session }, ctx)));
 
 function parseRoute(args: Args): RouteInput {
   const [id] = args.pos;
