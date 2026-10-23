@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readText } from "../../util/io.mts";
-import { parse, stringify } from "../../util/yaml-lite.mjs";
+import { parse, stringify } from "../../util/yaml-lite.mts";
 import { workDir, workFile, type WorkId } from "../work/files.mts";
 import type { AmbiguousRef, Resolution, ResolvedRef } from "./resolve.mts";
 

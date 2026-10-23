@@ -1,4 +1,4 @@
-import { frontmatter } from "../../util/yaml-lite.mjs";
+import { frontmatter } from "../../util/yaml-lite.mts";
 
 export type GrepEntry = { path: string; pattern: string; flags?: string };
 export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tests?: boolean; drive?: boolean; security?: unknown } & Record<string, unknown>;

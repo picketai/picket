@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parse, stringify, frontmatter } from "../../dist/lib/util/yaml-lite.mjs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { parse, readValue, stringify, frontmatter } from "../../dist/lib/util/yaml-lite.mjs";
+import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
+import { nestedRepos } from "../../dist/lib/shared/repos.mjs";
 
 test("parses scalars, inline lists and nested maps", () => {
   const doc = parse(`
@@ -65,6 +70,70 @@ test("quoted scalars unescape, so a regex written in double quotes reaches RegEx
   assert.equal(doc.greps[1].pattern, "it's");
   assert.equal(doc.greps[2].pattern, "plain\\.csv");
   assert.equal(parse('s: "a\\"b\\n"').s, 'a"b\n');
+});
+
+test("a trailing comment ends the value", () => {
+  assert.deepEqual(parse("n: 1 # one"), { n: 1 });
+});
+
+const VALUES = [
+  ["1 # one", 1],
+  ["{path: src/a.ts, pattern: foo}", { path: "src/a.ts", pattern: "foo" }],
+  ['[{path: a.ts, pattern: "x, y"}, {path: b.ts, pattern: z}]', [{ path: "a.ts", pattern: "x, y" }, { path: "b.ts", pattern: "z" }]],
+  ["[src/a.ts, src/b.ts] # two files", ["src/a.ts", "src/b.ts"]],
+  ['"a #b"', "a #b"],
+  ["https://x.example/y#z", "https://x.example/y#z"],
+  ['"lines\\\\[0\\\\]"', "lines\\[0\\]"],
+];
+
+const REFUSED = [
+  ["|", "yaml-lite: unsupported value at line 7: |"],
+  ["&x 1", "yaml-lite: unsupported value at line 7: &x 1"],
+  ["{path: a, more: {b: 1}}", "yaml-lite: nested {...} or [...] inside {...} at line 7"],
+  ["{path: a", "yaml-lite: unsupported value at line 7: {path: a"],
+];
+
+for (const [raw, expected] of VALUES) {
+  test(`readValue reads ${raw}`, () => {
+    assert.deepEqual(readValue(raw, 7), expected);
+  });
+}
+
+for (const [raw, message] of REFUSED) {
+  test(`readValue refuses ${raw}`, () => {
+    assert.throws(() => readValue(raw, 7), { message });
+  });
+}
+
+test("every work item document in the corpus reads as the parser at 3206f31 read it", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./yaml-lite-corpus.json", import.meta.url), "utf8"));
+  assert.ok(corpus.length >= 152, `${corpus.length} documents`);
+  for (const { path, text, expected } of corpus) assert.deepEqual(parse(text), expected, path);
+});
+
+test("frontmatter names the line in the file when it refuses a value", () => {
+  const text = "---\nkind: design\nlane: design\ntitle: x\nnotes: |\n  line one\n---\nbody";
+  assert.throws(() => frontmatter(text), { message: /at line 5: \|$/ });
+});
+
+test("a key whose value is only a comment opens a block", () => {
+  assert.deepEqual(parse("files: # later\n  - a"), { files: ["a"] });
+});
+
+test("a branching manifest path with a trailing comment names the nested repository", () => {
+  const root = mkdtempSync(join(tmpdir(), "yaml-lite-"));
+  try {
+    mkdirSync(dirname(branchingManifestPath(root)), { recursive: true });
+    writeFileSync(branchingManifestPath(root), "version: 1\nrepos:\n  - path: src/Orders # the orders repo\n    default_branch: main\n");
+    assert.deepEqual(nestedRepos(root), [{ path: "src/Orders", default_branch: "main" }]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("strings holding a hash or a brace survive a round trip", () => {
+  const obj = { a: "x #y", u: "https://x.example/y#z", m: "{x", n: 3 };
+  assert.deepEqual(parse(stringify(obj)), obj);
 });
 
 test("frontmatter splits and tolerates its absence", () => {

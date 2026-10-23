@@ -4,7 +4,7 @@
 import { existsSync, readdirSync, writeFileSync, type Dirent } from "node:fs";
 import { join } from "node:path";
 import { readText } from "../util/io.mts";
-import { parse, stringify } from "../util/yaml-lite.mjs";
+import { parse, stringify } from "../util/yaml-lite.mts";
 import { revParse } from "./git.mts";
 import { branchingManifestPath } from "./paths.mts";
 import { workFile, type WorkId } from "./work/files.mts";
@@ -14,9 +14,8 @@ export type RepoBase = { path: string; base: string };
 
 type ManifestRepo = { path?: unknown; default_branch?: unknown } | null;
 
-/** yaml-lite keeps an inline `# comment` as part of the value; the manifest has them. */
-function uncomment(value: unknown): string | null {
-  return typeof value === "string" ? value.replace(/\s+#.*$/, "").trim() : null;
+function stringOf(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
 }
 
 function manifestRepos(file: string): ManifestRepo[] {
@@ -31,7 +30,7 @@ function manifestRepos(file: string): ManifestRepo[] {
 
 function fromManifest(root: string): RepoEntry[] {
   return manifestRepos(branchingManifestPath(root))
-    .map((r) => ({ path: uncomment(r?.path)?.replace(/\\/g, "/").replace(/\/+$/, "") ?? "", default_branch: uncomment(r?.default_branch) || null }))
+    .map((r) => ({ path: stringOf(r?.path)?.replace(/\\/g, "/").replace(/\/+$/, "") ?? "", default_branch: stringOf(r?.default_branch) || null }))
     .filter((r) => r.path && r.path !== ".");
 }
 

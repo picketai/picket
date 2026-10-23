@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { revParse } from "../git.mts";
 import { workRoot } from "../paths.mts";
 import { readText } from "../../util/io.mts";
-import { parse, stringify } from "../../util/yaml-lite.mjs";
+import { parse, stringify } from "../../util/yaml-lite.mts";
 import { isWorkId, workDir, workFile, workId, type WorkFile, type WorkId } from "./files.mts";
 import { readVerdicts, type VerdictRow } from "./verdict-log.mts";
 
