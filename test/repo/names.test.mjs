@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { codeLines } from "#test/kernel-sources.mts";
-import { VERB_NAMES } from "../../src/lib/verbs.mts";
+import { isGroup, VERB_NAMES } from "../../src/lib/verbs.mts";
 
 const ROOT = resolve(".");
 const SRC = join(ROOT, "src");
@@ -64,6 +64,52 @@ test("the Markdown scan flags each old name form", () => {
   assert.equal(markdownViolations("Use `picket:designing`, then /picket:ordering and `picket next <id>`.").length, 0);
   assert.equal(markdownViolations("Read `shared/procedures/phase-loop.md` relative to the skills folder.").length, 0);
   assert.equal(markdownViolations("Load `picket:ordering` first.").length, 0);
+});
+
+const PICKET_COMMAND = /^(?:!\s*|\$\s+)?picket\s+(\S+)(?:\s+(\S+))?/;
+const FENCE = /^\s*(```|~~~)/;
+const NOT_A_VERB = new Set(["help", "--help", "--version"]);
+const PLACEHOLDER = /^</;
+
+function commandCandidates(markdown) {
+  const candidates = [];
+  let fenced = false;
+  for (const line of markdown.split(/\r?\n/)) {
+    if (FENCE.test(line)) fenced = !fenced;
+    else if (fenced) candidates.push(line.trim());
+    else for (const m of line.matchAll(/`([^`]+)`/g)) candidates.push(m[1].trim());
+  }
+  return candidates;
+}
+
+function commandProblem(candidate) {
+  const m = candidate.match(PICKET_COMMAND);
+  if (!m || NOT_A_VERB.has(m[1]) || PLACEHOLDER.test(m[1])) return null;
+  const [, verb, subverb = ""] = m;
+  const entry = VERB_NAMES[verb];
+  if (!entry) return `unknown verb: ${candidate}`;
+  if (!isGroup(entry)) return null;
+  return subverb.split("|").every((name) => Object.hasOwn(entry.subverbs, name)) ? null : `group verb without a known subverb: ${candidate}`;
+}
+
+function commandProblems(markdown) {
+  return commandCandidates(markdown).map(commandProblem).filter(Boolean);
+}
+
+test("every picket command in src/ Markdown, CLAUDE.md, README.md and docs/ names a verb, and a group verb its subverb", () => {
+  const files = [...filesUnder(SRC, ".md"), join(ROOT, "CLAUDE.md"), join(ROOT, "README.md"), ...filesUnder(join(ROOT, "docs"), ".md")];
+  assert.deepEqual(offenders(files, commandProblems), []);
+  const commands = files.flatMap((file) => commandCandidates(readFileSync(file, "utf8")).filter((c) => PICKET_COMMAND.test(c)));
+  assert.ok(commands.length > 100, `${commands.length} picket commands scanned`);
+});
+
+test("the command scan flags an unknown verb and a bare group verb, and accepts help and a prefixed command", () => {
+  assert.deepEqual(commandProblems("Run `picket frobnicate <id>`."), ["unknown verb: picket frobnicate <id>"]);
+  assert.deepEqual(commandProblems("Run `picket source` first."), ["group verb without a known subverb: picket source"]);
+  assert.deepEqual(commandProblems("```\n$ picket source\n```"), ["group verb without a known subverb: $ picket source"]);
+  assert.deepEqual(commandProblems("`picket help` lists them; !`picket list --human`; `!picket list --human`; `picket source find|grep`."), []);
+  assert.deepEqual(commandProblems("```\n! picket list --human\n$ picket next <id>\n```"), []);
+  assert.deepEqual(commandProblems("`picket --version`, `picket --help` and the usage line `picket <verb> [args]`."), []);
 });
 
 const UNIT_TEST = /\.test\.mts$/;

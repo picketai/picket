@@ -94,7 +94,7 @@ phases:
     drive: false
     security: false
   - n: 4
-    files: [test/repo/references.test.mjs, test/repo/dashes.test.mjs, test/repo/names.test.mjs, bench/results/plugin-08a-fast.json]
+    files: [test/repo/references.test.mjs, test/repo/dashes.test.mjs, test/repo/names.test.mjs]
     greps:
       - path: test/repo/references.test.mjs
         pattern: 'ticketing/SKILL\.md'
@@ -170,7 +170,7 @@ The instructions (17 skills, 4 agents, 5 rules, the output style) share steps ac
 - `nextStep`, `picket packet`, the finding parser and the dash-free outputs (phase 1; D-001 to D-003).
 - `skills/shared/procedures/` with six procedures, the dispatch tables, the renamed steps and checklists, agent entries on the `step:` line, the boilerplate line gone, the tests that list skills, the step budget (phase 2; D-004, D-006, D-008).
 - One owner per fact, the stale facts, the finding line and the dashes in Markdown (phase 3; D-003, D-005).
-- Checks 1 to 4 in `npm test` and the fast-lane bench comparison (phase 4; D-007).
+- Checks 1 to 4 in `npm test` and a fast-lane bench dry run (phase 4; D-007); the real run and its comparison wait for the user (OQ-002).
 
 **Out:**
 - Agents off skill files, `agents/shared/**/*.md` (F-1).
@@ -284,7 +284,7 @@ The instructions (17 skills, 4 agents, 5 rules, the output style) share steps ac
 - **T-3.5** No file under `src/skills`, `src/agents`, `src/rules` or `src/output-styles` other than a code module holds U+2013 or U+2014 (a grep over those folders, `*.mjs` excluded, prints nothing); the proofreading grep line, run in Git Bash with its default locale, still finds both characters in a sample file.
 - **T-3.6** `understanding/SKILL.md` names no consultant, and `npm test` passes, the description routing test included.
 
-## Phase 4: Reference, naming and dash checks, and the bench comparison
+## Phase 4: Reference, naming and dash checks, and the bench dry run
 
 **Touch set:**
 - `test/repo/references.test.mjs`: new, checks 1 and 2 with self tests
@@ -293,10 +293,9 @@ The instructions (17 skills, 4 agents, 5 rules, the output style) share steps ac
 - `src/lib/verbs.mts`: read only, `VERB_NAMES`, `isGroup`
 - `test/support/kernel-sources.mts`: read only, `codeLines`, `KERNEL_DIRS`
 - `test/repo/markdown-paths.test.mjs`: read only, span and fence parsing to mirror
-- `bench/run.mjs`, `bench/report.mjs`, `bench/results/baseline-trunk.json`: read only
-- `bench/results/plugin-08a-fast.json`: new, the run's record
+- `bench/run.mjs`: read only, `--dry` lists tasks and budgets and spends nothing
 
-**Changes:** The checks per D-007, with the reach table exactly as D-008 states it (the document kit `documenting/templates/` and `documenting/scripts/` open to every file; `step:` values checked for existence only); the one exception is the pair `src/agents/analyst.md` to `ticketing/SKILL.md`, listed with "F-1 removes it". A reference resolves as base-relative, `../`-relative or skills-root-relative (D-004); spans holding `{`, `<` or `*` skip the existence test but not the reach test. The bench runs once after `npm test` passes: `node bench/run.mjs --harness plugin --tasks lane:fast --runs 1 --out bench/results/plugin-08a-fast.json`, then `node bench/report.mjs bench/results/baseline-trunk.json bench/results/plugin-08a-fast.json`.
+**Changes:** The checks per D-007, with the reach table exactly as D-008 states it (the document kit `documenting/templates/` and `documenting/scripts/` open to every file; `step:` values checked for existence only); the one exception is the pair `src/agents/analyst.md` to `ticketing/SKILL.md`, listed with "F-1 removes it". A reference resolves as base-relative, `../`-relative or skills-root-relative (D-004); spans holding `{`, `<` or `*` skip the existence test but not the reach test. After `npm test` passes, the bench runs dry only: `node bench/run.mjs --harness plugin --tasks lane:fast --runs 1 --dry`, which prints the manifest line and one `<task> [<lane>] budget $<n>` line per task and writes no results file. No real run happens in this phase (OQ-002).
 
 **Done when:**
 - **T-4.1** `references.test.mjs` fails on a planted `steps/5-x.md` and on two `steps/` files sharing a prefix, and passes on the repository, where `checklists/` repeats 40 and 50.
@@ -304,14 +303,16 @@ The instructions (17 skills, 4 agents, 5 rules, the output style) share steps ac
 - **T-4.3** `names.test.mjs` fails on `picket frobnicate` and on `picket source` with no subverb, accepts `picket help` and a `!`-prefixed `picket list --human`, and passes on `src/` Markdown, `CLAUDE.md`, `README.md` and `docs/`.
 - **T-4.4** `dashes.test.mjs` fails on a planted U+2014 in Markdown and in a code line, ignores one on a comment line, and passes on the repository.
 - **T-4.5** `npm test` passes.
-- **T-4.6** The bench record `bench/results/plugin-08a-fast.json` exists, and the block's `Verified:` line quotes the pass rate and cost lines `bench/report.mjs` printed against `baseline-trunk.json`.
+- **T-4.6** The dry run lists the planned fast-lane tasks, and the block quotes that list with the expected cost: the sum of the per-task budget caps it printed, as the most a real run could spend; no file under `bench/results/` is added or changed.
 
 ## Open questions
 
-- **OQ-001** The bench comparison in phase 4 may show a lower fast-lane pass rate than the baseline; the record cannot say which drop is acceptable. Owner: the user, at the cumulative gate. Fallback: phase 4 reports the numbers on its block and the closing block repeats them; no phase is held for them.
+- **OQ-001** The bench comparison in phase 4 may show a lower fast-lane pass rate than the baseline; the record cannot say which drop is acceptable. Owner: the user, at the cumulative gate. Fallback: there are no numbers until OQ-002's run happens; once it does, the closing block reports them and no phase is held for them.
+- **OQ-002** The real fast-lane bench run and its comparison with the baseline (`harness-authoring.md` asks for both after a contract change) spend API budget the user has not approved. Owner: the user. Fallback: phase 4 does only the dry run (T-4.6); the real run is `node bench/run.mjs --harness plugin --tasks lane:fast --runs 1 --out bench/results/plugin-08a-fast.json`, then `node bench/report.mjs bench/results/baseline-trunk.json bench/results/plugin-08a-fast.json`, offered in the closing block.
 
 ## Revision log
 - 2026-10-23: D-003 (r2): proofreading's dash grep form left to the developer; `grep -P` escapes exit 2 in the default locale (cross-check).
 - 2026-10-23: D-005 (r2): cumulative-review.md drops summary fields without a pointer; phase 2 makes procedure pointers, phase 3 the rest (cross-check).
 - 2026-10-23: D-007 (r2): check 2 takes the reach table from D-008, its one owner (cross-check).
 - 2026-10-23: D-008 (r2): whole reach table here; document kit includes documenting/scripts/; step: values checked for existence only (cross-check).
+- 2026-10-23: Phase 4: T-4.6 becomes a bench dry run; the real run and comparison move to OQ-002, unapproved API spend (lead).
