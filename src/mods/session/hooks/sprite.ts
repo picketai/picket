@@ -1,9 +1,4 @@
 import { roleOf } from '../../../lib/shared/format.mts'
-import type { AgentGroup, AgentRow } from '../types'
-
-const FINISHED = new Set(['completed', 'failed', 'killed'])
-
-const IDLE = new Set(['idle', 'waiting'])
 
 const ROLE_COLORS: Record<string, string> = {
   architect: '#4a9eff',
@@ -14,62 +9,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 const OTHER_COLOR = '#8b949e'
 
-const CONTEXT_WINDOW = 1_000_000
-
-export const isFinished = (status: string): boolean => FINISHED.has(status)
-
-export const isIdle = (status: string): boolean => IDLE.has(status)
-
-export const AGENT_GROUPS: { group: AgentGroup; label: string }[] = [
-  { group: 'running', label: 'RUNNING' },
-  { group: 'idle', label: 'IDLE' },
-  { group: 'finished', label: 'FINISHED' },
-]
-
-export const groupAgents = (agents: AgentRow[]): Record<AgentGroup, AgentRow[]> => ({
-  running: agents.filter(agent => !isFinished(agent.status) && !isIdle(agent.status)),
-  idle: agents.filter(agent => isIdle(agent.status)),
-  finished: agents.filter(agent => isFinished(agent.status)),
-})
-
-export const tally = (grouped: Record<AgentGroup, AgentRow[]>): string =>
-  [
-    `${grouped.running.length} running`,
-    grouped.idle.length > 0 ? `${grouped.idle.length} idle` : null,
-    `${grouped.finished.length} done`,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
 export const roleColor = (type: string): string => ROLE_COLORS[roleOf(type)] ?? OTHER_COLOR
-
-export const contextPercent = (tokens: number): number =>
-  Math.round((tokens / CONTEXT_WINDOW) * 100)
-
-export const parseWork = (prompt: string): { workId: string | null; phase: number | null } => {
-  const workId = /^work: (\S+)/m.exec(prompt)?.[1] ?? null
-  const phase = /^phase: (\d+)/m.exec(prompt)?.[1]
-  return { workId, phase: phase === undefined ? null : Number(phase) }
-}
-
-export const progressOf = (agent: AgentRow): { label: string; fraction: number; isMeasured: boolean } => {
-  const done = isFinished(agent.status)
-  const step = agent.tool ?? agent.lastTool
-  if (agent.phase !== null && agent.phases !== null) {
-    const reached = done ? agent.phase : agent.phase - 0.5
-    const label = `${agent.phase}/${agent.phases}${step && !done ? ` · ${step}` : ''}`
-    return { label, fraction: reached / agent.phases, isMeasured: true }
-  }
-  const fill = agent.contextTokens === null ? 0 : agent.contextTokens / CONTEXT_WINDOW
-  return {
-    label: done ? agent.status : (step ?? 'starting'),
-    fraction: done ? 1 : Math.min(1, fill * 10),
-    isMeasured: done,
-  }
-}
-
-export const ordered = (agents: AgentRow[]): AgentRow[] =>
-  [...agents].sort((a, b) => b.startedAt - a.startedAt)
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 

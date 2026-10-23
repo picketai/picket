@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 import { candidatePaths, fromHref, linkPaths, resolvePath, toHref } from './links'
 import { changedRows, layout, sliceSpans, wrap } from './markdown'
@@ -360,4 +360,46 @@ test('work status, back, ask about a section, open in editor and wide table scro
   await pane.press({ key: 'back' })
   expect(await pane.find({ type: 'Text', text: 'Order' })).toBeDefined()
   expect(await pane.find({ key: 'back' })).toBeUndefined()
+})
+
+test('a picket state that fails is asked again on the next poll, with no file changed', async ($, on) => {
+  const answers = [1, 0]
+  const timer = mock.clock(on, { now: Date.parse('2026-10-23T10:00:00Z') })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.cwd', () => ({ value: REPO }))
+  on('session.messages', () => ({ value: [] }))
+  on('command.register', () => ({ value: undefined }))
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('fs.stat', ($, e) =>
+    W_FILES[e.path.replace(/\\/g, '/')] === undefined
+      ? { deny: 'ENOENT' }
+      : { value: { kind: 'file', size: 10, mtimeMs: 1, isLink: false } },
+  )
+  on('fs.read', ($, e) => {
+    const text = W_FILES[e.path.replace(/\\/g, '/')]
+    return text === undefined ? { deny: 'ENOENT' } : { value: text }
+  })
+  on('fs.list', () => ({ value: [] }))
+  on('process.run', () => {
+    const exitCode = answers.shift() ?? 0
+    return { value: { exitCode, stdout: JSON.stringify(W1_STATE), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+
+  await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+  await $.command.run({ command: 'md', args: 'work/w1/order.md' })
+  const pane = await $.ui.mount({
+    plugin: 'picket-markdown',
+    surface: 'terminal',
+    component: 'Pane',
+    requestId: 'picket-markdown',
+    props: { title: 'order.md', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} },
+  })
+  expect(await pane.find({ type: 'Text', text: /^work w1/ })).toBeUndefined()
+
+  await timer.advance(2000)
+  expect(await pane.find({ type: 'Text', text: 'work w1 · order · open · phase 1/2 approved' })).toBeDefined()
 })

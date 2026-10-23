@@ -59,3 +59,11 @@ test("a planted contract whose Work types phase_count as a string fails the chec
   assert.notEqual(r.status, 0);
   assert.match(r.output, CHECK_ERROR);
 });
+
+test("a planted contract whose Work gives own_gate a field LatestView lacks fails the check", (t) => {
+  const planted = contract().replace("own_gate: { kind: string; reason: string } | null", "own_gate: { kind: string; reason: string; since: string } | null");
+  assert.notEqual(planted, contract());
+  const r = tsc(plantedProject(t, planted));
+  assert.notEqual(r.status, 0);
+  assert.match(r.output, CHECK_ERROR);
+});

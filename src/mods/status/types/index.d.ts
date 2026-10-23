@@ -10,6 +10,8 @@ export type Work = {
   action: string
   actor: string | null
   phase: number | null
+  options: string[]
+  own_gate: { kind: string; reason: string } | null
   detail: string
   phases_approved: number
   phase_count: number

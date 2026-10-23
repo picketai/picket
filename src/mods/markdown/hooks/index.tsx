@@ -31,7 +31,7 @@ const WORK_ARTIFACTS = ['order.md', 'design.md', 'research.md']
 
 type View = { path: string; treeTop: number; maxOffset: number; maxTreeOffset: number; listRows: number }
 let lastView: View | undefined
-const askedWork = new Map<string, { signature: string; work: DocWork | undefined }>()
+const askedWork = new Map<string, { signature: string; work: DocWork }>()
 
 function clamp(value: number, low: number, high: number): number {
   return Math.min(Math.max(value, low), Math.max(low, high))
@@ -141,7 +141,7 @@ async function workOf($: EngineInterface, path: string): Promise<DocWork | undef
   const cached = askedWork.get(id)
   if (cached !== undefined && cached.signature === signature) return cached.work
   const work = await askKernel($, id)
-  askedWork.set(id, { signature, work })
+  if (work !== undefined) askedWork.set(id, { signature, work })
   return work
 }
 
