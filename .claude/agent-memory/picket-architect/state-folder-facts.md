@@ -5,8 +5,8 @@ metadata:
   type: reference
 ---
 
-`.picket/state/` is listed in `.gitignore` (line 29, checked 2026-10-18), so a criterion like "`git status` shows no file under it" always passes. Check the file's existence instead.
+`.picket/state/` is listed in `.gitignore` (runtime and scratch group, checked 2026-10-24), so a criterion like "`git status` shows no file under it" always passes. Check the file's existence instead.
 
-`test/kernel/statusline.test.mjs` spawns `picket statusline` with `test/kernel/statusline-input.json`, whose `cwd` is `"."`. A status line change that writes state resolves its root to this repository unless the test sets `CLAUDE_PROJECT_DIR` to a temp folder.
+`test/cli/statusline.test.mjs` spawns `picket statusline` with `src/lib/verbs/statusline/statusline-input.test.json`, whose `cwd` is `"."`. A status line change that writes state resolves its root to this repository unless the test sets `CLAUDE_PROJECT_DIR` to a temp folder.
 
 **How to apply:** when a phase adds a writer under `.picket/state/` or to the status line, add a temp-root step for the existing spawn tests and write existence-based criteria. Related: [[statusline-contract]], [[verify-grep-patterns]].

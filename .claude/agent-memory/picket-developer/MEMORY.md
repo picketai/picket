@@ -1,1 +1,9 @@
 - [Files line lists every staged path](feedback-files-line.md) — "+k more" leaves files out of the phase commit
+- [.claude/ edits go through the lead](claude-dir-edits-via-lead.md) — send the exact line; lead edits and stages it
+- [Deleting files in a phase](deleting-files-in-a-phase.md) — escalated `git rm` alone; then stage without the removed path
+- [npm pack rebuilds dist](npm-pack-rebuilds-dist.md) — local npm 10.4 ignores --ignore-scripts for prepack; races parallel tests
+- [New files pass check, then fail](new-files-pass-check-then-fail.md) — tracked-file scans skip untracked files; stage before the last check
+- [Node 22 local runs on Windows](node22-local-runs-on-windows.md) — 2 CLI tests fail only on this machine; types strip fine
+- [Repo scans read text, not code](scans-read-agent-memory.md) — memory files, ".claude" substrings and `from "${x}"` strings trip npm test
+- [Mod validator rules](mod-validator-rules.md) — atoms per file, $ never in objects, function declarations, import-free types contract
+- [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag

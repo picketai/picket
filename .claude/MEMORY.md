@@ -45,6 +45,14 @@ One operator on a changed line inverted by `picket mutate` (`===` to `!==`) to t
 **Mistake class**:
 The reviewer row id (`Ts4`, `Rf8`) behind a Critical or Major finding. `picket close` reports a class named in two or more reviews.
 
+**Procedure**:
+A step file in the skills' shared procedures folder that two or more skills or agents follow (the phase loop, the gate, the cumulative review). It has one owner and is cited, never copied (refactor item 08a, 2026-10-23).
+_Avoid_: shared step, common step
+
+**Checklist**:
+A file in the reviewing skill's checklists folder that the reviewer loads by size, framework or concern; unlike a step file it is not run in order.
+_Avoid_: review step
+
 ## Decisions
 
 - **Product name Tether, project TetherAI** [superseded 2026-10-10 by Picket] (2026-10-02): plugin and CLI are `tether`, state lives in `.tether/`. npm, repository and organization names are settled at the alpha (2026-10-04); npm `tether` is taken, so expect a scope. Report: https://claude.ai/artifact/QyPJqATUoenwE4Cdc3R5km

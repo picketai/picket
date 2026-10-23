@@ -1,2 +1,12 @@
 - [Review summary drops .claude paths](review-summary-drops-claude-paths.md) — in this harness repo, review the full git range; changed_files omits .claude/**
 - [Probe guards directly](probe-guards-directly.md) — import guardBash via node -e; probe wrapped writes and aliases as agent and lead
+- [dist on disk can be stale](dist-on-disk-can-be-stale.md) — build in memory with esbuild write:false; grep bare path words after a move
+- [Probe append after a bad line](probe-append-after-bad-line.md) — JSONL skip fixes: drive one write after a truncated line, check bytes
+- [Phase block overwritten by a fix](phase-block-overwritten-by-fix.md) — read N.block.md at its phase commit; plan greps can hit mandated content
+- [Send the review by message](send-review-by-message.md) — the lead may get only the idle note; SendMessage the full review too
+- [Prove test moves by script](prove-test-moves-by-script.md) — names, verbatim asserts, literals plus expected value, per-test counts via node -e
+- [Literal criterion misses go to amendment](literal-criterion-misses-go-to-amendment.md) — code better than a T-row bound: FAIL plus AMENDMENT NEEDED on the D-### that states it
+- [Route commit keeps subject only](route-commit-keeps-subject-only.md) — a block's multi-line Commit body never reaches git log; it lives in the block
+- [New next action: check the band](new-next-action-check-band.md) — band.ts renders any user action as "approve phase"; probes go to the scratchpad only
+- [Probe links at parent segments](probe-links-at-parent-segments.md) — removers checking only the leaf delete through a linked .picket or .claude
+- [Lead-only verbs denied to the reviewer](lead-only-verbs-denied-to-reviewer.md) — uninstall dry run is denied even in scratch; verify from code

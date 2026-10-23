@@ -1,11 +1,22 @@
 - [Transcript facts](transcript-facts.md) — continuation message shape in subagent transcripts, transcript location, hook timing baseline caveat
 - [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key
-- [Bash heredoc backslashes](bash-heredoc-backslashes.md) — doubled backslashes collapse in node heredocs here, backtick-heavy appends fail; do record edits with Edit
+- [Bash heredoc backslashes](bash-heredoc-backslashes.md): doubled backslashes collapse in node heredocs, backtick-heavy appends fail, Write and Edit decode backslash-u escapes; grep records afterwards
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
 - [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch seconds, Windows shell, blank on nonzero exit; new verbs touch guard verb sets
 - [npm pack facts](npm-pack-facts.md) — `!**/*.test.*` in files excludes tests (npm 10.4 probe); npm packs the working copy, so CRLF and exec bit leak
 - [State folder facts](state-folder-facts.md) — .picket/state is gitignored, so git-status criteria are vacuous; statusline spawn tests write into the repo without a temp root
 - [Session identity facts](session-identity-facts.md) — CLAUDE_CODE_SESSION_ID in Bash, $.session.id() in mods; commit --only takes worktree content
-- [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; absence via negative lookahead + flags i; edit frontmatter with Edit, not sed
-- [Block format couplings](block-format-couplings.md) — pr.mjs parses finding lines by position, packet one-word labels, CLAUDE.md 2043/2048 bytes, row id prefixes collide
+- [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; absence via negative lookahead + flags i; files must exist, so deletions go on the block; edit frontmatter with Edit
+- [Block format couplings](block-format-couplings.md) — PR finding lines parse by position, packet one-word labels, CLAUDE.md 2046/2048 bytes, row id prefixes collide
 - [Record edits ride phase commits](record-edits-ride-phase-commits.md) — approval commits all of work/<id>/, so a half-done amendment can land; lint compares markers to HEAD
+- [Markdown paths facts](markdown-paths-facts.md): memory files are scanned, so cite full repo paths; ignored folders count as missing; ELSEWHERE is exact-match and fails when an excused path starts to exist
+- [.mts conversion facts](mts-conversion-facts.md): in-place .mjs to .mts keeps importers working; no @ts-expect-error fixtures; convention scans bite only on .mts; shell spawns go through util/process.mts; copied .mjs files import .mjs names
+- [esbuild inlines .mjs](esbuild-bundle-inlines-mjs.md): bundle true with a .mts-only onResolve filter inlines relative .mjs imports; filter every relative path
+- [Hook path couplings](hook-path-couplings.md): budget skip, extensions guard regex and KERNEL_DIRS go vacuous or throw when hooks move; renamed bundles fail the live session open
+- [Fake Node version](fake-node-version.md): process.versions.node is configurable, so an --import preload fakes an old Node; write the preload with Write, not Bash
+- [Mod theme tokens](mod-theme-tokens.md): tokens the mods already render; role tokens unverified, binary grep refused
+- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 here (nvm 20.11.1, 24.22.1); a parallel run fails when dist/ is rebuilt meanwhile; scratch-copy import probe
+- [Skill base directory facts](skill-base-directory-facts.md): the lead sees a skill's base directory line, a subagent's preloaded skill does not; path forms follow the reader
+- [Generated tracked files](generated-tracked-files.md): npm test builds before product tests, so staleness of build-written tracked files is checked against the git index
+- [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home; lead-only verb list pinned in a guard test
+- [Route owns directory prefixes](route-owns-directory-prefixes.md): a plan path ending in a slash owns every staged path under it, deletions included
