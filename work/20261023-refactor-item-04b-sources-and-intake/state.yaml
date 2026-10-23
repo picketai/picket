@@ -1,9 +1,9 @@
 id: 20261023-refactor-item-04b-sources-and-intake
 lane: design
 title: "Refactor item 04b: sources and intake"
-status: open
+status: done
 created: 2026-10-23T07:28:14.984Z
-updated: 2026-10-23T07:45:50.591Z
+updated: 2026-10-23T08:37:20.131Z
 session: 6db6a7c0-38e4-4fce-a69d-e1ac685fc391
 base: fb2b4afd7f7433c0fc8d14e7732ab8e59a87f862
 run_through: 6
