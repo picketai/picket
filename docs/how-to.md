@@ -25,7 +25,7 @@ claude plugin install picket-session@picketai --scope project
 You need:
 
 1. Claude Code, recent (the alpha is tested with 2.1.302), signed in.
-2. Node.js 20 or later (`node -v`).
+2. Node.js 22 or later (`node -v`).
 3. git, and a project that is a git repository. Picket commits approved work for you, so it needs one.
 4. On Windows: Git for Windows. Claude Code runs its Bash tool through Git Bash, and Picket's command works from Git Bash and PowerShell.
 
@@ -99,14 +99,14 @@ Claude runs `picket admit` on your words, and the kernel answers with one of fou
 
 | Lane | When the kernel picks it | Who works | Where it stops for you |
 |---|---|---|---|
-| fast | at most 3 files, nothing new to design, no security path or migration | the main session alone | once, before the commit |
-| order | a bounded feature: up to 3 phases and 5 decisions | architect, developer, reviewer | after each phase, then once at the end |
-| design | a security path, a schema or data migration, an irreversible step, a second repository, or more than an order holds | architect, developer, reviewer | after each phase; security phases always stop |
+| fast | a few files (`lanes.fast.max_files`, 3 by default), nothing new to design, no security path or migration | the main session alone | once, before the commit |
+| order | a bounded feature: up to `lanes.order.max_phases` phases and `lanes.order.max_decisions` decisions (3 and 5 by default) | architect, developer, reviewer | after each phase, then once at the end |
+| design | a security path, a schema or data migration, an irreversible step, a second repository, or more than an order holds: up to `lanes.design.max_phases` phases and `lanes.design.max_decisions` decisions (10 and 8 by default) | architect, developer, reviewer | after each phase; security phases always stop |
 | research | a question that needs a report, not a change | analyst | after an outline, then after the deep pass |
 
 A plain question ("what does `refreshToken` do?") takes no lane; Claude just answers it.
 
-The kernel re-checks the lane against the files a change really touches. A request that looked small but grows past 3 files moves from fast to order on its own, and a change under a security path always moves to design.
+The kernel re-checks the lane against the files a change really touches. A request that looked small but grows past `lanes.fast.max_files` files (3 by default) moves from fast to order on its own, and a change under a security path always moves to design.
 
 ### Fast lane
 
@@ -277,11 +277,11 @@ Flags:
 - `--yes` answers yes to every question.
 - `--json` prints the report as JSON.
 
-`picket style remove --all` undoes everything setup did; add `--dry-run` to see the plan first.
+`style apply` shows its plan and asks before it writes anything, and it asks again before it replaces something of yours, such as your own status line or your terminal's default profile. It reads answers only in a real terminal. Through Claude Code's `!` prefix it prints the plan and stops, so run it in a terminal window or pass `--yes`.
 
-Setup shows its plan and asks before it writes anything, and it asks again before it replaces something of yours, such as your own status line or your terminal's default profile. It reads answers only in a real terminal. Through Claude Code's `!` prefix it prints the plan and stops, so run it in a terminal window or pass `--yes`.
+To take the look away again, `picket style remove` lists the styling items, asks which to remove (and asks about the font on its own), and keeps everything when you answer nothing. `picket style remove --all` removes every item without asking which; add `--dry-run` to see the plan first.
 
-Every change is recorded in `~/.picketai/styling-manifest.json`, and every file setup edits is first copied under `~/.picketai/backups/`. `picket style remove --all` restores a file Picket edited when you have not touched it since. When you have, it takes out only Picket's keys, so your later edits stay. A font that was installed before setup is never removed.
+Every change is recorded in `~/.picketai/styling-manifest.json`, and every file `style apply` edits is first copied under `~/.picketai/backups/`. Removing an item restores a file Picket edited when you have not touched it since. When you have, it takes out only Picket's keys, so your later edits stay. A font that was installed before `style apply` ran is never removed.
 
 Contributors who change `style apply` or `style remove` run the manual checklist in `docs/style-checklist.md` on each platform.
 
@@ -317,23 +317,40 @@ If you installed picket-session, also run `claude plugin update picket-session@p
 
 Restart Claude Code to load the new version. Run `picket init` in each project afterwards: it is safe to repeat and adds any setting a new version needs.
 
+Release 1.0.0-alpha.4 renamed six verbs and removed one. An old name still answers with its new one: run the old verb `new` and `picket` prints `picket: "new" is now "open"`. The full list is in the [changelog](../CHANGELOG.md).
+
 ## Removing Picket from a project
 
-If you ran `picket style apply`, run `picket style remove` first. It lists the styling items, asks which to remove (and asks about the font on its own), and keeps everything when you answer nothing.
+Run `picket uninstall` yourself, in a terminal, from the project root. Agents are never allowed to run it.
 
 ```sh
-picket style remove
-claude plugin uninstall picket-markdown@picketai --scope project
-claude plugin uninstall picket-status@picketai --scope project
-claude plugin uninstall picket@picketai --scope project
-claude plugin marketplace remove picketai --scope project
+cd ~/code/bookshop
+picket uninstall --dry-run
+picket uninstall
 ```
 
-If you installed picket-session, run `claude plugin uninstall picket-session@picketai --scope project` before removing the marketplace.
+It removes what `picket init` added, in groups:
 
-Then delete the Picket block from `CLAUDE.md`; from `.claude/settings.json` the `picket` permission and ask rules, the `statusLine` entry when it runs `picket statusline`, and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` from `env` unless you use agent teams yourself; and the `.picket/` folder if you no longer want its settings. Keep `work/` if you want the history of past work items. A copy of the plugin stays in `~/.claude/plugins/cache/picketai/`, marked orphaned, until Claude Code cleans it up.
+1. The Picket plugin, the mods and the `picketai` marketplace, from the project scope.
+2. Picket's entries in `.claude/settings.json`: its permission and ask rules, its `env` key and its status line. Your own entries stay.
+3. The Picket block in `CLAUDE.md`. Your own text stays.
+4. The `.picket/state/` line in `.gitignore`.
+5. `.picket/config.json`, and your extensions in `.picket/extensions/<name>/` when you choose them.
+6. The `.picket/state/` folder.
+7. `work/`, the history of your work items.
 
-To remove the command from your machine: `npm uninstall -g @picketai/picket`.
+`--dry-run` prints the plan and changes nothing. Without it, `uninstall` shows each group and asks whether to remove it. `work/` is kept unless you answer yes for it or pass `--remove-work`; the config is kept by default too when you have an extension in `.picket/extensions/<name>/`. `--yes` removes the groups chosen by default without asking; outside a terminal, through Claude Code's `!` prefix for example, `uninstall` changes nothing unless you pass it.
+
+When `.picket` or `.claude` is a link to a folder outside the project, `uninstall` leaves everything behind that link alone and says so. It also refuses to run in your home folder.
+
+Two things live on your machine rather than in the project, so `uninstall` does not remove them. When it is done, it prints the commands:
+
+```sh
+picket style remove --all
+npm uninstall -g @picketai/picket
+```
+
+The first removes the styling of `picket style apply`, the second the `picket` command. A copy of the plugin stays in `~/.claude/plugins/cache/picketai/`, marked orphaned, until Claude Code cleans it up.
 
 ## Troubleshooting
 
@@ -374,6 +391,11 @@ To remove the command from your machine: `npm uninstall -g @picketai/picket`.
 | `/picket:ticketing` | draft or update Jira tickets |
 | `/picket:explaining` | walk one scenario or concept through worked data |
 | `/picket:debugging` | find a bug's root cause and leave one failing test for the fix |
+| `picket next <id> --human` | the next step of a work item, from a terminal |
+| `picket list` | every work item with its lane, status and next step |
+| `picket cost` | what the sessions have cost |
 | `picket style apply` | give Claude Code and your terminal the PicketAI look |
 | `picket style remove` | remove the styling items you choose |
-| `picket next <id> --human` | the next step of a work item, from a terminal |
+| `picket uninstall` | remove Picket from the project |
+
+Every other verb is in the [command reference](reference/cli.md).
