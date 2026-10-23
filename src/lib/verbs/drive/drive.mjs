@@ -5,7 +5,8 @@ import net from "node:net";
 import { appendDriveRow, driveTarget } from "../../shared/drive-log.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
-import { assertNotDestructive } from "../../shared/destructive.mjs";
+import { destructiveCommand, destructiveRefusal } from "../../shared/destructive.mjs";
+import { Refused } from "../../shared/action.mjs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -115,6 +116,11 @@ function removeFiles(root, paths) {
   });
 }
 
+function refuseDestructive(command) {
+  const match = command ? destructiveCommand(command) : null;
+  if (match) throw new Refused(destructiveRefusal("drive", match), { command });
+}
+
 function restoreSideEffects(root, before, keep) {
   const after = treeSnapshot(root);
   const dirtied = after.modified.filter((p) => !before.modified.includes(p));
@@ -142,9 +148,9 @@ export async function drive(o = {}) {
   const timeoutMs = Number(o.timeoutMs ?? 20_000);
   const row = { ts: new Date().toISOString(), kind: "drive", source: "picket drive", work_id: work.work_id, phase: work.phase, env: Object.keys(o.env ?? {}) };
 
+  refuseDestructive(o.run);
+  refuseDestructive(o.start);
   const before = treeSnapshot(root);
-  if (o.run) assertNotDestructive(o.run, "picket drive --run");
-  if (o.start) assertNotDestructive(o.start, "picket drive --start");
 
   if (o.run) {
     const t = Date.now();

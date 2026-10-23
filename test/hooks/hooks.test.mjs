@@ -509,7 +509,7 @@ test("guard.bash judges the command a harness verb would run, so the allow rule 
   // second layer: the kernel itself refuses, even if the hook were not installed
   assert.throws(
     () => execFileSync("node", [BIN, "drive", "--run", "rm -rf src", "--root", root], { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: ["ignore", "pipe", "pipe"] }),
-    (err) => /refuses to run a destructive command/.test(err.stderr),
+    (err) => err.status === 2 && /refuses to run a destructive command/.test(err.stdout),
   );
   rmSync(root, { recursive: true, force: true });
 });

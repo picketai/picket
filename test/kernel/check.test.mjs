@@ -62,6 +62,14 @@ test("check on a malformed package.json detects no test and warns why; a sound o
   assert.equal(Object.hasOwn(JSON.parse(run(fixture({ test: "node -e 0" }), ["check"]).out), "warnings"), false);
 });
 
+test("check refuses a destructive --only command before running anything", () => {
+  const root = fixture({ test: "node -e 0" });
+  const r = run(root, ["check", "--only", "rm -rf x"]);
+  assert.equal(r.code, 2);
+  assert.equal(r.out.trim(), JSON.stringify({ ok: false, error: "check refuses to run a destructive command (rm); run it yourself so the permission prompt sees it", command: "rm -rf x" }));
+  assert.equal(existsSync(statePath(root, "check-command.log")), false);
+});
+
 test("check reports a missing script instead of inventing one, and --only runs a given command", () => {
   const root = fixture({ test: "node -e 0" });
   const v = JSON.parse(run(root, ["check"]).out);

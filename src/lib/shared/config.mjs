@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { configPath, configRel, hostRel } from "./paths.mjs";
-import { assertNotDestructive } from "./destructive.mjs";
+import { destructiveCommand, destructiveRefusal } from "./destructive.mjs";
 import { isSourceName } from "./sources/source.mjs";
 
 /** Paths whose change always means the heavy lane. Extend per project with `security_paths`. */
@@ -109,12 +109,8 @@ function checkLanes(value, warn) {
 }
 
 function destructiveReason(command) {
-  try {
-    assertNotDestructive(command, "a configured command");
-    return null;
-  } catch (err) {
-    return err.message;
-  }
+  const match = destructiveCommand(command);
+  return match === null ? null : destructiveRefusal("a configured command", match);
 }
 
 function checkCommands(value, warn) {

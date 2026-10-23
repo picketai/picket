@@ -167,6 +167,17 @@ test("drive --env passes the variable to the run and logs only its name", () => 
   assert.equal(log.includes("secret-probe-42"), false);
 });
 
+test("drive refuses a destructive --run or --start command on stdout with exit 2", () => {
+  const root = fixture();
+  const runRefusal = run(root, ["drive", "--run", "rm -rf src"]);
+  assert.equal(runRefusal.code, 2);
+  assert.deepEqual(runRefusal.json, { ok: false, error: "drive refuses to run a destructive command (rm); run it yourself so the permission prompt sees it", command: "rm -rf src" });
+  const startRefusal = run(root, ["drive", "--start", "sudo node s.mjs", "--hit", "/"]);
+  assert.equal(startRefusal.code, 2);
+  assert.match(startRefusal.json.error, /^drive refuses to run a destructive command \(sudo\)/);
+  assert.equal(existsSync(statePath(root, STATE_FILES.driveLog)), false, "a refused drive logs no evidence");
+});
+
 test("drive --env refuses a bad name or a missing equals sign with a usage error", () => {
   const root = fixture();
   for (const bad of ["1BAD=x", "NOEQUALS"]) {

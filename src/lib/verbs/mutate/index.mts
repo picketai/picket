@@ -7,12 +7,12 @@ import { mutate, renderMutation } from "./mutate.mjs";
 export type MutateInput = { id: WorkId };
 export type MutationResult = { outcome: string } & Record<string, unknown>;
 
-type Mutate = (id: string, options: { root: string }) => MutationResult;
+type Mutate = (id: string, options: { root: string; env: NodeJS.ProcessEnv }) => MutationResult;
 
 const mutateTyped = mutate as unknown as Mutate;
 
-export const mutateOnce = action<MutateInput, MutationResult>(async ({ id }, { root }) => {
-  const result = mutateTyped(id, { root });
+export const mutateOnce = action<MutateInput, MutationResult>(async ({ id }, { root, env }) => {
+  const result = mutateTyped(id, { root, env });
   return result.outcome === "error" ? failed(result) : done(result);
 });
 

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { check } from "../../shared/checks.mjs";
+import { runStep } from "../../shared/checks.mjs";
 import { LANGS, MARKUP, commentOf, extOf, maskStrings } from "../../shared/comments.mjs";
 import * as git from "../../shared/git.mjs";
 import { STATE_FILES, stateDir, statePath } from "../../shared/paths.mjs";
@@ -101,40 +101,38 @@ function withMutant(root, mutant, run) {
 
 const REBUILD_PROBLEMS = Object.freeze(["failed", "timed out", "error"]);
 
-function stepStatus(root, step) {
+const STEP_TIMEOUT_MS = 300_000;
+
+function stepStatus(root, step, command, env) {
   try {
-    return check({ root, steps: [step] }).steps[0]?.status ?? "error";
+    return runStep(root, step, command, { env, timeoutMs: STEP_TIMEOUT_MS, logPrefix: "mutate" }).status;
   } catch {
     return "error";
   }
 }
 
-function testStatus(root) {
-  return stepStatus(root, "test");
-}
-
-function mutantOutcome(root) {
-  const status = testStatus(root);
-  if (status === "passed") return "survived";
-  if (status === "failed") return "killed";
+function mutantOutcome(testStatus) {
+  if (testStatus === "passed") return "survived";
+  if (testStatus === "failed") return "killed";
   return "error";
 }
 
-function baselineOutcome(root) {
-  const status = testStatus(root);
-  if (status === "passed") return null;
-  return status === "failed" ? "baseline red" : "error";
+function baselineOutcome(testStatus) {
+  if (testStatus === "passed") return null;
+  return testStatus === "failed" ? "baseline red" : "error";
 }
 
-export function mutate(id, { root = projectRoot() } = {}) {
+export function mutate(id, { root = projectRoot(), env } = {}) {
   const started = Date.now();
   const restored = restoreLeftover(root);
   const base = readState(root, id).base ?? "HEAD";
-  const command = detectTooling(root).tooling.test ?? null;
-  const baseline = command ? baselineOutcome(root) : null;
+  const { tooling } = detectTooling(root);
+  const status = (step) => stepStatus(root, step, tooling[step], env);
+  const command = tooling.test ?? null;
+  const baseline = command ? baselineOutcome(status("test")) : null;
   const found = command && !baseline ? pickMutant(root, base) : null;
-  const outcome = !command ? "no test command" : baseline ?? (!found ? "no candidate" : withMutant(root, found, () => mutantOutcome(root)));
-  const rebuild = found || restored ? stepStatus(root, "build") : null;
+  const outcome = !command ? "no test command" : baseline ?? (!found ? "no candidate" : withMutant(root, found, () => mutantOutcome(status("test"))));
+  const rebuild = found || restored ? status("build") : null;
   const mutant = found ? { path: found.path, line: found.line, from: found.from, to: found.to } : null;
   const result = { ts: new Date().toISOString(), base, mutant, command, outcome, rebuild, ms: Date.now() - started };
   writeFileSync(workFile(root, id, "mutation.json"), JSON.stringify(result, null, 2) + "\n");
