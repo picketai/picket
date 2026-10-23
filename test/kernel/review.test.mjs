@@ -6,8 +6,10 @@ import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { appendWaiver, createWork, readState, writeState } from "./work-fixture.mjs";
 import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
-import { reviewSummary, reviewSummaryRange } from "../../dist/lib/shared/review-summary.mjs";
+import { itemSummary, rangeSummary } from "../../dist/lib/verbs/summary/index.mjs";
 import { nestedRepos, readBases } from "../../dist/lib/shared/repos.mjs";
+
+const ITEM = { base: undefined, env: process.env, platform: process.platform };
 
 function git(dir, ...args) {
   return execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -36,7 +38,7 @@ test("a modified file in a nested repo is listed by its path, not as the repo di
   const { root, orders } = umbrella();
   const s = createWork({ lane: "order", title: "Orders pricing", root });
   writeFileSync(join(orders, "pricing.cs"), "class Pricing { int Rate; }\n");
-  const r = reviewSummary(s.id, { root });
+  const r = itemSummary(root, s.id, ITEM);
   assert.ok(r.changed_files.includes("src/Orders/pricing.cs"), r.changed_files.join(","));
   assert.ok(!r.changed_files.includes("src/Orders/"));
   assert.equal(r.lines_added, 1);
@@ -49,7 +51,7 @@ test("a commit in the nested repo after createWork is diffed from the recorded b
   const recorded = readBases(root, s.id)["src/Orders"];
   assert.equal(recorded, git(orders, "rev-parse", "HEAD"));
   commitFile(orders, "fees.cs", "class Fees {}\n", "fees");
-  const r = reviewSummary(s.id, { root });
+  const r = itemSummary(root, s.id, ITEM);
   assert.ok(r.changed_files.includes("src/Orders/fees.cs"));
   assert.equal(r.repos.length, 1);
   assert.deepEqual({ path: r.repos[0].path, base: r.repos[0].base, base_from: r.repos[0].base_from, files: r.repos[0].files }, { path: "src/Orders", base: recorded, base_from: "recorded", files: 1 });
@@ -71,7 +73,7 @@ test("an item with a branch is diffed in the nested repo's linked worktree on th
   const wt = join(mkdtempSync(join(tmpdir(), "harness-wt-")), "orders-feat");
   git(orders, "worktree", "add", "-q", "-b", "feat-x", wt);
   writeFileSync(join(wt, "pricing.cs"), "class Pricing { int Fee; }\n");
-  const r = reviewSummary(s.id, { root });
+  const r = itemSummary(root, s.id, ITEM);
   assert.match(r.repos[0].worktree, /\/orders-feat$/);
   assert.ok(r.changed_files.includes("src/Orders/pricing.cs"));
   assert.equal(r.lines_added, 1);
@@ -85,7 +87,7 @@ test("without repos.yaml the nested repo is diffed from merge-base with its defa
   commitFile(orders, "fees.cs", "class Fees {}\n", "fees");
   const s = createWork({ lane: "order", title: "Orders pricing", root });
   rmSync(join(root, "work", s.id, "repos.yaml"));
-  const r = reviewSummary(s.id, { root });
+  const r = itemSummary(root, s.id, ITEM);
   assert.equal(r.repos[0].base_from, "merge-base");
   assert.equal(r.repos[0].base, git(orders, "rev-parse", "main"));
   assert.ok(r.changed_files.includes("src/Orders/fees.cs"));
@@ -113,7 +115,7 @@ test("a project without nested repos writes no repos.yaml and reports repos []",
   const s = createWork({ lane: "order", title: "Plain", root });
   assert.equal(existsSync(join(root, "work", s.id, "repos.yaml")), false);
   writeFileSync(join(root, "a.ts"), "b\n");
-  const r = reviewSummary(s.id, { root });
+  const r = itemSummary(root, s.id, ITEM);
   assert.deepEqual(r.changed_files, ["a.ts"]);
   assert.deepEqual(r.repos, []);
   assert.equal(r.request, null);
@@ -149,14 +151,14 @@ test("extension review steps load from their min_size up, in config order across
   try {
     const id = createWork({ lane: "order", title: "Steps", root }).id;
     changeFiles(root, 1);
-    assert.equal(reviewSummary(id, { root }).size, "small");
-    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.picket/extensions/acme/review/small.md"]);
+    assert.equal(itemSummary(root, id, ITEM).size, "small");
+    assert.deepEqual(stepPaths(itemSummary(root, id, ITEM)), ["acme:.picket/extensions/acme/review/small.md"]);
     changeFiles(root, 6);
-    assert.equal(reviewSummary(id, { root }).size, "medium");
-    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.picket/extensions/acme/review/small.md", "acme:.picket/extensions/acme/review/medium.md"]);
+    assert.equal(itemSummary(root, id, ITEM).size, "medium");
+    assert.deepEqual(stepPaths(itemSummary(root, id, ITEM)), ["acme:.picket/extensions/acme/review/small.md", "acme:.picket/extensions/acme/review/medium.md"]);
     changeFiles(root, 12);
-    assert.equal(reviewSummary(id, { root }).size, "large");
-    assert.deepEqual(stepPaths(reviewSummary(id, { root })), ["acme:.picket/extensions/acme/review/small.md", "acme:.picket/extensions/acme/review/medium.md", "local:.picket/extensions/local/review/large.md"]);
+    assert.equal(itemSummary(root, id, ITEM).size, "large");
+    assert.deepEqual(stepPaths(itemSummary(root, id, ITEM)), ["acme:.picket/extensions/acme/review/small.md", "acme:.picket/extensions/acme/review/medium.md", "local:.picket/extensions/local/review/large.md"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -167,7 +169,7 @@ test("a small change on a security path loads every extension review step", () =
   try {
     const id = createWork({ lane: "design", title: "Auth", root }).id;
     changeFiles(root, 1, "src/auth");
-    const summary = reviewSummary(id, { root });
+    const summary = itemSummary(root, id, ITEM);
     assert.equal(summary.size, "small");
     assert.equal(summary.security_path, true);
     assert.equal(summary.extension_steps.length, 3);
@@ -181,7 +183,7 @@ test("with no extension enabled, extension_steps is empty and the summary keeps 
   try {
     const id = createWork({ lane: "order", title: "Plain", root }).id;
     changeFiles(root, 2);
-    const summary = reviewSummary(id, { root });
+    const summary = itemSummary(root, id, ITEM);
     assert.deepEqual(summary.extension_steps, []);
     assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources", "silenced", "mutation"]);
     assert.equal(summary.mutation, null, "no mutation.json, no mutation");
@@ -207,7 +209,7 @@ test("a focus added since base is listed unwaived, however the file was written 
   try {
     const id = createWork({ lane: "order", title: "Fees", root }).id;
     writeFileSync(join(root, "test", "fee.test.ts"), `${focus}\nit("rounds", () => {});\n`);
-    assert.deepEqual(reviewSummary(id, { root }).silenced, [{ path: "test/fee.test.ts", kind: "focused-test", text: focus, waived: false }]);
+    assert.deepEqual(itemSummary(root, id, ITEM).silenced, [{ path: "test/fee.test.ts", kind: "focused-test", text: focus, waived: false }]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -219,7 +221,7 @@ test("a waived line is listed with waived: true", () => {
     const id = createWork({ lane: "order", title: "Fees", root }).id;
     writeFileSync(join(root, "test", "fee.test.ts"), `${focus}\n`);
     appendWaiver(id, { path: "test/fee.test.ts", text: focus }, root, root);
-    assert.deepEqual(reviewSummary(id, { root }).silenced.map((m) => m.waived), [true]);
+    assert.deepEqual(itemSummary(root, id, ITEM).silenced.map((m) => m.waived), [true]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -230,11 +232,11 @@ test("a tracked test file deleted since base is a deleted-test, waived only by a
   try {
     const id = createWork({ lane: "order", title: "Fees", root }).id;
     rmSync(join(root, "test", "old.test.ts"));
-    assert.deepEqual(reviewSummary(id, { root }).silenced, [{ path: "test/old.test.ts", kind: "deleted-test", text: null, waived: false }]);
+    assert.deepEqual(itemSummary(root, id, ITEM).silenced, [{ path: "test/old.test.ts", kind: "deleted-test", text: null, waived: false }]);
     appendWaiver(id, { path: "test/old.test.ts", text: "it(" }, root, root);
-    assert.equal(reviewSummary(id, { root }).silenced[0].waived, false, "a text waiver does not cover a deletion");
+    assert.equal(itemSummary(root, id, ITEM).silenced[0].waived, false, "a text waiver does not cover a deletion");
     appendWaiver(id, { path: "test/old.test.ts", deleted: true }, root, root);
-    assert.equal(reviewSummary(id, { root }).silenced[0].waived, true);
+    assert.equal(itemSummary(root, id, ITEM).silenced[0].waived, true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -247,7 +249,7 @@ test("a file over a megabyte at base is read whole, so its existing suppression 
     commitFile(root, "big.ts", `${big}\n`, "big");
     const id = createWork({ lane: "order", title: "Big", root }).id;
     writeFileSync(join(root, "big.ts"), `${big}\nexport const extra = 1;\n`);
-    assert.deepEqual(reviewSummary(id, { root }).silenced, []);
+    assert.deepEqual(itemSummary(root, id, ITEM).silenced, []);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -262,7 +264,7 @@ test("the range summary lists silenced moves between two commits, all unwaived (
     git(root, "commit", "-q", "-m", "drop");
     const head = git(root, "rev-parse", "HEAD");
     writeFileSync(join(root, "test", "fee.test.ts"), "it.skip(\"working tree only\", () => {});\n");
-    assert.deepEqual(reviewSummaryRange(root, base, head).silenced, [
+    assert.deepEqual(rangeSummary(root, base, head, process.env).silenced, [
       { path: "test/fee.test.ts", kind: "focused-test", text: focus, waived: false },
       { path: "test/old.test.ts", kind: "deleted-test", text: null, waived: false },
     ]);
@@ -270,3 +272,40 @@ test("the range summary lists silenced moves between two commits, all unwaived (
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+function securityRepo(securityPaths) {
+  const root = mkdtempSync(join(tmpdir(), "harness-review-security-"));
+  mkdirSync(join(root, ".picket"));
+  if (securityPaths) writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, security_paths: securityPaths }));
+  git(root, "init", "-q", "-b", "trunk");
+  commitFile(root, "README.md", "base\n", "base");
+  return root;
+}
+
+function writeChanged(root, file) {
+  mkdirSync(dirname(join(root, file)), { recursive: true });
+  writeFileSync(join(root, file), "export const x = 1;\n");
+}
+
+const SECURITY_CASES = [
+  [["src/payments/**"], "src/payments/fees.ts", true],
+  [null, "src/Api/Authentication/Login.cs", true],
+  [null, "src/authx/a.ts", false],
+];
+
+for (const [securityPaths, file, expected] of SECURITY_CASES) {
+  test(`the item and range summaries mark ${file} security_path ${expected}`, () => {
+    const root = securityRepo(securityPaths);
+    try {
+      const id = createWork({ lane: "order", title: "Security", root }).id;
+      const base = git(root, "rev-parse", "HEAD");
+      writeChanged(root, file);
+      assert.equal(itemSummary(root, id, ITEM).security_path, expected, "item");
+      git(root, "add", "-A", "--", file);
+      git(root, "commit", "-q", "-m", "change");
+      assert.equal(rangeSummary(root, base, git(root, "rev-parse", "HEAD"), process.env).security_path, expected, "range");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}

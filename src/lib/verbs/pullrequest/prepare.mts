@@ -1,11 +1,11 @@
 import { action, done } from "../../shared/action.mts";
+import { renderSummary, type Summary } from "../../shared/review-summary.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 import { preparePullRequest } from "./pr.mjs";
 
 export type PrepareInput = { url: string; repo: string | undefined };
 type Meta = { title: string; author?: string; source_ref?: string; target_ref?: string };
-type Summary = { size: string; changed_files: string[]; lines_added: number; lines_removed: number; frameworks: string[]; concerns: string[]; security_path: boolean };
 export type Prepared = {
   review_id: string;
   pr: { provider: string; repo: string };
@@ -41,15 +41,11 @@ function metaLine(v: Prepared): string {
   return `"${v.meta.title}" by ${v.meta.author ?? "?"} · ${branchName(v.meta.source_ref)} → ${branchName(v.meta.target_ref)}`;
 }
 
-function summaryLine({ summary: s }: Prepared): string {
-  return `${s.size} · ${s.changed_files.length} file(s), +${s.lines_added}/-${s.lines_removed} · frameworks ${s.frameworks.join(",") || "-"} · concerns ${s.concerns.join(",") || "-"} · security ${s.security_path ? "yes" : "no"}`;
-}
-
 function renderPrepared(v: Prepared): string {
   return [
     `${v.review_id} · ${v.pr.provider} · ${v.pr.repo} · remote ${v.remote} · clone ${v.repo_root}`,
     `  ${metaLine(v)}`,
-    `  ${summaryLine(v)}`,
+    `  ${renderSummary(v.summary)}`,
     `  base ${v.base.slice(0, SHORT_SHA)} · head ${v.head.slice(0, SHORT_SHA)} (${v.ref})`,
   ].join("\n");
 }

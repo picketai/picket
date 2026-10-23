@@ -109,6 +109,24 @@ export function deletedSince(root: string, base: string, head: string | null = n
   return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
 }
 
+export function rangeFiles(root: string, base: string, head: string): string[] {
+  const out = gitRead(root, ["diff", "--name-only", base, head]) ?? "";
+  return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+}
+
+export function diffStat(root: string, base: string, head: string | null): { added: number; removed: number } {
+  let added = 0;
+  let removed = 0;
+  for (const line of (gitRead(root, ["diff", "--numstat", base, ...(head ? [head] : [])]) ?? "").split(/\r?\n/)) {
+    const m = line.match(/^(\d+)\t(\d+)\t/);
+    if (m) {
+      added += Number(m[1]);
+      removed += Number(m[2]);
+    }
+  }
+  return { added, removed };
+}
+
 function addedLines(numstat: string, excluded: (path: string) => boolean): number {
   let added = 0;
   for (const line of numstat.split(/\r?\n/)) {

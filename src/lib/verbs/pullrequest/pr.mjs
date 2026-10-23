@@ -6,7 +6,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { reviewSummaryRange } from "../../shared/review-summary.mjs";
+import { changesOfRange, summarize } from "../../shared/review-summary.mjs";
+import { loadConfig } from "../../shared/config.mjs";
 import { hostPath } from "../../shared/paths.mjs";
 
 export const PAT_VARS = ["AZDO_PAT", "AZURE_DEVOPS_EXT_PAT"];
@@ -205,7 +206,7 @@ export async function preparePullRequest(url, { root, repo, pat } = {}) {
   if (!r.remote) throw new Error(r.reason);
   const repoRoot = r.repo_root;
   const refs = fetchPullRequest(repoRoot, r.remote, pr.id);
-  const summary = reviewSummaryRange(repoRoot, refs.base, refs.head);
+  const summary = summarize(repoRoot, changesOfRange(repoRoot, refs.base, refs.head), loadConfig(repoRoot));
   const { meta, reason } = await pullRequestMeta(pr, { pat: pat === undefined ? patFromEnv(process.env, root) : pat, root: repoRoot });
   return { pr, repo_root: repoRoot, remote: r.remote, ...refs, summary, meta, meta_reason: reason, review_id: `pr-${pr.id}` };
 }

@@ -8,7 +8,7 @@ import { createWork } from "./work-fixture.mjs";
 import { mutate, renderMutation } from "../../dist/lib/verbs/mutate/index.mjs";
 import { pickMutant } from "../../dist/lib/verbs/mutate/mutant.mjs";
 import { STATE_FILES, statePath } from "../../dist/lib/shared/paths.mjs";
-import { reviewSummary } from "../../dist/lib/shared/review-summary.mjs";
+import { itemSummary } from "../../dist/lib/verbs/summary/index.mjs";
 import { writeConfig } from "./config-fixture.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
@@ -18,6 +18,7 @@ const PROBE = 'const text = require("fs").readFileSync("src/same.js", "utf8");\n
 const BUILD = 'const fs = require("fs");\nfs.mkdirSync("out", { recursive: true });\nfs.copyFileSync("src/same.js", "out/same.js");\n';
 const NO_OPERATOR = SOURCE.replace("return 0;", "return 0;\n  const x = 1;");
 const OPTIONS = { env: process.env, now: () => new Date() };
+const SUMMARY_OPTIONS = { base: undefined, env: process.env, platform: process.platform };
 
 function git(dir, ...args) {
   return execFileSync("git", ["-C", dir, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -176,9 +177,9 @@ test("generics and arrows are not comparisons; the first operator by path, line 
 
 test("the review summary carries the saved mutation (T-6.5)", () => {
   withRepo({}, ({ root, id }) => {
-    assert.equal(reviewSummary(id, { root }).mutation, null);
+    assert.equal(itemSummary(root, id, SUMMARY_OPTIONS).mutation, null);
     write(root, "src/same.js", CHANGED);
     mutate(root, id, OPTIONS);
-    assert.equal(reviewSummary(id, { root }).mutation.outcome, "survived");
+    assert.equal(itemSummary(root, id, SUMMARY_OPTIONS).mutation.outcome, "survived");
   });
 });
