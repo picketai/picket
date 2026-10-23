@@ -84,6 +84,20 @@ test("an [IRREVERSIBLE] marker counts in prose and not inside inline code or a f
   assert.equal(gateFor({ entry: plainFiles, body: "- **T-1.1** the step names `[IRREVERSIBLE]` and `15-migration.md`\n" }), null, "spans that open and close on the line still hide a quoted marker");
 });
 
+test("a default folder-name entry gates a touch-set path at any depth", () => {
+  const gate = gateFor({ entry: plainFiles, body: "**Touch set:**\n- `src/Api/Authentication/Handler.cs`: why\n" });
+  assert.deepEqual(gate, { kind: "security_path", reason: "touches a security path (src/Api/Authentication/Handler.cs)" });
+});
+
+test("a configured entry with a leading ./ and a trailing /* gates the files under it", () => {
+  const gate = gateFor({ entry: "    files: [src/crypto/aes.ts]\n", config: { security_paths: ["./src/crypto/*"] } });
+  assert.equal(gate?.kind, "security_path");
+});
+
+test("a configured entry gates only its own folder, not a sibling sharing its prefix", () => {
+  assert.equal(gateFor({ entry: "    files: [src/payment-ui/button.tsx]\n", config: { security_paths: ["src/pay"] } }), null);
+});
+
 test("a security path wins over a mark, and a mark wins over an irreversible step", () => {
   const config = { security_paths: ["lib/secure/"] };
   const irreversible = "- **T-1.1** drop the table [IRREVERSIBLE]\n";

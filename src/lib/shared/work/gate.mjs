@@ -1,5 +1,6 @@
 import { readArtifact } from "./work.mjs";
 import { securityPaths } from "../config.mjs";
+import { securityPathOf } from "../security-paths.mjs";
 
 export function ownGate(id, n, root) {
   const art = readArtifact(id, root);
@@ -64,14 +65,6 @@ function touchSetPaths(section) {
 }
 
 function firstSecurityPath(paths, root) {
-  const prefixes = securityPaths(root).map(asPrefix);
-  return paths.find((p) => prefixes.some((prefix) => normalise(p).startsWith(prefix))) ?? null;
-}
-
-function asPrefix(configured) {
-  return normalise(configured).replace(/\*\*$/, "").replace(/\/?$/, "/");
-}
-
-function normalise(path) {
-  return String(path).replace(/\\/g, "/");
+  const configured = securityPaths(root);
+  return paths.find((p) => securityPathOf(p, configured) !== null) ?? null;
 }
