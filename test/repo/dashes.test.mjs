@@ -6,7 +6,7 @@ import { codeLines } from "#test/kernel-sources.mts";
 
 const ROOT = resolve(".");
 const MARKDOWN_DIRS = ["src/skills", "src/agents", "src/rules", "src/output-styles", "docs"];
-const MARKDOWN_FILES = ["README.md"];
+const MARKDOWN_FILES = ["README.md", "CONTRIBUTING.md", "CHANGELOG.md"];
 const CODE_DIRS = ["src/lib", "src/bin", "src/mods"];
 const CODE_FILE = /\.(mjs|mts|js|ts|tsx)$/;
 const TEST_FILE = /\.test\.[a-z]+$/;
@@ -44,7 +44,9 @@ function codeModules() {
   return CODE_DIRS.flatMap((dir) => filesUnder(resolve(dir), (name) => CODE_FILE.test(name) && !TEST_FILE.test(name)));
 }
 
-test("no Markdown under the instructions, docs/ or README.md holds an en or em dash", () => {
+test("no Markdown under the instructions, docs/, README.md, CONTRIBUTING.md or CHANGELOG.md holds an en or em dash", () => {
+  const files = markdownFiles().map((file) => relative(ROOT, file).replaceAll("\\", "/"));
+  assert.ok(files.includes("CONTRIBUTING.md") && files.includes("CHANGELOG.md"));
   assert.deepEqual(offenders(markdownFiles(), markdownDashes), []);
 });
 

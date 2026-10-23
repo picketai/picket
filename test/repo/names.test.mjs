@@ -96,11 +96,25 @@ function commandProblems(markdown) {
   return commandCandidates(markdown).map(commandProblem).filter(Boolean);
 }
 
-test("every picket command in src/ Markdown, CLAUDE.md, README.md and docs/ names a verb, and a group verb its subverb", () => {
-  const files = [...filesUnder(SRC, ".md"), join(ROOT, "CLAUDE.md"), join(ROOT, "README.md"), ...filesUnder(join(ROOT, "docs"), ".md")];
+const ENTRY_HEADING = /^## /m;
+
+function newestEntry(changelog) {
+  const [, newest = ""] = changelog.split(ENTRY_HEADING);
+  return newest;
+}
+
+test("every picket command in src/ Markdown, CLAUDE.md, README.md, CONTRIBUTING.md, docs/ and the newest CHANGELOG.md entry names a verb, and a group verb its subverb", () => {
+  const files = [...filesUnder(SRC, ".md"), join(ROOT, "CLAUDE.md"), join(ROOT, "README.md"), join(ROOT, "CONTRIBUTING.md"), ...filesUnder(join(ROOT, "docs"), ".md")];
   assert.deepEqual(offenders(files, commandProblems), []);
+  assert.deepEqual(commandProblems(newestEntry(readFileSync(join(ROOT, "CHANGELOG.md"), "utf8"))).map((problem) => `CHANGELOG.md: ${problem}`), []);
   const commands = files.flatMap((file) => commandCandidates(readFileSync(file, "utf8")).filter((c) => PICKET_COMMAND.test(c)));
   assert.ok(commands.length > 100, `${commands.length} picket commands scanned`);
+});
+
+test("only the newest changelog entry is read, so an older one keeps its old verb names", () => {
+  const changelog = "# Changelog\n\nIntro `picket nope`.\n\n## 2.0.0\n\nRun `picket frobnicate`.\n\n## 1.0.0\n\nRun `picket oldverb`.\n";
+  assert.deepEqual(commandProblems(newestEntry(changelog)), ["unknown verb: picket frobnicate"]);
+  assert.deepEqual(commandProblems(newestEntry("# Changelog\n\n## 2.0.0\n\nRun `picket list`.\n\n## 1.0.0\n\nRun `picket frobnicate`.\n")), []);
 });
 
 test("the command scan flags an unknown verb and a bare group verb, and accepts help and a prefixed command", () => {

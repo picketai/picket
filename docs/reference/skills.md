@@ -24,15 +24,15 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 
 ## picket:expediting
 
-The fast lane makes a small, low-risk change end to end: at most three files, nothing new to design, no security path or migration.
+The fast lane makes a small, low-risk change end to end: a few files within [the fast lane's limit](../how-to.md#the-daily-loop), nothing new to design, no security path or migration.
 
 **How you reach it.** Ask for the change in plain words; it starts when `picket admit` answers `fast`. Phrases such as "just fix", "quick change" or "don't spin up the pipeline" point here. To force it, add a line `lane: fast` to the request.
 
-**Where it fits.** It runs in the main session with no agent, no plan and no phase gate, but keeps the test run, the run through the real entry point and the code quality bar. It stages the change and stops once with `[c] commit   [x] discard: <why>`. If the change turns out larger (a fourth file, a new dependency, a security path), it stops and hands the request and the diff to the lane `picket admit` names.
+**Where it fits.** It runs in the main session with no agent, no plan and no phase gate, but keeps the test run, the run through the real entry point and the code quality bar. It stages the change and stops once with `[c] commit   [x] discard: <why>`. If the change turns out larger (more files than the limit, a new dependency, a security path), it stops and hands the request and the diff to the lane `picket admit` names.
 
 ## picket:ordering
 
-The order lane delivers a bounded feature, such as a new endpoint or module, in at most 3 phases and 5 decisions.
+The order lane delivers a bounded feature, such as a new endpoint or module, within [the order lane's phase and decision limits](../how-to.md#the-daily-loop).
 
 **How you reach it.** It starts when `picket admit` answers `order`, or on a forced `lane: order` line.
 
@@ -40,7 +40,7 @@ The order lane delivers a bounded feature, such as a new endpoint or module, in 
 
 ## picket:designing
 
-The design lane handles a change that touches a security path, a schema or data migration, an irreversible step, a second repository, or more than an order can hold.
+The design lane handles a change that touches a security path, a schema or data migration, an irreversible step, a second repository, or more than [an order can hold](../how-to.md#the-daily-loop).
 
 **How you reach it.** It starts when `picket admit` answers `design`, when a change touches a security path, when the order lane reports that a plan outgrew its caps, or on a forced `lane: design` line.
 

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, posix, resolve } from "node:path";
 import { cliPage, hooksPage, modsPage, referencePages, REFERENCE_DIR, withLineFeeds } from "../../scripts/docs.mjs";
 import { isGroup, VERB_NAMES } from "../../src/lib/verbs.mts";
 
@@ -86,4 +87,82 @@ test("stalePages names npm run docs for a changed page and a missing one, and re
   const read = (path) => committed[path] ?? null;
   assert.deepEqual(stalePages(pages, read), [staleMessage("docs/reference/b.md"), staleMessage("docs/reference/c.md")]);
   assert.match(staleMessage("docs/reference/b.md"), /run npm run docs and stage it/);
+});
+
+const ROOT_DOCS = ["README.md", "CONTRIBUTING.md", "CHANGELOG.md"];
+const DOC_FOLDERS = ["docs", REFERENCE_DIR];
+const SECTION = /^## picket:([a-z-]+)\s*$/gm;
+const MARKDOWN_LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
+const EXTERNAL = /^[a-z][a-z0-9+.-]*:/i;
+const SLASH_COMMAND = /\/picket:([a-z-]+)/g;
+
+function skillNames() {
+  const dir = join(ROOT, "src", "skills");
+  return readdirSync(dir).filter((name) => existsSync(join(dir, name, "SKILL.md")));
+}
+
+function agentNames() {
+  return readdirSync(join(ROOT, "src", "agents")).filter((name) => name.endsWith(".md")).map((name) => name.slice(0, -".md".length));
+}
+
+function docFiles() {
+  const inFolders = DOC_FOLDERS.flatMap((folder) => readdirSync(join(ROOT, folder)).filter((name) => name.endsWith(".md")).map((name) => `${folder}/${name}`));
+  return [...ROOT_DOCS, ...inFolders];
+}
+
+function readDoc(path) {
+  return readFileSync(join(ROOT, path), "utf8");
+}
+
+function sectionProblems(names, page, kind) {
+  const sections = [...page.matchAll(SECTION)].map(([, name]) => name);
+  const missing = names.filter((name) => !sections.includes(name)).map((name) => `${kind} ${name} has no ## picket:${name} section`);
+  const extra = sections.filter((name) => !names.includes(name)).map((name) => `## picket:${name} names no ${kind}`);
+  return [...missing, ...extra];
+}
+
+function linkTargets(markdown) {
+  return [...markdown.matchAll(MARKDOWN_LINK)].map(([, target]) => target).filter((target) => !target.startsWith("#") && !EXTERNAL.test(target));
+}
+
+function brokenLinks(file, markdown, exists) {
+  return linkTargets(markdown)
+    .map((target) => ({ target, path: posix.normalize(posix.join(posix.dirname(file), target.replace(/#.*$/, ""))) }))
+    .filter(({ path }) => !exists(path))
+    .map(({ target }) => `${file}: ${target}`);
+}
+
+function unknownSlashCommands(markdown, skills) {
+  return [...markdown.matchAll(SLASH_COMMAND)].map(([, name]) => name).filter((name) => !skills.includes(name)).map((name) => `/picket:${name}`);
+}
+
+test("every skill and agent has its reference section, and every section has its skill or agent", () => {
+  assert.deepEqual(sectionProblems(skillNames(), readDoc(`${REFERENCE_DIR}/skills.md`), "skill"), []);
+  assert.deepEqual(sectionProblems(agentNames(), readDoc(`${REFERENCE_DIR}/agents.md`), "agent"), []);
+});
+
+test("the section check flags a skill folder with no section and a section with no folder", () => {
+  const page = "# Skills\n\n## picket:ordering\n\ntext\n\n## picket:gone\n";
+  assert.deepEqual(sectionProblems(["ordering", "designing"], page, "skill"), ["skill designing has no ## picket:designing section", "## picket:gone names no skill"]);
+});
+
+test("every relative link in the docs resolves to a file", () => {
+  const exists = (path) => existsSync(join(ROOT, path));
+  assert.deepEqual(docFiles().flatMap((file) => brokenLinks(file, readDoc(file), exists)), []);
+  assert.ok(docFiles().includes(`${REFERENCE_DIR}/skills.md`));
+});
+
+test("the link check flags a missing file and skips anchors and web links", () => {
+  const markdown = "[a](missing.md) [b](../how-to.md#the-daily-loop) [c](#local) [d](https://example.com/x.md)";
+  const exists = (path) => path === "docs/how-to.md";
+  assert.deepEqual(brokenLinks("docs/reference/skills.md", markdown, exists), ["docs/reference/skills.md: missing.md"]);
+});
+
+test("every /picket: command in the docs names a skill", () => {
+  const skills = skillNames();
+  assert.deepEqual(docFiles().flatMap((file) => unknownSlashCommands(readDoc(file), skills).map((name) => `${file}: ${name}`)), []);
+});
+
+test("the slash command check flags /picket:nope", () => {
+  assert.deepEqual(unknownSlashCommands("Run `/picket:resuming` or /picket:nope.", ["resuming"]), ["/picket:nope"]);
 });
