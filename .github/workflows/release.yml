@@ -42,6 +42,7 @@ jobs:
         with:
           name: dist
           path: dist/
+          include-hidden-files: true
           retention-days: 1
 
   build-on-22:
@@ -77,11 +78,14 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install
+        run: npm ci
+
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Test the mods
-        run: node scripts/test.mjs mods
+        run: node scripts/test.mjs build mods
 
   publish:
     needs: [test, build-on-22]

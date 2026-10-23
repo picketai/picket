@@ -5,6 +5,7 @@ import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
+import { MODS } from "../../src/lib/mods.mts";
 
 const SRC = resolve("src");
 const SETTINGS = resolve(".claude/settings.json");
@@ -12,7 +13,6 @@ const DIST_HOOKS = resolve("dist/hooks");
 const PLUGIN_HOOKS = join(DIST_HOOKS, "hooks.json");
 const MARKETPLACE = resolve(".claude-plugin/marketplace.json");
 const PACKAGE = resolve("package.json");
-const MOD_FOLDERS = ["status", "session", "markdown"];
 const LAUNCHER = "src/bin/picket";
 const EXECUTABLE_MODE = "100755";
 
@@ -122,15 +122,15 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../src/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picketai serves picket from dist/, picket-status from status/, picket-session from session/ and picket-markdown from markdown/", () => {
+test("the root marketplace picketai serves picket from dist/, then each mod from dist/mods/ in list order", () => {
   const marketplace = readJson(MARKETPLACE);
   assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
   assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [
     { name: "picket", source: "./dist" },
-    { name: "picket-status", source: "./status" },
-    { name: "picket-session", source: "./session" },
-    { name: "picket-markdown", source: "./markdown" },
+    { name: "picket-status", source: "./dist/mods/status" },
+    { name: "picket-markdown", source: "./dist/mods/markdown" },
+    { name: "picket-session", source: "./dist/mods/session" },
   ]);
 });
 
@@ -160,12 +160,11 @@ test("the npm package ships the plugin and its marketplace at the plugin's versi
   assert.equal(pkg.files.at(-1), "!**/*.test.*", "files ends by excluding test files from every shipped folder");
 });
 
-test("the npm package ships each mod's sources at the package version, without generated files", () => {
+test("the npm package ships each mod only as built under dist/mods/, at the package version", () => {
   const pkg = readJson(PACKAGE);
-  for (const folder of MOD_FOLDERS) {
-    for (const entry of [`${folder}/.claude-plugin/plugin.json`, `${folder}/hooks/`, `${folder}/types/`]) assert.ok(pkg.files.includes(entry), `files ships ${entry}`);
-    assert.equal(pkg.files.includes(`${folder}/`), false, `files names ${folder}/ sources, not the folder an engine writes into`);
-    assert.equal(readJson(resolve(folder, ".claude-plugin", "plugin.json")).version, pkg.version, `${folder} manifest version`);
+  for (const name of Object.keys(MODS)) {
+    assert.deepEqual(pkg.files.filter((entry) => entry.startsWith(`${name}/`)), [], `files names no ${name}/ folder`);
+    assert.equal(readJson(resolve("dist", "mods", name, ".claude-plugin", "plugin.json")).version, pkg.version, `${name} manifest version`);
   }
 });
 

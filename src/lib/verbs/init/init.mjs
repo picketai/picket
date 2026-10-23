@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { MODS } from "../../mods.mts";
 import { HOST_DIR, configPath, hostPath, pluginRoot, stateRel } from "../../shared/paths.mts";
 import { STATUS_LINE } from "../../shared/styling/statusline-setting.mjs";
 
@@ -14,12 +15,9 @@ const SETTINGS_ENV = { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" };
 const SETTINGS_ALLOW = ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE_NAME}/**)`];
 const SETTINGS_ASK = ["PowerShell(picket drive *)", "PowerShell(picket check *)"];
 const PLUGIN_ID = `picket@${MARKETPLACE_NAME}`;
-const STATUS_PLUGIN_ID = `picket-status@${MARKETPLACE_NAME}`;
-const MARKDOWN_PLUGIN_ID = `picket-markdown@${MARKETPLACE_NAME}`;
-const MOD_PLUGINS = [
-  { name: "status", id: STATUS_PLUGIN_ID },
-  { name: "markdown", id: MARKDOWN_PLUGIN_ID },
-];
+const MOD_PLUGINS = Object.entries(MODS)
+  .filter(([, { install }]) => install === "default")
+  .map(([name, { plugin }]) => ({ name, id: `${plugin}@${MARKETPLACE_NAME}` }));
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";
 

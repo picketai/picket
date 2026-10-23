@@ -140,8 +140,9 @@ const ALLOWED_ZONES = {
   cli: ["cli", "verbs.mts", "verbs/", "shared", "util"],
   "verbs.mts": [],
   "hooks.mts": [],
+  "mods.mts": [],
 };
-const IMPORT_FREE_ZONES = new Set(["verbs.mts", "hooks.mts"]);
+const IMPORT_FREE_ZONES = new Set(["verbs.mts", "hooks.mts", "mods.mts"]);
 
 const HOOKS_PREFIX = "src/lib/hooks/";
 const HOOK_FRAME = ["hook-spec.mts", "output.mts"];
@@ -171,7 +172,7 @@ function zoneOf(path) {
 }
 
 function allowedZones(zone) {
-  if (zone.startsWith("verbs/")) return [zone, "shared", "util"];
+  if (zone.startsWith("verbs/")) return [zone, "shared", "util", "mods.mts"];
   if (SKILL_SCRIPTS.test(zone)) return [zone, "shared", "util"];
   return ALLOWED_ZONES[zone] ?? [];
 }
@@ -230,6 +231,10 @@ test("the direction scan keeps each hook in its folder and the hook list import-
   const reported = (path, text) => importViolations(path, text).length;
   assert.equal(reported("src/lib/hooks/observe/drive/index.mts", 'import { readPowerShell } from "../../guard/bash/powershell.mts";'), 1);
   assert.equal(reported("src/lib/hooks.mts", 'import { readFileSync } from "node:fs";'), 1);
+  assert.equal(reported("src/lib/mods.mts", 'import { readFileSync } from "node:fs";'), 1);
+  assert.equal(reported("src/lib/mods.mts", 'import { HOOKS } from "./hooks.mts";'), 1);
+  assert.equal(reported("src/lib/shared/a.mts", 'import { MODS } from "../mods.mts";'), 1);
+  assert.equal(reported("src/lib/verbs/init/init.mjs", 'import { MODS } from "../../mods.mts";'), 0);
   assert.equal(reported("src/lib/hooks/route/verdict/index.mts", 'import { route } from "../../../verbs/route/route.mts";'), 1);
   assert.equal(reported("src/lib/hooks/guard/comments/index.mts", 'import { runHook } from "../../run-hook.mts";'), 1);
   assert.equal(reported("src/lib/hooks/guard/edit-target.mts", 'import { hook } from "./scope/index.mts";'), 1);

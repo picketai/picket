@@ -1,7 +1,9 @@
 {
   "name": "picketai",
   "description": "The Picket plugin marketplace, served from the installed @picketai/picket package or a checkout of picketai/picket.",
-  "owner": { "name": "Vlad Apetre" },
+  "owner": {
+    "name": "Vlad Apetre"
+  },
   "plugins": [
     {
       "name": "picket",
@@ -10,18 +12,18 @@
     },
     {
       "name": "picket-status",
-      "source": "./status",
+      "source": "./dist/mods/status",
       "description": "The open work item and its agents, above the prompt"
     },
     {
-      "name": "picket-session",
-      "source": "./session",
-      "description": "Sessions of this project and every agent of this one, in a docked sidebar"
+      "name": "picket-markdown",
+      "source": "./dist/mods/markdown",
+      "description": "Click a markdown file path in a reply to read it, read-only, in a pane beside the transcript"
     },
     {
-      "name": "picket-markdown",
-      "source": "./markdown",
-      "description": "Click a markdown file path in a reply to read it, read-only, in a pane beside the transcript"
+      "name": "picket-session",
+      "source": "./dist/mods/session",
+      "description": "Sessions of this project and every agent of this one, in a docked sidebar"
     }
   ]
 }

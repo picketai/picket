@@ -8,18 +8,17 @@ import { withProject } from "#test/project.mts";
 
 const SCRIPT = resolve(".github/scripts/release.mjs");
 const MANIFEST = '{\n  "name": "picket",\n  "version": "1.0.0-alpha.1",\n  "author": { "name": "Vlad Apetre" },\n  "skills": ["./skills/a"]\n}\n';
-const STATUS_MANIFEST = '{\n  "name": "picket-status",\n  "version": "1.0.0-alpha.1",\n  "types": "./types/index.d.ts"\n}\n';
-const SESSION_MANIFEST = '{\n  "name": "picket-session",\n  "version": "1.0.0-alpha.1",\n  "types": "./types/index.d.ts"\n}\n';
-const MARKDOWN_MANIFEST = '{\n  "name": "picket-markdown",\n  "version": "1.0.0-alpha.1",\n  "types": "./types/index.d.ts"\n}\n';
+const BUILT_MOD_MANIFEST = '{\n  "name": "picket-status",\n  "version": "1.0.0-alpha.1",\n  "types": "./types/index.d.ts"\n}\n';
+const BUILT_MOD = "dist/mods/status";
 
 function manifestPath(root, plugin) {
   return join(root, plugin, ".claude-plugin", "plugin.json");
 }
 
-function project(t, manifest, version, statusManifest = STATUS_MANIFEST) {
+function project(t, manifest, version) {
   const root = withProject(t, { picket: false });
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "@picketai/picket", version }));
-  for (const [plugin, text] of [["src", manifest], ["status", statusManifest], ["session", SESSION_MANIFEST], ["markdown", MARKDOWN_MANIFEST]]) {
+  for (const [plugin, text] of [["src", manifest], [BUILT_MOD, BUILT_MOD_MANIFEST]]) {
     mkdirSync(join(root, plugin, ".claude-plugin"), { recursive: true });
     writeFileSync(manifestPath(root, plugin), text);
   }
@@ -47,9 +46,9 @@ test("distTag is latest for a stable version and the prerelease identifier other
   assert.throws(() => distTag("1.0.0-0"), /prerelease identifier "0"/);
 });
 
-test("the version script stages the picket manifest under src/, and the release job runs Node 24", () => {
+test("the version script stages only the picket manifest under src/, and the release job runs Node 24", () => {
   const { scripts } = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
-  assert.match(scripts.version, /git add src\/\.claude-plugin\/plugin\.json /);
+  assert.match(scripts.version, /git add src\/\.claude-plugin\/plugin\.json$/);
   assert.match(readFileSync(resolve(".github/workflows/release.yml"), "utf8"), /^\s+node-version: 24$/m);
 });
 
@@ -64,14 +63,15 @@ test("the release workflow tests on Node 24, checks the build on Node 22, runs t
   assert.deepEqual(Object.keys(jobs), ["test", "build-on-22", "mods", "publish"]);
   assert.match(jobs.test, /node-version: 24\n/);
   assert.match(jobs.test, /run: npm test\n/);
-  assert.match(jobs.test, /actions\/upload-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n\s+retention-days: 1\n/);
+  assert.match(jobs.test, /actions\/upload-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n\s+include-hidden-files: true\n\s+retention-days: 1\n/);
   assert.match(jobs["build-on-22"], /needs: test\n/);
   assert.match(jobs["build-on-22"], /node-version: 22\n/);
   assert.doesNotMatch(jobs["build-on-22"], /npm ci/);
   assert.match(jobs["build-on-22"], /actions\/download-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n/);
   assert.match(jobs["build-on-22"], /run: node --test "test\/cli\/\*\*\/\*\.test\.mjs" "test\/hooks\/\*\*\/\*\.test\.mjs"\n/);
   assert.match(jobs.mods, /continue-on-error: true\n/);
-  assert.match(jobs.mods, /run: node scripts\/test\.mjs mods\n/);
+  assert.match(jobs.mods, /node-version: 24\n/);
+  assert.match(jobs.mods, /run: npm ci\n[\s\S]*run: npm install -g @anthropic-ai\/claude-code\n[\s\S]*run: node scripts\/test\.mjs build mods\n/);
   assert.match(jobs.publish, /needs: \[test, build-on-22\]\n/);
   assert.doesNotMatch(jobs.publish, /npm test/);
   const uses = Object.values(jobs).join("").match(/uses: \S+/g);
@@ -85,26 +85,14 @@ test("checkTag accepts only the v-prefixed package version", () => {
   assert.throws(() => checkTag("v1.0.0-alpha.9", "1.0.0-alpha.1"), /v1\.0\.0-alpha\.9 does not match package\.json version 1\.0\.0-alpha\.1/);
 });
 
-test("sync-version rewrites all four plugin manifests from package.json, and fails in one stderr line", (t) => {
+test("sync-version rewrites only the core manifest from package.json, never a built mod manifest, and fails in one stderr line", (t) => {
   const ok = project(t, MANIFEST, "9.9.9");
   const twice = project(t, '{ "version": "1", "nested": { "version": "2" } }', "1.0.0-alpha.2");
   const r = syncVersionCli(ok);
   assert.equal(r.status, 0, r.stderr);
   assert.equal(readFileSync(manifestPath(ok, "src"), "utf8"), MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
-  assert.equal(readFileSync(manifestPath(ok, "status"), "utf8"), STATUS_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
-  assert.equal(readFileSync(manifestPath(ok, "session"), "utf8"), SESSION_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
-  assert.equal(readFileSync(manifestPath(ok, "markdown"), "utf8"), MARKDOWN_MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
+  assert.equal(readFileSync(manifestPath(ok, BUILT_MOD), "utf8"), BUILT_MOD_MANIFEST);
   const bad = syncVersionCli(twice);
   assert.equal(bad.status, 1);
   assert.equal(bad.stderr.trim().split("\n").length, 1, bad.stderr);
-});
-
-test("sync-version writes no manifest when the status manifest is malformed", (t) => {
-  const root = project(t, MANIFEST, "9.9.9", '{ "name": "picket-status" }');
-  const r = syncVersionCli(root);
-  assert.equal(r.status, 1);
-  assert.match(r.stderr, /status\/\.claude-plugin\/plugin\.json holds 0 version values/);
-  assert.equal(readFileSync(manifestPath(root, "src"), "utf8"), MANIFEST);
-  assert.equal(readFileSync(manifestPath(root, "session"), "utf8"), SESSION_MANIFEST);
-  assert.equal(readFileSync(manifestPath(root, "markdown"), "utf8"), MARKDOWN_MANIFEST);
 });

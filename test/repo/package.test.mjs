@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { withProject } from "#test/project.mts";
+import { MODS } from "../../src/lib/mods.mts";
 
 const SHIPPED = [
   "dist/bin/picket.mjs",
@@ -12,9 +13,7 @@ const SHIPPED = [
   "dist/hooks/hooks.json",
   "dist/.claude-plugin/plugin.json",
   ".claude-plugin/marketplace.json",
-  "status/.claude-plugin/plugin.json",
-  "session/.claude-plugin/plugin.json",
-  "markdown/.claude-plugin/plugin.json",
+  ...Object.keys(MODS).flatMap((name) => [".claude-plugin/plugin.json", "hooks/hooks.json", "hooks/index.tsx"].map((file) => `dist/mods/${name}/${file}`)),
 ];
 
 function withoutScripts(pkg) {

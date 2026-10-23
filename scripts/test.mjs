@@ -1,12 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import { MODS } from "../src/lib/mods.mts";
 
 const UNIT_TESTS = "src/**/*.test.mts";
 const PRODUCT_ROOTS = ["test", "bench/test"];
 const TIMING_ROOT = join("test", "timing");
 const TEST_FILE = /\.test\.mjs$/;
-const MODS = ["status", "session", "markdown"];
+const MOD_FOLDERS = Object.keys(MODS).map((name) => `dist/mods/${name}`);
 
 function testFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -33,7 +34,7 @@ function mods() {
     console.log("mods: skipped, claude not on PATH");
     return 0;
   }
-  for (const dir of MODS) {
+  for (const dir of MOD_FOLDERS) {
     const status = run("claude", ["plugin", "validate", "--strict", dir]) || run("claude", ["plugin", "test", dir]);
     if (status !== 0) return status;
   }

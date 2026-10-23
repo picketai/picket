@@ -1,13 +1,22 @@
 import { build } from "esbuild";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOOKS } from "../src/lib/hooks.mts";
+import { MODS } from "../src/lib/mods.mts";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const SRC = join(REPO, "src");
 export const DIST = join(REPO, "dist");
 export const HOOK_LIST = join(SRC, "lib", "hooks.mts");
+export const MOD_LIST = join(SRC, "lib", "mods.mts");
+export const MODS_SRC = join(SRC, "mods");
+export const DIST_MODS = join(DIST, "mods");
+export const MARKETPLACE = join(REPO, ".claude-plugin", "marketplace.json");
+const PACKAGE = join(REPO, "package.json");
+const MOD_FOLDERS = ["hooks", "types"];
+const MOD_ENTRY = "./index.tsx";
+const MOD_TYPES = "./types/index.d.ts";
 const HOOK_FOLDERS = join(SRC, "lib", "hooks");
 const VENDOR_DIR = join(SRC, "lib", "util", "vendor");
 const TEST_FILE = /\.test\.[^.]+$/;
@@ -101,14 +110,18 @@ function isVendored(file) {
   return file.startsWith(VENDOR_DIR + sep);
 }
 
+export function isModSource(file) {
+  return file.startsWith(MODS_SRC + sep);
+}
+
 export function isBuiltModule(file) {
-  if (isTestFile(file)) return false;
+  if (isTestFile(file) || isModSource(file)) return false;
   if (file.endsWith(".mts")) return !file.endsWith(".d.mts");
   return file.endsWith(".mjs") && !isVendored(file);
 }
 
 export function isCopied(file) {
-  return !isTestFile(file) && !isBuiltModule(file) && !file.endsWith(".d.mts");
+  return !isTestFile(file) && !isModSource(file) && !isBuiltModule(file) && !file.endsWith(".d.mts");
 }
 
 export function distPath(file) {
@@ -140,6 +153,55 @@ export function outputCollisions(files) {
   });
 }
 
+function jsonText(value) {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function writeJson(path, value) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, jsonText(value));
+}
+
+export function modManifest(name, pkg, mods = MODS) {
+  const { plugin, description } = mods[name];
+  return { name: plugin, version: pkg.version, description, author: { name: pkg.author }, types: MOD_TYPES };
+}
+
+export function modHooksJson() {
+  return { modules: [MOD_ENTRY] };
+}
+
+export function marketplaceJson(current, mods = MODS) {
+  const modPlugins = new Set(Object.values(mods).map(({ plugin }) => plugin));
+  const others = current.plugins.filter(({ name }) => !modPlugins.has(name));
+  const modEntries = Object.entries(mods).map(([name, { plugin, description }]) => ({ name: plugin, source: `./dist/mods/${name}`, description }));
+  return jsonText({ ...current, plugins: [...others, ...modEntries] });
+}
+
+function writeMarketplace(mods) {
+  const current = readFileSync(MARKETPLACE, "utf8");
+  const wanted = marketplaceJson(JSON.parse(current), mods);
+  if (wanted !== current.replaceAll("\r\n", "\n")) writeFileSync(MARKETPLACE, wanted);
+}
+
+function copyModFolders(name) {
+  for (const folder of MOD_FOLDERS) {
+    const from = join(MODS_SRC, name, folder);
+    if (existsSync(from)) cpSync(from, join(DIST_MODS, name, folder), { recursive: true });
+  }
+}
+
+export function buildMods(mods = MODS) {
+  const pkg = JSON.parse(readFileSync(PACKAGE, "utf8"));
+  rmSync(DIST_MODS, { recursive: true, force: true });
+  for (const name of Object.keys(mods)) {
+    copyModFolders(name);
+    writeJson(join(DIST_MODS, name, ".claude-plugin", "plugin.json"), modManifest(name, pkg, mods));
+    writeJson(join(DIST_MODS, name, "hooks", "hooks.json"), modHooksJson());
+  }
+  writeMarketplace(mods);
+}
+
 export async function buildAll() {
   const files = sourceFiles();
   const problems = [...missingHooks(), ...outputCollisions(files)];
@@ -149,6 +211,7 @@ export async function buildAll() {
   writeHooksJson();
   await build(moduleOptions(files.filter(isBuiltModule)));
   await Promise.all(Object.keys(HOOKS).map((name) => build(entryOptions(name))));
+  buildMods();
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
