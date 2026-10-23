@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { killTree, runShell, startShell } from "../../dist/lib/util/process.mjs";
+import { killTree, ProgramFailed, runProgram, runShell, startShell } from "../../dist/lib/util/process.mjs";
 
 const NODE = JSON.stringify(process.execPath);
 const OPTIONS = { cwd: process.cwd(), env: process.env, timeoutMs: 10_000 };
@@ -29,6 +29,14 @@ test("startShell starts a long-running command and killTree ends it within 3 s",
   const timeout = new Promise((resolve) => setTimeout(() => resolve(false), 3000).unref());
   assert.equal(await Promise.race([exited, timeout]), true);
   assert.ok(Date.now() - started < 3000);
+});
+
+test("runProgram returns what the program printed", () => {
+  assert.equal(runProgram(process.execPath, ["-e", "process.stdout.write('ok')"], { cwd: process.cwd(), timeoutMs: 5000 }), "ok");
+});
+
+test("runProgram throws ProgramFailed ending with the program's last stderr line", () => {
+  assert.throws(() => runProgram(process.execPath, ["-e", "process.stderr.write('boom'); process.exit(3)"], { cwd: process.cwd(), timeoutMs: 5000 }), (err) => err instanceof ProgramFailed && err.message.endsWith("boom"));
 });
 
 test("runShell marks a command that outlives its timeout as timed out (T-1.5)", () => {

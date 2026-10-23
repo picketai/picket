@@ -1,10 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { execFileSync } from "node:child_process";
-import { parsePullRequestUrl, findRemote, locateRepo, fetchPullRequest, parseFindings, buildThreads, postReview, preparePullRequest, patFromEnv } from "../../dist/lib/verbs/pullrequest/pr.mjs";
+import { join, resolve } from "node:path";
+import { execFileSync, spawn } from "node:child_process";
+import { parsePullRequestUrl, patOf } from "../../dist/lib/verbs/pullrequest/pull-request.mjs";
+import { findRemote, locateRepo, fetchPullRequest } from "../../dist/lib/verbs/pullrequest/remote.mjs";
+import { parseFindings, buildThreads } from "../../dist/lib/verbs/pullrequest/threads.mjs";
+import { azdoRequest, postThreads } from "../../dist/lib/verbs/pullrequest/azdo.mjs";
+import { preparePullRequest } from "../../dist/lib/verbs/pullrequest/prepare.mjs";
+
+const PREPARE = { repo: undefined, pat: null, env: process.env };
 
 test("parseFindings keeps the Likelihood and Leave it fields of a cumulative finding in the tail (T-2.4)", () => {
   const block = "## Review: x · cumulative\n\nFindings: 1 major\n- [Major] src/Orders/Fees.cs:42 — the shipping fee ignores the weekend rate. Weekend orders are undercharged. Apply the rate before rounding. Likelihood: medium. Leave it: note in PR.\n\nCHANGES REQUIRED";
@@ -73,7 +80,7 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   assert.equal(refs.base, base);
   assert.equal(refs.source, source);
 
-  const prep = await preparePullRequest(pr.url, { root: work, pat: null });
+  const prep = await preparePullRequest(work, pr.url, PREPARE);
   assert.equal(prep.review_id, "pr-7");
   assert.deepEqual(prep.summary.changed_files, ["src/b.ts"]);
   assert.equal(prep.summary.size, "small");
@@ -89,7 +96,7 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   g(join(umbrella, "src", "Orders"), "remote", "set-url", "origin", server);
   const nested = locateRepo(umbrella, pr);
   assert.equal(nested.repo_root, join(umbrella, "src", "Orders"));
-  const viaUmbrella = await preparePullRequest(pr.url, { root: umbrella, pat: null });
+  const viaUmbrella = await preparePullRequest(umbrella, pr.url, PREPARE);
   assert.equal(viaUmbrella.repo_root, join(umbrella, "src", "Orders"));
   assert.deepEqual(viaUmbrella.summary.changed_files, ["src/b.ts"]);
 
@@ -103,11 +110,11 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
 test("the PAT comes from the environment, else from the untracked local settings env block, else nothing", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-pat-"));
   mkdirSync(join(root, ".claude"));
-  assert.equal(patFromEnv({}, root), null);
+  assert.equal(patOf({}, root), null);
   writeFileSync(join(root, ".claude", "settings.local.json"), JSON.stringify({ env: { AZDO_PAT: "from-local-settings" } }));
-  assert.equal(patFromEnv({}, root), "from-local-settings");
-  assert.equal(patFromEnv({ AZDO_PAT: "from-env" }, root), "from-env", "the process environment wins");
-  assert.equal(patFromEnv({ AZURE_DEVOPS_EXT_PAT: "az-cli-name" }, "/nonexistent"), "az-cli-name");
+  assert.equal(patOf({}, root), "from-local-settings");
+  assert.equal(patOf({ AZDO_PAT: "from-env" }, root), "from-env", "the process environment wins");
+  assert.equal(patOf({ AZURE_DEVOPS_EXT_PAT: "az-cli-name" }, "/nonexistent"), "az-cli-name");
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -136,9 +143,123 @@ CHANGES REQUIRED`;
   assert.deepEqual(threads[1].threadContext, { filePath: "/src/http/handlers.ts", rightFileStart: { line: 42, offset: 1 }, rightFileEnd: { line: 42, offset: 1 } });
   assert.equal(threads[2].threadContext, undefined, "a finding without a line is a general comment");
   const pr = parsePullRequestUrl("https://tfs.corp.local/tfs/DefaultCollection/Shop/_git/Orders/pullrequest/7");
-  const dry = await postReview(pr, block, { dryRun: true, pat: null });
+  const dry = await postThreads(pr, block, { dryRun: true, pat: null });
   assert.equal(dry.posted, 0);
   assert.equal(dry.threads.length, 4);
-  await assert.rejects(postReview(pr, block, { pat: null }), /no PAT/);
-  await assert.rejects(postReview(parsePullRequestUrl("https://github.com/a/b/pull/1"), block, { dryRun: true }), /Azure DevOps only/);
+  await assert.rejects(postThreads(pr, block, { dryRun: false, pat: null }), /no PAT/);
+  await assert.rejects(postThreads(parsePullRequestUrl("https://github.com/a/b/pull/1"), block, { dryRun: true, pat: null }), /Azure DevOps only/);
+});
+
+const MARKER_PAT = "pat-marker-04d";
+const BIN = resolve("dist/bin/picket.mjs");
+
+function basic(pat) {
+  return `Basic ${Buffer.from(`:${pat}`).toString("base64")}`;
+}
+
+async function deniedServer(body) {
+  const seen = [];
+  const server = createServer((req, res) => {
+    seen.push(req.headers.authorization);
+    req.resume();
+    res.writeHead(401, { "Content-Type": "application/json" });
+    res.end(body(req));
+  });
+  await new Promise((done) => server.listen(0, "127.0.0.1", done));
+  return { server, seen, url: `http://127.0.0.1:${server.address().port}/c/p/_git/r/pullrequest/7` };
+}
+
+function withoutPatVars() {
+  const env = { ...process.env };
+  for (const name of ["AZDO_PAT", "AZURE_DEVOPS_EXT_PAT", "CLAUDE_PROJECT_DIR"]) delete env[name];
+  return env;
+}
+
+function postCli(url, root, env) {
+  const file = join(root, "review.md");
+  writeFileSync(file, "## Review: pr-7 · pr\n\nChanges required: one finding.\n\n- [Major] src/a.ts:3 — wrong. Fix it.\n\nCHANGES REQUIRED\n");
+  const child = spawn(process.execPath, [BIN, "pullrequest", "post", url, "--file", file, "--root", root], { cwd: tmpdir(), env, stdio: ["ignore", "pipe", "pipe"] });
+  let out = "";
+  child.stdout.on("data", (chunk) => (out += chunk));
+  child.stderr.on("data", (chunk) => (out += chunk));
+  return new Promise((done) => child.on("close", (code) => done({ code, out })));
+}
+
+function pullRequestRoot() {
+  const root = mkdtempSync(join(tmpdir(), "harness-pr-post-"));
+  mkdirSync(join(root, ".claude"));
+  return root;
+}
+
+test("a refused post never prints the PAT or its Basic form, while the server saw it in the header", async () => {
+  const root = pullRequestRoot();
+  const { server, seen, url } = await deniedServer(() => JSON.stringify({ message: "denied" }));
+  try {
+    const { code, out } = await postCli(url, root, { ...withoutPatVars(), AZDO_PAT: MARKER_PAT });
+    assert.notEqual(code, 0);
+    assert.match(out, /401/);
+    assert.ok(!out.includes(MARKER_PAT), "the PAT is not printed");
+    assert.ok(!out.includes(Buffer.from(`:${MARKER_PAT}`).toString("base64")), "its Basic form is not printed");
+    assert.equal(seen[0], basic(MARKER_PAT));
+  } finally {
+    server.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a server that echoes the Authorization header back still never gets the PAT printed", async () => {
+  const root = pullRequestRoot();
+  const { server, url } = await deniedServer((req) => JSON.stringify({ message: "denied", saw: req.headers.authorization }));
+  try {
+    const { code, out } = await postCli(url, root, { ...withoutPatVars(), AZDO_PAT: MARKER_PAT });
+    assert.notEqual(code, 0);
+    assert.ok(!out.includes(MARKER_PAT) && !out.includes(Buffer.from(`:${MARKER_PAT}`).toString("base64")), "the echoed header is redacted");
+  } finally {
+    server.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const ERROR_BODY_CHARS = 200;
+
+async function deniedWith(body) {
+  const { server, url } = await deniedServer(() => body);
+  try {
+    await azdoRequest(parsePullRequestUrl(url), "/threads", { method: "POST", body: {}, pat: MARKER_PAT });
+    assert.fail("a 401 must throw");
+  } catch (err) {
+    return err.message;
+  } finally {
+    server.close();
+  }
+}
+
+for (const [form, secret] of [["the PAT", MARKER_PAT], ["its Basic form", Buffer.from(`:${MARKER_PAT}`).toString("base64")]]) {
+  test(`${form} straddling the error body's cut is not printed in part`, async () => {
+    const message = await deniedWith(`${"x".repeat(ERROR_BODY_CHARS - 5)}${secret} and more`);
+    assert.ok(!message.includes(secret.slice(0, 5)), message);
+  });
+}
+
+test("an empty PAT leaves the error body as the server wrote it", async () => {
+  const { server, url } = await deniedServer(() => "denied");
+  try {
+    await assert.rejects(azdoRequest(parsePullRequestUrl(url), "", { pat: "" }), (err) => err.message.endsWith(": denied"));
+  } finally {
+    server.close();
+  }
+});
+
+test("the PAT in <root>/.claude/settings.local.json reaches the header when the process starts elsewhere", async () => {
+  const root = pullRequestRoot();
+  writeFileSync(join(root, ".claude", "settings.local.json"), JSON.stringify({ env: { AZDO_PAT: MARKER_PAT } }));
+  const { server, seen, url } = await deniedServer(() => JSON.stringify({ message: "denied" }));
+  try {
+    const { code } = await postCli(url, root, withoutPatVars());
+    assert.notEqual(code, 0);
+    assert.equal(seen[0], basic(MARKER_PAT));
+  } finally {
+    server.close();
+    rmSync(root, { recursive: true, force: true });
+  }
 });

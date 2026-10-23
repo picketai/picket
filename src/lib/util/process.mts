@@ -1,6 +1,32 @@
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
 
 export type ShellOptions = { cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number };
+export type ProgramOptions = { cwd: string; timeoutMs: number };
+
+type ProgramFailure = { stderr?: string | Buffer; message: string };
+
+export class ProgramFailed extends Error {
+  readonly lastLine: string;
+
+  constructor(message: string, lastLine: string) {
+    super(message);
+    this.lastLine = lastLine;
+  }
+}
+
+function lastLineOf(failure: ProgramFailure): string {
+  const text = String(failure.stderr ?? "").trim() || failure.message.trim();
+  return text.split("\n").at(-1)?.trim() ?? "";
+}
+
+export function runProgram(program: string, args: string[], { cwd, timeoutMs }: ProgramOptions): string {
+  try {
+    return execFileSync(program, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: timeoutMs, windowsHide: true });
+  } catch (err) {
+    const lastLine = lastLineOf(err as ProgramFailure);
+    throw new ProgramFailed(`${program} failed: ${lastLine}`, lastLine);
+  }
+}
 export type ShellResult = { exitCode: number; output: string; ms: number; timedOut: boolean };
 export type StartOptions = { cwd: string; env: NodeJS.ProcessEnv; platform: NodeJS.Platform };
 

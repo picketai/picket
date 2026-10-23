@@ -1,30 +1,49 @@
 import { action, done } from "../../shared/action.mts";
-import { renderSummary, type Summary } from "../../shared/review-summary.mts";
+import { loadConfig } from "../../shared/config.mjs";
+import { changesOfRange, renderSummary, summarize, type Summary, type SummaryConfig } from "../../shared/review-summary.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
-import { preparePullRequest } from "./pr.mjs";
+import { pullRequestMeta, type PullRequestMeta } from "./azdo.mts";
+import { parsePullRequestUrl, patOf, type PullRequest } from "./pull-request.mts";
+import { fetchPullRequest, findRemote, locateRepo, type LocatedRepo } from "./remote.mts";
 
 export type PrepareInput = { url: string; repo: string | undefined };
-type Meta = { title: string; author?: string; source_ref?: string; target_ref?: string };
+export type PrepareOptions = { repo: string | undefined; pat: string | null; env: NodeJS.ProcessEnv };
 export type Prepared = {
-  review_id: string;
-  pr: { provider: string; repo: string };
-  remote: string;
+  pr: PullRequest;
   repo_root: string;
-  meta: Meta | null;
-  meta_reason: string | null;
-  summary: Summary;
-  base: string;
-  head: string;
+  remote: string;
   ref: string;
-} & Record<string, unknown>;
-
-type Prepare = (url: string, options: { root: string; repo: string | undefined }) => Promise<Prepared>;
+  head: string;
+  base: string;
+  source: string;
+  summary: Summary;
+  meta: PullRequestMeta | null;
+  meta_reason: string | null;
+  review_id: string;
+};
 
 const SHORT_SHA = 10;
-const prepareTyped = preparePullRequest as unknown as Prepare;
 
-export const prepare = action<PrepareInput, Prepared>(async ({ url, repo }, { root }) => done(await prepareTyped(url, { root, repo })));
+function repoOf(root: string, pr: PullRequest, repo: string | undefined): LocatedRepo {
+  if (!repo) return locateRepo(root, pr);
+  const match = findRemote(repo, pr);
+  return match.remote !== null ? { repo_root: repo, remote: match.remote, url: match.url } : { repo_root: null, remote: null, reason: match.reason };
+}
+
+export async function preparePullRequest(root: string, url: string, { repo, pat, env }: PrepareOptions): Promise<Prepared> {
+  const pr = parsePullRequestUrl(url);
+  const located = repoOf(root, pr, repo);
+  if (located.remote === null) throw new Error(located.reason);
+  const repoRoot = located.repo_root;
+  const refs = fetchPullRequest(repoRoot, located.remote, pr.id);
+  const config: SummaryConfig = loadConfig(repoRoot, env);
+  const summary = summarize(repoRoot, changesOfRange(repoRoot, refs.base, refs.head), config);
+  const { meta, reason } = await pullRequestMeta(pr, { pat, root: repoRoot });
+  return { pr, repo_root: repoRoot, remote: located.remote, ...refs, summary, meta, meta_reason: reason, review_id: `pr-${pr.id}` };
+}
+
+export const prepare = action<PrepareInput, Prepared>(async ({ url, repo }, { root, env }) => done(await preparePullRequest(root, url, { repo, pat: patOf(env, root), env })));
 
 function parsePrepare(args: Args): PrepareInput {
   const [url] = args.pos;
@@ -32,7 +51,7 @@ function parsePrepare(args: Args): PrepareInput {
   return { url, repo: str(args, "repo") };
 }
 
-function branchName(ref: string | undefined): string {
+function branchName(ref: string | null | undefined): string {
   return ref?.replace("refs/heads/", "") ?? "?";
 }
 

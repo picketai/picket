@@ -2,25 +2,20 @@ import { action, done, refuse } from "../../shared/action.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { flag, need, UsageError, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
-import { parsePullRequestUrl, postReview } from "./pr.mjs";
+import { postThreads } from "./azdo.mts";
+import { parsePullRequestUrl, patOf } from "./pull-request.mts";
+import type { Thread } from "./threads.mts";
 
 export type PostInput = { url: string; file: string; dryRun: boolean };
-type Comment = { content: string };
-type Thread = { threadContext?: { filePath: string; rightFileStart: { line: number } }; comments: Comment[] };
 export type Posted = { posted: number; threads: Thread[]; dry_run: boolean; pull_request: string };
 
-type PullRequest = { id: string };
-type Post = (pr: PullRequest, reviewText: string, options: { dryRun: boolean }) => Promise<{ posted: number; threads: Thread[] }>;
-
 const FIRST_LINE_CHARS = 90;
-const postTyped = postReview as unknown as Post;
-const parseUrl = parsePullRequestUrl as unknown as (url: string) => PullRequest;
 
-export const post = action<PostInput, Posted>(async ({ url, file, dryRun }) => {
+export const post = action<PostInput, Posted>(async ({ url, file, dryRun }, { root, env }) => {
   const review = readText(file);
   if (review === null) return refuse(`no review file at ${file}`, { file });
-  const pr = parseUrl(url);
-  const result = await postTyped(pr, review, { dryRun });
+  const pr = parsePullRequestUrl(url);
+  const result = await postThreads(pr, review, { pat: patOf(env, root), dryRun });
   return done({ ...result, dry_run: dryRun, pull_request: String(pr.id) });
 });
 
