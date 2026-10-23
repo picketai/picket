@@ -131,6 +131,19 @@ test("gitRead end-trims its answer and gitRun returns the raw output inside a re
   });
 });
 
+test("gitRead with buffer returns a CRLF blob byte for byte, and null for a missing path (T-2.4)", () => {
+  withTempDir("picket-bytes-", (root) => {
+    gitIn(root, "init", "-q");
+    writeFileSync(join(root, "a.txt"), "one\r\ntwo\r\n\r\n");
+    gitIn(root, "-c", "core.autocrlf=false", "add", "-A");
+    gitIn(root, "commit", "-q", "-m", "crlf");
+    const bytes = gitRead(root, ["cat-file", "blob", "HEAD:a.txt"], { buffer: true });
+    assert.ok(Buffer.isBuffer(bytes));
+    assert.deepEqual(bytes, Buffer.from("one\r\ntwo\r\n\r\n"));
+    assert.equal(gitRead(root, ["cat-file", "blob", "HEAD:missing.txt"], { buffer: true }), null);
+  });
+});
+
 const IDENTITY_ENV = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
 function withIdentity(fn) {

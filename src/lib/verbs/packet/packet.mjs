@@ -4,7 +4,7 @@ import { projectRoot } from "../../shared/paths.mjs";
 import { nextOf } from "../../shared/work/next-view.mjs";
 import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mjs";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
-import { candidates } from "../../shared/sources/sources.mjs";
+import { liveLookup } from "../../shared/sources/places.mjs";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -84,7 +84,7 @@ function proposalLines(label, items, width = WIDTH) {
 function describeCandidates(ref, root) {
   const source = loadConfig(root).sources.find((s) => s.name === ref.source);
   if (!source?.root) return (ref.candidates ?? []).map((label) => `${label} (source ${ref.source} unreachable)`);
-  return candidates(source, ref.path).map((c) => {
+  return liveLookup().candidates(source, ref.path).map((c) => {
     const branch = c.branch === c.label ? "" : ` (${c.branch ? `branch ${c.branch}` : "detached"})`;
     return `${c.label}${branch} @ ${String(c.commit ?? "").slice(0, 8)}${c.dirty ? " · uncommitted changes" : ""} · ${c.worktree ?? "branch only, no worktree"}`;
   });

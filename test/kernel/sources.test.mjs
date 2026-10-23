@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { candidates, contentHash, find, grep, listWorktrees, localBranches } from "../../dist/lib/shared/sources/sources.mjs";
+import { find, grep } from "../../dist/lib/shared/sources/sources.mjs";
+import { candidates, contentHash, listWorktrees, localBranches, places } from "../../dist/lib/shared/sources/places.mjs";
 import { parse as parseYaml } from "../../dist/lib/util/yaml-lite.mjs";
 import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/shared/sources/source-paths.mjs";
 import { writeConfig } from "./config-fixture.mjs";
@@ -59,7 +60,7 @@ test("listWorktrees and localBranches see the main and linked worktree and the u
   const trees = listWorktrees(main);
   assert.deepEqual(trees.map((t) => [t.branch, t.main]), [["main", true], ["feat-x", false]]);
   assert.deepEqual(localBranches(main).find((b) => b.branch === "old").checked_out, false);
-  assert.deepEqual(candidates(source, "docs/pricing.md").map((c) => c.label), ["main", "feat-x", "old"]);
+  assert.deepEqual(candidates(source, "docs/pricing.md", places(main)).map((c) => c.label), ["main", "feat-x", "old"]);
   rmSync(base, { recursive: true, force: true });
 });
 
@@ -71,7 +72,7 @@ test("the content hash ignores CRLF against LF", () => {
 test("a working-copy edit is a candidate with its own hash and dirty: true", () => {
   const { base, feat, source } = tempSource();
   writeFileSync(join(feat, "docs", "pricing.md"), "# Pricing\n\nThe daily rate is 12.\n");
-  const [main, featCandidate, old] = candidates(source, "docs/pricing.md");
+  const [main, featCandidate, old] = candidates(source, "docs/pricing.md", places(source.root));
   assert.equal(main.sha256, old.sha256);
   assert.notEqual(featCandidate.sha256, main.sha256);
   assert.deepEqual([main.dirty, featCandidate.dirty], [false, true]);
@@ -184,7 +185,7 @@ test("a document only in the main worktree resolves single, and the snapshot is 
 test("a story naming a folder opens the work item and resolves only the files it names", () => {
   const { base, main, source } = tempSource();
   mkdirSync(join(main, "src", "DriverPlatformWebapp"), { recursive: true });
-  assert.deepEqual(candidates(source, "src/DriverPlatformWebapp"), []);
+  assert.deepEqual(candidates(source, "src/DriverPlatformWebapp", places(main)), []);
   const root = tempProject();
   const r = openWithStory(root, "The webapp lives in `src/DriverPlatformWebapp`, priced by `docs/pricing.md`.\n", main);
   assert.equal(r.code, 0, r.err);

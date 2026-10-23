@@ -1,13 +1,16 @@
 import { execFileSync } from "node:child_process";
 
-export type GitReadOptions = { maxBuffer?: number };
+export type GitReadOptions = { maxBuffer?: number; buffer?: boolean };
 export type GitRunOptions = { input?: string; env?: NodeJS.ProcessEnv };
 
 type GitFailure = { stderr?: string | Buffer; message: string };
 
-export function gitRead(root: string, args: string[], { maxBuffer }: GitReadOptions = {}): string | null {
+export function gitRead(root: string, args: string[], options: GitReadOptions & { buffer: true }): Buffer | null;
+export function gitRead(root: string, args: string[], options?: GitReadOptions & { buffer?: false }): string | null;
+export function gitRead(root: string, args: string[], { maxBuffer, buffer = false }: GitReadOptions = {}): string | Buffer | null {
   try {
-    return execFileSync("git", ["-C", root, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer }).trimEnd();
+    const bytes = execFileSync("git", ["-C", root, ...args], { stdio: ["ignore", "pipe", "ignore"], maxBuffer });
+    return buffer ? bytes : bytes.toString("utf8").trimEnd();
   } catch {
     return null;
   }

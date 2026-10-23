@@ -4,7 +4,9 @@ import { loadConfig } from "../config.mjs";
 import { revParse } from "../git.mts";
 import { workRoot } from "../paths.mts";
 import { recordBases } from "../repos.mjs";
-import { IntakeError, resolveReferences, writeIntake } from "../sources/sources.mjs";
+import { liveLookup } from "../sources/places.mts";
+import { resolveReferences } from "../sources/resolve.mts";
+import { IntakeError, writeIntake } from "../sources/sources.mjs";
 import { readText } from "../../util/io.mts";
 import { parse, stringify } from "../../util/yaml-lite.mjs";
 import { isWorkId, workDir, workFile, workId, type WorkFile, type WorkId } from "./files.mts";
@@ -135,7 +137,7 @@ export function newId(title: string, now: Date): WorkId {
 function storyIntake(text: string, root: string) {
   const sources = loadConfig(root).sources;
   if (!sources.some((s) => s.root)) return null;
-  const intake = resolveReferences(text, sources);
+  const intake = resolveReferences(text, sources, liveLookup());
   if (intake.failures.length) throw new IntakeError(intake.failures);
   return intake;
 }

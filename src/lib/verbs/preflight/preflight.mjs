@@ -8,7 +8,7 @@ import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
 import * as git from "../../shared/git.mjs";
 import { loadConfig } from "../../shared/config.mjs";
-import { listWorktrees } from "../../shared/sources/sources.mjs";
+import { listWorktrees } from "../../shared/sources/places.mjs";
 import { LEGACY_LOCATIONS, hostPath, legacyPath } from "../../shared/paths.mjs";
 import { loadExtensions } from "../../shared/extensions.mjs";
 import { detectTooling } from "../../shared/tooling.mjs";
