@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createWork } from "./work-fixture.mjs";
-import { onPath } from "../../dist/lib/verbs/preflight/preflight.mjs";
+import { onPath } from "../../dist/lib/verbs/preflight/checks.mjs";
 
 const BIN = resolve("dist/bin/picket.mjs");
 
@@ -75,7 +75,7 @@ test("command_on_path finds a program without starting it and reports a missing 
     assert.equal(r.byName["ext:acme:spy"].level, "ok");
     assert.equal(existsSync(marker), false, "the lookup started the program");
     assert.equal(r.byName["ext:acme:none"].level, "warn");
-    assert.equal(onPath("nosuchprogram-xyz"), false);
+    assert.equal(onPath("nosuchprogram-xyz", process.env, process.platform), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
     rmSync(bin, { recursive: true, force: true });

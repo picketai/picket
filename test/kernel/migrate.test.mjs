@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { migrate, renderMigrate } from "../../dist/lib/verbs/migrate/migrate.mjs";
-import { preflight } from "../../dist/lib/verbs/preflight/preflight.mjs";
+import { preflight } from "../../dist/lib/verbs/preflight/index.mjs";
 import { createWork } from "./work-fixture.mjs";
 import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../dist/lib/shared/paths.mjs";
 
@@ -154,11 +154,11 @@ test("preflight warns about legacy state until migrate has run (T-4.3)", () => {
   withProject((root) => {
     const { id } = createWork({ lane: "order", title: "Legacy", root });
     writeLegacy(root, LEGACY_LEDGER, "{}\n");
-    const warning = preflight(id, root).checks.find((c) => c.name === "legacy_paths");
+    const warning = preflight(root, id, { home: root, env: {}, platform: process.platform }).checks.find((c) => c.name === "legacy_paths");
     assert.equal(warning?.level, "warn");
     assert.match(warning.detail, /run picket migrate/);
     migrate(root);
-    assert.equal(preflight(id, root).checks.some((c) => c.name === "legacy_paths"), false);
+    assert.equal(preflight(root, id, { home: root, env: {}, platform: process.platform }).checks.some((c) => c.name === "legacy_paths"), false);
     assert.ok(statSync(statePath(root, STATE_FILES.ledger)).isFile());
   });
 });
