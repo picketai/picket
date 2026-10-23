@@ -12,7 +12,7 @@
   },
   "license": "MIT",
   "author": "Vlad Apetre",
-  "type": "commonjs",
+  "type": "module",
   "bin": {
     "picket": "dist/bin/picket.mjs"
   },
@@ -49,8 +49,7 @@
     "test:status": "claude plugin validate --strict dist/mods/status && claude plugin test dist/mods/status",
     "test:markdown": "claude plugin validate --strict dist/mods/markdown && claude plugin test dist/mods/markdown",
     "test:session": "claude plugin validate --strict dist/mods/session && claude plugin test dist/mods/session",
-    "opensrc": "set \"OPENSRC_HOME=%cd%\\.opensrc\" && opensrc",
-    "bench:test": "node --test bench/test/",
+    "bench:test": "node --test \"bench/test/*.test.mjs\"",
     "bench:integration": "node --test bench/integration/",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",
     "bench:report": "node bench/report.mjs",
@@ -60,7 +59,6 @@
   "devDependencies": {
     "@types/node": "22.20.5",
     "esbuild": "0.28.2",
-    "opensrc": "^0.7.2",
     "typescript": "7.0.2"
   }
 }
