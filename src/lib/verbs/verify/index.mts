@@ -6,7 +6,7 @@ import { verify } from "./verify.mjs";
 
 export type VerifyInput = { id: WorkId; phase: number; runTests: boolean };
 export type VerifyResult = { name: string; ok: boolean; detail: string };
-export type VerifyReport = { ok: boolean; phase: number; results: VerifyResult[] };
+export type VerifyReport = { ok: boolean; phase: number; results: VerifyResult[]; warnings?: string[] };
 
 const PHASE_NUMBER = /^\d+$/;
 
@@ -23,7 +23,9 @@ function parseVerify(args: Args): VerifyInput {
 }
 
 function renderVerify(v: VerifyReport): string {
-  return v.results.map((c) => `${c.ok ? "ok  " : "FAIL"} ${c.name}${c.detail ? ": " + c.detail : ""}`).join("\n") + `\n${v.ok ? "VERIFIED" : "NOT VERIFIED"}`;
+  const results = v.results.map((c) => `${c.ok ? "ok  " : "FAIL"} ${c.name}${c.detail ? ": " + c.detail : ""}`);
+  const warnings = (v.warnings ?? []).map((warning) => `warning: ${warning}`);
+  return [...results, ...warnings, v.ok ? "VERIFIED" : "NOT VERIFIED"].join("\n");
 }
 
 export const verb: VerbSpec<VerifyInput, VerifyReport> = {

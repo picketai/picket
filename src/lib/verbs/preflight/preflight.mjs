@@ -83,8 +83,9 @@ export function preflight(id, root = projectRoot(), home = homedir()) {
     else add("tree", "ok", "clean outside work/");
   } else add("git", "warn", "not a git repository; phase commits and diff-based checks are unavailable");
 
-  const tooling = detectTooling(root);
-  add("tooling", tooling.test ? "ok" : "warn", tooling.test ? `test: ${tooling.test}${tooling.lint ? ` · lint: ${tooling.lint}` : ""}${tooling.run ? ` · run: ${tooling.run}` : ""}` : "no test command detected");
+  const { tooling, warnings } = detectTooling(root);
+  const toolingDetail = tooling.test ? `test: ${tooling.test}${tooling.lint ? ` · lint: ${tooling.lint}` : ""}${tooling.run ? ` · run: ${tooling.run}` : ""}` : "no test command detected";
+  add("tooling", tooling.test && !warnings.length ? "ok" : "warn", [toolingDetail, ...warnings].join("; "));
 
   const map = hostPath(root, "PROJECT-MAP.md");
   add("project_map", existsSync(map) ? "ok" : "warn", existsSync(map) ? "present" : "absent; the analyst can write one");

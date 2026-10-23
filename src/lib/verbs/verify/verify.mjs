@@ -55,8 +55,8 @@ export function verify(id, n, { root = projectRoot(), runTests = true } = {}) {
     const ok = existsSync(p) && new RegExp(g.pattern, g.flags ?? "m").test(readFileSync(p, "utf8"));
     add(`grep:${g.path}:${g.pattern}`, ok);
   }
+  const { tooling, warnings } = mh.tests ? detectTooling(root) : { tooling: null, warnings: [] };
   if (mh.tests) {
-    const tooling = detectTooling(root);
     if (!tooling.test) add("tests", false, "no test command detected");
     else if (!runTests) add("tests", true, `skipped (${tooling.test})`);
     else {
@@ -73,5 +73,5 @@ export function verify(id, n, { root = projectRoot(), runTests = true } = {}) {
     add("drive_observed", drives.length > 0, drives.length ? `${drives.length} drive-class command(s) observed, last: ${drives.at(-1).command?.slice(0, 80)}` : "no drive-class command observed for this phase");
   }
 
-  return { ok: results.every((r) => r.ok), phase: Number(n), results };
+  return { ok: results.every((r) => r.ok), phase: Number(n), results, ...(warnings.length ? { warnings } : {}) };
 }

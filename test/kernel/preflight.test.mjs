@@ -118,6 +118,18 @@ test("preflight warns with each saved allow rule that could approve an escalatio
   }
 });
 
+test("a malformed package.json turns the tooling check to warn and names the parse error", () => {
+  const { root, id } = project([], {});
+  try {
+    writeFileSync(join(root, "package.json"), '{ "scripts": { "test": "node t.js", }');
+    const tooling = preflightCli(root, id).byName.tooling;
+    assert.equal(tooling.level, "warn");
+    assert.match(tooling.detail, /^no test command detected; package\.json is not valid JSON \(.+\); no npm scripts detected$/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("with no extension the preflight carries one extensions line saying none", () => {
   const { root, id } = project([], {});
   try {

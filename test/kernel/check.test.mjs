@@ -48,6 +48,20 @@ test("check stops at the first red step and prints only its tail", () => {
   assert.equal(existsSync(statePath(root, "check-lint.log")), false);
 });
 
+test("check on a malformed package.json detects no test and warns why; a sound one carries no warnings key", () => {
+  const root = mkdtempSync(join(tmpdir(), "harness-check-"));
+  writeFileSync(join(root, "package.json"), '{ "scripts": { "test": "node t.js", }');
+  const r = run(root, ["check"]);
+  assert.equal(r.code, 0, r.stderr);
+  const v = JSON.parse(r.out);
+  assert.equal(v.steps[0].status, "none detected");
+  assert.match(v.warnings[0], /^package\.json is not valid JSON \(.+\); no npm scripts detected$/);
+  const human = run(root, ["check", "--human"]).out.trim().split(/\r?\n/);
+  assert.match(human.at(-2), /^warning: package\.json is not valid JSON/);
+  assert.equal(human.at(-1), "CHECK OK");
+  assert.equal(Object.hasOwn(JSON.parse(run(fixture({ test: "node -e 0" }), ["check"]).out), "warnings"), false);
+});
+
 test("check reports a missing script instead of inventing one, and --only runs a given command", () => {
   const root = fixture({ test: "node -e 0" });
   const v = JSON.parse(run(root, ["check"]).out);

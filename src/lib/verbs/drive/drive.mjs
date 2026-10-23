@@ -180,7 +180,7 @@ export async function drive(o = {}) {
 
   const hits = (o.hits ?? []).map(parseHit);
   if (!hits.length) throw new Error('drive needs at least one --hit "GET /path", or --run "<command>" for a CLI');
-  const start = o.start ?? detectTooling(root).run;
+  const start = o.start ?? detectTooling(root).tooling.run;
   if (!start) throw new Error('no start command detected: pass --start "<command>"');
   const port = Number(o.port ?? process.env.PORT ?? (await freePort()));
   const wait = o.wait ?? hits[0].path;

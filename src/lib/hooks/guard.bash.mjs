@@ -1145,7 +1145,7 @@ function verifyRunsNoProjectCode(tokens, cwd, hookRoot, depth) {
   if (words.some((t) => t === "--root" || t.startsWith("--root="))) return false;
   let testCommand;
   try {
-    testCommand = detectTooling(hookRoot).test;
+    testCommand = detectTooling(hookRoot).tooling.test;
   } catch {
     return false;
   }

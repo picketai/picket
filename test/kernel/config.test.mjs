@@ -142,14 +142,14 @@ test("the published schema names the loader's keys and carries its defaults (T-5
 test("a configured command overrides detection; a destructive one is dropped with a warning (T-5.4)", () => {
   withProject({ version: 1, commands: { test: "node -e 1" } }, (root) => {
     writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
-    assert.equal(detectTooling(root).test, "node -e 1");
+    assert.equal(detectTooling(root).tooling.test, "node -e 1");
   });
   withProject({ version: 1, commands: { test: "rm -rf ." } }, (root) => {
     writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
     const c = loadConfig(root, {});
     assert.deepEqual(c.commands, {});
     assert.match(c.warnings[0], /commands\.test dropped: .*destructive/);
-    assert.equal(detectTooling(root).test, "npm test");
+    assert.equal(detectTooling(root).tooling.test, "npm test");
   });
 });
 

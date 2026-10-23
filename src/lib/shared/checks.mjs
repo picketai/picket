@@ -15,7 +15,7 @@ const ORDER = ["test", "lint", "build"];
  */
 export function check(o = {}) {
   const root = o.root ?? projectRoot();
-  const tooling = detectTooling(root);
+  const { tooling, warnings } = detectTooling(root);
   const wanted = o.steps?.length ? o.steps : ["test", "lint"];
   if (o.only) assertNotDestructive(o.only, "picket check --only");
   const plan = o.only ? [{ name: "command", command: o.only }] : ORDER.filter((s) => wanted.includes(s)).map((s) => ({ name: s, command: tooling[s] }));
@@ -50,13 +50,14 @@ export function check(o = {}) {
       break; // fail fast: the first red step is the one to fix
     }
   }
-  return { ok, steps, skipped: plan.slice(steps.length).map((s) => s.name) };
+  return { ok, steps, skipped: plan.slice(steps.length).map((s) => s.name), ...(warnings.length ? { warnings } : {}) };
 }
 
 export function renderCheck(v) {
   const lines = v.steps.map((s) => `${s.name}: ${s.status}${s.command ? ` · ${s.command}` : ""}${s.ms ? ` · ${(s.ms / 1000).toFixed(1)} s` : ""}`);
   for (const s of v.steps) if (s.tail) lines.push(`--- ${s.log} (last lines)`, s.tail);
   if (v.skipped.length) lines.push(`not run: ${v.skipped.join(", ")}`);
+  for (const warning of v.warnings ?? []) lines.push(`warning: ${warning}`);
   lines.push(v.ok ? "CHECK OK" : "CHECK FAILED");
   return lines.join("\n");
 }

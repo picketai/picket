@@ -130,7 +130,7 @@ export function mutate(id, { root = projectRoot() } = {}) {
   const started = Date.now();
   const restored = restoreLeftover(root);
   const base = readState(root, id).base ?? "HEAD";
-  const command = detectTooling(root).test ?? null;
+  const command = detectTooling(root).tooling.test ?? null;
   const baseline = command ? baselineOutcome(root) : null;
   const found = command && !baseline ? pickMutant(root, base) : null;
   const outcome = !command ? "no test command" : baseline ?? (!found ? "no candidate" : withMutant(root, found, () => mutantOutcome(root)));
