@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { configPath, configRel, hostRel } from "./paths.mjs";
-import { destructiveCommand, destructiveRefusal } from "./destructive.mjs";
-import { isSourceName } from "./sources/source.mjs";
+import { configPath, configRel, hostRel } from "./paths.mts";
+import { destructiveCommand, destructiveRefusal } from "./destructive.mts";
+import { isSourceName } from "./sources/source.mts";
 
 /** Paths whose change always means the heavy lane. Extend per project with `security_paths`. */
 export const DEFAULT_SECURITY_PATHS = ["src/auth/", "src/crypto/", "src/security/", "Authentication/", "Authorization/"];

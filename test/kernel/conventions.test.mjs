@@ -57,8 +57,8 @@ function repoPath(file) {
   return relative(resolve("."), file).replaceAll("\\", "/");
 }
 
-function offenders(scan) {
-  return typedSources(resolve(SOURCE_ROOT)).flatMap((file) => {
+function offenders(scan, sources) {
+  return sources().flatMap((file) => {
     const path = repoPath(file);
     return scan(path, readFileSync(file, "utf8")).map((line) => `${path}: ${line.trim()}`);
   });
@@ -73,14 +73,17 @@ function asComments(lines) {
   return lines.map((line) => `// ${line}`).join("\n");
 }
 
+const TYPED = { label: "typed source under src/", files: () => typedSources(resolve(SOURCE_ROOT)) };
+const MODULES = { label: "module under src/lib or a skill's scripts", files: () => directionSources() };
+
 const SCANS = [
-  { name: "process reads", scan: processReads, samples: PROCESS_READ_SAMPLES, path: "src/lib/util/io.mts", exempt: PROCESS_READ_EXEMPT },
-  { name: "shell calls", scan: shellCalls, samples: SHELL_SAMPLES, path: "src/lib/util/git.mts", exempt: SHELL_EXEMPT },
-  { name: "work path templates", scan: workPathTemplates, samples: WORK_PATH_SAMPLES, path: "src/lib/util/io.mts", exempt: WORK_PATH_EXEMPT },
-  { name: "built-name imports", scan: builtNameImports, samples: BUILT_NAME_SAMPLES, path: "src/lib/util/args.mts", exempt: [] },
+  { name: "process reads", scan: processReads, samples: PROCESS_READ_SAMPLES, path: "src/lib/util/io.mts", exempt: PROCESS_READ_EXEMPT, sources: TYPED },
+  { name: "shell calls", scan: shellCalls, samples: SHELL_SAMPLES, path: "src/lib/util/git.mts", exempt: SHELL_EXEMPT, sources: TYPED },
+  { name: "work path templates", scan: workPathTemplates, samples: WORK_PATH_SAMPLES, path: "src/lib/util/io.mts", exempt: WORK_PATH_EXEMPT, sources: TYPED },
+  { name: "built-name imports", scan: builtNameImports, samples: BUILT_NAME_SAMPLES, path: "src/lib/util/args.mts", exempt: [], sources: MODULES },
 ];
 
-for (const { name, scan, samples, path, exempt } of SCANS) {
+for (const { name, scan, samples, path, exempt, sources } of SCANS) {
   test(`the ${name} scan reports one line per banned form, none on a comment line and none under its exempt paths (T-2.1)`, () => {
     for (const sample of samples) assert.deepEqual(scan(path, sample), [sample], sample);
     assert.equal(scan(path, samples.join("\n")).length, samples.length);
@@ -88,8 +91,8 @@ for (const { name, scan, samples, path, exempt } of SCANS) {
     for (const exemptPath of exempt) assert.deepEqual(scan(exemptPath, samples.join("\n")), [], exemptPath);
   });
 
-  test(`no typed source under src/ breaks the ${name} rule (T-2.1)`, () => {
-    assert.deepEqual(offenders(scan), []);
+  test(`no ${sources.label} breaks the ${name} rule (T-2.1)`, () => {
+    assert.deepEqual(offenders(scan, sources.files), []);
   });
 }
 
@@ -108,6 +111,13 @@ test("the built-name scan reports an .mjs import of a typed sibling and nothing 
   assert.deepEqual(builtNameImports("src/lib/cli/main.mts", 'const loadLegacy = () => import("./legacy.mjs");'), []);
   assert.deepEqual(builtNameImports("src/lib/util/args.mts", 'import { x } from "./io.mts";'), []);
   assert.deepEqual(builtNameImports("src/lib/util/args.mts", 'import { x } from "node:fs";'), []);
+});
+
+test("the built-name scan reads .mjs modules too: an .mjs import of a typed sibling is reported, of an .mjs sibling not (T-1.1)", () => {
+  assert.deepEqual(builtNameImports("src/lib/shared/a.mjs", 'import { x } from "./paths.mjs";'), ['import { x } from "./paths.mjs";']);
+  assert.deepEqual(builtNameImports("src/lib/shared/a.mjs", 'import { VERDICTS } from "./verdicts.mjs";'), []);
+  const scanned = directionSources().map(repoPath);
+  assert.ok(scanned.includes("src/lib/shared/config.mjs") && scanned.includes("src/skills/documenting/scripts/filename.mjs"), scanned.join(", "));
 });
 
 test("the process-read scan covers src/lib only", () => {

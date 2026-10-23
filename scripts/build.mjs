@@ -1,6 +1,6 @@
 import { build } from "esbuild";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOOKS } from "../src/lib/hooks.mts";
 
@@ -9,6 +9,8 @@ export const SRC = join(REPO, "src");
 export const DIST = join(REPO, "dist");
 export const HOOK_LIST = join(SRC, "lib", "hooks.mts");
 const HOOK_FOLDERS = join(SRC, "lib", "hooks");
+const VENDOR_DIR = join(SRC, "lib", "util", "vendor");
+const TEST_FILE = /\.test\.[^.]+$/;
 const DIST_HOOKS = join(DIST, "hooks");
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
 export const BANNER = "// generated from src/ by scripts/build.mjs; edit the source";
@@ -91,12 +93,22 @@ export function sourceFiles(dir = SRC) {
   });
 }
 
+export function isTestFile(file) {
+  return TEST_FILE.test(basename(file));
+}
+
+function isVendored(file) {
+  return file.startsWith(VENDOR_DIR + sep);
+}
+
 export function isBuiltModule(file) {
-  return file.endsWith(".mts") && !file.endsWith(".d.mts") && !file.endsWith(".test.mts");
+  if (isTestFile(file)) return false;
+  if (file.endsWith(".mts")) return !file.endsWith(".d.mts");
+  return file.endsWith(".mjs") && !isVendored(file);
 }
 
 export function isCopied(file) {
-  return !file.endsWith(".mts");
+  return !isTestFile(file) && !isBuiltModule(file) && !file.endsWith(".d.mts");
 }
 
 export function distPath(file) {
@@ -122,7 +134,7 @@ function repoPath(file) {
 
 export function outputCollisions(files) {
   const listed = new Set(files);
-  return files.filter(isBuiltModule).flatMap((file) => {
+  return files.filter((file) => file.endsWith(".mts") && isBuiltModule(file)).flatMap((file) => {
     const twin = file.replace(/\.mts$/, ".mjs");
     return listed.has(twin) ? [`${repoPath(twin)} and ${repoPath(file)} both build to ${repoPath(distPath(twin))}`] : [];
   });

@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
-import { codeLines } from "./kernel-sources.mjs";
+import { codeLines, isKernelSource } from "./kernel-sources.mjs";
 
 const SRC = resolve("src");
 const SETTINGS = resolve(".claude/settings.json");
@@ -28,7 +28,7 @@ function modulesUnder(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) return modulesUnder(full);
-    return /\.m[jt]s$/.test(entry.name) ? [full] : [];
+    return isKernelSource(entry.name) ? [full] : [];
   });
 }
 

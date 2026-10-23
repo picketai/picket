@@ -32,6 +32,9 @@
     "README.md",
     "!**/*.test.*"
   ],
+  "imports": {
+    "#test/*": "./test/support/*"
+  },
   "engines": {
     "node": ">=22"
   },
@@ -48,7 +51,8 @@
     "typecheck": "tsc -p .",
     "prepare": "npm run build",
     "prepack": "npm run build",
-    "test": "npm run build && npm run typecheck && node scripts/test.mjs",
+    "test": "npm run typecheck && node scripts/test.mjs",
+    "test:unit": "node --test \"src/**/*.test.mts\"",
     "version": "node .github/scripts/release.mjs sync-version && git add src/.claude-plugin/plugin.json status/.claude-plugin/plugin.json session/.claude-plugin/plugin.json markdown/.claude-plugin/plugin.json",
     "test:status": "claude plugin validate --strict status && claude plugin test status",
     "test:session": "claude plugin validate --strict session && claude plugin test session",

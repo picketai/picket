@@ -1,6 +1,6 @@
 # Hooks
 
-Listed in `src/lib/hooks.mts`; the build generates `hooks.json` in `dist/hooks/` from that list, and Claude Code loads it with the plugin. `guard.*` deny or bounce, `lint.*` and `monitor.*` feed text back, `observe.*` and `emit.*` record, `inject.*` add context. Every hook exits 0 on its own failure except where a deny is the point; a hook must start in under 200 ms cold (`test/budgets.test.mjs`).
+Listed in `src/lib/hooks.mts`; the build generates `hooks.json` in `dist/hooks/` from that list, and Claude Code loads it with the plugin. `guard.*` deny or bounce, `lint.*` and `monitor.*` feed text back, `observe.*` and `emit.*` record, `inject.*` add context. Every hook exits 0 on its own failure except where a deny is the point; a hook must start in under 200 ms cold (`test/timing/budgets.test.mjs`).
 
 | Hook | Event | Does |
 |---|---|---|

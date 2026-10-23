@@ -1,6 +1,6 @@
 # Contributing to Picket
 
-These are the conventions for changing this repository. Facts that already live elsewhere are linked, not copied: the folder map is in `README.md`, the always-on writing and comment rules are in `src/rules/`, and the prompt size budgets are in `test/budgets.test.mjs`.
+These are the conventions for changing this repository. Facts that already live elsewhere are linked, not copied: the folder map is in `README.md`, the always-on writing and comment rules are in `src/rules/`, and the prompt size budgets are in `test/timing/budgets.test.mjs`.
 
 Name the product Picket in any text a user reads. "Harness" is the internal word for the mechanism and stays in design talk among the people building it (`.claude/MEMORY.md`, `## Language`).
 
@@ -8,7 +8,7 @@ Name the product Picket in any text a user reads. "Harness" is the internal word
 
 The `## Layout` section of `README.md` maps every top-level folder. New things go here:
 
-- A kernel module goes in `src/lib/`, in the folder its role names: `src/lib/cli/` for the command line, `src/lib/verbs/<verb>/` for one verb's code, `src/lib/shared/` for Picket code two verbs or a hook use, `src/lib/util/` for code with no Picket knowledge, `src/lib/hooks/` for the hooks. Imports point one way, `cli` to `verbs` to `shared` to `util`, with hooks beside the verbs; the direction scan in `test/kernel/conventions.test.mjs` enforces it. Its tests go in `test/kernel/` as `<module>.test.mjs`.
+- A kernel module goes in `src/lib/`, in the folder its role names: `src/lib/cli/` for the command line, `src/lib/verbs/<verb>/` for one verb's code, `src/lib/shared/` for Picket code two verbs or a hook use, `src/lib/util/` for code with no Picket knowledge, `src/lib/hooks/` for the hooks. Imports point one way, `cli` to `verbs` to `shared` to `util`, with hooks beside the verbs; the direction scan in `test/kernel/conventions.test.mjs` enforces it. A module's tests sit beside it as `<module>.test.mts` (`src/lib/verbs/leave/index.test.mts`); `test/` holds the tests that run `dist/` and the checks over the repository.
 - A hook is a folder `src/lib/hooks/<kind>/<name>/` (for example `src/lib/hooks/guard/comments/`) whose `index.mts` exports `hook`, listed with its events and a one-line summary in `src/lib/hooks.mts`. The build generates each hook's entry and `hooks.json` in `dist/hooks/` from that list; nothing is registered by hand. A hook imports its own folder, its kind folder, `hook-spec.mts` and `output.mts`, never another hook. Its handler is tested in `test/hooks/handlers.test.mjs`, the spawned hook in `test/hooks/hooks.test.mjs`.
 - A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items`, `security-paths` and `untrusted`.
 
@@ -26,13 +26,13 @@ It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket
 
 Contributors run Node 24 or newer, the version in `.nvmrc`; users of the published package need Node 22 or newer. `npm install` installs the build tools and builds once.
 
-`src/` is the source. `npm run build` deletes `dist/` and writes it again from `src/` in under a second, and `npm run watch` keeps it current while you edit: it rebuilds an `.mts` module or a hook when its source changes and copies any other changed file. `npm run typecheck` runs `tsc` over `src/` and writes nothing. `npm test` builds and type-checks before it runs the tests, and `npm run claude` builds before it starts the session.
+`src/` is the source. `npm run build` deletes `dist/` and writes it again from `src/` in under a second, and `npm run watch` keeps it current while you edit: it rebuilds a module or a hook when its source changes and copies any other changed file. `npm run typecheck` runs `tsc` over `src/` and `test/support/` and writes nothing. `npm test` type-checks and builds before it runs the tests that need `dist/`, and `npm run claude` builds before it starts the session.
 
 `dist/` is generated and ignored by git. Never edit it: the next build deletes the change. Every `.mjs` file in it starts with a banner that says so, and `.claude/settings.json` denies Edit and Write there.
 
 ## Code
 
-Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`, built to `.mjs` by esbuild. The one exception is `src/lib/util/node-floor.mjs`: the hook runtime, itself still `.mjs`, imports it, so it can only use a name that exists in both `src/` and `dist/`. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/util/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/util/vendor/jsonc-parser.mjs` for JSON with comments.
+Code is Node ESM. A module moved from the old layout stays `.mjs` until its refactor item converts it; a new module is `.mts`. esbuild builds both to `.mjs`, so a `.mjs` module names the source file it imports, as `.mts` modules do (`import { configPath } from "./paths.mts"`), and `src/` runs without a build. Everything under `src/` imports only Node built-ins and paths inside `src/`, so the plugin installs with no dependencies (`test/kernel/plugin-layout.test.mjs`). The two third-party parsers are vendored: `src/lib/util/vendor/shell-quote-parse.mjs` for shell commands and `src/lib/util/vendor/jsonc-parser.mjs` for JSON with comments.
 
 Comments follow `src/rules/comments.md`: write none, and let names, small functions and tests carry the meaning.
 
@@ -56,9 +56,9 @@ The CLI lives in `src/lib/cli/`: `src/lib/cli/main.mts` parses the flags, runs t
 
 ## Tests
 
-Tests use `node:test` with `node:assert/strict`. `npm test` runs every file under `test/` and `bench/test/`; run it before proposing a commit. A check over the whole repository, such as the budgets or the Markdown paths, sits at the root of `test/`.
+Tests use `node:test` with `node:assert/strict`. `npm test` type-checks, then runs `scripts/test.mjs`, which runs five steps in order and stops at the first that fails: `unit` (the `*.test.mts` files under `src/`, with no build), `build`, `product` (the tests under `test/` and `bench/test/` that run `dist/` or check the repository), `timing` (the cold-start budgets in `test/timing/`, alone, so no other test loads the machine) and `mods` (each mod's `claude plugin validate --strict` and `claude plugin test`, skipped when `claude` is not on `PATH`). `node scripts/test.mjs unit build` runs only the named steps, and `npm run test:unit` runs the unit tests alone. Run `npm test` before proposing a commit.
 
-The three mods have their own suites, which need the `claude` command: `npm run test:status`, `npm run test:session` and `npm run test:markdown` validate the plugin and run its tests.
+A unit test imports its module from `src/` and shared helpers through `#test/*`, which maps to `test/support/` (`import { withProject } from "#test/project.mts"`). It never imports `dist/`.
 
 A test never depends on a gitignored file. A fresh clone must pass, so a test that reads a file only your machine has will fail for everyone else.
 

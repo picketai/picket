@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { loadConfig } from "./config.mjs";
-import { PICKET_DIR, configPath } from "./paths.mjs";
+import { PICKET_DIR, configPath } from "./paths.mts";
 import { VERDICTS } from "./verdicts.mjs";
 
 export const SUPPORTED_SCHEMAS = Object.freeze([1]);

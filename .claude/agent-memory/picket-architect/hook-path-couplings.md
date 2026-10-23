@@ -7,7 +7,7 @@ metadata:
 
 Read 2026-10-23 while designing work/20261023-refactor-item-05-hooks:
 
-- `test/budgets.test.mjs` skips the hook cold-start test unless the route.verdict bundle exists under the built dist hooks folder by its exact file name, so renaming bundles turns the 200 ms budget off without a failure.
+- `test/timing/budgets.test.mjs` skips the hook cold-start test unless the route.verdict bundle exists under the built dist hooks folder by its exact file name, so renaming bundles turns the 200 ms budget off without a failure.
 - `test/kernel/extensions.test.mjs` (lines 121 to 125) picks guard start files with `^guard\..+\.mjs$` in `src/lib/hooks`; once guards move into folders the list is empty and the test still passes.
 - `test/kernel/kernel-sources.mjs` listed the old hook shells folder in `KERNEL_DIRS` and called `readdirSync` on it, so deleting that folder threw; item 05 phase 5 removed the entry.
 - `test/kernel/conventions.test.mjs` line 209 asserts the scan list contains the route.verdict handler by its exact path.

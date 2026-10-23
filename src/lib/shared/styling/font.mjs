@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { finished } from "node:stream/promises";
 import { dirname, join } from "node:path";
-import { pluginRoot } from "../paths.mjs";
+import { pluginRoot } from "../paths.mts";
 import { installedAt, picketHome } from "./manifest.mjs";
 import { extractEntry, readEntries } from "./zip.mjs";
 

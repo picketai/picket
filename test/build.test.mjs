@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { BANNER, DIST, SRC, distPath, isCopied, outputCollisions, sourceFiles, withBanner } from "../scripts/build.mjs";
+import { BANNER, DIST, SRC, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../scripts/build.mjs";
 
 const SHEBANG = "#!/usr/bin/env node";
 const RELATIVE_IMPORT = /(\bfrom\s+|\bimport\s*\(?\s*)["']\.\.?\//;
@@ -56,12 +56,46 @@ test("dist/ holds no TypeScript source and no declaration output", () => {
 });
 
 const TYPED_IMPORT = /(?:\bfrom\s*|\bimport\s*\(?\s*)["'][^"']+\.mts["']/;
+const TYPED_NAME = /\.mts["']/;
+const BUNDLED_MODULE_KEY = /^\s*"src\/[^"]+\.mts"\(\) \{$/;
+
+function typedNameLines(text) {
+  return text.split(/\r?\n/).filter((line) => TYPED_NAME.test(line) && !BUNDLED_MODULE_KEY.test(line));
+}
 
 test("no module in dist/ imports a path ending in .mts (T-1.2)", () => {
   const importing = distFiles()
     .filter((file) => file.endsWith(".mjs") && TYPED_IMPORT.test(readFileSync(file, "utf8")))
     .map(distRel);
   assert.deepEqual(importing, []);
+});
+
+test("no module in dist/ names an .mts file, beyond the module keys esbuild writes into a hook bundle (T-1.3)", () => {
+  assert.deepEqual(typedNameLines('  "src/lib/util/io.mts"() {\nimport { a } from "./a.mts";\nconst b = \'./b.mts\';'), ['import { a } from "./a.mts";', "const b = './b.mts';"]);
+  const naming = distFiles()
+    .filter((file) => file.endsWith(".mjs"))
+    .flatMap((file) => typedNameLines(readFileSync(file, "utf8")).map((line) => `${distRel(file)}: ${line.trim()}`));
+  assert.deepEqual(naming, []);
+});
+
+test("an .mjs source is built with its typed imports renamed (T-1.3)", () => {
+  const config = readFileSync(join(DIST, "lib", "shared", "config.mjs"), "utf8");
+  assert.match(config, /from "\.\/paths\.mjs"/);
+});
+
+test("no path in dist/ is a test file or a test fixture (T-1.3)", () => {
+  assert.deepEqual(distFiles().map(distRel).filter((path) => path.includes(".test.")), []);
+});
+
+test("the build compiles .mts and .mjs modules, copies vendored and other files, and skips test files and declarations (T-1.3)", () => {
+  const at = (...parts) => join(SRC, "lib", ...parts);
+  const built = [at("a.mts"), at("shared", "config.mjs")];
+  const copied = [at("util", "vendor", "jsonc-parser.mjs"), at("rules.md"), at("data.json")];
+  const neither = [at("a.d.mts"), at("a.test.mts"), at("a.test.mjs"), at("verbs", "admit", "admit-labelled.test.json")];
+  assert.deepEqual(built.filter(isBuiltModule), built);
+  assert.deepEqual([...copied, ...neither].filter(isBuiltModule), []);
+  assert.deepEqual(copied.filter(isCopied), copied);
+  assert.deepEqual([...built, ...neither].filter(isCopied), []);
 });
 
 test("a built module imports its relative dependencies instead of inlining them (T-1.2)", () => {

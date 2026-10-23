@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { MARKER, POWERSHELL_MARKER_TEXT } from "./escalation.mjs";
-import { hostPath } from "./paths.mjs";
+import { MARKER, POWERSHELL_MARKER_TEXT } from "./escalation.mts";
+import { hostPath } from "./paths.mts";
 
 const BASH_RULE = /^Bash(?:\((.*)\))?$/s;
 const POWERSHELL_RULE = /^PowerShell(?:\((.*)\))?$/s;

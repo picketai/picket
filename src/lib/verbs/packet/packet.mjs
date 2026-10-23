@@ -1,10 +1,10 @@
-import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
-import { ARTIFACT_BY_LANE } from "../../shared/work/state.mjs";
-import { projectRoot } from "../../shared/paths.mjs";
-import { nextOf } from "../../shared/work/next-view.mjs";
-import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mjs";
+import { readSnapshot, stateView } from "../../shared/work/snapshot.mts";
+import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
+import { projectRoot } from "../../shared/paths.mts";
+import { nextOf } from "../../shared/work/next-view.mts";
+import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
-import { liveLookup } from "../../shared/sources/places.mjs";
+import { liveLookup } from "../../shared/sources/places.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;

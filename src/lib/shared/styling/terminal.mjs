@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { userConfigPath } from "../paths.mjs";
+import { userConfigPath } from "../paths.mts";
 import { detectFont, readPin } from "./font.mjs";
 import { installedAt, sha256File } from "./manifest.mjs";
 import { gnomeTerminal } from "./terminals/gnome-terminal.mjs";

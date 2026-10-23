@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { HOST_DIR, pluginRoot } from "../paths.mjs";
+import { HOST_DIR, pluginRoot } from "../paths.mts";
 import { installedAt, sha256File } from "./manifest.mjs";
 
 const NAME = "theme";
