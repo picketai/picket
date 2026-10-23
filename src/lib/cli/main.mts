@@ -20,7 +20,6 @@ const RENAMED: Record<string, string | null> = {
   "extension new": "extension add",
   "find-verdict": null,
   "setup-terminal": "style apply",
-  uninstall: "style remove",
   pr: "pullrequest prepare",
 };
 

@@ -34,6 +34,7 @@ export const REGISTRY = {
   "style apply": () => import("../verbs/style/apply.mts"),
   "style remove": () => import("../verbs/style/remove.mts"),
   summary: () => import("../verbs/summary/index.mts"),
+  uninstall: () => import("../verbs/uninstall/index.mts"),
   verify: () => import("../verbs/verify/index.mts"),
   waive: () => import("../verbs/waive/index.mts"),
 } satisfies Record<Command, () => Promise<SpecModule>>;

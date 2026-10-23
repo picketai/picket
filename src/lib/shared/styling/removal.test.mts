@@ -77,7 +77,7 @@ test("all and yes remove every item and return both settings files to their byte
     assert.equal(existsSync(manifestPath(host.home)), false);
     assert.equal(existsSync(backupsDir(host.home)), false);
     assert.equal(report.restart.length, 1);
-    assert.match(renderReport(report).split("\n").at(-1) ?? "", /claude plugin uninstall picket@picketai.*npm uninstall -g @picketai\/picket/);
+    assert.match(renderReport(report).split("\n").at(-1) ?? "", /picket uninstall.*npm uninstall -g @picketai\/picket/);
   });
 });
 

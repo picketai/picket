@@ -11,7 +11,7 @@ type Choice = { label: string; ids: string[] };
 
 const FONT_ID = "font";
 const FONT_QUESTION = "Remove JetBrainsMono Nerd Font Mono? Other apps may use it.";
-const PICKET_ITSELF = "to remove Picket itself, run by hand: claude plugin uninstall picket@picketai, then npm uninstall -g @picketai/picket";
+const PICKET_ITSELF = "to remove Picket from a project, run picket uninstall in it; to remove the picket command, run npm uninstall -g @picketai/picket";
 const RESTART = "your terminal, so it drops the PicketAI scheme and font";
 const SELECTION = /^\d+(\s*,\s*\d+)*$/;
 const THEME_IDS = ["theme-file", "theme-setting"];

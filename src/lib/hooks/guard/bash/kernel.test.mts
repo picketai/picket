@@ -10,7 +10,7 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
   for (const flag of ["--only", "--run", "--start"]) assert.ok(WRAPPING_FLAGS.has(flag), flag);
 });
 
-test("kernelClass is safe for today's read verbs and subverbs and kernel for every other entry; isLeadOnly holds for comment and waive only (T-4.1)", () => {
+test("kernelClass is safe for today's read verbs and subverbs and kernel for every other entry; isLeadOnly holds for comment, uninstall and waive only (T-4.1)", () => {
   const verbs = Object.keys(VERB_NAMES);
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const [verb, entry] of Object.entries(VERB_NAMES)) {
@@ -23,5 +23,5 @@ test("kernelClass is safe for today's read verbs and subverbs and kernel for eve
   }
   assert.equal(kernelClass("nosuchverb", undefined), "kernel");
   assert.equal(kernelClass("constructor", undefined), "kernel");
-  assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "waive"]);
+  assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "uninstall", "waive"]);
 });

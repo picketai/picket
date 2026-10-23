@@ -39,6 +39,16 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
   assert.notEqual(outcome("picket state 20261018-x", "picket:developer")?.permissionDecision, "deny");
 });
 
+test("a spawned agent is denied picket uninstall, in any form; the lead is not", (t) => {
+  const root = project(t);
+  const outcome = (command: string, agent: string | undefined) => guardOutput(command, { root, tool: "Bash", agent });
+  for (const command of ["picket uninstall --yes", "picket uninstall --dry-run", `picket --root ${root} uninstall --yes --remove-work`]) {
+    assert.equal(outcome(command, "picket:developer")?.permissionDecision, "deny", command);
+    assert.equal(outcome(command, "reviewer")?.permissionDecision, "deny", command);
+    assert.notEqual(outcome(command, undefined)?.permissionDecision, "deny", `lead: ${command}`);
+  }
+});
+
 const WAIVE = "picket waive 20261018-x --path p --text t";
 
 test("the lead-only rule reaches inside eval, shell -c, argv wrappers, PowerShell hosts and cmd /c (T-2.1)", (t) => {

@@ -53,6 +53,7 @@ export const VERB_NAMES = {
     },
   },
   summary: { summary: "summarize a work item's diff, or a commit range, for the reviewer", readOnly: true },
+  uninstall: { summary: "remove Picket from a project: what init added, its state and, if chosen, work/", readOnly: false, leadOnly: true },
   verify: { summary: "check one phase against its must_haves", readOnly: true },
   waive: { summary: "record the user's approval of one silenced check", readOnly: false, leadOnly: true },
 } as const satisfies Record<string, VerbEntry | GroupEntry>;

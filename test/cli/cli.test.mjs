@@ -248,7 +248,7 @@ test("style remove without a terminal keeps everything and names the commands th
   const result = style(["remove"], env, "");
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /kept\s+font/);
-  assert.match(result.stdout, /claude plugin uninstall picket@picketai/);
+  assert.match(result.stdout, /run picket uninstall in it/);
   assert.equal(readFileSync(join(home, ".picketai", "styling-manifest.json"), "utf8"), before);
   assert.equal(readFileSync(font, "utf8"), "font");
 });
@@ -262,6 +262,47 @@ test("style remove --yes exits 2 when a chosen removal fails (T-8.6)", (t) => {
   const result = style(["remove", "--yes"], env, "");
   assert.equal(result.status, 2, result.stdout);
   assert.match(result.stdout, /failed\s+font/);
+});
+
+function initializedProject(t) {
+  const { home, env } = tempHome(t);
+  const root = withProject(t, { host: true, picket: false });
+  writeFileSync(join(root, "CLAUDE.md"), "# My project\n");
+  writeFileSync(join(root, ".claude", "settings.json"), '{\n  "permissions": {\n    "allow": ["Bash(npm test)"]\n  }\n}\n');
+  mkdirSync(join(root, "work", "x"), { recursive: true });
+  writeFileSync(join(root, "work", "x", "state.yaml"), "id: x\n");
+  const claudeEnv = { ...env, CLAUDE_CONFIG_DIR: join(home, "claude-config") };
+  const init = runCli(root, ["init", "--root", root, "--no-install"], { env: claudeEnv });
+  assert.equal(init.status, 0, init.stderr);
+  return { root, env: claudeEnv };
+}
+
+test("uninstall --dry-run lists the groups and changes nothing; --yes removes Picket and keeps work/", (t) => {
+  const { root, env } = initializedProject(t);
+  const listing = () => readdirSync(root, { recursive: true }).map(String).sort();
+  const before = listing();
+  const dry = runCli(root, ["uninstall", "--root", root, "--dry-run"], { env });
+  assert.equal(dry.status, 0, dry.stderr);
+  for (const group of ["settings", "claude-md", "gitignore", "config"]) assert.match(dry.stdout, new RegExp(`planned\\s+${group}:`), group);
+  assert.doesNotMatch(dry.stdout, /is now/);
+  assert.deepEqual(listing(), before);
+  const removed = runCli(root, ["uninstall", "--root", root, "--yes"], { env });
+  assert.equal(removed.status, 0, removed.stderr);
+  assert.match(removed.stdout, /Picket is removed from this project\.\n.*\n\s+picket style remove --all.*\n\s+npm uninstall -g @picketai\/picket/);
+  assert.equal(readFileSync(join(root, "CLAUDE.md"), "utf8"), "# My project\n");
+  assert.deepEqual(JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8")), { permissions: { allow: ["Bash(npm test)"] } });
+  assert.deepEqual(readdirSync(root).sort(), [".claude", "CLAUDE.md", "work"]);
+  assert.equal(readFileSync(join(root, "work", "x", "state.yaml"), "utf8"), "id: x\n");
+});
+
+test("uninstall without a terminal and without --yes changes nothing", (t) => {
+  const { root, env } = initializedProject(t);
+  const before = readdirSync(root).sort();
+  const result = runCli(root, ["uninstall", "--root", root], { env, input: "" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /declined\s+settings/);
+  assert.match(result.stdout, /pass --yes/);
+  assert.deepEqual(readdirSync(root).sort(), before);
 });
 
 const USAGE_LINE = "usage: picket <verb> [args] [--pretty | --human]";
@@ -317,7 +358,6 @@ test("a renamed or removed verb exits 1 naming its new form (T-7.1)", () => {
     [["extension", "new", "local"], 'picket: "extension new" is now "extension add"'],
     [["find-verdict"], 'picket: "find-verdict" was removed'],
     [["setup-terminal"], 'picket: "setup-terminal" is now "style apply"'],
-    [["uninstall"], 'picket: "uninstall" is now "style remove"'],
     [["pr", "x"], 'picket: "pr" is now "pullrequest prepare"'],
   ];
   for (const [args, message] of answers) {
