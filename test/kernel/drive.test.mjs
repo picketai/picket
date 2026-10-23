@@ -178,6 +178,15 @@ test("drive refuses a destructive --run or --start command on stdout with exit 2
   assert.equal(existsSync(statePath(root, STATE_FILES.driveLog)), false, "a refused drive logs no evidence");
 });
 
+test("drive --run says a silent command timed out instead of a bare exit 1", () => {
+  const root = fixture();
+  const args = [BIN, "drive", "--run", 'node -e "setTimeout(() => {}, 3000)"', "--timeout", "1", "--human", "--root", root];
+  assert.throws(
+    () => execFileSync("node", args, { encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: root }, stdio: ["ignore", "pipe", "pipe"] }),
+    (err) => err.status === 2 && /^timed out after \d+ ms$/m.test(err.stdout) && err.stdout.trim().endsWith("DRIVE FAILED"),
+  );
+});
+
 test("drive refuses with no --hit or no start command, and a blank --hit is a usage error", () => {
   const root = mkdtempSync(join(tmpdir(), "harness-drive-"));
   const noHit = run(root, ["drive"]);

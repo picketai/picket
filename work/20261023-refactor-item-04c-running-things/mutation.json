@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-23T09:57:31.664Z",
+  "base": "5aeea036119173cb785e81e3f86e96da9c255a32",
+  "mutant": {
+    "path": "src/lib/shared/checks.mts",
+    "line": 16,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 265225
+}
