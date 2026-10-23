@@ -1,7 +1,17 @@
-import { normalizeRoot } from "./kernel-call.mjs";
-import { MARKER, POWERSHELL_FOLDABLE_MARKER, POWERSHELL_MARKER_STATEMENT } from "../shared/escalation.mjs";
+import { normalizeRoot } from "./kernel-call.mts";
+import { MARKER, POWERSHELL_FOLDABLE_MARKER, POWERSHELL_MARKER_STATEMENT } from "../escalation.mts";
 
-const CANONICAL_GROUPS = [
+export type PowerShellReading = {
+  segments: string[][];
+  hiddenExecution: boolean;
+  sawWriteRedirect: boolean;
+  sawBackground: boolean;
+  redirectTargets: (string | null)[];
+};
+
+type MarkerNote = { index: number; foldable: boolean };
+
+export const CANONICAL_GROUPS: readonly (readonly [string, readonly string[]])[] = [
   ["Remove-Item", ["remove-item", "ri", "rm", "rmdir", "rd", "del", "erase"]],
   ["Stop-Process", ["stop-process", "spps", "kill"]],
   ["Clear-Content", ["clear-content", "clc"]],
@@ -16,7 +26,7 @@ const CANONICAL_GROUPS = [
   ["Get-Content", ["get-content", "gc", "cat", "type"]],
   ["Select-String", ["select-string", "sls"]],
 ];
-const CANONICAL_ROOTS = new Map(CANONICAL_GROUPS.flatMap(([name, aliases]) => aliases.map((alias) => [alias, name])));
+const CANONICAL_ROOTS = new Map(CANONICAL_GROUPS.flatMap(([name, aliases]) => aliases.map((alias) => [alias, name] as const)));
 
 const STATEMENT_BREAKS = new Set([";", "\n", "{", "}", "(", ")"]);
 const WHITESPACE = /[ \t\r\f\v]/;
@@ -30,17 +40,17 @@ const ATTACHED_ASSIGNMENT = /^(?:\[[^\]]*\])*\$[^\s=+\-*/%?]+(?:[-+*/%]|\?\?)?=(
 const SINGLE_QUOTES = new Set(["'", "‘", "’", "‚", "‛"]);
 const DOUBLE_QUOTES = new Set(['"', "“", "”", "„"]);
 
-export function canonicalRoot(word) {
+export function canonicalRoot(word: string): string {
   const name = normalizeRoot(word).toLowerCase();
   return CANONICAL_ROOTS.get(name) ?? name;
 }
 
-function markerAssignment(words) {
+function markerAssignment(words: string[]): string {
   const statement = words.join("");
   return `${MARKER}=${statement.slice(statement.indexOf("=") + 1)}`;
 }
 
-function withoutAssignment(words) {
+function withoutAssignment(words: string[]): string[] {
   const [first = "", second = "", ...rest] = words;
   const spaced = VARIABLE_TARGET.test(first) ? ASSIGNMENT_OPERATOR.exec(second) : null;
   if (spaced) return spaced[1] ? [spaced[1], ...rest] : rest;
@@ -49,7 +59,7 @@ function withoutAssignment(words) {
   return attached[1] ? [attached[1], ...words.slice(1)] : words.slice(1);
 }
 
-function commandWords(words) {
+function commandWords(words: string[]): string[] {
   let command = words;
   for (let next = withoutAssignment(command); next !== command; next = withoutAssignment(command)) command = next;
   return command.length ? [canonicalRoot(command[0]), ...command.slice(1)] : [];
@@ -58,22 +68,24 @@ function commandWords(words) {
 class Unreadable extends Error {}
 
 class PowerShellReader {
-  constructor(text) {
+  text: string;
+  i = 0;
+  segments: string[][] = [];
+  words: string[] = [];
+  word: string | null = null;
+  pendingRedirect = false;
+  hiddenExecution = false;
+  sawWriteRedirect = false;
+  sawBackground = false;
+  redirectTargets: (string | null)[] = [];
+  markers: MarkerNote[] = [];
+  readingMarker = false;
+
+  constructor(text: string) {
     this.text = text;
-    this.i = 0;
-    this.segments = [];
-    this.words = [];
-    this.word = null;
-    this.pendingRedirect = false;
-    this.hiddenExecution = false;
-    this.sawWriteRedirect = false;
-    this.sawBackground = false;
-    this.redirectTargets = [];
-    this.markers = [];
-    this.readingMarker = false;
   }
 
-  read() {
+  read(): PowerShellReading {
     while (this.i < this.text.length) this.step();
     this.endSegment();
     return {
@@ -85,37 +97,37 @@ class PowerShellReader {
     };
   }
 
-  at(offset = 0) {
+  at(offset = 0): string | undefined {
     return this.text[this.i + offset];
   }
 
-  startsWith(token) {
+  startsWith(token: string): boolean {
     return this.text.startsWith(token, this.i);
   }
 
-  atStatementStart() {
+  atStatementStart(): boolean {
     return this.word === null && this.words.length === 0;
   }
 
-  append(text) {
+  append(text: string): void {
     this.word = (this.word ?? "") + text;
   }
 
-  foldedSegments() {
+  foldedSegments(): string[][] {
     const [marker] = this.markers;
     const foldable = this.markers.length === 1 && marker.index === 0 && marker.foldable && this.segments.length === 2;
     return foldable ? [[...this.segments[0], ...this.segments[1]]] : this.segments;
   }
 
-  noteMarkerStatement() {
+  noteMarkerStatement(): void {
     const rest = this.text.slice(this.i);
     if (!POWERSHELL_MARKER_STATEMENT.test(rest)) return;
     this.readingMarker = true;
     this.markers.push({ index: this.segments.length, foldable: !this.text.slice(0, this.i).trim() && POWERSHELL_FOLDABLE_MARKER.test(rest) });
   }
 
-  step() {
-    const ch = this.at();
+  step(): void {
+    const ch = this.at() ?? "";
     if (ch === "$" && this.atStatementStart() && !this.readingMarker) this.noteMarkerStatement();
     if (this.word === null && (this.startsWith("@'\n") || this.startsWith("@'\r\n") || this.startsWith('@"\n') || this.startsWith('@"\r\n'))) return this.readHereString();
     if (SINGLE_QUOTES.has(ch)) return this.readSingleQuoted();
@@ -139,7 +151,7 @@ class PowerShellReader {
     this.i++;
   }
 
-  readSingleQuoted() {
+  readSingleQuoted(): void {
     let text = "";
     for (let j = this.i + 1; j < this.text.length; j++) {
       if (!SINGLE_QUOTES.has(this.text[j])) text += this.text[j];
@@ -153,7 +165,7 @@ class PowerShellReader {
     throw new Unreadable();
   }
 
-  readDoubleQuoted() {
+  readDoubleQuoted(): void {
     let text = "";
     for (let j = this.i + 1; j < this.text.length; j++) {
       const ch = this.text[j];
@@ -169,7 +181,7 @@ class PowerShellReader {
     throw new Unreadable();
   }
 
-  readHereString() {
+  readHereString(): void {
     const quote = this.at(1);
     const bodyStart = this.text.indexOf("\n", this.i) + 1;
     const closing = this.text.indexOf(`\n${quote}@`, bodyStart - 1);
@@ -180,7 +192,7 @@ class PowerShellReader {
     this.i = closing + 3;
   }
 
-  readEscape() {
+  readEscape(): void {
     const next = this.at(1);
     if (next === "\n" || (next === "\r" && this.at(2) === "\n")) {
       this.endWord();
@@ -191,65 +203,65 @@ class PowerShellReader {
     this.i += 2;
   }
 
-  readBracedVariable() {
+  readBracedVariable(): void {
     const close = this.text.indexOf("}", this.i);
     if (close === -1) throw new Unreadable();
     this.append(this.text.slice(this.i, close + 1));
     this.i = close + 1;
   }
 
-  skipLineComment() {
+  skipLineComment(): void {
     const end = this.text.indexOf("\n", this.i);
     this.i = end === -1 ? this.text.length : end;
   }
 
-  skipBlockComment() {
+  skipBlockComment(): void {
     const end = this.text.indexOf("#>", this.i + 2);
     if (end === -1) throw new Unreadable();
     this.i = end + 2;
   }
 
-  readAmpersand() {
+  readAmpersand(): void {
     if (this.atStatementStart()) return this.readCallOperator();
     this.sawBackground = true;
     this.breakStatement(1);
   }
 
-  readCallOperator() {
+  readCallOperator(): void {
     this.i++;
     while (WHITESPACE.test(this.at() ?? "")) this.i++;
     if (NON_LITERAL_CALL_TARGET.test(this.at() ?? "")) this.hiddenExecution = true;
   }
 
-  readRedirect() {
+  readRedirect(): void {
     if (this.word !== null && STREAM_PREFIX.test(this.word)) this.word = null;
     else this.endWord();
-    const [token, plumbing] = REDIRECT.exec(this.text.slice(this.i));
+    const [token, plumbing] = REDIRECT.exec(this.text.slice(this.i)) ?? [">"];
     this.i += token.length;
     if (!plumbing) this.pendingRedirect = true;
   }
 
-  breakStatement(length, { hidden = false } = {}) {
+  breakStatement(length: number, { hidden = false }: { hidden?: boolean } = {}): void {
     if (hidden) this.hiddenExecution = true;
     this.endSegment();
     this.i += length;
   }
 
-  endWord() {
+  endWord(): void {
     if (this.word === null) return;
     if (this.pendingRedirect) this.recordRedirect(this.word);
     else this.words.push(this.word);
     this.word = null;
   }
 
-  recordRedirect(target) {
+  recordRedirect(target: string | null): void {
     this.pendingRedirect = false;
     if (typeof target === "string" && target.toLowerCase() === DISCARD_TARGET) return;
     this.sawWriteRedirect = true;
     this.redirectTargets.push(target);
   }
 
-  endSegment() {
+  endSegment(): void {
     this.endWord();
     if (this.pendingRedirect) this.recordRedirect(null);
     const segment = this.readingMarker ? [markerAssignment(this.words)] : commandWords(this.words);
@@ -259,7 +271,7 @@ class PowerShellReader {
   }
 }
 
-export function readPowerShell(text) {
+export function readPowerShell(text: string): PowerShellReading | null {
   try {
     return new PowerShellReader(text).read();
   } catch (error) {

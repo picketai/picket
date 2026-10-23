@@ -53,13 +53,13 @@ const NEUTRAL = [
   /lint\.(write|contract)\.mjs\b/,
 ];
 
-const classify = (seg) =>
+const classify = (seg: string): "inspect" | "neutral" | "drive" =>
   INSPECT.some((re) => re.test(seg)) ? "inspect" : NEUTRAL.some((re) => re.test(seg)) ? "neutral" : "drive";
 
 // A compound command counts as a drive if ANY segment is neither inspection nor
 // build/test. `npm test > log 2>&1; echo "exit=$?"` stays neutral; `npm start`
 // or `curl localhost:5000/orders` does not.
-export function isDriveCommand(cmd) {
+export function isDriveCommand(cmd: unknown): boolean {
   if (typeof cmd !== "string" || !cmd.trim()) return false;
   const segments = cmd
     .split(/&&|\|\||;|\|/)

@@ -1,38 +1,41 @@
 import { existsSync, readFileSync } from "node:fs";
-import { agentName, agentTranscript, isSubagentTurn } from "../shared/transcript/agent.mjs";
-import { spawnHints, toolStats } from "../shared/transcript/entries.mjs";
-import { blockLines, readTurn, turnSpan } from "../shared/transcript/turn.mjs";
-import { findVerdict } from "../shared/verdicts.mjs";
-import { readState } from "../shared/work/state.mjs";
-import { appendLedger } from "../shared/ledger.mjs";
-import { sessionCostPath } from "../shared/paths.mjs";
+import { appendLedger, type TurnRow, type Usage } from "../../../shared/ledger.mts";
+import { sessionCostPath } from "../../../shared/paths.mts";
+import { agentName, agentTranscript, isSubagentTurn } from "../../../shared/transcript/agent.mts";
+import { spawnHints, toolStats, type Hints, type ToolStats } from "../../../shared/transcript/entries.mts";
+import { blockLines, readTurn, turnSpan, type TurnUsage } from "../../../shared/transcript/turn.mts";
+import { findVerdict } from "../../../shared/verdicts.mjs";
+import { readHeading } from "../../../shared/work/block.mts";
+import { workId } from "../../../shared/work/files.mts";
+import { readState, type Lane } from "../../../shared/work/state.mts";
+import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 
-const HEADING = /^##\s+(Phase\s+(\d+)\s+of\s+([a-z0-9-]+)|Review:\s+([a-z0-9-]+)|(?:Order|Design|Amendment):\s+([a-z0-9-]+)|Report:\s+([a-z0-9-]+)|Expedited:\s+([a-z0-9-]+))/m;
+type StopEvent = "Stop" | "SubagentStop";
 
-function laneOf(hints, workId, root) {
-  if (hints.lane || !workId) return hints.lane ?? null;
+function laneOf(hints: Hints, id: string | null, root: string): Lane | null {
+  if (hints.lane || !id) return (hints.lane as Lane | null) ?? null;
   try {
-    return readState(root, workId).lane ?? null;
+    return readState(root, workId(id)).lane ?? null;
   } catch {
     return null;
   }
 }
 
-function firstReviewableMs(stats) {
+function firstReviewableMs(stats: ToolStats): number | null {
   const reviewable = stats.first_work_write_ts ?? stats.first_write_ts ?? stats.last_ts;
   return stats.first_ts !== null && reviewable !== null ? reviewable - stats.first_ts : null;
 }
 
-function gateKind(text) {
+function gateKind(text: string): TurnRow["gate_kind"] {
   if (/\[i\] confirm/.test(text)) return "irreversible";
   return /\[c\] continue/.test(text) ? "stall" : "approval";
 }
 
-function ledgerUsage(usage) {
+function ledgerUsage(usage: TurnUsage | null): Usage | null {
   return usage ? { input_tokens: usage.input, cache_read_input_tokens: usage.cache_read, cache_creation_input_tokens: usage.cache_creation, output_tokens: usage.output } : null;
 }
 
-function sessionCost(root, session) {
+function sessionCost(root: string, session: string | undefined): number | null {
   const file = sessionCostPath(root, session);
   if (file === null) return null;
   try {
@@ -43,7 +46,7 @@ function sessionCost(root, session) {
   }
 }
 
-export function emitLedger(event, { root }) {
+export function emitLedger(event: PayloadOf<StopEvent>, { root, now }: HookContext): null {
   const main = event.transcript_path;
   const path = agentTranscript(event);
   if (!path || !existsSync(path)) return null;
@@ -52,16 +55,16 @@ export function emitLedger(event, { root }) {
   const span = turnSpan(path);
   const stats = toolStats(path);
   const hints = spawnHints(main && existsSync(main) ? main : path);
-  const heading = text.match(HEADING);
-  const work_id = heading?.[3] ?? heading?.[4] ?? heading?.[5] ?? heading?.[6] ?? heading?.[7] ?? hints.work_id ?? null;
+  const heading = readHeading(text);
+  const work_id = heading?.id ?? hints.work_id ?? null;
   const gate = !isSub && /\[a\] approve|\[c\] continue|\[i\] confirm/.test(text);
-  const row = {
+  appendLedger(root, {
     session: event.session_id ?? null,
     event: gate ? "gate" : isSub ? "subagent_stop" : "stop",
     agent: agentName(event, path),
     lane: laneOf(hints, work_id, root),
     work_id,
-    phase: heading?.[2] ? Number(heading[2]) : hints.phase ?? null,
+    phase: heading?.kind === "phase" ? heading.phase : (hints.phase ?? null),
     model: readTurn(event).model ?? null,
     duration_ms: span.durationMs ?? (stats.first_ts !== null && stats.last_ts !== null ? stats.last_ts - stats.first_ts : 0),
     verdict: findVerdict(blockLines(text).last) ?? null,
@@ -72,7 +75,10 @@ export function emitLedger(event, { root }) {
     first_reviewable_ms: firstReviewableMs(stats),
     usage: ledgerUsage(span.usage),
     session_cost_usd: sessionCost(root, event.session_id),
-  };
-  appendLedger(root, row, new Date());
+  }, now());
   return null;
 }
+
+export const hook: HookSpec<StopEvent> = {
+  handler: async (event, ctx) => emitLedger(event, ctx),
+};

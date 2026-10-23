@@ -25,7 +25,7 @@ import { isAbsolute, join, relative, resolve } from "path";
 import { sourceRoots, underSource } from "../shared/sources/protection.mjs";
 import { LANGS, extOf } from "../shared/comments.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../shared/paths.mjs";
-import { kernelVerbStart, normalizeRoot } from "./kernel-call.mjs";
+import { kernelVerbStart, normalizeRoot } from "../shared/shell/kernel-call.mjs";
 import { parseArgs } from "../util/args.mjs";
 import { maskEnvValues } from "../shared/drive-log.mjs";
 import { currentItem } from "../shared/work/state.mjs";
@@ -34,7 +34,7 @@ import { bareAgentName } from "../shared/agent-name.mjs";
 import { ASKING_MODES, carriesMarker, commandKey, escalationMarker, leadingAssignments, notRunBefore, POWERSHELL_MARKER_TEXT, recordEscalation, withoutMarker } from "../shared/escalation.mjs";
 import { readLedger } from "../shared/ledger.mjs";
 import { escalationAllowRules } from "../shared/saved-rules.mjs";
-import { readPowerShell } from "./powershell-text.mjs";
+import { readPowerShell } from "../shared/shell/powershell.mjs";
 
 const TRACED_COMMAND_CHARS = 300;
 const POWERSHELL_TOOL = "PowerShell";

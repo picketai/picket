@@ -6,15 +6,15 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createWork, writeState } from "../kernel/work-fixture.mjs";
 import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
-import { emitLedger } from "../../dist/lib/hooks/emit.ledger.mjs";
-import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route.verdict.mjs";
+import { emitLedger } from "../../dist/lib/hooks/emit/ledger/index.mjs";
+import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route/verdict/index.mjs";
 import { injectState } from "../../dist/lib/hooks/inject/state/index.mjs";
 import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject/rules/index.mjs";
 import { injectExtensions } from "../../dist/lib/hooks/inject/extensions/index.mjs";
 import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard.bash.mjs";
 import { guardScope } from "../../dist/lib/hooks/guard.scope.mjs";
 import { ASKING_MODES, commandKey } from "../../dist/lib/shared/escalation.mjs";
-import { observeDrive } from "../../dist/lib/hooks/observe.drive.mjs";
+import { observeDrive } from "../../dist/lib/hooks/observe/drive/index.mjs";
 import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify/user/index.mjs";
 import { hookContext } from "./hook-context.mjs";
 import { branchingManifestPath } from "../../dist/lib/shared/paths.mjs";
@@ -25,14 +25,10 @@ const HOOKS = resolve("dist/hooks");
 const HOOK_SHELLS = resolve("src/hooks");
 const HANDLERS = resolve("src/lib/hooks");
 const SHELLS = [
-  "emit.ledger.mjs",
   "guard.bash.mjs",
-  "guard.block.mjs",
   "guard.comments.mjs",
   "guard.scope.mjs",
   "guard.silenced.mjs",
-  "observe.drive.mjs",
-  "route.verdict.mjs",
 ];
 const MAX_SHELL_LINES = 5;
 
@@ -163,7 +159,7 @@ test("injectRules returns null when the rules folder is missing", () => {
 test("emitLedger called directly appends one v2 row to the ledger (T-6.3)", () => {
   withProject((root) => {
     const tp = transcript(root, [user("hello"), assistant("Done.")]);
-    assert.equal(emitLedger({ hook_event_name: "Stop", session_id: "s1", transcript_path: tp, cwd: root }, { root }), null);
+    assert.equal(emitLedger({ hook_event_name: "Stop", session_id: "s1", transcript_path: tp, cwd: root }, hookContext(root)), null);
     const rows = readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
     assert.equal(rows.length, 1);
     assert.equal(rows[0].v, 2);
@@ -176,7 +172,7 @@ test("emitLedger stores the session's cost snapshot as session_cost_usd and writ
     const tp = transcript(root, [user("hello"), assistant("Done.")]);
     mkdirSync(statePath(root, STATE_FILES.sessions), { recursive: true });
     writeFileSync(sessionCostPath(root, "s1"), JSON.stringify({ session: "s1", cost_usd: 2.5, ts: "2026-10-18T07:00:00Z" }));
-    for (const session_id of ["s1", "s2"]) emitLedger({ hook_event_name: "Stop", session_id, transcript_path: tp, cwd: root }, { root });
+    for (const session_id of ["s1", "s2"]) emitLedger({ hook_event_name: "Stop", session_id, transcript_path: tp, cwd: root }, hookContext(root));
     const rows = readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
     assert.deepEqual(rows.map((r) => r.session_cost_usd), [2.5, null]);
     for (const key of ["cost_usd", "lines_added", "bounces", "blocks"]) assert.ok(rows.every((r) => !(key in r)), key);
@@ -187,10 +183,10 @@ test("routeVerdict on a pull request review keeps the block and names its state 
   withProject((root) => {
     const block = "## Review: pr-412 · pr\n\nApproved.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
     const tp = transcript(root, [user("scope: pr"), assistant(block)]);
-    const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "reviewer" }, { root });
+    const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "reviewer" }, hookContext(root));
     assert.ok(out.hookSpecificOutput.additionalContext.includes(stateRel("pr-412.review.md")));
     assert.equal(existsSync(statePath(root, "pr-412.review.md")), true);
-    assert.equal(routeVerdict({ stop_hook_active: true }, { root }), null);
+    assert.equal(routeVerdict({ stop_hook_active: true }, hookContext(root)), null);
   });
 });
 
@@ -200,7 +196,7 @@ test("routeVerdict on a developer PHASE DONE stamps the item with the event's se
     writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
     const block = `## Phase 1 of ${s.id}: A\n\nA works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: feat: a\n\nPHASE DONE`;
     const tp = transcript(root, [user(`work: ${s.id}\nphase: 1`), assistant(block)]);
-    const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, { root });
+    const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, hookContext(root));
     assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
     assert.match(readFileSync(join(root, "work", s.id, "state.yaml"), "utf8"), /^session: s3$/m);
   });
@@ -211,7 +207,7 @@ test("routeVerdict stores a reviewer's Classes on a CHANGES REQUIRED entry and n
     const s = createWork({ lane: "order", title: "Classed", root });
     writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
     const review = (classes, verdict) => `## Review: ${s.id} · cumulative\n\nOne gap.\n\nAlignment: PASS\nFindings: 0 critical, 2 major, 0 minor\n- [Major] a.mjs:1 — x. y. z.\n${classes}\n\n${verdict}`;
-    const routeBlock = (block, session) => routeVerdict({ hook_event_name: "SubagentStop", session_id: session, transcript_path: transcript(root, [user(`work: ${s.id}\nscope: cumulative`), assistant(block)]), cwd: root, agent_type: "picket:reviewer" }, { root });
+    const routeBlock = (block, session) => routeVerdict({ hook_event_name: "SubagentStop", session_id: session, transcript_path: transcript(root, [user(`work: ${s.id}\nscope: cumulative`), assistant(block)]), cwd: root, agent_type: "picket:reviewer" }, hookContext(root));
     routeBlock(review("Classes: Ts4, Cm1", "CHANGES REQUIRED"), "s1");
     routeBlock(review("Classes: none", "CHANGES REQUIRED"), "s2");
     routeBlock(review("", "CHANGES REQUIRED"), "s3");
@@ -389,7 +385,7 @@ test("latestHints skips a later message without a work line (T-2.3)", () => {
 test("no helper is left under .claude/hooks/lib; all four live in src/lib (T-6.4)", () => {
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
-  for (const helper of ["shared/transcript/tail.mts", "shared/transcript/entries.mts", "shared/transcript/turn.mts", "shared/transcript/agent.mts","shared/sources/protection.mts", "hooks/drive-evidence.mjs"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
+  for (const helper of ["shared/transcript/tail.mts", "shared/transcript/entries.mts", "shared/transcript/turn.mts", "shared/transcript/agent.mts","shared/sources/protection.mts", "hooks/observe/drive/evidence.mts", "shared/shell/powershell.mts", "shared/shell/kernel-call.mts"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
 });
 
 test("guardBash allows a compound of read-only pieces and bare picket calls that wrap nothing", () => {
@@ -975,7 +971,7 @@ test("a marker on a command that does not deny falls through and records nothing
 test("an approved escalation that failed counts as ran, so the next one asks fresh", () => {
   withEscalationProject(({ root, judge, escalationRows }) => {
     assert.equal(judge(ESCALATED_PUSH).permissionDecision, "ask");
-    observeDrive({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, session_id: "s1" }, { root });
+    observeDrive({ hook_event_name: "PostToolUseFailure", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, session_id: "s1" }, hookContext(root));
     assert.equal(judge(`PICKET_ESCALATE="the remote is fixed now" ${PUSH}`).permissionDecision, "ask");
     assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why]), [["ask", null], ["ran", "failed"], ["ask", null]]);
   });
@@ -1031,7 +1027,7 @@ test("a saved allow rule that could approve the marked command turns the escalat
 
 test("an ask that never ran is not asked again in its session; one that ran gets a fresh ask; another session starts clean", () => {
   withEscalationProject(({ root, judge, escalationRows }) => {
-    const ran = (command, session_id = "s1") => observeDrive({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, session_id }, { root });
+    const ran = (command, session_id = "s1") => observeDrive({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command }, session_id }, hookContext(root));
     assert.equal(judge(ESCALATED_PUSH).permissionDecision, "ask");
     const refused = judge(`PICKET_ESCALATE="a better reason this time" ${PUSH}`);
     assert.equal(refused.permissionDecision, "deny");
@@ -1042,7 +1038,7 @@ test("an ask that never ran is not asked again in its session; one that ran gets
 
     withEscalationProject(({ root: fresh, judge: freshJudge, escalationRows: freshRows }) => {
       assert.equal(freshJudge(ESCALATED_PUSH).permissionDecision, "ask");
-      observeDrive({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, session_id: "s1" }, { root: fresh });
+      observeDrive({ hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: { command: ESCALATED_PUSH }, session_id: "s1" }, hookContext(fresh));
       const again = freshJudge(`PICKET_ESCALATE="push it again" ${PUSH}`);
       assert.equal(again.permissionDecision, "ask");
       assert.deepEqual(freshRows().map((r) => r.outcome), ["ask", "ran", "ask"]);

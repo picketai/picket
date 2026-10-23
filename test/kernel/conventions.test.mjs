@@ -206,7 +206,7 @@ test("the direction scan allows each layer its own imports (T-3.2)", () => {
 
 test("no module under src/lib or a skill's scripts crosses the layer rules (T-3.2)", () => {
   const files = directionSources().map(repoPath);
-  assert.ok(files.includes("src/lib/hooks/route.verdict.mjs") && files.includes("src/skills/reviewing/scripts/lint.craft.mjs"), files.join(", "));
+  assert.ok(files.includes("src/lib/hooks/route/verdict/index.mts") && files.includes("src/skills/reviewing/scripts/lint.craft.mjs"), files.join(", "));
   const violations = directionSources().flatMap((file) => importViolations(repoPath(file), readFileSync(file, "utf8")));
   assert.deepEqual(violations, []);
 });

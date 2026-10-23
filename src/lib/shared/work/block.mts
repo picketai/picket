@@ -5,17 +5,39 @@ import { phaseMarker, type WorkId } from "./files.mts";
 
 export type BlockKind = "phase" | "review" | "artifact" | "report" | "expedited";
 
+export type ReviewScope = "crosscheck" | "phase" | "cumulative" | "checkpoint" | "pr";
+export type BlockHeading = { kind: BlockKind; id: string; phase: number | null; scope: ReviewScope | null; index: number };
+
 export const BLOCK_HEADINGS: readonly (readonly [BlockKind, RegExp])[] = [
-  ["phase", /^##\s+Phase\s+\d+\s+of\s+[a-z0-9-]+/m],
-  ["review", /^##\s+Review:\s+[a-z0-9-]+/m],
-  ["artifact", /^##\s+(Order|Design|Amendment):\s+[a-z0-9-]+/m],
-  ["report", /^##\s+Report:\s+[a-z0-9-]+/m],
-  ["expedited", /^##\s+Expedited:\s+[a-z0-9-]+/m],
+  ["phase", /^##\s+Phase\s+(?<phase>\d+)\s+of\s+(?<id>[a-z0-9-]+)/m],
+  ["review", /^##\s+Review:\s+(?<id>[a-z0-9-]+)(?:\s*·\s*(?<scope>crosscheck|phase\s+(?<phase>\d+)|cumulative|checkpoint|pr))?/m],
+  ["artifact", /^##\s+(?:Order|Design|Amendment):\s+(?<id>[a-z0-9-]+)/m],
+  ["report", /^##\s+Report:\s+(?<id>[a-z0-9-]+)/m],
+  ["expedited", /^##\s+Expedited:\s+(?<id>[a-z0-9-]+)/m],
 ];
 
 export function detectBlock(text: string | null | undefined): BlockKind | null {
   if (!text) return null;
   return BLOCK_HEADINGS.find(([, heading]) => heading.test(text))?.[0] ?? null;
+}
+
+function scopeOf(scope: string | undefined): ReviewScope | null {
+  if (scope === undefined) return null;
+  return scope.startsWith("phase") ? "phase" : (scope as ReviewScope);
+}
+
+function headingOf(kind: BlockKind, match: RegExpExecArray): BlockHeading {
+  const { id, phase, scope } = match.groups ?? {};
+  return { kind, id, phase: phase === undefined ? null : Number(phase), scope: scopeOf(scope), index: match.index };
+}
+
+export function readHeading(text: string | null | undefined): BlockHeading | null {
+  if (!text) return null;
+  const found = BLOCK_HEADINGS.flatMap(([kind, heading]) => {
+    const match = heading.exec(text);
+    return match ? [headingOf(kind, match)] : [];
+  });
+  return found.reduce<BlockHeading | null>((earliest, heading) => (earliest === null || heading.index < earliest.index ? heading : earliest), null);
 }
 
 export type Block = { title: string | null; headline: string; fields: Record<string, string>; verdict: "PHASE DONE" | "PHASE STALLED" | null };

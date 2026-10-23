@@ -123,7 +123,8 @@ test("no module reachable from routing, gates, next or the guards imports the ex
     resolve("src/lib/verbs/route/index.mts"),
     resolve("src/lib/shared/work/gate.mts"),
     resolve("src/lib/shared/work/next-step.mts"),
-    resolve(hooks, "route.verdict.mjs"),
+    resolve(hooks, "route", "verdict", "index.mts"),
+    ...readdirSync(join(hooks, "guard"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => resolve(hooks, "guard", entry.name, "index.mts")),
     ...readdirSync(hooks).filter((f) => /^guard\..+\.mjs$/.test(f)).map((f) => resolve(hooks, f)),
   ];
   const reached = reachable(starts, relativeImports);

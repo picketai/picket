@@ -8,7 +8,7 @@ import { DIST, hookFolder, hookSources, hooksJson } from "../../scripts/build.mj
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
 const ORACLE = resolve("src/hooks/hooks.json");
 const BUILT = join(DIST, "hooks", "hooks.json");
-const MOVED = ["inject.state", "inject.rules", "inject.extensions", "lint.schema", "monitor.context", "notify.user"];
+const MOVED = ["inject.state", "inject.rules", "inject.extensions", "lint.schema", "monitor.context", "notify.user", "guard.block", "route.verdict", "emit.ledger", "observe.drive"];
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -50,7 +50,7 @@ test("every file the built hooks.json registers exists in dist/hooks/ (T-1.2)", 
   assert.deepEqual(missing, []);
 });
 
-test("every hook has exactly one source: the six moved hooks a folder, the others a shell (T-1.2)", () => {
+test("every hook has exactly one source: each moved hook a folder, the others a shell (T-1.2)", () => {
   const { folders, problems } = hookSources(HOOKS);
   assert.deepEqual(problems, []);
   assert.deepEqual(folders.sort(), [...MOVED].sort());
