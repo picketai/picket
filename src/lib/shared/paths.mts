@@ -74,10 +74,9 @@ function insideRootIgnoringCase(abs: string, root: string): boolean {
   return a.startsWith(r + "/");
 }
 
-export function repoRelative(event: { cwd?: string } | null | undefined, filePath: string): RepoPath {
-  const root = projectRoot(event?.cwd);
+export function repoRelative(event: { cwd?: string } | null | undefined, filePath: string, root: string = projectRoot(event?.cwd)): RepoPath {
   const base = event?.cwd ?? root;
-  const abs = isAbsolute(filePath) ? filePath : resolve(base, filePath);
+  const abs = resolve(base, filePath);
   let rel = relative(root, abs);
   if (isAbsolute(rel) && process.platform === "win32" && insideRootIgnoringCase(abs, root)) {
     rel = abs.slice(root.length).replace(/^[\\/]/, "");

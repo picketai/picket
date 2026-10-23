@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { createWork, writeState } from "../kernel/work-fixture.mjs";
 import { hostPath, sessionCostPath, statePath, stateRel, STATE_FILES } from "../../dist/lib/shared/paths.mjs";
 import { emitLedger } from "../../dist/lib/hooks/emit/ledger/index.mjs";
@@ -12,7 +12,10 @@ import { injectState } from "../../dist/lib/hooks/inject/state/index.mjs";
 import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject/rules/index.mjs";
 import { injectExtensions } from "../../dist/lib/hooks/inject/extensions/index.mjs";
 import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard.bash.mjs";
-import { guardScope } from "../../dist/lib/hooks/guard.scope.mjs";
+import { guardScope } from "../../dist/lib/hooks/guard/scope/index.mjs";
+import { quotedList } from "../../dist/lib/hooks/guard/edit-target.mjs";
+import { guardComments } from "../../dist/lib/hooks/guard/comments/index.mjs";
+import { guardSilenced } from "../../dist/lib/hooks/guard/silenced/index.mjs";
 import { ASKING_MODES, commandKey } from "../../dist/lib/shared/escalation.mjs";
 import { observeDrive } from "../../dist/lib/hooks/observe/drive/index.mjs";
 import { notificationCommand, notifyUser } from "../../dist/lib/hooks/notify/user/index.mjs";
@@ -26,9 +29,6 @@ const HOOK_SHELLS = resolve("src/hooks");
 const HANDLERS = resolve("src/lib/hooks");
 const SHELLS = [
   "guard.bash.mjs",
-  "guard.comments.mjs",
-  "guard.scope.mjs",
-  "guard.silenced.mjs",
 ];
 const MAX_SHELL_LINES = 5;
 
@@ -324,7 +324,7 @@ test("guardBash under PowerShell denies a write into a source and lets a read th
 test("guardScope called directly guards kernel and hook state but lets the branching manifest through (T-7.3)", () => {
   withProject((root) => {
     const s = createWork({ lane: "order", title: "Scope", root });
-    const write = (file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const write = (file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(write(join(root, "work", s.id, "state.yaml")), "deny");
     assert.equal(write(join(root, "work", s.id, "left.jsonl")), "deny");
     assert.equal(write(statePath(root, STATE_FILES.ledger)), "deny");
@@ -336,7 +336,7 @@ test("guardScope decides the same whatever form the root and the target path tak
   withProject((root) => {
     const s = createWork({ lane: "order", title: "Forms", root });
     const longRoot = realpathSync.native(root);
-    const decide = (rootForm, file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: rootForm }, { root: rootForm })?.hookSpecificOutput.permissionDecision ?? null;
+    const decide = (rootForm, file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path }, cwd: rootForm }, hookContext(rootForm))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decide(root, join(longRoot, "work", s.id, "state.yaml")), "deny");
     assert.equal(decide(longRoot, join(root, "work", s.id, "state.yaml")), "deny");
     assert.equal(decide(root, join(longRoot, ".picket", "extensions", "acme", "extension.json")), "ask");
@@ -347,7 +347,7 @@ test("guardScope decides the same whatever form the root and the target path tak
 
 test("guardScope denies the legacy state folder and hook state in any case, not look-alikes (T-1.1, T-1.2, T-1.3)", () => {
   withProject((root) => {
-    const guard = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+    const guard = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;
     for (const [tool_name, rel] of [["Write", ".claude/ledger/drive-log.jsonl"], ["Edit", ".claude/ledger/drive-log.jsonl"], ["Write", ".claude/ledger/ledger.jsonl"]]) {
       const out = guard(tool_name, rel);
       assert.equal(out?.permissionDecision, "deny", `${tool_name} ${rel}`);
@@ -681,7 +681,7 @@ test("a refused extension adds one line and no text; nothing enabled or refused 
 
 test("guardScope asks before an edit to extension content or the config, and keeps its denials first", () => {
   withProject((root) => {
-    const decide = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+    const decide = (tool_name, rel) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;
     const extension = decide("Write", ".picket/extensions/acme/rules/a.md");
     assert.equal(extension.permissionDecision, "ask");
     assert.match(extension.permissionDecisionReason, /\.picket\/extensions\/acme\/rules\/a\.md is extension content/);
@@ -1218,10 +1218,102 @@ test("the macOS and Linux notifiers pass the title and body as their own trailin
 
 test("guardScope asks for the moved config and extensions, keeps .picket/state hook-only, and has no rule for any other folder", () => {
   withProject((root) => {
-    const decide = (rel) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, rel) }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+    const decide = (rel) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, rel) }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;
     assert.equal(decide(".picket/config.json").permissionDecision, "ask");
     assert.equal(decide(".picket/extensions/a/rules/r.md").permissionDecision, "ask");
     assert.equal(decide(".picket/state/ledger.jsonl").permissionDecision, "deny");
     assert.equal(decide("notes/config.json"), null);
   });
+});
+
+test("quotedList quotes at most three entries, cuts each at 80 characters and puts a label first (T-3.2)", () => {
+  assert.equal(quotedList([{ text: "a" }, { text: "b" }]), '"a"; "b"');
+  assert.equal(quotedList(["a", "b", "c", "d"].map((text) => ({ text }))), '"a"; "b"; "c" (+1 more)');
+  assert.equal(quotedList([{ text: "x".repeat(100) }]), `"${"x".repeat(80)}"`);
+  assert.equal(quotedList([{ text: "x", label: "skip" }]), 'skip "x"');
+});
+
+function dotDotForms(root, rel) {
+  const forms = [`${root}${sep}${rel.split("/").join(sep)}`, `${root.replaceAll("\\", "/")}/${rel}`, rel];
+  return process.platform === "win32" ? [...forms, rel.replaceAll("/", "\\")] : forms;
+}
+
+function climbBackIn(root, rel) {
+  return `src/../../${basename(root)}/${rel}`;
+}
+
+const scopeWrite = (root, file_path, ctx = hookContext(root)) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path, content: "x" }, cwd: root }, ctx)?.hookSpecificOutput ?? null;
+
+test("guardScope denies kernel-owned and hook state reached through .. in every path form", () => {
+  withProject((root) => {
+    const s = createWork({ lane: "order", title: "Dots", root });
+    for (const rel of [`src/../work/${s.id}/state.yaml`, "src/../.picket/state/ledger.jsonl", climbBackIn(root, `work/${s.id}/state.yaml`)]) {
+      for (const file_path of dotDotForms(root, rel)) assert.equal(scopeWrite(root, file_path)?.permissionDecision, "deny", file_path);
+    }
+    for (const file_path of dotDotForms(root, "src/../../elsewhere/a.ts")) assert.equal(scopeWrite(root, file_path), null, file_path);
+  });
+});
+
+test("guardScope denies a write into a source reached through ..", () => {
+  withProject((root) => {
+    const source = join(root, "analysis");
+    execFileSync("git", ["init", "-q", source]);
+    mkdirSync(join(root, ".picket"), { recursive: true });
+    writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "PICKET_TEST_SOURCE_ANALYSIS" } } }));
+    const ctx = hookContext(root, { env: { ...process.env, PICKET_TEST_SOURCE_ANALYSIS: source } });
+    for (const file_path of dotDotForms(root, "src/../analysis/a.md")) {
+      const out = scopeWrite(root, file_path, ctx);
+      assert.equal(out?.permissionDecision, "deny", file_path);
+      assert.match(out.permissionDecisionReason, /inside source analysis, which is read-only/, file_path);
+    }
+  });
+});
+
+test("guardScope lets an Edit through .. reach a file the transcript read under its plain path", () => {
+  withProject((root) => {
+    const plain = join(root, "src", "a.ts");
+    mkdirSync(dirname(plain), { recursive: true });
+    writeFileSync(plain, "a\n");
+    const read = { type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "r", name: "Read", input: { file_path: plain } }] } };
+    const tp = transcript(root, [user("go"), read]);
+    const edit = (file_path) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path, old_string: "a", new_string: "b" }, cwd: root, transcript_path: tp }, hookContext(root))?.hookSpecificOutput ?? null;
+    for (const file_path of dotDotForms(root, "src/../src/a.ts")) assert.equal(edit(file_path), null, file_path);
+    assert.equal(edit(join(root, "src", "b.ts"))?.permissionDecision, "deny");
+  });
+});
+
+test("guardComments denies a comment written through .. under the plain path, and ignores a path that climbs out", async () => {
+  const root = project();
+  try {
+    const write = async (file_path) => (await guardComments({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path, content: `const a = 1;\n${"/".repeat(2)} note\n` }, cwd: root }, hookContext(root)))?.hookSpecificOutput ?? null;
+    for (const rel of ["src/../src/a.mjs", climbBackIn(root, "src/a.mjs")]) {
+      for (const file_path of dotDotForms(root, rel)) {
+        const out = await write(file_path);
+        assert.equal(out?.permissionDecision, "deny", file_path);
+        assert.ok(out.permissionDecisionReason.startsWith("guard.comments: src/a.mjs adds 1 comment line(s)"), out.permissionDecisionReason);
+      }
+    }
+    for (const file_path of dotDotForms(root, "src/../../elsewhere/a.mjs")) assert.equal(await write(file_path), null, file_path);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("guardSilenced denies a skip added through .. under the plain path, and ignores a path that climbs out", async () => {
+  const root = project();
+  try {
+    mkdirSync(join(root, "test"), { recursive: true });
+    writeFileSync(join(root, "test", "a.test.mjs"), 'it("a", () => {});\n');
+    const edit = async (file_path) => (await guardSilenced({ hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path, old_string: 'it("a"', new_string: 'it.skip("a"' }, cwd: root }, hookContext(root)))?.hookSpecificOutput ?? null;
+    for (const rel of ["test/../test/a.test.mjs", climbBackIn(root, "test/a.test.mjs")]) {
+      for (const file_path of dotDotForms(root, rel)) {
+        const out = await edit(file_path);
+        assert.equal(out?.permissionDecision, "deny", file_path);
+        assert.ok(out.permissionDecisionReason.startsWith("guard.silenced: test/a.test.mjs adds 1 silenced check(s)"), out.permissionDecisionReason);
+      }
+    }
+    for (const file_path of dotDotForms(root, "src/../../elsewhere/a.test.mjs")) assert.equal(await edit(file_path), null, file_path);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
