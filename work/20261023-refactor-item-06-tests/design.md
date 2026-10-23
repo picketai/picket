@@ -327,7 +327,7 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 - Assertions unchanged; a test spanning two modules goes to `index.test.mts`.
 
 **Done when:**
-- **T-6.1** `test/hooks/handlers.test.mjs`, `hooks.test.mjs`, `hook-context.mjs`, `test/kernel/work-fixture.mjs` and `config-fixture.mjs` do not exist, and `git grep -nE "work-fixture|config-fixture|hook-context" -- test src` prints nothing.
+- **T-6.1** `test/hooks/handlers.test.mjs`, `hooks.test.mjs`, `hook-context.mjs`, `test/kernel/work-fixture.mjs` and `config-fixture.mjs` do not exist, and `git grep -nE "work-fixture|config-fixture|hook-context" -- test src ':!src/lib/util/yaml-lite-corpus.test.json'` prints nothing (that corpus holds old work-item text as data).
 - **T-6.2** `git grep -n "const decision =" -- src test` prints nothing.
 - **T-6.3** The passing count equals phase 5's; the block maps every `guard.bash` test name to its new file and gives the count per file.
 - **T-6.4** `git grep -n mkdtempSync -- src test/cli test/hooks test/repo test/timing` prints nothing; temp folders there come from `test/support/`.
@@ -370,3 +370,4 @@ The user approved refactor item 06 (`artifacts/refactor/06-tests.md`, decisions 
 - 2026-10-23: D-004: T-1.2 greps only the phase 1 helpers, since `cli.mts` may name `dist/`; checkpoint F-1.
 - 2026-10-23: D-007: phases 1 and 2 `files` name where later phases moved build, conventions and paths tests; checkpoint F-2. OQ-003 records 57.3 s against the 60 s limit.
 - 2026-10-23: D-007: OQ-003 closed; T-5.5, T-6.5 and T-7.4 allow 75 s, since 1048 tests replace the prototype's 728 and `unit` runs before the build.
+- 2026-10-23: D-004: T-6.1's grep excludes `src/lib/util/yaml-lite-corpus.test.json`, whose old work-item text names the fixtures as data; cumulative review Minor.
