@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { migrate, renderMigrate } from "../../dist/lib/verbs/migrate/migrate.mjs";
 import { preflight } from "../../dist/lib/verbs/preflight/index.mjs";
-import { createWork } from "./work-fixture.mjs";
+import { openItem } from "#test/project.mts";
 import { LEGACY, STATE_FILES, branchingManifestPath, configPath, configRel, hostPath, legacyPath, stateDir, statePath, stateRel } from "../../dist/lib/shared/paths.mjs";
 
 const LEGACY_LEDGER = `${LEGACY.stateDir}/${STATE_FILES.ledger}`;
@@ -152,7 +152,7 @@ test("with both config files present nothing is deleted and the conflict is repo
 
 test("preflight warns about legacy state until migrate has run (T-4.3)", () => {
   withProject((root) => {
-    const { id } = createWork({ lane: "order", title: "Legacy", root });
+    const { id } = openItem(root, { lane: "order", title: "Legacy" });
     writeLegacy(root, LEGACY_LEDGER, "{}\n");
     const warning = preflight(root, id, { home: root, env: {}, platform: process.platform }).checks.find((c) => c.name === "legacy_paths");
     assert.equal(warning?.level, "warn");

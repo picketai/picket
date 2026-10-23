@@ -1,32 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadConfig, CONFIG_DEFAULTS, DEFAULT_LANES, DEFAULT_SECURITY_PATHS, KNOWN_KEYS } from "../../dist/lib/shared/config.mjs";
-import { hostPath } from "../../dist/lib/shared/paths.mjs";
-import { writeConfig } from "./config-fixture.mjs";
+import { withProject, writeConfig } from "#test/project.mts";
 
 const SCHEMA = JSON.parse(readFileSync(resolve("src/lib/shared/config.schema.json"), "utf8"));
 
-function projectWith(config) {
-  const root = mkdtempSync(join(tmpdir(), "harness-config-"));
-  mkdirSync(hostPath(root));
+function withConfig(t, config, fn) {
+  const root = withProject(t, { host: true, picket: false });
   if (config !== undefined) writeConfig(root, config);
-  return root;
+  fn(root);
 }
 
-function withProject(config, fn) {
-  const root = projectWith(config);
-  try {
-    fn(root);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-}
-
-test("an unset env var gives the source with root null and a reason naming the variable (T-3.2)", () => {
-  withProject({ sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } }, (root) => {
+test("an unset env var gives the source with root null and a reason naming the variable (T-3.2)", (t) => {
+  withConfig(t,{ sources: { analysis: { env: "HARNESS_SOURCE_ANALYSIS" } } }, (root) => {
     const c = loadConfig(root, {});
     assert.equal(c.error, null);
     assert.deepEqual(c.security_paths, DEFAULT_SECURITY_PATHS);
@@ -36,8 +24,8 @@ test("an unset env var gives the source with root null and a reason naming the v
   });
 });
 
-test("a source name outside letters, digits, _ and - is left out with a warning (T-1.1)", () => {
-  withProject({ sources: { analysis: { env: "X_SRC" }, "my.docs": { env: "Y_SRC" } } }, (root) => {
+test("a source name outside letters, digits, _ and - is left out with a warning (T-1.1)", (t) => {
+  withConfig(t,{ sources: { analysis: { env: "X_SRC" }, "my.docs": { env: "Y_SRC" } } }, (root) => {
     const c = loadConfig(root, {});
     assert.deepEqual(c.sources.map((s) => s.name), ["analysis"]);
     assert.deepEqual(c.warnings, ['source "my.docs" ignored: a source name may use letters, digits, "_" and "-"']);
@@ -45,8 +33,8 @@ test("a source name outside letters, digits, _ and - is left out with a warning 
   assert.equal(SCHEMA.properties.sources.propertyNames.pattern, "^[A-Za-z0-9_-]+$");
 });
 
-test("a set env var resolves to an absolute root; a missing directory is a reason, not a root", () => {
-  withProject({ security_paths: ["src/pay/"], sources: { analysis: { env: "X_SRC" } } }, (root) => {
+test("a set env var resolves to an absolute root; a missing directory is a reason, not a root", (t) => {
+  withConfig(t,{ security_paths: ["src/pay/"], sources: { analysis: { env: "X_SRC" } } }, (root) => {
     assert.equal(loadConfig(root, { X_SRC: root }).sources[0].root, resolve(root));
     assert.deepEqual(loadConfig(root, { X_SRC: root }).security_paths, ["src/pay/"]);
     const gone = loadConfig(root, { X_SRC: join(root, "nope") }).sources[0];
@@ -55,7 +43,7 @@ test("a set env var resolves to an absolute root; a missing directory is a reaso
   });
 });
 
-test("a file with every key returns them, with no warning (T-5.1)", () => {
+test("a file with every key returns them, with no warning (T-5.1)", (t) => {
   const config = {
     version: 1,
     security_paths: ["src/pay/"],
@@ -63,7 +51,7 @@ test("a file with every key returns them, with no warning (T-5.1)", () => {
     lanes: { fast: { max_files: 2 }, order: { max_phases: 2, max_decisions: 4 }, design: { max_phases: 6, max_decisions: 7 } },
     commands: { test: "node -e 1", lint: "npm run lint", build: "npm run build", run: "node server.mjs" },
   };
-  withProject(config, (root) => {
+  withConfig(t,config, (root) => {
     const c = loadConfig(root, {});
     assert.deepEqual(c.warnings, []);
     assert.equal(c.version, 1);
@@ -74,8 +62,8 @@ test("a file with every key returns them, with no warning (T-5.1)", () => {
   });
 });
 
-test("a wrong cap type keeps the default with a warning (T-5.1)", () => {
-  withProject({ version: 1, lanes: { order: { max_phases: "x" } } }, (root) => {
+test("a wrong cap type keeps the default with a warning (T-5.1)", (t) => {
+  withConfig(t,{ version: 1, lanes: { order: { max_phases: "x" } } }, (root) => {
     const c = loadConfig(root, {});
     assert.equal(c.lanes.order.max_phases, 3);
     assert.equal(c.lanes.order.max_decisions, 5);
@@ -84,17 +72,17 @@ test("a wrong cap type keeps the default with a warning (T-5.1)", () => {
   });
 });
 
-test("an unknown key and a version other than 1 each give a warning (T-5.1)", () => {
-  withProject({ version: 1, plugins: {} }, (root) => assert.deepEqual(loadConfig(root, {}).warnings, ['unknown key "plugins"']));
-  withProject({ version: 2 }, (root) => {
+test("an unknown key and a version other than 1 each give a warning (T-5.1)", (t) => {
+  withConfig(t,{ version: 1, plugins: {} }, (root) => assert.deepEqual(loadConfig(root, {}).warnings, ['unknown key "plugins"']));
+  withConfig(t,{ version: 2 }, (root) => {
     const c = loadConfig(root, {});
     assert.equal(c.warnings.length, 1);
     assert.match(c.warnings[0], /version 2 is not 1/);
   });
 });
 
-test("malformed JSON keeps the defaults and sets error (T-5.1)", () => {
-  withProject("{ not json", (root) => {
+test("malformed JSON keeps the defaults and sets error (T-5.1)", (t) => {
+  withConfig(t,"{ not json", (root) => {
     const c = loadConfig(root, {});
     assert.deepEqual(c.security_paths, DEFAULT_SECURITY_PATHS);
     assert.deepEqual(c.sources, []);
@@ -104,13 +92,13 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", () => {
   });
 });
 
-test("no config file is the defaults with no error and no warning", () => {
-  withProject(undefined, (root) => {
+test("no config file is the defaults with no error and no warning", (t) => {
+  withConfig(t,undefined, (root) => {
     assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, error: null, warnings: [] });
   });
 });
 
-test("the published schema names the loader's keys and carries its defaults (T-5.2)", () => {
+test("the published schema names the loader's keys and carries its defaults (T-5.2)", (t) => {
   assert.deepEqual(Object.keys(SCHEMA.properties).sort(), [...KNOWN_KEYS].sort());
   for (const key of KNOWN_KEYS) assert.deepEqual(SCHEMA.properties[key].default, CONFIG_DEFAULTS[key], key);
   assert.deepEqual(Object.keys(SCHEMA.properties.lanes.properties).sort(), Object.keys(DEFAULT_LANES).sort());
@@ -119,18 +107,18 @@ test("the published schema names the loader's keys and carries its defaults (T-5
   }
 });
 
-test("extensions defaults to an empty list, keeps a valid list and drops a malformed one with a warning", () => {
-  withProject({ version: 1, extensions: ["acme", "local"] }, (root) => {
+test("extensions defaults to an empty list, keeps a valid list and drops a malformed one with a warning", (t) => {
+  withConfig(t,{ version: 1, extensions: ["acme", "local"] }, (root) => {
     const config = loadConfig(root, {});
     assert.deepEqual(config.extensions, ["acme", "local"]);
     assert.deepEqual(config.warnings, []);
   });
-  withProject({ version: 1, extensions: "acme" }, (root) => {
+  withConfig(t,{ version: 1, extensions: "acme" }, (root) => {
     const config = loadConfig(root, {});
     assert.deepEqual(config.extensions, []);
     assert.match(config.warnings.join("\n"), /extensions must be a list/);
   });
-  withProject({ version: 1, extensions: ["acme", 7] }, (root) => {
+  withConfig(t,{ version: 1, extensions: ["acme", 7] }, (root) => {
     const config = loadConfig(root, {});
     assert.deepEqual(config.extensions, ["acme"]);
     assert.match(config.warnings.join("\n"), /not a name; it is dropped/);
@@ -138,23 +126,23 @@ test("extensions defaults to an empty list, keeps a valid list and drops a malfo
   assert.deepEqual(SCHEMA.properties.extensions.default, []);
 });
 
-test("a quality bar loads with no warning; a bad field warns and is dropped (T-1.5)", () => {
-  withProject({ version: 1, quality: { coverage_min: 80, max_warnings: 0 } }, (root) => {
+test("a quality bar loads with no warning; a bad field warns and is dropped (T-1.5)", (t) => {
+  withConfig(t,{ version: 1, quality: { coverage_min: 80, max_warnings: 0 } }, (root) => {
     const config = loadConfig(root, {});
     assert.deepEqual(config.quality, { coverage_min: 80, max_warnings: 0 });
     assert.deepEqual(config.warnings, []);
   });
-  withProject({ version: 1, quality: { coverage_min: "x", max_warnings: 2 } }, (root) => {
+  withConfig(t,{ version: 1, quality: { coverage_min: "x", max_warnings: 2 } }, (root) => {
     const config = loadConfig(root, {});
     assert.deepEqual(config.quality, { max_warnings: 2 });
     assert.equal(config.warnings.length, 1);
     assert.match(config.warnings[0], /quality\.coverage_min must be a number from 0 to 100; it is dropped/);
   });
-  withProject({ version: 1, quality: { coverage_min: 101, max_warnings: -1, branches: 3 } }, (root) => {
+  withConfig(t,{ version: 1, quality: { coverage_min: 101, max_warnings: -1, branches: 3 } }, (root) => {
     const config = loadConfig(root, {});
     assert.deepEqual(config.quality, {});
     assert.equal(config.warnings.length, 3);
   });
-  withProject({ version: 1, quality: 85 }, (root) => assert.deepEqual(loadConfig(root, {}).quality, {}));
+  withConfig(t,{ version: 1, quality: 85 }, (root) => assert.deepEqual(loadConfig(root, {}).quality, {}));
   assert.deepEqual(Object.keys(SCHEMA.properties.quality.properties).sort(), ["coverage_min", "max_warnings"]);
 });

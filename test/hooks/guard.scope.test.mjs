@@ -132,10 +132,10 @@ test("the spawned guard.scope asks on an extension write, asks on a read config 
   writeFileSync(join(root, ".picket", "extensions", "acme", "extension.json"), "{}");
   const tp = transcript(root, [user("x"), assistant([tool("Read", { file_path: join(root, ".picket", "config.json") })])]);
   const base = { hook_event_name: "PreToolUse", transcript_path: tp, cwd: root };
-  const decision = (tool_name, ...rel) => run({ ...base, tool_name, tool_input: { file_path: join(root, ...rel) } }, root)?.hookSpecificOutput;
-  assert.equal(decision("Write", ".picket", "extensions", "acme", "rules", "a.md").permissionDecision, "ask");
-  assert.equal(decision("Edit", ".picket", "config.json").permissionDecision, "ask");
-  const unread = decision("Edit", ".picket", "extensions", "acme", "extension.json");
+  const scopeOutput = (tool_name, ...rel) => run({ ...base, tool_name, tool_input: { file_path: join(root, ...rel) } }, root)?.hookSpecificOutput;
+  assert.equal(scopeOutput("Write", ".picket", "extensions", "acme", "rules", "a.md").permissionDecision, "ask");
+  assert.equal(scopeOutput("Edit", ".picket", "config.json").permissionDecision, "ask");
+  const unread = scopeOutput("Edit", ".picket", "extensions", "acme", "extension.json");
   assert.equal(unread.permissionDecision, "deny");
   assert.match(unread.permissionDecisionReason, /read .* before editing/);
 });

@@ -96,3 +96,25 @@ test("Stop and SubagentStop run the same hooks in the same order", () => {
   const { hooks } = hooksJson(HOOKS);
   assert.deepEqual(hooks.SubagentStop, hooks.Stop);
 });
+
+test("src/hooks/ is gone: no hand-written shells and no hand-written registration (T-5.1)", () => {
+  assert.equal(existsSync(resolve("src/hooks")), false);
+  assert.equal(existsSync(join(HOOK_FOLDERS, "hook.mjs")), false);
+});
+
+test("no handler reads stdin, writes stdout or exits the process (T-6.2)", () => {
+  const files = folderNames().map((name) => join(...name.split("."), "index.mts"));
+  assert.ok(files.includes(join("inject", "rules", "index.mts")), files.join(", "));
+  for (const file of files) {
+    const code = readFileSync(join(HOOK_FOLDERS, file), "utf8");
+    for (const banned of ["process.exit", "readFileSync(0", "process.stdout"]) assert.equal(code.includes(banned), false, `${file} contains ${banned}`);
+  }
+});
+
+test("no helper is left under .claude/hooks/lib; all of them live in src/lib (T-6.4)", () => {
+  const oldHome = resolve(".claude/hooks/lib");
+  assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
+  for (const helper of ["shared/transcript/tail.mts", "shared/transcript/entries.mts", "shared/transcript/turn.mts", "shared/transcript/agent.mts", "shared/sources/protection.mts", "hooks/observe/drive/evidence.mts", "shared/shell/powershell.mts", "shared/shell/kernel-call.mts"]) {
+    assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
+  }
+});

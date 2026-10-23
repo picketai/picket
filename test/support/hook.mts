@@ -4,10 +4,26 @@ import { basename, join, resolve, sep } from "node:path";
 import type { TestContext } from "node:test";
 import { statePath, STATE_FILES } from "../../src/lib/shared/paths.mts";
 import type { Context } from "../../src/lib/shared/context.mts";
+import { guardBash } from "../../src/lib/hooks/guard/bash/index.mts";
+import { hookContext } from "./context.mts";
 import { gitIn } from "./git.mts";
 import { openItem, withProject } from "./project.mts";
 
 export const HOOK_BUNDLES = resolve("dist/hooks");
+
+export type DecisionOptions = { root: string; tool?: string; agent?: string; mode?: string; session?: string; cwd?: string; home?: string; env?: NodeJS.ProcessEnv };
+export type GuardOutput = { permissionDecision: "allow" | "ask" | "deny"; permissionDecisionReason: string };
+
+export function guardOutput(command: string, { root, tool, agent, mode, session, cwd = root, home, env }: DecisionOptions): GuardOutput | null {
+  const event = { hook_event_name: "PreToolUse", tool_name: tool, tool_input: { command }, cwd, agent_type: agent, session_id: session, permission_mode: mode };
+  const context = hookContext(root, { ...(home === undefined ? {} : { home }), ...(env === undefined ? {} : { env }) });
+  const out = guardBash(event as Parameters<typeof guardBash>[0], { ...context, name: "guard.bash" });
+  return out?.hookSpecificOutput ?? null;
+}
+
+export function decision(command: string, options: DecisionOptions): GuardOutput["permissionDecision"] | null {
+  return guardOutput(command, options)?.permissionDecision ?? null;
+}
 
 export type HookRunOptions = { root?: string; env?: NodeJS.ProcessEnv };
 export type HookRun = { status: number | null; stdout: string; stderr: string; json: any };
