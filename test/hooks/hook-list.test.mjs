@@ -8,7 +8,7 @@ import { DIST, hookFolder, hookSources, hooksJson } from "../../scripts/build.mj
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
 const ORACLE = resolve("src/hooks/hooks.json");
 const BUILT = join(DIST, "hooks", "hooks.json");
-const MOVED = ["inject.state", "inject.rules", "inject.extensions", "lint.schema", "monitor.context", "notify.user", "guard.block", "route.verdict", "emit.ledger", "observe.drive", "guard.scope", "guard.comments", "guard.silenced"];
+const MOVED = ["inject.state", "inject.rules", "inject.extensions", "lint.schema", "monitor.context", "notify.user", "guard.block", "route.verdict", "emit.ledger", "observe.drive", "guard.scope", "guard.comments", "guard.silenced", "guard.bash"];
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));

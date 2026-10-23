@@ -127,7 +127,7 @@ const IMPORT_SPECIFIER = /\bfrom\s*["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)
 const ALLOWED_ZONES = {
   util: ["util"],
   shared: ["shared", "util"],
-  hooks: ["hooks", "hooks.mts", "shared", "util", "verbs/"],
+  hooks: ["hooks", "hooks.mts", "shared", "util", "verbs.mts", "verbs/"],
   cli: ["cli", "verbs.mts", "verbs/", "shared", "util"],
   "verbs.mts": [],
 };

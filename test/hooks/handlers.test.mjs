@@ -11,7 +11,7 @@ import { reviewClasses, routeVerdict } from "../../dist/lib/hooks/route/verdict/
 import { injectState } from "../../dist/lib/hooks/inject/state/index.mjs";
 import { injectRules, INJECTED_RULES } from "../../dist/lib/hooks/inject/rules/index.mjs";
 import { injectExtensions } from "../../dist/lib/hooks/inject/extensions/index.mjs";
-import { guardBash, LEAD_ONLY_VERBS, KERNEL_OTHER_VERBS, KERNEL_READ_SUBVERBS, KERNEL_READ_VERBS, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard.bash.mjs";
+import { guardBash, isLeadOnly, kernelClass, WRAPPING_FLAGS } from "../../dist/lib/hooks/guard/bash/index.mjs";
 import { guardScope } from "../../dist/lib/hooks/guard/scope/index.mjs";
 import { quotedList } from "../../dist/lib/hooks/guard/edit-target.mjs";
 import { guardComments } from "../../dist/lib/hooks/guard/comments/index.mjs";
@@ -27,9 +27,7 @@ import { VERB_NAMES } from "../../dist/lib/verbs.mjs";
 const HOOKS = resolve("dist/hooks");
 const HOOK_SHELLS = resolve("src/hooks");
 const HANDLERS = resolve("src/lib/hooks");
-const SHELLS = [
-  "guard.bash.mjs",
-];
+const SHELLS = [];
 const MAX_SHELL_LINES = 5;
 
 function handlerName(shell) {
@@ -242,7 +240,7 @@ test("injectState lists open and blocked items and leaves a done item out (T-4.2
 
 test("guardBash called directly decides, falls through, and traces once per call (T-7.2)", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("rm -rf x"), "deny");
     assert.equal(decision("git status"), "allow");
     writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "vitest run" } }));
@@ -254,7 +252,7 @@ test("guardBash called directly decides, falls through, and traces once per call
   });
 });
 
-const decisionUnder = (root, tool_name) => (command) => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+const decisionUnder = (root, tool_name) => (command) => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
 
 test("a destructive command denies under both the Bash and the PowerShell tool", () => {
   withProject((root) => {
@@ -291,7 +289,7 @@ test("guardBash never allows under PowerShell, while Bash keeps its allows and a
 
 test("the PowerShell deny reason names the user's own route and never the bash marker", () => {
   withProject((root) => {
-    const out = guardBash({ hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command: "Remove-Item -Recurse build" }, cwd: root }, { root }).hookSpecificOutput;
+    const out = guardBash({ hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command: "Remove-Item -Recurse build" }, cwd: root }, hookContext(root)).hookSpecificOutput;
     assert.match(out.permissionDecisionReason, /destructive sub-command/);
     assert.match(out.permissionDecisionReason, /! Remove-Item -Recurse build/);
     assert.equal(out.permissionDecisionReason.includes('PICKET_ESCALATE="<why>"'), false);
@@ -307,7 +305,7 @@ test("guardBash under PowerShell denies a write into a source and lets a read th
     process.env.PICKET_TEST_SOURCE_ANALYSIS = source;
     try {
       const src = source.replaceAll("\\", "/");
-      const outcome = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+      const outcome = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "PowerShell", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;
       const write = outcome(`Set-Content ${src}/a.md x`);
       assert.equal(write?.permissionDecision, "deny");
       assert.match(write.permissionDecisionReason, /inside source analysis, which is read-only/);
@@ -390,7 +388,7 @@ test("no helper is left under .claude/hooks/lib; all four live in src/lib (T-6.4
 
 test("guardBash allows a compound of read-only pieces and bare picket calls that wrap nothing", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("picket next x; cat work/x/order.md | head -40"), "allow");
     assert.equal(decision("cd sub && picket state x 2>&1"), "allow");
     assert.equal(decision("picket state x"), "allow", "a lone read-only picket call stands alone");
@@ -411,51 +409,29 @@ test("every flag whose value drive or check executes is a wrapping flag guard.ba
   for (const flag of ["--only", "--run", "--start"]) assert.ok(WRAPPING_FLAGS.has(flag), flag);
 });
 
-test("every picket verb is placed in exactly one of the read and other verb sets", () => {
+const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify"];
+const READ_SUBVERBS = { source: ["find", "grep"], extension: ["list"] };
+
+test("kernelClass is safe for today's read verbs and subverbs and kernel for every other entry; isLeadOnly holds for comment and waive only (T-4.1)", () => {
   const verbs = Object.keys(VERB_NAMES);
   assert.ok(verbs.length > 10, verbs.join(" "));
-  for (const verb of verbs) {
-    assert.ok(
-      KERNEL_READ_VERBS.has(verb) !== KERNEL_OTHER_VERBS.has(verb),
-      `picket ${verb} must be in exactly one set: KERNEL_READ_VERBS only when it writes nothing and runs no project code, KERNEL_OTHER_VERBS otherwise`,
-    );
+  for (const [verb, entry] of Object.entries(VERB_NAMES)) {
+    if (!("subverbs" in entry)) {
+      assert.equal(kernelClass(verb, undefined), READ_VERBS.includes(verb) ? "safe" : "kernel", verb);
+      continue;
+    }
+    assert.equal(kernelClass(verb, undefined), "kernel", `${verb} without a subverb`);
+    for (const sub of Object.keys(entry.subverbs)) assert.equal(kernelClass(verb, sub), READ_SUBVERBS[verb]?.includes(sub) ? "safe" : "kernel", `${verb} ${sub}`);
   }
-  for (const verb of Object.keys(KERNEL_READ_SUBVERBS)) assert.ok(KERNEL_OTHER_VERBS.has(verb), `${verb} has read sub-verbs, so it belongs in KERNEL_OTHER_VERBS`);
-  assert.ok(KERNEL_OTHER_VERBS.has("source"));
-});
-
-function guardSetsFrom(names) {
-  const entries = Object.entries(names);
-  const plain = entries.filter(([, entry]) => !("subverbs" in entry));
-  const groups = entries.filter(([, entry]) => "subverbs" in entry);
-  const readSubverbs = groups
-    .map(([name, entry]) => [name, Object.entries(entry.subverbs).filter(([, sub]) => sub.readOnly).map(([sub]) => sub)])
-    .filter(([, subs]) => subs.length > 0);
-  return {
-    read: plain.filter(([, entry]) => entry.readOnly).map(([name]) => name).sort(),
-    other: [...plain.filter(([, entry]) => !entry.readOnly), ...groups].map(([name]) => name).sort(),
-    readSubverbs: Object.fromEntries(readSubverbs),
-    leadOnly: plain.filter(([, entry]) => entry.leadOnly).map(([name]) => name).sort(),
-  };
-}
-
-test("the guard's verb lists say what VERB_NAMES says (D-007)", () => {
-  const expected = guardSetsFrom(VERB_NAMES);
-  assert.deepEqual([...KERNEL_READ_VERBS].sort(), expected.read);
-  assert.deepEqual([...KERNEL_OTHER_VERBS].sort(), expected.other);
-  assert.deepEqual(Object.fromEntries(Object.entries(KERNEL_READ_SUBVERBS).map(([group, subs]) => [group, [...subs].sort()])), Object.fromEntries(Object.entries(expected.readSubverbs).map(([group, subs]) => [group, subs.sort()])));
-  assert.deepEqual([...LEAD_ONLY_VERBS].sort(), expected.leadOnly);
-});
-
-test("the guard-set derivation puts a group in the other set and only its read-only subverbs in the read map", () => {
-  const sample = { a: { summary: "a", readOnly: true }, b: { summary: "b", readOnly: false, leadOnly: true }, g: { summary: "g", subverbs: { r: { summary: "r", readOnly: true }, w: { summary: "w", readOnly: false } } } };
-  assert.deepEqual(guardSetsFrom(sample), { read: ["a"], other: ["b", "g"], readSubverbs: { g: ["r"] }, leadOnly: ["b"] });
+  assert.equal(kernelClass("nosuchverb", undefined), "kernel");
+  assert.equal(kernelClass("constructor", undefined), "kernel");
+  assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "waive"]);
 });
 
 test("only the lead and the user run picket waive and picket comment; a spawned agent is denied", () => {
   withProject((root) => {
-    const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput ?? null;
-    for (const verb of LEAD_ONLY_VERBS) {
+    const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, hookContext(root))?.hookSpecificOutput ?? null;
+    for (const verb of Object.keys(VERB_NAMES).filter(isLeadOnly)) {
       const command = `picket ${verb} 20261018-x --path test/a.test.ts --text "it.skip("`;
       for (const agent of ["picket:developer", "developer", "reviewer", "picket:architect"]) {
         const out = outcome(command, agent);
@@ -487,7 +463,7 @@ const WAIVE = "picket waive 20261018-x --path p --text t";
 
 test("the lead-only rule reaches inside eval, shell -c, argv wrappers, PowerShell hosts and cmd /c (T-2.1)", () => {
   withProject((root) => {
-    const outcome = (command, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type: "picket:developer" }, { root })?.hookSpecificOutput ?? null;
+    const outcome = (command, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type: "picket:developer" }, hookContext(root))?.hookSpecificOutput ?? null;
     for (const [command, tool] of [
       [`eval ${WAIVE}`],
       ["bash -c 'picket waive 20261018-x --path p --text t'"],
@@ -516,7 +492,7 @@ test("the lead-only rule reaches inside eval, shell -c, argv wrappers, PowerShel
 
 test("an unreadable payload that mentions picket is denied for an agent; ordinary wrappers keep their decision (T-2.2, T-2.3)", () => {
   withProject((root) => {
-    const decision = (command, agent_type) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput?.permissionDecision ?? null;
+    const decision = (command, agent_type) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type }, hookContext(root))?.hookSpecificOutput?.permissionDecision ?? null;
     const hidden = `CMD="${WAIVE}"; bash -c "$CMD"`;
     assert.equal(decision(hidden, "picket:developer"), "deny");
     assert.equal(decision(`bash -c "$(echo picket) waive x"`, "picket:developer"), "deny");
@@ -530,7 +506,7 @@ test("an unreadable payload that mentions picket is denied for an agent; ordinar
 
 test("a spawned agent's shell write to a code or test file is denied, naming the path and the Write tool; the lead's is unchanged (T-2.4)", () => {
   withProject((root) => {
-    const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, { root })?.hookSpecificOutput ?? null;
+    const outcome = (command, agent_type, tool_name = "Bash") => guardBash({ hook_event_name: "PreToolUse", tool_name, tool_input: { command }, cwd: root, agent_type }, hookContext(root))?.hookSpecificOutput ?? null;
     for (const [command, path, tool] of [
       ["cat > test/kernel/x.test.mjs <<'EOF'\nimport x from 'y';\nEOF", "test/kernel/x.test.mjs"],
       ["echo x >> src/a.ts", "src/a.ts"],
@@ -561,7 +537,7 @@ test("a spawned agent's shell write to a code or test file is denied, naming the
 
 test("state files, docs, discards, stream plumbing and code outside the project are not shell-write denials (T-2.5)", () => {
   withProject((root) => {
-    const reason = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type: "picket:developer" }, { root })?.hookSpecificOutput?.permissionDecisionReason ?? "";
+    const reason = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, agent_type: "picket:developer" }, hookContext(root))?.hookSpecificOutput?.permissionDecisionReason ?? "";
     const outside = join(tmpdir(), "elsewhere", "a.ts").replaceAll("\\", "/");
     for (const command of ["echo x > .picket/state/scratch/a.mjs", "echo x > notes.md", "node gen.mjs > /dev/null", "npm test 2>&1 | tail -5", `echo x > '${outside}'`, "sed -n '1,5p' src/a.ts", "tee notes.txt"]) {
       assert.doesNotMatch(reason(command), /is code; a shell write/, command);
@@ -571,7 +547,7 @@ test("state files, docs, discards, stream plumbing and code outside the project 
 
 test("guardBash allows a lone read-only picket verb and leaves a mutating one to the allow rule", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
 
     for (const command of ["picket verify 20261012-touring-deleteorder-blank-input-returns-500 1", "picket state x", "picket next x", "picket packet x", "picket summary x", "picket extension list", "picket source grep analysis foo", "picket source find analysis Foo", "picket verify x 1 2>&1 | tail -20"]) {
       assert.equal(decision(command), "allow", command);
@@ -586,8 +562,8 @@ test("guardBash allows a lone read-only picket verb and leaves a mutating one to
 
 test("guardBash allows a lone picket verify only when the test command it would run is itself safe", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
-    const decisionIn = (cwd, command) => guardBash({ tool_input: { command }, cwd }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
+    const decisionIn = (cwd, command) => guardBash({ tool_input: { command }, cwd }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("picket verify x 1"), "allow");
     assert.equal(decisionIn(join(root, "..", "other"), "picket verify x 1"), null);
     assert.equal(decisionIn(join(root, "sub"), "picket verify x 1"), null);
@@ -697,14 +673,14 @@ test("guardScope asks before an edit to extension content or the config, and kee
 test("guardBash never allows a heredoc redirect into an extension file", () => {
   withProject((root) => {
     const command = "cat > .picket/extensions/x/rules/a.md <<'EOF'\nUse pnpm.\nEOF";
-    const decision = guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.notEqual(decision, "allow");
   });
 });
 
 test("guardBash reads each line as its own command and a heredoc body as data", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     assert.equal(decision("ls\nrm -rf x"), "deny");
     assert.equal(decision("echo hi\ngit push"), "deny");
     assert.equal(decision("ls # note\nrm -rf x"), "deny");
@@ -727,7 +703,7 @@ test("guardBash reads each line as its own command and a heredoc body as data", 
 
 test("guardBash treats a redirect into /dev/null as a discard and splits commands at |& and ;;", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     const lastOutcome = () => JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1)).outcome;
 
     for (const command of ["ls x 2>/dev/null", "grep -n a f >/dev/null", "ls x &>/dev/null", "ls x >/dev/null 2>&1", "ls x &>>/dev/null", "ls .claude/settings.local.json 2>/dev/null && grep -n 'hooks' .claude/settings.local.json"]) {
@@ -751,7 +727,7 @@ test("guardBash treats a redirect into /dev/null as a discard and splits command
 
 test("guardBash classifies each $(...) body and lets its output reach only inert roots", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
     const lastOutcome = () => JSON.parse(readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").at(-1)).outcome;
 
     for (const command of ['grep -rn "Headers" $(grep -rln "class AuthorizeApiKey" --include=*.cs . | grep -v /obj/) | head', 'cat "$(git rev-parse --show-toplevel)/package.json"', "grep '$(x)' f", 'echo "$(echo "$(ls)")"']) {
@@ -800,7 +776,7 @@ test("guardBash judges a $(...) body against the sources, in the directory it ru
     writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, sources: { analysis: { env: "PICKET_TEST_SOURCE_ANALYSIS" } } }));
     process.env.PICKET_TEST_SOURCE_ANALYSIS = source;
     try {
-      const outcome = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput ?? null;
+      const outcome = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;
       const src = source.replaceAll("\\", "/");
       const direct = outcome(`echo $(git -C "${src}" tag v1)`);
       assert.equal(direct?.permissionDecision, "deny");
@@ -815,7 +791,7 @@ test("guardBash judges a $(...) body against the sources, in the directory it ru
 
 test("guardBash lets an assigned variable reach only inert roots and keeps untainted expansions as they were", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
 
     for (const command of ['cd src && f=$(grep -rln "class X" --include=*.cs .); echo $f; cat -n $f', 'P="dist"; cat "$P/hooks/hooks.json"', "f=a; echo ${f}", "a=1 b=2; ls"]) {
       assert.equal(decision(command), "allow", command);
@@ -842,7 +818,7 @@ test("guardBash lets an assigned variable reach only inert roots and keeps untai
 
 test("guardBash judges a command behind leading assignments as deny when it denies and never better than unknown", () => {
   withProject((root) => {
-    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, { root })?.hookSpecificOutput.permissionDecision ?? null;
+    const decision = (command) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root }, hookContext(root))?.hookSpecificOutput.permissionDecision ?? null;
 
     for (const command of ["FOO=1 git push origin v1", "FOO=1 rm -rf src", 'PICKET_ESCALATE="x" git push origin v1', "A=1 B=2 sudo ls", "FOO=1 ls; FOO=1 git reset --hard"]) {
       assert.equal(decision(command), "deny", command);
@@ -862,7 +838,7 @@ function withEscalationProject(fn) {
   withProject((root) => {
     const home = mkdtempSync(join(tmpdir(), "harness-home-"));
     try {
-      const judge = (command, extra = {}) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s1", permission_mode: "default", ...extra }, { root, home })?.hookSpecificOutput ?? null;
+      const judge = (command, extra = {}) => guardBash({ hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: { command }, cwd: root, session_id: "s1", permission_mode: "default", ...extra }, hookContext(root, { home }))?.hookSpecificOutput ?? null;
       const escalationRows = () => (existsSync(statePath(root, STATE_FILES.ledger)) ? readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.event === "escalation") : []);
       fn({ root, home, judge, escalationRows });
     } finally {

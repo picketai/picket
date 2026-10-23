@@ -13,6 +13,6 @@ From https://code.claude.com/docs/en/statusline.md, fetched 2026-10-17 (Claude C
 - Nonzero exit or no output blanks the line; an in-flight run is cancelled by a new trigger; notifications share the row outside fullscreen; the row has undocumented built-in spacing.
 - Project settings outrank user settings, so a project `statusLine` hides a personal one.
 
-Repo fact: `KERNEL_OTHER_VERBS` in `src/lib/hooks/guard.bash.mjs` is read only by the verb-set test (`test/hooks/handlers.test.mjs`), so adding a new verb there changes no guard behaviour, but any new verb in the `Verbs:` string must touch that file.
+Repo fact: the guard reads verb classes from `VERB_NAMES` in `src/lib/verbs.mts` through `kernelClass` and `isLeadOnly` in `src/lib/hooks/guard/bash/kernel.mts`; a new verb's `readOnly` flag decides whether the guard allows it, and the verb-class test in `test/hooks/handlers.test.mjs` names today's read verbs explicitly.
 
 Related: [[transcript-facts]], [[claude-cli-plugin-facts]]
