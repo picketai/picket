@@ -108,6 +108,29 @@ test("a gate line naming a long touch-set path stays within the width", (t) => {
   for (const l of lines) assert.ok(l.length <= WIDTH, `line over ${WIDTH} chars: ${l}`);
 });
 
+test("an irreversible phase's packet names the step, drops the gate line and offers confirm or reject", (t) => {
+  const { root, id } = gatedSetup(t, { entry: "    files: [lib/a.mjs]\n    security: false\n", touchSet: "Drops the old table. [IRREVERSIBLE]\n\n" });
+  const { lines } = packet(id, root);
+  const files = lines.findIndex((l) => l.startsWith("  files"));
+  assert.equal(lines[files + 1], "  irreversible: phase 1 carries an irreversible step");
+  assert.equal(lines.some((l) => l.startsWith("  gate")), false);
+  assert.equal(lines.at(-1), "[i] confirm the irreversible step   [x] reject: <why>");
+});
+
+test("an irreversible phase on a security path keeps its gate line beside the irreversible line", (t) => {
+  const { root, id } = gatedSetup(t, { entry: "    files: [lib/a.mjs]\n    security: true\n", touchSet: "[IRREVERSIBLE]\n\n" });
+  const { lines } = packet(id, root);
+  assert.ok(lines.includes("  irreversible: phase 1 carries an irreversible step"));
+  assert.ok(lines.includes("  gate      phase 1 is marked security-sensitive in the record; run grants stop here"));
+});
+
+test("a mark inside code gives no irreversible line", (t) => {
+  const { root, id } = gatedSetup(t, { entry: "    files: [lib/a.mjs]\n    security: false\n", touchSet: "Mentions `[IRREVERSIBLE]` only.\n\n" });
+  const { lines } = packet(id, root);
+  assert.equal(lines.some((l) => l.includes("irreversible")), false);
+  assert.equal(lines.at(-1), "[a] approve   [r] run through 2   [x] reject: <why>");
+});
+
 test("an ungated phase's packet has no gate line", (t) => {
   const { root, id } = setup(t);
   phaseDone(root, id);

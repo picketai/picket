@@ -3,7 +3,7 @@ export type Finding = { severity: Severity; path: string; line: number | null; e
 export type ThreadContext = { filePath: string; rightFileStart: { line: number; offset: number }; rightFileEnd: { line: number; offset: number } };
 export type Thread = { comments: { parentCommentId: number; content: string; commentType: number }[]; status: number; threadContext?: ThreadContext };
 
-const FINDING = /^- \[(Critical|Major|Minor|Nit)\]\s+`?([^\s:—`]+)`?(?::(\d+)(?:-(\d+))?)?\s+—\s+(.*)$/;
+const FINDING = /^- \[(Critical|Major|Minor|Nit)\]\s+`?([^\s:\u2014`]+)`?(?::(\d+)(?:-(\d+))?)?(?::\s+|\s+\u2014\s+)(.*)$/;
 const ACTIVE = 1;
 const FIXED = 2;
 const TEXT_COMMENT = 1;

@@ -19,8 +19,68 @@ test("a done or abandoned item has nothing next", () => {
   assert.deepEqual(step({ status: "abandoned" }), { action: "none", actor: null, detail: "work item is abandoned" });
 });
 
+const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
+const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
+
+function row(verdict: string, scope: string | null = null) {
+  return { ts: "2026-10-23T10:00:00.000Z", agent: "reviewer", verdict, phase: 2, scope, through: null };
+}
+
+function times(count: number, verdict: string, scope: string | null = null) {
+  return Array.from({ length: count }, () => row(verdict, scope));
+}
+
 test("a blocked item asks the user to continue or abandon", () => {
-  assert.deepEqual(step({ status: "blocked", blocked_reason: "PHASE STALLED on phase 1" }), { action: "resolve_block", actor: "user", detail: "PHASE STALLED on phase 1", options: ["[c] continue", "[x] abandon"] });
+  assert.deepEqual(step({ status: "blocked", blocked_reason: "PHASE STALLED on phase 1" }), { action: "resolve_block", actor: "user", detail: "PHASE STALLED on phase 1", options: BLOCK_OPTIONS });
+});
+
+test("a blocked order or design item whose last row is PHASE STALLED, or that drifted or was amended three times, gets the stall options", () => {
+  for (const lane of ["order", "design"] as const) {
+    assert.deepEqual(step({ lane, status: "blocked", verdicts: [row("PHASE DONE"), row("PHASE STALLED")] }).options, STALL_OPTIONS);
+    assert.deepEqual(step({ lane, status: "blocked", verdicts: times(3, "DRIFT DETECTED") }).options, STALL_OPTIONS);
+    assert.deepEqual(step({ lane, status: "blocked", verdicts: [...times(3, "AMENDED"), row("PHASE DONE")] }).options, STALL_OPTIONS);
+  }
+});
+
+test("one drift, or a blocked fast or research item, gets only continue or abandon", () => {
+  assert.deepEqual(step({ lane: "design", status: "blocked", verdicts: times(1, "DRIFT DETECTED") }).options, BLOCK_OPTIONS);
+  assert.deepEqual(step({ lane: "fast", status: "blocked", verdicts: [row("PHASE STALLED")] }).options, BLOCK_OPTIONS);
+  assert.deepEqual(step({ lane: "research", status: "blocked", verdicts: times(3, "AMENDED") }).options, BLOCK_OPTIONS);
+});
+
+test("three cumulative rejections since the last approval stop the lane with the stall options", () => {
+  const rejections = [row("approved"), ...times(3, "CHANGES REQUIRED", "cumulative")];
+  for (const lane of ["order", "design"] as const) {
+    assert.deepEqual(step({ lane, phases: numbered(2, { done: true, approved: true }), verdicts: rejections }), {
+      action: "resolve_rejections",
+      actor: "user",
+      detail: "3 cumulative reviews returned CHANGES REQUIRED since the last approval",
+      options: STALL_OPTIONS,
+    });
+  }
+});
+
+test("a fresh PHASE DONE after the stop sends the item back to the cumulative review, and three more rejections stop it again", () => {
+  const phases = numbered(2, { done: true, approved: true });
+  const stopped = [row("approved"), ...times(3, "CHANGES REQUIRED", "cumulative")];
+  assert.equal(step({ phases, verdicts: [...stopped, row("PHASE DONE")] }).action, "review_cumulative");
+  assert.equal(step({ phases, verdicts: [...stopped, row("PHASE DONE"), ...times(2, "CHANGES REQUIRED", "cumulative")] }).action, "review_cumulative");
+  const again = step({ phases, verdicts: [...stopped, row("PHASE DONE"), ...times(3, "CHANGES REQUIRED", "cumulative")] });
+  assert.equal(again.action, "resolve_rejections");
+  assert.equal(again.detail, "6 cumulative reviews returned CHANGES REQUIRED since the last approval");
+});
+
+test("rejections before the last approval, or of another scope, do not count", () => {
+  const phases = numbered(2, { done: true, approved: true });
+  const before = [...times(2, "CHANGES REQUIRED", "cumulative"), row("approved"), row("CHANGES REQUIRED", "cumulative")];
+  assert.equal(step({ phases, verdicts: before }).action, "review_cumulative");
+  assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
+});
+
+test("a fast or research item never stops on cumulative rejections", () => {
+  const verdicts = times(3, "CHANGES REQUIRED", "cumulative");
+  assert.equal(step({ lane: "fast", verdicts }).action, "close");
+  assert.equal(step({ lane: "research", verdicts }).action, "approve_phase");
 });
 
 test("an ambiguous story reference asks the user to pick a version", () => {
@@ -83,6 +143,16 @@ test("a done phase on a security path names its own gate in the detail", () => {
   const next = step({ lane: "design", phases: [{ n: 1, done: true, touchSet: ["src/auth/token.ts"] }] });
   assert.equal(next.own_gate?.kind, "security_path");
   assert.match(next.detail, /; it touches a security path \(src\/auth\/token\.ts\)$/);
+});
+
+test("a done irreversible phase offers only the confirm and reject options, on a security path too", () => {
+  const irreversible = ["[i] confirm the irreversible step", "[x] reject: <why>"];
+  const plain = step({ lane: "design", phases: [{ n: 1, done: true, irreversible: true }, { n: 2 }] });
+  assert.deepEqual(plain.options, irreversible);
+  assert.equal(plain.own_gate?.kind, "irreversible");
+  const secure = step({ lane: "design", phases: [{ n: 1, done: true, irreversible: true, touchSet: ["src/auth/token.ts"] }, { n: 2 }] });
+  assert.deepEqual(secure.options, irreversible);
+  assert.equal(secure.own_gate?.kind, "security_path");
 });
 
 test("nextView prints today's keys in order and adds warnings only when the snapshot has some", () => {

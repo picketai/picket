@@ -1,4 +1,4 @@
-import { readSnapshot, stateView } from "../../shared/work/snapshot.mts";
+import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
@@ -111,7 +111,8 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     const cause = b.fields["root cause"];
     if (cause && !/^none$/i.test(cause)) lines.push(field("cause", cause, width));
     lines.push(field("files", b.fields.files ? filesLine(b.fields.files, width) : "not reported", width));
-    if (n.own_gate) lines.push(field("gate", `phase ${n.phase} ${n.own_gate.reason}; run grants stop here`, width));
+    if (phaseOf(snap, n.phase)?.irreversible) lines.push(`  ${cut(`irreversible: phase ${n.phase} carries an irreversible step`, width - 2)}`);
+    if (n.own_gate && n.own_gate.kind !== "irreversible") lines.push(field("gate", `phase ${n.phase} ${n.own_gate.reason}; run grants stop here`, width));
     const dec = decisionLines(b.fields.decisions, width);
     if (dec.length) {
       lines.push(`  ${"decisions".padEnd(LABEL)}${dec[0].slice(2 + LABEL)}`);

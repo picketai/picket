@@ -47,7 +47,7 @@ describe('sessions', () => {
   })
 
   test('the window label shows the visible range only when the list overflows', async () => {
-    expect(windowLabel(3, 10, 25)).toBe('↕ 4–13 / 25')
+    expect(windowLabel(3, 10, 25)).toBe('↕ 4 to 13 / 25')
     expect(windowLabel(0, 4, 4)).toBe('')
   })
 

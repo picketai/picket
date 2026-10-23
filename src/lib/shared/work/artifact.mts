@@ -5,7 +5,7 @@ export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tes
 export type ArtifactPhase = { n: number; title: string; entry: PhaseEntry | null; touchSet: string[]; irreversible: boolean };
 export type ParsedArtifact = { front: Record<string, unknown>; body: string; phases: ArtifactPhase[] };
 
-const PHASE_HEADING = /^## Phase (\d+)(?::|\s+-|\s+—)?\s*(.*)$/gm;
+const PHASE_HEADING = /^## Phase (\d+)(?::|\s+-|\s+\u{2014})?\s*(.*)$/gmu;
 const FENCED_BLOCK = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm;
 const INLINE_CODE = /(`+)[^\n]*?\1/g;
 const BACKTICK_RUN = /`+/g;

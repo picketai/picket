@@ -19,6 +19,14 @@ test("emit.ledger attributes a Stop without an agent id to the lead, not to the 
   assert.equal(rows.at(-1).event, "gate");
 });
 
+test("emit.ledger classifies the irreversible confirm as gate kind irreversible and the fresh-developer continue as stall", (t) => {
+  const { root, id } = hookProject(t);
+  const gateTurn = (options) => transcript(root, [user("go on"), assistant([{ type: "text", text: `▶ ${id} · phase 1/2 done\n\n${options}` }])]);
+  run({ hook_event_name: "Stop", session_id: "s3", transcript_path: gateTurn("[i] confirm the irreversible step   [x] reject: <why>"), cwd: root }, root);
+  run({ hook_event_name: "Stop", session_id: "s3", transcript_path: gateTurn("[c] continue with a fresh developer   [d] redesign   [x] abandon"), cwd: root }, root);
+  assert.deepEqual(ledgerRows(root).map((row) => [row.event, row.gate_kind]), [["gate", "irreversible"], ["gate", "stall"]]);
+});
+
 test("emit.ledger records picket-prefixed agents under their bare names", (t) => {
   const { root, id } = hookProject(t);
   const ledger = () => readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));

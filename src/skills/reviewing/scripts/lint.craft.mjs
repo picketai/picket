@@ -123,7 +123,7 @@ function collectAdded() {
   try {
     raw = git(diffArgs());
   } catch (e) {
-    console.error(`craft-lint: git diff failed — ${String(e.stderr || e.message).trim()}`);
+    console.error(`craft-lint: git diff failed: ${String(e.stderr || e.message).trim()}`);
     process.exit(2);
   }
 
@@ -190,9 +190,9 @@ function scanComments(file, added) {
     if (!body || isDirective(body, text)) continue;
 
     if (isCommentedOutCode(body)) {
-      report('error', 'CD1', file, line, 'commented-out code — delete it; git remembers', body.slice(0, 80));
+      report('error', 'CD1', file, line, 'commented-out code: delete it; git remembers', body.slice(0, 80));
     } else {
-      report('candidate', 'CD2', file, line, `new ${c.isDoc ? 'doc ' : ''}comment — allowed only with an approval recorded by picket comment`, body.slice(0, 80));
+      report('candidate', 'CD2', file, line, `new ${c.isDoc ? 'doc ' : ''}comment: allowed only with an approval recorded by picket comment`, body.slice(0, 80));
     }
   }
 }
@@ -218,7 +218,7 @@ function scanTests(file, added, isNew) {
     if (sig.re.test(file)) {
       if (!allowAll) {
         report('error', 'TK1', file, added[0]?.line ?? 1,
-          `${isNew ? 'new file' : 'changed file'} is a ${sig.kind} test — off by default (the developer writes unit and architecture tests only)`, file);
+          `${isNew ? 'new file' : 'changed file'} is a ${sig.kind} test: off by default (the developer writes unit and architecture tests only)`, file);
       }
       break;
     }
@@ -236,19 +236,19 @@ function scanTests(file, added, isNew) {
       if (!sig.re.test(text)) continue;
       if (allowAll || hasAllow('TK2', added, i)) continue;
       report('error', 'TK2', file, added[i].line,
-        `${sig.what} → ${sig.kind} test — off by default; cover the rule with a unit test + the step-7a drive`, text.trim().slice(0, 80));
+        `${sig.what} → ${sig.kind} test: off by default; cover the rule with a unit test + the step-7a drive`, text.trim().slice(0, 80));
     }
     for (const sig of ARCH_SIGNALS) {
       if (!sig.re.test(text)) continue;
       if (allowAll || hasAllow('TK3', added, i)) continue;
       report('candidate', 'TK3', file, added[i].line,
-        `${sig.what} — architecture tests are permitted only when the harness already exists; never introduced on the developer's initiative`, text.trim().slice(0, 80));
+        `${sig.what}: architecture tests are permitted only when the harness already exists; never introduced on the developer's initiative`, text.trim().slice(0, 80));
     }
   }
 
   // TK4 — a new test file that asserts nothing is not a unit test either way.
   if (isNew && looksLikeTest && !/\b(assert|expect|should|Assert\.|verify|toBe|toEqual)\b/i.test(body) && !allowAll) {
-    report('candidate', 'TK4', file, 1, 'new test file with no visible assertion — confirm it verifies a business rule', null);
+    report('candidate', 'TK4', file, 1, 'new test file with no visible assertion: confirm it verifies a business rule', null);
   }
 }
 
@@ -274,16 +274,16 @@ if (opt.json) {
   console.log(`craft-lint: ${files.size} changed file(s), scope ${scope}, rules ${opt.rules}\n`);
 
   if (errors.length) {
-    console.log(`errors (${errors.length}) — fix before the phase summary:`);
+    console.log(`errors (${errors.length}); fix before the phase summary:`);
     for (const f of errors) console.log(`  ${f.rule} ${f.file}:${f.line}  ${f.message}${f.detail ? `\n       ${f.detail}` : ''}`);
     console.log('');
   }
   if (candidates.length) {
-    console.log(`candidates (${candidates.length}) — JUDGEMENT REQUIRED, each is a question not a verdict:`);
+    console.log(`candidates (${candidates.length}); JUDGEMENT REQUIRED, each is a question not a verdict:`);
     for (const f of candidates) console.log(`  ${f.rule} ${f.file}:${f.line}  ${f.message}${f.detail ? `\n       ${f.detail}` : ''}`);
     console.log('');
   }
-  if (!findings.length) console.log('clean — no comment or test-kind violations in added lines.\n');
+  if (!findings.length) console.log('clean: no comment or test-kind violations in added lines.\n');
 
   console.log(`craft-lint: ${errors.length} error(s), ${candidates.length} candidate(s)`);
   if (candidates.length) {

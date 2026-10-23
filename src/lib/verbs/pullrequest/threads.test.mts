@@ -11,6 +11,20 @@ test("parseFindings keeps the Likelihood and Leave it fields of a cumulative fin
   assert.equal(f.text, "the shipping fee ignores the weekend rate. Weekend orders are undercharged. Apply the rate before rounding. Likelihood: medium. Leave it: note in PR.");
 });
 
+test("parseFindings reads a colon after the location, with a line, without one, and on a decision anchor", () => {
+  const block = [
+    "- [Major] src/fees.ts:42: Late fees round half-down.",
+    "- [Minor] src/fees.ts: Two date libraries in one file.",
+    "- [Critical] design.md#D-003: Decision coverage.",
+  ].join("\n");
+  const found = parseFindings(block).map(({ severity, path, line, text }) => [severity, path, line, text]);
+  assert.deepEqual(found, [
+    ["Major", "src/fees.ts", 42, "Late fees round half-down."],
+    ["Minor", "src/fees.ts", null, "Two date libraries in one file."],
+    ["Critical", "design.md#D-003", null, "Decision coverage."],
+  ]);
+});
+
 test("a reviewer block becomes one summary thread plus one located thread per finding; dry run posts nothing", async () => {
   const block = `## Review: pr-7 · pr
 
