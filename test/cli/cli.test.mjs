@@ -154,7 +154,7 @@ const ESCAPE = /\x1b\[[0-9;]*m/g;
 const MINUTE = 60_000;
 
 function statuslineInput() {
-  const input = JSON.parse(readFileSync(resolve("test/kernel/statusline-input.json"), "utf8"));
+  const input = JSON.parse(readFileSync(resolve("src/lib/verbs/statusline/statusline-input.test.json"), "utf8"));
   const now = Date.now();
   input.rate_limits.five_hour.resets_at = (now + 134 * MINUTE) / 1000;
   input.rate_limits.seven_day.resets_at = (now + 78 * 60 * MINUTE) / 1000;

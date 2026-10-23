@@ -66,6 +66,19 @@ test("the Markdown scan flags each old name form", () => {
   assert.equal(markdownViolations("Load `picket:ordering` first.").length, 0);
 });
 
+const UNIT_TEST = /\.test\.mts$/;
+
+function untestedVerbFolders(names, filesOf) {
+  return names.filter((name) => !filesOf(name).some((file) => UNIT_TEST.test(file)));
+}
+
+test("every verb's folder holds at least one *.test.mts beside its code (T-4.3)", () => {
+  const verbsDir = join(LIB_DIR, "verbs");
+  const filesOf = (name) => readdirSync(join(verbsDir, name));
+  assert.deepEqual(untestedVerbFolders(Object.keys(VERB_NAMES), filesOf), []);
+  assert.deepEqual(untestedVerbFolders(["a", "b"], (name) => (name === "a" ? ["index.mts", "index.test.mts"] : ["index.mts", "index.test.mjs"])), ["b"]);
+});
+
 test("the kernel scan flags a harness verb in a string and skips comment lines", () => {
   assert.equal(libViolations('const hint = "run harness route <id>";').length, 1);
   assert.equal(libViolations("// harness route is the old name").length, 0);

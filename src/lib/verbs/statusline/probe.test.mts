@@ -1,9 +1,30 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { liveProbe } from "./probe.mts";
+import { fileURLToPath } from "node:url";
+import { iconsMode, lastSkill, liveProbe } from "./probe.mts";
 import { withProject } from "#test/project.mts";
+
+const TRANSCRIPT = fileURLToPath(new URL("./statusline-transcript.test.jsonl", import.meta.url));
+
+test("lastSkill reads the last Skill call of an assistant entry", () => {
+  assert.equal(lastSkill(TRANSCRIPT), "picket:ordering");
+  assert.equal(lastSkill("test/kernel/no-such-transcript.jsonl"), null);
+  const lines = readFileSync(TRANSCRIPT, "utf8").trimEnd().split("\n");
+  assert.equal(lastSkill(TRANSCRIPT, Buffer.byteLength(lines.at(-1) ?? "") + 2), null);
+});
+
+test("iconsMode is nerd only for that exact value in the user's Picket config", (t) => {
+  const home = withProject(t, { picket: false });
+  assert.equal(iconsMode(home), "plain");
+  mkdirSync(join(home, ".picketai"));
+  const config = join(home, ".picketai", "config.json");
+  for (const [text, mode] of [['{"statusline":{"icons":"nerd"}}', "nerd"], ['{"statusline":{"icons":"Nerd"}}', "plain"], ["{broken", "plain"], ["null", "plain"]]) {
+    writeFileSync(config, text);
+    assert.equal(iconsMode(home), mode, text);
+  }
+});
 
 test("liveProbe reuses git state for 5 seconds and the skill while the transcript size holds (T-1.7)", (t) => {
   const root = withProject(t, { picket: false });

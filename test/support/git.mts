@@ -2,10 +2,14 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { TestContext } from "node:test";
-import { withProject } from "./project.mts";
+import { withProject, type ProjectOptions } from "./project.mts";
 
 export function gitIn(root: string, ...args: string[]): void {
-  execFileSync("git", ["-C", root, "-c", "user.name=t", "-c", "user.email=t@example.com", ...args], { stdio: "ignore" });
+  execFileSync("git", ["-C", root, "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "core.autocrlf=false", ...args], { stdio: "ignore" });
+}
+
+export function gitAt(root: string): (...args: string[]) => string {
+  return (...args) => execFileSync("git", ["-C", root, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.autocrlf=false", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
 export function gitOut(root: string, ...args: string[]): string {
@@ -24,9 +28,13 @@ export function commitIn(root: string, text: string, message: string): void {
   gitIn(root, "commit", "-q", "-m", message);
 }
 
-export function gitRepo(t: TestContext): string {
-  const root = withProject(t, { picket: false });
-  gitIn(root, "init", "-q", "-b", "main");
-  commitIn(root, "one\n", "init");
+export type RepoOptions = ProjectOptions & { branch?: string; files?: Record<string, string>; message?: string };
+
+export function gitRepo(t: TestContext, { branch = "main", files = { "a.txt": "one\n" }, message = "init", picket = false, ...project }: RepoOptions = {}): string {
+  const root = withProject(t, { picket, ...project });
+  gitIn(root, "init", "-q", "-b", branch);
+  for (const [rel, text] of Object.entries(files)) writeIn(root, rel, text);
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", message);
   return root;
 }

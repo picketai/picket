@@ -96,6 +96,11 @@ test("paths exports locations only", () => {
   ]);
 });
 
+test("sessionCostPath refuses ids that are not a plain file name", () => {
+  for (const id of ["../x", "a/b", "a.b", "", "x".repeat(129), undefined, 42]) assert.equal(paths.sessionCostPath("/r", id as string), null, String(id));
+  assert.ok(paths.sessionCostPath("/r", "abc-DEF_1")?.endsWith(join("sessions", "abc-DEF_1.json")));
+});
+
 test("userConfigPath names the Picket config under the user's home", () => {
   assert.equal(paths.userConfigPath("/h"), join("/h", ".picketai/config.json"));
 });
