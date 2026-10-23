@@ -4,6 +4,8 @@ export type ViewedDoc = { path: string; text: string; mtimeMs?: number; error?: 
 
 export type BrowseMode = 'files' | 'outline'
 
+export type PaneView = { path: string; treeTop: number; maxOffset: number; maxTreeOffset: number; listRows: number }
+
 declare module 'claude-code' {
   interface PluginState {
     'picket-markdown': {

@@ -3,7 +3,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import { candidatePaths, fromHref, linkPaths, resolvePath, toHref } from './links'
 import { changedRows, layout, sliceSpans, wrap } from './markdown'
 import type { Row } from './markdown'
-import { statusLine, workId } from './work'
+import { statusLine, workId } from './data'
 
 const REPO = 'D:/repo'
 const REPORT = 'D:/repo/artifacts/reports/latency.md'
