@@ -43,7 +43,7 @@ export function mergeClaudeBlock(existing, template) {
   if (existing === null) return `${template}\n${claudeMd.projectFacts}\n`;
   const lines = lf(existing).split("\n");
   const span = claudeBlockSpan(lines, template);
-  if (span === null) return `${lf(existing).replace(/\n*$/, "\n")}\n${template}`;
+  if (span === null) return existing === "" ? template : `${lf(existing)}\n${template}`;
   const { start, end } = span;
   const before = lines.slice(0, start).join("\n");
   const after = lines.slice(end).join("\n");
@@ -79,9 +79,14 @@ function gitignoreStep(root) {
   const path = join(root, gitignore.file);
   const existing = readOrNull(path);
   if (existing !== null && lf(existing).split("\n").some((line) => line.trim() === gitignore.line)) return { name: "gitignore", path, result: "unchanged" };
-  const eol = existing === null ? "\n" : eolOf(existing);
-  const base = existing === null || existing === "" ? "" : existing.endsWith("\n") ? existing : existing + eol;
-  return { name: "gitignore", path, result: writeIfChanged(path, existing, `${base}${gitignore.line}${eol}`) };
+  return { name: "gitignore", path, result: writeIfChanged(path, existing, withIgnoreLine(existing)) };
+}
+
+function withIgnoreLine(existing) {
+  if (existing === null) return `${gitignore.line}\n`;
+  if (existing === "") return gitignore.line;
+  const eol = eolOf(existing);
+  return existing.endsWith("\n") ? `${existing}${gitignore.line}${eol}` : `${existing}${eol}${gitignore.line}`;
 }
 
 function union(existing, wanted) {

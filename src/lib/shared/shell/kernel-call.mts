@@ -10,7 +10,7 @@ export function normalizeRoot(token: unknown): unknown {
   return base.replace(/\.exe$/i, "");
 }
 
-function isAssignment(word: unknown): boolean {
+export function isAssignment(word: unknown): boolean {
   return typeof word === "string" && ENV_ASSIGNMENT.test(word);
 }
 

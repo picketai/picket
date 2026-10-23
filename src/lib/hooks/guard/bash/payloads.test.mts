@@ -9,6 +9,12 @@ import { withProject } from "#test/project.mts";
 
 const project = (t: TestContext) => withProject(t, { host: true, picket: false });
 
+const LEAD_ONLY_REASONS: Record<string, RegExp> = {
+  comment: /`picket comment` records the user's approval, so only the lead runs it/,
+  waive: /`picket waive` records the user's approval, so only the lead runs it/,
+  uninstall: /`picket uninstall` removes Picket from the project, so it is the user's to run\./,
+};
+
 test("only the lead and the user run picket waive and picket comment; a spawned agent is denied", (t) => {
   const root = project(t);
   const outcome = (command: string, agent: string | undefined, tool = "Bash") => guardOutput(command, { root, tool, agent });
@@ -17,7 +23,8 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
     for (const agent of ["picket:developer", "developer", "reviewer", "picket:architect"]) {
       const out = outcome(command, agent);
       assert.equal(out?.permissionDecision, "deny", `${agent} ${verb}`);
-      assert.match(out?.permissionDecisionReason ?? "", new RegExp(`picket ${verb}\` records the user's approval`));
+      assert.ok(verb in LEAD_ONLY_REASONS, `no reason pinned for ${verb}`);
+      assert.match(out?.permissionDecisionReason ?? "", LEAD_ONLY_REASONS[verb]);
     }
     assert.notEqual(outcome(command, undefined)?.permissionDecision, "deny", `lead ${verb}`);
     assert.equal(outcome(`cd ${root} && ${command}`, "picket:developer")?.permissionDecision, "deny", `compound ${verb}`);
@@ -39,11 +46,44 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
   assert.notEqual(outcome("picket state 20261018-x", "picket:developer")?.permissionDecision, "deny");
 });
 
+test("every launcher form of a lead-only verb is denied to a spawned agent", (t) => {
+  const root = project(t);
+  const outcome = (command: string, agent: string | undefined) => guardOutput(command, { root, tool: "Bash", agent });
+  const forms = (verb: string) => [
+    `npx picket ${verb} x`,
+    `npx --yes picket ${verb} x`,
+    `picket.cmd ${verb} x`,
+    `C:/tools/picket.cmd ${verb} x`,
+    `picket.ps1 ${verb} x`,
+    `picket --human ${verb} x`,
+    `picket --pretty --json ${verb} x`,
+    `node core/bin/picket.mjs --human ${verb} x`,
+  ];
+  for (const verb of Object.keys(VERB_NAMES).filter(isLeadOnly)) {
+    for (const command of forms(verb)) {
+      const denied = outcome(command, "picket:developer");
+      assert.equal(denied?.permissionDecision, "deny", command);
+      assert.match(denied?.permissionDecisionReason ?? "", LEAD_ONLY_REASONS[verb], command);
+    }
+  }
+  assert.notEqual(outcome("npx picket state x", "picket:developer")?.permissionDecision, "deny", "a read verb through npx");
+});
+
+test("a variable standing for picket is never allowed to a spawned agent", (t) => {
+  const root = project(t);
+  for (const command of ["p=picket; $p uninstall --yes", "$P uninstall --yes"]) {
+    assert.notEqual(decision(command, { root, tool: "Bash", agent: "picket:developer" }), "allow", command);
+  }
+});
+
 test("a spawned agent is denied picket uninstall, in any form; the lead is not", (t) => {
   const root = project(t);
   const outcome = (command: string, agent: string | undefined) => guardOutput(command, { root, tool: "Bash", agent });
   for (const command of ["picket uninstall --yes", "picket uninstall --dry-run", `picket --root ${root} uninstall --yes --remove-work`]) {
-    assert.equal(outcome(command, "picket:developer")?.permissionDecision, "deny", command);
+    const denied = outcome(command, "picket:developer");
+    assert.equal(denied?.permissionDecision, "deny", command);
+    assert.match(denied?.permissionDecisionReason ?? "", LEAD_ONLY_REASONS.uninstall, command);
+    assert.doesNotMatch(denied?.permissionDecisionReason ?? "", /records the user's approval/, command);
     assert.equal(outcome(command, "reviewer")?.permissionDecision, "deny", command);
     assert.notEqual(outcome(command, undefined)?.permissionDecision, "deny", `lead: ${command}`);
   }

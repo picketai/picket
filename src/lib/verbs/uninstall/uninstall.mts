@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, readdirSync, readFileSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { MODS } from "../../mods.mts";
 import { extensionsDir } from "../../shared/extensions.mjs";
 import { claudeBlockSpan, INSTALL, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
@@ -16,6 +16,8 @@ export type UninstallChange = { id: GroupId; summary: string; result: UninstallR
 export type UninstallReport = { root: string; changes: UninstallChange[]; manual: string[] };
 export type UninstallInput = { dryRun: boolean; yes: boolean; removeWork: boolean };
 export type UninstallDeps = { exec: ProgramRunner; prompt: Prompt };
+
+export type Unmerged = { text: string; createdByInit: boolean };
 
 type Settings = Record<string, unknown>;
 type Planner = (root: string, options: { removeWork: boolean }) => PlannedGroup | null;
@@ -176,21 +178,14 @@ function claudeMdPath(root: string): string {
   return join(root, claudeMd.file);
 }
 
-export function withoutClaudeBlock(text: string, template: string): string | null {
+export function withoutClaudeBlock(text: string, template: string): Unmerged | null {
   const lines = lf(text).split("\n");
   const span = claudeBlockSpan(lines, template);
   if (span === null) return null;
-  const before = lines.slice(0, span.start);
-  if (before.at(-1) === "") before.pop();
-  const after = lines.slice(span.end);
-  const kept = [...before, ...after];
-  if (span.end === lines.length && lines.at(-1) === "") kept.push("");
-  return kept.join(eolOf(text));
-}
-
-function onlyEmptyFacts(text: string): boolean {
-  const content = lf(text).split("\n").filter((line) => line.trim() !== "");
-  return content.length === 0 || (content.length === 1 && content[0] === claudeMd.projectFacts);
+  const before = span.start === 0 ? "" : `${lines.slice(0, span.start).join("\n")}\n`;
+  const after = lines.slice(span.end).join("\n");
+  const kept = after === "" ? before.replace(/\n$/, "") : `${before}${after}`;
+  return { text: kept.replaceAll("\n", eolOf(text)), createdByInit: before === "" && after === `${claudeMd.projectFacts}\n` };
 }
 
 const planClaudeMd: Planner = (root) => {
@@ -203,8 +198,8 @@ const removeClaudeMd: Remover = (root) => {
   const path = claudeMdPath(root);
   const next = withoutClaudeBlock(readFileSync(path, "utf8"), readTemplate());
   if (next === null) return;
-  if (onlyEmptyFacts(next)) unlinkSync(path);
-  else writeFileSync(path, next);
+  if (next.createdByInit) unlinkSync(path);
+  else writeFileSync(path, next.text);
 };
 
 function gitignorePath(root: string): string {
@@ -217,12 +212,17 @@ const planGitignore: Planner = (root) => {
   return { id: "gitignore", summary: `remove "${gitignore.line}" from ${gitignorePath(root)}`, steps: [`remove the line ${gitignore.line}`], chosen: true };
 };
 
+export function withoutIgnoreLine(text: string): Unmerged {
+  const eol = eolOf(text);
+  const kept = text.split(eol).filter((line) => line.trim() !== gitignore.line).join(eol);
+  return { text: kept, createdByInit: text === `${gitignore.line}${eol}` };
+}
+
 const removeGitignore: Remover = (root) => {
   const path = gitignorePath(root);
-  const text = readFileSync(path, "utf8");
-  const next = lf(text).split("\n").filter((line) => line.trim() !== gitignore.line).join(eolOf(text));
-  if (next.trim() === "") unlinkSync(path);
-  else writeFileSync(path, next);
+  const next = withoutIgnoreLine(readFileSync(path, "utf8"));
+  if (next.createdByInit) unlinkSync(path);
+  else writeFileSync(path, next.text);
 };
 
 function holdsExtension(root: string): boolean {
@@ -270,8 +270,49 @@ const REMOVERS: Record<GroupId, Remover> = {
   work: (root) => removeInside(workRoot(root)),
 };
 
+const TARGETS: Record<GroupId, (root: string) => string[]> = {
+  plugins: (root) => [settingsPath(root)],
+  settings: (root) => [settingsPath(root)],
+  "claude-md": (root) => [claudeMdPath(root)],
+  gitignore: (root) => [gitignorePath(root)],
+  config: (root) => [configPath(root), extensionsDir(root)],
+  state: (root) => [stateDir(root)],
+  work: (root) => [workRoot(root)],
+};
+
+function realOrNull(path: string): string | null {
+  try {
+    return realpathSync(path);
+  } catch {
+    return null;
+  }
+}
+
+function isWithin(folder: string, root: string): boolean {
+  const rel = relative(root, folder);
+  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+function escapingFolder(root: string, id: GroupId): string | null {
+  const realRoot = realpathSync(root);
+  const folders = TARGETS[id](root).map((target) => dirname(target));
+  return folders.find((folder) => {
+    const real = realOrNull(folder);
+    return real !== null && !isWithin(real, realRoot);
+  }) ?? null;
+}
+
+function confined(root: string, group: PlannedGroup): PlannedGroup {
+  const folder = escapingFolder(root, group.id);
+  if (folder === null) return group;
+  return { ...group, steps: [], chosen: false, note: `${folder} leads outside the project, so nothing behind it is removed` };
+}
+
 export function planUninstall(root: string, { removeWork }: { removeWork: boolean }): PlannedGroup[] {
-  return UNINSTALL_GROUPS.flatMap((id) => PLANNERS[id](root, { removeWork }) ?? []);
+  return UNINSTALL_GROUPS.flatMap((id) => {
+    const group = PLANNERS[id](root, { removeWork });
+    return group === null ? [] : [confined(root, group)];
+  });
 }
 
 function change(group: PlannedGroup, result: UninstallResult, detail?: string): UninstallChange {
@@ -290,6 +331,8 @@ async function wanted(group: PlannedGroup, { yes }: UninstallInput, prompt: Prom
 async function applyGroup(root: string, group: PlannedGroup, input: UninstallInput, deps: UninstallDeps): Promise<UninstallChange> {
   if (group.steps.length === 0) return change(group, "kept", group.note);
   if (!(await wanted(group, input, deps.prompt))) return change(group, "kept", group.note);
+  const escaped = confined(root, group);
+  if (escaped.steps.length === 0) return change(escaped, "kept", escaped.note);
   try {
     REMOVERS[group.id](root, deps);
     return change(group, "removed");

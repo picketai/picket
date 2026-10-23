@@ -1,6 +1,6 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { withProject } from "#test/project.mts";
 import type { ProgramRunner } from "../../util/process.mts";
@@ -76,6 +76,47 @@ test("a CRLF CLAUDE.md and a .gitignore holding node_modules/ come back byte for
   await uninstall(root);
   assert.equal(read(root, "CLAUDE.md"), crlf);
   assert.equal(read(root, ".gitignore"), "node_modules/\n");
+});
+
+test("files without a final newline, and empty files, come back byte for byte", async (t) => {
+  for (const [claudeMdText, gitignoreText] of [["# My project", "node_modules"], ["", ""], ["# My project\n\n\n", "node_modules\n\n"]]) {
+    const { root } = initialized(t, { "CLAUDE.md": claudeMdText, ".gitignore": gitignoreText });
+    assert.ok(read(root, "CLAUDE.md").includes("# Picket"));
+    assert.ok(read(root, ".gitignore").includes(".picket/state/"));
+    await uninstall(root);
+    assert.equal(read(root, "CLAUDE.md"), claudeMdText, JSON.stringify(claudeMdText));
+    assert.equal(read(root, ".gitignore"), gitignoreText, JSON.stringify(gitignoreText));
+  }
+});
+
+function linkedFolder(t: TestContext, root: string, name: string, files: Record<string, string>): string {
+  const outside = withProject(t, { picket: false });
+  for (const [rel, text] of Object.entries(files)) {
+    mkdirSync(join(outside, rel, ".."), { recursive: true });
+    writeFileSync(join(outside, rel), text);
+  }
+  symlinkSync(outside, join(root, name), "junction");
+  return outside;
+}
+
+test("a .picket that links outside the project keeps everything behind the link", async (t) => {
+  const { root } = project(t, { "CLAUDE.md": "# My project\n" });
+  const outside = linkedFolder(t, root, ".picket", { "config.json": '{"version":1}\n', "extensions/local/extension.json": "{}", "state/keep.txt": "x" });
+  const before = snapshot(outside);
+  const report = await uninstall(root);
+  assert.equal(results(report).config, "kept");
+  assert.equal(results(report).state, "kept");
+  assert.match(report.changes.find((change) => change.id === "config")?.detail ?? "", /outside the project/);
+  assert.deepEqual(snapshot(outside), before);
+});
+
+test("a .claude that links outside the project keeps its settings.json", async (t) => {
+  const { root } = project(t, {});
+  const settings = `${JSON.stringify({ permissions: { allow: ["Bash(picket *)"] }, env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" } }, null, 2)}\n`;
+  const outside = linkedFolder(t, root, ".claude", { "settings.json": settings });
+  const report = await uninstall(root);
+  assert.equal(results(report).settings, "kept");
+  assert.equal(readFileSync(join(outside, "settings.json"), "utf8"), settings);
 });
 
 test("a CLAUDE.md init created goes, and the project facts the user added stay", async (t) => {

@@ -2,7 +2,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { extOf, LANGS } from "../../../shared/comments.mjs";
 import { leadingAssignments } from "../../../shared/escalation.mts";
 import { stateRel } from "../../../shared/paths.mts";
-import { kernelVerbStart, normalizeRoot } from "../../../shared/shell/kernel-call.mts";
+import { isAssignment, kernelVerbStart, normalizeRoot } from "../../../shared/shell/kernel-call.mts";
 import { readPowerShell } from "../../../shared/shell/powershell.mts";
 import type { SourceRoot } from "../../../shared/sources/protection.mts";
 import { parseArgs } from "../../../util/args.mts";
@@ -40,6 +40,9 @@ const POWERSHELL_PATH_COLON = /^-(path|filepath|literalpath):(.+)$/i;
 const POWERSHELL_VALUE_PARAMS = /^-(value|encoding|inputobject|width|stream)$/i;
 const SED_SCRIPT_FLAGS = new Set(["-e", "--expression", "-f", "--file"]);
 const WRAPPED_QUOTE_CHARS = 60;
+const PACKAGE_RUNNERS = new Set(["npx", "pnpx", "bunx"]);
+const LAUNCHER_SCRIPT = /\.(cmd|ps1|bat)$/i;
+const BOOLEAN_GLOBALS = new Set(["--human", "--pretty", "--json"]);
 
 export function isSpawnedAgent(agent: string | null): boolean {
   return agent !== null && SPAWNED_AGENTS.has(agent);
@@ -54,16 +57,42 @@ function valueAfter(words: string[], flag: RegExp): string | null {
   return i > 0 && words[i + 1] ? words[i + 1] : null;
 }
 
+function launcherAt(seg: Segment): number {
+  const at = seg.findIndex((word) => !isAssignment(word));
+  return at === -1 ? seg.length : at;
+}
+
+function withoutPackageRunner(seg: Segment, at: number): Segment {
+  if (!PACKAGE_RUNNERS.has(String(normalizeRoot(seg[at])))) return seg;
+  let next = at + 1;
+  while (typeof seg[next] === "string" && (seg[next] as string).startsWith("-")) next++;
+  return [...seg.slice(0, at), ...seg.slice(next)];
+}
+
+function asKernelLaunch(seg: Segment): Segment {
+  const at = launcherAt(seg);
+  const launched = withoutPackageRunner(seg, at);
+  const launcher = launched[at];
+  if (typeof launcher !== "string") return launched;
+  return [...launched.slice(0, at), launcher.replace(LAUNCHER_SCRIPT, ""), ...launched.slice(at + 1)];
+}
+
 export function leadOnlyRefusal(seg: Segment, agent: string | null): Refusal | null {
   if (!isSpawnedAgent(agent)) return null;
-  const start = kernelVerbStart(seg);
+  const launch = asKernelLaunch(seg);
+  const start = kernelVerbStart(launch);
   if (start === null) return null;
-  const verb = parseArgs(stringWords(seg.slice(start))).pos[0];
+  const verb = parseArgs(stringWords(launch.slice(start)).filter((word) => !BOOLEAN_GLOBALS.has(word))).pos[0];
   if (typeof verb === "string" && (isOpaqueWord(verb) || /[$`]/.test(verb))) {
     return { why: "lead_only", reason: "guard.bash: a spawned agent writes its picket verb out in full; an expansion in the verb position could hide `picket waive` or `picket comment`, which only the lead runs after the user answers at the gate." };
   }
   if (!isLeadOnly(verb)) return null;
-  return { why: "lead_only", reason: `guard.bash: \`picket ${verb}\` records the user's approval, so only the lead runs it after the user answers at the gate. The ${agent} proposes it on its block instead.` };
+  return { why: "lead_only", reason: leadOnlyReason(verb, agent) };
+}
+
+function leadOnlyReason(verb: string, agent: string | null): string {
+  if (verb === "uninstall") return `guard.bash: \`picket uninstall\` removes Picket from the project, so it is the user's to run. The ${agent} leaves it to the user and says so in its report.`;
+  return `guard.bash: \`picket ${verb}\` records the user's approval, so only the lead runs it after the user answers at the gate. The ${agent} proposes it on its block instead.`;
 }
 
 function textPayload(text: string | null, dialect: PayloadDialect): TextPayload | null {
