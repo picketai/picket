@@ -3,7 +3,7 @@
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
-import { protectionScope } from "../../shared/sources/source-paths.mjs";
+import { protectionScope } from "../../shared/sources/protection.mjs";
 import { readSnapshot, stateView } from "../../shared/work/snapshot.mjs";
 import { projectRoot } from "../../shared/paths.mjs";
 import * as git from "../../shared/git.mjs";
@@ -103,7 +103,7 @@ export function preflight(id, root = projectRoot(), home = homedir()) {
     const trees = source.root ? listWorktrees(source.root) : [];
     if (!source.root) add(`source:${source.name}`, "warn", `unreachable: ${source.reason}`);
     else if (!trees.length) add(`source:${source.name}`, "warn", `unreachable: ${source.root} is not a git repository`);
-    else if (!(scope = protectionScope(source.root, root)).topLevel) add(`source:${source.name}`, "warn", `${source.root} is not a repository top level; ${scopeText(scope)}`);
+    else if (!(scope = protectionScope(source.root, root, process.platform)).topLevel) add(`source:${source.name}`, "warn", `${source.root} is not a repository top level; ${scopeText(scope)}`);
     else add(`source:${source.name}`, "ok", `${source.root} · ${trees.length} worktree${trees.length === 1 ? "" : "s"}`);
   }
 

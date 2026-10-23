@@ -8,8 +8,10 @@ import { findPaths as find } from "../../dist/lib/verbs/source/find.mjs";
 import { grepHits as grep } from "../../dist/lib/verbs/source/grep.mjs";
 import { candidates, contentHash, listWorktrees, localBranches, places } from "../../dist/lib/shared/sources/places.mjs";
 import { parse as parseYaml } from "../../dist/lib/util/yaml-lite.mjs";
-import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/shared/sources/source-paths.mjs";
+import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/shared/sources/protection.mjs";
 import { writeConfig } from "./config-fixture.mjs";
+
+const PLATFORM = process.platform;
 
 const BIN = resolve("dist/bin/picket.mjs");
 const HOOKS = resolve("dist/hooks");
@@ -141,11 +143,11 @@ test("a root inside this project protects that folder only; a subfolder of anoth
   const root = tempProject();
   const plain = join(root, "notes");
   mkdirSync(plain);
-  const roots = sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: plain });
-  assert.deepEqual(roots[0].paths, [canonicalPath(plain)]);
-  assert.equal(underSource(join(plain, "a.md"), roots), "analysis");
-  assert.equal(underSource(join(root, "src", "a.ts"), roots), null, "the project stays writable");
-  assert.equal(underSource(join(main, "README.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: join(main, "docs") })), "analysis");
+  const roots = sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: plain }, PLATFORM);
+  assert.deepEqual(roots[0].paths, [canonicalPath(plain, PLATFORM)]);
+  assert.equal(underSource(join(plain, "a.md"), roots, PLATFORM), "analysis");
+  assert.equal(underSource(join(root, "src", "a.ts"), roots, PLATFORM), null, "the project stays writable");
+  assert.equal(underSource(join(main, "README.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: join(main, "docs") }, PLATFORM), PLATFORM), "analysis");
   const id = JSON.parse(cli(root, ["open","--lane", "order", "--title", "Fees"]).out).id;
   assert.match(cli(root, ["preflight", id, "--human"], plain).out, /^warn source:analysis: .+ is not a repository top level; .+ that folder only/m);
   assert.match(cli(root, ["preflight", id, "--human"], join(main, "docs")).out, /^warn source:analysis: .+ is not a repository top level; the guards protect its whole repository/m);
@@ -389,17 +391,27 @@ test("sourceRoots lists the same worktrees as git worktree list, also from a lin
   const second = join(base, "analysis-second");
   git(main, "worktree", "add", "-q", "-b", "feat-y", second);
   const root = tempProject();
-  const expected = listWorktrees(main).map((w) => canonicalPath(w.path)).sort();
+  const expected = listWorktrees(main).map((w) => canonicalPath(w.path, PLATFORM)).sort();
   assert.equal(expected.length, 3);
-  const fromFs = (sourceRoot) => sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: sourceRoot })[0].paths.slice().sort();
+  const fromFs = (sourceRoot) => sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: sourceRoot }, PLATFORM)[0].paths.slice().sort();
   assert.deepEqual(fromFs(main), expected);
   assert.deepEqual(fromFs(feat), expected, "a root that is itself a linked worktree still finds the others");
-  assert.equal(underSource(join(second, "docs", "new.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main })), "analysis");
-  assert.equal(underSource(join(root, "a.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main })), null);
-  assert.deepEqual(sourceRoots(root, {}), [], "no root, nothing protected");
+  assert.equal(underSource(join(second, "docs", "new.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main }, PLATFORM), PLATFORM), "analysis");
+  assert.equal(underSource(join(root, "a.md"), sourceRoots(root, { HARNESS_SOURCE_ANALYSIS: main }, PLATFORM), PLATFORM), null);
+  assert.deepEqual(sourceRoots(root, {}, PLATFORM), [], "no root, nothing protected");
   assert.deepEqual(fromFs(join(main, "docs")), expected, "a subfolder root protects the whole repository and its worktrees");
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
+});
+
+test("canonicalPath keeps the case on linux and lowercases it on win32", () => {
+  const dir = mkdtempSync(join(tmpdir(), "Picket-Case-"));
+  const folder = join(dir, "Docs");
+  mkdirSync(folder);
+  const linux = canonicalPath(folder, "linux");
+  assert.match(linux, /\/Docs$/);
+  assert.equal(canonicalPath(folder, "win32"), linux.toLowerCase());
+  rmSync(dir, { recursive: true, force: true });
 });
 
 test("SessionStart names each source with its root, or unreachable with the reason (T-3.6)", () => {

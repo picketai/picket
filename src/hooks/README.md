@@ -21,7 +21,7 @@ Registered in `hooks.json`, which Claude Code loads with the plugin. `guard.*` d
 
 Every hook, guards included, is a thin shell: it imports `runHook` from `src/lib/hooks/hook.mjs` and its handler from `src/lib/hooks/<kind>.<name>.mjs`. A handler takes `(event, { root })` and returns the object the hook prints, or `null`; `runHook` reads stdin, prints, swallows errors and exits 0.
 
-Libraries: `src/lib/shared/transcript/transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `src/lib/shared/transcript/turn-block.mjs` and `src/lib/hooks/drive-evidence.mjs` (kept from the earlier copy-in version for their tested parsers), `src/lib/shared/sources/source-paths.mjs` (what a source protects), `src/lib/hooks/powershell-text.mjs` (the PowerShell reader `guard.bash` uses for the PowerShell tool), and `src/lib/util/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses for Bash.
+Libraries: `src/lib/shared/transcript/transcript.mjs` (tail reads, spawn hints, tool statistics, read-before-edit lookup), `src/lib/shared/transcript/turn-block.mjs` and `src/lib/hooks/drive-evidence.mjs` (kept from the earlier copy-in version for their tested parsers), `src/lib/shared/sources/protection.mts` (what a source protects), `src/lib/hooks/powershell-text.mjs` (the PowerShell reader `guard.bash` uses for the PowerShell tool), and `src/lib/util/vendor/shell-quote-parse.mjs`, the tokenizer `guard.bash` uses for Bash.
 
 At build time each shell is bundled with everything it imports into one file in `dist/hooks/`, so a hook opens one module, not one per import. Standalone, run the bundle: `node dist/hooks/<hook>.mjs < payload.json`. Tests: `test/hooks/hooks.test.mjs` spawns the hooks; `test/hooks/handlers.test.mjs` calls the handlers.
 

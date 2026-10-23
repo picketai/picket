@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { wasRead, agentTranscript } from "../shared/transcript/transcript.mjs";
-import { sourceRoots, underSource } from "../shared/sources/source-paths.mjs";
+import { sourceRoots, underSource } from "../shared/sources/protection.mjs";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../shared/paths.mjs";
 
 const KERNEL_OWNED_ENTRIES = ["state.yaml", "verdicts.jsonl", "comments.jsonl", "waivers.jsonl", "mutation.json", "left.jsonl", "phases/", "request.md", "story.md", "sources.yaml", "sources/", "repos.yaml"];
@@ -63,7 +63,7 @@ export function guardScope(event, { root }) {
   if (KERNEL_OWNED.test(samePathCase(rel))) return deny(`${rel} is kernel-owned; use \`picket open\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`);
   if (isHookOnlyState(rel)) return deny(`${rel} is written by the hooks only`);
   if (isLegacyState(rel)) return deny(`${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`);
-  const source = underSource(abs, sourceRoots(root));
+  const source = underSource(abs, sourceRoots(root, process.env, process.platform), process.platform);
   if (source) return deny(`${filePath} is inside source ${source}, which is read-only; read it through \`picket source\` and the snapshots`);
   if (editsUnreadFile(event, abs)) return deny(`read ${rel} with the Read tool before editing it; the file may have changed since you last saw it`);
   const confirm = confirmationReason(rel);

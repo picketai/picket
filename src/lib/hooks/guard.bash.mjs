@@ -22,7 +22,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from "fs";
 import { homedir } from "os";
 import { isAbsolute, join, relative, resolve } from "path";
-import { sourceRoots, underSource } from "../shared/sources/source-paths.mjs";
+import { sourceRoots, underSource } from "../shared/sources/protection.mjs";
 import { LANGS, extOf } from "../shared/comments.mjs";
 import { stateDir, statePath, stateRel, STATE_FILES } from "../shared/paths.mjs";
 import { kernelVerbStart, normalizeRoot } from "./kernel-call.mjs";
@@ -1094,14 +1094,14 @@ function sourceAllowed(seg) {
  */
 function segmentSource(seg, cwd, roots) {
   if (cwd) {
-    const inCwd = underSource(cwd, roots);
+    const inCwd = underSource(cwd, roots, process.platform);
     if (inCwd) return inCwd;
   }
   for (const tok of seg.slice(1)) {
     if (typeof tok !== "string" || !tok) continue;
     const value = nodePath(tok.match(/^--?[\w-]+=(.+)$/)?.[1] ?? tok);
     if (value.startsWith("-") || (!cwd && !isAbsolute(value))) continue;
-    const hit = underSource(cwd ? resolve(cwd, value) : value, roots);
+    const hit = underSource(cwd ? resolve(cwd, value) : value, roots, process.platform);
     if (hit) return hit;
   }
   return null;
@@ -1113,7 +1113,7 @@ function redirectSource(targets, cwds, roots) {
     if (typeof t !== "string" || !t) continue;
     const p = nodePath(t);
     for (const cwd of isAbsolute(p) ? [null] : cwds.filter(Boolean)) {
-      const hit = underSource(cwd ? resolve(cwd, p) : p, roots);
+      const hit = underSource(cwd ? resolve(cwd, p) : p, roots, process.platform);
       if (hit) return hit;
     }
   }
@@ -1127,7 +1127,7 @@ function sourceDenial(name, what) {
 /** Protected source worktrees for this project; [] when none, so the guard behaves as before. */
 function protectedSources(root) {
   try {
-    return sourceRoots(root);
+    return sourceRoots(root, process.env, process.platform);
   } catch {
     return [];
   }

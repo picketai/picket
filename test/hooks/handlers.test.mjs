@@ -385,7 +385,7 @@ test("latestHints skips a later message without a work line (T-2.3)", () => {
 test("no helper is left under .claude/hooks/lib; all four live in src/lib (T-6.4)", () => {
   const oldHome = resolve(".claude/hooks/lib");
   assert.deepEqual(existsSync(oldHome) ? readdirSync(oldHome) : [], []);
-  for (const helper of ["shared/transcript/transcript.mjs", "shared/transcript/turn-block.mjs", "shared/sources/source-paths.mjs", "hooks/drive-evidence.mjs"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
+  for (const helper of ["shared/transcript/transcript.mjs", "shared/transcript/turn-block.mjs", "shared/sources/protection.mts", "hooks/drive-evidence.mjs"]) assert.equal(existsSync(resolve("src/lib", helper)), true, helper);
 });
 
 test("guardBash allows a compound of read-only pieces and bare picket calls that wrap nothing", () => {
