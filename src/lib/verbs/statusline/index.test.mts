@@ -6,7 +6,7 @@ import { recordSessionCost, renderStatusline, verb } from "./index.mts";
 import type { StatuslineInput } from "./facts.mts";
 import type { WorkingState } from "../../shared/git.mts";
 import { displayWidth } from "../../util/text-width.mts";
-import { rgb } from "../../shared/styling/palette.mjs";
+import { rgb } from "../../shared/styling/palette.mts";
 import { parseArgs } from "../../util/args.mts";
 import { withProject } from "#test/project.mts";
 
@@ -67,7 +67,7 @@ function rows(input: StatuslineInput, columns: number | undefined, options?: Pai
   return painted(input, columns, options).replace(ESCAPE, "").split("\n");
 }
 
-const WIDE_RIGHT = "5h 42% (2h14m)   7d 71% (3d6h)    62k/200.0k 31%    cache 48k ◷ 52m   $4.12";
+const WIDE_RIGHT = "5h 42% (2h14m)   7d 71% (3d06h)    62k/200k 31%    cache 48k ◷ 52m   $4.12";
 
 test("mutate needs an id, and statusline reads its input from standard input", () => {
   const parse = (stdin: string) => verb.parse(parseArgs([], () => stdin));
@@ -85,13 +85,13 @@ test("the normal state at 150 columns prints two rows ending at column 148 (T-1.
   for (const row of printed) assert.equal(displayWidth(row), 148, row);
 });
 
-test("the wide layout needs 113 cells: 115 columns prints 2 rows, 114 and 80 print 3 (T-1.2)", () => {
-  assert.equal(rows(normal(), 115).length, 2);
-  assert.equal(rows(normal(), 114).length, 3);
+test("the wide layout needs 112 cells: 114 columns prints 2 rows, 113 and 80 print 3 (T-1.2)", () => {
+  assert.equal(rows(normal(), 114).length, 2);
+  assert.equal(rows(normal(), 113).length, 3);
   const narrow = rows(normal(), 80);
   assert.equal(narrow.length, 3);
-  assert.ok(narrow[1].endsWith("5h 42% (2h14m)   7d 71% (3d6h)"), narrow[1]);
-  assert.match(narrow[2], /^   62k\/200\.0k 31%  +cache 48k ◷ 52m   \$4\.12$/);
+  assert.ok(narrow[1].endsWith("5h 42% (2h14m)   7d 71% (3d06h)"), narrow[1]);
+  assert.match(narrow[2], /^   62k\/200k 31%  +cache 48k ◷ 52m   \$4\.12$/);
 });
 
 test("columns that are not a positive integer print the narrow layout at 78 columns (T-1.2)", () => {
@@ -105,7 +105,7 @@ test("columns that are not a positive integer print the narrow layout at 78 colu
 test("nerd icons replace labels, brackets and clocks (T-1.3)", () => {
   const printed = rows(normal(), 150, { icons: "nerd" });
   assert.ok(printed[0].endsWith("\u{F07B} AISpec · \u{F418} trunk"), printed[0]);
-  for (const part of ["\u{F250} 5h 42% \u{F0450} 2h14m", "\u{F0A33} 7d 71% \u{F0450} 3d6h", "\u{E0B6} 62k/200.0k 31% \u{E0B4}", "\u{F01BC} 48k \u{F0150} 52m"]) {
+  for (const part of ["\u{F250} 5h 42% \u{F0450} 2h14m", "\u{F0A33} 7d 71% \u{F0450} 3d06h", "\u{E0B6} 62k/200k 31% \u{E0B4}", "\u{F01BC} 48k \u{F0150} 52m"]) {
     assert.ok(printed[1].includes(part), part);
   }
   assert.ok(!printed[1].includes("("), printed[1]);
@@ -150,7 +150,7 @@ test("the branch takes the colour of its git state and the limit percent its lev
 });
 
 test("the context bar fills its share of characters with the context colour (T-1.5)", () => {
-  assert.ok(painted(normal(), 150).includes("\x1b[38;2;13;10;8;48;2;156;196;106m 62k/\x1b[0m\x1b[38;2;233;201;160;48;2;46;38;32m200.0k 31% \x1b[0m"));
+  assert.ok(painted(normal(), 150).includes("\x1b[38;2;13;10;8;48;2;156;196;106m 62k\x1b[0m\x1b[38;2;233;201;160;48;2;46;38;32m/200k 31% \x1b[0m"));
   const busyOut = painted(busy(), 150);
   assert.ok(busyOut.includes("\x1b[38;2;13;10;8;48;2;245;192;74m"));
   assert.ok(busyOut.includes("\x1b[38;2;245;192;74m◷ 3m\x1b[0m"));

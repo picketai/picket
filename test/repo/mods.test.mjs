@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { codeLines } from "#test/kernel-sources.mts";
-import { DIST_MODS, MARKETPLACE, marketplaceJson } from "../../scripts/build.mjs";
+import { DIST_MODS, MARKETPLACE, MOD_LIB_SHARED, SRC, marketplaceJson, modSharedTarget, rewriteModImports } from "../../scripts/build.mjs";
 import { MODS } from "../../src/lib/mods.mts";
 
 const PACKAGE = resolve("package.json");
@@ -72,6 +72,49 @@ test("marketplaceJson keeps the core entry first and every other key, and lists 
   const written = JSON.parse(marketplaceJson(current));
   assert.deepEqual(written.owner, { name: "o" });
   assert.deepEqual(written.plugins.map(({ name, source }) => `${name} ${source}`), ["picket ./dist", ...Object.entries(MODS).map(([name, { plugin }]) => `${plugin} ./dist/mods/${name}`)]);
+});
+
+test("rewriteModImports turns the two shared forms into the mod's shared/ folder, in either quote style, and leaves the rest", () => {
+  const source = [
+    "import { TONES } from '../../shared/theme'",
+    'import { runPicket } from "../../shared/kernel"',
+    "import { minutes } from '../../../lib/shared/format.mts'",
+    "import { BRAND } from \"../../../lib/shared/styling/palette.mts\"",
+    "import { band } from './band'",
+    "import type { Work } from '../types'",
+    "import { atom } from 'claude-code'",
+    "import { x } from '../../../lib/verbs/x.mts'",
+  ].join("\n");
+  assert.equal(
+    rewriteModImports(source),
+    [
+      "import { TONES } from '../shared/theme'",
+      'import { runPicket } from "../shared/kernel"',
+      "import { minutes } from '../shared/format'",
+      'import { BRAND } from "../shared/styling/palette"',
+      "import { band } from './band'",
+      "import type { Work } from '../types'",
+      "import { atom } from 'claude-code'",
+      "import { x } from '../../../lib/verbs/x.mts'",
+    ].join("\n"),
+  );
+});
+
+test("modSharedTarget keeps the path below src/lib/shared or src/mods/shared and renames .mts to .ts", () => {
+  assert.equal(modSharedTarget(join(SRC, "lib", "shared", "format.mts")), "shared/format.ts");
+  assert.equal(modSharedTarget(join(SRC, "lib", "shared", "styling", "palette.mts")), "shared/styling/palette.ts");
+  assert.equal(modSharedTarget(join(SRC, "mods", "shared", "theme.ts")), "shared/theme.ts");
+});
+
+test("every built mod holds the shared copies, and no file in it names lib/shared/ or an .mts module (T-2.3)", () => {
+  for (const name of Object.keys(MODS)) {
+    for (const file of MOD_LIB_SHARED) assert.ok(isFile(join(modRoot(name), modSharedTarget(file))), `${name}: ${modSharedTarget(file)}`);
+    assert.ok(isFile(join(modRoot(name), "shared", "format.ts")) && isFile(join(modRoot(name), "shared", "styling", "palette.ts")), name);
+  }
+  const naming = filesUnder(DIST_MODS)
+    .filter((file) => MOD_CODE.test(file))
+    .filter((file) => /lib\/shared\/|\.mts["']/.test(readFileSync(file, "utf8")));
+  assert.deepEqual(naming, []);
 });
 
 test("every import in a built mod is the engine's module or a file inside the same mod folder (D-003)", () => {

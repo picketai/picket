@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOOKS } from "../src/lib/hooks.mts";
@@ -15,6 +15,12 @@ export const DIST_MODS = join(DIST, "mods");
 export const MARKETPLACE = join(REPO, ".claude-plugin", "marketplace.json");
 const PACKAGE = join(REPO, "package.json");
 const MOD_FOLDERS = ["hooks", "types"];
+const LIB_SHARED = join(SRC, "lib", "shared");
+const MODS_SHARED = join(MODS_SRC, "shared");
+export const MOD_LIB_SHARED = [join(LIB_SHARED, "format.mts"), join(LIB_SHARED, "styling", "palette.mts")];
+const MOD_CODE = /\.(mts|ts|tsx)$/;
+const MOD_SHARED_IMPORT = /(["'])\.\.\/\.\.\/shared\/([^"']+)\1/g;
+const LIB_SHARED_IMPORT = /(["'])\.\.\/\.\.\/\.\.\/lib\/shared\/([^"']+)\.mts\1/g;
 const MOD_ENTRY = "./index.tsx";
 const MOD_TYPES = "./types/index.d.ts";
 const HOOK_FOLDERS = join(SRC, "lib", "hooks");
@@ -184,18 +190,39 @@ function writeMarketplace(mods) {
   if (wanted !== current.replaceAll("\r\n", "\n")) writeFileSync(MARKETPLACE, wanted);
 }
 
-function copyModFolders(name) {
+export function rewriteModImports(text) {
+  return text.replace(MOD_SHARED_IMPORT, "$1../shared/$2$1").replace(LIB_SHARED_IMPORT, "$1../shared/$2$1");
+}
+
+export function modSharedTarget(path) {
+  const root = path.startsWith(MODS_SHARED + sep) ? MODS_SHARED : LIB_SHARED;
+  return `shared/${relative(root, path).replaceAll("\\", "/").replace(/\.mts$/, ".ts")}`;
+}
+
+function copyModFile(from, to) {
+  mkdirSync(dirname(to), { recursive: true });
+  if (MOD_CODE.test(from)) writeFileSync(to, rewriteModImports(readFileSync(from, "utf8")));
+  else copyFileSync(from, to);
+}
+
+function modSharedFiles() {
+  return [...MOD_LIB_SHARED, ...(existsSync(MODS_SHARED) ? sourceFiles(MODS_SHARED) : [])];
+}
+
+function copyModFiles(name) {
+  const root = join(DIST_MODS, name);
   for (const folder of MOD_FOLDERS) {
     const from = join(MODS_SRC, name, folder);
-    if (existsSync(from)) cpSync(from, join(DIST_MODS, name, folder), { recursive: true });
+    if (existsSync(from)) for (const file of sourceFiles(from)) copyModFile(file, join(root, folder, relative(from, file)));
   }
+  for (const file of modSharedFiles()) copyModFile(file, join(root, modSharedTarget(file)));
 }
 
 export function buildMods(mods = MODS) {
   const pkg = JSON.parse(readFileSync(PACKAGE, "utf8"));
   rmSync(DIST_MODS, { recursive: true, force: true });
   for (const name of Object.keys(mods)) {
-    copyModFolders(name);
+    copyModFiles(name);
     writeJson(join(DIST_MODS, name, ".claude-plugin", "plugin.json"), modManifest(name, pkg, mods));
     writeJson(join(DIST_MODS, name, "hooks", "hooks.json"), modHooksJson());
   }

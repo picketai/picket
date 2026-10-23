@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { installedAt, picketHome, sha256File } from "../manifest.mjs";
-import { ANSI, TERMINAL, rgb } from "../palette.mjs";
+import { ANSI, TERMINAL, rgb } from "../palette.mts";
 import { xmlPlist } from "./plist.mjs";
 
 const WRITER = "terminal-app";

@@ -1,22 +1,19 @@
 import { atom, read, update } from 'claude-code'
 import type { AgentInfo, EngineInterface, Register } from 'claude-code'
 
+import { clock, compactTokens, prettyModel, roleOf } from '../../../lib/shared/format.mts'
 import type { AgentGroup, AgentRow, Session, SessionEntry, Sessions, View } from '../types'
 import { age, clampOffset, projectSlug, TITLE_RECORD, titleOf, visible, windowLabel } from './sessions'
 import {
   AGENT_GROUPS,
-  clock,
-  compactTokens,
   contextPercent,
   countPhases,
   groupAgents,
   isFinished,
   ordered,
   parseWork,
-  prettyModel,
   progressOf,
   roleColor,
-  roleOf,
   sprite,
   SPRITE_COLUMNS,
   SPRITE_ROWS,

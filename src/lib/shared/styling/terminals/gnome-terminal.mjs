@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { backupsDir, installedAt, stampOf } from "../manifest.mjs";
-import { ANSI, TERMINAL } from "../palette.mjs";
+import { ANSI, TERMINAL } from "../palette.mts";
 
 const WRITER = "gnome-terminal";
 const BASE = "/org/gnome/terminal/legacy/profiles:/";

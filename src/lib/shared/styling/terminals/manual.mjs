@@ -1,4 +1,4 @@
-import { ANSI, TERMINAL } from "../palette.mjs";
+import { ANSI, TERMINAL } from "../palette.mts";
 
 const STEPS = [
   "iTerm2: Settings > Profiles > Colors: enter the colours above; Text: pick the font",

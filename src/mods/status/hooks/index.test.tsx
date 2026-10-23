@@ -7,14 +7,14 @@ const NOW = Date.parse('2026-10-16T10:00:00Z')
 const START = { cwd: 'D:/repo', surface: 'terminal', isInteractive: true } as const
 
 const world = (on: On, roster: AgentInfo[] = []) => {
-  const clock = mock.clock(on, { now: NOW })
+  const timer = mock.clock(on, { now: NOW })
   on('agent.list', () => ({ value: roster }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
   })
-  return clock
+  return timer
 }
 
 const band = ($: Engine, hasSurvey = false) =>
@@ -145,13 +145,13 @@ test('the band yields to a survey and otherwise draws the work line with no sess
 })
 
 test('a user gate counts its minutes with the thirty second clock', async ($, on) => {
-  const clock = world(on)
+  const timer = world(on)
   const gate = { ...LATEST, action: 'approve_phase', actor: 'user', since: new Date(NOW - 6 * 60_000).toISOString() }
   on('process.run', () => exited(0, JSON.stringify(gate)))
   await $.session.start(START)
 
   expect(await shows($, ' 6m')).toBe(true)
-  await clock.advance(60_000)
+  await timer.advance(60_000)
   expect(await shows($, ' 7m')).toBe(true)
 })
 
@@ -175,18 +175,18 @@ const SPAWN = {
 } as const
 
 const agentWorld = (on: On, roster: AgentInfo[]) => {
-  const clock = world(on, roster)
+  const timer = world(on, roster)
   on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
   on('turn.complete', () => ({ text: '' }))
   on('session.send', () => ({ isDelivered: true }))
-  return clock
+  return timer
 }
 
 const shows = async ($: Engine, text: string) => (await (await band($)).find({ type: 'Text', text })) !== undefined
 
 test('a spawned agent leaves the band when idle and works again from a message', async ($, on) => {
   const roster = [developer()]
-  const clock = agentWorld(on, roster)
+  const timer = agentWorld(on, roster)
   await $.session.start(START)
   await $.agent.spawn(SPAWN)
 
@@ -194,21 +194,21 @@ test('a spawned agent leaves the band when idle and works again from a message',
   await $.turn.complete({ answer: '', durationMs: 250_000, isAborted: false, turnId: 't1', agentId: 'a1', reason: 'answer' })
   expect(await engineText($)).toBe('engine')
 
-  await clock.advance(60_000)
+  await timer.advance(60_000)
   roster[0] = developer()
   await $.session.send({ to: 'developer', text: 'phase 2', origin: { kind: 'model' } })
   expect(await shows($, ' (0s)')).toBe(true)
-  await clock.advance(5_000)
+  await timer.advance(5_000)
   expect(await shows($, ' (5s)')).toBe(true)
 })
 
 test('a working agent clock moves with the five second timer', async ($, on) => {
-  const clock = agentWorld(on, [developer()])
+  const timer = agentWorld(on, [developer()])
   await $.session.start(START)
-  await clock.advance(3_000)
+  await timer.advance(3_000)
   await $.agent.spawn(SPAWN)
-  await clock.advance(192_000)
+  await timer.advance(192_000)
   expect(await shows($, ' (3m12s)')).toBe(true)
-  await clock.advance(5_000)
+  await timer.advance(5_000)
   expect(await shows($, ' (3m17s)')).toBe(true)
 })

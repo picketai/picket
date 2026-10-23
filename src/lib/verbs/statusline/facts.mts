@@ -1,4 +1,5 @@
 import { basename, resolve } from "node:path";
+import { prettyModel } from "../../shared/format.mts";
 import type { WorkingState } from "../../shared/git.mts";
 
 type RateWindow = { used_percentage?: number; resets_at?: number };
@@ -35,14 +36,6 @@ export type Facts = {
   cost: number | null;
   now: number;
 };
-
-const FAMILY = /^claude-(opus|sonnet|haiku|fable)-(\d+)-(\d+)/;
-
-export function prettyModel(id: string): string {
-  const [, family, major, minor] = FAMILY.exec(id) ?? [];
-  if (family === undefined) return id;
-  return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${major}.${minor}`;
-}
 
 function secondsToMs(seconds: unknown): number | null {
   return typeof seconds === "number" ? seconds * 1000 : null;

@@ -15,7 +15,7 @@ Both artifacts are private. Open them from the owner's account, or ask the owner
 
 `docs/design/status-line-canvas/project/` holds the board layout and pages in `docs/design/status-line-canvas/project/canvas.json`, one `.dc.html` file per artboard, and the design system's tokens as the canvas installed them in `docs/design/status-line-canvas/project/ds/picketai/tokens.json`.
 
-The design system's tokens come from `src/themes/picketai.json` and `src/lib/shared/styling/palette.mjs`. Change those files first, then re-sync the design system, then refresh this copy.
+The design system's tokens come from `src/themes/picketai.json` and `src/lib/shared/styling/palette.mts`. Change those files first, then re-sync the design system, then refresh this copy.
 
 ## Refresh
 

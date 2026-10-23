@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { applyEdits, modify, parse } from "../../../util/vendor/jsonc-parser.mjs";
 import { installedAt, sha256File } from "../manifest.mjs";
-import { ANSI, TERMINAL } from "../palette.mjs";
+import { ANSI, TERMINAL } from "../palette.mts";
 
 const WRITER = "windows-terminal";
 const SCHEME_NAME = "PicketAI";

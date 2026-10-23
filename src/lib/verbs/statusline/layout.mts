@@ -1,3 +1,4 @@
+import { compactTokens, minutes } from "../../shared/format.mts";
 import type { WorkingState } from "../../shared/git.mts";
 import { displayWidth } from "../../util/text-width.mts";
 import type { CacheFacts, Facts, Limit } from "./facts.mts";
@@ -37,25 +38,6 @@ const GLYPHS: Record<IconMode, Glyphs> = {
   },
 };
 
-export function compactTokens(n: number): string {
-  if (n < 1000) return String(n);
-  const thousands = Math.round(n / 1000);
-  if (thousands < 100) return `${thousands}k`;
-  const tenths = Math.round(n / 100) / 10;
-  if (tenths < 1000) return `${tenths.toFixed(1)}k`;
-  return `${(n / 1_000_000).toFixed(1)}M`;
-}
-
-export function untilReset(resetsAtMs: number | null, now: number): string | null {
-  if (resetsAtMs === null) return null;
-  const total = Math.max(0, Math.round((resetsAtMs - now) / MINUTE));
-  const days = Math.floor(total / 1440);
-  const hours = Math.floor((total % 1440) / 60);
-  const rest = total % 60;
-  if (days > 0) return `${days}d${hours}h`;
-  return hours > 0 ? `${hours}h${rest}m` : `${rest}m`;
-}
-
 export function levelColor(percent: number): ColorName {
   return percent >= 90 ? "error" : percent >= 70 ? "warning" : "success";
 }
@@ -69,8 +51,8 @@ export function cacheLeft(cache: CacheFacts | null, now: number): CacheLeft | nu
   if (cache === null || !cache.observed) return null;
   const left = cache.expiresAt === null ? 0 : cache.expiresAt - now;
   if (!cache.warm || left <= 0) return { cold: true };
-  const minutes = `${cache.ttl === null ? "~" : ""}${Math.ceil(left / MINUTE)}m`;
-  return { minutes, color: left < 5 * MINUTE ? "warning" : "dim" };
+  const countdown = `${cache.ttl === null ? "~" : ""}${Math.ceil(left / MINUTE)}m`;
+  return { minutes: countdown, color: left < 5 * MINUTE ? "warning" : "dim" };
 }
 
 function groupWidth(pieces: Piece[]): number {
@@ -120,7 +102,7 @@ function resetText(reset: string, glyph: Glyphs): string {
 
 function limitGroup(label: string, icon: string | null, limit: Limit | null, now: number, glyph: Glyphs): Piece[] {
   if (limit === null) return [];
-  const reset = untilReset(limit.resetsAt, now);
+  const reset = limit.resetsAt === null ? null : minutes(limit.resetsAt - now);
   return [
     { text: withIcon(icon, label), color: "muted" },
     { text: " " },

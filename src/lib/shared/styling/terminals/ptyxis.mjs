@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { ANSI, TERMINAL } from "../palette.mjs";
+import { ANSI, TERMINAL } from "../palette.mts";
 import {
   appendToList,
   dconfMissing,

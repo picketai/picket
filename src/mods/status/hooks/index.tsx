@@ -1,16 +1,15 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ProcessRunResult, Register } from 'claude-code'
 
+import { roleOf } from '../../../lib/shared/format.mts'
 import type { AgentRow, Work } from '../types'
 import { agentsLine, isEnded, isWorking, rows, workLine } from './band'
 
-const clock = atom({ plugin: 'picket-status', key: 'now' } as const, 0)
+const time = atom({ plugin: 'picket-status', key: 'now' } as const, 0)
 
 const work = atom({ plugin: 'picket-status', key: 'work' } as const, null as Work | null)
 
 const agents = atom({ plugin: 'picket-status', key: 'agents' } as const, [] as AgentRow[])
-
-const roleOf = (type: string) => type.replace(/^picket:/, '')
 
 const syncRoster = async ($: EngineInterface): Promise<number> => {
   const [listed, now] = await Promise.all([$.agent.list(), $.clock.now()])
@@ -92,12 +91,12 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     const now = await $.clock.now()
-    await update($, clock, () => now)
+    await update($, time, () => now)
     runner.launchers = LAUNCHERS
     await refreshWork($)
     $.clock.every(30_000, async () => {
       const tick = await $.clock.now()
-      await update($, clock, () => tick)
+      await update($, time, () => tick)
       await refreshWork($)
     })
     await syncRoster($)
@@ -105,7 +104,7 @@ export const register: Register = on => {
       const tick = await syncRoster($)
       const known = await read($, agents)
       if (known.some(row => isWorking(row.status))) {
-        await update($, clock, () => tick)
+        await update($, time, () => tick)
       }
     })
     return started
@@ -148,7 +147,7 @@ export const register: Register = on => {
     if (e.props.hasSurvey) {
       return next(e)
     }
-    const [now, latest, roster] = await Promise.all([read($, clock), read($, work), read($, agents)])
+    const [now, latest, roster] = await Promise.all([read($, time), read($, work), read($, agents)])
     const lines = [workLine(latest, now), agentsLine(roster, latest, now)].filter(line => line !== null)
     if (lines.length === 0) {
       return next(e)

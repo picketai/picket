@@ -1,4 +1,4 @@
-import { BRAND, rgb } from "../../shared/styling/palette.mjs";
+import { BRAND, rgb } from "../../shared/styling/palette.mts";
 import type { ColorName, Piece, Row } from "./layout.mts";
 
 const COLORS: Record<ColorName, string> = {

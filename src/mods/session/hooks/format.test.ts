@@ -2,14 +2,12 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { AgentRow } from '../types'
 import {
-  clock,
   contextPercent,
   countPhases,
   groupAgents,
   isBlinking,
   tally,
   parseWork,
-  prettyModel,
   progressOf,
   roleColor,
   sprite,
@@ -36,12 +34,6 @@ const row = (change: Partial<AgentRow>): AgentRow => ({
 })
 
 describe('format', () => {
-  test('the clock reads minutes and seconds', async () => {
-    expect(clock(16_000)).toBe('0:16')
-    expect(clock(44_900)).toBe('0:44')
-    expect(clock(3_725_000)).toBe('1:02:05')
-  })
-
   test('context reads against a 1M window', async () => {
     expect(contextPercent(31_000)).toBe(3)
   })
@@ -108,9 +100,5 @@ describe('format', () => {
 
   test('the cheeks carry the role colour', async () => {
     expect(sprite('picket:developer', 0, false)).not.toBe(sprite('picket:reviewer', 0, false))
-  })
-
-  test('model ids read as their family and version', async () => {
-    expect(prettyModel('claude-opus-5-5')).toBe('Opus 5.5')
   })
 })

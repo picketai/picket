@@ -1,5 +1,5 @@
+import { elapsed, minutes } from '../../../lib/shared/format.mts'
 import type { AgentRow, Line, Piece, Work } from '../types'
-import { elapsed, minutes, stepText } from './format'
 import { TONE } from './palette'
 
 const GAP = 2
@@ -79,6 +79,53 @@ export const agentsLine = (all: AgentRow[], work: Work | null, now: number): Lin
     return null
   }
   return { left: [INDENT, ...joined(agents, DOT)], right: [] }
+}
+
+const agentVerb = (work: Work): string => {
+  switch (work.action) {
+    case 'implement_phase':
+      return `implements phase ${work.phase}`
+    case 'review_checkpoint':
+      return `reviews phase ${work.phase}`
+    case 'review_cumulative':
+      return 'reviews all phases'
+    case 'write_artifact':
+      return `writes ${work.lane}.md`
+    case 'close':
+      return 'closes the item'
+    default:
+      return work.detail
+  }
+}
+
+const otherSessionStep = (work: Work): string => {
+  if (work.status === 'blocked') {
+    return `blocked: ${work.blocked_reason ?? work.detail}`
+  }
+  if (work.action === 'resolve_sources') {
+    return 'waits for source picks'
+  }
+  if (work.actor === 'user') {
+    return `waits for approval of phase ${work.phase}`
+  }
+  return `${work.actor ?? 'lead'} ${agentVerb(work)}`
+}
+
+export const stepText = (work: Work, now: number): Piece[] => {
+  if (work.other_session === true) {
+    return [{ text: otherSessionStep(work), color: TONE.muted }]
+  }
+  if (work.status === 'blocked') {
+    return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: TONE.error, bold: true }]
+  }
+  if (work.actor === 'user') {
+    const ask = work.action === 'resolve_sources' ? 'you pick source versions' : `you approve phase ${work.phase}`
+    return [
+      { text: `${ask} ◀`, color: TONE.warning, bold: true },
+      { text: ` ${minutes(now - Date.parse(work.since))}`, color: TONE.muted },
+    ]
+  }
+  return [{ text: `${work.actor ?? 'lead'} ${agentVerb(work)} ⋯`, color: TONE.accent }]
 }
 
 export const workLine = (work: Work | null, now: number): Line | null => {

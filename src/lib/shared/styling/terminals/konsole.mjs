@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { installedAt, sha256File } from "../manifest.mjs";
-import { ANSI, TERMINAL, rgb } from "../palette.mjs";
+import { ANSI, TERMINAL, rgb } from "../palette.mts";
 import { getKey, keptFile, keyfileChange, removeKey, renderIni, setKey } from "./ini.mjs";
 
 const WRITER = "konsole";

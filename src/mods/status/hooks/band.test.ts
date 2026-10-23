@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { AgentRow, Piece, Work } from '../types'
-import { agentsLine, rows, widthOf, workLine } from './band'
+import { agentsLine, rows, stepText, widthOf, workLine } from './band'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 const MINUTE = 60_000
@@ -120,6 +120,18 @@ describe('agents line', () => {
 
 describe('another session', () => {
   const other: Work = { ...WORK, session: 's1', other_session: true }
+
+  test('each step is one muted piece with no ask, no marker and no ellipsis', async () => {
+    const muted = (text: string) => [{ text, color: 'inactive' }]
+    const step = (work: Work) => stepText(work, NOW)
+    const developerAtWork: Work = { ...other, action: 'implement_phase', actor: 'developer', phase: 2 }
+    expect(step({ ...other, action: 'approve_phase', actor: 'user', phase: 1 })).toEqual(muted('waits for approval of phase 1'))
+    expect(step({ ...other, action: 'resolve_sources', actor: 'user' })).toEqual(muted('waits for source picks'))
+    expect(step({ ...other, status: 'blocked', action: 'resolve_block', actor: 'user', blocked_reason: '3 tests fail' })).toEqual(
+      muted('blocked: 3 tests fail'),
+    )
+    expect(step(developerAtWork)).toEqual(muted('developer implements phase 2'))
+  })
 
   test('a user gate of another session reads muted, names the session and asks nothing', async () => {
     const line = workLine(other, NOW)

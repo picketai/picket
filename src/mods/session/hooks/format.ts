@@ -1,6 +1,5 @@
+import { roleOf } from '../../../lib/shared/format.mts'
 import type { AgentGroup, AgentRow } from '../types'
-
-const FAMILY = /^claude-(opus|sonnet|haiku|fable)-(\d+)-(\d+)/
 
 const FINISHED = new Set(['completed', 'failed', 'killed'])
 
@@ -42,41 +41,10 @@ export const tally = (grouped: Record<AgentGroup, AgentRow[]>): string =>
     .filter(Boolean)
     .join(' · ')
 
-export const roleOf = (type: string): string => type.replace(/^picket:/, '')
-
 export const roleColor = (type: string): string => ROLE_COLORS[roleOf(type)] ?? OTHER_COLOR
-
-export const prettyModel = (id: string): string => {
-  const [, family, major, minor] = FAMILY.exec(id) ?? []
-  if (family === undefined) {
-    return id
-  }
-  return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${major}.${minor}`
-}
-
-export const compactTokens = (n: number): string => {
-  if (n >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1)}M`
-  }
-  if (n >= 1000) {
-    return `${Math.round(n / 1000)}k`
-  }
-  return String(n)
-}
 
 export const contextPercent = (tokens: number): number =>
   Math.round((tokens / CONTEXT_WINDOW) * 100)
-
-export const clock = (ms: number): string => {
-  const seconds = Math.max(0, Math.floor(ms / 1000))
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const ss = String(seconds % 60).padStart(2, '0')
-  if (hours > 0) {
-    return `${hours}:${String(minutes % 60).padStart(2, '0')}:${ss}`
-  }
-  return `${minutes}:${ss}`
-}
 
 export const parseWork = (prompt: string): { workId: string | null; phase: number | null } => {
   const workId = /^work: (\S+)/m.exec(prompt)?.[1] ?? null

@@ -32,7 +32,7 @@ export const TERMINAL = Object.freeze({
   selection: BRAND.selection,
 });
 
-export function rgb(hex) {
+export function rgb(hex: string): [number, number, number] {
   const value = Number.parseInt(hex.slice(1), 16);
   return [value >> 16, (value >> 8) & 0xff, value & 0xff];
 }

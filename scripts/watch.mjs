@@ -2,7 +2,7 @@ import { context } from "esbuild";
 import { existsSync, rmSync, statSync, watch } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { HOOK_LIST, MOD_LIST, SRC, buildAll, buildMods, copySource, distPath, entryOptions, isBuiltModule, isCopied, isModSource, missingHooks, moduleOptions, sourceFiles, writeHooksJson } from "./build.mjs";
+import { HOOK_LIST, MOD_LIB_SHARED, MOD_LIST, SRC, buildAll, buildMods, copySource, distPath, entryOptions, isBuiltModule, isCopied, isModSource, missingHooks, moduleOptions, sourceFiles, writeHooksJson } from "./build.mjs";
 
 let contexts = [];
 let entries = new Set();
@@ -53,7 +53,7 @@ async function syncChange(name) {
   if (!name) return;
   const path = join(SRC, name);
   if (isModSource(path)) return buildMods(await currentMods());
-  if (path === MOD_LIST) buildMods(await currentMods());
+  if (path === MOD_LIST || MOD_LIB_SHARED.includes(path)) buildMods(await currentMods());
   const entriesChanged = existsSync(path) ? syncPresent(path) : syncRemoved(path);
   if (entriesChanged) await startContexts();
 }
