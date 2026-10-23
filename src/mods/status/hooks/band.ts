@@ -105,10 +105,24 @@ const otherSessionStep = (work: Work): string => {
   if (work.action === 'resolve_sources') {
     return 'waits for source picks'
   }
+  if (work.action === 'resolve_rejections') {
+    return 'waits for a decision after repeated rejections'
+  }
   if (work.actor === 'user') {
     return `waits for approval of phase ${work.phase}`
   }
   return `${work.actor ?? 'lead'} ${agentVerb(work)}`
+}
+
+const userAsk = (work: Work): string => {
+  switch (work.action) {
+    case 'resolve_sources':
+      return 'you pick source versions'
+    case 'resolve_rejections':
+      return 'you decide after repeated rejections'
+    default:
+      return `you approve phase ${work.phase}`
+  }
 }
 
 export const stepText = (work: Work, now: number): Piece[] => {
@@ -119,9 +133,8 @@ export const stepText = (work: Work, now: number): Piece[] => {
     return [{ text: `blocked: ${work.blocked_reason ?? work.detail} ◀`, color: TONES.error, bold: true }]
   }
   if (work.actor === 'user') {
-    const ask = work.action === 'resolve_sources' ? 'you pick source versions' : `you approve phase ${work.phase}`
     return [
-      { text: `${ask} ◀`, color: TONES.warning, bold: true },
+      { text: `${userAsk(work)} ◀`, color: TONES.warning, bold: true },
       { text: ` ${minutes(now - Date.parse(work.since))}`, color: TONES.muted },
     ]
   }

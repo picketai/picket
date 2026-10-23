@@ -34,8 +34,8 @@ One step file at a time, each under 80 lines. The phase loop, the gate and the r
 | `approve_phase` by user | `../shared/procedures/gate.md` |
 | `review_checkpoint` by reviewer | `../shared/procedures/cumulative-review.md` with `scope: checkpoint` and `phase: <n>` |
 | `review_cumulative` by reviewer | `../shared/procedures/cumulative-review.md` |
-| `resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED` | `../shared/procedures/amend.md`: continue the architect, then resume |
-| `resolve_block` otherwise, or `resolve_rejections` | `../shared/procedures/gate.md`: print the packet with the kernel's options, stop, apply the reply |
+| `resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED`, when its options offer no redesign | `../shared/procedures/amend.md`: continue the architect, then resume |
+| `resolve_block` whose options offer a redesign (a `PHASE STALLED`, a third drift or a third amendment), any other `resolve_block`, or `resolve_rejections` | `../shared/procedures/gate.md`: print the packet with the kernel's options, stop, apply the reply |
 | `close` | `picket close <id>`, print the closing block, stop |
 
 ## Rules of the lane

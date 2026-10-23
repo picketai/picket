@@ -43,7 +43,7 @@ At `resolve_block` or `resolve_rejections`:
 
 | Reply | Command | Then |
 |---|---|---|
-| `c`, `continue` | `picket set <id> status=open` | at a stall (`[c] continue with a fresh developer`), spawn a fresh developer (type `picket:developer`) with the phase loop's first message, plus `review: <the last findings verbatim>` after rejections; otherwise `picket next` and your lane's table |
+| `c`, `continue` | `picket set <id> status=open` | at a stall (`[c] continue with a fresh developer`), spawn a fresh developer (type `picket:developer`) with the developer's first message from your lane's table, plus `review: <the last findings verbatim>` after rejections; otherwise `picket next` and your lane's table |
 | `d`, `redesign` | order lane: `picket set <id> status=abandoned`, then `picket:designing` with the same request; design lane: continue the architect with `work: <id>`, `amend: <the diagnosis verbatim>`, `step: shared/procedures/amend.md` | the lane resumes from `picket next` |
 | `x`, `abandon` | `picket set <id> status=abandoned` | stop |
 | a question | answer it | re-render the packet |

@@ -64,6 +64,16 @@ describe('work line', () => {
     ])
   })
 
+  test('a stop after repeated cumulative rejections reads as your decision, with no phase', async () => {
+    const rejected = { ...WORK, action: 'resolve_rejections', phase: null, detail: '3 cumulative reviews returned CHANGES REQUIRED since the last approval' }
+    expect(workLine(rejected, NOW)?.right).toEqual([
+      { text: 'you decide after repeated rejections ◀', color: 'warning', bold: true },
+      { text: ' 6m', color: 'inactive' },
+    ])
+    const other = { ...rejected, other_session: true }
+    expect(workLine(other, NOW)?.right).toEqual([{ text: 'waits for a decision after repeated rejections', color: 'inactive' }])
+  })
+
   test('an agent step reads as its actor at work, a block as the reason', async () => {
     const implementing = { ...WORK, action: 'implement_phase', actor: 'developer', phase: 2 }
     expect(workLine(implementing, NOW)?.right).toEqual([{ text: 'developer implements phase 2 ⋯', color: 'claude' }])
