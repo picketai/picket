@@ -47,10 +47,6 @@ const NEUTRAL = [
   // leaving it in the drive class would defeat the gate exactly as `npm test`
   // did. The stash dance in developer.md is the same case.
   /^git\s+(init|add|commit|checkout|switch|restore|stash|tag|merge|rebase|reset|clean|worktree|push|pull|fetch)\b/,
-  // The digest of a test log is a report about a suite run, not a drive.
-  /logdigest\.mjs\b/,
-  // The harness's own sweeps.
-  /lint\.(write|contract)\.mjs\b/,
 ];
 
 const classify = (seg: string): "inspect" | "neutral" | "drive" =>
