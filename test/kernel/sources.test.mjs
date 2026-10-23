@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { find, grep } from "../../dist/lib/shared/sources/sources.mjs";
+import { findPaths as find } from "../../dist/lib/verbs/source/find.mjs";
+import { grepHits as grep } from "../../dist/lib/verbs/source/grep.mjs";
 import { candidates, contentHash, listWorktrees, localBranches, places } from "../../dist/lib/shared/sources/places.mjs";
 import { parse as parseYaml } from "../../dist/lib/util/yaml-lite.mjs";
 import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/shared/sources/source-paths.mjs";
@@ -108,11 +109,13 @@ test("harness source grep merges identical hits across places and reports overfl
   rmSync(root, { recursive: true, force: true });
 });
 
-test("an undeclared source exits 1 naming the declared ones; an unset root exits 2 with the reason", () => {
+test("an undeclared source exits 2 naming the declared ones; an unset root exits 2 with the reason", () => {
   const root = tempProject();
   const undeclared = cli(root, ["source", "find", "specs", "x"]);
-  assert.equal(undeclared.code, 1);
-  assert.match(undeclared.err, /declared: analysis/);
+  assert.equal(undeclared.code, 2);
+  const refusal = JSON.parse(undeclared.out);
+  assert.match(refusal.error, /declared: analysis/);
+  assert.deepEqual([refusal.ok, refusal.declared], [false, ["analysis"]]);
   const unset = cli(root, ["source", "find", "analysis", "x"]);
   assert.equal(unset.code, 2);
   assert.match(JSON.parse(unset.out).error, /HARNESS_SOURCE_ANALYSIS is not set/);
@@ -220,8 +223,12 @@ test("differing versions are ambiguous until the user picks one (T-4.3)", () => 
   assert.deepEqual([gate.action, gate.actor], ["resolve_sources", "user"]);
   assert.match(cli(root, ["packet", id], main).out, /docs\/pricing\.md\n {4}main @ \w{8} · .*\n {4}feat-x @ \w{8} · uncommitted changes · .*\n {4}old @ \w{8} · branch only/);
   const unknown = cli(root, ["source", "pick", id, "docs/pricing.md", "nope"], main);
-  assert.equal(unknown.code, 1);
-  assert.match(unknown.err, /labels: main, feat-x, old/);
+  assert.equal(unknown.code, 2);
+  const refusal = JSON.parse(unknown.out);
+  assert.match(refusal.error, /labels: main, feat-x, old/);
+  assert.deepEqual([refusal.ok, refusal.labels], [false, ["main", "feat-x", "old"]]);
+  const notRecorded = cli(root, ["source", "pick", id, "docs/none.md", "main"], main);
+  assert.deepEqual([notRecorded.code, JSON.parse(notRecorded.out).ref], [2, "docs/none.md"]);
   const picked = cli(root, ["source", "pick", id, "docs/pricing.md", "feat-x"], main);
   assert.equal(picked.code, 0, picked.err);
   assert.equal(JSON.parse(picked.out).next.action, "write_artifact");
@@ -286,8 +293,10 @@ test("source grep reports an invalid regex instead of no hits", () => {
   const { base, main } = tempSource();
   const root = tempProject();
   const r = cli(root, ["source", "grep", "analysis", "rate["], main);
-  assert.equal(r.code, 1);
-  assert.match(r.err, /git grep failed/);
+  assert.equal(r.code, 2);
+  const refusal = JSON.parse(r.out);
+  assert.match(refusal.error, /^git grep failed:/);
+  assert.deepEqual([refusal.ok, refusal.source], [false, "analysis"]);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });
@@ -331,10 +340,13 @@ test("source add of a document with two versions exits 2 with both labels and wr
   const r = cli(root, ["source", "add", id, "docs/pricing.md"], main);
   assert.equal(r.code, 2);
   assert.match(JSON.parse(r.out).error, /differs across places: main, feat-x, old/);
+  assert.deepEqual(JSON.parse(r.out).candidates, ["main", "feat-x", "old"]);
   assert.deepEqual(readFileSync(join(root, "work", id, "sources.yaml")), before);
   const missing = cli(root, ["source", "add", id, "docs/none.md"], main);
   assert.equal(missing.code, 2);
   assert.match(JSON.parse(missing.out).error, /not found; searched analysis: main, feat-x, old/);
+  const word = cli(root, ["source", "add", id, "hello"], main);
+  assert.deepEqual([word.code, JSON.parse(word.out).ref], [2, "hello"]);
   rmSync(base, { recursive: true, force: true });
   rmSync(root, { recursive: true, force: true });
 });

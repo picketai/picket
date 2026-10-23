@@ -5,7 +5,7 @@ import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFile
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "../../dist/lib/shared/git.mjs";
-import { gitRead, gitRun } from "../../dist/lib/util/git.mjs";
+import { GitFailed, gitRead, gitRun } from "../../dist/lib/util/git.mjs";
 import { liveProbe } from "../../dist/lib/verbs/statusline/statusline.mjs";
 
 function gitIn(root, ...args) {
@@ -141,6 +141,13 @@ test("gitRead with buffer returns a CRLF blob byte for byte, and null for a miss
     assert.ok(Buffer.isBuffer(bytes));
     assert.deepEqual(bytes, Buffer.from("one\r\ntwo\r\n\r\n"));
     assert.equal(gitRead(root, ["cat-file", "blob", "HEAD:missing.txt"], { buffer: true }), null);
+  });
+});
+
+test("gitRun returns the output of an allowed exit code and throws GitFailed on any other (T-4.4)", () => {
+  withCommittedRepo((root) => {
+    assert.equal(gitRun(root, ["grep", "-e", "zzz"], { okExitCodes: [0, 1] }), "");
+    assert.throws(() => gitRun(root, ["grep", "-e", "rate["], { okExitCodes: [0, 1] }), (err) => err instanceof GitFailed && err.message.startsWith("git grep failed:"));
   });
 });
 
