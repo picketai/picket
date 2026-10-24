@@ -7,6 +7,7 @@ import { gitRead } from "../../util/git.mts";
 import { capped, reachableSource, renderHits, type Hit, type SearchHits, type SearchInput, type SearchResult } from "./reachable.mts";
 
 function trackedPaths(source: ReachableSource, place: Place): string[] {
+  // -z keeps non-ASCII paths from being printed as escaped bytes
   const listing = place.worktree
     ? gitRead(place.worktree, ["ls-files", "-z"], { maxBuffer: SOURCE_MAX_BUFFER })
     : gitRead(source.root, ["ls-tree", "-r", "-z", "--name-only", String(place.branch)], { maxBuffer: SOURCE_MAX_BUFFER });

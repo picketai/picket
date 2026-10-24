@@ -1,7 +1,6 @@
 // Where the read-only sources live on disk, for the guards (D-008). A source is declared in the
 // project config with an env root; protectionScope says what that root protects. Read from the filesystem, never by spawning git: a guard runs on every tool
-// call and must stay inside the hook budget. The kernel lists the same worktrees with
-// `git worktree list` (lib/sources.mjs); a test keeps the two in step.
+// call and must stay inside the hook budget.
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync, type Stats } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { loadConfig } from "../config.mjs";

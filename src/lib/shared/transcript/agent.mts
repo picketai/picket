@@ -18,6 +18,7 @@ export function agentTranscript(data: HookData): string | null {
   const main = stringField(data, "transcript_path");
   const own = stringField(data, "agent_transcript_path");
   if (own && existsSync(own)) return own;
+  // hook payloads name the main session file; a subagent's own turns are in <session>/subagents/agent-<agent_id>.jsonl
   if (data?.agent_id && main) {
     const p = join(dirname(main), basename(main, ".jsonl"), "subagents", `agent-${data.agent_id}.jsonl`);
     if (existsSync(p)) return p;
@@ -32,6 +33,7 @@ export function isSubagentTurn(data: HookData): boolean {
 export function agentName(data: HookData, path: string | null | undefined): string | null {
   if (data?.agent_type) return bareAgentName(String(data.agent_type));
   if (data?.agent_name) return bareAgentName(String(data.agent_name));
+  // a Stop without an agent id is the lead's turn; the scan below would find the lead's own spawn
   if (data?.hook_event_name === "Stop" && !data?.agent_id) return "lead";
   const text = tailText(path, NAME_BYTES);
   const m = text.match(AGENT_TYPE) ?? text.match(SUBAGENT_TYPE);

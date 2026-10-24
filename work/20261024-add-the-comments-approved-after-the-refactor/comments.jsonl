@@ -1,0 +1,4 @@
+{"ts":"2026-10-24T18:26:11.304Z","path":"src/lib/shared/transcript/agent.mts","text":"hook payloads name the main session file; a subagent's own turns are in <session>/subagents/agent-<agent_id>.jsonl"}
+{"ts":"2026-10-24T18:26:11.563Z","path":"src/lib/shared/transcript/agent.mts","text":"a Stop without an agent id is the lead's turn; the scan below would find the lead's own spawn"}
+{"ts":"2026-10-24T18:26:11.802Z","path":"src/lib/verbs/source/find.mts","text":"-z keeps non-ASCII paths from being printed as escaped bytes"}
+{"ts":"2026-10-24T18:26:12.064Z","path":"src/lib/shared/sources/protection.mts","text":"call and must stay inside the hook budget."}
