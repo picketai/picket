@@ -1,0 +1,2 @@
+lane: fast
+Fix the 6 picket-markdown mod tests that fail on the Linux CI runner (research 20261024-why-markdown-mod-tests-fail-on-linux): their fake `$.fs.stat` handler matches only the exact string `D:/repo/...`, while on a POSIX host the test engine most likely resolves `D:/repo/...` against the process cwd before calling the handler, so every stat answers ENOENT. Confirm what path the handler receives, then make the test fixtures match the file they model on any host.

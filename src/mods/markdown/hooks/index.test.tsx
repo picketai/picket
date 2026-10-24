@@ -28,6 +28,8 @@ const exited = (exitCode: number, stdout: string) => ({
 
 const isStateCall = (argv: readonly string[]) => argv.includes('state')
 
+const modelled = (hostPath: string) => hostPath.replace(/\\/g, '/').replace(/^.*?(?=[A-Za-z]:\/)/, '')
+
 const world = (on: On) => {
   const timer = mock.clock(on, { now: NOW })
   const modified: Record<string, number> = { [DESIGN]: 1, [STATE_YAML]: 1 }
@@ -42,10 +44,10 @@ const world = (on: On) => {
   })
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('fs.stat', ($, e) => {
-    const mtimeMs = modified[e.path.replace(/\\/g, '/')]
+    const mtimeMs = modified[modelled(e.path)]
     return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file', size: 10, mtimeMs, isLink: false } }
   })
-  on('fs.read', ($, e) => (e.path.replace(/\\/g, '/') === DESIGN ? { value: '# Design\n\nText.' } : { deny: 'ENOENT' }))
+  on('fs.read', ($, e) => (modelled(e.path) === DESIGN ? { value: '# Design\n\nText.' } : { deny: 'ENOENT' }))
   on('fs.list', () => ({ value: [{ name: '1.done', kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false }] }))
   on('process.run', ($, e) => {
     runs.push(e.argv)

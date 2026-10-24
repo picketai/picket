@@ -6,12 +6,19 @@ import type { Row } from './markdown'
 import { statusLine, workId } from './data'
 
 const REPO = 'D:/repo'
+const modelled = (hostPath: string) => hostPath.replace(/\\/g, '/').replace(/^.*?(?=[A-Za-z]:\/)/, '')
 const REPORT = 'D:/repo/artifacts/reports/latency.md'
 const ORDER = 'D:/repo/work/20261011-x/order.md'
 const FILES: Record<string, string> = {
   [REPORT]: '# Latency\n\nSee [the order](../../work/20261011-x/order.md).\n\n```bash\nnpm test\n```',
   [ORDER]: '# Order\n\nPhase 1.',
 }
+
+test('the fake file system finds a modelled file however the host resolved its path', async () => {
+  expect(modelled('D:\\repo\\work\\w1\\order.md')).toBe('D:/repo/work/w1/order.md')
+  expect(modelled('/home/runner/work/picket/picket/D:/repo/work/w1/order.md')).toBe('D:/repo/work/w1/order.md')
+  expect(modelled('D:/repo/guide.md')).toBe('D:/repo/guide.md')
+})
 
 test('paths resolve against the base and round-trip through a file href', async () => {
   expect(resolvePath('D:\\repo', 'artifacts\\reports\\latency.md')).toBe(REPORT)
@@ -49,11 +56,11 @@ test('clicking a report path in a reply opens it in the pane, and its links navi
   })
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('fs.stat', ($, e) => {
-    if (FILES[e.path.replace(/\\/g, '/')] === undefined) return { deny: 'ENOENT' }
+    if (FILES[modelled(e.path)] === undefined) return { deny: 'ENOENT' }
     return { value: { kind: 'file', size: 10, mtimeMs: 0, isLink: false } }
   })
   on('fs.read', ($, e) => {
-    const text = FILES[e.path.replace(/\\/g, '/')]
+    const text = FILES[modelled(e.path)]
     if (text === undefined) return { deny: 'ENOENT' }
     return { value: text }
   })
@@ -207,9 +214,9 @@ test('outline jumps to a heading and the divider shows the position', async ($, 
   })
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('fs.stat', ($, e) =>
-    e.path.replace(/\\/g, '/') === GUIDE ? { value: { kind: 'file', size: 10, mtimeMs: 1, isLink: false } } : { deny: 'ENOENT' },
+    modelled(e.path) === GUIDE ? { value: { kind: 'file', size: 10, mtimeMs: 1, isLink: false } } : { deny: 'ENOENT' },
   )
-  on('fs.read', ($, e) => (e.path.replace(/\\/g, '/') === GUIDE ? { value: GUIDE_TEXT } : { deny: 'ENOENT' }))
+  on('fs.read', ($, e) => (modelled(e.path) === GUIDE ? { value: GUIDE_TEXT } : { deny: 'ENOENT' }))
 
   const reply = await $.ui.mount({
     plugin: 'picket-markdown',
@@ -299,12 +306,12 @@ test('work status, back, ask about a section, open in editor and wide table scro
   })
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('fs.stat', ($, e) =>
-    W_FILES[e.path.replace(/\\/g, '/')] === undefined
+    W_FILES[modelled(e.path)] === undefined
       ? { deny: 'ENOENT' }
       : { value: { kind: 'file', size: 10, mtimeMs: 1, isLink: false } },
   )
   on('fs.read', ($, e) => {
-    const text = W_FILES[e.path.replace(/\\/g, '/')]
+    const text = W_FILES[modelled(e.path)]
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   on('fs.list', () => ({
@@ -375,12 +382,12 @@ test('a picket state that fails is asked again on the next poll, with no file ch
   })
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('fs.stat', ($, e) =>
-    W_FILES[e.path.replace(/\\/g, '/')] === undefined
+    W_FILES[modelled(e.path)] === undefined
       ? { deny: 'ENOENT' }
       : { value: { kind: 'file', size: 10, mtimeMs: 1, isLink: false } },
   )
   on('fs.read', ($, e) => {
-    const text = W_FILES[e.path.replace(/\\/g, '/')]
+    const text = W_FILES[modelled(e.path)]
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   on('fs.list', () => ({ value: [] }))
