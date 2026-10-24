@@ -69,6 +69,8 @@ test("the release workflow tests on Node 24, checks the build on Node 22, runs t
   assert.doesNotMatch(jobs["build-on-22"], /npm ci/);
   assert.match(jobs["build-on-22"], /actions\/download-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n/);
   assert.match(jobs["build-on-22"], /run: node --test "test\/cli\/\*\*\/\*\.test\.mjs" "test\/hooks\/\*\*\/\*\.test\.mjs"\n/);
+  assert.match(jobs["build-on-22"], /download-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n\n\s+- name: .+\n\s+run: chmod \+x dist\/bin\/picket\n\n\s+- name: Test the build\n\s+run: node --test /);
+  assert.equal(jobs["build-on-22"].match(/chmod/g).length, 1);
   assert.match(jobs.mods, /continue-on-error: true\n/);
   assert.match(jobs.mods, /node-version: 24\n/);
   assert.match(jobs.mods, /run: npm ci\n[\s\S]*run: npm install -g @anthropic-ai\/claude-code\n[\s\S]*run: node scripts\/test\.mjs build mods\n/);

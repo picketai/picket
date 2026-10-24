@@ -1,0 +1,1 @@
+Fix the build-on-22 CI job in .github/workflows/release.yml: the dist artifact loses the executable bit on dist/bin/picket (upload-artifact zips files and drops modes), so test/cli/lane-check.test.mjs fails with "Permission denied" (exit 126). Restore the mode after the download step.

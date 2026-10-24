@@ -65,6 +65,9 @@ jobs:
           name: dist
           path: dist/
 
+      - name: Restore the executable bit the artifact zip drops
+        run: chmod +x dist/bin/picket
+
       - name: Test the build
         run: node --test "test/cli/**/*.test.mjs" "test/hooks/**/*.test.mjs"
 
