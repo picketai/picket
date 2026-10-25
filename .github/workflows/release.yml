@@ -73,7 +73,6 @@ jobs:
 
   mods:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
 
@@ -91,7 +90,7 @@ jobs:
         run: node scripts/test.mjs build mods
 
   publish:
-    needs: [test, build-on-22]
+    needs: [test, build-on-22, mods]
     runs-on: ubuntu-latest
     permissions:
       contents: read

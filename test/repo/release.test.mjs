@@ -58,7 +58,7 @@ function workflowJobs() {
   return Object.fromEntries(jobs.split(/^(?= {2}\S)/m).map((body) => [body.match(/^ {2}([\w-]+):/)[1], body]));
 }
 
-test("the release workflow tests on Node 24, checks the build on Node 22, runs the mods beside, and publishes after both (D-006)", () => {
+test("the release workflow tests on Node 24, checks the build on Node 22, tests the mods, and publishes only after all three (D-006)", () => {
   const jobs = workflowJobs();
   assert.deepEqual(Object.keys(jobs), ["test", "build-on-22", "mods", "publish"]);
   assert.match(jobs.test, /node-version: 24\n/);
@@ -71,10 +71,10 @@ test("the release workflow tests on Node 24, checks the build on Node 22, runs t
   assert.match(jobs["build-on-22"], /run: node --test "test\/cli\/\*\*\/\*\.test\.mjs" "test\/hooks\/\*\*\/\*\.test\.mjs"\n/);
   assert.match(jobs["build-on-22"], /download-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n\n\s+- name: .+\n\s+run: chmod \+x dist\/bin\/picket\n\n\s+- name: Test the build\n\s+run: node --test /);
   assert.equal(jobs["build-on-22"].match(/chmod/g).length, 1);
-  assert.match(jobs.mods, /continue-on-error: true\n/);
+  assert.doesNotMatch(jobs.mods, /continue-on-error/);
   assert.match(jobs.mods, /node-version: 24\n/);
   assert.match(jobs.mods, /run: npm ci\n[\s\S]*run: npm install -g @anthropic-ai\/claude-code\n[\s\S]*run: node scripts\/test\.mjs build mods\n/);
-  assert.match(jobs.publish, /needs: \[test, build-on-22\]\n/);
+  assert.match(jobs.publish, /needs: \[test, build-on-22, mods\]\n/);
   assert.doesNotMatch(jobs.publish, /npm test/);
   const uses = Object.values(jobs).join("").match(/uses: \S+/g);
   assert.ok(uses.length >= 9, uses.join(", "));
