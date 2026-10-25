@@ -9,4 +9,4 @@ A criterion like "index.tsx has 100 to 170 lines" that the code misses on the go
 
 **Why:** item 07a's phases 4 and 5 ran under a run grant with no checkpoint review; the developer flagged the floors in the blocks but nobody amended the plan, so the cumulative review was the first gate.
 
-**How to apply:** in cumulative reviews, read each phase block's `Decisions:` line for "under T-x.y", "not padded", "also lists"; those are self-reported literal misses to grade. See [[phase-block-overwritten-by-fix]].
+**How to apply:** in cumulative reviews, read each phase block's `Decisions:` line for "under T-x.y", "not padded", "also lists"; those are self-reported literal misses to grade. A plan grep can also hit content the plan itself mandates (a corpus fixture of work/ documents, an import of `src/lib/util/process.mts` matching `process\.`): judge those by intent, but a hit from a name the developer chose freely is a FAIL.
