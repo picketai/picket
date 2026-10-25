@@ -66,4 +66,4 @@ Commit: <type>(<scope>): <what>   (the message you propose; staged, committed on
 PHASE DONE
 ```
 
-The last line is exactly `PHASE DONE` or `PHASE STALLED`. The hooks route it; you never call `picket route` yourself.
+The last line is exactly `PHASE DONE` or `PHASE STALLED`. The hooks route it; you never call `picket route` yourself. A commit body, when the phase needs one, goes as indented lines under `Commit:`; the commit carries it after the subject.

@@ -2,7 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { detectBlock, parseBlock, proposedCommit, readHeading } from "./block.mts";
+import { detectBlock, parseBlock, proposedCommit, readBlock, readHeading, saveBlock } from "./block.mts";
+import { setMarker } from "./markers.mts";
+import { openItem, withProject } from "#test/project.mts";
 
 test("detectBlock names each contract heading and nothing for plain text", () => {
   assert.equal(detectBlock("## Phase 2 of a-b: Title\n\nPHASE DONE"), "phase");
@@ -59,4 +61,21 @@ test("proposedCommit drops the staged tail and is null without a Commit field", 
 test("readHeading gives null for text without a block heading (T-2.1)", () => {
   assert.equal(readHeading("Done.\n\n## Notes\n\nnothing"), null);
   assert.equal(readHeading(""), null);
+});
+
+test("proposedCommit keeps the indented body under the Commit line, dedented, after a blank line", () => {
+  const text = "## Phase 1 of 20261023-x: One\n\nDone.\n\nFiles: a.ts\nCommit: test(x): drop two tests\n\n    Dropped:\n    - \"a\": now in b.test\n      and c.test\n\nPHASE DONE\n";
+  assert.equal(proposedCommit(parseBlock(text)), 'test(x): drop two tests\n\nDropped:\n- "a": now in b.test\n  and c.test');
+});
+
+test("saveBlock keeps an approved phase's block and appends a later block to N.fixes.md", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "order", title: "Fix" });
+  saveBlock(root, id, 2, "## Phase 2 of x: Two\n\nOriginal.\n\nPHASE DONE");
+  setMarker(root, id, 2, "approved", new Date());
+  saveBlock(root, id, 2, "## Phase 2 of x: Two\n\nFirst fix.\n\nPHASE DONE");
+  saveBlock(root, id, 2, "## Phase 2 of x: Two\n\nSecond fix.\n\nPHASE DONE");
+  assert.match(readBlock(root, id, 2) ?? "", /Original\./);
+  const fixes = readFileSync(join(root, "work", id, "phases", "2.fixes.md"), "utf8");
+  assert.ok(fixes.indexOf("First fix.") < fixes.indexOf("Second fix."), fixes);
 });

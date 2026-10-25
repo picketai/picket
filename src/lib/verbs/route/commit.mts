@@ -15,7 +15,7 @@ function commitMessage(root: string, snap: WorkSnapshot, phase: number): string 
 }
 
 function resultLines({ sha, committed, left_staged, warnings }: CommitResult, message: string, phase: number, listed: (path: string) => boolean): string[] {
-  const lines = [sha ? `committed ${sha}: ${message}` : "nothing staged to commit"];
+  const lines = [sha ? `committed ${sha}: ${message.split("\n")[0]}` : "nothing staged to commit"];
   const outside = committed.filter((path) => !listed(path));
   if (outside.length) lines.push(`committed outside phase ${phase}'s files: ${outside.join(", ")}`);
   if (left_staged.length) lines.push(`left staged, not phase ${phase}'s: ${left_staged.join(", ")}`);
