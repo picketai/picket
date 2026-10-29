@@ -1,4 +1,4 @@
-# Gather the data
+# Explaining: gather the data
 
 ## Pick the mode
 
@@ -49,4 +49,4 @@ Never copy a secret value into the answer: name the variable (`STRIPE_API_KEY`).
 
 Count files read (codebase) and pages fetched (concept). At 12 files or 5 pages with the scenario still not grounded, stop and offer the research lane as SKILL.md says. Values already grounded stay usable if the user declines.
 
-Then read `steps/20-walk.md`.
+Then read `steps/walk.md`.

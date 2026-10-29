@@ -19,8 +19,8 @@ Pull, draft, create and update work items on a ticketing platform through its MC
 ## Steps
 
 1. Input: `$ARGUMENTS`. Empty: list the item types below and ask what to draft, pull or update; stop.
-2. Draft, create, update (the drafting part): read `steps/10-draft.md`.
-3. Pull, create, update (the platform calls): read `steps/20-jira.md`.
+2. Draft, create, update (the drafting part): read `steps/draft.md`.
+3. Pull, create, update (the platform calls): read `steps/jira.md`.
 
 ## Rules
 

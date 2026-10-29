@@ -4,7 +4,16 @@ Run them in order and keep them separate; mixing passes turns a typo hunt into a
 
 ## Pass 1: mechanics and grammar
 
-Six sweeps: spelling and homonyms; punctuation (commas, apostrophes, terminal marks, quote and bracket pairing); verbs (tense shifts, passive hiding the actor); subject and verb agreement; pronouns (antecedent agreement, two-way references); other grammar (fragments, run-ons, misplaced or dangling modifiers). Then markdown integrity (heading levels, list numbering, balanced and labelled fences, well-formed tables) and link integrity (relative links resolve on disk; external links reported as unverified unless fetching is allowed).
+Six sweeps, then two integrity checks:
+
+1. Spelling and homonyms.
+2. Punctuation (commas, apostrophes, terminal marks, quote and bracket pairing).
+3. Verbs (tense shifts, passive hiding the actor).
+4. Subject and verb agreement.
+5. Pronouns (antecedent agreement, two-way references).
+6. Other grammar (fragments, run-ons, misplaced or dangling modifiers).
+7. Markdown integrity (heading levels, list numbering, balanced and labelled fences, well-formed tables).
+8. Link integrity (relative links resolve on disk; external links reported as unverified unless fetching is allowed).
 
 Run the mechanical sweeps with tools:
 

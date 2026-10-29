@@ -1,4 +1,4 @@
-# Write the walkthrough
+# Explaining: write the walkthrough
 
 Fill the output shape in SKILL.md section by section. Keep the user's question verbatim on the first line.
 
@@ -32,10 +32,10 @@ Concept and mixed mode only. One line per page fetched: the URL and what it grou
 
 ## Check before sending
 
-- Every value in every table and step has a marker.
-- Every `[VERIFIED]` cites a source the user can open or rerun: a path or command in codebase mode, a URL with its section in concept mode.
-- Every `[INFERRED]` shows the steps from verified facts.
-- Every gap is under `Not known`, not hidden behind an `[ASSUMED]` value without saying so.
-- No secret value appears; masked personal data says it is masked.
+1. Every value in every table and step has a marker.
+2. Every `[VERIFIED]` cites a source the user can open or rerun: a path or command in codebase mode, a URL with its section in concept mode.
+3. Every `[INFERRED]` shows the steps from verified facts.
+4. Every gap is under `Not known`, not hidden behind an `[ASSUMED]` value without saying so.
+5. No secret value appears; masked personal data says it is masked.
 
 Fix any line that fails, then send. Close with at most one line offering the next scenario or the research lane, never both.

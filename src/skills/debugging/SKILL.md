@@ -21,9 +21,9 @@ Find the root cause of a bug before anyone fixes it, and end in a diagnosis plus
 ## Steps
 
 1. Input: `$ARGUMENTS`, the symptom in the user's words. Empty: ask what fails, where and since when; stop.
-2. A symptom arrives: read `steps/10-reproduce.md`, then reproduce on the user's surface, or decide why it does not reproduce.
-3. It reproduces: read `steps/20-localize.md`, then shrink the input, halve the path, bisect, test hypotheses.
-4. The cause is found, or the search stops: read `steps/30-diagnose.md` for the red test, the evidence, the hand-off.
+2. A symptom arrives: read `steps/reproduce.md`, then reproduce on the user's surface, or decide why it does not reproduce.
+3. It reproduces: read `steps/localize.md`, then shrink the input, halve the path, bisect, test hypotheses.
+4. The cause is found, or the search stops: read `steps/diagnose.md` for the red test, the evidence, the hand-off.
 
 ## Rules
 

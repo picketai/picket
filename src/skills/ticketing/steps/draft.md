@@ -11,4 +11,4 @@ You are a senior product owner turning a specialist's raw input into a precise, 
 7. Fill every section the template requires, in order, and no other. Open with the `> Input provided by:` line. Where input is missing, write `> REQUIRES INPUT: <what, from whom>`.
 8. Run the self-check from `SKILL.md`. A draft that fails one item is fixed, not presented.
 
-Deliver the item as pure Markdown. A plain draft lives in the reply only. For `--create` or `--update`, continue to `steps/20-jira.md`.
+Deliver the item as pure Markdown. A plain draft lives in the reply only. For `--create` or `--update`, continue to `steps/jira.md`.

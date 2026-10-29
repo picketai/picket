@@ -22,15 +22,15 @@ Explain one scenario as a customer or a QA tester would go through the applicati
 ## Steps
 
 1. Input: `$ARGUMENTS`, the scenario or concept in the user's words. Empty: ask what to explain; stop. Never explain "the thing we just discussed" by guess.
-2. A question arrives: read `steps/10-gather.md`, then pick the mode, find the actor, the entry point and the data.
+2. A question arrives: read `steps/gather.md`, then pick the mode, find the actor, the entry point and the data.
 3. Read the reference answer for the mode before the first walkthrough in a session, as the Rules name it.
-4. The data is grounded: read `steps/20-walk.md`, then write the answer in the shape below and check it.
+4. The data is grounded: read `steps/walk.md`, then write the answer in the shape below and check it.
 
 ## Rules
 
 Runs in the main session, no spawn, no work item, no file written: an explanation is an answer, not a change, so it never goes through `picket admit`. The answer is in the reply.
 
-Two modes, picked in `steps/10-gather.md`. Codebase mode is the default and the main focus: the scenario runs through this project. Concept mode explains a general idea from reliable web sources with the same worked example. A mixed question takes the concept from the web and walks the code.
+Two modes, picked in `steps/gather.md`. Codebase mode is the default and the main focus: the scenario runs through this project. Concept mode explains a general idea from reliable web sources with the same worked example. A mixed question takes the concept from the web and walks the code.
 
 Reference answers: `examples/admit-walkthrough.md` for codebase mode, `examples/etag-walkthrough.md` for concept mode.
 

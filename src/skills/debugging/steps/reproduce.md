@@ -1,4 +1,4 @@
-# Debugging, step 1: reproduce
+# Debugging: reproduce
 
 A failure you have not seen yourself is a report, not a fact. Reproduce it before you reason about it.
 
@@ -24,7 +24,7 @@ Walk the branches in order. Each ends in a capture that reproduces it, or in a r
 3. **Timing or ordering.** A flaky failure is often an order or a race. Run it 20 times (`picket check` in a loop script) and count failures; run the test alone and with its neighbours; change the test order when the runner allows. A failure in 1 of 20 runs is reproduced: record the count.
 4. **State left by an earlier run.** A file, a cache, a database row or a global the previous test left behind. Run from a clean state, then after the suspected predecessor.
 
-When every branch fails, stop here: the block says `Reproduced: not reproduced: <the branches tried>` and `Red: n/a: not reproduced, <why>`, and the first line says "strongest hypothesis". Skip to `steps/30-diagnose.md`.
+When every branch fails, stop here: the block says `Reproduced: not reproduced: <the branches tried>` and `Red: n/a: not reproduced, <why>`, and the first line says "strongest hypothesis". Skip to `steps/diagnose.md`.
 
 ## Done when
 

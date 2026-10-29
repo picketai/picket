@@ -1,10 +1,10 @@
-# Debugging, step 3: diagnose and hand off
+# Debugging: diagnose and hand off
 
 Turn the localized cause into a failing test, grade every claim, and hand the fix to a lane.
 
 ## The red test
 
-Write the smallest unit test that fails for the diagnosed reason, by the bug procedure in `picket:implementing`: it names the behaviour, runs through `picket check`, and fails for the reason found, not on a typo or a missing import. Use the shrunk input from step 2. Keep its first failure line for the block. This test is the one file the skill writes, and the lane that fixes the bug runs it first instead of writing another.
+Write the smallest unit test that fails for the diagnosed reason, by the bug procedure in `picket:implementing`: it names the behaviour, runs through `picket check`, and fails for the reason found, not on a typo or a missing import. Use the shrunk input from the localize step. Keep its first failure line for the block. This test is the one file the skill writes, and the lane that fixes the bug runs it first instead of writing another.
 
 The block lines take that file's forms exactly:
 
@@ -21,7 +21,10 @@ Every claim on the `Evidence:` line carries a marker: `[VERIFIED]` cites its sou
 
 ## Clean up
 
-Before the block, `git status` shows exactly one change: the red test. Undo every log line, breakpoint and experiment from steps 1 and 2. End any `git bisect` with `git bisect reset`.
+Before the block, `git status` shows exactly one change: the red test.
+
+1. Undo every log line, breakpoint and experiment from the reproduce and localize steps.
+2. End any `git bisect` with `git bisect reset`.
 
 ## The hand-off
 

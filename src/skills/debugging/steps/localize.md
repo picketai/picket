@@ -1,4 +1,4 @@
-# Debugging, step 2: localize
+# Debugging: localize
 
 Narrow the failure to one line and one reason, with evidence at every step. A guess about where the bug is goes on the hypothesis list, never into the code.
 
@@ -26,10 +26,11 @@ The first bad commit narrows the cause to its diff. Always end with `git bisect 
 
 ## Test hypotheses one at a time
 
-Write each hypothesis as "if X then Y": "if the rate is read before the config loads, then the first request fails and the second passes". Test it with the smallest experiment that could prove it false. Record the result:
-
-- Disproved: undo every change it made, and list it under `Ruled out` with its evidence (`second request also fails: drive log line 14`).
-- Supported: keep it, and look for a capture that confirms it (step 3 writes it as a test).
+1. Write each hypothesis as "if X then Y": "if the rate is read before the config loads, then the first request fails and the second passes".
+2. Test it with the smallest experiment that could prove it false.
+3. Record the result:
+   - Disproved: undo every change it made, and list it under `Ruled out` with its evidence (`second request also fails: drive log line 14`).
+   - Supported: keep it, and look for a capture that confirms it (the diagnose step writes it as a test).
 
 Never stack two changes in one experiment, and never keep a change that "might help": it hides the cause without naming it.
 
