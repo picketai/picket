@@ -6,4 +6,5 @@
 - [Node 22 local runs on Windows](node22-local-runs-on-windows.md) — 2 CLI tests fail only on this machine; types strip fine
 - [Repo scans read text, not code](scans-read-agent-memory.md) — memory files, ".claude" substrings and `from "${x}"` strings trip npm test
 - [Mod validator rules](mod-validator-rules.md) — atoms per file, $ never in objects, function declarations, import-free types contract
+- [Verbs import only shared](verbs-import-only-shared.md) — conventions.test.mjs layer rule; a verb never imports another verb (route())
 - [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag
