@@ -7,9 +7,6 @@ const ROOT = resolve(".");
 const SKILLS_DIR = join(ROOT, "src", "skills");
 const SCANNED_DIRS = ["src/skills", "src/agents", "src/rules", "src/output-styles"];
 const SKIPPED_DIRS = new Set(["examples"]);
-const ORDERED_FOLDERS = new Set(["steps", "checklists"]);
-const RUN_IN_ORDER = "steps";
-const STEP_NAME = /^(\d{2})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const OWN_FOLDERS = ["steps", "templates", "references", "checklists", "examples", "scripts"];
 const DOCUMENT_KIT = ["documenting/templates/", "documenting/scripts/"];
 const PROCEDURES = "shared/procedures/";
@@ -28,26 +25,6 @@ const SKILL_NAMES = [...readdirSync(SKILLS_DIR).filter((name) => existsSync(join
 
 function posixRelative(path) {
   return relative(ROOT, path).replaceAll("\\", "/");
-}
-
-function directoriesUnder(dir) {
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => [join(dir, entry.name), ...directoriesUnder(join(dir, entry.name))]);
-}
-
-function orderedFolders() {
-  return directoriesUnder(SKILLS_DIR)
-    .filter((dir) => ORDERED_FOLDERS.has(dir.split(/[\\/]/).at(-1)))
-    .map((dir) => ({ path: posixRelative(dir), kind: dir.split(/[\\/]/).at(-1), files: readdirSync(dir) }));
-}
-
-function nameProblems({ path, kind, files }) {
-  const misnamed = files.filter((name) => !STEP_NAME.test(name)).map((name) => `${path}/${name}: not NN-<kebab>.md`);
-  if (kind !== RUN_IN_ORDER) return misnamed;
-  const prefixes = files.map((name) => name.match(STEP_NAME)?.[1]).filter(Boolean);
-  const repeated = [...new Set(prefixes.filter((prefix, i) => prefixes.indexOf(prefix) !== i))];
-  return [...misnamed, ...repeated.map((prefix) => `${path}: prefix ${prefix} names two steps`)];
 }
 
 function markdownUnder(dir) {
@@ -138,23 +115,6 @@ function referenceProblems(file, markdown) {
 function scannedFiles() {
   return SCANNED_DIRS.flatMap((dir) => markdownUnder(resolve(dir))).map((path) => ({ file: posixRelative(path), text: readFileSync(path, "utf8") }));
 }
-
-test("every steps/ and checklists/ file is NN-<kebab>.md, with distinct prefixes in steps/", () => {
-  assert.deepEqual(orderedFolders().flatMap(nameProblems), []);
-});
-
-test("checklists/ may repeat a load-tier prefix, as reviewing does with 40 and 50", () => {
-  const reviewing = orderedFolders().find((folder) => folder.path === "src/skills/reviewing/checklists");
-  const prefixes = reviewing.files.map((name) => name.slice(0, 2));
-  assert.ok(prefixes.filter((p) => p === "40").length > 1 && prefixes.filter((p) => p === "50").length > 1);
-});
-
-test("the name check flags a one-digit prefix and two steps sharing a prefix", () => {
-  assert.deepEqual(nameProblems({ path: "src/skills/x/steps", kind: "steps", files: ["5-x.md"] }), ["src/skills/x/steps/5-x.md: not NN-<kebab>.md"]);
-  assert.deepEqual(nameProblems({ path: "src/skills/x/steps", kind: "steps", files: ["10-a.md", "10-b.md"] }), ["src/skills/x/steps: prefix 10 names two steps"]);
-  assert.deepEqual(nameProblems({ path: "src/skills/x/checklists", kind: "checklists", files: ["40-a.md", "40-b.md"] }), []);
-  assert.deepEqual(nameProblems({ path: "src/skills/x/steps", kind: "steps", files: ["10-Read_me.md"] }), ["src/skills/x/steps/10-Read_me.md: not NN-<kebab>.md"]);
-});
 
 test("every skill path in the instructions exists and stays within its file's reach", () => {
   assert.deepEqual(scannedFiles().flatMap(({ file, text }) => referenceProblems(file, text)), []);

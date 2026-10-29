@@ -9,6 +9,8 @@ const LIST_ITEM = /^\s+-\s+(.*)$/;
 const INDENTED = /^\s+\S/;
 const FENCE_MARK = /^\s*(```|~~~)/;
 const HEADING = /^(#{2,3})\s+(.*)$/;
+const ANY_HEADING = /^#{1,6}\s/;
+const ORDERED_ITEM = /^\d+\.\s/;
 
 function normalised(text: string): string {
   return text.replace(/\r\n/g, "\n");
@@ -67,6 +69,33 @@ export function sections(body: string): Section[] {
     const next = headings.slice(k + 1).find((later) => later.level <= heading.level);
     return { ...heading, end: next ? next.line : lines.length };
   });
+}
+
+export function isOrderedItem(line: string): boolean {
+  return ORDERED_ITEM.test(line);
+}
+
+export function hasOrderedList(body: string): boolean {
+  const lines = normalised(body).split("\n");
+  const outside = unfencedLines(lines);
+  return lines.some((line, i) => outside[i] && isOrderedItem(line));
+}
+
+export function paragraphs(body: string): string[] {
+  const lines = normalised(body).split("\n");
+  const outside = unfencedLines(lines);
+  const found: string[] = [];
+  let current: string[] = [];
+  const close = () => {
+    if (current.length) found.push(current.join(" ").replace(/\s+/g, " ").trim());
+    current = [];
+  };
+  lines.forEach((line, i) => {
+    if (!outside[i] || !line.trim() || ANY_HEADING.test(line)) close();
+    else current.push(line.trim());
+  });
+  close();
+  return found;
 }
 
 export function fences(lines: string[]): Fence[] {
