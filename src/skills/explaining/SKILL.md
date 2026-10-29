@@ -6,23 +6,33 @@ description: >
   Codebase scenarios come first; a general concept outside the project is explained the same
   way from reliable web sources (official docs, standards, papers). Every value carries a
   confidence marker and its source; a value nobody can find is named as not known instead of
-  made up. Runs in the main session and answers in the reply. Use when the user says "explain
-  with an example", "walk me through", "show me with real data", "what happens to the data
-  when", "explain how X works for a user", "explain the concept of", "what is X, with an
-  example", or "explain X simply". A question that needs a report on disk goes to
-  `picket:researching`. `/picket:explaining <scenario or concept>`.
-user-invocable: true
+  made up. Runs in the main session and answers in the reply.
+when_to_use: >
+  Use when the user says "explain with an example", "walk me through", "show me with real
+  data", "what happens to the data when", "explain how X works for a user", "explain the
+  concept of", "what is X, with an example", or "explain X simply". A question that needs a
+  report on disk goes to `picket:researching`.
+argument-hint: "<scenario or concept>"
 ---
 
 # Explaining
 
-Input: `$ARGUMENTS`, the scenario or concept in the user's words. Empty: ask what to explain; stop. Never explain "the thing we just discussed" by guess.
+Explain one scenario as a customer or a QA tester would go through the application, with real or relevant data, and show how that data changes from the first step to the last.
 
-## Rules that hold throughout
+## Steps
+
+1. Input: `$ARGUMENTS`, the scenario or concept in the user's words. Empty: ask what to explain; stop. Never explain "the thing we just discussed" by guess.
+2. A question arrives: read `steps/10-gather.md`, then pick the mode, find the actor, the entry point and the data.
+3. Read the reference answer for the mode before the first walkthrough in a session, as the Rules name it.
+4. The data is grounded: read `steps/20-walk.md`, then write the answer in the shape below and check it.
+
+## Rules
 
 Runs in the main session, no spawn, no work item, no file written: an explanation is an answer, not a change, so it never goes through `picket admit`. The answer is in the reply.
 
 Two modes, picked in `steps/10-gather.md`. Codebase mode is the default and the main focus: the scenario runs through this project. Concept mode explains a general idea from reliable web sources with the same worked example. A mixed question takes the concept from the web and walks the code.
+
+Reference answers: `examples/admit-walkthrough.md` for codebase mode, `examples/etag-walkthrough.md` for concept mode.
 
 One scenario, one actor, one path. A second path the user may care about is offered in one line at the end, not walked.
 
@@ -39,15 +49,6 @@ A value built from several sources takes the weakest marker. A value the flow ne
 Never copy a secret, key, token or password value: name the variable. Personal data from a source that is not test data is masked (`j***@example.com`), and the answer says it was masked.
 
 A search query carries only the general concept, never project code, names, customer data or secrets, because the query leaves the machine.
-
-## Steps
-
-| When | Read |
-|---|---|
-| a question arrives | `steps/10-gather.md`: pick the mode, find the actor, the entry point and the data |
-| the data is grounded | `steps/20-walk.md`: write the answer in the shape below and check it |
-
-Reference answers: `examples/admit-walkthrough.md` for codebase mode, `examples/etag-walkthrough.md` for concept mode. Read the one for the mode before the first walkthrough in a session.
 
 ## Output
 

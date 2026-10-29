@@ -5,30 +5,36 @@ description: >
   README, a release note, a spec for another company) and report every defect as a located,
   quoted, rule-backed finding before any text changes. Five passes: mechanics and grammar,
   internal consistency and facts, clarity for the named audience, house style, completeness
-  and safety to send. Use when the user says "proofread this", "check this before I send it",
-  "is this clear?", "polish this email", "review this doc for typos", or hands over prose whose
-  next reader is outside the project. `/picket:proofreading <path or pasted text>`.
-user-invocable: true
+  and safety to send.
+when_to_use: >
+  Use when the user says "proofread this", "check this before I send it", "is this clear?",
+  "polish this email", "review this doc for typos", or hands over prose whose next reader is
+  outside the project.
+argument-hint: "<path or pasted text>"
 ---
 
 # Proofreading
 
-Input: `$ARGUMENTS`, a path, a directory, a URL or pasted text. Empty: ask which document; stop. Never proofread "the last thing we discussed" by guess.
+Proofread a document that will be read outside the team and report every defect as a located, quoted, rule-backed finding before any text changes.
 
-## Four rules that outrank every check
+## Steps
+
+1. Input: `$ARGUMENTS`, a path, a directory, a URL or pasted text. Empty: ask which document; stop. Never proofread "the last thing we discussed" by guess.
+2. Scope the read. State on one line: audience (ask if unknown; clarity is measured against a reader), purpose (what the reader does next), surface (email, docs site, README, PDF, ticket, changelog; infer from the path and say so), and whether house style applies (yes for prose authored in this repo; external style guide → check against that instead; default: house-style hits at L2).
+3. Read `references/recurring-errors.md` before pass 1; append a line when a defect class repeats across documents.
+4. Run the five passes: read `steps/10-passes.md`.
+5. The user says "apply", "fix them", "apply the L0s": read `steps/20-apply.md`.
+
+## Rules
+
+Four rules outrank every check:
 
 1. Report before you change. The deliverable is a findings list; rewriting happens only on request, and only for accepted findings.
 2. Preserve the author's voice. A long but clear sentence on register is not a finding.
 3. Never invent a fact. A number, name, date, version, price, link target or claim you cannot verify from the document or the repository is a question for the author, not a correction.
 4. Every finding quotes the text and names a rule. Otherwise it is an opinion: drop it.
 
-## Step 0: scope the read
-
-State on one line: audience (ask if unknown; clarity is measured against a reader), purpose (what the reader does next), surface (email, docs site, README, PDF, ticket, changelog; infer from the path and say so), and whether house style applies (yes for prose authored in this repo; external style guide → check against that instead; default: house-style hits at L2).
-
-Read `references/recurring-errors.md` before pass 1; append a line when a defect class repeats across documents.
-
-## Levels
+Every finding takes a level:
 
 | Level | Meaning | Action |
 |---|---|---|
@@ -38,13 +44,6 @@ Read `references/recurring-errors.md` before pass 1; append a line when a defect
 | L3 | substance: unverifiable claim, numbers that do not add up, an unkeepable promise, a missing caveat, anything legally loaded | ask; never fix; blocking when the document leaves the company |
 
 Minimal intervention: change what is wrong, leave what is merely different. No silent substantive edits: a change that alters meaning is authorship and goes back to the author.
-
-## Steps
-
-| When | Read |
-|---|---|
-| the five passes | `steps/10-passes.md` |
-| the user says "apply", "fix them", "apply the L0s" | `steps/20-apply.md` |
 
 ## Output
 

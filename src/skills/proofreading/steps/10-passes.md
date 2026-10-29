@@ -28,7 +28,7 @@ One name per concept, agreeing with `.claude/MEMORY.md` when the project has a g
 
 ## Pass 3: clarity for the named audience
 
-Read as the reader from step 0, who cannot ask a question. The opening says what the document is and for whom; every acronym is expanded on first use or dropped; each sentence has one reading; instructions run in execution order and name their actor; anything the reader must do is an action, not an implication; every abstract claim that matters carries one concrete example. The test for an instruction: could a competent stranger follow it without a second document?
+Read as the reader named in the scope line, who cannot ask a question. The opening says what the document is and for whom; every acronym is expanded on first use or dropped; each sentence has one reading; instructions run in execution order and name their actor; anything the reader must do is an action, not an implication; every abstract claim that matters carries one concrete example. The test for an instruction: could a competent stranger follow it without a second document?
 
 ## Pass 4: house style
 
