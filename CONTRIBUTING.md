@@ -18,7 +18,7 @@ The rest of `src/lib/` is `src/lib/cli/` for the command line, `src/lib/shared/`
 
 A module's tests sit beside it as `<module>.test.mts` (`src/lib/verbs/leave/index.test.mts`). `test/` holds the tests that run `dist/` or check the repository: `test/cli/` spawns the CLI and the built skill scripts, `test/hooks/` the hook bundles, `test/repo/` checks the repository and the build, and `test/timing/` holds the cold-start budgets. `test/support/` holds the helpers every test imports through `#test/*`.
 
-A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items`, `security-paths` and `untrusted`.
+A skill, agent or rule follows `.claude/rules/harness-authoring.md`. That rule governs this repository only and is never installed: the shipped rules are `prose`, `comments`, `work-items`, `security-paths`, `tests` and `untrusted`.
 
 ## Building and testing
 

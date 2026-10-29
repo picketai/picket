@@ -9,20 +9,22 @@ import { withProject } from "#test/project.mts";
 
 const injectRules = looseHandler(rulesHandler);
 
-const RULE_HEADINGS = ["# Writing rules", "# Comments in code", "# Work items", "# Security paths", "# Untrusted content"];
+const RULE_HEADINGS = ["# Writing rules", "# Comments in code", "# Work items", "# Security paths", "# Tests", "# Untrusted content"];
 
 function headingOrder(text: string): number[] {
   return RULE_HEADINGS.map((heading) => text.indexOf(`${heading}\n`));
 }
 
 for (const event of [{ hook_event_name: "SubagentStart", agent_type: "picket:developer" }, { hook_event_name: "SessionStart", source: "compact" }]) {
-  test(`injectRules returns the five rules in order, untrusted last, for ${event.hook_event_name}`, () => {
+  test(`injectRules returns the six rules in order, untrusted last, for ${event.hook_event_name}`, () => {
     const out = injectRules(event, hookContext(resolve(".")));
     assert.equal(out.hookSpecificOutput.hookEventName, event.hook_event_name);
     const text = out.hookSpecificOutput.additionalContext;
     const positions = headingOrder(text);
     assert.ok(positions.every((p) => p >= 0), `missing heading: ${positions}`);
     assert.deepEqual([...positions].sort((a, b) => a - b), positions);
+    assert.equal(INJECTED_RULES.length, 6);
+    assert.equal(INJECTED_RULES.at(-1), "untrusted.md");
     assert.doesNotMatch(text, /^paths:/m);
   });
 }
@@ -33,7 +35,7 @@ test("injectRules joins the rule files with one blank line, in the injected orde
   mkdirSync(dir);
   INJECTED_RULES.forEach((file, i) => writeFileSync(join(dir, file), `# Rule ${i}\n\nbody ${i}\n`));
   const out = injectRules({ hook_event_name: "SessionStart" }, hookContext(root), dir);
-  assert.equal(out.hookSpecificOutput.additionalContext, "# Rule 0\n\nbody 0\n\n# Rule 1\n\nbody 1\n\n# Rule 2\n\nbody 2\n\n# Rule 3\n\nbody 3\n\n# Rule 4\n\nbody 4");
+  assert.equal(out.hookSpecificOutput.additionalContext, "# Rule 0\n\nbody 0\n\n# Rule 1\n\nbody 1\n\n# Rule 2\n\nbody 2\n\n# Rule 3\n\nbody 3\n\n# Rule 4\n\nbody 4\n\n# Rule 5\n\nbody 5");
 });
 
 test("the data-not-instructions statement lives only in the untrusted rule (T-3.4)", () => {

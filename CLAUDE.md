@@ -12,7 +12,7 @@ Four lanes, four agents, one kernel. Code decides what code can decide; the mode
 
 ## Rules
 
-Every session and agent gets the rules `prose`, `comments`, `work-items`, `security-paths`, `untrusted`.
+Every session and agent gets the rules `prose`, `comments`, `work-items`, `security-paths`, `tests`, `untrusted`.
 
 `picket init` rewrites this block; project lines belong under `## Project facts`.
 

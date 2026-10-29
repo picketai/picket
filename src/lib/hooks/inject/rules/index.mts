@@ -6,7 +6,7 @@ import { context, type ContextOutput } from "../../output.mts";
 
 type InjectEvent = "SessionStart" | "SubagentStart";
 
-export const INJECTED_RULES = Object.freeze(["prose.md", "comments.md", "work-items.md", "security-paths.md", "untrusted.md"]);
+export const INJECTED_RULES = Object.freeze(["prose.md", "comments.md", "work-items.md", "security-paths.md", "tests.md", "untrusted.md"]);
 
 export function joinedRules(dir: string = rulesDir()): string | null {
   if (!existsSync(dir)) return null;

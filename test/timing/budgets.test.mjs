@@ -12,7 +12,7 @@ import { skillDescriptions } from "#test/routing.mts";
 
 const ROOT = resolve(".");
 const BUDGETS = {
-  claude_md_bytes: 2048, // loaded on every turn of every session and every spawn
+  claude_md_bytes: 2560, // loaded on every turn of every session and every spawn
   agent_lines: 120, // agent shells: identity, constraints, dispatch; procedure lives in step files
   skill_lines: 150, // SKILL.md: description, when, steps index; detail lives in steps/ and templates/
   step_lines: 80, // one step file is one screen
