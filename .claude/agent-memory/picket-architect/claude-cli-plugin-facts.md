@@ -27,6 +27,8 @@ Seen in the 2.1.303 binary (2026-10-19): the Notification hook input is `{ hook_
 
 Probed 2026-10-25 on 2.1.310 (F-1 order, a scratch copy of the built plugin): `validate --strict` walks the plugin's agents folder recursively and fails on a Markdown file with no frontmatter in a subfolder (agents/shared/entry.md: "No frontmatter block found"), while `plugin details` still lists Agents (4) and does not load it. Adding an `agents` array of the four files to plugin.json made `plugin details` list Agents (0) and validate still scanned the subfolder. So shared agent text cannot sit under the built agents folder without breaking strict validation; it needs another dist location, build-time inlining, or hook injection.
 
+Unverified as of 2026-10-30: whether a skill's dynamic injection (a `!` before a backticked command) expands when indented inside a list item. Item 20261029-remaining-skills-in-bundle-2-shape D-003 kept the lines at column 0 in the purpose paragraph instead; a probe would settle it.
+
 Design-record trap: the lint.schema PostToolUse hook runs after every edit of design.md and flags frontmatter phases with no `## Phase N` heading. When adding phases in a second save, write the body headings first (or in the same Edit), then the frontmatter entries.
 
 Related: [[transcript-facts]]
