@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EFFECTS, type Change, type Effect, type PlannedVerdict } from "./plan.mts";
-import { ownGate } from "../../shared/work/gate.mts";
-import { phaseOf, type WorkSnapshot } from "../../shared/work/snapshot.mts";
-import { Refused } from "../../shared/action.mts";
-import { VERDICTS } from "../../shared/verdicts.mjs";
+import { ownGate } from "../work/gate.mts";
+import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
+import { Refused } from "../action.mts";
+import { VERDICTS } from "../verdicts.mjs";
 import { snapshotOf } from "#test/snapshot.mts";
 
 const SECURITY_PATHS = ["src/auth/"];

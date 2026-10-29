@@ -1,4 +1,4 @@
-import type { AgentType, SendView } from "../views.mts";
+import type { AgentType, NextView, SendView } from "../views.mts";
 import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
 import { freshReplies } from "./replies.mts";
@@ -41,6 +41,11 @@ function isLive(snap: WorkSnapshot, instance: Instance, session: string | null):
 function send(snap: WorkSnapshot, instance: Instance, session: string | null, lines: (tool: SendView["tool"]) => string[], extra: Partial<SendView> = {}): SendView {
   const tool = isLive(snap, instance, session) ? "SendMessage" : "Agent";
   return { tool, to: instance.to, type: instance.type, ...extra, message: lines(tool).join("\n") };
+}
+
+export function messageTo(snap: WorkSnapshot, role: "developer" | "architect", session: string | null, lines: string[]): SendView {
+  const instance = role === "developer" ? developer(snap) : INSTANCES.architect;
+  return send(snap, instance, session, () => lines);
 }
 
 function itemFile(snap: WorkSnapshot, name: string): string {
@@ -101,6 +106,20 @@ function cumulativeSend(snap: WorkSnapshot, session: string | null): SendView {
   const reviewed = snap.verdicts.some(INSTANCES.cumulative.owns);
   const first = [...(reviewed ? [] : [`picket mutate ${snap.state.id}`]), saveSummary(snap)];
   return send(snap, INSTANCES.cumulative, session, (tool) => [...(tool === "Agent" ? [FRESH_REVIEW] : []), workLine(snap), "scope: cumulative", ...summaryLines(snap)], { model: "opus", first });
+}
+
+function renderSend(s: SendView): string {
+  const heading = `${s.tool} ${s.to} · ${s.type}${s.model ? ` · model ${s.model}` : ""}`;
+  return [heading, ...(s.first ?? []).map((command) => `first: ${command}`), "```text", s.message, "```"].join("\n");
+}
+
+export function renderSends(sends: readonly SendView[]): string {
+  return sends.map(renderSend).join("\n\n");
+}
+
+export function renderNextStep(v: Omit<NextView, "send">, sends: readonly SendView[]): string {
+  const line = `${v.action} · ${v.actor ?? "-"}${v.phase ? ` · phase ${v.phase}` : ""} · ${v.detail}${v.options.length ? ` · ${v.options.join(" · ")}` : ""}`;
+  return sends.length ? `${line}\n\n${renderSends(sends)}` : line;
 }
 
 export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | null, hasFile: HasFile = NO_FILES): SendView[] {

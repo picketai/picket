@@ -186,6 +186,16 @@ Post a review file to a pull request as threads.
 picket pullrequest post <url> --file <file> [--dry-run]
 ```
 
+## picket reply
+
+Apply the user's reply at a gate.
+
+Only the lead runs it; the Bash guard denies it to agents.
+
+```sh
+picket reply <id> <reply...>
+```
+
 ## picket route
 
 Apply a verdict to a work item.

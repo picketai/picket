@@ -2,7 +2,7 @@ import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
-import { blockField, parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
+import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, proposedCommit, readBlock, WAIVER_SEPARATOR } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { liveLookup } from "../../shared/sources/places.mts";
 
@@ -63,15 +63,6 @@ function decisionLines(value, width = WIDTH) {
 }
 
 const SHOWN_PROPOSALS = 3;
-
-const COMMENT_SEPARATOR = /(?<=")\s*;\s+/;
-const WAIVER_SEPARATOR = /;\s+(?=\S+:\d+\s+"|\S+\s+deleted\b)/;
-
-function proposals(value, separator) {
-  const v = String(value ?? "").trim();
-  if (!v || /^none$/i.test(v)) return [];
-  return v.split(separator).map((s) => s.trim()).filter(Boolean);
-}
 
 function proposalLines(label, items, width = WIDTH) {
   const indent = `  ${"".padEnd(LABEL)}`;

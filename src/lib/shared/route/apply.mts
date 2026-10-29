@@ -1,7 +1,7 @@
-import { setMarker } from "../../shared/work/markers.mts";
-import type { WorkSnapshot } from "../../shared/work/snapshot.mts";
-import { isSessionId, writeState, type WorkState } from "../../shared/work/state.mts";
-import { appendVerdict, type VerdictEntry } from "../../shared/work/verdict-log.mts";
+import { setMarker } from "../work/markers.mts";
+import type { WorkSnapshot } from "../work/snapshot.mts";
+import { isSessionId, writeState, type WorkState } from "../work/state.mts";
+import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
 import { commitPhase } from "./commit.mts";
 import type { Change } from "./plan.mts";
 

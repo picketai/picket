@@ -23,6 +23,7 @@ export const REGISTRY = {
   preflight: () => import("../verbs/preflight/index.mts"),
   "pullrequest prepare": () => import("../verbs/pullrequest/prepare.mts"),
   "pullrequest post": () => import("../verbs/pullrequest/post.mts"),
+  reply: () => import("../verbs/reply/index.mts"),
   route: () => import("../verbs/route/index.mts"),
   set: () => import("../verbs/set/index.mts"),
   "source find": () => import("../verbs/source/find.mts"),

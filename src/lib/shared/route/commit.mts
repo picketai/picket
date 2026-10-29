@@ -1,9 +1,9 @@
-import { commitOwned, listedPathMatcher, type CommitResult } from "../../shared/git.mts";
-import { recordAccept } from "../../shared/ledger.mts";
-import { phasePaths } from "../../shared/work/artifact.mts";
-import { blockField, blockFiles, parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
-import { workRel } from "../../shared/work/files.mts";
-import { phaseOf, type WorkSnapshot } from "../../shared/work/snapshot.mts";
+import { commitOwned, listedPathMatcher, type CommitResult } from "../git.mts";
+import { recordAccept } from "../ledger.mts";
+import { phasePaths } from "../work/artifact.mts";
+import { blockField, blockFiles, parseBlock, proposedCommit, readBlock } from "../work/block.mts";
+import { workRel } from "../work/files.mts";
+import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
 
 const COMMIT_SHA = /^[0-9a-f]{7,40}$/i;
 

@@ -104,8 +104,19 @@ phases:
     drive: true
     security: false
   - n: 7
-    files: [src/lib/verbs/reply/index.mts, src/lib/verbs/reply/table.mts, src/lib/verbs/reply/index.test.mts, src/lib/shared/work/block.mts, src/lib/shared/work/block.test.mts, src/lib/verbs/packet/packet.mjs, src/lib/verbs.mts, src/lib/cli/registry.mts, src/lib/hooks/guard/bash/kernel.test.mts, docs/reference/cli.md]
+    files: [src/lib/verbs/reply/index.mts, src/lib/verbs/reply/table.mts, src/lib/verbs/reply/index.test.mts, src/lib/shared/work/block.mts, src/lib/shared/work/block.test.mts, src/lib/verbs/packet/packet.mjs, src/lib/verbs.mts, src/lib/cli/registry.mts, src/lib/hooks/guard/bash/kernel.test.mts, src/lib/hooks/guard/bash/payloads.test.mts, docs/reference/cli.md, src/lib/shared/route/route.mts, src/lib/shared/route/apply.mts, src/lib/shared/route/plan.mts, src/lib/shared/route/commit.mts, src/lib/shared/route/plan.test.mts, src/lib/verbs/route/, src/lib/verbs/route/index.mts, src/lib/shared/work/send.mts, src/lib/verbs/next/index.mts]
     greps:
+      - path: src/lib/shared/route/route.mts
+        pattern: 'export function route\b'
+      - path: src/lib/verbs/route/index.mts
+        pattern: 'from "\.\./\.\./shared/route/route\.mts"'
+      - path: src/lib/verbs/reply/index.mts
+        pattern: 'shared/route/route\.mts'
+      - path: src/lib/verbs/reply/index.mts
+        pattern: '^(?![\s\S]*verbs/route/)'
+        flags: i
+      - path: src/lib/shared/work/send.mts
+        pattern: 'export function renderSends\b'
       - path: src/lib/verbs.mts
         pattern: 'reply: \{ summary: "apply the user.s reply at a gate", readOnly: false, leadOnly: true \}'
       - path: src/lib/cli/registry.mts
@@ -177,9 +188,11 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 **Decision:** Infrastructural decision. `summary --save` writes `work/<id>/summary.json`. `preflight` writes `work/<id>/preflight.txt`, or removes it when no warn line remains. A failed write or removal never throws: it adds a `warn preflight_file` check to the report, so a read-only work folder still gets its preflight report, as before this item. Both keep `readOnly: true` in `VERB_NAMES`, so `guard.bash` still allows them without a prompt (`kernel.mts:18-23`). The files are derived, kernel-owned and rewritten whole on each run. The cost: "readOnly" now means "writes nothing outside the work item's kernel files" for these two verbs.
 **Instead of:** a per-flag class like `verify`'s (`kernel.mts:65`): that adds a second special case to the guard for files that are harmless to rewrite.
 
-### D-008: reply is a lead-only verb
-**Decision:** `reply` enters `VERB_NAMES` with `readOnly: false, leadOnly: true`, like `comment` and `waive`. A spawned agent's `picket reply` is then refused by `leadOnlyRefusal` (`guard/bash/payloads.mts:80`), so no agent can record the user's approval of its own phase. Phase 7 is marked `security: true` because it changes who may record that approval.
-**Instead of:** `readOnly: false` alone, as `route` has: a developer could then approve its own phase through `reply a`.
+### D-008 (r2): reply is a lead-only verb over a shared route service
+**Decision:** `reply` enters `VERB_NAMES` with `readOnly: false, leadOnly: true`, like `comment` and `waive`. A spawned agent's `picket reply` is then refused by `leadOnlyRefusal` (`guard/bash/payloads.mts:80`), so no agent can record the user's approval of its own phase. Phase 7 is marked `security: true` because it changes who may record that approval. `reply` applies verdicts through `route()`. The layer rule in `test/repo/conventions.test.mjs:174-189` lets a verb import only its own folder, `shared`, `util` and `mods.mts`, and `route()` lives in `src/lib/verbs/route/index.mts`. Route is a work-item service with three callers (the verb, the verdict hook and now `reply`), so it moves to `src/lib/shared/route/`: `route.mts` takes `route()` and the private helpers it calls, and `apply.mts`, `plan.mts`, `commit.mts` and `plan.test.mts` follow it. `src/lib/verbs/route/index.mts` keeps its parse, render, `routeVerdict` and `verb`, and re-exports `route`, `RouteInput` and `RouteResult`, so the verdict hook and the verb's tests import as before. The rendering of sends moves the same way into `src/lib/shared/work/send.mts` (`renderSends`), for `next` and `reply` to share.
+**Instead of:** letting a verb import another verb's `index.mts`, as hooks may: the rule's own test names exactly that import as a violation (`conventions.test.mjs:220`), and relaxing it would open every verb to every other to serve one caller. Separately, `readOnly: false` without `leadOnly`, as `route` has, would let a developer approve its own phase through `reply a`.
+**Risks:**
+- **RISK-004** Markdown that cites the old module paths fails `test/repo/markdown-paths.test.mjs` once they move. Mitigation: a grep of tracked and untracked Markdown on 2026-10-29 found only four architect memory lines, which now name the modules without paths; Phase 7 greps again before staging.
 
 ## Scope
 
@@ -423,7 +436,19 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 - `src/lib/cli/registry.mts`: `reply` loader
 - `src/lib/hooks/guard/bash/kernel.test.mts`: lead-only list gains `reply`
 - `docs/reference/cli.md`: regenerated, new `## picket reply` section
-- `src/lib/verbs/route/index.mts`: read only, `route()` for approve and reject
+- `src/lib/shared/route/route.mts`: new, `route()` moved from the verb
+- `src/lib/shared/route/apply.mts`: moved from `src/lib/verbs/route/`
+- `src/lib/shared/route/plan.mts`: moved from `src/lib/verbs/route/`
+- `src/lib/shared/route/commit.mts`: moved from `src/lib/verbs/route/`
+- `src/lib/shared/route/plan.test.mts`: moved with `plan.mts`
+- `src/lib/verbs/route/`: owns the three deletions and `plan.test.mts`
+- `src/lib/verbs/route/index.mts`: keeps the spec, re-exports `route`
+- `src/lib/verbs/route/index.test.mts`: stays, imports through the re-export
+- `src/lib/shared/work/send.mts`: `renderSends` for next and reply
+- `src/lib/verbs/next/index.mts`: render through `renderSends`
+- `src/lib/hooks/guard/bash/payloads.test.mts`: lead-only refusal case
+- `src/lib/hooks/route/verdict/index.mts`: read only, import unchanged
+- `test/repo/conventions.test.mjs`: read only, the layer rule stays
 - `src/lib/shared/work/approvals.mts`: read only, `appendComment`, `appendWaiver`
 - `src/lib/shared/work/state.mts`: read only, `readState`, `writeState`
 - `src/skills/shared/procedures/gate.md`: read only, the reply table
@@ -441,8 +466,9 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
    - `d`: order lane, status `abandoned` and the applied line `abandoned; open the same request in the design lane`; design lane, status `open` and an own send to `architect` with `amend: <blocked_reason read before the change>`.
    - `x` at a block: status `abandoned`.
    Every applied reply appends one `ReplyRow` with `ctx.session`. `next` and the default send come from `readNext(root, id, ctx.session)` after the effect.
-4. Render: the `applied` lines, then the `next --human` text of phase 5.
-5. `VERB_NAMES.reply = { summary: "apply the user's reply at a gate", readOnly: false, leadOnly: true }`, the registry entry, the lead-only list in `kernel.test.mts`, and `npm run docs`.
+4. Render: the `applied` lines, then the `next` line and `renderSends(send)`.
+5. Route move (D-008 r2): `git mv` `apply.mts`, `plan.mts`, `commit.mts` and `plan.test.mts` from `src/lib/verbs/route/` to `src/lib/shared/route/`, and fix their relative imports (`../../shared/x` becomes `../x`). Create `src/lib/shared/route/route.mts` with `route()`, `RouteResult`, the `RouteInput` re-export and the helpers only `route()` uses (`verdictSpec`, `verdictRow`, `gateOf`, `marksOnDisk`, `CLASSED_VERDICT`, `SPECS`), unchanged in behaviour. `src/lib/verbs/route/index.mts` imports from there and adds `export { route, type RouteInput, type RouteResult } from "../../shared/route/route.mts"`. `reply` imports `route` from `../../shared/route/route.mts`. The `renderSend` in `src/lib/verbs/next/index.mts` moves to `send.mts` as `renderSends(sends: SendView[]): string`, and `next` renders its sends through it with byte-identical output. `test/repo/conventions.test.mjs` is not edited.
+6. `VERB_NAMES.reply = { summary: "apply the user's reply at a gate", readOnly: false, leadOnly: true }`, the registry entry, the lead-only list in `kernel.test.mts`, and `npm run docs`.
 
 **Done when:**
 - **T-7.1** `reply <id> a` at `approve_phase` writes `phases/<n>.approved`, its `applied` names the commit as `picket route` does, and `replies.jsonl` gains one row.
@@ -452,7 +478,7 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 - **T-7.5** At a `PHASE STALLED` block: `c` reopens and the send goes to `developer-2`; `d` abandons an order item; `d` reopens a design item and sends `amend: <the old blocked reason>`; `x` abandons.
 - **T-7.6** `reply <id> maybe` exits 2 with the options in its error; at `implement_phase`, any reply exits 2 naming `implement_phase`.
 - **T-7.7** `guard.bash` refuses `picket reply <id> a` from `agent_type: picket:developer`, and `kernel.test.mts` lists `comment`, `reply`, `uninstall`, `waive` as lead-only.
-- **T-7.8** Drive: in a scratch order item with phase 1 done, the built CLI's `picket reply <id> a` commits the phase; `npm test` passes, generated pages included.
+- **T-7.8** Drive: in a scratch order item with phase 1 done, the built CLI's `picket reply <id> a` commits the phase. `npm test` passes with `test/repo/conventions.test.mjs` unchanged, generated pages included. `src/lib/verbs/route/` holds only `index.mts` and `index.test.mts`, and `picket next <id> --human` prints the same text as before the move.
 
 ## Phase 8: Packet fence and the missing-block bounce
 
@@ -493,3 +519,4 @@ none
 - 2026-10-29: D-005 (r2): developer-<n> counts rows after the (n-1)-th fresh reply, matching T-6.4; Problem cites Target items 3 and 6 for Phase 8; T-3.7 checks D-007
 - 2026-10-29: D-002 (r2): only reviewer blocks carry amend, so an architect block cannot re-arm it; checkpoint Minor, fixed in Phase 8 (T-8.7)
 - 2026-10-29: D-007 (r2): a failed preflight.txt write becomes a warn check, never a throw; checkpoint Minor, fixed in Phase 8 (T-8.8)
+- 2026-10-29: D-008 (r2): route() moves to src/lib/shared/route/ so reply can call it within the layer rule; Phase 7 stall, user chose redesign

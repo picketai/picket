@@ -12,6 +12,7 @@ const project = (t: TestContext) => withProject(t, { host: true, picket: false }
 const LEAD_ONLY_REASONS: Record<string, RegExp> = {
   comment: /`picket comment` records the user's approval, so only the lead runs it/,
   waive: /`picket waive` records the user's approval, so only the lead runs it/,
+  reply: /`picket reply` records the user's approval, so only the lead runs it/,
   uninstall: /`picket uninstall` removes Picket from the project, so it is the user's to run\./,
 };
 

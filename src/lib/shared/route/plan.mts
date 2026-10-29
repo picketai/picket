@@ -1,9 +1,9 @@
-import { Refused } from "../../shared/action.mts";
-import type { WorkId } from "../../shared/work/files.mts";
-import type { Gate } from "../../shared/work/gate.mts";
-import type { PhaseMark } from "../../shared/work/markers.mts";
-import type { WorkSnapshot } from "../../shared/work/snapshot.mts";
-import type { WorkState } from "../../shared/work/state.mts";
+import { Refused } from "../action.mts";
+import type { WorkId } from "../work/files.mts";
+import type { Gate } from "../work/gate.mts";
+import type { PhaseMark } from "../work/markers.mts";
+import type { WorkSnapshot } from "../work/snapshot.mts";
+import type { WorkState } from "../work/state.mts";
 
 export type Effect = "phase_done" | "phase_approved" | "phase_reviewed" | "rejection" | "drift" | "stall" | "crosscheck_ok" | "artifact" | "amended";
 

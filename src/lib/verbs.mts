@@ -32,6 +32,7 @@ export const VERB_NAMES = {
       post: { summary: "post a review file to a pull request as threads", readOnly: false },
     },
   },
+  reply: { summary: "apply the user's reply at a gate", readOnly: false, leadOnly: true },
   route: { summary: "apply a verdict to a work item", readOnly: false },
   set: { summary: "change a work item's status, blocked reason, branch, title or run grant", readOnly: false },
   source: {

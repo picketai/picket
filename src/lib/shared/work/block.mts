@@ -131,6 +131,35 @@ export function parseBlock(text: string | null | undefined): Block {
   return out;
 }
 
+export const COMMENT_SEPARATOR = /(?<=")\s*;\s+/;
+export const WAIVER_SEPARATOR = /;\s+(?=\S+:\d+\s+"|\S+\s+deleted\b)/;
+
+export type CommentProposal = { path: string; line: number; text: string };
+export type WaiverProposal = { path: string; text: string | null; deleted: boolean };
+
+const COMMENT_PROPOSAL = /^(?<path>\S+):(?<line>\d+)\s+"(?<text>.*)"$/;
+const WAIVER_LINE_PROPOSAL = /^(?<path>\S+):\d+\s+"(?<text>.*)"\s+because\s+\S/;
+const WAIVER_DELETED_PROPOSAL = /^(?<path>\S+)\s+deleted\s+because\s+\S/;
+
+export function proposals(value: string | null | undefined, separator: RegExp): string[] {
+  const v = String(value ?? "").trim();
+  if (!v || /^none$/i.test(v)) return [];
+  return v.split(separator).map((s) => s.trim()).filter(Boolean);
+}
+
+export function commentProposal(text: string): CommentProposal | null {
+  const groups = text.trim().match(COMMENT_PROPOSAL)?.groups;
+  return groups ? { path: groups.path, line: Number(groups.line), text: groups.text } : null;
+}
+
+export function waiverProposal(text: string): WaiverProposal | null {
+  const trimmed = text.trim();
+  const deleted = trimmed.match(WAIVER_DELETED_PROPOSAL)?.groups;
+  if (deleted) return { path: deleted.path, text: null, deleted: true };
+  const line = trimmed.match(WAIVER_LINE_PROPOSAL)?.groups;
+  return line ? { path: line.path, text: line.text, deleted: false } : null;
+}
+
 export function proposedCommit(block: Block): string | null {
   const commit = blockField(block, "Commit");
   if (!commit) return null;
