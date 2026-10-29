@@ -14,7 +14,7 @@ const ALLOWED = [...REQUIRED, "skills", "disallowedTools", "maxTurns", "autoComp
 const IGNORED_FOR_PLUGINS = ["hooks", "mcpServers", "permissionMode", "initialPrompt"];
 const PARTS = ["Entry", "Constraints", "Work", "Memory", "Output"];
 const VALUES = { model: /^(sonnet|opus|haiku|fable|inherit|claude-[a-z0-9-]+)$/, effort: /^(low|medium|high|xhigh|max)$/, memory: /^(user|project|local)$/, color: /^(red|blue|green|yellow|purple|orange|pink|cyan)$/ };
-const PENDING = ["src/agents/reviewer.md"];
+const PENDING = [];
 const TEMPLATES = { developer: "src/skills/implementing/SKILL.md" };
 const EXPEDITED_HEADING = "## Expedited: <id>";
 const FIELD_KEY = /^([a-z][a-z ]*):(?:\s|$)/;
@@ -47,6 +47,14 @@ const ENTRY_FIXTURES = {
     ];
   },
   analyst: () => sendsFor(snapshotOf({ lane: "research", artifact: null }), { action: "write_artifact", actor: "analyst", detail: "d" }, FIXTURE_SESSION),
+  reviewer: () => {
+    const approved = [{ n: 1, done: true, approved: true }];
+    return [
+      ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }, { n: 2 }] }), { action: "implement_phase", actor: "developer", phase: 1, detail: "d" }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "design", phases: approved }), { action: "review_checkpoint", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ phases: approved }), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
+    ];
+  },
 };
 const KNOWN_TOOLS = ["Agent", "AskUserQuestion", "Bash", "Edit", "Glob", "Grep", "NotebookEdit", "PowerShell", "Read", "SendMessage", "Skill", "TodoWrite", "WebFetch", "WebSearch", "Write"];
 const MCP_TOOL = /^mcp__[\w-]+__[\w-]+$/;
@@ -283,12 +291,14 @@ test("a template fence without Waivers: fails, and so does a template that never
 test("every shell outside PENDING has Entry fixtures", () => {
   const converted = agentFiles().filter(({ path }) => !PENDING.includes(path)).map(({ text }) => frontmatterFields(text).name);
   assert.deepEqual(converted.filter((agent) => !(agent in ENTRY_FIXTURES)), []);
+  assert.deepEqual(Object.keys(ENTRY_FIXTURES).sort(), ["analyst", "architect", "developer", "reviewer"]);
 });
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
   assert.deepEqual(sentKeys("architect"), ["amend", "lane", "preflight", "request", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["pass", "request", "work"]);
+  assert.deepEqual(sentKeys("reviewer"), ["artifact", "phase", "scope", "summary", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
   }
