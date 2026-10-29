@@ -126,7 +126,7 @@ test("the repository scan reads references in all three forms", () => {
   assert.ok(targetsOf("src/agents/architect.md").includes("documenting/references/schema-migration.md"), "skills-root form");
   const designing = { kind: "skill", skill: "designing" };
   assert.deepEqual(references("Read `../designing/steps/open.md`.", designing).map((ref) => ref.target), ["designing/steps/open.md"], "base-relative form");
-  assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/checklists/12-bar.md"), "own-folder form");
+  assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/checklists/bar.md"), "own-folder form");
 });
 
 test("no exception is listed", () => {
@@ -146,9 +146,9 @@ test("the reference check flags a reach past the table and a missing file", () =
 
 test("the reference check accepts step: values, the document kit and own folders", () => {
   assert.deepEqual(referenceProblems("src/agents/developer.md", "```\nwork: <id>\nstep: ordering/steps/open.md, architect section follows\n```"), []);
-  assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/15-traced.md`"), []);
+  assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/traced.md`"), []);
   assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/no-such.md`"), ["src/skills/designing/SKILL.md: step: reviewing/checklists/no-such.md names no skill file"]);
   assert.deepEqual(referenceProblems("src/skills/consulting/steps/20-ratify.md", 'Run `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/filename.mjs" --kind sdr` and read `../documenting/templates/sdr.md`.'), []);
   assert.deepEqual(referenceProblems("src/rules/work-items.md", "Artifacts follow `documenting/templates/{order,design}.md`."), []);
-  assert.deepEqual(referenceProblems("src/skills/reviewing/SKILL.md", "```\nreviewing/\n  checklists/10-alignment.md   criteria to evidence\n```\nThen `../reviewing/SKILL.md`."), []);
+  assert.deepEqual(referenceProblems("src/skills/reviewing/SKILL.md", "```\nreviewing/\n  checklists/alignment.md   criteria to evidence\n```\nThen `../reviewing/SKILL.md`."), []);
 });

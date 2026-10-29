@@ -63,8 +63,8 @@ test("the item summary carries its scope and checklists, and --save writes the s
   writeFileSync(join(root, "a.ts"), "b\n");
   const summary = itemSummary(root, id, ITEM);
   assert.equal(summary.scope, "phase");
-  assert.ok(summary.checklists.some((c) => c.path.endsWith("12-bar.md")));
-  assert.equal(itemSummary(root, id, { ...ITEM, scope: "cumulative" }).checklists[2].path.endsWith("15-traced.md"), true);
+  assert.ok(summary.checklists.some((c) => c.path.endsWith("bar.md")));
+  assert.equal(itemSummary(root, id, { ...ITEM, scope: "cumulative" }).checklists[2].path.endsWith("traced.md"), true);
   const ctx = fixedContext(root, { env: process.env });
   const result = await verb.run({ id, base: undefined, save: true }, ctx);
   assert.equal(result.status, "done");

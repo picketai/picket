@@ -1,6 +1,6 @@
 # Security floor (always loaded; full-file reads on security paths)
 
-These rows run at every size against every changed file. When `security_path` is true, also read each changed file under a `## Security paths` entry in full (not hunks) and load `20-patterns-core.md` in full.
+These rows run at every size against every changed file. When `security_path` is true, also read each changed file under a `## Security paths` entry in full (not hunks) and load `patterns-core.md` in full.
 
 ## Checks
 

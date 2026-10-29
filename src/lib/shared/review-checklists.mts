@@ -7,17 +7,17 @@ export type ChecklistInput = Pick<Summary, "size" | "frameworks" | "concerns" | 
 export const CHECKLIST_SCOPES: readonly ChecklistScope[] = ["phase", "checkpoint", "cumulative", "crosscheck"];
 export const CHECKLIST_ROOT = "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/";
 
-const ALIGNMENT = "10-alignment.md";
-const BAR = "12-bar.md";
-const TRACED = "15-traced.md";
-const PATTERNS_CORE = "20-patterns-core.md";
-const RED_FLAGS = "25-design-red-flags.md";
-const SECURITY = "30-patterns-security.md";
-const CROSSCHECK = "60-crosscheck.md";
+const ALIGNMENT = "alignment.md";
+const BAR = "bar.md";
+const TRACED = "traced.md";
+const PATTERNS_CORE = "patterns-core.md";
+const RED_FLAGS = "design-red-flags.md";
+const SECURITY = "patterns-security.md";
+const CROSSCHECK = "crosscheck.md";
 const MEDIUM_SKIP = ["SOLID", "DRY"];
 
-const FRAMEWORK_FILES: Readonly<Record<string, string>> = { typescript: "40-framework-typescript.md", dotnet: "40-framework-dotnet.md" };
-const CONCERN_FILES: Readonly<Record<string, string>> = { "clean-architecture": "50-concern-clean-architecture.md", "vertical-slice": "50-concern-vertical-slice.md" };
+const FRAMEWORK_FILES: Readonly<Record<string, string>> = { typescript: "framework-typescript.md", dotnet: "framework-dotnet.md" };
+const CONCERN_FILES: Readonly<Record<string, string>> = { "clean-architecture": "concern-clean-architecture.md", "vertical-slice": "concern-vertical-slice.md" };
 
 export const MAPPED_CHECKLISTS: readonly string[] = [ALIGNMENT, BAR, TRACED, PATTERNS_CORE, RED_FLAGS, SECURITY, CROSSCHECK, ...Object.values(FRAMEWORK_FILES), ...Object.values(CONCERN_FILES)];
 

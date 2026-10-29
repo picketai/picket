@@ -8,13 +8,13 @@ Apply to changed `.ts`, `.tsx`, `.mts`, `.cts`, and `.js` files. Skip a row whos
 |---|---|---|---|
 | T1 | No `any` | `any` as a type annotation or assertion outside test utilities and generated files | Major |
 | T2 | Unsafe assertion | `as SomeType` with no preceding type guard, discriminant check, or `instanceof` that proves it | Major |
-| T3 | Non-null assertion | `!` with no earlier null check in the same scope and no comment saying why null is impossible | Major |
+| T3 | Non-null assertion | `!` with no earlier null check or narrowing in the same scope | Major |
 
 ## Promises
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
-| A1 | Floating promise | A Promise-returning call has no `await`, `.then()`, or `.catch()`, and is not marked fire-and-forget (`void` prefix or comment) | Critical |
+| A1 | Floating promise | A Promise-returning call has no `await`, `.then()` or `.catch()`, and no `void` prefix | Critical |
 | A2 | Unhandled rejection | `.then(handler)` with no `.catch()` and no second `.then` argument | Major |
 | A3 | `async` without `await` | A function is declared `async` and contains no `await`; likely a missing `await` | Minor |
 | A4 | Promise constructor antipattern | `new Promise((resolve, reject) => ...)` wraps a call that already returns a Promise | Minor |
@@ -23,7 +23,7 @@ Apply to changed `.ts`, `.tsx`, `.mts`, `.cts`, and `.js` files. Skip a row whos
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
-| E1 | Swallowed error | A `catch` body is empty, holds only a comment, or only `return`s, with no logging, rethrow, or documented reason | Critical |
+| E1 | Swallowed error | A `catch` body is empty, holds only a comment, or returns a value the return type cannot tell from success, with no logging or rethrow | Critical |
 | E2 | Unnarrowed catch binding | `catch (e)` uses `e` as an `Error` (reads `.message`, `.stack`) without `e instanceof Error` or `typeof` narrowing | Major |
 
 ## React

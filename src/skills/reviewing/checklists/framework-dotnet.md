@@ -34,7 +34,7 @@ Apply to changed `.cs` files and their DI registration sites. Skip a row whose t
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
 | N1 | Null dereference | A nullable reference (`T?`) is accessed with no null check, `??`, or `?.` | Critical |
-| N2 | Null-forgiving `!` | `!` is used with no preceding null check and no comment saying why null is impossible | Major |
+| N2 | Null-forgiving `!` | `!` is used with no preceding null check or pattern that rules out null | Major |
 | N3 | Unguarded argument | A public or internal method takes a reference-type parameter with no nullability annotation and no guard | Minor |
 
 ## Exceptions

@@ -33,22 +33,22 @@ Field meaning:
 - `security_path`: true when any changed file sits under a security path: the list in the `security-paths` rule plus the project's `security_paths` in `.picket/config.json`.
 - `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
 - `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
-- `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`checklists/12-bar.md`).
-- `mutation`: the last `picket mutate` result (`{ mutant: { path, line, from, to }, outcome }`), or null when none ran; `survived` is row Mu1 in `checklists/12-bar.md`.
+- `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`checklists/bar.md`).
+- `mutation`: the last `picket mutate` result (`{ mutant: { path, line, from, to }, outcome }`), or null when none ran; `survived` is row Mu1 in `checklists/bar.md`.
 
 Summary missing or a field absent: ask for it and stop. Do not fall back to your own detection.
 
-A cross-check request carries no summary because there is no diff. Load `checklists/60-crosscheck.md` alone.
+A cross-check request carries no summary because there is no diff. Load `checklists/crosscheck.md` alone.
 
 ## Load table
 
 | Size | Load |
 |---|---|
-| small | `10-alignment.md`, `12-bar.md`, `30-patterns-security.md`, one `40-framework-<name>.md` per framework |
-| medium | the small set plus `20-patterns-core.md` (skip its SOLID and DRY sections), `25-design-red-flags.md` and one `50-concern-<name>.md` per concern |
-| large | the medium set with `20-patterns-core.md` in full |
+| small | `alignment.md`, `bar.md`, `patterns-security.md`, one `framework-<name>.md` per framework |
+| medium | the small set plus `patterns-core.md` (skip its SOLID and DRY sections), `design-red-flags.md` and one `concern-<name>.md` per concern |
+| large | the medium set with `patterns-core.md` in full |
 
-`security_path: true` overrides size: load `20-patterns-core.md` in full and `30-patterns-security.md`, and read every changed security-path file in full, whatever the size. `30-patterns-security.md` sits on every row because a 2-file, 40-line change can hardcode a secret as easily as a large one.
+`security_path: true` overrides size: load `patterns-core.md` in full and `patterns-security.md`, and read every changed security-path file in full, whatever the size. `patterns-security.md` sits on every row because a 2-file, 40-line change can hardcode a secret as easily as a large one.
 
 After the row's set, load every file in `extension_steps`. Extension rows use the same shape and severities; they may add findings and never waive a core row.
 
@@ -93,7 +93,7 @@ The last line of a review is exactly `APPROVED` or `CHANGES REQUIRED`, alone. `A
 
 UNCLEAR blocks fail-closed because an unjudgeable criterion is a plan defect, not a developer defect: the verdict reason names the ambiguity so the team lead routes it to the architect, not back to the developer.
 
-Story rows (`S-N`, cumulative only, `checklists/15-traced.md`) differ in one way: FAIL blocks, UNCLEAR does not. An ambiguous story is a question for the user, so it goes on the `Questions:` line instead.
+Story rows (`S-N`, cumulative only, `checklists/traced.md`) differ in one way: FAIL blocks, UNCLEAR does not. An ambiguous story is a question for the user, so it goes on the `Questions:` line instead.
 
 The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. Any Critical or Major row gives `DRIFT DETECTED`; Minor rows are recorded and do not block.
 
@@ -102,7 +102,7 @@ The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. 
 The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Orders` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
 
 1. `picket pullrequest prepare <url> --human` (the JSON form goes to the reviewer; keep the `repo_root` it names). It fetches `refs/pull/<id>/merge`, computes base and head, the review summary over that range, and the PR's title and description (Azure DevOps: a PAT in `AZDO_PAT`, set once with `setx AZDO_PAT <token>` or in the `env` block of the untracked `.claude/settings.local.json`, never in a tracked file; GitHub: the `gh` CLI). A missing PAT is reported, not fatal: the review runs code-only. Any other error: print it and stop.
-2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/checklists/10-alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
+2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/checklists/alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
 3. Print the reviewer's block verbatim, then one options line: `[p] post to the PR   [d] done`. Nothing is written to the PR before `p`. When the block says `Alignment: N/A (no description)`, add one line under it: the PR carried no intent to check the diff against, so half the review is missing; a two-line description in the PR template restores it. Before `p`, check the finding line numbers against the file at head once (`git -C <repo_root> show <head>:<path> | sed -n '<line>,+3p'`); a wrong anchor puts the thread on the wrong code, and the first two live reviews were both off.
 4. On `p`: `picket pullrequest post <url> --file .picket/state/pr-<id>.review.md --dry-run --human` shows what would go; print it and ask once more with `[y] post   [n] keep local`; on `y`, the same command without `--dry-run`. Azure DevOps only; on GitHub, tell the user to use `gh pr review`.
 
@@ -111,15 +111,15 @@ The kernel finds the clone by the repository name in the URL: the project root, 
 ```
 reviewing/
   SKILL.md                                this file
-  checklists/10-alignment.md                   criteria to evidence, plus the comment and test floors (always)
-  checklists/12-bar.md                         silenced checks against the user's waivers (always)
-  checklists/15-traced.md                      cumulative only, with 10's floors, 12-bar.md and criteria rules: request and story first, plan last
-  checklists/20-patterns-core.md               SOLID, DRY, correctness, naming (medium and large)
-  checklists/25-design-red-flags.md            eight shapes that hurt the next reader, Rf1 to Rf8 (medium and large)
-  checklists/30-patterns-security.md           secrets, injection, insecure defaults, guard bypass (always)
-  checklists/40-framework-typescript.md        types, promises, errors, React, imports, leaks
-  checklists/40-framework-dotnet.md            async, DI, EF Core, null safety, exceptions, disposal
-  checklists/50-concern-clean-architecture.md  dependency direction, domain model, use cases, interfaces
-  checklists/50-concern-vertical-slice.md      slice isolation, completeness, messaging, over-engineering
-  checklists/60-crosscheck.md                  decisions versus phases inside one design record
+  checklists/alignment.md                      criteria to evidence, plus the comment and test floors (always)
+  checklists/bar.md                            silenced checks against the user's waivers (always)
+  checklists/traced.md                         cumulative only, with alignment.md's floors, bar.md and criteria rules: request and story first, plan last
+  checklists/patterns-core.md                  SOLID, DRY, correctness, naming (medium and large)
+  checklists/design-red-flags.md               eight shapes that hurt the next reader, Rf1 to Rf8 (medium and large)
+  checklists/patterns-security.md              secrets, injection, insecure defaults, guard bypass (always)
+  checklists/framework-typescript.md           types, promises, errors, React, imports, leaks
+  checklists/framework-dotnet.md               async, DI, EF Core, null safety, exceptions, disposal
+  checklists/concern-clean-architecture.md     dependency direction, domain model, use cases, interfaces
+  checklists/concern-vertical-slice.md         slice isolation, completeness, messaging, over-engineering
+  checklists/crosscheck.md                     decisions versus phases inside one design record
 ```

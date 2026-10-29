@@ -24,7 +24,7 @@ Layers: Domain, then Application, then Infrastructure and Presentation. Inner la
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
 | Uc1 | Use case too large | One handler method coordinates more than one aggregate root or calls more than one repository within the same logical step | Major |
-| Uc2 | Cross-aggregate transaction | One use case writes two or more aggregate roots in one transaction with no documented reason (eventual consistency is the default) | Major |
+| Uc2 | Cross-aggregate transaction | One use case writes two or more aggregate roots in one transaction and no decision in the record states why (eventual consistency is the default) | Major |
 
 ## Interfaces
 

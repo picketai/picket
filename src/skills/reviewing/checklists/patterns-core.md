@@ -23,7 +23,7 @@ Universal correctness and maintainability checks. On medium, skip the SOLID and 
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
-| Co1 | Mutated input argument | A function modifies a reference-type argument the caller passed in, and the parameter is not named or documented as an output | Critical |
+| Co1 | Mutated input argument | A function modifies a reference-type argument the caller passed in, and the parameter is not named as an output | Critical |
 | Co2 | Off-by-one | A loop bound uses `<` for `<=` or `>` for `>=` so the first or last element is skipped; verify by tracing the index against the collection size | Critical |
 | Co3 | Wrong equality | Reference equality (`==` on objects, `ReferenceEquals`, `is` without a pattern) where value equality is intended on a type that overrides `Equals` | Critical |
 | Co4 | Mutable shared state | A `static` or module-level variable is written by instance methods without synchronisation where concurrent access is possible | Critical |
@@ -33,4 +33,4 @@ Universal correctness and maintainability checks. On medium, skip the SOLID and 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
 | Na1 | Misleading name | A function, variable, or type name implies behaviour the implementation does not have (`GetUser` that creates a user, `isValid` that returns a string) | Major |
-| Na2 | Unexplained abbreviation | A non-standard abbreviation is used as an identifier with no comment and no convention established in the codebase | Minor |
+| Na2 | Unexplained abbreviation | A non-standard abbreviation is used as an identifier and is neither a convention established in the codebase nor a glossary term | Minor |
