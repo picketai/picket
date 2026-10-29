@@ -209,7 +209,7 @@ picket reply <id> <reply...>
 Apply a verdict to a work item.
 
 ```sh
-picket route <id> --verdict <TOKEN> --agent <name> [--phase <n>] [--scope <s>] [--through <n>] [--reason <r>] [--session <id>]
+picket route <id> --verdict <TOKEN> --agent <name> [--phase <n>] [--scope <s>] [--through <n>] [--reason <r>] [--session <id>] [--publish]
 ```
 
 ## picket set

@@ -2,7 +2,7 @@ import { action, done } from "../../shared/action.mts";
 import { route, type RouteInput, type RouteResult } from "../../shared/route/route.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId } from "../../shared/work/files.mts";
-import { int, need, str, UsageError, type Args } from "../../util/args.mts";
+import { flag, int, need, str, UsageError, type Args } from "../../util/args.mts";
 
 export { route, type RouteInput, type RouteResult } from "../../shared/route/route.mts";
 
@@ -20,6 +20,7 @@ function parseRoute(args: Args): RouteInput {
     through: int(args, "through"),
     reason: str(args, "reason"),
     session: str(args, "session"),
+    publish: flag(args, "publish"),
   };
 }
 
@@ -28,7 +29,7 @@ function renderRoute(v: RouteResult): string {
 }
 
 export const verb: VerbSpec<RouteInput, RouteResult> = {
-  usage: "route <id> --verdict <TOKEN> --agent <name> [--phase <n>] [--scope <s>] [--through <n>] [--reason <r>] [--session <id>]",
+  usage: "route <id> --verdict <TOKEN> --agent <name> [--phase <n>] [--scope <s>] [--through <n>] [--reason <r>] [--session <id>] [--publish]",
   output: "json",
   parse: parseRoute,
   run: routeVerdict,

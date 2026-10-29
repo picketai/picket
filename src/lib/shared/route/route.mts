@@ -11,7 +11,7 @@ import { currentPhase, phaseOf, readSnapshot, type WorkSnapshot } from "../work/
 import { isSessionId } from "../work/state.mts";
 import type { VerdictEntry } from "../work/verdict-log.mts";
 import { applyChanges } from "./apply.mts";
-import { EFFECTS, type Effect, type GateOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
+import { EFFECTS, type Change, type Effect, type GateOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
 
 export type { RouteInput };
 export type RouteResult = { id: WorkId; verdict: string; phase: number | null; applied: string[]; next: NextView };
@@ -28,11 +28,22 @@ function verdictSpec(verdict: string, agent: string | null): VerdictSpec {
   return spec;
 }
 
-function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend }: PlannedVerdict): VerdictEntry {
+function publishedTo(changes: Change[]): { published?: string } {
+  const change = changes.find((c) => c.kind === "publish");
+  return change?.kind === "publish" ? { published: change.to } : {};
+}
+
+function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend }: PlannedVerdict, changes: Change[]): VerdictEntry {
   const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
   const sessioned = isSessionId(session) ? { session } : {};
   const amending = amend ? { amend } : {};
-  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending };
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...publishedTo(changes) };
+}
+
+function refuseMisplacedPublish({ publish, verdict }: RouteInput, { effect }: VerdictSpec, snap: WorkSnapshot): void {
+  if (!publish) return;
+  if (snap.state.lane !== "research") throw new Refused(`--publish is for a research item; ${snap.state.id} is in the ${snap.state.lane} lane`);
+  if (effect !== "phase_approved") throw new Refused(`--publish goes with --verdict approved, not ${verdict}`);
 }
 
 function gateOf(root: string, snap: WorkSnapshot): GateOf {
@@ -48,9 +59,10 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const agent = bareAgentName(input.agent);
   const spec = verdictSpec(input.verdict, agent);
   const snap = readSnapshot(ctx.root, input.id);
+  refuseMisplacedPublish(input, spec, snap);
   const phase = input.phase ?? currentPhase(snap)?.n ?? null;
   const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, phase, marks: marksOnDisk(ctx.root, input.id, phase) };
   const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap));
-  const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned) });
+  const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned, changes) });
   return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id, isSessionId(input.session) ? input.session : null) };
 }

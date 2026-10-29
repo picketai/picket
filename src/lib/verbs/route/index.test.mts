@@ -72,7 +72,8 @@ const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
 test("route needs a verdict and an agent and reads its numbers as whole numbers (T-5.4)", () => {
   const input = parse([ID, "--verdict", "approved", "--agent", "user", "--phase", "2", "--through", "4"]);
-  assert.deepEqual(input, { id: ID, verdict: "approved", agent: "user", phase: 2, scope: undefined, through: 4, reason: undefined, session: undefined });
+  assert.deepEqual(input, { id: ID, verdict: "approved", agent: "user", phase: 2, scope: undefined, through: 4, reason: undefined, session: undefined, publish: false });
+  assert.equal(parse([ID, "--verdict", "approved", "--agent", "user", "--publish"]).publish, true);
   assert.throws(() => parse([ID, "--verdict", "approved", "--agent", "user", "--phase", "x"]), UsageError);
   assert.throws(() => parse([ID, "--verdict", "approved"]), (err) => err instanceof UsageError && err.message.includes("--agent"));
 });

@@ -96,10 +96,15 @@ export function repeatedClasses(root: string): Repeat[] {
     .sort((a, b) => a.class.localeCompare(b.class));
 }
 
+function publishedPaths(snap: WorkSnapshot): string[] {
+  return [...new Set(snap.verdicts.flatMap((row) => (typeof row.published === "string" ? [row.published] : [])))];
+}
+
 function commitClose(root: string, snap: WorkSnapshot, message: string, touched: string[], env: NodeJS.ProcessEnv): CommitResult {
   const id = snap.state.id;
+  const published = publishedPaths(snap);
   try {
-    return commitOwned(root, message, { add: [workRel(id)], owns: itemOwner(root, snap, touched), env });
+    return commitOwned(root, message, { add: [workRel(id), ...published], owns: itemOwner(root, snap, [...touched, ...published]), env });
   } catch (err) {
     throw new Refused((err as Error).message, { id });
   }

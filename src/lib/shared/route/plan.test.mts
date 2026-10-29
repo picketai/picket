@@ -67,6 +67,23 @@ test("approved with through past the phase records the run grant and commits", (
   ]);
 });
 
+const RESEARCH = { lane: "research", title: "Pricing rules", id: "20261029-pricing" } as const;
+
+test("approved on a research item plans nothing, and no phase is needed", () => {
+  assert.deepEqual(plan("approved", snapshotOf({ ...RESEARCH }), {}), []);
+});
+
+test("approved with publish on a research item plans one copy of research.md to the report path", () => {
+  assert.deepEqual(plan("approved", snapshotOf({ ...RESEARCH }), { publish: true }), [
+    { kind: "publish", from: "work/20261029-pricing/research.md", to: "artifacts/reports/pricing-rules.md", line: "published work/20261029-pricing/research.md to artifacts/reports/pricing-rules.md" },
+  ]);
+});
+
+test("publish is refused for a title with no word left for a name, and for a missing research.md", () => {
+  assert.throws(() => plan("approved", snapshotOf({ ...RESEARCH, title: "Of the" }), { publish: true }), (err) => err instanceof Refused && /leaves no word for a report name/.test(err.message));
+  assert.throws(() => plan("approved", snapshotOf({ ...RESEARCH, artifact: null }), { publish: true }), (err) => err instanceof Refused && /no research.md to publish/.test(err.message));
+});
+
 test("a cumulative APPROVED marks every unreviewed phase in one line; a phase APPROVED marks that phase", () => {
   const snap = snapshotOf({ phases: [{ n: 1, reviewed: true }, { n: 2 }, { n: 3 }] });
   assert.deepEqual(plan("APPROVED", snap, { scope: "cumulative" }), [

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { runCli } from "#test/cli.mts";
@@ -51,4 +51,66 @@ test("approval commits the staged phase with the developer's proposed message; r
   assert.ok(r.applied.some((a) => a.startsWith("committed ")), r.applied.join(" | "));
   assert.equal(git("log", "-1", "--format=%s"), `Wire route, phase 2 of ${s.id}`);
   assert.equal(git("status", "--porcelain"), "");
+});
+
+const REPORT = "---\nkind: report\nconfidence: high\n---\n# Report: Pricing rules\n";
+const PUBLISHED = join("artifacts", "reports", "pricing-rules.md");
+
+function researchItem(t) {
+  const root = withProject(t);
+  const { id } = openItem(root, { lane: "research", title: "Pricing rules" });
+  writeFileSync(join(root, "work", id, "research.md"), REPORT);
+  return { root, id };
+}
+
+function routeOutcome(root, id, ...args) {
+  return runCli(root, ["route", id, ...args, "--root", root]);
+}
+
+function verdictRows(root, id) {
+  return readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+}
+
+test("approved --publish copies a research item's report to its artifacts/reports path and records it (T-3.1)", (t) => {
+  const { root, id } = researchItem(t);
+  const r = route(root, id, "--verdict", "approved", "--agent", "user", "--publish");
+  assert.deepEqual(r.applied, [`published work/${id}/research.md to artifacts/reports/pricing-rules.md`]);
+  assert.equal(readFileSync(join(root, PUBLISHED), "utf8"), REPORT);
+  assert.equal(verdictRows(root, id).at(-1).published, "artifacts/reports/pricing-rules.md");
+});
+
+test("publish refuses a target with other bytes and writes nothing; identical bytes pass (T-3.2)", (t) => {
+  const { root, id } = researchItem(t);
+  mkdirSync(join(root, "artifacts", "reports"), { recursive: true });
+  writeFileSync(join(root, PUBLISHED), "# An older report\n");
+  const refused = routeOutcome(root, id, "--verdict", "approved", "--agent", "user", "--publish");
+  assert.equal(refused.status, 2, refused.stdout);
+  assert.match(refused.json.error, /artifacts\/reports\/pricing-rules\.md already holds a different report/);
+  assert.equal(readFileSync(join(root, PUBLISHED), "utf8"), "# An older report\n");
+  assert.equal(existsSync(join(root, "work", id, "verdicts.jsonl")), false);
+
+  writeFileSync(join(root, PUBLISHED), REPORT);
+  const r = route(root, id, "--verdict", "approved", "--agent", "user", "--publish");
+  assert.deepEqual(r.applied, ["already published to artifacts/reports/pricing-rules.md"]);
+});
+
+test("--publish is refused off a research item and with another verdict (T-3.3)", (t) => {
+  const { root, id } = researchItem(t);
+  const rejected = routeOutcome(root, id, "--verdict", "rejected", "--agent", "user", "--publish");
+  assert.equal(rejected.status, 2, rejected.stdout);
+  assert.match(rejected.json.error, /--publish goes with --verdict approved, not rejected/);
+
+  const { id: order } = openItem(root, { lane: "order", title: "Csv" });
+  const misplaced = routeOutcome(root, order, "--verdict", "approved", "--agent", "user", "--phase", "1", "--publish");
+  assert.equal(misplaced.status, 2, misplaced.stdout);
+  assert.match(misplaced.json.error, /--publish is for a research item; .* is in the order lane/);
+});
+
+test("approved without --publish on a research item records the verdict and writes no copy and no marker (T-3.3)", (t) => {
+  const { root, id } = researchItem(t);
+  const r = route(root, id, "--verdict", "approved", "--agent", "user");
+  assert.deepEqual(r.applied, []);
+  assert.equal(verdictRows(root, id).at(-1).verdict, "approved");
+  assert.equal(existsSync(join(root, "artifacts")), false);
+  assert.deepEqual(readdirSync(join(root, "work", id, "phases")), []);
 });

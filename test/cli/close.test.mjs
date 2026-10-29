@@ -350,3 +350,16 @@ test("close passes a research item with its report and refuses one without it", 
   assert.equal(r.code, 0, r.stdout);
   assert.match(stateText(root, id), /status: done/);
 });
+
+test("close after a publish commits the work item and the published report together (T-3.4)", (t) => {
+  const { root, id, git } = repoWithOpenItem(t, "research");
+  writeFileSync(join(root, "work", id, "research.md"), "---\nkind: report\nconfidence: high\n---\n# Report\n");
+  const published = picket(root, "route", id, "--verdict", "approved", "--agent", "user", "--publish");
+  assert.equal(published.code, 0, published.stdout);
+  const r = picket(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  const committed = git("show", "--name-only", "--format=", "HEAD").split("\n");
+  assert.ok(committed.includes("artifacts/reports/csv-export.md"), committed.join(", "));
+  assert.ok(committed.includes(`work/${id}/research.md`), committed.join(", "));
+  assert.equal(git("status", "--porcelain", "--", "artifacts", "work"), "");
+});
