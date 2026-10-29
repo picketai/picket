@@ -159,9 +159,28 @@ test("a reply that matches nothing lists the options; a reply away from a gate n
   assert.equal(existsSync(join(root, "work", id, "replies.jsonl")), false);
 });
 
-test("a research item takes no reply", async (t) => {
+function researchItem(t: TestContext, title = "Pricing rules") {
   const root = withProject(t, { host: true, picket: false });
-  const { id } = openItem(root, { lane: "research", title: "Report" });
+  const { id } = openItem(root, { lane: "research", title });
   writeFileSync(join(root, "work", id, "research.md"), "# R\n");
-  assert.match(await refused(root, id, "a"), /research item/);
+  return { root, id };
+}
+
+test("p on a research item approves it and publishes the report", async (t) => {
+  const { root, id } = researchItem(t);
+  const result = await applied(root, id, "p");
+  assert.deepEqual(result.applied, [`published work/${id}/research.md to artifacts/reports/pricing-rules.md`]);
+  assert.equal(readFileSync(join(root, "artifacts", "reports", "pricing-rules.md"), "utf8"), "# R\n");
+  assert.equal(replyRows(root, id).at(-1).reply, "p");
+});
+
+test("a, d and x on a research item are the lead's, and are refused saying so", async (t) => {
+  const { root, id } = researchItem(t);
+  for (const text of ["a", "d", "x too shallow"]) assert.equal(await refused(root, id, text), "on a research item reply takes p; a, d and x are the lead's (picket:researching)", text);
+  assert.equal(existsSync(join(root, "artifacts")), false);
+});
+
+test("p is refused on a research item whose title offers no publish", async (t) => {
+  const { root, id } = researchItem(t, "Of the");
+  assert.match(await refused(root, id, "p"), /reply takes p/);
 });

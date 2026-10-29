@@ -1,4 +1,5 @@
 import type { NextStep } from "../../shared/work/next-step.mts";
+import type { Lane } from "../../shared/work/state.mts";
 
 export type Proposals = { comments: string[]; waivers: string[] };
 
@@ -9,7 +10,8 @@ export type Matched =
   | { kind: "waive"; n: number }
   | { kind: "continue" }
   | { kind: "redesign" }
-  | { kind: "abandon" };
+  | { kind: "abandon" }
+  | { kind: "publish" };
 
 type Form = { pattern: RegExp; letter: string | null; match: (m: RegExpMatchArray, step: NextStep, proposals: Proposals) => Matched | null };
 
@@ -55,14 +57,17 @@ const BLOCK_FORMS: readonly Form[] = [
   { pattern: /^(?:x|abandon)$/i, letter: "x", match: () => ({ kind: "abandon" }) },
 ];
 
-function formsFor(step: NextStep): readonly Form[] {
+const RESEARCH_FORMS: readonly Form[] = [{ pattern: /^(?:p|publish)$/i, letter: "p", match: () => ({ kind: "publish" }) }];
+
+function formsFor(step: NextStep, lane: Lane): readonly Form[] {
+  if (lane === "research") return step.action === "approve_phase" ? RESEARCH_FORMS : [];
   if (step.action === "approve_phase") return APPROVE_FORMS;
   return step.action === "resolve_block" || step.action === "resolve_rejections" ? BLOCK_FORMS : [];
 }
 
-export function matchReply(reply: string, step: NextStep, proposals: Proposals): Matched | null {
+export function matchReply(reply: string, step: NextStep, proposals: Proposals, lane: Lane): Matched | null {
   const text = reply.trim();
-  for (const form of formsFor(step)) {
+  for (const form of formsFor(step, lane)) {
     const m = text.match(form.pattern);
     if (!m || (form.letter !== null && !offered(step, form.letter))) continue;
     const matched = form.match(m, step, proposals);

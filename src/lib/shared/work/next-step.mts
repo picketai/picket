@@ -1,3 +1,4 @@
+import { documentRel, documentSlug } from "../document-path.mts";
 import { decisionsRevisedSince } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
 import { freshReplies } from "./replies.mts";
@@ -151,6 +152,11 @@ function phasedStep(snap: WorkSnapshot, securityPaths: readonly string[]): NextS
   return approvalStep(snap, current, securityPaths);
 }
 
+function researchOptions(title: string): string[] {
+  const publish = documentSlug("report", title) === null ? [] : [`[p] accept and publish to ${documentRel("report", { subject: title })}`];
+  return ["[a] accept", ...publish, "[d] deeper pass", "[x] reject: <why>"];
+}
+
 export function nextStep(snap: WorkSnapshot, securityPaths: readonly string[]): NextStep {
   const { id, lane, status } = snap.state;
   if (status === "done" || status === "abandoned") return { action: "none", actor: null, detail: `work item is ${status}` };
@@ -159,6 +165,6 @@ export function nextStep(snap: WorkSnapshot, securityPaths: readonly string[]): 
   if (ambiguous) return { action: "resolve_sources", actor: "user", detail: `${ambiguous} reference(s) differ across worktrees`, options: [`[p] pick: picket source pick ${id} <ref> <label>`] };
   if (lane === "fast") return { action: "close", actor: "lead", detail: "fast lane: finish the change, run the checks, then close" };
   if (!snap.artifact) return { action: "write_artifact", actor: lane === "research" ? "analyst" : "architect", detail: `${ARTIFACT_BY_LANE[lane]} does not exist yet` };
-  if (lane === "research") return { action: "approve_phase", actor: "user", phase: 1, detail: "report written; accept or ask for a deeper pass", options: ["[a] accept", "[d] deeper pass", "[x] reject: <why>"] };
+  if (lane === "research") return { action: "approve_phase", actor: "user", phase: 1, detail: "report written; accept or ask for a deeper pass", options: researchOptions(snap.state.title) };
   return phasedStep(snap, securityPaths);
 }

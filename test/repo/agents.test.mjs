@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bodyOf, fences, frontmatterFields, sections } from "#test/instructions.mts";
 import { BLOCK_FIELDS, detectBlock } from "../../src/lib/shared/work/block.mts";
+import { WORK_FILES } from "../../src/lib/shared/work/files.mts";
 import { VERDICTS } from "../../src/lib/shared/verdicts.mjs";
 import { sendsFor } from "../../src/lib/shared/work/send.mts";
 import { snapshotOf } from "#test/snapshot.mts";
@@ -20,6 +21,9 @@ const EXPEDITED_HEADING = "## Expedited: <id>";
 const FIELD_KEY = /^([a-z][a-z ]*):(?:\s|$)/;
 const RUN_THROUGH = /^run through\b/;
 const CODE_SPAN = /`([^`]+)`/g;
+const MARKDOWN_PATH = /`([^`\s]+\.md)`/g;
+const PLUGIN_ROOT = "${CLAUDE_PLUGIN_ROOT}/";
+const SUBAGENT_REFUSED_BASENAME = /^(REPORT|SUMMARY|FINDINGS|ANALYSIS).*\.md$/i;
 const FIXTURE_TS = "2026-10-29T10:00:00.000Z";
 const FIXTURE_SESSION = "S";
 
@@ -319,6 +323,24 @@ test("a review fence without Classes: fails, and a fence ending on another agent
   assert.deepEqual(outputProblems(fence("APPROVED", "Classes: none"), "reviewer").problems, []);
   assert.deepEqual(outputProblems(fence("APPROVED"), "reviewer").problems, ['the review block has no "Classes:" line']);
   assert.deepEqual(outputProblems(fence("PHASE DONE", "Classes: none"), "reviewer").problems, ['the Output fence ends with "PHASE DONE", not a verdict of reviewer']);
+});
+
+function markdownPaths(text) {
+  return [...text.matchAll(MARKDOWN_PATH)].map(([, path]) => path).filter((path) => !path.startsWith(PLUGIN_ROOT));
+}
+
+function refusedNames(paths) {
+  return paths.filter((path) => SUBAGENT_REFUSED_BASENAME.test(path.split("/").at(-1)));
+}
+
+test("no work item file and no .md path an agent names has a basename Claude Code refuses from a subagent", () => {
+  const paths = [...WORK_FILES, ...agentFiles().flatMap(({ text }) => markdownPaths(text))];
+  assert.deepEqual(refusedNames(paths), []);
+});
+
+test("a summary.md path in an agent is reported as refused", () => {
+  assert.deepEqual(refusedNames(markdownPaths("Write `work/<id>/summary.md` and `work/<id>/research.md`.")), ["work/<id>/summary.md"]);
+  assert.deepEqual(refusedNames(markdownPaths("Read `${CLAUDE_PLUGIN_ROOT}/skills/documenting/templates/report.md`.")), [], "a plugin file is read, never written");
 });
 
 test("PENDING lists exactly the shells that fail the structure check", () => {

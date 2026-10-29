@@ -24,7 +24,7 @@ Start with, in one tool batch: `picket state <id>`, the request, `${CLAUDE_PLUGI
 
 ## Constraints
 
-Write only `work/<id>/research.md`, `.claude/PROJECT-MAP.md` when asked to produce or refresh it, and standalone documents under `artifacts/reports/` or `artifacts/api/` when there is no work item. Never source code, never another agent's artifact.
+Write only inside `work/<id>/`, where the report is `work/<id>/research.md`, and `.claude/PROJECT-MAP.md` when asked to produce or refresh it. A report leaves the work item only through the research gate's `[p]`, a copy the kernel makes. Never source code, never another agent's artifact.
 
 Coverage: read every source you decide to read in full; never draw a finding from a partial read. Directories over 30 files: read what is reachable from entry points, cap 60 files, and record the selection under Risks. Every finding cites its location and carries exactly one confidence marker: `[VERIFIED]` (observed), `[INFERRED]` (deduced from verified facts), `[ASSUMED]` (not grounded in the source). Findings are `R-###` in encounter order and never renumbered.
 

@@ -53,7 +53,7 @@ The research lane answers a question with a report instead of a change: "how doe
 
 **How you reach it.** It starts when `picket admit` answers `research`. A plain question with a one-paragraph answer needs no lane; Claude just answers it.
 
-**Where it fits.** The main session leads and the [analyst](agents.md#picketanalyst) does the reading. It stops twice: after an outline (`[a] accept   [d] deeper pass   [x] reject: <why>`) and after the deep pass. The report lives in `work/<id>/research.md`. The analyst never proposes a design; a finding that needs one is flagged, and the closing line offers the order or design lane.
+**Where it fits.** The main session leads and the [analyst](agents.md#picketanalyst) does the reading. It stops twice: after an outline (`[a] accept   [p] accept and publish to artifacts/reports/<slug>.md   [d] deeper pass   [x] reject: <why>`) and after the deep pass. The report lives in `work/<id>/research.md`; `[p]` accepts it and copies it to `artifacts/reports/`, named from the item's title, through `picket reply <id> p`. The analyst never proposes a design; a finding that needs one is flagged, and the closing line offers the order or design lane.
 
 ## picket:inspecting
 

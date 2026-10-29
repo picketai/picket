@@ -1,4 +1,4 @@
-import { action, done, refuse, Refused } from "../../shared/action.mts";
+import { action, done, refuse, Refused, type Outcome } from "../../shared/action.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import type { Context } from "../../shared/context.mts";
 import { route } from "../../shared/route/route.mts";
@@ -12,7 +12,7 @@ import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { appendReply } from "../../shared/work/replies.mts";
 import { messageTo, renderNextStep } from "../../shared/work/send.mts";
 import { readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
-import { isSessionId, writeState, type Status } from "../../shared/work/state.mts";
+import { isSessionId, writeState, type Lane, type Status } from "../../shared/work/state.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 import { GATE_ACTIONS, matchReply, type Matched, type Proposals } from "./table.mts";
 
@@ -24,9 +24,11 @@ type Gate = { snap: WorkSnapshot; step: NextStep; phase: number | null; session:
 
 const FRESH_DEVELOPER = "[c] continue with a fresh developer";
 const REDESIGN_IN_DESIGN_LANE = "abandoned; open the same request in the design lane";
+const RESEARCH_REPLY = "on a research item reply takes p; a, d and x are the lead's (picket:researching)";
+const NO_PROPOSALS: Proposals = { comments: [], waivers: [] };
 
 function blockProposals(root: string, id: WorkId, phase: number | null): Proposals {
-  if (phase === null) return { comments: [], waivers: [] };
+  if (phase === null) return NO_PROPOSALS;
   const block = parseBlock(readBlock(root, id, phase));
   return { comments: proposals(blockField(block, "Comments"), COMMENT_SEPARATOR), waivers: proposals(blockField(block, "Waivers"), WAIVER_SEPARATOR) };
 }
@@ -39,7 +41,7 @@ function developerMessage({ snap, phase, session }: Gate, line: string): SendVie
   return messageTo(snap, "developer", session, [`work: ${snap.state.id}`, `phase: ${phase}`, line]);
 }
 
-function routeUser({ snap, phase, session, ctx }: Gate, verdict: "approved" | "rejected", extra: { through?: number; reason?: string }): string[] {
+function routeUser({ snap, phase, session, ctx }: Gate, verdict: "approved" | "rejected", extra: { through?: number; reason?: string; publish?: boolean }): string[] {
   return route({ id: snap.state.id, verdict, agent: "user", phase: phase ?? undefined, session, ...extra }, ctx).applied;
 }
 
@@ -88,6 +90,8 @@ function applyMatched(gate: Gate, matched: Matched, found: Proposals): Effect {
       return redesign(gate);
     case "abandon":
       return effect(setStatus(gate, "abandoned"));
+    case "publish":
+      return effect(routeUser(gate, "approved", { publish: true }));
   }
 }
 
@@ -95,15 +99,20 @@ function optionsOf(step: NextStep): string[] {
   return "options" in step ? step.options : [];
 }
 
+function unmatched(reply: string, step: NextStep, lane: Lane): Outcome<never> {
+  if (lane === "research") return refuse(RESEARCH_REPLY, { options: optionsOf(step) });
+  return refuse(`"${reply}" matches no option at ${step.action}; options: ${optionsOf(step).join(" · ")}`, { options: optionsOf(step) });
+}
+
 export const applyReply = action<ReplyInput, ReplyResult>(async ({ id, reply }, ctx) => {
   const snap = readSnapshot(ctx.root, id);
-  if (snap.state.lane === "research") return refuse(`${id} is a research item; reply applies to the order and design lanes`, { lane: snap.state.lane });
+  const { lane } = snap.state;
   const step = nextStep(snap, securityPaths(ctx.root));
   if (!GATE_ACTIONS.includes(step.action)) return refuse(`${id} is at ${step.action}, not a gate; reply applies at ${GATE_ACTIONS.join(", ")}`, { action: step.action });
   const phase = "phase" in step ? step.phase : null;
-  const found = blockProposals(ctx.root, id, phase);
-  const matched = matchReply(reply, step, found);
-  if (!matched) return refuse(`"${reply}" matches no option at ${step.action}; options: ${optionsOf(step).join(" · ")}`, { options: optionsOf(step) });
+  const found = lane === "research" ? NO_PROPOSALS : blockProposals(ctx.root, id, phase);
+  const matched = matchReply(reply, step, found, lane);
+  if (!matched) return unmatched(reply, step, lane);
   const session = isSessionId(ctx.session) ? ctx.session : null;
   const result = applyMatched({ snap, step, phase, session, ctx }, matched, found);
   appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}) }, ctx.now());

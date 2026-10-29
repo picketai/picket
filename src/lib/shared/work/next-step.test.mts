@@ -190,8 +190,18 @@ test("an artifact with no phase headings goes back to the architect", () => {
   assert.deepEqual(step({ lane: "order" }), { action: "write_artifact", actor: "architect", detail: '/probe/work/20261023-probe/order.md has no "## Phase N" headings' });
 });
 
-test("a written research report awaits the user's decision on phase 1", () => {
-  assert.deepEqual(step({ lane: "research" }), { action: "approve_phase", actor: "user", phase: 1, detail: "report written; accept or ask for a deeper pass", options: ["[a] accept", "[d] deeper pass", "[x] reject: <why>"] });
+test("a written research report awaits the user's decision on phase 1, publish included", () => {
+  assert.deepEqual(step({ lane: "research", title: "Pricing rules" }), {
+    action: "approve_phase",
+    actor: "user",
+    phase: 1,
+    detail: "report written; accept or ask for a deeper pass",
+    options: ["[a] accept", "[p] accept and publish to artifacts/reports/pricing-rules.md", "[d] deeper pass", "[x] reject: <why>"],
+  });
+});
+
+test("a research title with no word left for a report name offers no publish", () => {
+  assert.deepEqual(step({ lane: "research", title: "Of the" }).options, ["[a] accept", "[d] deeper pass", "[x] reject: <why>"]);
 });
 
 test("every phase approved and none reviewed asks for the cumulative review", () => {
