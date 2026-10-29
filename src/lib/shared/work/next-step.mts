@@ -13,7 +13,9 @@ export type NextStep =
   | { action: "implement_phase"; actor: "developer"; phase: number; detail: string }
   | { action: "approve_phase"; actor: "user"; phase: number; detail: string; options: string[]; own_gate?: Gate | null }
   | { action: "review_checkpoint" | "review_cumulative"; actor: "reviewer"; phase: number; detail: string }
-  | { action: "close"; actor: "lead"; detail: string };
+  | { action: "close"; actor: "lead"; detail: string }
+  | { action: "fix_findings"; actor: "developer"; phase: number; detail: string }
+  | { action: "amend"; actor: "architect"; detail: string };
 
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
@@ -43,9 +45,35 @@ function rejectionsStep(snap: WorkSnapshot): NextStep | null {
   return { action: "resolve_rejections", actor: "user", detail: `${rejections} cumulative reviews returned CHANGES REQUIRED since the last approval`, options: STALL_OPTIONS };
 }
 
+function lastIndexWhere(verdicts: readonly VerdictRow[], matches: (row: VerdictRow) => boolean): number {
+  for (let i = verdicts.length - 1; i >= 0; i--) if (matches(verdicts[i])) return i;
+  return -1;
+}
+
+function pendingAmend({ verdicts }: WorkSnapshot): string | null {
+  const at = lastIndexWhere(verdicts, (v) => Boolean(v.amend));
+  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED")) return null;
+  return verdicts[at].amend ?? null;
+}
+
+function amendStep(snap: WorkSnapshot): NextStep | null {
+  const amend = pendingAmend(snap);
+  return amend ? { action: "amend", actor: "architect", detail: amend } : null;
+}
+
+function findingsOpen({ verdicts }: WorkSnapshot): boolean {
+  const at = lastIndexWhere(verdicts, (v) => v.agent === "reviewer" && v.scope === "cumulative");
+  return isCumulativeRejection(verdicts[at]) && !verdicts.slice(at + 1).some((v) => v.verdict === "PHASE DONE");
+}
+
+function findingsStep(snap: WorkSnapshot): NextStep | null {
+  if (!findingsOpen(snap)) return null;
+  return { action: "fix_findings", actor: "developer", phase: snap.phases.length, detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" };
+}
+
 function allApprovedStep(snap: WorkSnapshot): NextStep {
   if (isCumulativelyReviewed(snap)) return { action: "close", actor: "lead", detail: "cumulative review passed; close and print the closing block" };
-  return rejectionsStep(snap) ?? { action: "review_cumulative", actor: "reviewer", phase: snap.phases.length, detail: "all phases approved; one cumulative review remains" };
+  return rejectionsStep(snap) ?? amendStep(snap) ?? findingsStep(snap) ?? { action: "review_cumulative", actor: "reviewer", phase: snap.phases.length, detail: "all phases approved; one cumulative review remains" };
 }
 
 function countOf(verdicts: readonly VerdictRow[], verdict: string): number {
@@ -59,7 +87,8 @@ function isStalled(snap: WorkSnapshot): boolean {
 }
 
 function blockStep(snap: WorkSnapshot): NextStep {
-  return { action: "resolve_block", actor: "user", detail: snap.state.blocked_reason ?? "", options: isStalled(snap) ? STALL_OPTIONS : BLOCK_OPTIONS };
+  const amend = PHASED.includes(snap.state.lane) && !isStalled(snap) ? amendStep(snap) : null;
+  return amend ?? { action: "resolve_block", actor: "user", detail: snap.state.blocked_reason ?? "", options: isStalled(snap) ? STALL_OPTIONS : BLOCK_OPTIONS };
 }
 
 function isMidpoint(snap: WorkSnapshot, current: PhaseStatus): boolean {
@@ -92,6 +121,8 @@ function phasedStep(snap: WorkSnapshot, securityPaths: readonly string[]): NextS
   if (snap.phases.length === 0) return { action: "write_artifact", actor: "architect", detail: `${snap.artifact?.path} has no "## Phase N" headings` };
   const current = snap.phases.find((p) => !p.approved);
   if (!current) return allApprovedStep(snap);
+  const amend = amendStep(snap);
+  if (amend) return amend;
   if (!current.done) return startStep(snap, current);
   return approvalStep(snap, current, securityPaths);
 }

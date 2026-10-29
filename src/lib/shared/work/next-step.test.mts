@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nextStep } from "./next-step.mts";
+import { NEXT_ACTIONS, nextStep } from "./next-step.mts";
 import { nextView } from "./next-view.mts";
 import { snapshotOf, type PhaseInput, type SnapshotInput } from "#test/snapshot.mts";
 
@@ -64,17 +64,64 @@ test("a fresh PHASE DONE after the stop sends the item back to the cumulative re
   const phases = numbered(2, { done: true, approved: true });
   const stopped = [row("approved"), ...times(3, "CHANGES REQUIRED", "cumulative")];
   assert.equal(step({ phases, verdicts: [...stopped, row("PHASE DONE")] }).action, "review_cumulative");
-  assert.equal(step({ phases, verdicts: [...stopped, row("PHASE DONE"), ...times(2, "CHANGES REQUIRED", "cumulative")] }).action, "review_cumulative");
+  assert.equal(step({ phases, verdicts: [...stopped, row("PHASE DONE"), ...times(2, "CHANGES REQUIRED", "cumulative")] }).action, "fix_findings");
   const again = step({ phases, verdicts: [...stopped, row("PHASE DONE"), ...times(3, "CHANGES REQUIRED", "cumulative")] });
   assert.equal(again.action, "resolve_rejections");
   assert.equal(again.detail, "6 cumulative reviews returned CHANGES REQUIRED since the last approval");
 });
 
-test("rejections before the last approval, or of another scope, do not count", () => {
+test("rejections before the last approval, or of another scope, do not count toward the stop", () => {
   const phases = numbered(2, { done: true, approved: true });
   const before = [...times(2, "CHANGES REQUIRED", "cumulative"), row("approved"), row("CHANGES REQUIRED", "cumulative")];
-  assert.equal(step({ phases, verdicts: before }).action, "review_cumulative");
+  assert.equal(step({ phases, verdicts: before }).action, "fix_findings");
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
+});
+
+test("the actions end with fix_findings and amend, twelve in all", () => {
+  assert.equal(NEXT_ACTIONS.length, 12);
+  assert.deepEqual(NEXT_ACTIONS.slice(-2), ["fix_findings", "amend"]);
+});
+
+const AMEND_LINE ="AMENDMENT NEEDED: D-002 the port moved";
+
+function amending(verdict: string, scope: string | null = null) {
+  return { ...row(verdict, scope), amend: AMEND_LINE };
+}
+
+test("an open cumulative rejection sends the developer to fix its findings until a PHASE DONE answers it", () => {
+  const phases = numbered(3, { done: true, approved: true });
+  const rejected = [row("approved"), row("CHANGES REQUIRED", "cumulative")];
+  assert.deepEqual(step({ phases, verdicts: rejected }), { action: "fix_findings", actor: "developer", phase: 3, detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" });
+  assert.equal(step({ phases, verdicts: [...rejected, { ...row("PHASE DONE"), agent: "developer" }] }).action, "review_cumulative");
+});
+
+test("a third cumulative rejection since the last approval still stops with the stall options", () => {
+  const next = step({ phases: numbered(2, { done: true, approved: true }), verdicts: [row("approved"), ...times(3, "CHANGES REQUIRED", "cumulative")] });
+  assert.equal(next.action, "resolve_rejections");
+  assert.deepEqual(next.options, STALL_OPTIONS);
+});
+
+test("a pending amendment goes to the architect, open or blocked after one drift", () => {
+  const amend = { action: "amend", actor: "architect", detail: AMEND_LINE };
+  assert.deepEqual(step({ lane: "design", phases: numbered(2), verdicts: [amending("CHANGES REQUIRED", "phase 1")] }), amend);
+  assert.deepEqual(step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck")] }), amend);
+  const approved = numbered(2, { done: true, approved: true });
+  assert.deepEqual(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative")] }), amend);
+});
+
+test("after AMENDED, an open cumulative rejection is fixed and a block goes back to the user", () => {
+  const amended = { ...row("AMENDED"), agent: "architect" };
+  const approved = numbered(2, { done: true, approved: true });
+  assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative"), amended] }).action, "fix_findings");
+  const blocked = step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck"), amended] });
+  assert.equal(blocked.action, "resolve_block");
+});
+
+test("a third drift with an amendment pending is a stall the user decides", () => {
+  const verdicts = [...times(2, "DRIFT DETECTED", "crosscheck"), amending("DRIFT DETECTED", "crosscheck")];
+  const next = step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts });
+  assert.equal(next.action, "resolve_block");
+  assert.deepEqual(next.options, STALL_OPTIONS);
 });
 
 test("a fast or research item never stops on cumulative rejections", () => {

@@ -83,6 +83,13 @@ describe('work line', () => {
     ])
   })
 
+  test('fixing findings and amending read as the agent at work', async () => {
+    const fixing = { ...WORK, action: 'fix_findings', actor: 'developer', phase: 2 }
+    expect(workLine(fixing, NOW)?.right).toEqual([{ text: 'developer fixes the cumulative review findings ⋯', color: 'claude' }])
+    const amending = { ...WORK, lane: 'design', action: 'amend', actor: 'architect', phase: null }
+    expect(workLine(amending, NOW)?.right).toEqual([{ text: 'architect amends design.md ⋯', color: 'claude' }])
+  })
+
   test('an action the kernel does not name reads as its detail', async () => {
     const unknown = { ...WORK, action: 'frobnicate', actor: 'developer', detail: 'frobnicating the widget' }
     expect(workLine(unknown, NOW)?.right).toEqual([{ text: 'frobnicating the widget ⋯', color: 'claude' }])
