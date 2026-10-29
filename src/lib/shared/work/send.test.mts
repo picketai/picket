@@ -67,6 +67,13 @@ test("a research item's artifact goes to the analyst for the outline pass", () =
   assert.deepEqual(sends({ lane: "research", artifact: null }, write), [{ tool: "Agent", to: named("analyst"), type: "picket:analyst", message: `work: ${ID}\nrequest: work/${ID}/request.md\npass: outline` }]);
 });
 
+test("the analyst is continued only by an analyst row of this session, never by another agent's", () => {
+  const write: NextStep = { action: "write_artifact", actor: "analyst", detail: "d" };
+  const research = { lane: "research", artifact: null } as const;
+  assert.equal(sends({ ...research, verdicts: [verdictRow("architect", "ARTIFACT WRITTEN", null, S)] }, write)[0].tool, "Agent");
+  assert.equal(sends({ ...research, verdicts: [verdictRow("analyst", "REPORT WRITTEN", null, S)] }, write)[0].tool, "SendMessage");
+});
+
 test("a developer with no row in this session is spawned with the artifact; one with a row is continued without it", () => {
   const phases = [{ n: 1 }];
   assert.deepEqual(sends({ phases }, implement(1)), [{ tool: "Agent", to: named("developer"), type: "picket:developer", message: `work: ${ID}\nphase: 1\nartifact: work/${ID}/order.md` }]);

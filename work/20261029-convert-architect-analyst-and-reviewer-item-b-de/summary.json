@@ -1,0 +1,85 @@
+{
+  "work_id": "20261029-convert-architect-analyst-and-reviewer-item-b-de",
+  "base": "94aca2054b001331788abdb7be1fd0f25a178a47",
+  "request": "work/20261029-convert-architect-analyst-and-reviewer-item-b-de/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/agents/analyst.md",
+    "src/agents/architect.md",
+    "src/agents/reviewer.md",
+    "src/lib/shared/agent-name.test.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/send.mts",
+    "src/lib/shared/work/send.test.mts",
+    "src/lib/verbs/next/index.test.mts",
+    "src/lib/verbs/open/index.test.mts",
+    "src/lib/verbs/reply/index.test.mts",
+    "src/lib/verbs/set/index.test.mts",
+    "src/skills/designing/steps/10-design.md",
+    "src/skills/documenting/references/schema-migration.md",
+    "src/skills/documenting/templates/report.md",
+    "src/skills/ordering/steps/10-order.md",
+    "src/skills/researching/steps/10-outline.md",
+    "src/skills/researching/steps/20-deep.md",
+    "src/skills/shared/procedures/amend.md",
+    "test/cli/source.test.mjs",
+    "test/repo/agents.test.mjs",
+    "test/repo/references.test.mjs",
+    "test/repo/skills.test.mjs"
+  ],
+  "lines_added": 690,
+  "lines_removed": 236,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 4,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-10-29T19:59:04.701Z",
+    "base": "94aca2054b001331788abdb7be1fd0f25a178a47",
+    "mutant": {
+      "path": "src/lib/shared/work/send.mts",
+      "line": 22,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "survived",
+    "rebuild": "passed",
+    "ms": 114048
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/10-alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/12-bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/15-traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/20-patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/25-design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/30-patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/40-framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/50-concern-clean-architecture.md"
+    }
+  ]
+}
