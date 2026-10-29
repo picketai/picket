@@ -123,12 +123,14 @@ phases:
     drive: true
     security: true
   - n: 8
-    files: [src/lib/verbs/packet/index.mts, src/lib/verbs/packet/index.test.mts, src/lib/hooks/guard/block/index.mts, test/hooks/guard.block.test.mjs]
+    files: [src/lib/verbs/packet/index.mts, src/lib/verbs/packet/index.test.mts, src/lib/hooks/guard/block/index.mts, test/hooks/guard.block.test.mjs, src/lib/hooks/route/verdict/index.mts, src/lib/hooks/route/verdict/index.test.mts, src/lib/verbs/preflight/index.mts, src/lib/verbs/preflight/index.test.mts]
     greps:
       - path: src/lib/verbs/packet/index.mts
         pattern: '```text'
       - path: src/lib/hooks/guard/block/index.mts
         pattern: 'ended without your block'
+      - path: src/lib/verbs/preflight/index.mts
+        pattern: 'preflight_file'
     tests: true
     drive: true
     security: false
@@ -147,8 +149,8 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 **Risks:**
 - **RISK-001** A later edit adds an import to `action-text.mts` and breaks the built mod. Mitigation: a phase 1 grep asserts the file has no `import`, and `test/repo/mods.test.mjs` checks every `MOD_LIB_SHARED` file lands in each mod.
 
-### D-002: Verdict rows carry the amendment line; amend outranks a plain block
-**Decision:** `VerdictRow` gains `session?: string` (the draft) and `amend?: string`, the reviewer's `AMENDMENT NEEDED: …` line. `RouteInput` gains `amend`, and the verdict hook passes it next to today's `reason`. `nextStep` returns `amend` when the latest row carrying `amend` has no later `AMENDED` row. That holds when the item is open, and also when it is blocked without a stall. A stalled item (three drifts, three amendments, or `PHASE STALLED`) still goes to the user with `STALL_OPTIONS`. This puts the `designing/SKILL.md:37` row ("`resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED`, when its options offer no redesign → amend") into code. Both fields are optional, so rows written before this change still read.
+### D-002 (r2): Verdict rows carry the amendment line; amend outranks a plain block
+**Decision:** `VerdictRow` gains `session?: string` (the draft) and `amend?: string`, the reviewer's `AMENDMENT NEEDED: …` line. `RouteInput` gains `amend`, and the verdict hook passes it next to today's `reason`, only when the block's agent is `reviewer`. An architect's `AMENDED` block that quotes the line would otherwise become the latest `amend` row with no `AMENDED` after it, and `next` would say `amend` again after every amendment. `nextStep` returns `amend` when the latest row carrying `amend` has no later `AMENDED` row. That holds when the item is open, and also when it is blocked without a stall. A stalled item (three drifts, three amendments, or `PHASE STALLED`) still goes to the user with `STALL_OPTIONS`. This puts the `designing/SKILL.md:37` row ("`resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED`, when its options offer no redesign → amend") into code. Both fields are optional, so rows written before this change still read.
 **Instead of:** having `next` read the line back out of `reviews/<scope>.md`: the snapshot would then parse block text on every `next`, `state` and status line call.
 **Risks:**
 - **RISK-002** A reviewer writes the amendment line in a form the hook's `^AMENDMENT NEEDED:.*$` match misses, so no `amend` action follows. Mitigation: that match is unchanged from today, so the risk is no worse than now; the phase 2 hook test pins the line form.
@@ -171,8 +173,8 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 **Decision:** `src/lib/shared/review-checklists.mts` exports `reviewChecklists(input, scope)`, where `input` is the size, frameworks, concerns, `security_path` and `extension_steps`, and `scope` is one of `phase`, `checkpoint`, `cumulative`, `crosscheck`. It follows the load table at `src/skills/reviewing/SKILL.md:43-55` through a static map of today's file names (draft D-5). Frameworks and concerns with no file (`react`, `python`) add nothing. `picket summary` takes `--scope`; without it, the verb uses `cumulative` when `next` says `review_cumulative`, `checkpoint` for `review_checkpoint`, and `phase` otherwise. A unit test reads `src/skills/reviewing/checklists/` and fails on a mapped name that is not on disk.
 **Instead of:** checking the plugin's skills folder on disk while the verb runs: the kernel would depend on where the plugin is installed, and a renamed file would be skipped silently instead of failing a test.
 
-### D-007: summary and preflight stay readOnly for the guard
-**Decision:** Infrastructural decision. `summary --save` writes `work/<id>/summary.json`. `preflight` writes `work/<id>/preflight.txt`, or removes it when no warn line remains. Both keep `readOnly: true` in `VERB_NAMES`, so `guard.bash` still allows them without a prompt (`kernel.mts:18-23`). The files are derived, kernel-owned and rewritten whole on each run. The cost: "readOnly" now means "writes nothing outside the work item's kernel files" for these two verbs.
+### D-007 (r2): summary and preflight stay readOnly for the guard
+**Decision:** Infrastructural decision. `summary --save` writes `work/<id>/summary.json`. `preflight` writes `work/<id>/preflight.txt`, or removes it when no warn line remains. A failed write or removal never throws: it adds a `warn preflight_file` check to the report, so a read-only work folder still gets its preflight report, as before this item. Both keep `readOnly: true` in `VERB_NAMES`, so `guard.bash` still allows them without a prompt (`kernel.mts:18-23`). The files are derived, kernel-owned and rewritten whole on each run. The cost: "readOnly" now means "writes nothing outside the work item's kernel files" for these two verbs.
 **Instead of:** a per-flag class like `verify`'s (`kernel.mts:65`): that adds a second special case to the guard for files that are harmless to rewrite.
 
 ### D-008: reply is a lead-only verb
@@ -462,10 +464,16 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 - `test/hooks/guard.block.test.mjs`: missing-block cases
 - `src/lib/shared/verdicts.mjs`: read only, `findVerdict`
 - `src/lib/shared/transcript/turn.mts`: read only, `blockLines`, `readTurn`
+- `src/lib/hooks/route/verdict/index.mts`: pass `amend` for reviewer blocks only
+- `src/lib/hooks/route/verdict/index.test.mts`: architect block quoting the line
+- `src/lib/verbs/preflight/index.mts`: guard the `preflight.txt` write
+- `src/lib/verbs/preflight/index.test.mts`: unwritable work folder case
 
 **Changes:**
 1. `packet` verb: `render` returns the packet text between a ```` ```text ```` line and a ```` ``` ```` line. `packet()` in `packet.mjs` and the `--json` value keep the bare text.
 2. `guardBlock`: when `readHeading(text)` is null, the event is `SubagentStop`, `event.agent_type` starts with `picket:`, `stop_hook_active` is not set, and `findVerdict(blockLines(text).last)` is null, it bounces once with `guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.` Every other no-heading turn passes as today.
+3. Verdict hook (D-002 r2): the `route` call at `route/verdict/index.mts:77` passes `amend` only when `info?.agent === "reviewer"`. `reason` keeps today's behaviour.
+4. `preflight` (D-007 r2): `saveWarnings` catches a failed write or removal and returns a `{ name: "preflight_file", level: "warn", detail: "work/<id>/preflight.txt not written: <error message>" }` check, which `preflight` appends to `checks`. `ok` is unchanged by it.
 
 **Done when:**
 - **T-8.1** `picket packet <id>` prints ```` ```text ```` as its first line and ```` ``` ```` as its last; `picket packet <id> --json` has a `text` field with no fence line.
@@ -473,8 +481,9 @@ The approved draft `artifacts/refactor/11-kernel-groundwork.md` (2026-10-29) is 
 - **T-8.3** The same turn with `stop_hook_active: true`, with `agent_type: "Explore"`, or as the lead's `Stop` is not bounced.
 - **T-8.4** A `picket:` agent turn whose last line is a verdict token is not bounced for a missing block.
 - **T-8.5** Every existing test in `test/hooks/guard.block.test.mjs` passes unchanged.
-- **T-8.6** Drive: the built `guard.block` hook, run with the T-8.2 payload in a scratch project, prints a `decision: block` JSON.
-- **T-8.7** `npm test` passes.
+- **T-8.6** Drive: the built `guard.block` hook, run with the T-8.2 payload in a scratch project, prints a `decision: block` JSON; `npm test` passes.
+- **T-8.7** An architect `AMENDED` block containing a line `AMENDMENT NEEDED: D-002 x` appends a row with no `amend` key, and `next` after it does not say `amend`; a reviewer block with the same line still carries `amend`.
+- **T-8.8** `picket preflight <id>` with a work folder it cannot write still exits as the other checks decide, and its output holds a `warn preflight_file:` line instead of a thrown error.
 
 ## Open questions
 
@@ -482,3 +491,5 @@ none
 
 ## Revision log
 - 2026-10-29: D-005 (r2): developer-<n> counts rows after the (n-1)-th fresh reply, matching T-6.4; Problem cites Target items 3 and 6 for Phase 8; T-3.7 checks D-007
+- 2026-10-29: D-002 (r2): only reviewer blocks carry amend, so an architect block cannot re-arm it; checkpoint Minor, fixed in Phase 8 (T-8.7)
+- 2026-10-29: D-007 (r2): a failed preflight.txt write becomes a warn check, never a throw; checkpoint Minor, fixed in Phase 8 (T-8.8)

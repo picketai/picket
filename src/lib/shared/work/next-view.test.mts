@@ -69,6 +69,19 @@ test("order lane walks write, implement, approve, review, close", (t) => {
   assert.equal(next(s.id, r).action, "none");
 });
 
+test("readNext carries the send list: the architect's inputs from disk, a continued developer, nothing at a user gate", (t) => {
+  const r = root(t);
+  const s = open(r, "order", "Sends");
+  writeFileSync(join(r, "work", s.id, "preflight.txt"), "warn tree: 1 uncommitted path(s) outside work/: a.ts\n");
+  assert.match(next(s.id, r).send[0].message, new RegExp(`^preflight: work/${s.id}/preflight\\.txt$`, "m"));
+  artifact(r, s.id, "order.md", ["Module"]);
+  verdict(s.id, { agent: "developer", verdict: "PHASE STALLED", phase: 1, session: "S" }, r);
+  assert.equal(readNext(r, s.id, "S").send[0].tool, "SendMessage");
+  assert.equal(readNext(r, s.id).send[0].tool, "Agent");
+  mark(s.id, 1, "done", r);
+  assert.deepEqual(next(s.id, r).send, []);
+});
+
 test("blocked items ask the user; fast and research have their own shapes", (t) => {
   const r = root(t);
   const s = open(r, "fast", "Fix");

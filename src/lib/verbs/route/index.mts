@@ -54,7 +54,7 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, phase, marks: marksOnDisk(ctx.root, input.id, phase) };
   const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap));
   const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned) });
-  return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id) };
+  return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id, isSessionId(input.session) ? input.session : null) };
 }
 
 export const routeVerdict = action<RouteInput, RouteResult>(async (input, ctx) => done(route({ ...input, session: input.session ?? ctx.session }, ctx)));

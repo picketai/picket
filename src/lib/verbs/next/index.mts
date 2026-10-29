@@ -1,4 +1,5 @@
 import { action, done } from "../../shared/action.mts";
+import type { SendView } from "../../shared/views.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { latest, readNext, type LatestView, type NextView } from "../../shared/work/next-view.mts";
@@ -6,8 +7,8 @@ import { flag, str, UsageError, type Args } from "../../util/args.mts";
 
 export type NextInput = { id: WorkId } | { latest: true; session: string | undefined };
 
-export const showNext = action<NextInput, NextView | LatestView>(async (input, { root }) => {
-  if ("id" in input) return done(readNext(root, input.id));
+export const showNext = action<NextInput, NextView | LatestView>(async (input, { root, session }) => {
+  if ("id" in input) return done(readNext(root, input.id, session));
   return done(latest(root, { session: input.session }));
 });
 
@@ -27,8 +28,14 @@ function renderLatest(v: LatestView): string {
   return `${v.id}: ${v.action} · ${v.actor ?? "-"} · ${v.detail}${v.other_session ? " (other session)" : ""}`;
 }
 
+function renderSend(s: SendView): string {
+  const heading = `${s.tool} ${s.to} · ${s.type}${s.model ? ` · model ${s.model}` : ""}`;
+  return [heading, ...(s.first ?? []).map((command) => `first: ${command}`), "```text", s.message, "```"].join("\n");
+}
+
 function renderStep(v: NextView): string {
-  return `${v.action} · ${v.actor ?? "-"}${v.phase ? ` · phase ${v.phase}` : ""} · ${v.detail}${v.options.length ? ` · ${v.options.join(" · ")}` : ""}`;
+  const line = `${v.action} · ${v.actor ?? "-"}${v.phase ? ` · phase ${v.phase}` : ""} · ${v.detail}${v.options.length ? ` · ${v.options.join(" · ")}` : ""}`;
+  return [line, ...v.send.map(renderSend)].join("\n\n");
 }
 
 export const verb: VerbSpec<NextInput, NextView | LatestView> = {

@@ -1,7 +1,9 @@
+import { existsSync } from "node:fs";
 import { securityPaths } from "../config.mjs";
-import type { WorkId } from "./files.mts";
+import { workFile, type WorkId } from "./files.mts";
 import type { Gate } from "./gate.mts";
 import { nextStep, type NextAction, type NextStep } from "./next-step.mts";
+import { NO_FILES, sendsFor, type HasFile } from "./send.mts";
 import { readSnapshot, stateView, type StateView, type WorkSnapshot } from "./snapshot.mts";
 import { currentItem, isSessionId, lastActivity, type Lane, type Status } from "./state.mts";
 import type { LatestView as WireLatestView, NextView as WireNextView } from "../views.mts";
@@ -15,9 +17,9 @@ export type NextView = WireNextView & {
   actor: NextStep["actor"];
 };
 
-export type LatestView = WireLatestView & ({ id: null } | NextView);
+export type LatestView = WireLatestView & ({ id: null } | Omit<NextView, "send">);
 
-export function nextView(snap: WorkSnapshot, step: NextStep): NextView {
+export function nextView(snap: WorkSnapshot, step: NextStep, session: string | null = null, hasFile: HasFile = NO_FILES): NextView {
   const { id, lane, status } = snap.state;
   const view: NextView = {
     id,
@@ -29,16 +31,17 @@ export function nextView(snap: WorkSnapshot, step: NextStep): NextView {
     action: step.action,
     actor: step.actor,
     detail: step.detail,
+    send: sendsFor(snap, step, session, hasFile),
   };
   return snap.warnings.length ? { ...view, warnings: snap.warnings } : view;
 }
 
-export function nextOf(snap: WorkSnapshot, securityPaths: readonly string[]): NextView {
-  return nextView(snap, nextStep(snap, securityPaths));
+export function nextOf(snap: WorkSnapshot, securityPaths: readonly string[], session: string | null = null, hasFile: HasFile = NO_FILES): NextView {
+  return nextView(snap, nextStep(snap, securityPaths), session, hasFile);
 }
 
-export function readNext(root: string, id: WorkId): NextView {
-  return nextOf(readSnapshot(root, id), securityPaths(root));
+export function readNext(root: string, id: WorkId, session: string | null = null): NextView {
+  return nextOf(readSnapshot(root, id), securityPaths(root), session, (name) => existsSync(workFile(root, id, name)));
 }
 
 function stampOf(view: StateView): string | null {
@@ -51,8 +54,9 @@ export function latest(root: string, { session }: { session?: string | null } = 
   const snap = readSnapshot(root, current.id);
   const view = stateView(snap);
   const given = isSessionId(session);
+  const { send: _send, ...next } = nextOf(snap, securityPaths(root));
   return {
-    ...nextOf(snap, securityPaths(root)),
+    ...next,
     title: view.title,
     phases_approved: view.phases_approved,
     phase_count: view.phase_count,

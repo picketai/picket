@@ -205,8 +205,9 @@ test("a done irreversible phase offers only the confirm and reject options, on a
 test("nextView prints today's keys in order and adds warnings only when the snapshot has some", () => {
   const clean = snapshotOf({ phases: [{ n: 1 }] });
   const view = nextView(clean, nextStep(clean, SECURITY_PATHS));
-  assert.deepEqual(Object.keys(view), ["id", "lane", "status", "phase", "options", "own_gate", "action", "actor", "detail"]);
-  assert.deepEqual(view, { id: "20261023-probe", lane: "order", status: "open", phase: 1, options: [], own_gate: null, action: "implement_phase", actor: "developer", detail: "phase 1 of 1: Phase 1" });
+  assert.deepEqual(Object.keys(view), ["id", "lane", "status", "phase", "options", "own_gate", "action", "actor", "detail", "send"]);
+  const send = [{ tool: "Agent", to: "developer", type: "picket:developer", message: "work: 20261023-probe\nphase: 1\nartifact: work/20261023-probe/order.md" }];
+  assert.deepEqual(view, { id: "20261023-probe", lane: "order", status: "open", phase: 1, options: [], own_gate: null, action: "implement_phase", actor: "developer", detail: "phase 1 of 1: Phase 1", send });
   const warned = snapshotOf({ phases: [{ n: 1 }], warnings: ["verdicts.jsonl: 1 unreadable line skipped"] });
   assert.deepEqual(nextView(warned, nextStep(warned, SECURITY_PATHS)).warnings, ["verdicts.jsonl: 1 unreadable line skipped"]);
 });

@@ -28,6 +28,10 @@ export type StateView = {
   warnings?: string[];
 };
 
+export type AgentType = "picket:analyst" | "picket:architect" | "picket:developer" | "picket:reviewer";
+
+export type SendView = { tool: "Agent" | "SendMessage"; to: string; type: AgentType; model?: "opus"; first?: string[]; message: string };
+
 export type NextView = {
   id: string;
   lane: string;
@@ -38,12 +42,13 @@ export type NextView = {
   action: string;
   actor: string | null;
   detail: string;
+  send: SendView[];
   warnings?: string[];
 };
 
 export type LatestView =
   | { id: null; action: "none"; actor: null; phase: null; detail: string; options: string[] }
-  | (NextView & {
+  | (Omit<NextView, "send"> & {
       title: string;
       phases_approved: number;
       phase_count: number;
