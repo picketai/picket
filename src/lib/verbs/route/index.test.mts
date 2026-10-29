@@ -298,8 +298,24 @@ test("wrong owner is refused, rejection clears the run grant, drift blocks", (t)
   route({ id, verdict: "CHANGES REQUIRED", agent: "reviewer", phase: 2, root });
   assert.equal(deriveState(id, root).run_through, undefined);
   const r = route({ id, verdict: "DRIFT DETECTED", agent: "reviewer", scope: "crosscheck", root });
-  assert.equal(r.next.action, "resolve_block");
+  assert.equal(r.next.action, "amend");
   assert.equal(deriveState(id, root).status, "blocked");
+});
+
+test("a cross-check drift with no amendment line still goes to the architect", (t) => {
+  const { root, id } = setup(t);
+  const rows = () => readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const pointer = `AMENDMENT NEEDED: see work/${id}/reviews/crosscheck.md`;
+  const bare = route({ id, verdict: "DRIFT DETECTED", agent: "reviewer", scope: "crosscheck", root });
+  assert.equal(rows().at(-1).amend, pointer);
+  assert.deepEqual([bare.next.action, bare.next.actor, bare.next.detail], ["amend", "architect", pointer]);
+  route({ id, verdict: "AMENDED", agent: "architect", root });
+  route({ id, verdict: "DRIFT DETECTED", agent: "reviewer", scope: "crosscheck", reason: "D-002 the port moved", root });
+  assert.equal(rows().at(-1).amend, "D-002 the port moved");
+  route({ id, verdict: "AMENDED", agent: "architect", root });
+  const scopeless = route({ id, verdict: "DRIFT DETECTED", agent: "reviewer", root });
+  assert.equal("amend" in rows().at(-1), false);
+  assert.equal(scopeless.next.action, "resolve_block");
 });
 
 test("classes are stored on a CHANGES REQUIRED entry only (T-9.3)", (t) => {

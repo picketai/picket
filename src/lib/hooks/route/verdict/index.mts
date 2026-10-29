@@ -21,6 +21,8 @@ const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
 const CLASS_ID = /^[A-Z][A-Za-z]*\d+$/;
 const CLASSES: BlockField<"review"> = "Classes";
 const CLASSES_LINE = new RegExp(`^${CLASSES}:\\s*(.*)$`, "m");
+const AMENDMENT_LINE = /^AMENDMENT NEEDED:.*$/m;
+const DRIFT_DECISIONS_LINE = /^Decisions:\s*DRIFT\b.*$/m;
 
 function blockInfo(text: string): BlockInfo | null {
   const heading = readHeading(text);
@@ -66,10 +68,17 @@ function repeatsLastRow(root: string, id: string, verdict: string, phase: number
   return last?.verdict === verdict && (phase === undefined || last.phase === phase);
 }
 
+function amendmentText(text: string, agent: string, verdict: string, scope: string | undefined): string | null {
+  const needed = text.match(AMENDMENT_LINE)?.[0];
+  if (needed) return needed;
+  const crosscheckDrift = agent === "reviewer" && verdict === "DRIFT DETECTED" && scope === "crosscheck";
+  return crosscheckDrift ? (text.match(DRIFT_DECISIONS_LINE)?.[0] ?? null) : null;
+}
+
 function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Routing): string {
   const scope = info?.scope === "phase" ? undefined : (info?.scope ?? (hints.scope && !hints.scope.startsWith("phase") ? hints.scope : undefined));
   const agent = info?.agent ?? (["approved", "rejected"].includes(verdict) ? "user" : (event.agent_type ?? "lead"));
-  const amend = text.match(/^AMENDMENT NEEDED:.*$/m)?.[0] ?? null;
+  const amend = amendmentText(text, agent, verdict, scope);
   const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, ctx.root);
   saveReviewerBlock(info, text, ctx.root);

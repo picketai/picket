@@ -84,6 +84,20 @@ test("an AMENDMENT NEEDED line lands on the row, and on a drift also as the bloc
   assert.match(readFileSync(join(root, "work", id, "state.yaml"), "utf8"), /^blocked_reason: .*D-002 the port moved/m);
 });
 
+test("a cross-check drift with only a Decisions: DRIFT line amends with that line", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  const drift = "Decisions: DRIFT: D-002 the port moved";
+  const out = routeReview(root, id, reviewBlock(id, "crosscheck", drift, "DRIFT DETECTED"));
+  assert.equal(verdictRows(root, id).at(-1).amend, drift);
+  assert.match(readFileSync(join(root, "work", id, "state.yaml"), "utf8"), /^blocked_reason: .*D-002 the port moved/m);
+  assert.match(out.hookSpecificOutput.additionalContext, /Next: amend by architect/);
+  routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: transcript(root, [user(`work: ${id}`), assistant(`## Amendment: ${id}\n\nD-002 revised.\n\nAMENDED`)]), cwd: root, agent_type: "picket:architect" }, hookContext(root));
+  const needed = "AMENDMENT NEEDED: D-002 move the port back";
+  routeReview(root, id, reviewBlock(id, "crosscheck", `${drift}\n${needed}`, "DRIFT DETECTED"));
+  assert.equal(verdictRows(root, id).at(-1).amend, needed);
+});
+
 test("an architect AMENDED block quoting the amendment line carries no amend, so next leaves amend", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const id = designItem(root);
