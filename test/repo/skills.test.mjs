@@ -20,7 +20,7 @@ const CLAIM = new RegExp(`\\bthe ${AGENT}(?:(?:,? (?:and|or) |, )(?:the )?${AGEN
 const TITLE_LINE = /^# /;
 const CONTINUATION = /^\s+\S/;
 
-const UNCONVERTED_SKILLS = ["benchmarking", "branching", "consulting", "debugging", "documenting", "expediting", "explaining", "inspecting", "proofreading", "researching", "resuming", "reviewing", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
+const UNCONVERTED_SKILLS = ["benchmarking", "branching", "consulting", "debugging", "documenting", "explaining", "inspecting", "proofreading", "resuming", "reviewing", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
 
 const PENDING = {
   frontmatter: UNCONVERTED_SKILLS,
@@ -33,13 +33,10 @@ const PENDING = {
     "src/skills/debugging/steps/10-reproduce.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
-    "src/skills/expediting/steps/10-check.md",
     "src/skills/explaining/steps/10-gather.md",
     "src/skills/explaining/steps/20-walk.md",
     "src/skills/proofreading/steps/10-passes.md",
     "src/skills/proofreading/steps/20-apply.md",
-    "src/skills/researching/steps/10-outline.md",
-    "src/skills/researching/steps/20-deep.md",
     "src/skills/reviewing/checklists/10-alignment.md",
     "src/skills/reviewing/checklists/12-bar.md",
     "src/skills/reviewing/checklists/15-traced.md",
@@ -63,11 +60,8 @@ const PENDING = {
     "src/skills/debugging/steps/10-reproduce.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
-    "src/skills/expediting/steps/10-check.md",
     "src/skills/explaining/steps/10-gather.md",
     "src/skills/explaining/steps/20-walk.md",
-    "src/skills/researching/steps/10-outline.md",
-    "src/skills/researching/steps/20-deep.md",
     "src/skills/understanding/steps/10-prepare.md",
     "src/skills/understanding/steps/20-interview.md",
     "src/skills/understanding/steps/30-capture.md",
@@ -77,14 +71,12 @@ const PENDING = {
     "src/skills/consulting/steps/20-ratify.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
-    "src/skills/expediting/steps/10-check.md",
     "src/skills/explaining/steps/20-walk.md",
     "src/skills/proofreading/steps/10-passes.md",
-    "src/skills/researching/steps/20-deep.md",
     "src/skills/understanding/steps/10-prepare.md",
     "src/skills/understanding/steps/30-capture.md",
   ],
-  repeats: ["src/skills/expediting/SKILL.md", "src/skills/researching/SKILL.md"],
+  repeats: [],
   claims: ["src/skills/branching/SKILL.md", "src/skills/understanding/SKILL.md"],
 };
 

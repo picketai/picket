@@ -3,44 +3,44 @@ name: expediting
 description: >
   The fast lane: implement a small, low-risk change end to end in the main session, with no
   artifact, no spawn and no phase gate, while keeping the test run, the runtime drive and the
-  craft bar. Use when `picket admit` answers `fast`, or when the user says "just fix",
-  "quick change", "small fix", "rename", "add a guard", "change the default", "don't spin up
-  the pipeline", or "expedite this". Refuses, naming the lane to use instead, the moment the
-  observed touch set or a discovered decision breaks the fast-lane conditions.
-user-invocable: true
+  craft bar. Refuses, naming the lane to use instead, the moment the observed touch set or a
+  discovered decision breaks the fast-lane conditions.
+when_to_use: >
+  Use when `picket admit` answers `fast`, or when the user says "just fix", "quick change",
+  "small fix", "rename", "add a guard", "change the default", "don't spin up the pipeline", or
+  "expedite this".
 ---
 
 # Expediting
 
-Admission is computed, not felt. The lane skill you are reading runs in the main session; no agent is spawned.
+You make the change yourself in the main session; no agent is spawned and admission is computed, not felt. The lane ends with one staged block and the user's one-word answer.
 
-Lane check for this request:
+## Steps
 
-If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.
+1. In one tool batch: `picket open --lane fast --title "<six-word title>"`, a Read of every file the request names, and a Grep for the symbol or route it names when no file is given. The id the first command prints is `<id>` for the rest of this lane.
+2. Name the touch set before editing: the files you will change, at most three. Ask only when the request is ambiguous in a way that changes which file you edit: one question, your recommended default, then stop.
+3. Load `picket:implementing` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Read a file before you edit it, and edit only the touch set.
+4. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` is the escalation in `## Rules`.
+5. Add or adjust unit tests for the behaviour you changed, then run the check and the drive of `picket:implementing` until `picket check --human` is green and the drive matches the request.
+6. Stage the touch set and nothing else: `git add -A -- <touched paths> work/<id>`.
+7. Print the `## Expedited: <id>` block of `picket:implementing`'s fast-lane form, with the commit message you propose on `Commit:` and the options line last, and stop. Nothing is committed yet.
+8. Apply the user's reply by the table in `## Rules`.
 
-If the admit answer does not say `lane: fast`, stop here and run the named lane skill instead (`picket:ordering`, `picket:designing`, `picket:researching`). Do not argue with it in prose; a forced lane is written into the request as `lane: fast`.
-
-## Step 1: open the work item, read the touch set
-
-One tool batch: `picket open --lane fast --title "<six-word title>"`, plus a Read of every file the request names, plus a Grep for the symbol or route it names when no file is given. The id the first command prints is `<id>` for the rest of this lane.
-
-Name the touch set before editing: the files you will change, at most three. Ask the user only when the request is ambiguous in a way that changes which file you edit: one question, your recommended default, then stop. Never guess between two readings that touch different code.
-
-## Step 2: make the change
-
-Load `picket:implementing` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
+## Rules
 
 The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; no new comments (the `comments` rule), a needed why goes on the `Comments:` line for the user; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
 
-Add or adjust unit tests for the behaviour you changed; the module's existing test file first, a new file when none exists.
+Re-run `picket admit --text "<request>" --touched <comma-separated paths you have edited or must edit>` whenever the touch set grows or a decision appears (a new dependency, a changed contract, a second module, a security path, a migration). When it answers a heavier lane, stop editing, keep the diff, run `picket set <id> status=abandoned`, and hand the lane skill it names both the request and the diff. The gate breaking is the gate working.
 
-## Step 3: check, drive, commit, close
+| Reply | Do |
+|---|---|
+| `c`, `commit`, `ok`, `yes` | `picket close <id> --message "<the proposed message>" --touched <the paths you staged, comma-separated> --human`, which commits those paths and the closing state together and leaves any other staged path staged; print its output verbatim and stop |
+| `x <why>`, `discard`, `reject: <why>` | leave the index as it is, print one line saying the change is staged and uncommitted, `picket set <id> status=abandoned`, stop; the user decides what to do with the working tree |
+| `k <n>`, `keep <n>` | `picket comment <id> --path <p> --text "<t>"` with proposal n's path and text, write exactly that comment at its line, re-stage, re-print the block |
+| `w <n>`, `waive <n>` | `picket waive <id> --path <p> --text "<t>"` with proposal n's path and text from the block's `Waivers:` line, or `picket waive <id> --path <p> --deleted` for a `<path> deleted` proposal; make the edit it waives, re-stage, re-print the block |
+| a question | answer it, re-print the options line |
 
-Run the check and the drive of `picket:implementing` once the change compiles, then read `steps/10-check.md`.
-
-## Escalation
-
-Re-run `picket admit --text "<request>" --touched <comma-separated paths you have edited or must edit>` whenever the touch set grows or a decision appears (a new dependency, a changed contract, a second module, a security path, a migration). When it answers a heavier lane, stop editing, keep the diff, and hand the lane skill it names both the request and the diff. The gate breaking is the gate working.
+A `c` reply with comment or waiver proposals pending drops them: no comment and no silenced check is the default.
 
 ## Output
 
