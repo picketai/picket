@@ -1,0 +1,119 @@
+{
+  "work_id": "20261029-documenting-and-consulting-skills-picket-name",
+  "base": "7148ec84655fb5d023720c5af0e12d825db3c356",
+  "request": "work/20261029-documenting-and-consulting-skills-picket-name/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/agents.md",
+    "docs/reference/cli.md",
+    "docs/reference/hooks.md",
+    "docs/reference/skills.md",
+    "src/agents/analyst.md",
+    "src/lib/cli/registry.mts",
+    "src/lib/hooks.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/hooks/lint/schema/index.mts",
+    "src/lib/hooks/lint/schema/report.mts",
+    "src/lib/hooks/lint/schema/report.test.mts",
+    "src/lib/shared/document-path.mts",
+    "src/lib/shared/document-path.test.mts",
+    "src/lib/shared/route/apply.mts",
+    "src/lib/shared/route/plan.mts",
+    "src/lib/shared/route/plan.test.mts",
+    "src/lib/shared/route/route.mts",
+    "src/lib/shared/work/next-step.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/verdict-log.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/name/index.mts",
+    "src/lib/verbs/name/index.test.mts",
+    "src/lib/verbs/reply/index.mts",
+    "src/lib/verbs/reply/index.test.mts",
+    "src/lib/verbs/reply/table.mts",
+    "src/lib/verbs/route/index.mts",
+    "src/lib/verbs/route/index.test.mts",
+    "src/skills/consulting/SKILL.md",
+    "src/skills/consulting/steps/10-discuss.md",
+    "src/skills/consulting/steps/20-ratify.md",
+    "src/skills/consulting/steps/discuss.md",
+    "src/skills/consulting/steps/ratify.md",
+    "src/skills/documenting/SKILL.md",
+    "src/skills/documenting/scripts/filename.mjs",
+    "src/skills/documenting/templates/api.md",
+    "src/skills/documenting/templates/sdr.md",
+    "src/skills/researching/SKILL.md",
+    "test/cli/close.test.mjs",
+    "test/cli/filename.test.mjs",
+    "test/cli/route.test.mjs",
+    "test/hooks/lint.schema.test.mjs",
+    "test/repo/agents.test.mjs",
+    "test/repo/conventions.test.mjs",
+    "test/repo/document-names.test.mjs",
+    "test/repo/markdown-paths.test.mjs",
+    "test/repo/references.test.mjs",
+    "test/repo/skills.test.mjs"
+  ],
+  "lines_added": 1285,
+  "lines_removed": 328,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 5,
+  "repos": [],
+  "sources": [],
+  "silenced": [
+    {
+      "path": "test/cli/filename.test.mjs",
+      "kind": "deleted-test",
+      "text": null,
+      "waived": false
+    }
+  ],
+  "mutation": {
+    "ts": "2026-10-29T22:28:57.096Z",
+    "base": "7148ec84655fb5d023720c5af0e12d825db3c356",
+    "mutant": {
+      "path": "src/lib/hooks/lint/schema/index.mts",
+      "line": 123,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 102983
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

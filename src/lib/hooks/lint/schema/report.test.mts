@@ -65,6 +65,8 @@ test("an id cited outside the Summary does not count toward its cap", () => {
 });
 
 test("an unfilled placeholder and an HTML comment are reported (T-2.5)", () => {
-  assert.deepEqual(reportProblems(report({ summary: "[REPLACE: answer]" })), ["unfilled [REPLACE:] placeholder left in the file"]);
+  assert.deepEqual(reportProblems(report({ summary: "[REPLACE: answer]" })), ["unfilled [REPLACE] placeholder left in the file"]);
+  assert.deepEqual(reportProblems(report({ summary: "[REPLACE]" })), ["unfilled [REPLACE] placeholder left in the file"]);
+  assert.deepEqual(reportProblems(report({ summary: "[REPLACED] is a word, not a placeholder [VERIFIED]." })), []);
   assert.deepEqual(reportProblems(report({ summary: "<!-- required -->\nAnswer [VERIFIED]." })), ["template comment left in the file"]);
 });

@@ -12,9 +12,9 @@ import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { appendReply } from "../../shared/work/replies.mts";
 import { messageTo, renderNextStep } from "../../shared/work/send.mts";
 import { readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
-import { isSessionId, writeState, type Lane, type Status } from "../../shared/work/state.mts";
+import { isSessionId, writeState, type Status, type WorkState } from "../../shared/work/state.mts";
 import { UsageError, type Args } from "../../util/args.mts";
-import { GATE_ACTIONS, matchReply, type Matched, type Proposals } from "./table.mts";
+import { GATE_ACTIONS, matchReply, PUBLISH_REPLY, type Matched, type Proposals } from "./table.mts";
 
 export type ReplyInput = { id: WorkId; reply: string };
 export type ReplyResult = { id: WorkId; reply: string; applied: string[]; next: NextView; send: SendView[] };
@@ -99,7 +99,10 @@ function optionsOf(step: NextStep): string[] {
   return "options" in step ? step.options : [];
 }
 
-function unmatched(reply: string, step: NextStep, lane: Lane): Outcome<never> {
+function unmatched(reply: string, step: NextStep, { id, lane, title }: WorkState): Outcome<never> {
+  if (lane === "research" && PUBLISH_REPLY.test(reply.trim())) {
+    return refuse(`publish is not offered: the title "${title}" gives no file name; rename the item with picket set ${id} --title, then reply p`, { options: optionsOf(step) });
+  }
   if (lane === "research") return refuse(RESEARCH_REPLY, { options: optionsOf(step) });
   return refuse(`"${reply}" matches no option at ${step.action}; options: ${optionsOf(step).join(" · ")}`, { options: optionsOf(step) });
 }
@@ -112,7 +115,7 @@ export const applyReply = action<ReplyInput, ReplyResult>(async ({ id, reply }, 
   const phase = "phase" in step ? step.phase : null;
   const found = lane === "research" ? NO_PROPOSALS : blockProposals(ctx.root, id, phase);
   const matched = matchReply(reply, step, found, lane);
-  if (!matched) return unmatched(reply, step, lane);
+  if (!matched) return unmatched(reply, step, snap.state);
   const session = isSessionId(ctx.session) ? ctx.session : null;
   const result = applyMatched({ snap, step, phase, session, ctx }, matched, found);
   appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}) }, ctx.now());

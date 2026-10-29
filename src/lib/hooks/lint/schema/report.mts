@@ -12,11 +12,12 @@ const FINDING_LINE = /^- \*\*(R-\d{3})\*\*(.*)$/;
 const LEADING_TAGS = /^\s*(?:\[[^\]]*\](?=\s|$)\s*)*/;
 const TAG = /\[[^\]]*\]/g;
 const FINDING_ID = /\b(R-\d{3})\b/g;
-const SUMMARY = /^## Summary[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m;
+const PLACEHOLDER = /\[REPLACE[:\]]/;
+const SUMMARY =/^## Summary[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m;
 
 export function leftoverProblems(text: string): string[] {
   const problems: string[] = [];
-  if (/\[REPLACE:/.test(text)) problems.push("unfilled [REPLACE:] placeholder left in the file");
+  if (PLACEHOLDER.test(text)) problems.push("unfilled [REPLACE] placeholder left in the file");
   if (/<!--/.test(text)) problems.push("template comment left in the file");
   return problems;
 }

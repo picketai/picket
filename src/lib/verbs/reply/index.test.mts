@@ -180,7 +180,8 @@ test("a, d and x on a research item are the lead's, and are refused saying so", 
   assert.equal(existsSync(join(root, "artifacts")), false);
 });
 
-test("p is refused on a research item whose title offers no publish", async (t) => {
+test("p on a research item whose title gives no file name is refused saying why publish is not offered", async (t) => {
   const { root, id } = researchItem(t, "Of the");
-  assert.match(await refused(root, id, "p"), /reply takes p/);
+  assert.equal(await refused(root, id, "p"), `publish is not offered: the title "Of the" gives no file name; rename the item with picket set ${id} --title, then reply p`);
+  assert.equal(existsSync(join(root, "artifacts")), false);
 });

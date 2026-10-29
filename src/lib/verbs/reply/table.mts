@@ -57,7 +57,9 @@ const BLOCK_FORMS: readonly Form[] = [
   { pattern: /^(?:x|abandon)$/i, letter: "x", match: () => ({ kind: "abandon" }) },
 ];
 
-const RESEARCH_FORMS: readonly Form[] = [{ pattern: /^(?:p|publish)$/i, letter: "p", match: () => ({ kind: "publish" }) }];
+export const PUBLISH_REPLY = /^(?:p|publish)$/i;
+
+const RESEARCH_FORMS: readonly Form[] = [{ pattern: PUBLISH_REPLY, letter: "p", match: () => ({ kind: "publish" }) }];
 
 function formsFor(step: NextStep, lane: Lane): readonly Form[] {
   if (lane === "research") return step.action === "approve_phase" ? RESEARCH_FORMS : [];
