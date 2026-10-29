@@ -148,7 +148,7 @@ test("the reference check accepts step: values, the document kit and own folders
   assert.deepEqual(referenceProblems("src/agents/developer.md", "```\nwork: <id>\nstep: ordering/steps/open.md, architect section follows\n```"), []);
   assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/traced.md`"), []);
   assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/no-such.md`"), ["src/skills/designing/SKILL.md: step: reviewing/checklists/no-such.md names no skill file"]);
-  assert.deepEqual(referenceProblems("src/skills/consulting/steps/20-ratify.md", 'Run `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/filename.mjs" --kind sdr` and read `../documenting/templates/sdr.md`.'), []);
+  assert.deepEqual(referenceProblems("src/skills/consulting/steps/20-ratify.md", 'Run `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/export.mjs" --input sdr.md` and read `../documenting/templates/sdr.md`.'), []);
   assert.deepEqual(referenceProblems("src/rules/work-items.md", "Artifacts follow `documenting/templates/{order,design}.md`."), []);
   assert.deepEqual(referenceProblems("src/skills/reviewing/SKILL.md", "```\nreviewing/\n  checklists/alignment.md   criteria to evidence\n```\nThen `../reviewing/SKILL.md`."), []);
 });

@@ -134,6 +134,14 @@ Plant one mutant in the phase's code and check the tests catch it.
 picket mutate <id>
 ```
 
+## picket name
+
+Print the project path a document of a kind and subject is written to.
+
+```sh
+picket name <kind> "<subject>" [--work <id>]
+```
+
 ## picket next
 
 Print the next action for a work item, or for the latest open one.

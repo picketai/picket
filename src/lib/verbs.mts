@@ -21,6 +21,7 @@ export const VERB_NAMES = {
   list: { summary: "list the work items with their lane, status, phases and next action", readOnly: true },
   migrate: { summary: "move state from the old locations to .picket/", readOnly: false },
   mutate: { summary: "plant one mutant in the phase's code and check the tests catch it", readOnly: false },
+  name: { summary: "print the project path a document of a kind and subject is written to", readOnly: true },
   next: { summary: "print the next action for a work item, or for the latest open one", readOnly: true },
   open: { summary: "open a work item in a lane", readOnly: false },
   packet: { summary: "print the gate packet the lead shows the user", readOnly: true },

@@ -117,7 +117,7 @@ test("the built-name scan reads .mjs modules too: an .mjs import of a typed sibl
   assert.deepEqual(builtNameImports("src/lib/shared/a.mjs", 'import { x } from "./paths.mjs";'), ['import { x } from "./paths.mjs";']);
   assert.deepEqual(builtNameImports("src/lib/shared/a.mjs", 'import { VERDICTS } from "./verdicts.mjs";'), []);
   const scanned = directionSources().map(repoPath);
-  assert.ok(scanned.includes("src/lib/shared/config.mjs") && scanned.includes("src/skills/documenting/scripts/filename.mjs"), scanned.join(", "));
+  assert.ok(scanned.includes("src/lib/shared/config.mjs") && scanned.includes("src/skills/documenting/scripts/export.mjs"), scanned.join(", "));
 });
 
 test("the process-read scan covers src/lib only", () => {

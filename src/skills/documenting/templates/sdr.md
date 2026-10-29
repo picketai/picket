@@ -11,7 +11,7 @@ confidence: high
 
 # SDR-[REPLACE: NNNNN]: [REPLACE: title]
 
-<!-- location: this work item's directory, or artifacts/<kind>/NNNNN-<short-title>.md. NNNNN is a zero-padded 5-digit sequence, independent of any tactical ADR counter; scripts/filename.mjs derives it. Re-derive immediately before writing; on a collision retry up to 3 times, then stop and surface it. -->
+<!-- location: `picket name <kind> "<subject>"` with kind sdr prints artifacts/strategy/decisions/NNNNN-<slug>.md. NNNNN is a zero-padded 5-digit sequence, independent of any tactical ADR counter. Re-derive immediately before writing; on a collision retry up to 3 times, then stop and surface it. -->
 <!-- cap: at most 400 lines excluding fenced code. Past 400, split into two SDRs linked by Supersedes lines. -->
 <!-- IDs: D-### for sub-decisions (only when one SDR truly holds several decisions; prefer one per SDR), RISK-### under Consequences, TF-### under Tactical follow-up. Zero-padded, encounter order, never renumbered after publication; withdraw with [withdrawn] and keep the ID. Cross-artifact reference: <short-title>#TF-003. Severity tags: critical | major | minor | pre-existing -->
 

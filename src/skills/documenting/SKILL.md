@@ -21,16 +21,16 @@ Read the template for the kind before writing. Templates carry structure and con
 |---|---|---|---|
 | order | `templates/order.md` | architect | `work/<id>/order.md` |
 | design | `templates/design.md` | architect | `work/<id>/design.md` |
-| report | `templates/report.md` | analyst | `work/<id>/research.md`, or `artifacts/reports/<slug>.md` standalone |
-| charter | `templates/charter.md` | consulting | `artifacts/strategy/<context>-charter.md` |
-| context-map | `templates/context-map.md` | consulting | `artifacts/strategy/<scope>-context-map.md` |
+| report | `templates/report.md` | analyst in `work/<id>/research.md`, the lead standalone | `artifacts/reports/<slug>.md` |
+| charter | `templates/charter.md` | consulting | `artifacts/strategy/charters/<slug>.md` |
+| context-map | `templates/context-map.md` | consulting | `artifacts/strategy/context-maps/<slug>.md` |
 | sdr | `templates/sdr.md` | consulting | `artifacts/strategy/decisions/NNNNN-<slug>.md` |
-| glossary | `templates/glossary.md` | consulting, understanding | `.claude/MEMORY.md` |
-| api | `templates/api.md` | analyst | `artifacts/api/<slug>.md` |
+| glossary | `templates/glossary.md` | consulting, understanding | `artifacts/strategy/glossary/<slug>.md`, short entries in `.claude/MEMORY.md` |
+| api | `templates/api.md` | the lead standalone | `artifacts/api/<slug>.md` |
 
 ## Shared rules
 
-Filenames come from `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/filename.mjs" --kind <kind> "<subject>"` (add `--work <id>` for order and design); never derive one by hand. The script lowercases, drops stopwords, hyphenates, truncates to five tokens, and prefixes a zero-padded sequence where the kind numbers its files; a name that would start with report, summary, findings or analysis gets an `about-` prefix, because Claude Code refuses such a basename from a subagent.
+Paths come from `picket name <kind> "<subject>"` (`picket name <order|design> --work <id>` for a work item file); never derive one by hand. It prints the project-relative path from the registry: the subject lowercased, stopwords dropped, hyphenated, cut to five words, with the next five-digit sequence for an SDR. A second line `exists` means the file is already there: update it rather than write a new one.
 
 Every template starts with a YAML frontmatter block (`kind`, `title`, `date`, `audience`, `sources`, `confidence`; order and design add `lane` and `phases`). Sections are fixed headings in fixed order. `<!-- required -->` marks the ones that must be filled; `<!-- optional: trigger -->` names when an optional one appears. Placeholders are `[REPLACE: ...]`. Strip every placeholder and every HTML comment before writing.
 
@@ -46,4 +46,4 @@ Only `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/export.mjs" --input
 
 ## Standalone
 
-`/picket:documenting <kind> <subject> [--export]`: derive the filename, read the template, write the document, run the export when asked, reply with the path in one line.
+`/picket:documenting <kind> <subject> [--export]`: run `picket name`, read the template, write the document, run the export when asked, reply with the path in one line.

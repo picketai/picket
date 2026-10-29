@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { isLeadOnly, kernelClass, WRAPPING_FLAGS } from "./kernel.mts";
 import { VERB_NAMES } from "../../../verbs.mts";
 
-const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify"];
+const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify", "name"];
 const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"] };
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {

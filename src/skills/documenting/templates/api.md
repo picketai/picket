@@ -1,6 +1,6 @@
 # Template: REST API Documentation
 
-**Artifact path:** `artifacts/api/<derived-short-title>.md`
+**Artifact path:** printed by `picket name api "<subject>"`
 
 Production-ready REST API reference for external integrators who have no access to the source code. Output is **pure Markdown**: no preamble, no commentary, no filler. Produce one self-contained section per endpoint, then close with a single `## Enums & Mappings` section.
 

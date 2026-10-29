@@ -17,6 +17,7 @@ export const REGISTRY = {
   list: () => import("../verbs/list/index.mts"),
   migrate: () => import("../verbs/migrate/index.mts"),
   mutate: () => import("../verbs/mutate/index.mts"),
+  name: () => import("../verbs/name/index.mts"),
   next: () => import("../verbs/next/index.mts"),
   open: () => import("../verbs/open/index.mts"),
   packet: () => import("../verbs/packet/index.mts"),
