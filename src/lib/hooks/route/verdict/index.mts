@@ -7,13 +7,14 @@ import { findVerdict } from "../../../shared/verdicts.mjs";
 import { readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
+import { readVerdicts } from "../../../shared/work/verdict-log.mts";
 import { route } from "../../../verbs/route/index.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
 
 type StopEvent = "Stop" | "SubagentStop";
 type BlockInfo = { agent: string; id: string; phase: number | null; scope: ReviewScope | null; index: number };
-type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hints; id: string; verdict: string; text: string; ctx: HookContext };
+type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hints; id: string; verdict: string; phase: number | undefined; text: string; ctx: HookContext };
 
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
@@ -60,9 +61,13 @@ function saveReviewerBlock(info: BlockInfo | null, text: string, root: string): 
   } catch {}
 }
 
-function applyVerdict({ event, info, hints, id, verdict, text, ctx }: Routing): string {
+function repeatsLastRow(root: string, id: string, verdict: string, phase: number | undefined): boolean {
+  const last = readVerdicts(root, workId(id)).rows.at(-1);
+  return last?.verdict === verdict && (phase === undefined || last.phase === phase);
+}
+
+function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Routing): string {
   const scope = info?.scope === "phase" ? undefined : (info?.scope ?? (hints.scope && !hints.scope.startsWith("phase") ? hints.scope : undefined));
-  const phase = info?.phase ?? hints.phase ?? undefined;
   const agent = info?.agent ?? (["approved", "rejected"].includes(verdict) ? "user" : (event.agent_type ?? "lead"));
   const amend = text.match(/^AMENDMENT NEEDED:.*$/m)?.[0] ?? null;
   const unsaved = unsavedBlockNote(info, verdict);
@@ -83,20 +88,23 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): string | null
   const hints = latestHints(agentTranscript(event));
   const id = info?.id ?? hints.work_id;
   if (!id) return null;
-  if (info?.scope === "pr") return keepPullRequestReview(id, verdict, text, ctx.root);
-  return applyVerdict({ event, info, hints, id, verdict, text, ctx });
+  const continued = Boolean(event.stop_hook_active);
+  if (info?.scope === "pr") return continued ? null : keepPullRequestReview(id, verdict, text, ctx.root);
+  const phase = info?.phase ?? hints.phase ?? undefined;
+  if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) return null;
+  return applyVerdict({ event, info, hints, id, verdict, phase, text, ctx });
 }
 
 function outcome(event: PayloadOf<StopEvent>, ctx: HookContext): string | null {
   try {
     return routeTurn(event, ctx);
   } catch (err) {
+    if (event.stop_hook_active) return null;
     return `picket: verdict not applied (${(err as Error).message}). Run \`picket next <id>\` yourself.`;
   }
 }
 
 export function routeVerdict(event: PayloadOf<StopEvent>, ctx: HookContext): ContextOutput | null {
-  if (event.stop_hook_active) return null;
   const out = outcome(event, ctx);
   return out ? context(event.hook_event_name, out) : null;
 }

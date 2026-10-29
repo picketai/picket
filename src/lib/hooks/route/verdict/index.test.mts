@@ -111,3 +111,47 @@ test("routeVerdict stores a reviewer's Classes on a CHANGES REQUIRED entry and n
   assert.deepEqual(entries.map((e) => e.classes ?? null), [["Ts4", "Cm1"], null, null]);
   assert.deepEqual(reviewClasses("Classes: Ts4,Cm1 Ts4, and more"), ["Ts4", "Cm1"]);
 });
+
+function twoPhaseOrder(root: string): string {
+  const s = openItem(root, { lane: "order", title: "Chained" });
+  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n");
+  return s.id;
+}
+
+function routePhaseDone(root: string, id: string, n: number, continued: boolean) {
+  const block = `## Phase ${n} of ${id}: P\n\nP works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: feat: p\n\nPHASE DONE`;
+  const tp = transcript(root, [user(`work: ${id}\nphase: ${n}`), assistant(block)]);
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "picket:developer", stop_hook_active: continued }, hookContext(root));
+}
+
+test("a continued turn routes a new phase's PHASE DONE", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  const out = routePhaseDone(root, id, 2, true);
+  assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.equal(existsSync(join(root, "work", id, "phases", "2.done")), true);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["PHASE DONE", 2]]);
+});
+
+test("a continued turn that repeats the last row routes nothing", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  routePhaseDone(root, id, 2, false);
+  assert.equal(routePhaseDone(root, id, 2, true), null);
+  assert.equal(verdictRows(root, id).length, 2);
+});
+
+test("a continued turn returns no context for a pull request review or a routing error", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const pr = "## Review: pr-412 · pr\n\nApproved.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
+  const prTurn = transcript(root, [user("scope: pr"), assistant(pr)]);
+  assert.equal(routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: prTurn, cwd: root, agent_type: "reviewer", stop_hook_active: true }, hookContext(root)), null);
+  assert.equal(existsSync(statePath(root, "pr-412.review.md")), false);
+  const id = twoPhaseOrder(root);
+  const misowned = `## Phase 1 of ${id}: A\n\nA works.\n\nAPPROVED`;
+  const errorTurn = (continued: boolean) => routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: transcript(root, [user(`work: ${id}`), assistant(misowned)]), cwd: root, agent_type: "picket:developer", stop_hook_active: continued }, hookContext(root));
+  assert.equal(errorTurn(true), null);
+  assert.match(errorTurn(false).hookSpecificOutput.additionalContext, /verdict not applied/);
+});
