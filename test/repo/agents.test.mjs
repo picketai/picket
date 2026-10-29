@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { bodyOf, fences, frontmatterFields, sections } from "#test/instructions.mts";
 import { BLOCK_FIELDS, detectBlock } from "../../src/lib/shared/work/block.mts";
 import { VERDICTS } from "../../src/lib/shared/verdicts.mjs";
+import { sendsFor } from "../../src/lib/shared/work/send.mts";
+import { snapshotOf } from "#test/snapshot.mts";
 
 const AGENTS_DIR = "src/agents";
 const REQUIRED = ["name", "description", "tools", "model", "effort", "memory", "color"];
@@ -12,7 +14,31 @@ const ALLOWED = [...REQUIRED, "skills", "disallowedTools", "maxTurns", "autoComp
 const IGNORED_FOR_PLUGINS = ["hooks", "mcpServers", "permissionMode", "initialPrompt"];
 const PARTS = ["Entry", "Constraints", "Work", "Memory", "Output"];
 const VALUES = { model: /^(sonnet|opus|haiku|fable|inherit|claude-[a-z0-9-]+)$/, effort: /^(low|medium|high|xhigh|max)$/, memory: /^(user|project|local)$/, color: /^(red|blue|green|yellow|purple|orange|pink|cyan)$/ };
-const PENDING = ["src/agents/analyst.md", "src/agents/architect.md", "src/agents/developer.md", "src/agents/reviewer.md"];
+const PENDING = ["src/agents/analyst.md", "src/agents/architect.md", "src/agents/reviewer.md"];
+const TEMPLATES = { developer: "src/skills/implementing/SKILL.md" };
+const EXPEDITED_HEADING = "## Expedited: <id>";
+const FIELD_KEY = /^([a-z][a-z ]*):(?:\s|$)/;
+const RUN_THROUGH = /^run through\b/;
+const CODE_SPAN = /`([^`]+)`/g;
+const FIXTURE_TS = "2026-10-29T10:00:00.000Z";
+const FIXTURE_SESSION = "S";
+
+function developerRow(phase) {
+  return { ts: FIXTURE_TS, agent: "developer", verdict: "PHASE DONE", phase, scope: null, through: null, session: FIXTURE_SESSION };
+}
+
+const ENTRY_FIXTURES = {
+  developer: () => {
+    const phases = [{ n: 1, done: true, approved: true }, { n: 2 }];
+    const implement = { action: "implement_phase", actor: "developer", phase: 2, detail: "d" };
+    const fix = { action: "fix_findings", actor: "developer", phase: 2, detail: "d" };
+    return [
+      ...sendsFor(snapshotOf({ phases, run_through: 2 }), implement, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ phases, verdicts: [developerRow(1)] }), implement, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ phases: [{ n: 1, done: true, approved: true }] }), fix, FIXTURE_SESSION),
+    ];
+  },
+};
 const KNOWN_TOOLS = ["Agent", "AskUserQuestion", "Bash", "Edit", "Glob", "Grep", "NotebookEdit", "PowerShell", "Read", "SendMessage", "Skill", "TodoWrite", "WebFetch", "WebSearch", "Write"];
 const MCP_TOOL = /^mcp__[\w-]+__[\w-]+$/;
 const WORK_PART = "Work";
@@ -108,18 +134,61 @@ function outputFence(body) {
   return fences(body.split("\n")).find((fence) => fence.start > output.line && fence.start < output.end) ?? null;
 }
 
-function contractProblems(fence, agent) {
+function contractProblems(fence, agent, extraLabels = []) {
   const kind = detectBlock(filledHeading(fence.lines[0] ?? ""));
   if (kind === null) return { kind, problems: [`the Output fence heading "${fence.lines[0]}" matches no BLOCK_HEADINGS entry`] };
   const last = fence.lines.filter((line) => line.trim()).at(-1)?.trim() ?? "";
   const verdict = VERDICTS[last]?.agent === agent ? [] : [`the Output fence ends with "${last}", not a verdict of ${agent}`];
-  const labels = BLOCK_FIELDS[kind].filter((label) => !fence.lines.some((line) => line.startsWith(`${label}:`))).map((label) => `the ${kind} block has no "${label}:" line`);
+  const wanted = [...new Set([...BLOCK_FIELDS[kind], ...extraLabels])];
+  const labels = wanted.filter((label) => !fence.lines.some((line) => line.startsWith(`${label}:`))).map((label) => `the ${kind} block has no "${label}:" line`);
   return { kind, problems: [...verdict, ...labels] };
 }
 
 function outputProblems(body, agent) {
   const fence = outputFence(body);
   return fence ? contractProblems(fence, agent) : { kind: null, problems: ["no fenced block under ## Output"] };
+}
+
+function templateProblems(templateText, agent) {
+  const fence = outputFence(bodyOf(templateText));
+  if (!fence) return { kind: null, problems: ["the template has no fenced block under ## Output"] };
+  const { kind, problems } = contractProblems(fence, agent, BLOCK_FIELDS.expedited);
+  const expedited = templateText.includes(EXPEDITED_HEADING) ? [] : [`the template does not name "${EXPEDITED_HEADING}"`];
+  return { kind, problems: [...problems, ...expedited] };
+}
+
+function shellOutputProblems(path, text) {
+  const agent = frontmatterFields(text).name;
+  const template = TEMPLATES[agent];
+  if (!template) return outputProblems(bodyOf(text), agent);
+  const inline = fences(bodyOf(text).split("\n")).length ? [`${path} keeps a fence; its block lives in ${template}`] : [];
+  const { kind, problems } = templateProblems(readFileSync(template, "utf8"), agent);
+  return { kind, problems: [...inline, ...problems] };
+}
+
+function fieldKey(text) {
+  if (RUN_THROUGH.test(text)) return "run through";
+  return text.match(FIELD_KEY)?.[1] ?? null;
+}
+
+function sentKeys(agent) {
+  const type = `picket:${agent}`;
+  const lines = ENTRY_FIXTURES[agent]().filter((send) => send.type === type).flatMap((send) => send.message.split("\n"));
+  return [...new Set(lines.map(fieldKey).filter((key) => key !== null))].sort();
+}
+
+function entryKeys(body) {
+  const entry = sections(body).find((section) => section.level === 2 && section.title === "Entry");
+  if (!entry) return [];
+  const spans = body.split("\n").slice(entry.line + 1, entry.end).flatMap((line) => [...line.matchAll(CODE_SPAN)].map((m) => m[1]));
+  return [...new Set(spans.map(fieldKey).filter((key) => key !== null))].sort();
+}
+
+function entryProblems(body, sent) {
+  const named = entryKeys(body);
+  const missing = sent.filter((key) => !named.includes(key)).map((key) => `## Entry does not name "${key}", which picket next sends`);
+  const extra = named.filter((key) => !sent.includes(key)).map((key) => `## Entry names "${key}", which picket next never sends`);
+  return [...missing, ...extra];
 }
 
 function structureFailures(files) {
@@ -186,13 +255,41 @@ test("a heading inside a fence is not a part", () => {
   assert.deepEqual(structureProblems(IDENTITY + PARTS_BODY.replace("## Output\n\nText.", "## Output\n\n```\n## X\n```")), []);
 });
 
-test("each shell's Output fence opens with a block heading, ends with its verdict and carries the kernel's labels", () => {
+test("each shell's Output fence, or its template's, opens with a block heading, ends with its verdict and carries the kernel's labels", () => {
   const kinds = agentFiles().map(({ path, text }) => {
-    const { kind, problems } = outputProblems(bodyOf(text), frontmatterFields(text).name);
+    const { kind, problems } = shellOutputProblems(path, text);
     assert.deepEqual(problems, [], path);
     return kind;
   });
   assert.deepEqual(kinds.sort(), ["artifact", "phase", "report", "review"]);
+});
+
+test("a template fence without Waivers: fails, and so does a template that never names the fast-lane heading", () => {
+  const template = readFileSync(TEMPLATES.developer, "utf8");
+  assert.deepEqual(templateProblems(template, "developer").problems, []);
+  assert.deepEqual(templateProblems(template.replace(/^Waivers: .*\n/m, ""), "developer").problems, ['the phase block has no "Waivers:" line']);
+  assert.deepEqual(templateProblems(template.replaceAll(EXPEDITED_HEADING, "## Fast: <id>"), "developer").problems, [`the template does not name "${EXPEDITED_HEADING}"`]);
+});
+
+test("every shell outside PENDING has Entry fixtures", () => {
+  const converted = agentFiles().filter(({ path }) => !PENDING.includes(path)).map(({ text }) => frontmatterFields(text).name);
+  assert.deepEqual(converted.filter((agent) => !(agent in ENTRY_FIXTURES)), []);
+});
+
+test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
+  assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
+  for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
+    assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
+  }
+});
+
+test("an Entry missing a sent field or naming a field never sent fails", () => {
+  const sent = ["artifact", "phase", "review", "run through", "work"];
+  const entry = (...fields) => `${IDENTITY}\n## Entry\n\nThe message names ${fields.map((f) => `\`${f}\``).join(", ")}, and you run \`picket state <id>\`.\n`;
+  const all = ["work: <id>", "phase: <n>", "artifact: <path>", "run through <m>", "review: <path>"];
+  assert.deepEqual(entryProblems(entry(...all), sent), []);
+  assert.deepEqual(entryProblems(entry(...all.filter((f) => !f.startsWith("review"))), sent), ['## Entry does not name "review", which picket next sends']);
+  assert.deepEqual(entryProblems(entry(...all, "foo: <x>"), sent), ['## Entry names "foo", which picket next never sends']);
 });
 
 test("a review fence without Classes: fails, and a fence ending on another agent's verdict fails", () => {
