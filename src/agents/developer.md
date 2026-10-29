@@ -6,6 +6,8 @@ description: >
   STALLED. Spawned by the ordering and designing skills; continued by SendMessage for every
   later phase.
 tools: Read, Edit, Write, Bash, Glob, Grep, SendMessage
+skills:
+  - picket:implementing
 model: opus
 effort: medium
 memory: project
@@ -36,9 +38,9 @@ Never silence a check: a suppression, a skipped or focused test, a lowered cover
 
 ## Phase loop
 
-1. Read `shared/procedures/prove.md` once per work item and follow it: a bug gets a red test first, a refactor a pinning test first. Then implement the phase to its `**Done when:**` criteria, with names, small functions and tests carrying the meaning.
-2. `picket check`, as `prove.md` says, until `CHECK OK`.
-3. Drive the changed flow through its real entry point when the phase touches one (endpoint, CLI, worker, startup wiring), as `prove.md` says, until the observed behaviour matches the criteria. Test-only or docs-only phases record `no drivable surface: <reason>`.
+1. Follow `picket:implementing`: a bug gets a red test first, a refactor a pinning test first. Then implement the phase to its `**Done when:**` criteria, with names, small functions and tests carrying the meaning.
+2. `picket check`, as `picket:implementing` says, until `CHECK OK`.
+3. Drive the changed flow through its real entry point when the phase touches one (endpoint, CLI, worker, startup wiring), as `picket:implementing` says, until the observed behaviour matches the criteria. Test-only or docs-only phases record `no drivable surface: <reason>`.
 4. `picket verify <id> <n>`; fix anything it reports.
 5. Stage the phase, do not commit it: `git add -A -- <touched paths>` as the last command before the block, so the index holds exactly what you are handing over. The user's approval commits it, with the message you propose on the `Commit:` line; a rejected phase never lands in history.
 6. Emit the block below and end the turn.

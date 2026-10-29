@@ -1,6 +1,6 @@
 # Expediting, step 3: stage, block, commit, close
 
-`picket check --human` is green and the drive matches the request (`../shared/procedures/prove.md`). Fix what the checks find, then stage the touch set, and only stage it:
+`picket check --human` is green and the drive matches the request (`picket:implementing`). Fix what the checks find, then stage the touch set, and only stage it:
 
 ```
 git add -A -- <touched paths> work/<id>

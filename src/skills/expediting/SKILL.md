@@ -28,7 +28,7 @@ Name the touch set before editing: the files you will change, at most three. Ask
 
 ## Step 2: make the change
 
-Read `../shared/procedures/prove.md` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
+Load `picket:implementing` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Edit only the touch set. Read a file before you edit it; the read-before-edit hook blocks the alternative. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` means stop editing, `picket set <id> status=abandoned`, and start the named lane skill with the request and the diff you have.
 
 The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; no new comments (the `comments` rule), a needed why goes on the `Comments:` line for the user; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
 
@@ -36,7 +36,7 @@ Add or adjust unit tests for the behaviour you changed; the module's existing te
 
 ## Step 3: check, drive, commit, close
 
-Run the check and the drive of `../shared/procedures/prove.md` once the change compiles, then read `steps/10-check.md`.
+Run the check and the drive of `picket:implementing` once the change compiles, then read `steps/10-check.md`.
 
 ## Escalation
 
@@ -46,21 +46,6 @@ Re-run `picket admit --text "<request>" --touched <comma-separated paths you hav
 
 The fast lane prints one block, staged and uncommitted, and stops for a one-word answer. No routing suggestions, no offers.
 
-```
-## Expedited: <id>
-
-<one sentence under 90 characters: what now works that did not>
-
-Files: <path>, <path>
-Tests: passed | failed: <what> | no suite detected
-Lint: passed | failed: <what> | none detected
-Verified: <command> → <observed result> | no drivable surface: <reason>
-Red: <test> failed: <first failure line> | pinned: <test> | n/a: <reason>
-Root cause: <X> because <Y> | none
-Comments: <path>:<line> "<text>" | none
-Commit: <type>(<scope>): <what>   (staged; your answer commits it)
-
-[c] commit   [x] discard: <why>
-```
+The block is the fast-lane form of the template in `picket:implementing`: its lines under `## Expedited: <id>`, ending with the options line.
 
 When `Comments:` lists proposals, number them and end the options line with `[k] keep comment <n>`.

@@ -20,6 +20,7 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 | `picket:branching` | command | worktrees across nested repositories | `/picket:branching <branch>` |
 | `picket:documenting` | used by agents | templates for every structured document | agents, or `/picket:documenting <kind> <subject>` |
 | `picket:reviewing` | used by agents | review checklist and pull request review | the reviewer, or `/picket:reviewing <pull request URL>` |
+| `picket:implementing` | used by agents | prove, check and drive a change, and the developer block | the developer and the fast lane; you never run it |
 | `picket:benchmarking` | contributors | measure Picket itself | `/picket:benchmarking ...` in the Picket repository |
 
 ## picket:expediting
@@ -149,6 +150,14 @@ The reviewer's checklist: what to load for a change of a given size, how to grad
 **How you reach it.** Two ways. The [reviewer](agents.md#picketreviewer) loads it for the plan cross-check and checkpoint reviews in the design lane, and for the final review in both lanes. You run it yourself with `/picket:reviewing <pull request URL>` for a pull request on GitHub or Azure DevOps, from your local clone.
 
 **Where it fits.** A change under a security path always gets the full security checklist. In pull request mode it prints the findings and `[p] post to the PR   [d] done`; nothing is posted before `p`, and it asks once more before posting. Posting works on Azure DevOps only; on GitHub, use `gh pr review`. An Azure DevOps pull request needs a personal access token in the `AZDO_PAT` environment variable; without one the review covers the code only.
+
+## picket:implementing
+
+How a change is made and proven: the kind of change named first, a red test before a bug fix, a pinning test before a refactor, `picket check` until it passes, and a drive of the changed flow through its real entry point. It also holds the block the developer ends a phase with.
+
+**How you reach it.** You never invoke it. The [developer](agents.md#picketdeveloper) preloads it for every phase, and the fast lane loads it before its first edit.
+
+**Where it fits.** It decides what the block's `Red:`, `Root cause:`, `Tests:`, `Lint:` and `Verified:` lines say. A bug handed over by `picket:debugging` keeps its red test: the lane runs that test first instead of writing another. The fast lane prints the same block under `## Expedited: <id>` and ends it with `[c] commit   [x] discard: <why>` instead of a verdict.
 
 ## picket:benchmarking
 

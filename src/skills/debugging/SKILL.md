@@ -61,7 +61,7 @@ Hand-off: <the change request for picket admit>
 [f] fix it   [k] keep digging   [x] stop
 ```
 
-`Red:` and `Root cause:` take exactly the forms of `../shared/procedures/prove.md`, so the lane that fixes the bug reuses them unchanged.
+`Red:` and `Root cause:` take exactly the forms of `picket:implementing`, so the lane that fixes the bug reuses them unchanged.
 
 Replies:
 

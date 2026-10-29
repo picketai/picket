@@ -125,7 +125,7 @@ test("the repository scan reads references in all three forms", () => {
     const { text } = scannedFiles().find((f) => f.file === file);
     return references(text, ownerOf(file, text)).map((ref) => ref.target);
   };
-  assert.ok(targetsOf("src/agents/developer.md").includes("shared/procedures/prove.md"), "skills-root form");
+  assert.ok(targetsOf("src/agents/architect.md").includes("shared/procedures/amend.md"), "skills-root form");
   assert.ok(targetsOf("src/skills/ordering/SKILL.md").includes("shared/procedures/gate.md"), "base-relative form");
   assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/checklists/12-bar.md"), "own-folder form");
 });

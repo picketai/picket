@@ -46,7 +46,7 @@ export const BLOCK_FIELDS = {
   review: ["Classes"],
   artifact: [],
   report: [],
-  expedited: [],
+  expedited: ["Decisions", "Waivers"],
 } as const satisfies Readonly<Record<BlockKind, readonly string[]>>;
 
 export type BlockField<K extends BlockKind = BlockKind> = (typeof BLOCK_FIELDS)[K][number];

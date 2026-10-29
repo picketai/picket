@@ -74,7 +74,7 @@ test("BLOCK_FIELDS lists the labels kernel code reads from each block kind", () 
     review: ["Classes"],
     artifact: [],
     report: [],
-    expedited: [],
+    expedited: ["Decisions", "Waivers"],
   });
 });
 

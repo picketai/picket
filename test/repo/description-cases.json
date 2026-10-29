@@ -40,6 +40,14 @@
     ]
   },
   {
+    "skill": "implementing",
+    "positive": ["implement this phase of the order and prove it with a red test first", "write a pinning test before the refactor, then drive the changed flow", "which Red and Root cause lines does the developer block need"],
+    "negative": [
+      { "prompt": "find the root cause of the crash in the CSV export", "owner": "debugging" },
+      { "prompt": "quick change: rename the flag, don't spin up the pipeline", "owner": "expediting" }
+    ]
+  },
+  {
     "skill": "explaining",
     "positive": ["walk me through what happens to the data when a customer pays, with an example", "explain with real data how a discount is applied", "explain the concept of idempotency simply, with an example"],
     "negative": [
