@@ -22,6 +22,12 @@ Server rules: `cloudId` is a top-level argument on every execute call, a sibling
 3. State what was loaded before using it: key, type, status, assignee, comment count, any thread with an open question or scope change.
 4. Render the item; map fields onto the template structure where useful.
 
+With a key and `--story` (`--pull SHOP-123 --story`), a lane is opening a work item, and the pull replaces steps 2 to 4:
+
+1. `getJiraIssue` with `view: full`.
+2. Write the description and the acceptance-criteria fields unedited, in that order, to `.picket/state/scratch/<KEY>.md`. Never summarise or reword them: the reviewer quotes the story.
+3. Print one line with the flags for `picket open`: `--ticket <KEY> --story .picket/state/scratch/<KEY>.md`. Then stop; the lane opens the item.
+
 ## Create
 
 1. `getAccessibleAtlassianResources` for the cloud id if unknown.

@@ -4,58 +4,54 @@ description: >
   The design lane: a change that touches a security path, a schema or data migration, an
   irreversible step, a second repo or contract, or more than an order can hold. The architect
   writes a design record (decisions first, then phases), the developer starts phase 1 while
-  the reviewer cross-checks the record concurrently, every phase takes a user gate, a
-  checkpoint review runs at the midpoint of long plans, and one cumulative review closes it.
-  Use when `picket admit` answers `design`, when a security-paths rule fires, or when
-  `picket:ordering` reports that the order exceeds its caps.
-user-invocable: true
+  the reviewer cross-checks the record, every phase takes a user gate, a checkpoint review runs
+  at the midpoint of long plans, and one cumulative review closes it.
+when_to_use: >
+  Use when `picket admit` answers `design`, when a security-paths rule fires, or when the order
+  lane reports that the order exceeds its caps.
 ---
 
 # Designing
 
-Runs in the main session. You are the lead: one architect, one developer, one reviewer per work item, each spawned once and continued by `SendMessage`; the cumulative review alone gets a fresh reviewer (`../shared/procedures/cumulative-review.md`). Every routing decision comes from `picket next <id>`.
-
-Lane check for this request:
-
-If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.
-
-`design` continues here. Other lanes run their own skill. A forced `lane: design` in the request is honoured.
+You lead the design lane from the main session: one architect, one developer and one reviewer per work item, each spawned once and continued after, plus a fresh reviewer for the cumulative review. `picket next <id>` names every send and every gate; the target is the time to the first reviewable output.
 
 ## Steps
 
-One step file at a time, each under 80 lines. The phase loop, the gate and the reviews are shared procedures, the same in the order lane.
+1. A request that names a Jira key (`SHOP-123`): run `picket:ticketing --pull <KEY> --story` by name before anything else; it writes the story file and prints the `picket open` flags.
+2. Open the item and run its preflight as `steps/open.md` says.
+3. `write_artifact`: send the architect what `picket next <id>` prints and end the turn. The architect emits the decisions and phase 1 first, so `ARTIFACT WRITTEN` arrives early.
+4. `implement_phase` on phase 1 prints two sends, the developer and the reviewer's cross-check: put both in one tool block so neither waits, and end the turn. A `PHASE DONE` that lands before the cross-check verdict holds the packet until that verdict is in.
+5. `DRIFT DETECTED` blocks the item and `picket next` says `amend`: send the architect what it prints. After `AMENDED`, `picket next` says `review_crosscheck`: send it at once, with no user gate between the amendment and the re-check.
+6. `implement_phase` on later phases, `review_checkpoint`, `review_cumulative`, `fix_findings`: send what `picket next <id>` prints, running its `first:` lines before the send, and end the turn.
+7. `approve_phase`, `resolve_block`, `resolve_rejections`: the gate of rule 4. Print `picket packet <id>` verbatim, end the turn, and pass the reply to `picket reply <id> "<reply>"`.
+8. `close`: print one sentence on what shipped, then run `picket close <id> --human` and print its output verbatim under it. Stop.
 
-| `picket next` says | Read |
-|---|---|
-| `write_artifact` by architect | `steps/10-design.md`: open the work item, spawn the architect with the design template |
-| `resolve_sources` by user | `steps/10-design.md`: the opening gate; print the packet, stop, apply each pick |
-| `implement_phase`, phase 1 | `steps/20-crosscheck.md`: start the developer AND the reviewer's cross-check in the same turn |
-| `implement_phase`, later phases | `../shared/procedures/phase-loop.md` |
-| `approve_phase` by user | `../shared/procedures/gate.md` |
-| `review_checkpoint` by reviewer | `../shared/procedures/cumulative-review.md` with `scope: checkpoint` and `phase: <n>` |
-| `review_cumulative` by reviewer | `../shared/procedures/cumulative-review.md` |
-| `resolve_block` after `DRIFT DETECTED` or `AMENDMENT NEEDED`, when its options offer no redesign | `../shared/procedures/amend.md`: continue the architect, then resume |
-| `resolve_block` whose options offer a redesign (a `PHASE STALLED`, a third drift or a third amendment), any other `resolve_block`, or `resolve_rejections` | `../shared/procedures/gate.md`: print the packet with the kernel's options, stop, apply the reply |
-| `close` | `picket close <id>`, print the closing block, stop |
+## Rules
 
-## Rules of the lane
+A drift arriving mid-phase never discards the developer's phase 1 work: the item is blocked, the record is amended, and the re-check covers the amended decisions before the phase 1 gate.
 
-Time to first reviewable output is the target: the architect emits the decisions and phase 1 before the remaining phases are polished, so the developer starts while the record is finished and cross-checked. `DRIFT DETECTED` arriving mid-phase blocks the item; the developer's phase 1 work is kept and re-checked after the amendment, never thrown away.
+A run grant stops at every phase that takes its own gate (a security path, a `security: true` phase); `picket next` and the packet name the reason. A phase marked `[IRREVERSIBLE]` takes an explicit confirmation: the packet offers `[i]` in place of `[a]`.
 
-A run grant stops at every phase that takes its own gate; `picket next` and the gate packet name the reason. A phase marked `[IRREVERSIBLE]` takes an explicit confirmation: `picket next` and the packet offer `[i]` in place of `[a]`, and the gate procedure maps the reply.
+Plans of 6 or more phases get a checkpoint review before the phase after the midpoint; `picket next` schedules it as `review_checkpoint`.
 
-Long plans (6 or more phases) get a checkpoint review before the phase after the midpoint; `picket next` schedules it.
+Three `DRIFT DETECTED` rounds, three amendments or three cumulative `CHANGES REQUIRED` rounds are a user decision, never a fourth round: `picket next` gives the stall options and you print them through the gate.
 
-Three `DRIFT DETECTED` rounds, three amendments or three cumulative `CHANGES REQUIRED` rounds are a user decision, not a fourth round: `picket next` returns the options, and the gate prints them.
+Batch the user's gate rulings ("make it injectable", "merge those two ports") into one amendment message to the architect rather than one message for each.
 
-## Closing block
+When `picket open` refuses with a message naming `--user-lane`, admit chose another lane: ask the user, and add the flag only on their word.
+
+The design record holds 1 to 10 phases and at most 8 decisions; never edit `work/<id>/` or write code yourself in this lane.
+
+## Output
+
+The closing block is `picket close <id> --human`, under your one sentence:
 
 ```
-## Design closed: <id>
-
 <one sentence: what shipped>
+
+## Design closed: <id>
 Phases: <n> · decisions: <n> (<k> amended) · commits <first>..<last> · review: APPROVED
-Questions: <the cumulative reviewer's Questions line; omit this line when it says none>
-Left for you: <picket close's left lines; omit when there are none>
-Left staged: <picket close's left staged paths, not this item's; omit when there are none>
+Questions: <the cumulative review's open questions, when it asked some>
+Left for you: <one line per command left for the user>
+Left staged: <staged paths that are not this item's>
 ```

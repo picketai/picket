@@ -1,19 +1,20 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-export type SkillDescription = { name: string; path: string; description: string | null };
+export type SkillDescription = { name: string; path: string; description: string | null; when_to_use: string | null };
 export type Vector = Map<string, number>;
 export type RoutingModel = { idf: Vector; vectors: { name: string; vector: Vector }[] };
 export type Ranked = { name: string; score: number };
 export type SimilarPair = { a: string; b: string; score: number };
 
-function frontmatterDescription(text: string): string | null {
+function frontmatterValue(text: string, key: string): string | null {
   const fm = text.replace(/\r\n/g, "\n").match(/^---\n([\s\S]*?)\n---/);
   if (!fm) return null;
   const lines = fm[1].split("\n");
-  const start = lines.findIndex((l) => /^description:/.test(l));
+  const keyLine = new RegExp(`^${key}:`);
+  const start = lines.findIndex((l) => keyLine.test(l));
   if (start < 0) return "";
-  const head = lines[start].replace(/^description:\s*/, "");
+  const head = lines[start].replace(new RegExp(`^${key}:\\s*`), "");
   if (!/^(>-?|\|-?)?\s*$/.test(head)) return head.replace(/\s+/g, " ").trim();
   const folded = [];
   for (let i = start + 1; i < lines.length && /^\s+\S/.test(lines[i]); i++) folded.push(lines[i].trim());
@@ -26,7 +27,8 @@ export function skillDescriptions(root: string): SkillDescription[] {
     .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, "SKILL.md")))
     .map((entry) => {
       const path = join(dir, entry.name, "SKILL.md");
-      return { name: entry.name, path, description: frontmatterDescription(readFileSync(path, "utf8")) };
+      const text = readFileSync(path, "utf8");
+      return { name: entry.name, path, description: frontmatterValue(text, "description"), when_to_use: frontmatterValue(text, "when_to_use") };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -66,8 +68,12 @@ export function cosine(a: Vector, b: Vector): number {
   return denominator ? dot / denominator : 0;
 }
 
-export function vectorise(docs: { name: string; description: string | null }[]): RoutingModel {
-  const bags = docs.map(({ name, description }) => counts([...terms(name), ...terms(name), ...terms(description)]));
+function routedText({ description, when_to_use }: { description: string | null; when_to_use?: string | null }): string {
+  return [description, when_to_use].filter(Boolean).join(" ");
+}
+
+export function vectorise(docs: { name: string; description: string | null; when_to_use?: string | null }[]): RoutingModel {
+  const bags = docs.map((doc) => counts([...terms(doc.name), ...terms(doc.name), ...terms(routedText(doc))]));
   const df: Vector = new Map();
   for (const bag of bags) for (const term of bag.keys()) df.set(term, (df.get(term) ?? 0) + 1);
   const idf: Vector = new Map([...df].map(([term, n]) => [term, Math.log(1 + docs.length / n)]));

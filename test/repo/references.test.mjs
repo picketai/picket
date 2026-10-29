@@ -9,7 +9,6 @@ const SCANNED_DIRS = ["src/skills", "src/agents", "src/rules", "src/output-style
 const SKIPPED_DIRS = new Set(["examples"]);
 const OWN_FOLDERS = ["steps", "templates", "references", "checklists", "examples", "scripts"];
 const DOCUMENT_KIT = ["documenting/templates/", "documenting/scripts/"];
-const PROCEDURES = "shared/procedures/";
 const SKILL_ROOT_PREFIXES = ["${CLAUDE_PLUGIN_ROOT}/skills/", "src/skills/"];
 const BASE_RELATIVE = "../";
 const UNRESOLVED = /[{<*]/;
@@ -21,7 +20,7 @@ const LOCATION = /(#.*|:\d+(-\d+)?)$/;
 
 const EXCEPTIONS = [];
 
-const SKILL_NAMES = [...readdirSync(SKILLS_DIR).filter((name) => existsSync(join(SKILLS_DIR, name, "SKILL.md"))), "shared"];
+const SKILL_NAMES = readdirSync(SKILLS_DIR).filter((name) => existsSync(join(SKILLS_DIR, name, "SKILL.md")));
 
 function posixRelative(path) {
   return relative(ROOT, path).replaceAll("\\", "/");
@@ -41,7 +40,6 @@ function frontmatterSkills(text) {
 }
 
 function ownerOf(file, text) {
-  if (file.startsWith(`src/skills/${PROCEDURES}`)) return { kind: "procedure" };
   const skill = file.match(/^src\/skills\/([^/]+)\//)?.[1];
   if (skill) return { kind: "skill", skill };
   if (file.startsWith("src/agents/")) return { kind: "agent", skills: frontmatterSkills(text) };
@@ -97,8 +95,8 @@ function isSkillFile(target) {
 function withinReach(file, owner, target) {
   if (DOCUMENT_KIT.some((kit) => target.startsWith(kit))) return true;
   if (EXCEPTIONS.some((exception) => exception.file === file && exception.target === target)) return true;
-  if (owner.kind === "skill") return target.startsWith(`${owner.skill}/`) || target.startsWith(PROCEDURES);
-  if (owner.kind === "agent") return target.startsWith(PROCEDURES) || owner.skills.some((skill) => target.startsWith(`${skill}/`));
+  if (owner.kind === "skill") return target.startsWith(`${owner.skill}/`);
+  if (owner.kind === "agent") return owner.skills.some((skill) => target.startsWith(`${skill}/`));
   return false;
 }
 
@@ -126,7 +124,8 @@ test("the repository scan reads references in all three forms", () => {
     return references(text, ownerOf(file, text)).map((ref) => ref.target);
   };
   assert.ok(targetsOf("src/agents/architect.md").includes("documenting/references/schema-migration.md"), "skills-root form");
-  assert.ok(targetsOf("src/skills/ordering/SKILL.md").includes("shared/procedures/gate.md"), "base-relative form");
+  const designing = { kind: "skill", skill: "designing" };
+  assert.deepEqual(references("Read `../designing/steps/open.md`.", designing).map((ref) => ref.target), ["designing/steps/open.md"], "base-relative form");
   assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/checklists/12-bar.md"), "own-folder form");
 });
 
@@ -135,25 +134,21 @@ test("no exception is listed", () => {
 });
 
 test("the reference check flags a reach past the table and a missing file", () => {
-  assert.deepEqual(referenceProblems("src/skills/ordering/steps/10-order.md", "Read `designing/steps/10-design.md` and `../designing/steps/20-crosscheck.md`."), [
-    "src/skills/ordering/steps/10-order.md: designing/steps/10-design.md is outside its reach",
-    "src/skills/ordering/steps/10-order.md: designing/steps/20-crosscheck.md is outside its reach",
+  assert.deepEqual(referenceProblems("src/skills/ordering/steps/open.md", "Read `designing/steps/open.md` and `../designing/SKILL.md`."), [
+    "src/skills/ordering/steps/open.md: designing/steps/open.md is outside its reach",
+    "src/skills/ordering/steps/open.md: designing/SKILL.md is outside its reach",
   ]);
-  assert.deepEqual(referenceProblems("src/skills/shared/procedures/gate.md", "See `reviewing/SKILL.md` and `../ordering/SKILL.md`."), [
-    "src/skills/shared/procedures/gate.md: reviewing/SKILL.md is outside its reach",
-    "src/skills/shared/procedures/gate.md: ordering/SKILL.md is outside its reach",
-  ]);
-  const architect = "---\nname: architect\nskills:\n  - picket:documenting\n---\nRead `ordering/steps/10-order.md`.";
-  assert.deepEqual(referenceProblems("src/agents/architect.md", architect), ["src/agents/architect.md: ordering/steps/10-order.md is outside its reach"]);
+  const architect = "---\nname: architect\nskills:\n  - picket:documenting\n---\nRead `ordering/steps/open.md`.";
+  assert.deepEqual(referenceProblems("src/agents/architect.md", architect), ["src/agents/architect.md: ordering/steps/open.md is outside its reach"]);
   assert.deepEqual(referenceProblems("src/skills/ordering/SKILL.md", "Read `steps/99-nope.md`."), ["src/skills/ordering/SKILL.md: ordering/steps/99-nope.md does not exist"]);
   assert.deepEqual(referenceProblems("src/rules/prose.md", "Read `ordering/SKILL.md`."), ["src/rules/prose.md: ordering/SKILL.md is outside its reach"]);
 });
 
-test("the reference check accepts step: values, the document kit, own folders and the shared procedures", () => {
-  assert.deepEqual(referenceProblems("src/agents/developer.md", "```\nwork: <id>\nstep: ordering/steps/10-order.md, architect section follows\n```"), []);
-  assert.deepEqual(referenceProblems("src/skills/shared/procedures/cumulative-review.md", "`step: reviewing/checklists/15-traced.md`"), []);
-  assert.deepEqual(referenceProblems("src/skills/shared/procedures/gate.md", "`step: shared/procedures/no-such.md`"), ["src/skills/shared/procedures/gate.md: step: shared/procedures/no-such.md names no skill file"]);
+test("the reference check accepts step: values, the document kit and own folders", () => {
+  assert.deepEqual(referenceProblems("src/agents/developer.md", "```\nwork: <id>\nstep: ordering/steps/open.md, architect section follows\n```"), []);
+  assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/15-traced.md`"), []);
+  assert.deepEqual(referenceProblems("src/skills/designing/SKILL.md", "`step: reviewing/checklists/no-such.md`"), ["src/skills/designing/SKILL.md: step: reviewing/checklists/no-such.md names no skill file"]);
   assert.deepEqual(referenceProblems("src/skills/consulting/steps/20-ratify.md", 'Run `node "${CLAUDE_PLUGIN_ROOT}/skills/documenting/scripts/filename.mjs" --kind sdr` and read `../documenting/templates/sdr.md`.'), []);
   assert.deepEqual(referenceProblems("src/rules/work-items.md", "Artifacts follow `documenting/templates/{order,design}.md`."), []);
-  assert.deepEqual(referenceProblems("src/skills/reviewing/SKILL.md", "```\nreviewing/\n  checklists/10-alignment.md   criteria to evidence\n```\nThen `../shared/procedures/gate.md`."), []);
+  assert.deepEqual(referenceProblems("src/skills/reviewing/SKILL.md", "```\nreviewing/\n  checklists/10-alignment.md   criteria to evidence\n```\nThen `../reviewing/SKILL.md`."), []);
 });

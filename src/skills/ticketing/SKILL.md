@@ -35,7 +35,7 @@ Item type: first flag wins; without one, infer ("crash", "null ref" → bug; "re
 | `--spike` | spike | `spike.md` | Task | tech lead |
 | `--epic` | epic | `epic.md` | Epic | programme lead |
 
-Operation: none → draft (reply only, no file); `--pull` → fetch and render; `--create` → draft then create; `--update` → change an existing item. Strip flags before reading the rest as text or key. The platform is the system of record.
+Operation: none → draft (reply only, no file); `--pull` → fetch and render; `--pull <KEY> --story` → the lane intake: write the story file and print the `picket open` flags, no render; `--create` → draft then create; `--update` → change an existing item. Strip flags before reading the rest as text or key. The platform is the system of record.
 
 ## Steps
 

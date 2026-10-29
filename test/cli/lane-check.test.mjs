@@ -9,7 +9,6 @@ const LANES = ["designing", "expediting", "ordering", "researching"];
 const HOSTILE = 'Add a `picket close <id>` verb, say "done", keep $HOME and $(whoami) literal, it\'s fine';
 const UNBALANCED = 'Add a `picket close <id>` verb that prints "done';
 const ADMIT = "picket admit --request - --human";
-const PROSE_STEP = "If this conversation has no `picket admit` answer for the request yet, run `picket admit --request - --human <<'PICKET_REQUEST_END'` with the request on the lines after it and `PICKET_REQUEST_END` alone on the last line.";
 const OLD_INLINE = 'picket admit --text "$ARGUMENTS" --human';
 const BIN_DIR = resolve("dist/bin");
 
@@ -39,12 +38,11 @@ function withRoot(command, root) {
 }
 
 for (const lane of LANES) {
-  test(`${lane}: the lane check is a prose step, not an injected command`, () => {
+  test(`${lane}: the skill injects no admit command`, () => {
     const text = skillText(lane);
     assert.equal(text.includes("```!"), false);
     assert.equal(text.includes("!`"), false);
     assert.equal(text.includes(OLD_INLINE), false);
-    assert.ok(text.includes(PROSE_STEP), `${lane}: the prose lane check is missing`);
   });
 }
 

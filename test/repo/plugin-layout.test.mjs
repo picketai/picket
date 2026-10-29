@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
+import { withProject } from "#test/project.mts";
 import { MODS } from "../../src/lib/mods.mts";
 
 const SRC = resolve("src");
@@ -110,9 +111,12 @@ test("the manifest lists every skill folder once, in name order", () => {
   assert.deepEqual(manifest.skills, folders);
 });
 
-test("a folder under skills/ without a SKILL.md, such as shared/, is not a skill", () => {
-  assert.equal(existsSync(join(SRC, "skills", "shared", "procedures")), true);
-  assert.equal(skillFolders(join(SRC, "skills")).includes("./skills/shared"), false);
+test("a folder under skills/ without a SKILL.md is not a skill", (t) => {
+  const skills = join(withProject(t), "src", "skills");
+  mkdirSync(join(skills, "notes", "procedures"), { recursive: true });
+  mkdirSync(join(skills, "sampling"), { recursive: true });
+  writeFileSync(join(skills, "sampling", "SKILL.md"), "");
+  assert.deepEqual(skillFolders(skills), ["./skills/sampling"]);
   assert.equal(skillFolders(join(SRC, "skills")).length, 18);
 });
 

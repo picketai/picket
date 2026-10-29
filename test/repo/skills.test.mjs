@@ -6,7 +6,6 @@ import { bodyOf, frontmatterFields, hasOrderedList, isOrderedItem, paragraphs, s
 
 const SKILLS_DIR = "src/skills";
 const AGENTS_DIR = "src/agents";
-const PROCEDURES_DIR = "src/skills/shared/procedures";
 const INSTRUCTION_DIRS = ["src/skills", "src/agents", "src/rules"];
 const SKIPPED_DIRS = ["examples"];
 const NAMED_FOLDERS = ["steps", "checklists"];
@@ -21,11 +20,11 @@ const CLAIM = new RegExp(`\\bthe ${AGENT}(?:(?:,? (?:and|or) |, )(?:the )?${AGEN
 const TITLE_LINE = /^# /;
 const CONTINUATION = /^\s+\S/;
 
-const EVERY_SKILL = ["benchmarking", "branching", "consulting", "debugging", "designing", "documenting", "expediting", "explaining", "inspecting", "ordering", "proofreading", "researching", "resuming", "reviewing", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
+const UNCONVERTED_SKILLS = ["benchmarking", "branching", "consulting", "debugging", "documenting", "expediting", "explaining", "inspecting", "proofreading", "researching", "resuming", "reviewing", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
 
 const PENDING = {
-  frontmatter: EVERY_SKILL,
-  sections: EVERY_SKILL,
+  frontmatter: UNCONVERTED_SKILLS,
+  sections: UNCONVERTED_SKILLS,
   names: [
     "src/skills/branching/steps/10-create.md",
     "src/skills/branching/steps/20-remove.md",
@@ -34,12 +33,9 @@ const PENDING = {
     "src/skills/debugging/steps/10-reproduce.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
-    "src/skills/designing/steps/10-design.md",
-    "src/skills/designing/steps/20-crosscheck.md",
     "src/skills/expediting/steps/10-check.md",
     "src/skills/explaining/steps/10-gather.md",
     "src/skills/explaining/steps/20-walk.md",
-    "src/skills/ordering/steps/10-order.md",
     "src/skills/proofreading/steps/10-passes.md",
     "src/skills/proofreading/steps/20-apply.md",
     "src/skills/researching/steps/10-outline.md",
@@ -67,12 +63,9 @@ const PENDING = {
     "src/skills/debugging/steps/10-reproduce.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
-    "src/skills/designing/steps/10-design.md",
-    "src/skills/designing/steps/20-crosscheck.md",
     "src/skills/expediting/steps/10-check.md",
     "src/skills/explaining/steps/10-gather.md",
     "src/skills/explaining/steps/20-walk.md",
-    "src/skills/ordering/steps/10-order.md",
     "src/skills/researching/steps/10-outline.md",
     "src/skills/researching/steps/20-deep.md",
     "src/skills/understanding/steps/10-prepare.md",
@@ -84,19 +77,14 @@ const PENDING = {
     "src/skills/consulting/steps/20-ratify.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
-    "src/skills/designing/steps/20-crosscheck.md",
     "src/skills/expediting/steps/10-check.md",
     "src/skills/explaining/steps/20-walk.md",
     "src/skills/proofreading/steps/10-passes.md",
     "src/skills/researching/steps/20-deep.md",
-    "src/skills/shared/procedures/cumulative-review.md",
-    "src/skills/shared/procedures/gate.md",
-    "src/skills/shared/procedures/jira-intake.md",
-    "src/skills/shared/procedures/phase-loop.md",
     "src/skills/understanding/steps/10-prepare.md",
     "src/skills/understanding/steps/30-capture.md",
   ],
-  repeats: ["src/skills/designing/SKILL.md", "src/skills/expediting/SKILL.md", "src/skills/ordering/SKILL.md", "src/skills/researching/SKILL.md"],
+  repeats: ["src/skills/expediting/SKILL.md", "src/skills/researching/SKILL.md"],
   claims: ["src/skills/branching/SKILL.md", "src/skills/understanding/SKILL.md"],
 };
 
@@ -220,10 +208,7 @@ function instructionFiles() {
 }
 
 function skillTreeFiles() {
-  return markdownUnder(SKILLS_DIR)
-    .filter((path) => !path.startsWith(`${PROCEDURES_DIR}/`))
-    .sort()
-    .map(read);
+  return markdownUnder(SKILLS_DIR).sort().map(read);
 }
 
 function failing(files, problems) {
@@ -235,7 +220,7 @@ const FAILING = {
   sections: () => failing(skillFiles(), ({ text }) => sectionProblems(bodyOf(text))),
   names: () => failing(NAMED_FOLDERS.flatMap(folderFiles), ({ path }) => nameProblems(path)),
   headers: () => failing(stepFiles(), ({ path, text }) => headerProblems(path, text)),
-  lists: () => failing([...stepFiles(), ...markdownUnder(PROCEDURES_DIR).map(read)], ({ text }) => listProblems(text)),
+  lists: () => failing(stepFiles(), ({ text }) => listProblems(text)),
   repeats: () => repeatedFiles(instructionFiles()),
   claims: () => {
     const preloads = agentPreloads();
@@ -282,20 +267,20 @@ test("every SKILL.md not in PENDING.sections passes the section check", () => {
 });
 
 test("a step file name is kebab-case with no number prefix", () => {
-  assert.deepEqual(nameProblems("src/skills/ordering/steps/order.md"), []);
-  assert.deepEqual(nameProblems("src/skills/ordering/steps/10-order.md"), ["10-order.md is not kebab-case without a number prefix"]);
-  assert.deepEqual(nameProblems("src/skills/ordering/steps/Order_Step.md"), ["Order_Step.md is not kebab-case without a number prefix"]);
+  assert.deepEqual(nameProblems("src/skills/sampling/steps/open.md"), []);
+  assert.deepEqual(nameProblems("src/skills/sampling/steps/10-open.md"), ["10-open.md is not kebab-case without a number prefix"]);
+  assert.deepEqual(nameProblems("src/skills/sampling/steps/Open_Step.md"), ["Open_Step.md is not kebab-case without a number prefix"]);
 });
 
 test("every step file opens # <Skill>: <name>", () => {
-  assert.deepEqual(headerProblems("src/skills/ordering/steps/order.md", "# Ordering: open the work item\n"), []);
-  assert.deepEqual(headerProblems("src/skills/ordering/steps/order.md", "# Ordering, step 1: x\n"), ['"# Ordering, step 1: x" does not open "# Ordering: <name>"']);
+  assert.deepEqual(headerProblems("src/skills/sampling/steps/open.md", "# Sampling: open the work item\n"), []);
+  assert.deepEqual(headerProblems("src/skills/sampling/steps/open.md", "# Sampling, step 1: x\n"), ['"# Sampling, step 1: x" does not open "# Sampling: <name>"']);
   for (const { path, text } of stepFiles().filter(({ path }) => !PENDING.headers.includes(path))) assert.deepEqual(headerProblems(path, text), [], path);
 });
 
-test("every step file and procedure carries an ordered list outside fences", () => {
-  assert.deepEqual(listProblems("# Ordering: x\n\n1. Do it.\n"), []);
-  assert.deepEqual(listProblems("# Ordering: x\n\nDo it.\n\n```\n1. fenced\n```\n"), ["no ordered list line"]);
+test("every step file carries an ordered list outside fences", () => {
+  assert.deepEqual(listProblems("# Sampling: x\n\n1. Do it.\n"), []);
+  assert.deepEqual(listProblems("# Sampling: x\n\nDo it.\n\n```\n1. fenced\n```\n"), ["no ordered list line"]);
 });
 
 test("a paragraph of 25 words in two files is a repeat; one of 24 words is not", () => {
@@ -308,7 +293,7 @@ test("a paragraph of 25 words in two files is a repeat; one of 24 words is not",
 
 test("a reads-it claim holds only when every named agent preloads the skill", () => {
   const preloads = { analyst: ["picket:documenting"], architect: ["picket:documenting"], developer: [], reviewer: ["picket:reviewing"] };
-  assert.deepEqual(claimProblems("src/skills/ordering/SKILL.md", "The developer\nreads it at the first phase.", preloads), ['"The developer reads it": the developer does not preload picket:ordering']);
+  assert.deepEqual(claimProblems("src/skills/sampling/SKILL.md", "The developer\nreads it at the first phase.", preloads), ['"The developer reads it": the developer does not preload picket:sampling']);
   assert.deepEqual(claimProblems("src/skills/reviewing/SKILL.md", "The reviewer reads it.", preloads), []);
   assert.deepEqual(claimProblems("src/skills/documenting/SKILL.md", "the analyst and the reviewer read it", preloads), ['"the analyst and the reviewer read it": the reviewer does not preload picket:documenting']);
 });

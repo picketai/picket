@@ -97,7 +97,7 @@ The rules below are the conventions of the refactor. Each ends with its id; `art
 - List every hook in `src/lib/hooks.mts` with its events and matcher; the hook `<kind>.<name>` is the folder `src/lib/hooks/<kind>/<name>/`, its `index.mts` exports a `HookSpec`, and its outputs come from `output.mts` (C-016).
 - Put the test of one module beside it as `<module>.test.mts`, keep tests of `dist/` and of the repository in `test/`, take shared helpers from `#test/*`, and remove temp folders through `t.after` (C-017).
 - List every mod in `src/lib/mods.mts`, one folder `src/mods/<name>/` each; mods read Picket data only through the kernel and keep Claude Code mod style (C-018).
-- Give every instruction fact one owner: shared steps live in `src/skills/shared/procedures/`, step and checklist files are named `NN-<name>.md`, and no Markdown holds an em or en dash (C-019).
+- Give every instruction fact one owner: a step lives in the step file of the skill that runs it, step and checklist files are kebab-case `<name>.md` with no number prefix, and no Markdown holds an em or en dash (C-019).
 
 ### Foundation modules
 

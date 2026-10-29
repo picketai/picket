@@ -70,14 +70,14 @@ test("the step budget covers steps/, checklists/ and shared/procedures/", (t) =>
   assert.deepEqual(overStepBudget(skills).sort(), ["ordering/steps/long.md: 81 > 80", "reviewing/checklists/long.md: 81 > 80", "shared/procedures/long.md: 81 > 80"]);
 });
 
-test("every skill has a description with a 'Use when' trigger and one declared route", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
+test("every skill has a 'Use when' trigger in its description or when_to_use, and a description within its cap", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const problems = [];
-  for (const { path: p, description: desc } of skillDescriptions(ROOT)) {
+  for (const { path: p, description: desc, when_to_use: when } of skillDescriptions(ROOT)) {
     if (desc === null) {
       problems.push(`${rel(p)}: no frontmatter`);
       continue;
     }
-    if (!/use when/i.test(desc)) problems.push(`${rel(p)}: description lacks "Use when"`);
+    if (!/use when/i.test(`${desc} ${when}`)) problems.push(`${rel(p)}: neither description nor when_to_use has "Use when"`);
     if (desc.length > 1024) problems.push(`${rel(p)}: description ${desc.length} chars > 1024`);
   }
   assert.deepEqual(problems, []);
