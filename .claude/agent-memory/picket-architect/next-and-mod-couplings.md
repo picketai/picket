@@ -14,5 +14,6 @@ Checked 2026-10-29 at 576f2cc while designing work/20261029-kernel-groundwork-fo
 - The guard classes verbs by `readOnly` per verb, not per flag (only `verify` is special-cased in `src/lib/hooks/guard/bash/kernel.mts`).
 - `docs/reference/cli.md` headings are `## picket <verb>`; a new verb or usage change needs `npm run docs`.
 - The layer rule in `test/repo/conventions.test.mjs` forbids one verb importing another (hooks may import a verb's index); a service two verbs need belongs in `src/lib/shared/`. Route moved there in that design's phase 7 (D-008 r2), so cite route modules by name, not path.
+- Claude Code renames an Agent spawn whose name is already taken in the session (`cumulative-reviewer-2`, `-3` seen 2026-10-29), so a send to a bare role name can reach an earlier item's live instance. Item B's design (work/20261029-convert-architect-analyst-and-reviewer-item-b-de, D-001) names instances `<tag>-<role>` per item; `bareAgentName` parses that prefix form, not a suffix tag.
 
 **How to apply:** read these before designing next actions, sends, gate replies or mod imports. Related: [[zone-and-root-facts]], [[block-format-couplings]], [[verify-grep-patterns]].
