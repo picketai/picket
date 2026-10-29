@@ -4,8 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { NO_LANE, laneOf } from "./lane.mts";
 import { mentionedPaths, signalsOf } from "./signals.mts";
-import { DEFAULT_SECURITY_PATHS } from "../../shared/config.mjs";
-import { LANES } from "../../shared/work/state.mts";
+import { DEFAULT_SECURITY_PATHS } from "../config.mjs";
+import { LANES } from "../work/state.mts";
 
 type LabelledEntry = { request: string; why: string; lane: string; skill?: string };
 

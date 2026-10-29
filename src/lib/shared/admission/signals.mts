@@ -1,5 +1,5 @@
-import { securityPathOf } from "../../shared/security-paths.mts";
-import type { Lane } from "../../shared/work/state.mts";
+import { securityPathOf } from "../security-paths.mts";
+import type { Lane } from "../work/state.mts";
 
 export type Signals = {
   forced: Lane | null;

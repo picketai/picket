@@ -148,6 +148,10 @@ export function log1(root: string): string | null {
   return gitRead(root, ["log", "-1", "--format=%h %s"]);
 }
 
+export function lastCommitOf(root: string, path: string): string | null {
+  return gitRead(root, ["log", "-1", "--format=%h", "--", path]) || null;
+}
+
 /** Paths in the index that differ from HEAD: what a commit would take right now. */
 export function stagedFiles(root: string): string[] {
   const out = gitRead(root, ["diff", "--cached", "--name-only"]) ?? "";

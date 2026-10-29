@@ -97,6 +97,15 @@ test("a design item's first phase also spawns the cross-check until any cross-ch
   assert.deepEqual(checked.map((s) => s.to), [named("developer")]);
 });
 
+test("a re-check after an amendment names the delta, and leaves the line out for a full pass when no id was found", () => {
+  const recheck = (delta: string[]): NextStep => ({ action: "review_crosscheck", actor: "reviewer", detail: "d", delta });
+  const design: SnapshotInput = { lane: "design", phases: [{ n: 1 }], verdicts: [verdictRow("reviewer", "DRIFT DETECTED", "crosscheck", S)] };
+  assert.deepEqual(sends(design, recheck(["D-002", "D-004"])), [
+    { tool: "SendMessage", to: named("reviewer"), type: "picket:reviewer", message: `work: ${ID}\nscope: crosscheck\nartifact: work/${ID}/design.md\ndelta: D-002, D-004` },
+  ]);
+  assert.equal(sends(design, recheck([]))[0].message, `work: ${ID}\nscope: crosscheck\nartifact: work/${ID}/design.md`);
+});
+
 test("the first cumulative review is a fresh opus reviewer after a mutation run; a later one continues it", () => {
   const phases = [{ n: 1, done: true, approved: true }];
   const review: NextStep = { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" };

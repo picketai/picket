@@ -104,6 +104,11 @@ function implementSends(snap: WorkSnapshot, phase: number, session: string | nul
   return [implementer, send(snap, instance(snap, "reviewer"), session, () => [workLine(snap), "scope: crosscheck", artifactLine(snap)])];
 }
 
+function recheckSend(snap: WorkSnapshot, delta: readonly string[], session: string | null): SendView {
+  const deltaLines = delta.length ? [`delta: ${delta.join(", ")}`] : [];
+  return send(snap, instance(snap, "reviewer"), session, () => [workLine(snap), "scope: crosscheck", artifactLine(snap), ...deltaLines]);
+}
+
 function summaryLines(snap: WorkSnapshot): string[] {
   return [`summary: ${itemFile(snap, "summary.json")}`];
 }
@@ -151,6 +156,8 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
       return [send(snap, developer(snap), session, (tool) => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`, ...(tool === "Agent" ? [artifactLine(snap)] : [])])];
     case "amend":
       return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`])];
+    case "review_crosscheck":
+      return [recheckSend(snap, step.delta, session)];
     default:
       return [];
   }

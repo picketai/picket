@@ -79,6 +79,15 @@ const blocked: Plan = (_snap, { reason, verdict, phase }) => {
 
 const unchanged: Plan = () => [];
 
+const STALLING_AMENDMENTS = 3;
+
+const amended: Plan = (snap) => {
+  if (snap.state.status !== "blocked") return [];
+  const earlier = snap.verdicts.filter((row) => row.verdict === "AMENDED").length;
+  if (earlier + 1 >= STALLING_AMENDMENTS) return [];
+  return [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (amended)" }];
+};
+
 export const EFFECTS: Record<Effect, Plan> = {
   phase_done: phaseDone,
   phase_approved: phaseApproved,
@@ -88,5 +97,5 @@ export const EFFECTS: Record<Effect, Plan> = {
   stall: blocked,
   crosscheck_ok: unchanged,
   artifact: unchanged,
-  amended: unchanged,
+  amended,
 };

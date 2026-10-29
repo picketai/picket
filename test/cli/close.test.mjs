@@ -104,7 +104,7 @@ test("leave records a command for the user, close lists it, and a closed item re
 
   const closed = picket(root, "close", id, "--human");
   assert.equal(closed.code, 0, closed.stdout);
-  assert.match(closed.stdout, /^left for you: git worktree remove \.worktrees\/x \(cleanup\)$/m);
+  assert.match(closed.stdout, /^Left for you: git worktree remove \.worktrees\/x \(cleanup\)$/m);
   assert.ok(git("show", "--name-only", "--format=", "HEAD").split("\n").includes(`work/${id}/left.jsonl`));
   assert.equal(picket(root, "leave", id, "--command", "git push origin v1").code, 2);
 });
@@ -113,7 +113,7 @@ test("close with nothing left prints no left line and returns an empty list", (t
   const { root, id } = repoWithOpenItem(t);
   const closed = picket(root, "close", id, "--human");
   assert.equal(closed.code, 0, closed.stdout);
-  assert.doesNotMatch(closed.stdout, /left for you/);
+  assert.doesNotMatch(closed.stdout, /Left for you/);
 });
 
 const changesRequired = (classes) => ({ agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 1, classes });
@@ -130,7 +130,9 @@ test("close returns a repeat for a class two CHANGES REQUIRED reviews named, acr
   assert.equal(closed.code, 0, closed.stdout);
   const byClass = Object.fromEntries(closed.json.repeats.map((r) => [r.class, r.items.sort()]));
   assert.deepEqual(byClass, { Sl1: [other], Ts4: [id, other].sort() });
-  assert.match(picket(root, "close", id, "--human").stdout, /^repeats: Sl1 \(/m);
+  const human = picket(root, "close", id, "--human").stdout;
+  assert.match(human, /^Repeats: Sl1 \(/m);
+  assert.match(human, /^Follow-up: Fix the Sl1 mistake class /m);
 });
 
 test("close returns no repeats when no class was named twice (T-9.4)", (t) => {
@@ -181,7 +183,7 @@ test("close --human names the paths it left staged", (t) => {
   git("add", "--", "README.md");
   const r = picket(root, "close", id, "--human");
   assert.equal(r.code, 0, r.stdout);
-  assert.match(r.stdout, /^left staged \(not this item's\): README\.md$/m);
+  assert.match(r.stdout, /^Left staged: README\.md$/m);
   assert.ok(git("show", "--name-only", "--format=", "HEAD").split("\n").includes("src/a.ts"));
 });
 
@@ -278,9 +280,21 @@ test("close --human prints the commit and warns about a dirty path outside work/
   writeFileSync(join(root, "README.md"), "changed\n");
   const r = picket(root, "close", id, "--human");
   assert.equal(r.code, 0, r.stdout);
-  const [line, warning] = r.stdout.split("\n");
-  assert.equal(line, `${id}: closed · committed ${git("rev-parse", "--short", "HEAD")} chore: close ${id}`);
+  const [heading, commit, warning] = r.stdout.split("\n");
+  assert.equal(heading, `## Expedited closed: ${id}`);
+  assert.equal(commit, `Commit: ${git("rev-parse", "--short", "HEAD")} chore: close ${id}`);
   assert.match(warning, /^WARNING: uncommitted changes: README\.md/);
+});
+
+test("close --human on an order item gives the phase commit range up to the close commit", (t) => {
+  const { root, id, git } = orderAwaitingCumulativeReview(t);
+  git("add", "-A");
+  git("commit", "-q", "-m", "phase 1");
+  const first = git("rev-parse", "--short", "HEAD");
+  verdict(root, id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" });
+  const r = picket(root, "close", id, "--human");
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(r.stdout.split("\n")[1], `Phases: 1 · commits ${first}..${git("rev-parse", "--short", "HEAD")} · review: APPROVED`);
 });
 
 function orderAwaitingCumulativeReview(t) {

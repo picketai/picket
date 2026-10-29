@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { admit, verb } from "./index.mts";
-import { NO_LANE } from "./lane.mts";
+import { NO_LANE } from "../../shared/admission/lane.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { withProject, writeConfig } from "#test/project.mts";
 

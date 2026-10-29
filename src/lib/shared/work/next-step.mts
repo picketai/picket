@@ -1,3 +1,4 @@
+import { decisionsRevisedSince } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
 import { freshReplies } from "./replies.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
@@ -16,12 +17,14 @@ export type NextStep =
   | { action: "review_checkpoint" | "review_cumulative"; actor: "reviewer"; phase: number; detail: string }
   | { action: "close"; actor: "lead"; detail: string }
   | { action: "fix_findings"; actor: "developer"; phase: number; detail: string }
-  | { action: "amend"; actor: "architect"; detail: string };
+  | { action: "amend"; actor: "architect"; detail: string }
+  | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] };
 
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
 const MIDPOINT_MIN_PHASES = 6;
 const STALL_REPEATS = 3;
+const ISO_DAY = "YYYY-MM-DD".length;
 const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
 const IRREVERSIBLE_OPTIONS = ["[i] confirm the irreversible step", "[x] reject: <why>"];
@@ -66,6 +69,20 @@ function pendingAmend({ verdicts }: WorkSnapshot): string | null {
 function amendStep(snap: WorkSnapshot): NextStep | null {
   const amend = pendingAmend(snap);
   return amend ? { action: "amend", actor: "architect", detail: amend } : null;
+}
+
+function amendedDrift({ state, verdicts }: WorkSnapshot): VerdictRow | null {
+  if (state.lane !== "design") return null;
+  const at = lastIndexWhere(verdicts, (v) => v.agent === "reviewer" && v.scope === "crosscheck");
+  if (verdicts[at]?.verdict !== "DRIFT DETECTED") return null;
+  return verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED") ? verdicts[at] : null;
+}
+
+function recheckStep(snap: WorkSnapshot): NextStep | null {
+  const drift = amendedDrift(snap);
+  if (!drift) return null;
+  const delta = decisionsRevisedSince(snap.artifact?.body ?? "", drift.ts.slice(0, ISO_DAY));
+  return { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta };
 }
 
 function findingsOpen({ verdicts }: WorkSnapshot): boolean {
@@ -128,8 +145,8 @@ function phasedStep(snap: WorkSnapshot, securityPaths: readonly string[]): NextS
   if (snap.phases.length === 0) return { action: "write_artifact", actor: "architect", detail: `${snap.artifact?.path} has no "## Phase N" headings` };
   const current = snap.phases.find((p) => !p.approved);
   if (!current) return allApprovedStep(snap);
-  const amend = amendStep(snap);
-  if (amend) return amend;
+  const amendOrRecheck = amendStep(snap) ?? recheckStep(snap);
+  if (amendOrRecheck) return amendOrRecheck;
   if (!current.done) return startStep(snap, current);
   return approvalStep(snap, current, securityPaths);
 }

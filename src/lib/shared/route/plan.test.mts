@@ -86,8 +86,22 @@ test("PHASE STALLED blocks the item with the phase in the reason, or the given r
   assert.equal(stateSet(plan("DRIFT DETECTED", snapshotOf(), { reason: "AMENDMENT NEEDED: x" })[0]).blocked_reason, "AMENDMENT NEEDED: x");
 });
 
-test("ARTIFACT WRITTEN, ALIGNED and AMENDED change nothing", () => {
-  for (const verdict of ["ARTIFACT WRITTEN", "ALIGNED", "AMENDED"]) assert.deepEqual(plan(verdict, snapshotOf(), { phase: 1 }), [], verdict);
+test("ARTIFACT WRITTEN and ALIGNED change nothing", () => {
+  for (const verdict of ["ARTIFACT WRITTEN", "ALIGNED"]) assert.deepEqual(plan(verdict, snapshotOf(), { phase: 1 }), [], verdict);
+});
+
+const DRIFT_BLOCKED = { lane: "design", status: "blocked", blocked_reason: "AMENDMENT NEEDED: D-002 x" } as const;
+const amendedRows = (count: number) => Array.from({ length: count }, () => ({ agent: "architect", verdict: "AMENDED" }));
+
+test("AMENDED reopens a blocked item on the first and second rounds and leaves the third blocked", () => {
+  const reopen = [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (amended)" }];
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED }), {}), reopen);
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: amendedRows(1) }), {}), reopen);
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: amendedRows(2) }), {}), []);
+});
+
+test("AMENDED leaves an open item as it is", () => {
+  assert.deepEqual(plan("AMENDED", snapshotOf({ lane: "design" }), { phase: 1 }), []);
 });
 
 test("every effect in VERDICTS has a plan", () => {

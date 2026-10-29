@@ -62,3 +62,26 @@ export function parseArtifact(text: string): ParsedArtifact {
 export function phasePaths(phase: Pick<ArtifactPhase, "entry" | "touchSet">): string[] {
   return [...new Set([...entryFiles(phase.entry), ...phase.touchSet])];
 }
+
+const DECISION_HEADING = /^### D-\d{3}\b(.*)$/gm;
+const REVISION_MARK = /^\s*\(r\d+\)/;
+const REVISION_LOG = /^## Revision log[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m;
+const DATED_LINE = /^- (\d{4}-\d{2}-\d{2}):(.*)$/;
+const DECISION_ID = /\bD-\d{3}\b/g;
+
+export type DecisionCounts = { count: number; amended: number };
+
+export function decisionCounts(body: string): DecisionCounts {
+  const headings = [...body.matchAll(DECISION_HEADING)];
+  return { count: headings.length, amended: headings.filter((heading) => REVISION_MARK.test(heading[1])).length };
+}
+
+export function decisionsRevisedSince(body: string, day: string): string[] {
+  const log = body.match(REVISION_LOG)?.[1] ?? "";
+  const ids = log
+    .split(/\r?\n/)
+    .map((line) => line.match(DATED_LINE))
+    .filter((dated): dated is RegExpMatchArray => dated !== null && dated[1] >= day)
+    .flatMap((dated) => dated[2].match(DECISION_ID) ?? []);
+  return [...new Set(ids)];
+}

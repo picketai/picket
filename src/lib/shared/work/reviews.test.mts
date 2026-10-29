@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readHeading } from "./block.mts";
-import { reviewFileName, reviewRel, saveReview } from "./reviews.mts";
+import { reviewFileName, reviewQuestions, reviewRel, saveReview } from "./reviews.mts";
 import { openItem, withProject } from "#test/project.mts";
 
 test("each saved review scope has one file name, a phase review one per phase", () => {
@@ -31,6 +31,22 @@ test("saveReview keeps the block from its heading with LF endings and replaces a
   const dir = join(root, "work", id, "reviews");
   assert.deepEqual(readdirSync(dir), ["cumulative.md"]);
   assert.equal(readFileSync(join(dir, "cumulative.md"), "utf8"), `## Review: ${id} · cumulative\n\nSecond.\n\nAPPROVED\n`);
+});
+
+test("reviewQuestions reads the cumulative review's Questions value, and null when it is none or absent", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "order", title: "Asked" });
+  assert.equal(reviewQuestions(root, id), null);
+  const save = (questions: string) => {
+    const text = `## Review: ${id} · cumulative\n\nOne sentence.\n\n${questions}Findings: clean\n\nAPPROVED\n`;
+    saveReview(root, id, readHeading(text)!, text);
+  };
+  save("Questions: S-4 whether the export keeps the header row\n");
+  assert.equal(reviewQuestions(root, id), "S-4 whether the export keeps the header row");
+  save("Questions: none\n");
+  assert.equal(reviewQuestions(root, id), null);
+  save("");
+  assert.equal(reviewQuestions(root, id), null);
 });
 
 test("saveReview refuses a pull request review and one with no scope", (t) => {

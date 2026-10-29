@@ -1,6 +1,6 @@
 export type PhaseView = { n: number; title: string; done: boolean; approved: boolean; reviewed: boolean };
 
-export type VerdictView = { ts: string; agent: string; verdict: string; phase: number | null; scope: string | null; through: number | null; classes?: string[]; session?: string; amend?: string };
+export type VerdictView = { ts: string; agent: string; verdict: string; phase: number | null; scope: string | null; through: number | null; classes?: string[]; session?: string; amend?: string; admitted?: string };
 
 export type GateView = { kind: string; reason: string };
 

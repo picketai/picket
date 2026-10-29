@@ -5,6 +5,7 @@ import { nextOf } from "../../shared/work/next-view.mts";
 import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, proposedCommit, readBlock, WAIVER_SEPARATOR } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { liveLookup } from "../../shared/sources/places.mts";
+import { reportFindings } from "../../shared/work/report.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -127,7 +128,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   } else if (n.action === "approve_phase") {
     const body = snap.artifact?.body ?? "";
     const summary = body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
-    const findings = (body.match(/^- \*\*R-\d{3}\*\*|^### R-\d{3}|^R-\d{3}/gm) ?? []).length;
+    const { findings } = reportFindings(body);
     const deep = !/pending deep pass/i.test(body);
     lines.push(`▶ ${deep ? "report" : "outline"} ready · ${id}`);
     lines.push(`  ${firstSentence(summary || s.title, width - 2)}`);

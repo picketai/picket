@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { commitOwned, dirtyPaths, head, isRepo, productLinesAdded, workingState } from "./git.mts";
+import { commitOwned, dirtyPaths, head, isRepo, lastCommitOf, productLinesAdded, workingState } from "./git.mts";
 import { commitIn, gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import { withProject } from "#test/project.mts";
 
@@ -140,6 +140,17 @@ test("commitOwned with nothing owned commits nothing and reports what stays stag
   gitIn(root, "add", "-A");
   assert.deepEqual(commitOwned(root, "feat: none", { owns: ownsSrc, env: process.env }), { sha: null, committed: [], left_staged: ["README.md"], warnings: [] });
   assert.equal(head(root), before);
+});
+
+test("lastCommitOf names the last commit that touched a path, and null for a path no commit touched", (t) => {
+  const root = gitRepo(t);
+  writeIn(root, "work/x/phases/1.approved", "");
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "phase 1");
+  const phaseOne = head(root);
+  commitIn(root, "two\n", "later");
+  assert.equal(lastCommitOf(root, "work/x/phases/1.approved"), phaseOne);
+  assert.equal(lastCommitOf(root, "work/x/phases/2.approved"), null);
 });
 
 test("a failed commit leaves HEAD and the real index as they were and removes the temporary index (T-1.6)", (t) => {

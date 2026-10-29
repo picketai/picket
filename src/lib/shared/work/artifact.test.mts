@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseArtifact, phasePaths } from "./artifact.mts";
+import { decisionCounts, decisionsRevisedSince, parseArtifact, phasePaths } from "./artifact.mts";
 
 const lines = (...rows: string[]) => rows.join("\n") + "\n";
 
@@ -52,6 +52,27 @@ test("parseArtifact reads the phase headings, entries, touch sets and irreversib
 test("phasePaths gives entry files, then touch-set paths, once each", () => {
   const [first] = parseArtifact(RECORD).phases;
   assert.deepEqual(phasePaths(first), ["lib/a.mjs", "lib/b.mjs", "lib/dir/"]);
+});
+
+test("decisionCounts counts the D-### headings and the amended ones by their (rN) marker", () => {
+  const body = lines("## Decisions", "", "### D-001: One", "### D-002 (r2): Two", "### D-003: Three (r2 in the name only)", "", "## Phase 1: A");
+  assert.deepEqual(decisionCounts(body), { count: 3, amended: 1 });
+  assert.deepEqual(decisionCounts("# none"), { count: 0, amended: 0 });
+});
+
+test("decisionsRevisedSince gives the ids on revision log lines dated on or after the day, once each, in order", () => {
+  const body = lines(
+    "## Decisions",
+    "- 2026-10-29: D-009 outside the log",
+    "## Revision log",
+    "",
+    "- 2026-10-28: D-001 (r2): older",
+    "- 2026-10-29: D-003 (r2): newer; see D-002",
+    "- 2026-10-30: D-003 (r3): again",
+  );
+  assert.deepEqual(decisionsRevisedSince(body, "2026-10-29"), ["D-003", "D-002"]);
+  assert.deepEqual(decisionsRevisedSince(body, "2026-10-31"), []);
+  assert.deepEqual(decisionsRevisedSince("# no log", "2026-10-29"), []);
 });
 
 test("a phase heading without a frontmatter entry has a null entry", () => {

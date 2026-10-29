@@ -53,6 +53,7 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }, { n: 2 }] }), { action: "implement_phase", actor: "developer", phase: 1, detail: "d" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ lane: "design", phases: approved }), { action: "review_checkpoint", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases: approved }), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), { action: "review_crosscheck", actor: "reviewer", detail: "d", delta: ["D-002"] }, FIXTURE_SESSION),
     ];
   },
 };
@@ -298,7 +299,7 @@ test("each shell outside PENDING names in ## Entry exactly the fields picket nex
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
   assert.deepEqual(sentKeys("architect"), ["amend", "lane", "preflight", "request", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["pass", "request", "work"]);
-  assert.deepEqual(sentKeys("reviewer"), ["artifact", "phase", "scope", "summary", "work"]);
+  assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
   }

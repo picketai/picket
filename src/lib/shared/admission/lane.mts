@@ -1,4 +1,4 @@
-import type { Lane } from "../../shared/work/state.mts";
+import type { Lane } from "../work/state.mts";
 import type { Signals } from "./signals.mts";
 
 export const NO_LANE = "none";

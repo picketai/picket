@@ -1,4 +1,4 @@
-export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none", "fix_findings", "amend"] as const;
+export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none", "fix_findings", "amend", "review_crosscheck"] as const;
 
 export type NextAction = (typeof NEXT_ACTIONS)[number];
 
@@ -19,6 +19,7 @@ export const ACTION_TEXT: Readonly<Record<NextAction, (step: ActionStep, voice: 
   none: (step) => step.detail,
   fix_findings: () => "developer fixes the cumulative review findings",
   amend: (step) => `architect amends ${step.lane}.md`,
+  review_crosscheck: () => "reviewer re-checks the amended decisions",
 };
 
 const ACTIONS: readonly string[] = NEXT_ACTIONS;

@@ -78,9 +78,9 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with fix_findings and amend, twelve in all", () => {
-  assert.equal(NEXT_ACTIONS.length, 12);
-  assert.deepEqual(NEXT_ACTIONS.slice(-2), ["fix_findings", "amend"]);
+test("the actions end with fix_findings, amend and review_crosscheck, thirteen in all", () => {
+  assert.equal(NEXT_ACTIONS.length, 13);
+  assert.deepEqual(NEXT_ACTIONS.slice(-3), ["fix_findings", "amend", "review_crosscheck"]);
 });
 
 const AMEND_LINE ="AMENDMENT NEEDED: D-002 the port moved";
@@ -116,6 +116,37 @@ test("after AMENDED, an open cumulative rejection is fixed and a block goes back
   assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative"), amended] }).action, "fix_findings");
   const blocked = step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck"), amended] });
   assert.equal(blocked.action, "resolve_block");
+});
+
+const AMENDED_RECORD = ["## Decisions", "", "### D-001 (r2): One", "### D-003 (r2): Three", "", "## Revision log", "", "- 2026-10-28: D-001 (r2): earlier", "- 2026-10-29: D-003 (r2): after the drift", ""].join("\n");
+
+function amendedAfterDrift(lane: "design" | "order", later: object[] = []): SnapshotInput {
+  const drift = { ...amending("DRIFT DETECTED", "crosscheck"), ts: "2026-10-29T09:00:00.000Z", session: "S" };
+  const amended = { ...row("AMENDED"), agent: "architect", ts: "2026-10-29T09:30:00.000Z" };
+  return { lane, phases: numbered(2), artifact: { path: `/probe/work/20261023-probe/${lane}.md`, expected: `${lane}.md`, body: AMENDED_RECORD }, verdicts: [drift, amended, ...later] };
+}
+
+test("an amended drift sends the reviewer instance to re-check the decisions revised since the drift's day", () => {
+  const snap = snapshotOf(amendedAfterDrift("design"));
+  const next = nextStep(snap, SECURITY_PATHS);
+  assert.deepEqual(next, { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta: ["D-003"] });
+  const view = nextView(snap, next, "S");
+  assert.deepEqual(view.send, [
+    { tool: "SendMessage", to: `${instanceTag("20261023-probe")}-reviewer`, type: "picket:reviewer", message: "work: 20261023-probe\nscope: crosscheck\nartifact: work/20261023-probe/design.md\ndelta: D-003" },
+  ]);
+});
+
+test("a later ALIGNED cross-check ends the re-check, and an order item never gets one", () => {
+  const aligned = { ...row("ALIGNED", "crosscheck"), ts: "2026-10-29T10:00:00.000Z" };
+  assert.equal(step(amendedAfterDrift("design", [aligned])).action, "implement_phase");
+  assert.equal(step(amendedAfterDrift("order")).action, "implement_phase");
+});
+
+test("a third AMENDED leaves the item blocked with the stall options", () => {
+  const verdicts = [amending("DRIFT DETECTED", "crosscheck"), ...times(3, "AMENDED")];
+  const next = step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts });
+  assert.equal(next.action, "resolve_block");
+  assert.deepEqual(next.options, STALL_OPTIONS);
 });
 
 test("a third drift with an amendment pending is a stall the user decides", () => {

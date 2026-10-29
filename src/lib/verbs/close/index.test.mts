@@ -1,13 +1,85 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseArgs, UsageError } from "../../util/args.mts";
+import type { WorkId } from "../../shared/work/files.mts";
+import type { Lane } from "../../shared/work/state.mts";
+import { closingBlock } from "./block.mts";
+import type { CloseResult, Closing } from "./close.mts";
 import { verb } from "./index.mts";
 
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
+const NO_FACTS: Closing = { phases: 0, commits: null, decisions: null, review: null, questions: null, report: null };
+
+function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
+  return {
+    id: ID as WorkId,
+    lane,
+    title: "X",
+    status: "done",
+    created: "2026-10-29T10:00:00.000Z",
+    commit: null,
+    message: `chore: close ${ID}`,
+    committed: [],
+    left_staged: [],
+    warnings: [],
+    dirty: [],
+    left: [],
+    repeats: [],
+    closing: { ...NO_FACTS, ...closing },
+    ...rest,
+  };
+}
+
 test("close reads the message and the touched paths", () => {
   assert.deepEqual(parse([ID, "--message", "chore: done", "--touched", "a.ts,b.ts"]), { id: ID, message: "chore: done", touched: ["a.ts", "b.ts"] });
   assert.deepEqual(parse([ID]), { id: ID, message: undefined, touched: [] });
   assert.throws(() => parse([]), UsageError);
+});
+
+test("a fast close names its commit, or that nothing was committed", () => {
+  assert.equal(closingBlock(closed("fast", {}, { commit: "abc1234", message: "fix: a" })), `## Expedited closed: ${ID}\nCommit: abc1234 fix: a`);
+  assert.equal(closingBlock(closed("fast")), `## Expedited closed: ${ID}\nCommit: nothing to commit`);
+});
+
+test("an order close gives the phases, the commit range and the cumulative verdict", () => {
+  const block = closingBlock(closed("order", { phases: 2, commits: { first: "aaa1111", last: "bbb2222" }, review: "APPROVED" }));
+  assert.equal(block, `## Order closed: ${ID}\nPhases: 2 · commits aaa1111..bbb2222 · review: APPROVED`);
+});
+
+test("a design close counts its decisions and the amended ones", () => {
+  const block = closingBlock(closed("design", { phases: 3, decisions: { count: 3, amended: 1 }, commits: { first: "aaa1111", last: "bbb2222" }, review: "APPROVED" }));
+  assert.equal(block.split("\n")[1], "Phases: 3 · decisions: 3 (1 amended) · commits aaa1111..bbb2222 · review: APPROVED");
+  assert.equal(closingBlock(closed("design", { phases: 1, decisions: { count: 2, amended: 0 } })).split("\n")[1], "Phases: 1 · decisions: 2");
+});
+
+test("a research close names the report, its findings and the ones for architect review", () => {
+  const flagged = closingBlock(closed("research", { report: { findings: 2, architect_review: ["R-002"] } }));
+  assert.equal(flagged, `## Research closed: ${ID}\nReport: work/${ID}/research.md · findings: 2 · architect review: R-002`);
+  assert.match(closingBlock(closed("research", { report: { findings: 0, architect_review: [] } })), /architect review: no$/);
+});
+
+test("Questions shows only when the cumulative review asked some", () => {
+  assert.match(closingBlock(closed("order", { phases: 1, questions: "S-4 header row" })), /^Questions: S-4 header row$/m);
+  assert.doesNotMatch(closingBlock(closed("order", { phases: 1 })), /^Questions:/m);
+});
+
+test("each repeat gets a Repeats line and a Follow-up line, after what is left and the warnings", () => {
+  const repeats = [
+    { class: "Sl1", items: ["20261020-a", "20261021-b"] as WorkId[] },
+    { class: "Ts4", items: ["20261022-c"] as WorkId[] },
+  ];
+  const left = [{ ts: "t", command: "git worktree remove .worktrees/x", why: "cleanup" }];
+  const lines = closingBlock(closed("fast", {}, { repeats, left, left_staged: ["README.md"], warnings: ["HEAD moved"], dirty: ["src/a.ts"] })).split("\n");
+  assert.deepEqual(lines.slice(2), [
+    "Repeats: Sl1 (20261020-a, 20261021-b)",
+    "Repeats: Ts4 (20261022-c)",
+    "Left for you: git worktree remove .worktrees/x (cleanup)",
+    "Left staged: README.md",
+    "WARNING: HEAD moved",
+    "WARNING: uncommitted changes: src/a.ts (commit them or `git checkout -- <path>`)",
+    "Follow-up: Fix the Sl1 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261020-a, 20261021-b rejected.",
+    "Follow-up: Fix the Ts4 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261022-c rejected.",
+  ]);
 });

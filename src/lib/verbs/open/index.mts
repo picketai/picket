@@ -1,4 +1,6 @@
 import { action, done, refuse } from "../../shared/action.mts";
+import { admit, overridesAdmission } from "../../shared/admission/admit.mts";
+import { NO_LANE, type Admission } from "../../shared/admission/lane.mts";
 import { loadConfig } from "../../shared/config.mjs";
 import { configRel, WORK_DIR } from "../../shared/paths.mts";
 import { recordBases } from "../../shared/repos.mts";
@@ -7,9 +9,11 @@ import { liveLookup } from "../../shared/sources/places.mts";
 import { resolveReferences, type Resolution } from "../../shared/sources/resolve.mts";
 import { isReachable, type Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
+import type { WorkId } from "../../shared/work/files.mts";
 import { readNext, type NextView } from "../../shared/work/next-view.mts";
-import { createItem } from "../../shared/work/state.mts";
-import { str, UsageError, type Args } from "../../util/args.mts";
+import { createItem, LANES, type Lane } from "../../shared/work/state.mts";
+import { appendVerdict } from "../../shared/work/verdict-log.mts";
+import { flag, str, UsageError, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
 
 export type Request = { text: string } | { file: string };
@@ -22,11 +26,13 @@ export type OpenInput = {
   story: string | undefined;
   source: string | undefined;
   session: string | undefined;
+  userLane: boolean;
 };
 export type Opened = { id: string; lane: string; dir: string; warnings: string[]; next: NextView } & Record<string, unknown>;
 
 const STDIN = "-";
 const EMPTY_REQUEST = 'open: the request is empty; pass the request text with --text "<request>" or drop the flag';
+const USER_LANE = "user-lane";
 
 function readFile(path: string): string {
   const text = readText(path);
@@ -56,13 +62,36 @@ function sourceWarnings(story: string | null, sources: readonly Source[]): strin
   return [`story.md saved without snapshots: no reachable source (${why})`];
 }
 
+function isLane(lane: string): lane is Lane {
+  return (LANES as readonly string[]).includes(lane);
+}
+
+function overriddenAdmission(root: string, lane: string, request: string | null): Admission | null {
+  if (request === null || !isLane(lane)) return null;
+  const admission = admit(root, request);
+  return overridesAdmission(lane, admission.lane) ? admission : null;
+}
+
+function laneRefusal(asked: string, { lane, reasons }: Admission): string {
+  const remedy = lane === NO_LANE ? "follow admit's reason" : `open it with --lane ${lane}`;
+  return `open: admit answers ${lane} for this request (${reasons.join("; ")}), not ${asked}; ${remedy}, or add --${USER_LANE} only on the user's word`;
+}
+
+function recordUserLane(root: string, id: WorkId, admission: Admission, at: Date): void {
+  appendVerdict(root, id, { agent: "user", verdict: USER_LANE, phase: null, scope: null, through: null, admitted: admission.lane }, at);
+}
+
 export const openItem = action<OpenInput, Opened>(async (input, { root, session, now }) => {
   const request = requestText(input.request);
+  const overridden = overriddenAdmission(root, input.lane, request);
+  if (overridden && !input.userLane) return refuse(laneRefusal(input.lane, overridden), { admitted: overridden.lane, reasons: overridden.reasons });
   const story = input.story === undefined ? null : readFile(input.story);
   const sources = (loadConfig(root) as unknown as { sources: Source[] }).sources;
   const resolution = storyResolution(story, sources);
   if (resolution?.failures.length) return refuse(notFoundMessage(resolution.failures), { failures: resolution.failures });
-  const created = createItem(root, { lane: input.lane, title: input.title, id: input.id, source: input.ticket ?? input.source, request, story, session: input.session ?? session }, now());
+  const at = now();
+  const created = createItem(root, { lane: input.lane, title: input.title, id: input.id, source: input.ticket ?? input.source, request, story, session: input.session ?? session }, at);
+  if (overridden) recordUserLane(root, created.id, overridden, at);
   if (resolution) writeIntake(root, created.id, resolution);
   recordBases(root, created.id);
   return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(story, sources), next: readNext(root, created.id, input.session ?? session) });
@@ -89,7 +118,7 @@ function parseOpen(args: Args): OpenInput {
   const ticket = str(args, "ticket");
   const story = str(args, "story");
   if ((ticket === undefined) !== (story === undefined)) throw new UsageError("open needs --ticket <KEY> and --story <file> together");
-  return { lane, title, id: str(args, "id"), request: parseRequest(args), ticket, story, source: str(args, "source"), session: str(args, "session") };
+  return { lane, title, id: str(args, "id"), request: parseRequest(args), ticket, story, source: str(args, "source"), session: str(args, "session"), userLane: flag(args, USER_LANE) };
 }
 
 function renderOpen(v: Opened): string {
@@ -97,7 +126,7 @@ function renderOpen(v: Opened): string {
 }
 
 export const verb: VerbSpec<OpenInput, Opened> = {
-  usage: 'open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--ticket <KEY> --story <file>] [--id <id>]',
+  usage: 'open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--ticket <KEY> --story <file>] [--id <id>] [--user-lane]',
   output: "json",
   parse: parseOpen,
   run: openItem,
