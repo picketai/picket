@@ -39,3 +39,4 @@ Source list: `artifacts/reports/instructions-candidates-2026-10-25.md`, walked t
 | 11 | [Kernel groundwork for agents and skills](11-kernel-groundwork.md) | approved 2026-10-29 |
 | 12 | [The agents](12-agents.md) | approved 2026-10-29 |
 | 13 | [The lane skills](13-lane-skills.md) | approved 2026-10-29 |
+| 14 | [The reviewing skill](14-reviewing.md) | approved 2026-10-29 |
