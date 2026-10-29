@@ -1,4 +1,5 @@
 import { elapsed, minutes } from '../../../lib/shared/format.mts'
+import { ACTION_TEXT, isNextAction, type Voice } from '../../../lib/shared/work/action-text.mts'
 import { TONES } from '../../shared/theme'
 import type { AgentRow, Line, Piece, Work } from '../types'
 
@@ -81,48 +82,14 @@ export const agentsLine = (all: AgentRow[], work: Work | null, now: number): Lin
   return { left: [INDENT, ...joined(agents, DOT)], right: [] }
 }
 
-const agentVerb = (work: Work): string => {
-  switch (work.action) {
-    case 'implement_phase':
-      return `implements phase ${work.phase}`
-    case 'review_checkpoint':
-      return `reviews phase ${work.phase}`
-    case 'review_cumulative':
-      return 'reviews all phases'
-    case 'write_artifact':
-      return `writes ${work.lane}.md`
-    case 'close':
-      return 'closes the item'
-    default:
-      return work.detail
-  }
-}
+const actionText = (work: Work, voice: Voice): string =>
+  isNextAction(work.action) ? ACTION_TEXT[work.action](work, voice) : work.detail
 
 const otherSessionStep = (work: Work): string => {
   if (work.status === 'blocked') {
     return `blocked: ${work.blocked_reason ?? work.detail}`
   }
-  if (work.action === 'resolve_sources') {
-    return 'waits for source picks'
-  }
-  if (work.action === 'resolve_rejections') {
-    return 'waits for a decision after repeated rejections'
-  }
-  if (work.actor === 'user') {
-    return `waits for approval of phase ${work.phase}`
-  }
-  return `${work.actor ?? 'lead'} ${agentVerb(work)}`
-}
-
-const userAsk = (work: Work): string => {
-  switch (work.action) {
-    case 'resolve_sources':
-      return 'you pick source versions'
-    case 'resolve_rejections':
-      return 'you decide after repeated rejections'
-    default:
-      return `you approve phase ${work.phase}`
-  }
+  return actionText(work, 'observer')
 }
 
 export const stepText = (work: Work, now: number): Piece[] => {
@@ -134,11 +101,11 @@ export const stepText = (work: Work, now: number): Piece[] => {
   }
   if (work.actor === 'user') {
     return [
-      { text: `${userAsk(work)} ◀`, color: TONES.warning, bold: true },
+      { text: `${actionText(work, 'user')} ◀`, color: TONES.warning, bold: true },
       { text: ` ${minutes(now - Date.parse(work.since))}`, color: TONES.muted },
     ]
   }
-  return [{ text: `${work.actor ?? 'lead'} ${agentVerb(work)} ⋯`, color: TONES.accent }]
+  return [{ text: `${actionText(work, 'user')} ⋯`, color: TONES.accent }]
 }
 
 export const workLine = (work: Work | null, now: number): Line | null => {

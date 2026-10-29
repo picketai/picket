@@ -82,6 +82,12 @@ describe('work line', () => {
       { text: 'blocked: phase 2 stalled, 3 tests fail ◀', color: 'error', bold: true },
     ])
   })
+
+  test('an action the kernel does not name reads as its detail', async () => {
+    const unknown = { ...WORK, action: 'frobnicate', actor: 'developer', detail: 'frobnicating the widget' }
+    expect(workLine(unknown, NOW)?.right).toEqual([{ text: 'frobnicating the widget ⋯', color: 'claude' }])
+    expect(stepText({ ...unknown, other_session: true }, NOW)).toEqual([{ text: 'frobnicating the widget', color: 'inactive' }])
+  })
 })
 
 const agent = (name: string, status: string, clocks: Partial<AgentRow> = {}): AgentRow => ({

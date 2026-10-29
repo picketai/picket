@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { loadConfig, securityPaths } from "../../../shared/config.mjs";
 import { hostPath, hostRel } from "../../../shared/paths.mts";
+import { ACTION_TEXT, isNextAction } from "../../../shared/work/action-text.mts";
 import { nextOf } from "../../../shared/work/next-view.mts";
 import { readSnapshot, stateView, type WorkSnapshot } from "../../../shared/work/snapshot.mts";
 import { listOpenWork } from "../../../shared/work/state.mts";
@@ -13,7 +14,8 @@ const GLOSSARY_CHARS = 6000;
 function openItemLine(snap: WorkSnapshot, secured: readonly string[]): string {
   const s = stateView(snap);
   const n = nextOf(snap, secured);
-  return `- ${s.id} · ${s.lane} · ${s.status}${s.phase_count ? ` · phases ${s.phases_approved}/${s.phase_count}` : ""} · next: ${n.action}${n.actor ? ` by ${n.actor}` : ""}${n.phase ? ` (phase ${n.phase})` : ""}`;
+  const next = isNextAction(n.action) ? ACTION_TEXT[n.action](n, "observer") : n.detail;
+  return `- ${s.id} · ${s.lane} · ${s.status}${s.phase_count ? ` · phases ${s.phases_approved}/${s.phase_count}` : ""} · next: ${next}`;
 }
 
 function openItemsPart(root: string): string | null {

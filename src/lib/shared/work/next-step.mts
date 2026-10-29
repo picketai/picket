@@ -3,9 +3,7 @@ import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
 import { ARTIFACT_BY_LANE, type Lane } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
 
-export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none"] as const;
-
-export type NextAction = (typeof NEXT_ACTIONS)[number];
+export { NEXT_ACTIONS, type NextAction } from "./action-text.mts";
 
 export type NextStep =
   | { action: "none"; actor: null; detail: string }
