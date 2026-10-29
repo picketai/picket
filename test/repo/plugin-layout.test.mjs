@@ -113,7 +113,7 @@ test("the manifest lists every skill folder once, in name order", () => {
 test("a folder under skills/ without a SKILL.md, such as shared/, is not a skill", () => {
   assert.equal(existsSync(join(SRC, "skills", "shared", "procedures")), true);
   assert.equal(skillFolders(join(SRC, "skills")).includes("./skills/shared"), false);
-  assert.equal(skillFolders(join(SRC, "skills")).length, 17);
+  assert.equal(skillFolders(join(SRC, "skills")).length, 18);
 });
 
 test("every import under src/ is a Node built-in or a path inside src/", () => {

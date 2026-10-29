@@ -48,4 +48,4 @@ The fast lane prints one block, staged and uncommitted, and stops for a one-word
 
 The block is the fast-lane form of the template in `picket:implementing`: its lines under `## Expedited: <id>`, ending with the options line.
 
-When `Comments:` lists proposals, number them and end the options line with `[k] keep comment <n>`.
+When `Comments:` lists proposals, number them and end the options line with `[k] keep comment <n>`; when `Waivers:` does, number them and end it with `[w] waive <n>`.

@@ -9,4 +9,4 @@ test/repo/markdown-paths.test.mjs reads untracked .claude/agent-memory/**/*.md t
 
 **Why:** each cost a check cycle; the memory-file one is outside the developer's files.
 
-**How to apply:** when a check fails on a .claude/ file you did not write, report the exact line to the lead ([[claude-dir-edits-via-lead]]) and do not change code to work around it; when your own string trips a scan, reword the text and say why on the block.
+**How to apply:** when a check fails on a .claude/ file you did not write, report the exact line to the lead and do not change code to work around it; when your own string trips a scan, reword the text and say why on the block.

@@ -28,9 +28,9 @@ Never re-read what is already in your context. Batch every independent read and 
 
 Write only inside the phase's touch set plus new files the phase names, plus tests. Never edit `work/`, `.claude/`, or another phase's files. Bash runs things (tests, lint, build, the app, git commit); it does not read or rewrite files: use Read, Grep, Glob, Edit.
 
-A `.claude/` path in the touch set goes to the lead: send the path, the line and the exact text, and the lead edits and stages it.
+A `.claude/` path in the touch set goes to the lead: send the path, the line and the exact text early, before `picket verify`, and the lead edits and stages it.
 
-A file the phase deletes goes by `git rm` run alone and marked, `PICKET_ESCALATE="<phase and criterion>" git rm -q <path>`, never chained with another command; list it as `<path> (deleted)` on `Files:`.
+A file the phase deletes goes by `git rm` run alone and marked, `PICKET_ESCALATE="<phase and criterion>" git rm -q <path>`, never chained with another command; leave it out of step 6's `git add`, which fails on a path already removed from the index, and list it as `<path> (deleted)` on `Files:`.
 
 Do not implement ahead of the phase. A plan step that is a craft anti-pattern (god method, lying name, deep nesting) you fix silently and note under Decisions. A plan step that changes a recorded decision (moved boundary, different contract, new dependency, an irreversible consequence the plan did not name) you do not implement: stop with `PHASE STALLED` and say which `D-###` it conflicts with.
 
@@ -60,7 +60,7 @@ Report only in your block. A turn that ends without a block, with a status line 
 
 Inside a granted run (`run through <m>`), the loop is unchanged: one phase, one block, end the turn. The kernel decides whether the run goes on.
 
-Three failed attempts at the same criterion, or a criterion you cannot meet without changing a `D-###` decision, end the turn with `PHASE STALLED`, the decision named, and a two-line diagnosis.
+Three failed attempts at the same criterion, a criterion you cannot meet without changing a `D-###` decision, or a conflict you cannot resolve within the phase end the turn with `PHASE STALLED` and a two-line diagnosis, which names the decision when one is involved.
 
 ## Memory
 

@@ -1,9 +1,8 @@
 id: 20261029-convert-the-developer-agent-item-a
 lane: order
 title: "Convert the developer agent, item A"
-status: open
+status: done
 created: 2026-10-29T18:14:43.886Z
-updated: 2026-10-29T18:22:23.812Z
+updated: 2026-10-29T18:53:25.653Z
 session: 43b73270-9af6-4c2f-be1b-deb7965a4c6c
 base: 74aa111202ce24e29da78e01da234deeef4b798b
-run_through: 3
