@@ -3,19 +3,26 @@ name: ticketing
 description: >
   Pull, draft, create and update work items on a ticketing platform through its MCP server
   (Jira today): user story, change request, bug, technical debt, spike, epic, each from a
-  template under templates/<provider>/. Use when the user says "write a ticket", "log a bug",
-  "make a Jira item", "pull JIRA-123", "update that story", "draft an epic", or mentions Jira,
-  tickets, backlog items, issues or sprint work. Pulls are autonomous; every create, edit,
-  transition or comment is shown for confirmation first. `/picket:ticketing [--pull|--create|--update]
-  [--story|--change|--bug|--debt|--spike|--epic] <text or key>`.
-user-invocable: true
+  template under templates/<provider>/. Pulls are autonomous; every create, edit, transition
+  or comment is shown for confirmation first.
+when_to_use: >
+  Use when the user says "write a ticket", "log a bug", "make a Jira item", "pull JIRA-123",
+  "update that story", "draft an epic", or mentions Jira, tickets, backlog items, issues or
+  sprint work.
+argument-hint: "[--pull|--create|--update] [--story|--change|--bug|--debt|--spike|--epic] <text or key>"
 ---
 
 # Ticketing
 
-Input: `$ARGUMENTS`. Empty: list the item types below and ask what to draft, pull or update; stop.
+Pull, draft, create and update work items on a ticketing platform through its MCP server, each from a template under `templates/<provider>/`.
 
-## Routing
+## Steps
+
+1. Input: `$ARGUMENTS`. Empty: list the item types below and ask what to draft, pull or update; stop.
+2. Draft, create, update (the drafting part): read `steps/10-draft.md`.
+3. Pull, create, update (the platform calls): read `steps/20-jira.md`.
+
+## Rules
 
 Provider: Jira unless another is named. A provider needs a row here, a server in `.mcp.json` (its name is the tool namespace: server `atlassian` gives `mcp__atlassian__*`), a `templates/<provider>/` directory, and its tools granted on the agent that runs the skill (a skill cannot widen an agent's tools).
 
@@ -37,24 +44,8 @@ Item type: first flag wins; without one, infer ("crash", "null ref" → bug; "re
 
 Operation: none → draft (reply only, no file); `--pull` → fetch and render; `--pull <KEY> --story` → the lane intake: write the story file and print the `picket open` flags, no render; `--create` → draft then create; `--update` → change an existing item. Strip flags before reading the rest as text or key. The platform is the system of record.
 
-## Steps
-
-| Operation | Read |
-|---|---|
-| draft, create, update (the drafting part) | `steps/10-draft.md` |
-| pull, create, update (the platform calls) | `steps/20-jira.md` |
-
-## Rules
-
-Output is pure Markdown in the template's exact section order: no preamble, no trailing commentary. Summary at most 255 characters in the template's naming convention. Acceptance criteria are checkboxes in Given/When/Then or precise testable assertions; "works correctly" is forbidden. Definition of Done has at least four items. Priority is one of Critical, High, Medium, Low with a one-sentence reason. Missing input becomes `> REQUIRES INPUT: <what, from whom>`; nothing is fabricated. Every item opens with `> Input provided by: <role>: <one sentence on what they handed over>`.
-
 Self-check before presenting: summary length and convention; description a non-engineer can follow; each criterion independently testable; Out of Scope present and non-empty; Definition of Done with 4 or more items; Priority with reason; `REQUIRES INPUT` wherever input was thin.
 
-## Layout
+## Output
 
-```
-ticketing/
-  SKILL.md, steps/10-draft.md, steps/20-jira.md
-  templates/jira/<item>.md    mandatory structure per item (read before drafting)
-  examples/jira/<item>.md     one worked sample per item (read only when tone is unclear)
-```
+Output is pure Markdown in the template's exact section order: no preamble, no trailing commentary. Summary at most 255 characters in the template's naming convention. Acceptance criteria are checkboxes in Given/When/Then or precise testable assertions; "works correctly" is forbidden. Definition of Done has at least four items. Priority is one of Critical, High, Medium, Low with a one-sentence reason. Missing input becomes `> REQUIRES INPUT: <what, from whom>`; nothing is fabricated. Every item opens with `> Input provided by: <role>: <one sentence on what they handed over>`.

@@ -2,18 +2,17 @@
 name: resuming
 description: >
   Re-enter a work item from its state on disk with no history replay: read the state, compute
-  the next action, print the gate packet or hand the next step to the right agent. Use when the
-  user says "resume", "continue <id>", "where were we", "pick up the <feature> work", or opens
-  a new session with an item still open. `/picket:resuming` with no id lists the open items.
-user-invocable: true
+  the next action, print the gate packet or hand the next step to the right agent.
+when_to_use: >
+  Use when the user says "resume", "continue <id>", "where were we", "pick up the <feature>
+  work", or opens a new session with an item still open.
+argument-hint: "[<work-id>]"
 ---
 
 # Resuming
 
-`/picket:resuming [<work-id>]`
-
+Re-enter a work item from its state on disk with no history replay. `/picket:resuming` with no id lists the open items.
 Current work items:
-
 !`picket list --human`
 
 ## Steps
@@ -27,4 +26,10 @@ Current work items:
    - `close` or `none`: say so in one line.
 4. Fast-lane items have no artifact and no phases; if one is still `open`, the change was interrupted: show `git status` for the touch set and ask whether to finish or abandon.
 
+## Rules
+
 Never rewrite `state.yaml` by hand and never guess a phase number: `picket next` is the only source.
+
+## Output
+
+At a gate, `picket packet <id>` printed verbatim and nothing else. For `close` or `none`, one line. Any other action replies as the lane skill's `## Output` says.
