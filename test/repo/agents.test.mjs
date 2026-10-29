@@ -14,7 +14,7 @@ const ALLOWED = [...REQUIRED, "skills", "disallowedTools", "maxTurns", "autoComp
 const IGNORED_FOR_PLUGINS = ["hooks", "mcpServers", "permissionMode", "initialPrompt"];
 const PARTS = ["Entry", "Constraints", "Work", "Memory", "Output"];
 const VALUES = { model: /^(sonnet|opus|haiku|fable|inherit|claude-[a-z0-9-]+)$/, effort: /^(low|medium|high|xhigh|max)$/, memory: /^(user|project|local)$/, color: /^(red|blue|green|yellow|purple|orange|pink|cyan)$/ };
-const PENDING = ["src/agents/analyst.md", "src/agents/architect.md", "src/agents/reviewer.md"];
+const PENDING = ["src/agents/analyst.md", "src/agents/reviewer.md"];
 const TEMPLATES = { developer: "src/skills/implementing/SKILL.md" };
 const EXPEDITED_HEADING = "## Expedited: <id>";
 const FIELD_KEY = /^([a-z][a-z ]*):(?:\s|$)/;
@@ -36,6 +36,14 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ phases, run_through: 2 }), implement, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases, verdicts: [developerRow(1)] }), implement, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases: [{ n: 1, done: true, approved: true }] }), fix, FIXTURE_SESSION),
+    ];
+  },
+  architect: () => {
+    const write = { action: "write_artifact", actor: "architect", detail: "d" };
+    const amend = { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-001 x" };
+    return [
+      ...sendsFor(snapshotOf({ lane: "order", artifact: null }), write, FIXTURE_SESSION, () => true),
+      ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), amend, FIXTURE_SESSION),
     ];
   },
 };
@@ -278,6 +286,7 @@ test("every shell outside PENDING has Entry fixtures", () => {
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
+  assert.deepEqual(sentKeys("architect"), ["amend", "lane", "preflight", "request", "sources", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
   }

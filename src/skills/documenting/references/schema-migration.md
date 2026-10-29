@@ -1,6 +1,6 @@
-# Designing a schema or data migration
+# Documenting: schema migration
 
-Read this before writing the phases of a design that changes a schema, a stored file format or the shape of data at rest. It shapes the phases; the decisions stay in `10-design.md`'s rules.
+Read this before writing the phases of a design that changes a schema, a stored file format or the shape of data at rest. It shapes the phases; the decisions follow the architect's design rules.
 
 The order is fixed: expand, migrate, contract. Each step is its own phase, and every phase leaves the system working for the code that runs before and after it.
 
