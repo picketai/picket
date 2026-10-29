@@ -1,5 +1,5 @@
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
-import { VERDICTS } from "../../../shared/verdicts.mjs";
+import { findVerdict, VERDICTS } from "../../../shared/verdicts.mjs";
 import { readHeading, type BlockField } from "../../../shared/work/block.mts";
 import type { HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { bounce, type BounceOutput } from "../../output.mts";
@@ -11,6 +11,8 @@ const FINDING_LINE = /^- \[(Critical|Major|Minor|Nit)\]/;
 const RED_FORMS = /^(.+?\bfailed: \S.*|pinned: \S.*|n\/a: \S.*)$/;
 const CAUSE_FORM = /\S because \S/;
 const FOLDED_FILES = /\+\d+ more/;
+const PICKET_AGENT = "picket:";
+const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
 
 function turnText(event: PayloadOf<StopEvent>): string {
   try {
@@ -56,11 +58,21 @@ function blockProblems(block: string, isDeveloperBlock: boolean): string[] {
   return problems;
 }
 
+function isPicketAgentTurn(event: PayloadOf<StopEvent>): boolean {
+  return event.hook_event_name === "SubagentStop" && typeof event.agent_type === "string" && event.agent_type.startsWith(PICKET_AGENT);
+}
+
+function missingBlock(event: PayloadOf<StopEvent>, text: string): BounceOutput | null {
+  if (!isPicketAgentTurn(event) || findVerdict(blockLines(text).last) !== null) return null;
+  return bounce(MISSING_BLOCK);
+}
+
 export function guardBlock(event: PayloadOf<StopEvent>): BounceOutput | null {
   if (event.stop_hook_active) return null;
   const text = turnText(event);
   const heading = readHeading(text);
-  if (heading === null || heading.kind === "expedited") return null;
+  if (heading === null) return missingBlock(event, text);
+  if (heading.kind === "expedited") return null;
   const problems = blockProblems(text.slice(heading.index), heading.kind === "phase");
   return problems.length ? bounce(`guard.block: ${problems.join(". ")}. Re-emit the block only.`) : null;
 }

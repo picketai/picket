@@ -4,7 +4,7 @@ import { loadConfig } from "../../shared/config.mjs";
 import { branch, dirtyPaths, isRepo } from "../../shared/git.mts";
 import { detectTooling, type Tooling } from "../../shared/tooling.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { workFile, workId, type WorkId } from "../../shared/work/files.mts";
+import { workFile, workId, workRel, type WorkId } from "../../shared/work/files.mts";
 import { readSnapshot, stateView, type StateView } from "../../shared/work/snapshot.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 import { CHECKS, type Check, type GitFacts, type PreflightInput } from "./checks.mts";
@@ -32,19 +32,24 @@ export function preflight(root: string, id: WorkId, { home, env, platform }: Mac
   if ("error" in item) return { ok: false, checks: [{ name: "work_item", level: "fail", detail: item.error }], tooling: null };
   const input: PreflightInput = { root, ...item, config: loadConfig(root, env), tooling: detectTooling(root), git: gitFacts(root), home, env, platform };
   const checks = CHECKS.flatMap((check) => check(input) ?? []);
-  saveWarnings(root, id, checks);
-  return { ok: !checks.some((c) => c.level === "fail"), checks, tooling: input.tooling.tooling, state: input.view };
+  const unsaved = saveWarnings(root, id, checks);
+  return { ok: !checks.some((c) => c.level === "fail"), checks: unsaved ? [...checks, unsaved] : checks, tooling: input.tooling.tooling, state: input.view };
 }
 
 function checkLine(c: Check): string {
   return `${c.level.padEnd(4)} ${c.name}: ${c.detail}`;
 }
 
-function saveWarnings(root: string, id: WorkId, checks: Check[]): void {
+function saveWarnings(root: string, id: WorkId, checks: Check[]): Check | null {
   const path = workFile(root, id, "preflight.txt");
   const warnings = checks.filter((c) => c.level === "warn").map(checkLine);
-  if (warnings.length) writeFileSync(path, `${warnings.join("\n")}\n`);
-  else rmSync(path, { force: true });
+  try {
+    if (warnings.length) writeFileSync(path, `${warnings.join("\n")}\n`);
+    else rmSync(path, { force: true });
+    return null;
+  } catch (err) {
+    return { name: "preflight_file", level: "warn", detail: `${workRel(id)}preflight.txt not written: ${(err as Error).message}` };
+  }
 }
 
 export const preflightReport = action<PreflightArgs, PreflightReport>(async ({ id }, { root, home, env, platform }) => {

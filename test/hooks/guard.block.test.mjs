@@ -61,6 +61,32 @@ test("guard.block does not ask a stalled block or another agent's block for proo
   assert.equal(blockVerdict(root, `## Report: ${id}\n\nWritten.\n\nREPORT WRITTEN`), null, "analyst");
 });
 
+const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
+
+function agentTurn(root, text, fields) {
+  const tp = transcript(root, [user("x"), assistant([{ type: "text", text }])]);
+  return run({ hook_event_name: "SubagentStop", transcript_path: tp, cwd: root, agent_type: "picket:developer", ...fields }, root);
+}
+
+test("a picket agent's turn that ends without its block is bounced once", (t) => {
+  const { root } = hookProject(t);
+  const out = agentTurn(root, "I looked at the file.");
+  assert.equal(out?.decision, "block");
+  assert.equal(out.reason, MISSING_BLOCK);
+});
+
+test("a turn without a block passes when the hook already bounced, the agent is not picket's, or it is the lead's Stop", (t) => {
+  const { root } = hookProject(t);
+  assert.equal(agentTurn(root, "I looked at the file.", { stop_hook_active: true }), null);
+  assert.equal(agentTurn(root, "I looked at the file.", { agent_type: "Explore" }), null);
+  assert.equal(agentTurn(root, "I looked at the file.", { hook_event_name: "Stop", agent_type: undefined }), null);
+});
+
+test("a picket agent's turn that ends on a verdict token is not bounced for a missing block", (t) => {
+  const { root } = hookProject(t);
+  assert.equal(agentTurn(root, "Stuck on the port.\n\nPHASE STALLED"), null);
+});
+
 test("a spawned guard.block bounce on the lead's Stop appends one bounce row (T-2.2)", (t) => {
   const { root, id } = hookProject(t);
   const tp = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nI think this is approved.` }])]);

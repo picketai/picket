@@ -84,6 +84,20 @@ test("an AMENDMENT NEEDED line lands on the row, and on a drift also as the bloc
   assert.match(readFileSync(join(root, "work", id, "state.yaml"), "utf8"), /^blocked_reason: .*D-002 the port moved/m);
 });
 
+test("an architect AMENDED block quoting the amendment line carries no amend, so next leaves amend", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  const line = "AMENDMENT NEEDED: D-002 x";
+  routeReview(root, id, reviewBlock(id, "phase 1", `Drifted.\n${line}`, "CHANGES REQUIRED"));
+  assert.equal(verdictRows(root, id).at(-1).amend, line);
+  const amended = `## Amendment: ${id}\n\nD-002 revised.\n\nRevision: D-002 (r2) answers:\n${line}\n\nAMENDED`;
+  const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: transcript(root, [user(`work: ${id}`), assistant(amended)]), cwd: root, agent_type: "picket:architect" }, hookContext(root));
+  const row = verdictRows(root, id).at(-1);
+  assert.equal(row.verdict, "AMENDED");
+  assert.equal("amend" in row, false);
+  assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /Next: amend\b/);
+});
+
 test("routeVerdict stores a reviewer's Classes on a CHANGES REQUIRED entry and nothing for none (T-9.3)", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const s = openItem(root, { lane: "order", title: "Classed" });

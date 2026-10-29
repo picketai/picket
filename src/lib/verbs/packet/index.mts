@@ -15,10 +15,14 @@ function parsePacket(args: Args): PacketInput {
   return { id: workId(id), width: int(args, "width") };
 }
 
+function fenced(text: string): string {
+  return ["```text", text, "```"].join("\n");
+}
+
 export const verb: VerbSpec<PacketInput, GatePacket> = {
   usage: "packet <id> [--width <n>] [--json]",
   output: "text",
   parse: parsePacket,
   run: gatePacket,
-  render: (value) => value.text,
+  render: (value) => fenced(value.text),
 };

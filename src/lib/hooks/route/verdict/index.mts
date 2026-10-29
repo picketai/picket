@@ -69,7 +69,8 @@ function applyVerdict({ event, info, hints, id, verdict, text, ctx }: Routing): 
   saveDeveloperBlock(info, id, phase, text, ctx.root);
   saveReviewerBlock(info, text, ctx.root);
   const classes = info?.agent === "reviewer" ? reviewClasses(text) : [];
-  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: amend ?? undefined, session: event.session_id, classes }, ctx);
+  const reviewerAmend = info?.agent === "reviewer" ? (amend ?? undefined) : undefined;
+  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: reviewerAmend, session: event.session_id, classes }, ctx);
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
