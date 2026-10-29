@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { reviewClasses, routeVerdict as verdictHandler } from "./index.mts";
 import { statePath, stateRel } from "../../../shared/paths.mts";
@@ -17,6 +17,7 @@ test("routeVerdict on a pull request review keeps the block and names its state 
   const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "reviewer" }, hookContext(root));
   assert.ok(out.hookSpecificOutput.additionalContext.includes(stateRel("pr-412.review.md")));
   assert.equal(existsSync(statePath(root, "pr-412.review.md")), true);
+  assert.equal(existsSync(join(root, "work", "pr-412", "reviews")), false);
   assert.equal(routeVerdict({ stop_hook_active: true }, hookContext(root)), null);
 });
 
@@ -29,6 +30,58 @@ test("routeVerdict on a developer PHASE DONE stamps the item with the event's se
   const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s3", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, hookContext(root));
   assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
   assert.match(readFileSync(join(root, "work", s.id, "state.yaml"), "utf8"), /^session: s3$/m);
+});
+
+function designItem(root: string) {
+  const s = openItem(root, { lane: "design", title: "Reviewed" });
+  writeFileSync(join(root, "work", s.id, "design.md"), "---\nlane: design\n---\n# D\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n");
+  return s.id;
+}
+
+function reviewBlock(id: string, scope: string, body: string, verdict: string): string {
+  return `Reading the diff first.\n## Review: ${id} · ${scope}\n\n${body}\n\nAlignment: PASS\nFindings: clean\n\n${verdict}`;
+}
+
+function routeReview(root: string, id: string, block: string, session = "s1") {
+  const tp = transcript(root, [user(`work: ${id}`), assistant(block)]);
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: session, transcript_path: tp, cwd: root, agent_type: "picket:reviewer" }, hookContext(root));
+}
+
+function verdictRows(root: string, id: string) {
+  return readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+}
+
+test("routeVerdict saves each reviewer block under reviews/, from its heading to its verdict", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  const files = { crosscheck: "crosscheck.md", "phase 2": "phase-2.md", checkpoint: "checkpoint.md", cumulative: "cumulative.md" };
+  for (const scope of Object.keys(files)) routeReview(root, id, reviewBlock(id, scope, `Scope ${scope}.`, scope === "crosscheck" ? "ALIGNED" : "APPROVED"));
+  for (const [scope, file] of Object.entries(files)) {
+    const saved = readFileSync(join(root, "work", id, "reviews", file), "utf8");
+    assert.ok(saved.startsWith(`## Review: ${id} · ${scope}\n`), saved);
+    assert.match(saved, scope === "crosscheck" ? /\nALIGNED\n$/ : /\nAPPROVED\n$/);
+  }
+  assert.equal(verdictRows(root, id).at(-1).session, "s1");
+});
+
+test("a second cumulative review replaces the first saved one", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  routeReview(root, id, reviewBlock(id, "cumulative", "First pass.", "CHANGES REQUIRED"));
+  routeReview(root, id, reviewBlock(id, "cumulative", "Second pass.", "APPROVED"));
+  assert.deepEqual(readdirSync(join(root, "work", id, "reviews")), ["cumulative.md"]);
+  assert.match(readFileSync(join(root, "work", id, "reviews", "cumulative.md"), "utf8"), /Second pass\./);
+});
+
+test("an AMENDMENT NEEDED line lands on the row, and on a drift also as the blocked reason", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  const line = "AMENDMENT NEEDED: D-002 the port moved";
+  routeReview(root, id, reviewBlock(id, "cumulative", `Drifted.\n${line}`, "CHANGES REQUIRED"));
+  assert.equal(verdictRows(root, id).at(-1).amend, line);
+  routeReview(root, id, reviewBlock(id, "crosscheck", `Drifted.\n${line}`, "DRIFT DETECTED"));
+  assert.equal(verdictRows(root, id).at(-1).amend, line);
+  assert.match(readFileSync(join(root, "work", id, "state.yaml"), "utf8"), /^blocked_reason: .*D-002 the port moved/m);
 });
 
 test("routeVerdict stores a reviewer's Classes on a CHANGES REQUIRED entry and nothing for none (T-9.3)", (t) => {

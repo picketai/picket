@@ -9,6 +9,7 @@ import { ownGate } from "../../shared/work/gate.mts";
 import { hasMarker } from "../../shared/work/markers.mts";
 import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { currentPhase, phaseOf, readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
+import { isSessionId } from "../../shared/work/state.mts";
 import type { VerdictEntry } from "../../shared/work/verdict-log.mts";
 import { int, need, str, UsageError, type Args } from "../../util/args.mts";
 import { applyChanges } from "./apply.mts";
@@ -29,9 +30,11 @@ function verdictSpec(verdict: string, agent: string | null): VerdictSpec {
   return spec;
 }
 
-function verdictRow({ agent, verdict, phase, scope, through, classes }: PlannedVerdict): VerdictEntry {
+function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend }: PlannedVerdict): VerdictEntry {
   const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
-  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed };
+  const sessioned = isSessionId(session) ? { session } : {};
+  const amending = amend ? { amend } : {};
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending };
 }
 
 function gateOf(root: string, snap: WorkSnapshot): GateOf {

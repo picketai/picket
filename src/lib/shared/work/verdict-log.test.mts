@@ -23,6 +23,14 @@ test("readVerdicts keeps the readable lines and counts a truncated last line as 
   assert.equal(read.skipped, 1);
 });
 
+test("a row written before rows carried session and amend reads unchanged", (t) => {
+  const legacy = '{"ts":"2026-10-23T10:00:00Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":2,"scope":null,"through":null,"classes":["Ts4"]}';
+  const { root, id } = itemWithLog(t, `${legacy}\n`);
+  const read = readVerdicts(root, id);
+  assert.deepEqual(read.rows, [JSON.parse(legacy)]);
+  assert.equal(read.skipped, 0);
+});
+
 test("a verdict appended after a truncated last line starts on its own line and stays readable", (t) => {
   const { root, id } = itemWithLog(t, `${READABLE_ROW}\n{"ts":"2026`);
   appendVerdict(root, id, { agent: "developer", verdict: "PHASE DONE", phase: 1, scope: null, through: null }, new Date());

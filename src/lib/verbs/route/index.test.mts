@@ -310,6 +310,17 @@ test("classes are stored on a CHANGES REQUIRED entry only (T-9.3)", (t) => {
   assert.deepEqual(entries.map((e) => e.classes ?? null), [["Ts4", "Cm1"], null, null]);
 });
 
+test("a row carries the session it was routed in and the amendment line, and no key for either when absent", (t) => {
+  const { root, id } = setup(t);
+  route({ id, verdict: "CHANGES REQUIRED", agent: "reviewer", phase: 1, session: "S", amend: "AMENDMENT NEEDED: D-002 the port moved", root });
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, session: null, amend: "", root });
+  const [first, second] = readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.equal(first.session, "S");
+  assert.equal(first.amend, "AMENDMENT NEEDED: D-002 the port moved");
+  assert.equal("session" in second, false);
+  assert.equal("amend" in second, false);
+});
+
 test("bareAgentName strips only the exact picket: prefix", () => {
   assert.equal(bareAgentName("picket:analyst"), "analyst");
   assert.equal(bareAgentName("analyst"), "analyst");

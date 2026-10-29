@@ -15,6 +15,7 @@ export type RouteInput = {
   scope?: string;
   through?: number;
   reason?: string;
+  amend?: string;
   session?: string | null;
   classes?: string[];
 };

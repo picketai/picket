@@ -6,12 +6,13 @@ import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
 import { readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
+import { saveReview } from "../../../shared/work/reviews.mts";
 import { route } from "../../../verbs/route/index.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
 
 type StopEvent = "Stop" | "SubagentStop";
-type BlockInfo = { agent: string; id: string; phase: number | null; scope: ReviewScope | null };
+type BlockInfo = { agent: string; id: string; phase: number | null; scope: ReviewScope | null; index: number };
 type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hints; id: string; verdict: string; text: string; ctx: HookContext };
 
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
@@ -24,7 +25,7 @@ function blockInfo(text: string): BlockInfo | null {
   const heading = readHeading(text);
   const agent = heading ? AGENT_OF[heading.kind] : undefined;
   if (!heading || !agent || (heading.kind === "review" && heading.scope === null)) return null;
-  return { agent, id: heading.id, phase: heading.phase, scope: heading.scope };
+  return { agent, id: heading.id, phase: heading.phase, scope: heading.scope, index: heading.index };
 }
 
 function keepPullRequestReview(id: string, verdict: string, text: string, root: string): string {
@@ -52,6 +53,13 @@ function saveDeveloperBlock(info: BlockInfo | null, id: string, phase: number | 
   } catch {}
 }
 
+function saveReviewerBlock(info: BlockInfo | null, text: string, root: string): void {
+  if (info?.agent !== "reviewer" || info.scope === "pr") return;
+  try {
+    saveReview(root, workId(info.id), info, text);
+  } catch {}
+}
+
 function applyVerdict({ event, info, hints, id, verdict, text, ctx }: Routing): string {
   const scope = info?.scope === "phase" ? undefined : (info?.scope ?? (hints.scope && !hints.scope.startsWith("phase") ? hints.scope : undefined));
   const phase = info?.phase ?? hints.phase ?? undefined;
@@ -59,8 +67,9 @@ function applyVerdict({ event, info, hints, id, verdict, text, ctx }: Routing): 
   const amend = text.match(/^AMENDMENT NEEDED:.*$/m)?.[0] ?? null;
   const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, ctx.root);
+  saveReviewerBlock(info, text, ctx.root);
   const classes = info?.agent === "reviewer" ? reviewClasses(text) : [];
-  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, session: event.session_id, classes }, ctx);
+  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: amend ?? undefined, session: event.session_id, classes }, ctx);
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
