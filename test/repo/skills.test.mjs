@@ -20,7 +20,7 @@ const CLAIM = new RegExp(`\\bthe ${AGENT}(?:(?:,? (?:and|or) |, )(?:the )?${AGEN
 const TITLE_LINE = /^# /;
 const CONTINUATION = /^\s+\S/;
 
-const UNCONVERTED_SKILLS = ["benchmarking", "branching", "consulting", "debugging", "documenting", "explaining", "inspecting", "proofreading", "resuming", "reviewing", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
+const UNCONVERTED_SKILLS = ["benchmarking", "branching", "consulting", "debugging", "documenting", "explaining", "inspecting", "proofreading", "resuming", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
 
 const PENDING = {
   frontmatter: UNCONVERTED_SKILLS,

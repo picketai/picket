@@ -6,7 +6,7 @@ Vocabulary: "decisions" means `## Problem` plus `## Decisions` (each `### D-###`
 
 ## Scope
 
-Full pass on the first check of a record, or when the previous verdict on it was `DRIFT DETECTED`: read the whole record and every report, SDR, or charter it cites by path. Delta pass when the request names revised `D-###` ids and the previous verdict on this record was `ALIGNED`: read only the revised `### D-###` sections, the `## Revision log`, and the phases the amendment edited; do not re-read untouched decisions, phases, or cited sources. Record `scope: full` or `scope: delta (prior ALIGNED <date>, D-### list)`.
+Delta pass when the message carries a `delta: <D-### ids>` line: read only those `### D-###` sections, the `## Revision log`, and the phases whose criteria cite those ids or that the amendment edited, and run the five checks over them; do not re-read untouched decisions, phases, or cited sources. Record `scope: delta (D-###, ...)`. Full pass when the message carries no `delta:` line: read the whole record and every report, SDR, or charter it cites by path. Record `scope: full`.
 
 Caps: 30 finding rows on a full pass, 10 on a delta. Past the cap the record is structurally broken: emit one Critical row naming the structural problem ("plan has no acceptance criteria") and stop enumerating. The reference walk is one hop (record to cited report, SDR, or charter); never follow a report's own citations.
 

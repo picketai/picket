@@ -3,7 +3,6 @@
 - [dist on disk can be stale](dist-on-disk-can-be-stale.md) — build in memory with esbuild write:false; grep bare path words after a move
 - [Probe append after a bad line](probe-append-after-bad-line.md) — JSONL skip fixes: drive one write after a truncated line, check bytes
 - [Prove test moves by script](prove-test-moves-by-script.md) — names, verbatim asserts, literals plus expected value, per-test counts via node -e
-- [Literal criterion misses go to amendment](literal-criterion-misses-go-to-amendment.md) — code better than a T-row bound: FAIL plus AMENDMENT NEEDED on the D-### that states it
 - [Probe links at parent segments](probe-links-at-parent-segments.md) — removers checking only the leaf delete through a linked .picket or .claude
 - [Compare .gitignore by ignored set](compare-gitignore-by-ignored-set.md) — diff ls-files -o -i under old and new file, via scratchpad copies
 - [Diff deleted memories sentence by sentence](diff-deleted-memories-sentence-by-sentence.md) — a memory deleted "once it lands" needs every sentence found in the shell

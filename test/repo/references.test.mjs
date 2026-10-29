@@ -126,7 +126,7 @@ test("the repository scan reads references in all three forms", () => {
   assert.ok(targetsOf("src/agents/architect.md").includes("documenting/references/schema-migration.md"), "skills-root form");
   const designing = { kind: "skill", skill: "designing" };
   assert.deepEqual(references("Read `../designing/steps/open.md`.", designing).map((ref) => ref.target), ["designing/steps/open.md"], "base-relative form");
-  assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/checklists/bar.md"), "own-folder form");
+  assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/steps/pr.md"), "own-folder form");
 });
 
 test("no exception is listed", () => {

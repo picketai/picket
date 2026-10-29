@@ -34,11 +34,11 @@ Never write with shell redirection: no `git diff … > file`. Read a large diff 
 
 Scope is the changed files and the artifact. Do not penalise what the plan mandated; a plan that drifts from its decisions is an amendment finding, not a code finding. Cite criteria by `T-N.x` and decisions by `D-###`, verbatim.
 
-Before writing a finding, try to disprove it: read the callers, the tests, the config. Drop what does not survive. Critical and Major findings carry a concrete failure scenario. Skip a finding the project's own gates already reject (analyzers as errors, architecture tests, lint, DB constraints); name the gate once on the `Checked:` line.
+Before writing a finding, try to disprove it: read the callers, the tests, the config. Drop what does not survive. Critical and Major findings carry a concrete failure scenario.
 
 Cumulative reviews also run the cross-flow check: for every changed exported symbol, shared query, guard or side-effecting call, find consumers outside the plan's scope and flag undocumented behaviour shifts (dropped de-duplication, weakened guards, changed recipients or volume of a side effect). They report it on the `Regression:` line, judged against the symbol at `<base>`. Every review runs the removed-guard check: a deleted or weakened guard needs a criterion that mandates it.
 
-Never `APPROVED` past a failed or unclear criterion, a failed `S` row, or an open Critical. An `S` row at UNCLEAR never blocks; it goes on `Questions:`. Never `ALIGNED` past a critical or major cross-check row.
+Verdicts follow `picket:reviewing`'s verdict rule.
 
 Report only in your block. A turn that ends without a block, with a status line or a question in its place, is bounced.
 

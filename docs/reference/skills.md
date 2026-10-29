@@ -145,7 +145,7 @@ The template registry for every structured document Picket writes: orders, desig
 
 ## picket:reviewing
 
-The reviewer's checklist: what to load for a change of a given size, how to grade a finding, and when a verdict may say `APPROVED`. It also reviews pull requests.
+The reviewer's grading rules: severities, the evidence bar, the finding format and when a verdict may say `APPROVED`; the kernel picks which checklists it opens. It also reviews pull requests.
 
 **How you reach it.** Two ways. The [reviewer](agents.md#picketreviewer) loads it for the plan cross-check and checkpoint reviews in the design lane, and for the final review in both lanes. You run it yourself with `/picket:reviewing <pull request URL>` for a pull request on GitHub or Azure DevOps, from your local clone.
 

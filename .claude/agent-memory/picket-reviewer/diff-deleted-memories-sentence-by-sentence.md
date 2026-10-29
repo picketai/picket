@@ -9,4 +9,4 @@ When an item deletes a memory "once its sentences land" in an agent shell, read 
 
 **Why:** a lost operational fact in a memory has no test guarding it, and once the file is deleted nothing points back to it.
 
-**How to apply:** in cumulative reviews, grade the S row on every sentence of the memory. A missing one is FAIL with a Minor companion finding that cites the shell step it now contradicts. Related: [[literal-criterion-misses-go-to-amendment]].
+**How to apply:** in cumulative reviews, grade the S row on every sentence of the memory. A missing one is FAIL with a Minor companion finding that cites the shell step it now contradicts.

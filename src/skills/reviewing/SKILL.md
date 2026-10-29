@@ -1,62 +1,35 @@
 ---
 name: reviewing
 description: >
-  Severity vocabulary, finding format, verdict rule, and the per-size load table for the
-  checklist files under checklists/. Reads the kernel's review summary (size, frameworks,
-  concerns, security_path, changed_files) and turns it into a code review or a
-  design-record cross-check. Use when `picket next` says `review_cumulative` or
-  `review_checkpoint`, when a review of scope `phase n`, `cumulative` or `pr` is due with an
-  APPROVED or CHANGES REQUIRED verdict, when the user says "review this phase", "review the
-  diff", or "run an alignment check", or when scope `crosscheck` asks whether a design
-  record's decisions and phases agree (ALIGNED or DRIFT DETECTED). `/picket:reviewing <pull request URL>` reviews a pull request on Azure DevOps
-  (Server or Services) or GitHub from the local clone, and posts the findings back only when asked.
-user-invocable: true
+  The reviewer's grading rules (severities, evidence bar, finding format, verdict rule) over
+  the checklists the kernel names. Grades a diff (APPROVED or CHANGES REQUIRED), a design
+  record's decisions against its phases (ALIGNED or DRIFT DETECTED), and a pull request.
+when_to_use: >
+  Use when `picket next` says `review_cumulative` or `review_checkpoint`, when a review of
+  scope `phase n`, `cumulative` or `pr` is due, when the user says "review this phase",
+  "review the diff" or "run an alignment check", when scope `crosscheck` asks whether a design
+  record's decisions and phases agree, or for `/picket:reviewing <pull request URL>` on Azure
+  DevOps or GitHub.
+argument-hint: "[<pull request URL>]"
 ---
 
-# Skill: reviewing
+# Reviewing
 
-Reference for the reviewer: what the kernel hands you, which checklist to open, how to grade and write a finding, and when a verdict may say APPROVED. Procedure (reading the diff, memory, the output block) belongs to the reviewer agent; this skill carries only the shared rules.
+Which checklists to open for each scope, how to grade and write a finding, and when a verdict may say `APPROVED`. Procedure (reading the diff, memory, the output block) belongs to the reviewer agent.
 
-## The review summary
+## Steps
 
-The kernel computes size and detection before you run. It passes one JSON object:
+1. Invoked as `/picket:reviewing <pull request URL>`, you are the lead: read `steps/pr.md`. Every step below is the reviewer's.
+2. Cross-check: no diff, so no summary. Open `checklists/crosscheck.md` alone.
+3. Checkpoint or phase review: open exactly the files the summary's `checklists` names, in order, honouring each entry's `skip` (sections left out).
+4. Cumulative: the same list, in `checklists/traced.md`'s reading order: request and story first, plan last.
+5. Pull request: open exactly the `checklists` of the `pr:` JSON. The pull request description is the plan.
 
-```json
-{ "size": "small|medium|large", "frameworks": ["typescript", "dotnet"], "concerns": ["clean-architecture", "vertical-slice"], "security_path": false, "changed_files": ["src/..."], "extension_steps": [{ "extension": "acme", "path": ".picket/extensions/acme/review/api.md" }], "silenced": [{ "path": "test/fee.test.ts", "kind": "skipped-test", "text": "it.skip(...)", "waived": false }] }
-```
+## Rules
 
-Field meaning:
+The review summary is the kernel's: never recompute `size`, `frameworks`, `concerns` or `security_path`, and never fall back to your own detection. A missing summary or field is asked for, and you stop. `changed_files` is the review scope. `silenced` (suppressions, skipped or focused tests, weaker thresholds and deleted tests since the base, each with whether the user waived it) and `mutation` (the last `picket mutate` result) are graded by `checklists/bar.md`. Extension checklists (`extension_steps`) add findings and never waive a core row. A row whose construct does not appear in the changed files is skipped silently.
 
-- `size`: the diff class, from changed files and changed lines. Never recompute it.
-- `frameworks`: detected frameworks that have a checklist. An unlisted framework has no file to load.
-- `concerns`: detected architecture concerns, already tie-broken. Load exactly what is listed.
-- `security_path`: true when any changed file sits under a security path: the list in the `security-paths` rule plus the project's `security_paths` in `.picket/config.json`.
-- `changed_files`: the review scope. A finding outside this set is out of range (see Severities).
-- `extension_steps`: the project's extension checklists the kernel picked for this size, in load order. Paths are project-relative.
-- `silenced`: every suppression, skipped or focused test, weaker threshold and deleted test since the base, each with whether the user waived it (`checklists/bar.md`).
-- `mutation`: the last `picket mutate` result (`{ mutant: { path, line, from, to }, outcome }`), or null when none ran; `survived` is row Mu1 in `checklists/bar.md`.
-
-Summary missing or a field absent: ask for it and stop. Do not fall back to your own detection.
-
-A cross-check request carries no summary because there is no diff. Load `checklists/crosscheck.md` alone.
-
-## Load table
-
-| Size | Load |
-|---|---|
-| small | `alignment.md`, `bar.md`, `patterns-security.md`, one `framework-<name>.md` per framework |
-| medium | the small set plus `patterns-core.md` (skip its SOLID and DRY sections), `design-red-flags.md` and one `concern-<name>.md` per concern |
-| large | the medium set with `patterns-core.md` in full |
-
-`security_path: true` overrides size: load `patterns-core.md` in full and `patterns-security.md`, and read every changed security-path file in full, whatever the size. `patterns-security.md` sits on every row because a 2-file, 40-line change can hardcode a secret as easily as a large one.
-
-After the row's set, load every file in `extension_steps`. Extension rows use the same shape and severities; they may add findings and never waive a core row.
-
-Every checklist row has the same shape: id, check, fail condition, severity. Run each row against the changed files; a row whose target construct does not appear is skipped silently.
-
-## Severities
-
-First match wins.
+Severities, first match wins:
 
 - Critical: wrong behaviour, data loss, a security hole, or an unhandled exception on the happy path; also the code-level gap behind an alignment FAIL when the missing behaviour is the criterion's core.
 - Major: a listed check fails with a concrete failure scenario and no Critical condition holds; a partially met acceptance criterion.
@@ -65,11 +38,9 @@ First match wins.
 
 Out of range: a defect on a line the diff did not touch (`git blame` SHA outside the range, or a file outside `changed_files`) is not a finding of this review. Mention it once as a Nit prefixed `pre-existing:` if it matters; it never counts toward the verdict. One exception: in a cumulative review, a story requirement (`S` row) with no code anywhere is in range and FAILs wherever its code should have been.
 
-Machine-enforced exclusions: a finding the project's own gates already reject is noise. Before writing findings, note the enforced set from config: compiler warnings-as-errors and analyzers at `error`, banned-API lists, architecture-test projects, lint rules at `"error"`, strict `tsconfig` flags, pre-commit hooks, unconditional CI steps, DB constraints in migrations, and the resolved test and lint command. Skip findings in those classes. Three limits: nothing is excluded until it is detected; a rule at `warning`, or a path outside the tool's include glob, is not enforced; the guard's own code (trigger SQL, analyzer rule, auth filter, validator) stays fully in scope.
+Noise: skip a finding the project's own gates already reject, and name the gate once on the `Checked:` line. Note the enforced set from config first: compiler warnings-as-errors and analyzers at `error`, banned-API lists, architecture-test projects, lint rules at `"error"`, strict `tsconfig` flags, pre-commit hooks, unconditional CI steps, DB constraints in migrations, and the resolved test and lint command. Nothing is excluded until it is detected; a rule at `warning`, or a path outside the tool's include glob, is not enforced; the guard's own code (trigger SQL, analyzer rule, auth filter, validator) stays fully in scope.
 
-## Evidence bar
-
-A false Critical costs more than a missed Minor. Before a finding is written:
+Evidence bar. A false Critical costs more than a missed Minor. Before a finding is written:
 
 1. Cite `path:line` from source read in this pass, not from the diff header or from memory.
 2. Never infer behaviour from a name, and never assert library semantics from memory; read the code path, the overload, or the config value.
@@ -77,49 +48,20 @@ A false Critical costs more than a missed Minor. Before a finding is written:
 4. Critical and Major carry a concrete failure scenario (inputs or state, then the wrong output, exception, or data effect). No scenario, no Critical or Major: demote or drop. "Looks fragile" is not a scenario.
 5. One finding per defect. When two checks fire on the same lines, report once at the higher severity and name both check ids.
 
-## Finding format
-
-One line per finding, Critical first, then Major, Minor, Nit:
+Finding format, one line per finding, Critical first, then Major, Minor, Nit:
 
 ```
 - [Severity] path:line: <what>. <why it matters>. <the fix>.
 ```
 
-The location ends with a colon. A finding with no line is `- [Severity] path: <text>`. Cross-check findings use the same line with `record.md#D-003` or `record.md#phase-2` as the location: `- [Major] design.md#D-003: <text>`. Cap: 25 findings per review. Past the cap, add one line `+N more not shown (Minor a, Nit b)`; Critical and Major are never the ones cut, and Minor findings past five become a count by category.
+The location ends with a colon. A finding with no line is `- [Severity] path: <text>`. Cross-check findings use a record anchor (`#D-003`, `#phase-2`): `- [Major] design.md#D-003: <text>`. Cap: 25 findings per review. Past the cap, add one line `+N more not shown (Minor a, Nit b)`; Critical and Major are never the ones cut, and Minor findings past five become a count by category.
 
-## Verdict rule
+Verdict rule. `APPROVED` is blocked by any Critical, any alignment row at FAIL, and any alignment row at UNCLEAR. Major, Minor, Nit, and out-of-range items never block. UNCLEAR blocks fail-closed because an unjudgeable criterion is a plan defect, not a developer defect: the verdict reason names the ambiguity so the lead routes it to the architect, not back to the developer. Story rows (`S-N`, cumulative only) differ in one way: FAIL blocks, UNCLEAR does not; an ambiguous story is a question for the user and goes on the `Questions:` line. A cross-check with any Critical or Major row is `DRIFT DETECTED`; Minor rows are recorded and do not block.
 
-The last line of a review is exactly `APPROVED` or `CHANGES REQUIRED`, alone. `APPROVED` is blocked by any Critical, any alignment row at FAIL, and any alignment row at UNCLEAR. Major, Minor, Nit, and out-of-range items never block.
+A criterion the code misses on the good side (a line-count bound beaten) still fails literally, so no `APPROVED`. Never ask for padded code: grade the row FAIL, name the `D-###` that states the bound, report `Decisions: DRIFT` and `AMENDMENT NEEDED: D-00x`, and say the fix is the amendment, with no code change. Group the other literal misses (an over-broad grep, "same passing count" after added tests) into that amendment as UNCLEAR. In a cumulative review, read each phase block's `Decisions:` line for misses the developer reported ("under T-x.y", "not padded", "also lists"). A plan grep that hits content the plan mandates (a fixture corpus, an import whose path matches) is judged by intent; a hit on a name the developer chose freely is FAIL.
 
-UNCLEAR blocks fail-closed because an unjudgeable criterion is a plan defect, not a developer defect: the verdict reason names the ambiguity so the team lead routes it to the architect, not back to the developer.
+In scope `pr` the code never followed Picket's comment rule. When a person's comment justifies a construct that T3, N2, A1, E1, Co1, Na2 or Uc2 flags, report a Minor recommendation to replace the comment with the check or the decision; Uc2 takes its recorded decision from the pull request description.
 
-Story rows (`S-N`, cumulative only, `checklists/traced.md`) differ in one way: FAIL blocks, UNCLEAR does not. An ambiguous story is a question for the user, so it goes on the `Questions:` line instead.
+## Output
 
-The last line of a cross-check is exactly `ALIGNED` or `DRIFT DETECTED`, alone. Any Critical or Major row gives `DRIFT DETECTED`; Minor rows are recorded and do not block.
-
-## Pull request mode (`/picket:reviewing <url>`, lead only)
-
-The kernel finds the clone by the repository name in the URL: the project root, or a nested repository under it (`src/Orders` in an umbrella); `--repo <path>` names it outright. No clone found: it fails with a clear line, and you tell the user to clone first. Sequence, in one turn:
-
-1. `picket pullrequest prepare <url> --human` (the JSON form goes to the reviewer; keep the `repo_root` it names). It fetches `refs/pull/<id>/merge`, computes base and head, the review summary over that range, and the PR's title and description (Azure DevOps: a PAT in `AZDO_PAT`, set once with `setx AZDO_PAT <token>` or in the `env` block of the untracked `.claude/settings.local.json`, never in a tracked file; GitHub: the `gh` CLI). A missing PAT is reported, not fatal: the review runs code-only. Any other error: print it and stop.
-2. Spawn the reviewer once (type `picket:reviewer`), named `reviewer`, with `scope: pr`, `pr: <the JSON from step 1, verbatim>`, `step: reviewing/checklists/alignment.md`. Its verdict routes nowhere; the hook saves the block to `.picket/state/pr-<id>.review.md`.
-3. Print the reviewer's block verbatim, then one options line: `[p] post to the PR   [d] done`. Nothing is written to the PR before `p`. When the block says `Alignment: N/A (no description)`, add one line under it: the PR carried no intent to check the diff against, so half the review is missing; a two-line description in the PR template restores it. Before `p`, check the finding line numbers against the file at head once (`git -C <repo_root> show <head>:<path> | sed -n '<line>,+3p'`); a wrong anchor puts the thread on the wrong code, and the first two live reviews were both off.
-4. On `p`: `picket pullrequest post <url> --file .picket/state/pr-<id>.review.md --dry-run --human` shows what would go; print it and ask once more with `[y] post   [n] keep local`; on `y`, the same command without `--dry-run`. Azure DevOps only; on GitHub, tell the user to use `gh pr review`.
-
-## Layout
-
-```
-reviewing/
-  SKILL.md                                this file
-  checklists/alignment.md                      criteria to evidence, plus the comment and test floors (always)
-  checklists/bar.md                            silenced checks against the user's waivers (always)
-  checklists/traced.md                         cumulative only, with alignment.md's floors, bar.md and criteria rules: request and story first, plan last
-  checklists/patterns-core.md                  SOLID, DRY, correctness, naming (medium and large)
-  checklists/design-red-flags.md               eight shapes that hurt the next reader, Rf1 to Rf8 (medium and large)
-  checklists/patterns-security.md              secrets, injection, insecure defaults, guard bypass (always)
-  checklists/framework-typescript.md           types, promises, errors, React, imports, leaks
-  checklists/framework-dotnet.md               async, DI, EF Core, null safety, exceptions, disposal
-  checklists/concern-clean-architecture.md     dependency direction, domain model, use cases, interfaces
-  checklists/concern-vertical-slice.md         slice isolation, completeness, messaging, over-engineering
-  checklists/crosscheck.md                     decisions versus phases inside one design record
-```
+The block is the reviewer shell's `## Output`. Its last line is the verdict alone: `APPROVED` or `CHANGES REQUIRED` for a review, `ALIGNED` or `DRIFT DETECTED` for a cross-check.
