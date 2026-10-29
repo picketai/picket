@@ -4,8 +4,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { parsePullRequestUrl } from "./pull-request.mts";
-import { findRemote, locateRepo, fetchPullRequest } from "./remote.mts";
+import { findRemote, locateRepo, fetchPullRequest, mergeRef, resolveRepo } from "./remote.mts";
 import { preparePullRequest } from "./prepare.mts";
+import { anchorsAtHead } from "./post.mts";
+import { CHECKLIST_ROOT } from "../../shared/review-checklists.mts";
 import { withProject } from "#test/project.mts";
 
 const PREPARE = { repo: undefined, pat: null, env: process.env };
@@ -55,6 +57,15 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   assert.deepEqual(prep.summary.frameworks, ["typescript"]);
   assert.equal(prep.meta, null);
   assert.match(prep.meta_reason ?? "", /no PAT/);
+  assert.equal(prep.ref, mergeRef(7));
+  assert.deepEqual(
+    prep.checklists.map((c) => c.path.replace(CHECKLIST_ROOT, "")),
+    ["alignment.md", "bar.md", "patterns-security.md", "framework-typescript.md"],
+  );
+  assert.equal(resolveRepo(dir, pr, work).repo_root, work);
+  assert.equal(resolveRepo(dir, pr, dir).repo_root, null);
+  const finding = { severity: "Major" as const, path: "src/b.ts", line: 1, end_line: 1, text: "b" };
+  assert.deepEqual(anchorsAtHead(work, pr, undefined, [finding]), [{ path: "src/b.ts", line: 1, code: "export const b = 2;" }]);
 
   // an umbrella whose src/Orders is the clone: the kernel finds the nested repository on its own
   const umbrella = join(dir, "umbrella");

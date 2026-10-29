@@ -183,7 +183,7 @@ picket pullrequest prepare <url> [--repo <path>]
 Post a review file to a pull request as threads.
 
 ```sh
-picket pullrequest post <url> --file <file> [--dry-run]
+picket pullrequest post <url> --file <file> [--dry-run] [--repo <path>]
 ```
 
 ## picket reply

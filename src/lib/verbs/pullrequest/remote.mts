@@ -67,8 +67,18 @@ export function locateRepo(root: string, pr: PullRequest): LocatedRepo {
   return { repo_root: null, remote: null, reason: `no clone of ${pr.repo} (${pr.host}) found in ${root} or its nested repositories; clone it first, or pass --repo <path>` };
 }
 
+export function resolveRepo(root: string, pr: PullRequest, repo: string | undefined): LocatedRepo {
+  if (!repo) return locateRepo(root, pr);
+  const match = findRemote(repo, pr);
+  return match.remote !== null ? { repo_root: repo, remote: match.remote, url: match.url } : { repo_root: null, remote: null, reason: match.reason };
+}
+
+export function mergeRef(id: number): string {
+  return `refs/harness/pr/${id}/merge`;
+}
+
 export function fetchPullRequest(root: string, remote: string, id: number): PullRequestRefs {
-  const local = `refs/harness/pr/${id}/merge`;
+  const local = mergeRef(id);
   try {
     gitRun(root, ["fetch", "--quiet", remote, `+refs/pull/${id}/merge:${local}`], { timeoutMs: FETCH_TIMEOUT_MS });
   } catch (err) {

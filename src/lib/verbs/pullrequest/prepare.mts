@@ -1,11 +1,12 @@
 import { action, done } from "../../shared/action.mts";
 import { loadConfig } from "../../shared/config.mjs";
+import { reviewChecklists, type Checklist } from "../../shared/review-checklists.mts";
 import { changesOfRange, renderSummary, summarize, type Summary, type SummaryConfig } from "../../shared/review-summary.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 import { pullRequestMeta, type PullRequestMeta } from "./azdo.mts";
 import { parsePullRequestUrl, patOf, type PullRequest } from "./pull-request.mts";
-import { fetchPullRequest, findRemote, locateRepo, type LocatedRepo } from "./remote.mts";
+import { fetchPullRequest, resolveRepo } from "./remote.mts";
 
 export type PrepareInput = { url: string; repo: string | undefined };
 export type PrepareOptions = { repo: string | undefined; pat: string | null; env: NodeJS.ProcessEnv };
@@ -18,6 +19,7 @@ export type Prepared = {
   base: string;
   source: string;
   summary: Summary;
+  checklists: Checklist[];
   meta: PullRequestMeta | null;
   meta_reason: string | null;
   review_id: string;
@@ -25,22 +27,16 @@ export type Prepared = {
 
 const SHORT_SHA = 10;
 
-function repoOf(root: string, pr: PullRequest, repo: string | undefined): LocatedRepo {
-  if (!repo) return locateRepo(root, pr);
-  const match = findRemote(repo, pr);
-  return match.remote !== null ? { repo_root: repo, remote: match.remote, url: match.url } : { repo_root: null, remote: null, reason: match.reason };
-}
-
 export async function preparePullRequest(root: string, url: string, { repo, pat, env }: PrepareOptions): Promise<Prepared> {
   const pr = parsePullRequestUrl(url);
-  const located = repoOf(root, pr, repo);
+  const located = resolveRepo(root, pr, repo);
   if (located.remote === null) throw new Error(located.reason);
   const repoRoot = located.repo_root;
   const refs = fetchPullRequest(repoRoot, located.remote, pr.id);
   const config: SummaryConfig = loadConfig(repoRoot, env);
   const summary = summarize(repoRoot, changesOfRange(repoRoot, refs.base, refs.head), config);
   const { meta, reason } = await pullRequestMeta(pr, { pat, root: repoRoot });
-  return { pr, repo_root: repoRoot, remote: located.remote, ...refs, summary, meta, meta_reason: reason, review_id: `pr-${pr.id}` };
+  return { pr, repo_root: repoRoot, remote: located.remote, ...refs, summary, checklists: reviewChecklists(summary, "phase"), meta, meta_reason: reason, review_id: `pr-${pr.id}` };
 }
 
 export const prepare = action<PrepareInput, Prepared>(async ({ url, repo }, { root, env }) => done(await preparePullRequest(root, url, { repo, pat: patOf(env, root), env })));

@@ -44,7 +44,7 @@ phases:
     tests: true
     drive: true
   - n: 3
-    files: [src/skills/reviewing/SKILL.md, src/skills/reviewing/steps/pr.md, src/skills/reviewing/checklists/crosscheck.md, src/agents/reviewer.md, test/repo/skills.test.mjs, test/repo/references.test.mjs, .claude/agent-memory/picket-reviewer/MEMORY.md, docs/reference/skills.md]
+    files: [src/skills/reviewing/SKILL.md, src/skills/reviewing/steps/pr.md, src/skills/reviewing/checklists/crosscheck.md, src/agents/reviewer.md, src/rules/security-paths.md, test/repo/skills.test.mjs, test/repo/references.test.mjs, .claude/agent-memory/picket-reviewer/MEMORY.md, docs/reference/skills.md]
     greps:
       - path: src/skills/reviewing/SKILL.md
         pattern: '^when_to_use:'
@@ -77,6 +77,11 @@ phases:
         flags: i
       - path: src/agents/reviewer.md
         pattern: '`picket:reviewing`''s verdict rule'
+      - path: src/rules/security-paths.md
+        pattern: '`picket:reviewing`''s `patterns-security` checklist'
+      - path: src/rules/security-paths.md
+        pattern: '^(?![\s\S]*checklist 30)'
+        flags: i
     tests: true
     drive: false
 ---
@@ -88,8 +93,8 @@ The request implements `artifacts/refactor/14-reviewing.md` (draft, 2026-10-29);
 
 ## Decisions
 
-### D-001: The kernel's map is the one load table, for every scope
-**Decision:** `review-checklists.mts` holds the only copy of which checklist loads when. The 11 checklists lose their `NN-` prefix in the same phase as the map's constants and every test that names them. The prose load table and the Layout block leave `SKILL.md`. `pullrequest prepare` gains a top-level `checklists: reviewChecklists(summary, "phase")`, the same choice `rangeSummary` makes, so the pull request scope opens a kernel list too. The cross-check scope names `checklists/crosscheck.md` in its step, because no summary reaches it.
+### D-001 (r2): The kernel's map is the one load table, for every scope
+**Decision:** `review-checklists.mts` holds the only copy of which checklist loads when. The 11 checklists lose their `NN-` prefix in the same phase as the map's constants and every test that names them. The prose load table and the Layout block leave `SKILL.md`. `pullrequest prepare` gains a top-level `checklists: reviewChecklists(summary, "phase")`, the same choice `rangeSummary` makes, so the pull request scope opens a kernel list too. The cross-check scope names `checklists/crosscheck.md` in its step, because no summary reaches it. A citation of a checklist by its old number outside the reviewing skill moves to the unnumbered name: `src/rules/security-paths.md:5` ("`picket:reviewing` checklist 30") becomes "`picket:reviewing`'s `patterns-security` checklist" in Phase 3, a bare name and not a path, since a rule may cite only the document kit.
 **Instead of:** a `pr` value in `ChecklistScope`: it would select the same files as `phase` today and add a scope to every switch for no change in output.
 **Risks:**
 - **RISK-001** A review whose summary lacks `checklists` leaves the reviewer with the front page only. Mitigation: `summary/index.test.mts` and the prepare test pin `checklists` per scope.
@@ -191,6 +196,7 @@ The request implements `artifacts/refactor/14-reviewing.md` (draft, 2026-10-29);
 - `.claude/agent-memory/picket-reviewer/MEMORY.md`: its index line leaves
 - `docs/reference/skills.md`: `## picket:reviewing` section
 - `src/agents/reviewer.md`: lines 37 and 41 per D-004 (r2)
+- `src/rules/security-paths.md`: line 5 per D-001 (r2)
 - `test/repo/description-cases.json`: read only, routing prompts
 - `test/repo/agents.test.mjs`: read only, shell checks
 
@@ -199,7 +205,8 @@ The request implements `artifacts/refactor/14-reviewing.md` (draft, 2026-10-29);
 2. `steps/pr.md`, `# Reviewing: pull request`, one ordered list carrying today's four steps with three changes: the spawn message is `scope: pr` and `pr: <the JSON, verbatim>` with no `step:` line; the manual `git show | sed` line check goes; step 4 says the dry run prints the code under each anchor, passes `--repo` when prepare needed it, and a code line that does not match its finding is named to the user before `[y] post`.
 3. `crosscheck.md` per D-005.
 4. `src/agents/reviewer.md`: the two passages of D-004 (r2).
-5. `docs/reference/skills.md`: the section's first sentence becomes "The reviewer's grading rules: severities, the evidence bar, the finding format and when a verdict may say `APPROVED`; the kernel picks which checklists it opens."
+5. `src/rules/security-paths.md:5`: the parenthesis becomes "(`picket:reviewing`'s `patterns-security` checklist)"; the rest of the line stays.
+6. `docs/reference/skills.md`: the section's first sentence becomes "The reviewer's grading rules: severities, the evidence bar, the finding format and when a verdict may say `APPROVED`; the kernel picks which checklists it opens."
 
 **Done when:**
 - **T-3.1** `SKILL.md` is at most 7,000 bytes and its `##` headings are exactly `Steps`, `Rules`, `Output`.
@@ -208,7 +215,8 @@ The request implements `artifacts/refactor/14-reviewing.md` (draft, 2026-10-29);
 - **T-3.4** `crosscheck.md` says a `delta:` line limits the pass to those decisions, the revision log and the phases citing or edited for them, and that no `delta:` means a full pass.
 - **T-3.5** `literal-criterion-misses-go-to-amendment.md` no longer exists and `MEMORY.md` has no line for it.
 - **T-3.6** `src/agents/reviewer.md` has no "Skip a finding the project's own gates" and no "Never `APPROVED` past", carries the line "Verdicts follow `picket:reviewing`'s verdict rule.", and every fact of the removed paragraph is in `SKILL.md`'s verdict rule.
-- **T-3.7** `node --test test/repo/skills.test.mjs test/repo/references.test.mjs test/repo/descriptions.test.mjs test/repo/docs.test.mjs test/repo/agents.test.mjs` passes, then `npm test`.
+- **T-3.7** `src/rules/security-paths.md` names the checklist as "`picket:reviewing`'s `patterns-security` checklist", and `git grep -n "checklist 30" -- src docs` prints nothing.
+- **T-3.8** `node --test test/repo/skills.test.mjs test/repo/references.test.mjs test/repo/descriptions.test.mjs test/repo/docs.test.mjs test/repo/agents.test.mjs` passes, then `npm test`.
 
 ## Open questions
 
@@ -217,3 +225,4 @@ The request implements `artifacts/refactor/14-reviewing.md` (draft, 2026-10-29);
 ## Revision log
 
 - 2026-10-29: D-004 (r2): reviewer.md drops its noise sentence and verdict paragraph, keeps one citing line; OQ-001 answered by the user.
+- 2026-10-29: D-001 (r2): security-paths.md:5 still said "checklist 30" after phase 1's renames; phase 3 names `patterns-security`.
