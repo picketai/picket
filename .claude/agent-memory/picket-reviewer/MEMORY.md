@@ -7,3 +7,4 @@
 - [Compare .gitignore by ignored set](compare-gitignore-by-ignored-set.md) — diff ls-files -o -i under old and new file, via scratchpad copies
 - [Diff deleted memories sentence by sentence](diff-deleted-memories-sentence-by-sentence.md) — a memory deleted "once it lands" needs every sentence found in the shell
 - [Lead-only verbs denied to the reviewer](lead-only-verbs-denied-to-reviewer.md) — uninstall dry run is denied even in scratch; verify from code
+- [left.jsonl is not proof of cleanup](left-jsonl-is-not-proof-of-cleanup.md) — ls every out-of-repo path a phase block admits to writing

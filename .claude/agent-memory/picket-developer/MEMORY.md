@@ -6,5 +6,6 @@
 - [Mod validator rules](mod-validator-rules.md) — atoms per file, $ never in objects, function declarations, import-free types contract
 - [New skill checklist](new-skill-checklist.md) — plugin-layout test hard-codes the skill count; plus manifest, routing case, reference page
 - [Verbs import only shared](verbs-import-only-shared.md) — conventions.test.mjs layer rule; a verb never imports another verb (route())
-- [Hook-continued phase not routed](hook-continued-phase-not-routed.md) — first PHASE DONE of a phase begun from hook context is skipped; lead re-emits
+- [Hook-continued phase routing fixed](hook-continued-phase-not-routed.md) — fixed e15d2ba; continued turns route unless they repeat the last row
+- [Scratch drive root](scratch-drive-root.md) — scratchpad picket runs land in the home folder; set CLAUDE_PROJECT_DIR first
 - [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag
