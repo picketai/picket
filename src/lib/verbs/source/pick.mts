@@ -12,7 +12,7 @@ import { declaredSources } from "./reachable.mts";
 export type PickInput = { id: WorkId; ref: string; label: string };
 export type PickedRef = ResolvedRef & { next: { action: string } };
 
-export const pickVersion = action<PickInput, PickedRef>(async ({ id, ref, label }, { root }) => {
+export const pickVersion = action<PickInput, PickedRef>(async ({ id, ref, label }, { root, session }) => {
   const intake = readIntake(root, id);
   const i = intake?.refs.findIndex((r) => r.ref === ref) ?? -1;
   if (!intake || i < 0) return refuse(`no reference ${ref} in ${workFile(root, id, "sources.yaml")}`, { ref });
@@ -26,7 +26,7 @@ export const pickVersion = action<PickInput, PickedRef>(async ({ id, ref, label 
   const rec = snapshotInto(root, id, resolvedRef({ ref: entry.ref, path: entry.path }, entry.source, chosen, "user"), chosen.bytes);
   intake.refs[i] = rec;
   writeRecord(root, id, intake);
-  return done({ ...rec, next: readNext(root, id) });
+  return done({ ...rec, next: readNext(root, id, session) });
 });
 
 function parsePick(args: Args): PickInput {

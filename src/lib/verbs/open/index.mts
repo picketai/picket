@@ -7,7 +7,7 @@ import { liveLookup } from "../../shared/sources/places.mts";
 import { resolveReferences, type Resolution } from "../../shared/sources/resolve.mts";
 import { isReachable, type Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { readNext } from "../../shared/work/next-view.mts";
+import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { createItem } from "../../shared/work/state.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
 import { readText } from "../../util/io.mts";
@@ -23,7 +23,7 @@ export type OpenInput = {
   source: string | undefined;
   session: string | undefined;
 };
-export type Opened = { id: string; lane: string; dir: string; warnings: string[]; next: { action: string; actor: string | null } } & Record<string, unknown>;
+export type Opened = { id: string; lane: string; dir: string; warnings: string[]; next: NextView } & Record<string, unknown>;
 
 const STDIN = "-";
 const EMPTY_REQUEST = 'open: the request is empty; pass the request text with --text "<request>" or drop the flag';
@@ -65,7 +65,7 @@ export const openItem = action<OpenInput, Opened>(async (input, { root, session,
   const created = createItem(root, { lane: input.lane, title: input.title, id: input.id, source: input.ticket ?? input.source, request, story, session: input.session ?? session }, now());
   if (resolution) writeIntake(root, created.id, resolution);
   recordBases(root, created.id);
-  return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(story, sources), next: readNext(root, created.id) });
+  return done({ ...created, dir: `${WORK_DIR}/${created.id}`, warnings: sourceWarnings(story, sources), next: readNext(root, created.id, input.session ?? session) });
 });
 
 function parseRequest(args: Args): Request | null {

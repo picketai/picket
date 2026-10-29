@@ -15,8 +15,8 @@ import { tempProject, tempSource } from "#test/source.mts";
 
 const PLATFORM = process.platform;
 
-function cli(root, args, sourceRoot) {
-  const env = { ...process.env, CLAUDE_PROJECT_DIR: root };
+function cli(root, args, sourceRoot, extraEnv = {}) {
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: root, ...extraEnv };
   delete env.HARNESS_SOURCE_ANALYSIS;
   if (sourceRoot) env.HARNESS_SOURCE_ANALYSIS = sourceRoot;
   const r = runCli(process.cwd(), [...args, "--root", root], { env });
@@ -136,6 +136,20 @@ test("differing versions are ambiguous until the user picks one (T-4.3)", (t) =>
   const [after] = readYaml(root, id).refs;
   assert.deepEqual([after.status, after.chosen_by, after.branch, after.dirty, after.candidates], ["resolved", "user", "feat-x", true, undefined]);
   assert.equal(readFileSync(join(root, "work", id, after.snapshot), "utf8"), "# Pricing\n\nThe daily rate is 12.\n");
+});
+
+test("a pick builds its next send for the picking session, continuing a live architect", (t) => {
+  const { main, feat } = tempSource(t);
+  writeFileSync(join(feat, "docs", "pricing.md"), "# Pricing\n\nThe daily rate is 12.\n");
+  const root = tempProject(t);
+  const id = JSON.parse(openWithStory(root, "The fee follows docs/pricing.md.", main).out).id;
+  const row = { ts: "2026-10-29T10:00:00.000Z", agent: "architect", verdict: "AMENDED", phase: null, scope: null, through: null, session: "S" };
+  writeFileSync(join(root, "work", id, "verdicts.jsonl"), `${JSON.stringify(row)}\n`);
+  const picked = cli(root, ["source", "pick", id, "docs/pricing.md", "feat-x"], main, { CLAUDE_CODE_SESSION_ID: "S" });
+  assert.equal(picked.code, 0, picked.err);
+  const { next } = JSON.parse(picked.out);
+  assert.equal(next.action, "write_artifact");
+  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), ["SendMessage architect"]);
 });
 
 test("a pin that matches nothing exits 2 listing the places and creates no work item (T-4.4)", (t) => {

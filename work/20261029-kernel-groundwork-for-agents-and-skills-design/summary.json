@@ -1,0 +1,119 @@
+{
+  "work_id": "20261029-kernel-groundwork-for-agents-and-skills-design",
+  "base": "576f2ccca3a74050ecde680aec1fd95aadc15db9",
+  "request": "work/20261029-kernel-groundwork-for-agents-and-skills-design/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "scripts/build.mjs",
+    "src/lib/cli/registry.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/hooks/guard/bash/payloads.test.mts",
+    "src/lib/hooks/guard/block/index.mts",
+    "src/lib/hooks/inject/state/index.mts",
+    "src/lib/hooks/inject/state/index.test.mts",
+    "src/lib/hooks/route/verdict/index.mts",
+    "src/lib/hooks/route/verdict/index.test.mts",
+    "src/lib/shared/review-checklists.mts",
+    "src/lib/shared/review-checklists.test.mts",
+    "src/lib/shared/route/apply.mts",
+    "src/lib/shared/route/commit.mts",
+    "src/lib/shared/route/plan.mts",
+    "src/lib/shared/route/plan.test.mts",
+    "src/lib/shared/route/route.mts",
+    "src/lib/shared/views.mts",
+    "src/lib/shared/work/action-text.mts",
+    "src/lib/shared/work/action-text.test.mts",
+    "src/lib/shared/work/block.mts",
+    "src/lib/shared/work/block.test.mts",
+    "src/lib/shared/work/files.mts",
+    "src/lib/shared/work/files.test.mts",
+    "src/lib/shared/work/next-step.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/next-view.mts",
+    "src/lib/shared/work/next-view.test.mts",
+    "src/lib/shared/work/replies.mts",
+    "src/lib/shared/work/replies.test.mts",
+    "src/lib/shared/work/reviews.mts",
+    "src/lib/shared/work/reviews.test.mts",
+    "src/lib/shared/work/send.mts",
+    "src/lib/shared/work/send.test.mts",
+    "src/lib/shared/work/snapshot.mts",
+    "src/lib/shared/work/verdict-log.mts",
+    "src/lib/shared/work/verdict-log.test.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/next/index.mts",
+    "src/lib/verbs/next/index.test.mts",
+    "src/lib/verbs/packet/index.mts",
+    "src/lib/verbs/packet/index.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/preflight/index.mts",
+    "src/lib/verbs/preflight/index.test.mts",
+    "src/lib/verbs/reply/index.mts",
+    "src/lib/verbs/reply/index.test.mts",
+    "src/lib/verbs/reply/table.mts",
+    "src/lib/verbs/route/index.mts",
+    "src/lib/verbs/route/index.test.mts",
+    "src/lib/verbs/summary/index.mts",
+    "src/lib/verbs/summary/index.test.mts",
+    "src/mods/status/hooks/band.test.ts",
+    "src/mods/status/hooks/band.ts",
+    "test/hooks/guard.block.test.mjs",
+    "test/support/snapshot.mts"
+  ],
+  "lines_added": 2321,
+  "lines_removed": 194,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 8,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-10-29T18:00:32.675Z",
+    "base": "576f2ccca3a74050ecde680aec1fd95aadc15db9",
+    "mutant": {
+      "path": "src/lib/hooks/guard/block/index.mts",
+      "line": 62,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 103750
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/10-alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/12-bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/15-traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/20-patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/25-design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/30-patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/40-framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/50-concern-clean-architecture.md"
+    }
+  ]
+}

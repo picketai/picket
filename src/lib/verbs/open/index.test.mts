@@ -2,8 +2,21 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { verb } from "./index.mts";
+import { fixedContext } from "#test/context.mts";
+import { withProject } from "#test/project.mts";
 
 const parse = (argv: string[], stdin?: () => string) => verb.parse(parseArgs(argv, stdin));
+
+test("open builds its next send for the session that opened the item", async (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const input = { lane: "order", title: "Sent", id: undefined, request: { text: "add a fee" }, ticket: undefined, story: undefined, source: undefined, session: undefined };
+  const outcome = await verb.run(input, fixedContext(root, { session: "S" }));
+  assert.ok(outcome.status === "done");
+  const { next } = outcome.value;
+  assert.equal(next.action, "write_artifact");
+  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), ["Agent architect"]);
+  assert.match(next.send[0].message, /^request: work\/.*\/request\.md$/m);
+});
 
 test("open needs a lane and a title, and takes the request from --text, a file or standard input", () => {
   const base = { lane: "order", title: "Fees", id: undefined, request: null, ticket: undefined, story: undefined, source: undefined, session: undefined };

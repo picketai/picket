@@ -21,7 +21,7 @@ function applyAssignment(st: ItemState, { field, value }: Assignment): void {
   else st[field] = field === "run_through" ? Number(value) : value;
 }
 
-export const setFields = action<SetInput, SetResult>(async ({ id, assignments }, { root, now }) => {
+export const setFields = action<SetInput, SetResult>(async ({ id, assignments }, { root, now, session }) => {
   const unknown = assignments.find(({ field }) => !SETTABLE.includes(field));
   if (unknown) return refuse(`field ${unknown.field} is not settable`, { id });
   const st = readState(root, id) as ItemState;
@@ -29,7 +29,7 @@ export const setFields = action<SetInput, SetResult>(async ({ id, assignments },
   if (st.status !== "blocked") delete st.blocked_reason;
   writeState(root, st, now());
   const dirty = st.status === "done" ? (dirtyPaths(root) ?? []) : [];
-  return done({ ...st, dirty, next: readNext(root, st.id) } as SetResult);
+  return done({ ...st, dirty, next: readNext(root, st.id, session) } as SetResult);
 });
 
 function parseAssignment(token: string): Assignment {
