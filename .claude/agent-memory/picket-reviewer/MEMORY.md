@@ -8,4 +8,5 @@
 - [New next action: check the band](new-next-action-check-band.md) — band.ts renders any user action as "approve phase"; probes go to the scratchpad only
 - [Probe links at parent segments](probe-links-at-parent-segments.md) — removers checking only the leaf delete through a linked .picket or .claude
 - [Compare .gitignore by ignored set](compare-gitignore-by-ignored-set.md) — diff ls-files -o -i under old and new file, via scratchpad copies
+- [Diff deleted memories sentence by sentence](diff-deleted-memories-sentence-by-sentence.md) — a memory deleted "once it lands" needs every sentence found in the shell
 - [Lead-only verbs denied to the reviewer](lead-only-verbs-denied-to-reviewer.md) — uninstall dry run is denied even in scratch; verify from code

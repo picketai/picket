@@ -20,4 +20,5 @@
 - [Generated tracked files](generated-tracked-files.md): npm test builds before product tests, so staleness of build-written tracked files is checked against the git index
 - [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home; lead-only verb list pinned in a guard test
 - [Route owns directory prefixes](route-owns-directory-prefixes.md): a plan path ending in a slash owns every staged path under it, deletions included
+- [New skill touchpoints](new-skill-touchpoints.md): routing cases, Use when, plugin.json, docs section, EVERY_SKILL, CLAUDE.md template prefix, npm test rebuilds dist
 - [Next and mod couplings](next-and-mod-couplings.md): mod imports limited to MOD_LIB_SHARED; rejection keeps approve_phase; rows lost the amend line; guard classes per verb; cli.md headings
