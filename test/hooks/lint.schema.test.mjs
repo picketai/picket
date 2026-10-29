@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gitAt } from "#test/git.mts";
 import { hookProject, runHookBundle } from "#test/hook.mts";
@@ -54,4 +54,35 @@ test("lint.schema requires a boolean security on every design phase entry and no
   writeFileSync(p, record("    security: false\n"));
   assert.doesNotMatch(lint(p), /security/);
   assert.doesNotMatch(lint(join(root, "work", id, "order.md")), /security/, "an order record needs no security key");
+});
+
+function reportText(front) {
+  return `---\n${front}\n---\n# Report: Pricing\n\n## Summary\nPrices round half-up [VERIFIED].\n\n## Findings\n- **R-001** [VERIFIED] Prices round half-up.\n`;
+}
+
+function lintWrite(root, file) {
+  return run({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: file }, cwd: root }, root)?.hookSpecificOutput.additionalContext ?? "";
+}
+
+test("lint.schema checks every research.md a work item writes (T-2.1)", (t) => {
+  const { root, id } = hookProject(t);
+  const p = join(root, "work", id, "research.md");
+  writeFileSync(p, reportText("kind: report\nconfidence: certain"));
+  assert.match(lintWrite(root, p), /confidence is "certain"/);
+  writeFileSync(p, reportText("kind: design\nconfidence: high"));
+  assert.match(lintWrite(root, p), /kind is "design"/);
+  writeFileSync(p, reportText("kind: report\nconfidence: high"));
+  assert.equal(lintWrite(root, p), "");
+});
+
+test("lint.schema checks a file under artifacts/reports/ only when it says kind: report (T-2.5)", (t) => {
+  const { root } = hookProject(t);
+  mkdirSync(join(root, "artifacts", "reports"), { recursive: true });
+  const p = join(root, "artifacts", "reports", "x.md");
+  writeFileSync(p, "# Notes\n\n<!-- draft -->\n");
+  assert.equal(lintWrite(root, p), "");
+  writeFileSync(p, reportText("kind: report\nconfidence: certain").replace("Prices round", "<!-- draft --> Prices round"));
+  const context = lintWrite(root, p);
+  assert.match(context, /confidence is "certain"/);
+  assert.match(context, /template comment left in the file/);
 });

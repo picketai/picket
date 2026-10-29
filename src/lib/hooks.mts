@@ -34,7 +34,7 @@ export const HOOKS = {
     on: [{ event: "PreToolUse", matcher: "Bash|PowerShell" }],
   },
   "lint.schema": {
-    summary: "order and design artifacts: frontmatter, phase headings, decision ids, caps, placeholders, revision protocol against git HEAD",
+    summary: "order and design artifacts: frontmatter, phase headings, decision ids, caps, placeholders, revision protocol against git HEAD; reports: kind, confidence, one marker per finding, finding and summary caps, placeholders",
     on: [{ event: "PostToolUse", matcher: "Write|Edit" }],
   },
   "observe.drive": {

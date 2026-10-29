@@ -5,6 +5,7 @@ import { loadConfig } from "../../../shared/config.mjs";
 import { frontmatter } from "../../../util/yaml-lite.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
+import { leftoverProblems, reportProblems } from "./report.mts";
 
 type ArtifactLane = "order" | "design";
 type GrepEntry = { path?: string; pattern?: string; flags?: string };
@@ -13,6 +14,7 @@ type PhaseCheck = { problems: string[]; headings: number[] };
 type DecisionSection = { r: number; body: string };
 
 const ARTIFACT = /^work\/[^/]+\/(order|design)\.md$/;
+const PUBLISHED_REPORT = /^artifacts\/reports\/[^/]+\.md$/;
 
 function hasValidSecurityMark(entry: PhaseEntry | null, lane: ArtifactLane): boolean {
   if (entry == null || !Object.hasOwn(entry, "security")) return lane !== "design";
@@ -69,13 +71,6 @@ function capProblems(body: string, lane: ArtifactLane, headings: number[], root:
   return problems;
 }
 
-function leftoverProblems(text: string): string[] {
-  const problems: string[] = [];
-  if (/\[REPLACE:/.test(text)) problems.push("unfilled [REPLACE:] placeholder left in the file");
-  if (/<!--/.test(text)) problems.push("template comment left in the file");
-  return problems;
-}
-
 function committedVersion(root: string, rel: string): string | null {
   try {
     return execFileSync("git", ["-C", root, "show", `HEAD:${rel}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
@@ -123,19 +118,36 @@ function artifactProblems(abs: string, rel: string, root: string): string[] {
   return problems;
 }
 
+function isResearch(rel: string): boolean {
+  const [folder, , file, ...deeper] = rel.split("/");
+  return folder === "work" && file === "research.md" && deeper.length === 0;
+}
+
+function publishedReportProblems(abs: string): string[] | null {
+  const text = readFileSync(abs, "utf8");
+  return frontmatter(text).front.kind === "report" ? reportProblems(text) : null;
+}
+
+function lintedProblems(abs: string, rel: string, root: string): string[] | null {
+  if (ARTIFACT.test(rel)) return artifactProblems(abs, rel, root);
+  if (isResearch(rel)) return reportProblems(readFileSync(abs, "utf8"));
+  if (PUBLISHED_REPORT.test(rel)) return publishedReportProblems(abs);
+  return null;
+}
+
 export function lintSchema(event: PayloadOf<"PostToolUse">, { root }: HookContext): ContextOutput | null {
   const filePath = event.tool_input?.file_path;
   if (!filePath) return null;
   const abs = resolve(event.cwd ?? root, filePath);
   const rel = relative(root, abs).replaceAll("\\", "/");
-  if (!ARTIFACT.test(rel) || !existsSync(abs)) return null;
-  let problems: string[];
+  if (!existsSync(abs)) return null;
+  let problems: string[] | null;
   try {
-    problems = artifactProblems(abs, rel, root);
+    problems = lintedProblems(abs, rel, root);
   } catch (err) {
     problems = [`could not parse ${rel}: ${(err as Error).message}`];
   }
-  if (!problems.length) return null;
+  if (!problems?.length) return null;
   return context("PostToolUse", `lint.schema on ${rel}:\n- ${problems.join("\n- ")}\nFix these before ending the turn.`);
 }
 
