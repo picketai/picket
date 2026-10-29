@@ -14,7 +14,7 @@ const ALLOWED = [...REQUIRED, "skills", "disallowedTools", "maxTurns", "autoComp
 const IGNORED_FOR_PLUGINS = ["hooks", "mcpServers", "permissionMode", "initialPrompt"];
 const PARTS = ["Entry", "Constraints", "Work", "Memory", "Output"];
 const VALUES = { model: /^(sonnet|opus|haiku|fable|inherit|claude-[a-z0-9-]+)$/, effort: /^(low|medium|high|xhigh|max)$/, memory: /^(user|project|local)$/, color: /^(red|blue|green|yellow|purple|orange|pink|cyan)$/ };
-const PENDING = ["src/agents/analyst.md", "src/agents/reviewer.md"];
+const PENDING = ["src/agents/reviewer.md"];
 const TEMPLATES = { developer: "src/skills/implementing/SKILL.md" };
 const EXPEDITED_HEADING = "## Expedited: <id>";
 const FIELD_KEY = /^([a-z][a-z ]*):(?:\s|$)/;
@@ -46,6 +46,7 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), amend, FIXTURE_SESSION),
     ];
   },
+  analyst: () => sendsFor(snapshotOf({ lane: "research", artifact: null }), { action: "write_artifact", actor: "analyst", detail: "d" }, FIXTURE_SESSION),
 };
 const KNOWN_TOOLS = ["Agent", "AskUserQuestion", "Bash", "Edit", "Glob", "Grep", "NotebookEdit", "PowerShell", "Read", "SendMessage", "Skill", "TodoWrite", "WebFetch", "WebSearch", "Write"];
 const MCP_TOOL = /^mcp__[\w-]+__[\w-]+$/;
@@ -287,6 +288,7 @@ test("every shell outside PENDING has Entry fixtures", () => {
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
   assert.deepEqual(sentKeys("architect"), ["amend", "lane", "preflight", "request", "sources", "work"]);
+  assert.deepEqual(sentKeys("analyst"), ["pass", "request", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
   }

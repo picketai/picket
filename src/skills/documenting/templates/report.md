@@ -8,6 +8,8 @@ confidence: [REPLACE: high | medium | low, the weakest marker that carries a top
 ---
 # Report: [REPLACE: title]
 
+<!-- Outline pass: fill the frontmatter with the sources actually read; answer ## Summary as far as known, 3 to 5 sentences, each claim with its marker; give every other required heading one line, saying what it will hold or "pending deep pass"; list the findings already known as R-### lines with marker and location; and fill ## Sources for the deep pass, one reason per source. The deep pass fills every section and replaces each "pending deep pass" line. -->
+
 <!-- Caps: at most 50 findings, at most 120 words per finding, at most 3 top findings in the summary. Every finding carries exactly one marker: [VERIFIED] read directly, [INFERRED] deduced from verified facts, [ASSUMED] not grounded in the source. -->
 
 ## Summary

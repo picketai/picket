@@ -19,7 +19,7 @@ const LEADING = /^["'([]+/;
 const TRAILING = /["'),.;:\]]+$/;
 const LOCATION = /(#.*|:\d+(-\d+)?)$/;
 
-const EXCEPTIONS = [{ file: "src/agents/analyst.md", target: "ticketing/SKILL.md", why: "the analyst reads the ticketing skill for ticket work; F-1 removes it" }];
+const EXCEPTIONS = [];
 
 const SKILL_NAMES = [...readdirSync(SKILLS_DIR).filter((name) => existsSync(join(SKILLS_DIR, name, "SKILL.md"))), "shared"];
 
@@ -130,11 +130,8 @@ test("the repository scan reads references in all three forms", () => {
   assert.ok(targetsOf("src/skills/reviewing/SKILL.md").includes("reviewing/checklists/12-bar.md"), "own-folder form");
 });
 
-test("exactly one exception is listed, and the repository still uses it", () => {
-  assert.equal(EXCEPTIONS.length, 1);
-  const [{ file, target }] = EXCEPTIONS;
-  const { text } = scannedFiles().find((f) => f.file === file);
-  assert.ok(references(text, ownerOf(file, text)).some((ref) => ref.target === target));
+test("no exception is listed", () => {
+  assert.deepEqual(EXCEPTIONS, []);
 });
 
 test("the reference check flags a reach past the table and a missing file", () => {
