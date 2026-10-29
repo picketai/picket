@@ -28,3 +28,11 @@ Implementation rule set by the user (2026-10-22): when the work starts, the firs
 ## Follow-ups after this refactor
 
 - F-1 (asked by the user on 2026-10-22, during item 08a): agents stop referencing a skill's files directly. Agents share common behaviour through `agents/shared/**/*.md`, skills through `skills/shared/**`, and each side keeps to its own folder, as far as the instructions actually need. A separate work item, after the refactor; item 08a moves forward without it.
+
+## Instruction candidates
+
+Source list: `artifacts/reports/instructions-candidates-2026-10-25.md`, walked through and approved on 2026-10-28. One draft per step of its suggested order.
+
+| # | Item | Status |
+|---|---|---|
+| 10 | [Structure tests for agents and skills](10-structure-tests.md) | approved 2026-10-29 |

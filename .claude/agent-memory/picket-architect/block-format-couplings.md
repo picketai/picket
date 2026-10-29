@@ -1,6 +1,6 @@
 ---
 name: block-format-couplings
-description: Code that parses agent block lines by position (pullrequest threads.mts finding lines, packet.mjs one-word labels, guard.block 40-line budget) and the near-full CLAUDE.md byte budget; check before adding a block field
+description: Code that parses agent block lines by position (pullrequest threads.mts finding lines, packet.mjs one-word labels, guard.block 40-line budget), every reader of phase block labels, yaml-lite rejecting folded frontmatter, and the near-full CLAUDE.md byte budget; check before adding a block field
 metadata:
   type: reference
 ---
@@ -12,5 +12,8 @@ Checked 2026-10-18 while designing 20261018-adopt-comparison-report-improvement-
 - `guard.block` counts non-finding lines against a 40-line budget per block.
 - CLAUDE.md was 2046 of 2048 bytes on 2026-10-24; any new name in the `src/templates/claude-block.md` sentence needs a shorter sentence.
 - Reviewer row ids repeat across checklist files (`A1` in both framework files, `E1`, and `Sc1` in vertical-slice), so pick a fresh two-letter prefix for new rows.
+
+- Checked 2026-10-29: phase block labels are read in three places: `src/lib/hooks/guard/block/index.mts` (Files, Red, Root cause), `src/lib/verbs/route/commit.mts` with `src/lib/shared/work/block.mts` (Commit, Files), and `src/lib/verbs/packet/packet.mjs` (Tests, Lint, Verified, Red, Root cause, Files, Decisions, Comments, Waivers). No kernel code reads the lead's `## Expedited:` block fields.
+- `frontmatter()` in `src/lib/util/yaml-lite.mts` throws on a folded `description: >`, which every agent shell and SKILL.md uses; test code reads frontmatter by key lines, as `test/support/routing.mts` does.
 
 **How to apply:** grep these parsers before any design adds a block line or row. Related: [[verify-grep-patterns]], [[statusline-contract]].
