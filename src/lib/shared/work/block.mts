@@ -41,7 +41,25 @@ export function readHeading(text: string | null | undefined): BlockHeading | nul
   return found.reduce<BlockHeading | null>((earliest, heading) => (earliest === null || heading.index < earliest.index ? heading : earliest), null);
 }
 
+export const BLOCK_FIELDS = {
+  phase: ["Files", "Tests", "Lint", "Verified", "Red", "Root cause", "Decisions", "Comments", "Waivers", "Commit"],
+  review: ["Classes"],
+  artifact: [],
+  report: [],
+  expedited: [],
+} as const satisfies Readonly<Record<BlockKind, readonly string[]>>;
+
+export type BlockField<K extends BlockKind = BlockKind> = (typeof BLOCK_FIELDS)[K][number];
+
 export type Block = { title: string | null; headline: string; fields: Record<string, string>; commitBody: string; verdict: "PHASE DONE" | "PHASE STALLED" | null };
+
+const PHASE_FIELDS: readonly string[] = BLOCK_FIELDS.phase;
+const COMMIT: BlockField<"phase"> = "Commit";
+
+export function blockField(block: Block, label: BlockField<"phase">): string | undefined {
+  if (!PHASE_FIELDS.includes(label)) throw new Error(`"${label}" is not a phase block field (${PHASE_FIELDS.join(", ")})`);
+  return block.fields[label.toLowerCase()];
+}
 
 const PATH_TOKEN = /^[\w.@\-\/\\]*\.[A-Za-z0-9]+$/;
 const FIELD_LABEL = String.raw`Root cause|[A-Z][a-z]+`;
@@ -72,7 +90,7 @@ export function readBlock(root: string, id: WorkId, n: number): string | null {
 }
 
 export function blockFiles(root: string, id: WorkId, n: number): string[] {
-  const files = parseBlock(readBlock(root, id, n) ?? "").fields.files ?? "";
+  const files = blockField(parseBlock(readBlock(root, id, n) ?? ""), "Files") ?? "";
   return files.split(/[\s,():]+/).filter((token) => PATH_TOKEN.test(token));
 }
 
@@ -106,7 +124,7 @@ export function parseBlock(text: string | null | undefined): Block {
     const m = lines[i].match(FIELD_LINE);
     if (!m) continue;
     out.fields[m[1].toLowerCase()] = m[2].trim();
-    if (m[1] === "Commit") out.commitBody = indentedBody(lines, i + 1);
+    if (m[1] === COMMIT) out.commitBody = indentedBody(lines, i + 1);
   }
   const last = lines.filter((l) => l.trim()).at(-1)?.trim() ?? "";
   if (isBlockVerdict(last)) out.verdict = last;
@@ -114,7 +132,7 @@ export function parseBlock(text: string | null | undefined): Block {
 }
 
 export function proposedCommit(block: Block): string | null {
-  const commit = block.fields.commit;
+  const commit = blockField(block, "Commit");
   if (!commit) return null;
   const subject = commit.replace(STAGED_TAIL, "");
   return block.commitBody ? `${subject}\n\n${block.commitBody}` : subject;

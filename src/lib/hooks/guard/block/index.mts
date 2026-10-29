@@ -1,6 +1,6 @@
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { VERDICTS } from "../../../shared/verdicts.mjs";
-import { readHeading } from "../../../shared/work/block.mts";
+import { readHeading, type BlockField } from "../../../shared/work/block.mts";
 import type { HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { bounce, type BounceOutput } from "../../output.mts";
 
@@ -20,7 +20,7 @@ function turnText(event: PayloadOf<StopEvent>): string {
   }
 }
 
-function fieldValue(lines: string[], label: string): string | null {
+function fieldValue(lines: string[], label: BlockField<"phase">): string | null {
   const line = lines.find((l) => l.startsWith(`${label}:`));
   return line === undefined ? null : line.slice(label.length + 1).trim();
 }

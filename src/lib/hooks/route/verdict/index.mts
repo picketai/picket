@@ -4,7 +4,7 @@ import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
-import { readHeading, saveBlock, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
+import { readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { route } from "../../../verbs/route/index.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
@@ -17,6 +17,8 @@ type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hin
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
 const CLASS_ID = /^[A-Z][A-Za-z]*\d+$/;
+const CLASSES: BlockField<"review"> = "Classes";
+const CLASSES_LINE = new RegExp(`^${CLASSES}:\\s*(.*)$`, "m");
 
 function blockInfo(text: string): BlockInfo | null {
   const heading = readHeading(text);
@@ -33,7 +35,7 @@ function keepPullRequestReview(id: string, verdict: string, text: string, root: 
 }
 
 export function reviewClasses(text: string): string[] {
-  const value = text.match(/^Classes:\s*(.*)$/m)?.[1]?.trim() ?? "";
+  const value = text.match(CLASSES_LINE)?.[1]?.trim() ?? "";
   if (/^none$/i.test(value)) return [];
   return [...new Set(value.split(/[\s,]+/).filter((id) => CLASS_ID.test(id)))];
 }

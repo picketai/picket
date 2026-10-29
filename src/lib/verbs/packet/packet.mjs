@@ -2,7 +2,7 @@ import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
-import { parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
+import { blockField, parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { liveLookup } from "../../shared/sources/places.mts";
 
@@ -104,26 +104,28 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(`▶ phase ${n.phase}/${total} done · ${id}`);
     lines.push(`  ${firstSentence(b.headline || s.phases.find((p) => p.n === n.phase)?.title || "phase complete", width - 2)}`);
     lines.push("");
-    lines.push(field("tests", b.fields.tests ?? "not reported", width));
-    lines.push(field("lint", b.fields.lint ?? "not reported", width));
-    lines.push(field("verified", b.fields.verified ?? "not reported", width));
-    if (b.fields.red) lines.push(field("red", b.fields.red, width));
-    const cause = b.fields["root cause"];
+    lines.push(field("tests", blockField(b, "Tests") ?? "not reported", width));
+    lines.push(field("lint", blockField(b, "Lint") ?? "not reported", width));
+    lines.push(field("verified", blockField(b, "Verified") ?? "not reported", width));
+    const red = blockField(b, "Red");
+    if (red) lines.push(field("red", red, width));
+    const cause = blockField(b, "Root cause");
     if (cause && !/^none$/i.test(cause)) lines.push(field("cause", cause, width));
-    lines.push(field("files", b.fields.files ? filesLine(b.fields.files, width) : "not reported", width));
+    const files = blockField(b, "Files");
+    lines.push(field("files", files ? filesLine(files, width) : "not reported", width));
     if (phaseOf(snap, n.phase)?.irreversible) lines.push(`  ${cut(`irreversible: phase ${n.phase} carries an irreversible step`, width - 2)}`);
     if (n.own_gate && n.own_gate.kind !== "irreversible") lines.push(field("gate", `phase ${n.phase} ${n.own_gate.reason}; run grants stop here`, width));
-    const dec = decisionLines(b.fields.decisions, width);
+    const dec = decisionLines(blockField(b, "Decisions"), width);
     if (dec.length) {
       lines.push(`  ${"decisions".padEnd(LABEL)}${dec[0].slice(2 + LABEL)}`);
       lines.push(...dec.slice(1));
     }
-    const comments = proposals(b.fields.comments, COMMENT_SEPARATOR);
+    const comments = proposals(blockField(b, "Comments"), COMMENT_SEPARATOR);
     if (comments.length) {
       lines.push(...proposalLines("comments", comments, width));
       if (options) options += "   [k] keep comment <n>";
     }
-    const waivers = proposals(b.fields.waivers, WAIVER_SEPARATOR);
+    const waivers = proposals(blockField(b, "Waivers"), WAIVER_SEPARATOR);
     if (waivers.length) {
       lines.push(...proposalLines("waivers", waivers, width));
       if (options) options += "   [w] waive <n>";

@@ -1,7 +1,7 @@
 import { commitOwned, listedPathMatcher, type CommitResult } from "../../shared/git.mts";
 import { recordAccept } from "../../shared/ledger.mts";
 import { phasePaths } from "../../shared/work/artifact.mts";
-import { blockFiles, parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
+import { blockField, blockFiles, parseBlock, proposedCommit, readBlock } from "../../shared/work/block.mts";
 import { workRel } from "../../shared/work/files.mts";
 import { phaseOf, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 
@@ -10,7 +10,8 @@ const COMMIT_SHA = /^[0-9a-f]{7,40}$/i;
 function commitMessage(root: string, snap: WorkSnapshot, phase: number): string {
   const id = snap.state.id;
   const block = parseBlock(readBlock(root, id, phase) ?? "");
-  const proposed = block.fields.commit && !COMMIT_SHA.test(block.fields.commit) ? proposedCommit(block) : null;
+  const commit = blockField(block, "Commit");
+  const proposed = commit && !COMMIT_SHA.test(commit) ? proposedCommit(block) : null;
   return proposed ?? `${phaseOf(snap, phase)?.title ?? `phase ${phase}`}, phase ${phase} of ${id}`;
 }
 

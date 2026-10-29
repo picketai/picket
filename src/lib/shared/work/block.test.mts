@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { detectBlock, parseBlock, proposedCommit, readBlock, readHeading, saveBlock } from "./block.mts";
+import { BLOCK_FIELDS, blockField, detectBlock, parseBlock, proposedCommit, readBlock, readHeading, saveBlock } from "./block.mts";
 import { setMarker } from "./markers.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -66,6 +66,28 @@ test("readHeading gives null for text without a block heading (T-2.1)", () => {
 test("proposedCommit keeps the indented body under the Commit line, dedented, after a blank line", () => {
   const text = "## Phase 1 of 20261023-x: One\n\nDone.\n\nFiles: a.ts\nCommit: test(x): drop two tests\n\n    Dropped:\n    - \"a\": now in b.test\n      and c.test\n\nPHASE DONE\n";
   assert.equal(proposedCommit(parseBlock(text)), 'test(x): drop two tests\n\nDropped:\n- "a": now in b.test\n  and c.test');
+});
+
+test("BLOCK_FIELDS lists the labels kernel code reads from each block kind", () => {
+  assert.deepEqual(BLOCK_FIELDS, {
+    phase: ["Files", "Tests", "Lint", "Verified", "Red", "Root cause", "Decisions", "Comments", "Waivers", "Commit"],
+    review: ["Classes"],
+    artifact: [],
+    report: [],
+    expedited: [],
+  });
+});
+
+test("blockField reads a listed label's value, Root cause included", () => {
+  const block = parseBlock("## Phase 1 of 20261029-x: One\n\nDone.\n\nRed: n/a: docs\nRoot cause: totals were off because the rate was in percent\nPHASE DONE\n");
+  assert.equal(blockField(block, "Root cause"), "totals were off because the rate was in percent");
+  assert.equal(blockField(block, "Red"), "n/a: docs");
+  assert.equal(blockField(block, "Tests"), undefined);
+});
+
+test("blockField throws on a label outside BLOCK_FIELDS.phase", () => {
+  const block = parseBlock("## Phase 1 of 20261029-x: One\n\nDone.\n\nNope: x\nPHASE DONE\n");
+  assert.throws(() => blockField(block, "Nope" as never), /"Nope" is not a phase block field/);
 });
 
 test("saveBlock keeps an approved phase's block and appends a later block to N.fixes.md", (t) => {
