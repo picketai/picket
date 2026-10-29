@@ -7,6 +7,7 @@ import { findPaths as find } from "../../dist/lib/verbs/source/find.mjs";
 import { grepHits as grep } from "../../dist/lib/verbs/source/grep.mjs";
 import { candidates, contentHash, places } from "../../dist/lib/shared/sources/places.mjs";
 import { parse as parseYaml } from "../../dist/lib/util/yaml-lite.mjs";
+import { instanceTag } from "../../dist/lib/shared/work/send.mjs";
 import { canonicalPath, sourceRoots, underSource } from "../../dist/lib/shared/sources/protection.mjs";
 import { runCli } from "#test/cli.mts";
 import { gitAt } from "#test/git.mts";
@@ -149,7 +150,7 @@ test("a pick builds its next send for the picking session, continuing a live arc
   assert.equal(picked.code, 0, picked.err);
   const { next } = JSON.parse(picked.out);
   assert.equal(next.action, "write_artifact");
-  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), ["SendMessage architect"]);
+  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), [`SendMessage ${instanceTag(id)}-architect`]);
 });
 
 test("a pin that matches nothing exits 2 listing the places and creates no work item (T-4.4)", (t) => {

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { AgentType, NextView, SendView } from "../views.mts";
 import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
@@ -9,23 +10,36 @@ import type { VerdictRow } from "./verdict-log.mts";
 export type HasFile = (name: WorkFile) => boolean;
 
 type Instance = { to: string; type: AgentType; owns: (row: VerdictRow) => boolean };
+type Role = { type: AgentType; owns: (row: VerdictRow) => boolean };
 
 const FRESH_REVIEW = "You are reviewing a change you did not write. You have no context beyond what is below.";
+const TAG_LENGTH = 4;
+const FIRST_LETTER = "a".charCodeAt(0);
 
 const isReviewer = (row: VerdictRow) => row.agent === "reviewer";
 
-const INSTANCES = {
-  analyst: { to: "analyst", type: "picket:analyst", owns: (row) => row.agent === "analyst" },
-  architect: { to: "architect", type: "picket:architect", owns: (row) => row.agent === "architect" },
-  reviewer: { to: "reviewer", type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope !== "cumulative" },
-  cumulative: { to: "cumulative-reviewer", type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope === "cumulative" },
-} satisfies Record<string, Instance>;
+const ROLES = {
+  analyst: { type: "picket:analyst", owns: (row) => row.agent === "analyst" },
+  architect: { type: "picket:architect", owns: (row) => row.agent === "architect" },
+  reviewer: { type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope !== "cumulative" },
+  "cumulative-reviewer": { type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope === "cumulative" },
+} satisfies Record<string, Role>;
 
 export const NO_FILES: HasFile = () => false;
 
+export function instanceTag(id: string): string {
+  const digits = createHash("sha256").update(id).digest("hex").slice(0, TAG_LENGTH);
+  return [...digits].map((digit) => String.fromCharCode(FIRST_LETTER + parseInt(digit, 16))).join("");
+}
+
+function instance(snap: WorkSnapshot, role: keyof typeof ROLES): Instance {
+  return { to: `${instanceTag(snap.state.id)}-${role}`, ...ROLES[role] };
+}
+
 export function developerName(snap: WorkSnapshot): string {
   const fresh = freshReplies(snap.replies).length;
-  return fresh === 0 ? "developer" : `developer-${1 + fresh}`;
+  const name = `${instanceTag(snap.state.id)}-developer`;
+  return fresh === 0 ? name : `${name}-${1 + fresh}`;
 }
 
 function developer(snap: WorkSnapshot): Instance {
@@ -44,8 +58,8 @@ function send(snap: WorkSnapshot, instance: Instance, session: string | null, li
 }
 
 export function messageTo(snap: WorkSnapshot, role: "developer" | "architect", session: string | null, lines: string[]): SendView {
-  const instance = role === "developer" ? developer(snap) : INSTANCES.architect;
-  return send(snap, instance, session, () => lines);
+  const target = role === "developer" ? developer(snap) : instance(snap, "architect");
+  return send(snap, target, session, () => lines);
 }
 
 function itemFile(snap: WorkSnapshot, name: string): string {
@@ -67,11 +81,11 @@ const ARCHITECT_INPUTS: readonly (readonly [string, WorkFile])[] = [
 
 function architectSend(snap: WorkSnapshot, session: string | null, hasFile: HasFile): SendView {
   const optional = ARCHITECT_INPUTS.filter(([, name]) => hasFile(name)).map(([key, name]) => `${key}: ${itemFile(snap, name)}`);
-  return send(snap, INSTANCES.architect, session, () => [workLine(snap), `lane: ${snap.state.lane}`, `request: ${itemFile(snap, "request.md")}`, ...optional]);
+  return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `lane: ${snap.state.lane}`, `request: ${itemFile(snap, "request.md")}`, ...optional]);
 }
 
 function analystSend(snap: WorkSnapshot, session: string | null): SendView {
-  return send(snap, INSTANCES.analyst, session, () => [workLine(snap), `request: ${itemFile(snap, "request.md")}`, "pass: outline"]);
+  return send(snap, instance(snap, "analyst"), session, () => [workLine(snap), `request: ${itemFile(snap, "request.md")}`, "pass: outline"]);
 }
 
 function needsCrosscheck(snap: WorkSnapshot): boolean {
@@ -87,7 +101,7 @@ function implementSends(snap: WorkSnapshot, phase: number, session: string | nul
     ...(through !== undefined && through >= phase ? [`run through ${through}`] : []),
   ]);
   if (!needsCrosscheck(snap)) return [implementer];
-  return [implementer, send(snap, INSTANCES.reviewer, session, () => [workLine(snap), "scope: crosscheck", artifactLine(snap)])];
+  return [implementer, send(snap, instance(snap, "reviewer"), session, () => [workLine(snap), "scope: crosscheck", artifactLine(snap)])];
 }
 
 function summaryLines(snap: WorkSnapshot): string[] {
@@ -99,13 +113,14 @@ function saveSummary(snap: WorkSnapshot): string {
 }
 
 function checkpointSend(snap: WorkSnapshot, phase: number, session: string | null): SendView {
-  return send(snap, INSTANCES.reviewer, session, () => [workLine(snap), "scope: checkpoint", `phase: ${phase}`, ...summaryLines(snap)], { first: [saveSummary(snap)] });
+  return send(snap, instance(snap, "reviewer"), session, () => [workLine(snap), "scope: checkpoint", `phase: ${phase}`, ...summaryLines(snap)], { first: [saveSummary(snap)] });
 }
 
 function cumulativeSend(snap: WorkSnapshot, session: string | null): SendView {
-  const reviewed = snap.verdicts.some(INSTANCES.cumulative.owns);
+  const reviewer = instance(snap, "cumulative-reviewer");
+  const reviewed = snap.verdicts.some(reviewer.owns);
   const first = [...(reviewed ? [] : [`picket mutate ${snap.state.id}`]), saveSummary(snap)];
-  return send(snap, INSTANCES.cumulative, session, (tool) => [...(tool === "Agent" ? [FRESH_REVIEW] : []), workLine(snap), "scope: cumulative", ...summaryLines(snap)], { model: "opus", first });
+  return send(snap, reviewer, session, (tool) => [...(tool === "Agent" ? [FRESH_REVIEW] : []), workLine(snap), "scope: cumulative", ...summaryLines(snap)], { model: "opus", first });
 }
 
 function renderSend(s: SendView): string {
@@ -135,7 +150,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "fix_findings":
       return [send(snap, developer(snap), session, (tool) => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`, ...(tool === "Agent" ? [artifactLine(snap)] : [])])];
     case "amend":
-      return [send(snap, INSTANCES.architect, session, () => [workLine(snap), `amend: ${step.detail}`])];
+      return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`])];
     default:
       return [];
   }

@@ -1,0 +1,3 @@
+warn artifact: design.md not written yet (next action will ask for it)
+warn project_map: absent; the analyst can write one
+warn legacy_paths: .claude/ledger, .claude/branching/manifest.yaml still present; run picket migrate

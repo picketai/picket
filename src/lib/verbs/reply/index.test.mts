@@ -8,6 +8,7 @@ import { setMarker } from "../../shared/work/markers.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { appendVerdict } from "../../shared/work/verdict-log.mts";
 import type { WorkId } from "../../shared/work/files.mts";
+import { instanceTag } from "../../shared/work/send.mts";
 import { verb, type ReplyResult } from "./index.mts";
 import { fixedContext } from "#test/context.mts";
 import { gitAt } from "#test/git.mts";
@@ -101,7 +102,7 @@ test("x <why> rejects with the reason and sends it to the developer verbatim", a
   const result = await applied(root, id, "x Tests are flaky");
   assert.equal(lastVerdict(root, id).verdict, "rejected");
   assert.equal(result.send.length, 1);
-  assert.equal(result.send[0].to, "developer");
+  assert.equal(result.send[0].to, `${instanceTag(id)}-developer`);
   assert.equal(result.send[0].message, `work: ${id}\nphase: 1\nrejected: Tests are flaky`);
   await refused(root, id, "x");
 });
@@ -112,10 +113,12 @@ test("k <n> records the comment and sends its approval; w <n> records a deleted-
   const kept = await applied(root, id, "k 1");
   assert.deepEqual(JSON.parse(readFileSync(join(root, "work", id, "comments.jsonl"), "utf8")).text, "half-up");
   assert.match(kept.send[0].message, /^comment approved: src\/a\.ts:4 "half-up"$/m);
+  assert.equal(kept.send[0].to, `${instanceTag(id)}-developer`);
   const waived = await applied(root, id, "w 1");
   const waiver = JSON.parse(readFileSync(join(root, "work", id, "waivers.jsonl"), "utf8"));
   assert.deepEqual([waiver.path, waiver.deleted], ["src/b.test.ts", true]);
   assert.match(waived.send[0].message, /^waiver approved: src\/b\.test\.ts deleted$/m);
+  assert.equal(waived.send[0].to, `${instanceTag(id)}-developer`);
   await refused(root, id, "k 2");
 });
 
@@ -126,7 +129,7 @@ test("at a stall, c reopens for developer-2, d abandons an order item, x abandon
   assert.equal(readState(continued.root, continued.id).status, "open");
   assert.equal(readState(continued.root, continued.id).blocked_reason, undefined);
   assert.equal(replyRows(continued.root, continued.id)[0].fresh, true);
-  assert.deepEqual([c.send[0].tool, c.send[0].to], ["Agent", "developer-2"]);
+  assert.deepEqual([c.send[0].tool, c.send[0].to], ["Agent", `${instanceTag(continued.id)}-developer-2`]);
 
   const order = item(t);
   stall(order.root, order.id, "PHASE STALLED on phase 1");
@@ -145,7 +148,7 @@ test("d at a design stall reopens the item and sends the architect the old block
   stall(root, id, "PHASE STALLED: the port moved");
   const result = await applied(root, id, "redesign");
   assert.equal(readState(root, id).status, "open");
-  assert.deepEqual(result.send.map((s) => [s.to, s.message]), [["architect", `work: ${id}\namend: PHASE STALLED: the port moved`]]);
+  assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: PHASE STALLED: the port moved`]]);
 });
 
 test("a reply that matches nothing lists the options; a reply away from a gate names the action", async (t) => {

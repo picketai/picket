@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { appendVerdict } from "../../shared/work/verdict-log.mts";
+import { instanceTag } from "../../shared/work/send.mts";
 import { verb } from "./index.mts";
 import { fixedContext } from "#test/context.mts";
 import { openItem, withProject } from "#test/project.mts";
@@ -28,5 +29,5 @@ test("status=open on a stalled item continues this session's live developer in i
   assert.ok(outcome.status === "done");
   const next = outcome.value.next as { action: string; send: { tool: string; to: string }[] };
   assert.equal(next.action, "implement_phase");
-  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), ["SendMessage developer"]);
+  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), [`SendMessage ${instanceTag(id)}-developer`]);
 });

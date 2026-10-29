@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NEXT_ACTIONS, nextStep } from "./next-step.mts";
 import { nextView } from "./next-view.mts";
+import { instanceTag } from "./send.mts";
 import { snapshotOf, type PhaseInput, type SnapshotInput } from "#test/snapshot.mts";
 
 const SECURITY_PATHS = ["src/auth/"];
@@ -216,7 +217,7 @@ test("nextView prints today's keys in order and adds warnings only when the snap
   const clean = snapshotOf({ phases: [{ n: 1 }] });
   const view = nextView(clean, nextStep(clean, SECURITY_PATHS));
   assert.deepEqual(Object.keys(view), ["id", "lane", "status", "phase", "options", "own_gate", "action", "actor", "detail", "send"]);
-  const send = [{ tool: "Agent", to: "developer", type: "picket:developer", message: "work: 20261023-probe\nphase: 1\nartifact: work/20261023-probe/order.md" }];
+  const send = [{ tool: "Agent", to: `${instanceTag("20261023-probe")}-developer`, type: "picket:developer", message: "work: 20261023-probe\nphase: 1\nartifact: work/20261023-probe/order.md" }];
   assert.deepEqual(view, { id: "20261023-probe", lane: "order", status: "open", phase: 1, options: [], own_gate: null, action: "implement_phase", actor: "developer", detail: "phase 1 of 1: Phase 1", send });
   const warned = snapshotOf({ phases: [{ n: 1 }], warnings: ["verdicts.jsonl: 1 unreadable line skipped"] });
   assert.deepEqual(nextView(warned, nextStep(warned, SECURITY_PATHS)).warnings, ["verdicts.jsonl: 1 unreadable line skipped"]);

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseArgs, UsageError } from "../../util/args.mts";
+import { instanceTag } from "../../shared/work/send.mts";
 import { verb } from "./index.mts";
 import { fixedContext } from "#test/context.mts";
 import { withProject } from "#test/project.mts";
@@ -14,7 +15,7 @@ test("open builds its next send for the session that opened the item", async (t)
   assert.ok(outcome.status === "done");
   const { next } = outcome.value;
   assert.equal(next.action, "write_artifact");
-  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), ["Agent architect"]);
+  assert.deepEqual(next.send.map((s) => `${s.tool} ${s.to}`), [`Agent ${instanceTag(next.id)}-architect`]);
   assert.match(next.send[0].message, /^request: work\/.*\/request\.md$/m);
 });
 

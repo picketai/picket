@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { workId } from "../../shared/work/files.mts";
 import type { NextView } from "../../shared/work/next-view.mts";
+import { instanceTag } from "../../shared/work/send.mts";
 import { verb } from "./index.mts";
 import { fixedContext } from "#test/context.mts";
 import { openItem, withProject } from "#test/project.mts";
@@ -20,10 +21,11 @@ test("next prints its JSON with send, and the human form shows each send's tool,
   assert.ok(outcome.status === "done");
   const view = outcome.value;
   assert.ok("send" in view);
-  assert.deepEqual(view.send.map((s) => `${s.tool} ${s.to}`), ["Agent developer", "Agent reviewer"]);
+  const tag = instanceTag(id);
+  assert.deepEqual(view.send.map((s) => `${s.tool} ${s.to}`), [`Agent ${tag}-developer`, `Agent ${tag}-reviewer`]);
   const human = verb.render(view);
   assert.equal(human.match(/^```text$/gm)?.length, 2, human);
-  assert.match(human, /^Agent developer · picket:developer\n```text\nwork: .*\nphase: 1\nartifact: work\/.*\/design\.md\n```$/m);
+  assert.match(human, new RegExp(`^Agent ${tag}-developer · picket:developer\\n\`\`\`text\\nwork: .*\\nphase: 1\\nartifact: work/.*/design\\.md\\n\`\`\`$`, "m"));
 });
 
 test("the human form names a model and lists each first command", () => {

@@ -2,11 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { nextStep, type NextStep } from "./next-step.mts";
 import type { ReplyRow } from "./replies.mts";
-import { sendsFor } from "./send.mts";
+import { instanceTag, sendsFor } from "./send.mts";
 import { snapshotOf, type SnapshotInput } from "#test/snapshot.mts";
 
 const ID = "20261023-probe";
 const S = "session-s";
+const TAG = instanceTag(ID);
+const named = (role: string) => `${TAG}-${role}`;
 
 function sends(input: SnapshotInput, step: NextStep, session: string | null = S, files: string[] = []) {
   return sendsFor(snapshotOf(input), step, session, (name) => files.includes(name));
@@ -22,24 +24,54 @@ function freshReply(ts: string): ReplyRow {
 
 const implement = (phase: number): NextStep => ({ action: "implement_phase", actor: "developer", phase, detail: "d" });
 
+test("instanceTag is four letters from a to p, stable per id and different across this session's items", () => {
+  assert.match(TAG, /^[a-p]{4}$/);
+  assert.equal(instanceTag(ID), TAG);
+  const itemA = instanceTag("20261029-convert-the-developer-agent-item-a");
+  const itemB = instanceTag("20261029-convert-architect-analyst-and-reviewer-item-b-de");
+  assert.match(itemA, /^[a-p]{4}$/);
+  assert.notEqual(itemA, itemB);
+});
+
+test("every send row addresses its instance by the item's tag and the role", () => {
+  const approved = [{ n: 1, done: true, approved: true }];
+  const rows: [SnapshotInput, NextStep, string][] = [
+    [{ lane: "order", artifact: null }, { action: "write_artifact", actor: "architect", detail: "d" }, "architect"],
+    [{ lane: "research", artifact: null }, { action: "write_artifact", actor: "analyst", detail: "d" }, "analyst"],
+    [{ phases: [{ n: 1 }] }, implement(1), "developer"],
+    [{ lane: "design", phases: approved }, { action: "review_checkpoint", actor: "reviewer", phase: 1, detail: "d" }, "reviewer"],
+    [{ phases: approved }, { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" }, "cumulative-reviewer"],
+    [{ phases: approved }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" }, "developer"],
+    [{ phases: approved }, { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-001 x" }, "architect"],
+  ];
+  for (const [input, step, role] of rows) assert.deepEqual(sends(input, step).map((s) => s.to), [named(role)], step.action);
+});
+
+test("an item with no rows of its own spawns its developer, whatever another item's rows hold", () => {
+  const otherItem = sendsFor(snapshotOf({ id: "20261023-other", phases: [{ n: 1 }], verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }), implement(1), S);
+  assert.deepEqual([otherItem[0].tool, otherItem[0].to], ["SendMessage", `${instanceTag("20261023-other")}-developer`]);
+  const [own] = sends({ phases: [{ n: 1 }] }, implement(1));
+  assert.deepEqual([own.tool, own.to], ["Agent", named("developer")]);
+});
+
 test("the architect gets the request, and the preflight and sources lines only when those files exist", () => {
   const write: NextStep = { action: "write_artifact", actor: "architect", detail: "d" };
   assert.deepEqual(sends({ lane: "order", artifact: null }, write, S, ["preflight.txt", "sources.yaml"]), [
-    { tool: "Agent", to: "architect", type: "picket:architect", message: `work: ${ID}\nlane: order\nrequest: work/${ID}/request.md\npreflight: work/${ID}/preflight.txt\nsources: work/${ID}/sources.yaml` },
+    { tool: "Agent", to: named("architect"), type: "picket:architect", message: `work: ${ID}\nlane: order\nrequest: work/${ID}/request.md\npreflight: work/${ID}/preflight.txt\nsources: work/${ID}/sources.yaml` },
   ]);
   assert.equal(sends({ lane: "order", artifact: null }, write)[0].message, `work: ${ID}\nlane: order\nrequest: work/${ID}/request.md`);
 });
 
 test("a research item's artifact goes to the analyst for the outline pass", () => {
   const write: NextStep = { action: "write_artifact", actor: "analyst", detail: "d" };
-  assert.deepEqual(sends({ lane: "research", artifact: null }, write), [{ tool: "Agent", to: "analyst", type: "picket:analyst", message: `work: ${ID}\nrequest: work/${ID}/request.md\npass: outline` }]);
+  assert.deepEqual(sends({ lane: "research", artifact: null }, write), [{ tool: "Agent", to: named("analyst"), type: "picket:analyst", message: `work: ${ID}\nrequest: work/${ID}/request.md\npass: outline` }]);
 });
 
 test("a developer with no row in this session is spawned with the artifact; one with a row is continued without it", () => {
   const phases = [{ n: 1 }];
-  assert.deepEqual(sends({ phases }, implement(1)), [{ tool: "Agent", to: "developer", type: "picket:developer", message: `work: ${ID}\nphase: 1\nartifact: work/${ID}/order.md` }]);
+  assert.deepEqual(sends({ phases }, implement(1)), [{ tool: "Agent", to: named("developer"), type: "picket:developer", message: `work: ${ID}\nphase: 1\nartifact: work/${ID}/order.md` }]);
   const live = sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }, implement(1));
-  assert.deepEqual(live, [{ tool: "SendMessage", to: "developer", type: "picket:developer", message: `work: ${ID}\nphase: 1` }]);
+  assert.deepEqual(live, [{ tool: "SendMessage", to: named("developer"), type: "picket:developer", message: `work: ${ID}\nphase: 1` }]);
   assert.equal(sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, "other")] }, implement(1))[0].tool, "Agent");
   assert.equal(sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }, implement(1), null)[0].tool, "Agent");
 });
@@ -52,10 +84,10 @@ test("a run grant that reaches the phase is named in the developer's message", (
 test("a design item's first phase also spawns the cross-check until any cross-check row exists", () => {
   const phases = [{ n: 1 }, { n: 2 }];
   const both = sends({ lane: "design", phases }, implement(1));
-  assert.deepEqual(both.map((s) => s.to), ["developer", "reviewer"]);
-  assert.deepEqual(both[1], { tool: "Agent", to: "reviewer", type: "picket:reviewer", message: `work: ${ID}\nscope: crosscheck\nartifact: work/${ID}/design.md` });
+  assert.deepEqual(both.map((s) => s.to), [named("developer"), named("reviewer")]);
+  assert.deepEqual(both[1], { tool: "Agent", to: named("reviewer"), type: "picket:reviewer", message: `work: ${ID}\nscope: crosscheck\nartifact: work/${ID}/design.md` });
   const checked = sends({ lane: "design", phases, verdicts: [verdictRow("reviewer", "ALIGNED", "crosscheck", "other")] }, implement(1));
-  assert.deepEqual(checked.map((s) => s.to), ["developer"]);
+  assert.deepEqual(checked.map((s) => s.to), [named("developer")]);
 });
 
 test("the first cumulative review is a fresh opus reviewer after a mutation run; a later one continues it", () => {
@@ -64,7 +96,7 @@ test("the first cumulative review is a fresh opus reviewer after a mutation run;
   assert.deepEqual(sends({ phases }, review), [
     {
       tool: "Agent",
-      to: "cumulative-reviewer",
+      to: named("cumulative-reviewer"),
       type: "picket:reviewer",
       model: "opus",
       first: [`picket mutate ${ID}`, `picket summary ${ID} --save`],
@@ -80,15 +112,15 @@ test("the first cumulative review is a fresh opus reviewer after a mutation run;
 test("checkpoint, findings and amendment sends carry their lines; user, lead and none steps send nothing", () => {
   const phases = [{ n: 1, done: true, approved: true }];
   assert.deepEqual(sends({ lane: "design", phases }, { action: "review_checkpoint", actor: "reviewer", phase: 3, detail: "d" }), [
-    { tool: "Agent", to: "reviewer", type: "picket:reviewer", first: [`picket summary ${ID} --save`], message: `work: ${ID}\nscope: checkpoint\nphase: 3\nsummary: work/${ID}/summary.json` },
+    { tool: "Agent", to: named("reviewer"), type: "picket:reviewer", first: [`picket summary ${ID} --save`], message: `work: ${ID}\nscope: checkpoint\nphase: 3\nsummary: work/${ID}/summary.json` },
   ]);
   assert.deepEqual(sends({ phases }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" }), [
-    { tool: "Agent", to: "developer", type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
+    { tool: "Agent", to: named("developer"), type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
   ]);
   const continued = sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" });
   assert.equal(continued[0].message, `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md`);
   assert.deepEqual(sends({ phases }, { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-002 x" }), [
-    { tool: "Agent", to: "architect", type: "picket:architect", message: `work: ${ID}\namend: AMENDMENT NEEDED: D-002 x` },
+    { tool: "Agent", to: named("architect"), type: "picket:architect", message: `work: ${ID}\namend: AMENDMENT NEEDED: D-002 x` },
   ]);
   const silent: NextStep[] = [
     { action: "approve_phase", actor: "user", phase: 1, detail: "d", options: [] },
@@ -101,12 +133,12 @@ test("checkpoint, findings and amendment sends carry their lines; user, lead and
 
 test("each fresh developer reply names the next instance, developer-2 first, spawned with the artifact", () => {
   const phases = [{ n: 1 }];
-  assert.equal(sends({ phases }, implement(1))[0].to, "developer");
+  assert.equal(sends({ phases }, implement(1))[0].to, named("developer"));
   const [second] = sends({ phases, replies: [freshReply("2026-10-23T11:00:00.000Z")] }, implement(1));
-  assert.deepEqual([second.to, second.tool], ["developer-2", "Agent"]);
+  assert.deepEqual([second.to, second.tool], [named("developer-2"), "Agent"]);
   assert.match(second.message, /^artifact: /m);
   const third = sends({ phases, replies: [freshReply("2026-10-23T11:00:00.000Z"), freshReply("2026-10-23T12:00:00.000Z")] }, implement(1));
-  assert.equal(third[0].to, "developer-3");
+  assert.equal(third[0].to, named("developer-3"));
 });
 
 test("after three cumulative rejections and a fresh reply, developer-2 is spawned to fix the findings with the review and the artifact", () => {
@@ -119,7 +151,7 @@ test("after three cumulative rejections and a fresh reply, developer-2 is spawne
   const step = nextStep(snap, []);
   assert.equal(step.action, "fix_findings");
   assert.deepEqual(sendsFor(snap, step, S), [
-    { tool: "Agent", to: "developer-2", type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
+    { tool: "Agent", to: named("developer-2"), type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
   ]);
 });
 
