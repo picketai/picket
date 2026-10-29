@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-29T20:45:44.690Z",
+  "base": "ff064713cbe22706c4dbf57af76f83da304c7c0a",
+  "mutant": {
+    "path": "src/lib/shared/admission/admit.mts",
+    "line": 13,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 58459
+}

@@ -17,7 +17,7 @@ You make the change yourself in the main session; no agent is spawned and admiss
 
 ## Steps
 
-1. In one tool batch: `picket open --lane fast --title "<six-word title>"`, a Read of every file the request names, and a Grep for the symbol or route it names when no file is given. The id the first command prints is `<id>` for the rest of this lane.
+1. In one tool batch: `picket open --lane fast --title "<six-word title>" --request - <<'PICKET_REQUEST_END'` with the request, verbatim, on the lines after it and `PICKET_REQUEST_END` alone on the last line, a Read of every file the request names, and a Grep for the symbol or route it names when no file is given. The id the first command prints is `<id>` for the rest of this lane. A refusal naming `--user-lane` means admit puts the request in a heavier lane: run the lane skill it names, or ask the user and add the flag only on their word.
 2. Name the touch set before editing: the files you will change, at most three. Ask only when the request is ambiguous in a way that changes which file you edit: one question, your recommended default, then stop.
 3. Load `picket:implementing` before the first edit: a bug gets a red test first, a refactor a pinning test first, and it decides the block's `Red:` and `Root cause:` lines. Read a file before you edit it, and edit only the touch set.
 4. In the same tool batch as your first Edit, re-check admission with the real list: `picket admit --text "<request>" --touched <a>,<b> --human`. Any answer but `lane: fast` is the escalation in `## Rules`.

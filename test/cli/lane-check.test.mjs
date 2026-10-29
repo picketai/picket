@@ -46,6 +46,15 @@ for (const lane of LANES) {
   });
 }
 
+const OPEN_STEPS = { expediting: ["SKILL.md", "fast"], ordering: ["steps/open.md", "order"], designing: ["steps/open.md", "design"], researching: ["steps/outline.md", "research"] };
+
+for (const [lane, [file, laneArg]] of Object.entries(OPEN_STEPS)) {
+  test(`${lane}: picket open carries the request, so open checks the lane against admit`, () => {
+    const text = readFileSync(resolve("src/skills", lane, file), "utf8");
+    assert.match(text, new RegExp(`picket open --lane ${laneArg} --title "<six-word title>" --request - <<'PICKET_REQUEST_END'`));
+  });
+}
+
 test("the heredoc admit the lane skills name survives backticks, quotes and dollar signs", (t) => {
   const root = withProject(t, { picket: false });
   const hostile = bash(withRoot(heredocAdmit(HOSTILE), root), root);

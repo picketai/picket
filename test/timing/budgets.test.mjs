@@ -38,7 +38,7 @@ function walk(dir, pred) {
 }
 const rel = (p) => p.slice(ROOT.length + 1).replaceAll("\\", "/");
 
-const STEP_FILE = /[\\/](?:steps|checklists|shared[\\/]procedures)[\\/][^\\/]+\.md$/;
+const STEP_FILE = /[\\/](?:steps|checklists)[\\/][^\\/]+\.md$/;
 
 function overStepBudget(skillsDir) {
   return walk(skillsDir, (f) => STEP_FILE.test(f))
@@ -60,14 +60,14 @@ test("agent shells, skills, step files and rules stay within their line budgets"
   assert.deepEqual(over, []);
 });
 
-test("the step budget covers steps/, checklists/ and shared/procedures/", (t) => {
+test("the step budget covers steps/ and checklists/", (t) => {
   const skills = join(withProject(t), "src", "skills");
-  const planted = { "shared/procedures/long.md": 81, "reviewing/checklists/long.md": 81, "ordering/steps/long.md": 81, "ordering/steps/fits.md": 80, "ordering/SKILL.md": 81 };
+  const planted = { "reviewing/checklists/long.md": 81, "ordering/steps/long.md": 81, "ordering/steps/fits.md": 80, "ordering/SKILL.md": 81 };
   for (const [path, count] of Object.entries(planted)) {
     mkdirSync(join(skills, path, ".."), { recursive: true });
     writeFileSync(join(skills, path), Array.from({ length: count }, (_, i) => `line ${i + 1}`).join("\n"));
   }
-  assert.deepEqual(overStepBudget(skills).sort(), ["ordering/steps/long.md: 81 > 80", "reviewing/checklists/long.md: 81 > 80", "shared/procedures/long.md: 81 > 80"]);
+  assert.deepEqual(overStepBudget(skills).sort(), ["ordering/steps/long.md: 81 > 80", "reviewing/checklists/long.md: 81 > 80"]);
 });
 
 test("every skill has a 'Use when' trigger in its description or when_to_use, and a description within its cap", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {

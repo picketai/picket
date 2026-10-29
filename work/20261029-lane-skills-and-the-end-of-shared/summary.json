@@ -1,0 +1,132 @@
+{
+  "work_id": "20261029-lane-skills-and-the-end-of-shared",
+  "base": "ff064713cbe22706c4dbf57af76f83da304c7c0a",
+  "request": "work/20261029-lane-skills-and-the-end-of-shared/request.md",
+  "size": "large",
+  "changed_files": [
+    "CLAUDE.md",
+    "CONTRIBUTING.md",
+    "docs/reference/cli.md",
+    "src/agents/reviewer.md",
+    "src/lib/shared/admission/admit-labelled.test.json",
+    "src/lib/shared/admission/admit-labelled.test.mts",
+    "src/lib/shared/admission/admit.mts",
+    "src/lib/shared/admission/admit.test.mts",
+    "src/lib/shared/admission/lane.mts",
+    "src/lib/shared/admission/lane.test.mts",
+    "src/lib/shared/admission/signals.mts",
+    "src/lib/shared/admission/signals.test.mts",
+    "src/lib/shared/git.mts",
+    "src/lib/shared/git.test.mts",
+    "src/lib/shared/route/plan.mts",
+    "src/lib/shared/route/plan.test.mts",
+    "src/lib/shared/views.mts",
+    "src/lib/shared/work/action-text.mts",
+    "src/lib/shared/work/artifact.mts",
+    "src/lib/shared/work/artifact.test.mts",
+    "src/lib/shared/work/next-step.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/report.mts",
+    "src/lib/shared/work/report.test.mts",
+    "src/lib/shared/work/reviews.mts",
+    "src/lib/shared/work/reviews.test.mts",
+    "src/lib/shared/work/send.mts",
+    "src/lib/shared/work/send.test.mts",
+    "src/lib/shared/work/verdict-log.mts",
+    "src/lib/verbs/admit/index.mts",
+    "src/lib/verbs/admit/index.test.mts",
+    "src/lib/verbs/close/block.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/index.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/open/index.mts",
+    "src/lib/verbs/open/index.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/skills/designing/SKILL.md",
+    "src/skills/designing/steps/10-design.md",
+    "src/skills/designing/steps/20-crosscheck.md",
+    "src/skills/designing/steps/open.md",
+    "src/skills/expediting/SKILL.md",
+    "src/skills/expediting/steps/10-check.md",
+    "src/skills/ordering/SKILL.md",
+    "src/skills/ordering/steps/10-order.md",
+    "src/skills/ordering/steps/open.md",
+    "src/skills/researching/SKILL.md",
+    "src/skills/researching/steps/10-outline.md",
+    "src/skills/researching/steps/20-deep.md",
+    "src/skills/researching/steps/deep.md",
+    "src/skills/researching/steps/outline.md",
+    "src/skills/resuming/SKILL.md",
+    "src/skills/shared/procedures/amend.md",
+    "src/skills/shared/procedures/cumulative-review.md",
+    "src/skills/shared/procedures/gate.md",
+    "src/skills/shared/procedures/jira-intake.md",
+    "src/skills/shared/procedures/phase-loop.md",
+    "src/skills/ticketing/SKILL.md",
+    "src/skills/ticketing/steps/20-jira.md",
+    "src/templates/claude-block.md",
+    "test/cli/close.test.mjs",
+    "test/cli/lane-check.test.mjs",
+    "test/repo/agents.test.mjs",
+    "test/repo/plugin-layout.test.mjs",
+    "test/repo/references.test.mjs",
+    "test/repo/skills.test.mjs",
+    "test/support/routing.mts",
+    "test/timing/budgets.test.mjs"
+  ],
+  "lines_added": 1143,
+  "lines_removed": 507,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-10-29T20:45:44.690Z",
+    "base": "ff064713cbe22706c4dbf57af76f83da304c7c0a",
+    "mutant": {
+      "path": "src/lib/shared/admission/admit.mts",
+      "line": 13,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 58459
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/10-alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/12-bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/15-traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/20-patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/25-design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/30-patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/40-framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/50-concern-clean-architecture.md"
+    }
+  ]
+}
