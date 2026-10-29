@@ -20,7 +20,7 @@ const CLAIM = new RegExp(`\\bthe ${AGENT}(?:(?:,? (?:and|or) |, )(?:the )?${AGEN
 const TITLE_LINE = /^# /;
 const CONTINUATION = /^\s+\S/;
 
-const UNCONVERTED_SKILLS = ["benchmarking", "branching", "consulting", "debugging", "documenting", "explaining", "inspecting", "proofreading", "resuming", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
+const UNCONVERTED_SKILLS = ["benchmarking", "branching", "debugging", "explaining", "inspecting", "proofreading", "resuming", "summarizing", "ticketing", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
 
 const PENDING = {
   frontmatter: UNCONVERTED_SKILLS,
@@ -28,8 +28,6 @@ const PENDING = {
   names: [
     "src/skills/branching/steps/10-create.md",
     "src/skills/branching/steps/20-remove.md",
-    "src/skills/consulting/steps/10-discuss.md",
-    "src/skills/consulting/steps/20-ratify.md",
     "src/skills/debugging/steps/10-reproduce.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
@@ -44,8 +42,6 @@ const PENDING = {
     "src/skills/understanding/steps/30-capture.md",
   ],
   headers: [
-    "src/skills/consulting/steps/10-discuss.md",
-    "src/skills/consulting/steps/20-ratify.md",
     "src/skills/debugging/steps/10-reproduce.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
@@ -56,8 +52,6 @@ const PENDING = {
     "src/skills/understanding/steps/30-capture.md",
   ],
   lists: [
-    "src/skills/consulting/steps/10-discuss.md",
-    "src/skills/consulting/steps/20-ratify.md",
     "src/skills/debugging/steps/20-localize.md",
     "src/skills/debugging/steps/30-diagnose.md",
     "src/skills/explaining/steps/20-walk.md",

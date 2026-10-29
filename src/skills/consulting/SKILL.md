@@ -4,11 +4,13 @@ description: >
   Strategic and domain-driven design discussion in the main session: frame the question,
   weigh the real alternatives with what each gains and gives up, recommend one direction,
   name the unknowns, and write the charter, strategic decision record or context map only
-  when asked. Use when the user asks "should we", "which approach", "build or buy", "where
-  does this boundary go", "is this a separate context", "what is the strategy for", or wants
-  a thinking partner before any design. Tactical questions (how to structure this module)
-  go to `picket:ordering` or `picket:designing`.
-user-invocable: true
+  when asked.
+when_to_use: >
+  Use when the user asks "should we", "which approach", "build or buy", "where does this
+  boundary go", "is this a separate context", "what is the strategy for", or wants a thinking
+  partner before any design. Tactical questions (how to structure this module) go to
+  `picket:ordering` or `picket:designing`.
+argument-hint: "[<question>]"
 ---
 
 # Consulting
@@ -17,10 +19,8 @@ Runs in the main session, no spawn: a conversation through a teammate costs a re
 
 ## Steps
 
-| Situation | Read |
-|---|---|
-| a strategic question arrives | `steps/10-discuss.md` |
-| the user says "ratify", "write it up", "make it an SDR / charter / map" | `steps/20-ratify.md` |
+1. A strategic question arrives: read `steps/discuss.md`.
+2. The user says "ratify", "write it up", "make it an SDR / charter / map": read `steps/ratify.md`.
 
 ## Rules
 

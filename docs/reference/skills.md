@@ -141,7 +141,7 @@ The template registry for every structured document Picket writes: orders, desig
 
 **How you reach it.** It is preloaded on the analyst and the architect, so their plans and reports follow it without you asking. Standalone: `/picket:documenting <kind> <subject> [--export]`, or "write a charter", "document the API".
 
-**Where it fits.** It decides the file name, the fixed sections and the audience of each document kind. `--export` also writes a Word file with the bundled styling. Standalone reports land under `artifacts/reports/<slug>.md`.
+**Where it fits.** Its registry fixes the path, the fixed sections and the audience of each document kind, and `picket name <kind> "<subject>"` prints the path, adding a line `exists` when the file is already there. `--export` also writes a Word file with the bundled styling. Standalone reports land under `artifacts/reports/<slug>.md`, strategy documents under `artifacts/strategy/` and API references at `artifacts/api/<slug>.md`.
 
 ## picket:reviewing
 
