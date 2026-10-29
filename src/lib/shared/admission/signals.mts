@@ -31,6 +31,7 @@ const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const DIAGNOSIS = /\b(debug(ging)?|diagnos(e|es|is|ing)|root[- ]cause|find (out )?why)\b|\bwhy (does|do|did|is|are)\b[^?!\n]*\b(fail\w*|crash\w*|throw\w*|errors?|flaky|hang\w*|regress\w*|wrong)/i;
 const CHANGE_VERB = /(?:^|[.;:!?,]\s*|\b(?:and|then|to|please|also)\s+)(fix|add|change|log|rename|implement|remove|refactor|update|replace|delete|patch|make|correct|resolve|write|adjust|modify|edit)\b/i;
+const OPENS_WITH_CHANGE = /^\s*(fix|add|change|implement|remove|refactor|update|replace|delete|patch|correct|resolve|adjust|modify|edit|rename|convert|move)\b/i;
 const NO_CODE_CHANGES = /\bno code changes?\b|\bproduct code untouched\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
@@ -84,7 +85,7 @@ export function signalsOf(text: string, mentioned: string[], touched: string[], 
     mentioned_paths: mentioned,
     touched: touched.length,
     declared_research: declaredResearch,
-    research: (declaredResearch || (RESEARCH.test(text) && !SMALL_CHANGE.test(text))) && !NEW_SURFACE.test(text),
+    research: (declaredResearch || (RESEARCH.test(text) && !SMALL_CHANGE.test(text) && !OPENS_WITH_CHANGE.test(text))) && !NEW_SURFACE.test(text),
     security: touchesSecurity(pathHits, text, securityPaths),
     security_path_hits: pathHits,
     migration: MIGRATION.test(text),

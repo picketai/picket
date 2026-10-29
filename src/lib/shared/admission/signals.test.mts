@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { forcedLane, mentionedPaths } from "./signals.mts";
+import { forcedLane, mentionedPaths, signalsOf } from "./signals.mts";
 import { withProject } from "#test/project.mts";
 
 function existsIn(t: TestContext): (path: string) => boolean {
@@ -36,4 +36,11 @@ test("a quoted or backticked lane directive is a mention and forces nothing", ()
     "The docs tell users to write “lane: order” on its own line.",
     "Show the override:\n```\nlane: fast\n```",
   ]) assert.equal(forcedLane(p), undefined, p);
+});
+
+test("a request that opens with a change verb is not research because it mentions a report", () => {
+  assert.equal(signalsOf("Implement the lint over artifacts/reports and the report template.", [], [], []).research, false);
+  assert.equal(signalsOf("Update the report schema check to cap findings at 50.", [], [], []).research, false);
+  assert.equal(signalsOf("Write a report on how pricing picks the tier.", [], [], []).research, true);
+  assert.equal(signalsOf("How does the report get its findings count?", [], [], []).research, true);
 });
