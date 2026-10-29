@@ -40,3 +40,4 @@ Source list: `artifacts/reports/instructions-candidates-2026-10-25.md`, walked t
 | 12 | [The agents](12-agents.md) | approved 2026-10-29 |
 | 13 | [The lane skills](13-lane-skills.md) | approved 2026-10-29 |
 | 14 | [The reviewing skill](14-reviewing.md) | approved 2026-10-29 |
+| 15 | [Documenting and consulting](15-documenting-and-consulting.md) | approved 2026-10-29 |

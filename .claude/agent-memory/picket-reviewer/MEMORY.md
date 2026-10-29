@@ -1,6 +1,6 @@
 - [Review summary drops .claude paths](review-summary-drops-claude-paths.md) — in this harness repo, review the full git range; changed_files omits .claude/**
 - [Probe guards directly](probe-guards-directly.md) — import guardBash via node -e; probe wrapped writes and aliases as agent and lead
-- [dist on disk can be stale](dist-on-disk-can-be-stale.md) — build in memory with esbuild write:false; grep bare path words after a move
+- [dist on disk can be stale](dist-on-disk-can-be-stale.md) — build in memory with esbuild write:false, or run src .mts with strip-types; grep bare path words after a move
 - [Probe append after a bad line](probe-append-after-bad-line.md) — JSONL skip fixes: drive one write after a truncated line, check bytes
 - [Prove test moves by script](prove-test-moves-by-script.md) — names, verbatim asserts, literals plus expected value, per-test counts via node -e
 - [Probe links at parent segments](probe-links-at-parent-segments.md) — removers checking only the leaf delete through a linked .picket or .claude
