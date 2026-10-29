@@ -31,7 +31,8 @@ test("work item paths sit under work/<id> (T-1.3)", () => {
 });
 
 test("the closed lists hold the work item files and phase markers", () => {
-  assert.equal(WORK_FILES.length, 13);
-  assert.equal(new Set(WORK_FILES).size, 13);
+  assert.equal(WORK_FILES.length, 15);
+  assert.equal(new Set(WORK_FILES).size, 15);
+  assert.ok(WORK_FILES.includes("summary.json") && WORK_FILES.includes("preflight.txt"));
   assert.deepEqual([...MARKERS], ["done", "approved", "reviewed", "block.md"]);
 });

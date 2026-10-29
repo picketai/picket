@@ -279,7 +279,7 @@ picket style remove [--all [--dry-run]] [--yes]
 Summarize a work item's diff, or a commit range, for the reviewer.
 
 ```sh
-picket summary <id> [--base <ref>] | summary --range <base>..<head>
+picket summary <id> [--base <ref>] [--scope <s>] [--save] | summary --range <base>..<head>
 ```
 
 ## picket uninstall

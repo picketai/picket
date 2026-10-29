@@ -1,9 +1,10 @@
+import { rmSync, writeFileSync } from "node:fs";
 import { action, done, failed } from "../../shared/action.mts";
 import { loadConfig } from "../../shared/config.mjs";
 import { branch, dirtyPaths, isRepo } from "../../shared/git.mts";
 import { detectTooling, type Tooling } from "../../shared/tooling.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { workId, type WorkId } from "../../shared/work/files.mts";
+import { workFile, workId, type WorkId } from "../../shared/work/files.mts";
 import { readSnapshot, stateView, type StateView } from "../../shared/work/snapshot.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 import { CHECKS, type Check, type GitFacts, type PreflightInput } from "./checks.mts";
@@ -31,7 +32,19 @@ export function preflight(root: string, id: WorkId, { home, env, platform }: Mac
   if ("error" in item) return { ok: false, checks: [{ name: "work_item", level: "fail", detail: item.error }], tooling: null };
   const input: PreflightInput = { root, ...item, config: loadConfig(root, env), tooling: detectTooling(root), git: gitFacts(root), home, env, platform };
   const checks = CHECKS.flatMap((check) => check(input) ?? []);
+  saveWarnings(root, id, checks);
   return { ok: !checks.some((c) => c.level === "fail"), checks, tooling: input.tooling.tooling, state: input.view };
+}
+
+function checkLine(c: Check): string {
+  return `${c.level.padEnd(4)} ${c.name}: ${c.detail}`;
+}
+
+function saveWarnings(root: string, id: WorkId, checks: Check[]): void {
+  const path = workFile(root, id, "preflight.txt");
+  const warnings = checks.filter((c) => c.level === "warn").map(checkLine);
+  if (warnings.length) writeFileSync(path, `${warnings.join("\n")}\n`);
+  else rmSync(path, { force: true });
 }
 
 export const preflightReport = action<PreflightArgs, PreflightReport>(async ({ id }, { root, home, env, platform }) => {
@@ -46,7 +59,7 @@ function parsePreflight(args: Args): PreflightArgs {
 }
 
 function renderPreflight(v: PreflightReport): string {
-  return v.checks.map((c) => `${c.level.padEnd(4)} ${c.name}: ${c.detail}`).join("\n") + `\n${v.ok ? "PREFLIGHT OK" : "PREFLIGHT FAILED"}`;
+  return v.checks.map(checkLine).join("\n") + `\n${v.ok ? "PREFLIGHT OK" : "PREFLIGHT FAILED"}`;
 }
 
 export const verb: VerbSpec<PreflightArgs, PreflightReport> = {

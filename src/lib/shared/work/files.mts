@@ -18,6 +18,8 @@ export const WORK_FILES = [
   "sources.yaml",
   "repos.yaml",
   "mutation.json",
+  "summary.json",
+  "preflight.txt",
 ] as const;
 
 export type WorkFile = (typeof WORK_FILES)[number];

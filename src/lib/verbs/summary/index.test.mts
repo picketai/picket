@@ -1,17 +1,19 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { itemSummary, rangeSummary, verb, type RepoReport } from "./index.mts";
 import { branchingManifestPath } from "../../shared/paths.mts";
 import { nestedRepos, readBases } from "../../shared/repos.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { appendWaiver } from "../../shared/work/approvals.mts";
+import { setMarker } from "../../shared/work/markers.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { mutate } from "../mutate/index.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
+import { fixedContext } from "#test/context.mts";
 
 const ITEM = { base: undefined, env: process.env, platform: process.platform };
 
@@ -42,11 +44,41 @@ const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
 test("summary reads an id with an optional base, or a range, and refuses a malformed range", () => {
-  assert.deepEqual(parse([ID, "--base", "HEAD"]), { id: ID, base: "HEAD" });
+  assert.deepEqual(parse([ID, "--base", "HEAD"]), { id: ID, base: "HEAD", scope: undefined, save: false });
   assert.deepEqual(parse(["--range", "HEAD~1..HEAD"]), { range: { base: "HEAD~1", head: "HEAD" } });
   assert.deepEqual(parse(["--range", "a...b"]), { range: { base: "a", head: "b" } });
   assert.throws(() => parse(["--range", "nope"]), UsageError);
   assert.throws(() => parse([]), UsageError);
+});
+
+test("summary reads --scope and --save for an item and refuses --save on a range and an unknown scope", () => {
+  assert.deepEqual(parse([ID, "--scope", "checkpoint", "--save"]), { id: ID, base: undefined, scope: "checkpoint", save: true });
+  assert.throws(() => parse(["--range", "a..b", "--save"]), /--save needs a work item id/);
+  assert.throws(() => parse([ID, "--scope", "everything"]), /--scope is one of phase, checkpoint, cumulative, crosscheck/);
+});
+
+test("the item summary carries its scope and checklists, and --save writes the same value to summary.json", async (t) => {
+  const root = gitRepo(t, { host: true, branch: "trunk", files: { "a.ts": "a\n" }, message: "a" });
+  const id = open(root, "order", "Saved");
+  writeFileSync(join(root, "a.ts"), "b\n");
+  const summary = itemSummary(root, id, ITEM);
+  assert.equal(summary.scope, "phase");
+  assert.ok(summary.checklists.some((c) => c.path.endsWith("12-bar.md")));
+  assert.equal(itemSummary(root, id, { ...ITEM, scope: "cumulative" }).checklists[2].path.endsWith("15-traced.md"), true);
+  const ctx = fixedContext(root, { env: process.env });
+  const result = await verb.run({ id, base: undefined, save: true }, ctx);
+  assert.equal(result.status, "done");
+  assert.ok("value" in result);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, "work", id, "summary.json"), "utf8")), JSON.parse(JSON.stringify(result.value)));
+});
+
+test("an item at review_cumulative defaults to the cumulative scope", (t) => {
+  const root = gitRepo(t, { host: true, branch: "trunk", files: { "a.ts": "a\n" }, message: "a" });
+  const id = open(root, "order", "Reviewed");
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n");
+  setMarker(root, id, 1, "done", new Date());
+  setMarker(root, id, 1, "approved", new Date());
+  assert.equal(itemSummary(root, id, ITEM).scope, "cumulative");
 });
 
 test("a modified file in a nested repo is listed by its path, not as the repo directory (T-1.1)", (t) => {
@@ -176,7 +208,7 @@ test("with no extension enabled, extension_steps is empty and the summary keeps 
   changeFiles(root, 2);
   const summary = itemSummary(root, id, ITEM);
   assert.deepEqual(summary.extension_steps, []);
-  assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources", "silenced", "mutation"]);
+  assert.deepEqual(Object.keys(summary), ["work_id", "base", "request", "size", "changed_files", "lines_added", "lines_removed", "frameworks", "concerns", "security_path", "extension_steps", "phases", "repos", "sources", "silenced", "mutation", "scope", "checklists"]);
   assert.equal(summary.mutation, null, "no mutation.json, no mutation");
 });
 
