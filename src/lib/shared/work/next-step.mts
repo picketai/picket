@@ -1,4 +1,5 @@
 import { ownGate, type Gate } from "./gate.mts";
+import { freshReplies } from "./replies.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
 import { ARTIFACT_BY_LANE, type Lane } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
@@ -38,8 +39,14 @@ function cumulativeRejectionsSinceApproval(verdicts: readonly VerdictRow[]): num
   return verdicts.slice(lastApproval + 1).filter(isCumulativeRejection).length;
 }
 
+function freshAfterRejection(snap: WorkSnapshot): boolean {
+  const rejection = snap.verdicts.at(-1);
+  const fresh = freshReplies(snap.replies).at(-1);
+  return rejection !== undefined && fresh !== undefined && Date.parse(fresh.ts) > Date.parse(rejection.ts);
+}
+
 function rejectionsStep(snap: WorkSnapshot): NextStep | null {
-  if (!isCumulativeRejection(snap.verdicts.at(-1))) return null;
+  if (!isCumulativeRejection(snap.verdicts.at(-1)) || freshAfterRejection(snap)) return null;
   const rejections = cumulativeRejectionsSinceApproval(snap.verdicts);
   if (rejections % STALL_REPEATS !== 0) return null;
   return { action: "resolve_rejections", actor: "user", detail: `${rejections} cumulative reviews returned CHANGES REQUIRED since the last approval`, options: STALL_OPTIONS };

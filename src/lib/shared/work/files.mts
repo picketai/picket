@@ -20,6 +20,7 @@ export const WORK_FILES = [
   "mutation.json",
   "summary.json",
   "preflight.txt",
+  "replies.jsonl",
 ] as const;
 
 export type WorkFile = (typeof WORK_FILES)[number];

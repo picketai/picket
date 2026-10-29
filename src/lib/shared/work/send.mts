@@ -1,6 +1,7 @@
 import type { AgentType, SendView } from "../views.mts";
 import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
+import { freshReplies } from "./replies.mts";
 import { phaseOf, type WorkSnapshot } from "./snapshot.mts";
 import { ARTIFACT_BY_LANE } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
@@ -16,12 +17,22 @@ const isReviewer = (row: VerdictRow) => row.agent === "reviewer";
 const INSTANCES = {
   analyst: { to: "analyst", type: "picket:analyst", owns: (row) => row.agent === "analyst" },
   architect: { to: "architect", type: "picket:architect", owns: (row) => row.agent === "architect" },
-  developer: { to: "developer", type: "picket:developer", owns: (row) => row.agent === "developer" },
   reviewer: { to: "reviewer", type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope !== "cumulative" },
   cumulative: { to: "cumulative-reviewer", type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope === "cumulative" },
 } satisfies Record<string, Instance>;
 
 export const NO_FILES: HasFile = () => false;
+
+export function developerName(snap: WorkSnapshot): string {
+  const fresh = freshReplies(snap.replies).length;
+  return fresh === 0 ? "developer" : `developer-${1 + fresh}`;
+}
+
+function developer(snap: WorkSnapshot): Instance {
+  const since = freshReplies(snap.replies).at(-1)?.ts;
+  const isCurrent = (row: VerdictRow) => since === undefined || Date.parse(row.ts) > Date.parse(since);
+  return { to: developerName(snap), type: "picket:developer", owns: (row) => row.agent === "developer" && isCurrent(row) };
+}
 
 function isLive(snap: WorkSnapshot, instance: Instance, session: string | null): boolean {
   return session !== null && snap.verdicts.some((row) => row.session === session && instance.owns(row));
@@ -64,14 +75,14 @@ function needsCrosscheck(snap: WorkSnapshot): boolean {
 
 function implementSends(snap: WorkSnapshot, phase: number, session: string | null): SendView[] {
   const through = snap.state.run_through;
-  const developer = send(snap, INSTANCES.developer, session, (tool) => [
+  const implementer = send(snap, developer(snap), session, (tool) => [
     workLine(snap),
     `phase: ${phase}`,
     ...(tool === "Agent" ? [artifactLine(snap)] : []),
     ...(through !== undefined && through >= phase ? [`run through ${through}`] : []),
   ]);
-  if (!needsCrosscheck(snap)) return [developer];
-  return [developer, send(snap, INSTANCES.reviewer, session, () => [workLine(snap), "scope: crosscheck", artifactLine(snap)])];
+  if (!needsCrosscheck(snap)) return [implementer];
+  return [implementer, send(snap, INSTANCES.reviewer, session, () => [workLine(snap), "scope: crosscheck", artifactLine(snap)])];
 }
 
 function summaryLines(snap: WorkSnapshot): string[] {
@@ -103,7 +114,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "review_cumulative":
       return [cumulativeSend(snap, session)];
     case "fix_findings":
-      return [send(snap, INSTANCES.developer, session, () => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`])];
+      return [send(snap, developer(snap), session, (tool) => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`, ...(tool === "Agent" ? [artifactLine(snap)] : [])])];
     case "amend":
       return [send(snap, INSTANCES.architect, session, () => [workLine(snap), `amend: ${step.detail}`])];
     default:

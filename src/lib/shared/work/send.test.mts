@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { NextStep } from "./next-step.mts";
+import { nextStep, type NextStep } from "./next-step.mts";
+import type { ReplyRow } from "./replies.mts";
 import { sendsFor } from "./send.mts";
 import { snapshotOf, type SnapshotInput } from "#test/snapshot.mts";
 
@@ -11,8 +12,12 @@ function sends(input: SnapshotInput, step: NextStep, session: string | null = S,
   return sendsFor(snapshotOf(input), step, session, (name) => files.includes(name));
 }
 
-function verdictRow(agent: string, verdict: string, scope: string | null, session?: string) {
-  return { ts: "2026-10-23T10:00:00.000Z", agent, verdict, phase: 1, scope, through: null, ...(session ? { session } : {}) };
+function verdictRow(agent: string, verdict: string, scope: string | null, session?: string, ts = "2026-10-23T10:00:00.000Z") {
+  return { ts, agent, verdict, phase: 1, scope, through: null, ...(session ? { session } : {}) };
+}
+
+function freshReply(ts: string): ReplyRow {
+  return { ts, session: S, action: "resolve_block", phase: 1, reply: "c", fresh: true };
 }
 
 const implement = (phase: number): NextStep => ({ action: "implement_phase", actor: "developer", phase, detail: "d" });
@@ -78,8 +83,10 @@ test("checkpoint, findings and amendment sends carry their lines; user, lead and
     { tool: "Agent", to: "reviewer", type: "picket:reviewer", first: [`picket summary ${ID} --save`], message: `work: ${ID}\nscope: checkpoint\nphase: 3\nsummary: work/${ID}/summary.json` },
   ]);
   assert.deepEqual(sends({ phases }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" }), [
-    { tool: "Agent", to: "developer", type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md` },
+    { tool: "Agent", to: "developer", type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
   ]);
+  const continued = sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" });
+  assert.equal(continued[0].message, `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md`);
   assert.deepEqual(sends({ phases }, { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-002 x" }), [
     { tool: "Agent", to: "architect", type: "picket:architect", message: `work: ${ID}\namend: AMENDMENT NEEDED: D-002 x` },
   ]);
@@ -90,4 +97,37 @@ test("checkpoint, findings and amendment sends carry their lines; user, lead and
     { action: "none", actor: null, detail: "d" },
   ];
   for (const step of silent) assert.deepEqual(sends({ phases }, step), [], step.action);
+});
+
+test("each fresh developer reply names the next instance, developer-2 first, spawned with the artifact", () => {
+  const phases = [{ n: 1 }];
+  assert.equal(sends({ phases }, implement(1))[0].to, "developer");
+  const [second] = sends({ phases, replies: [freshReply("2026-10-23T11:00:00.000Z")] }, implement(1));
+  assert.deepEqual([second.to, second.tool], ["developer-2", "Agent"]);
+  assert.match(second.message, /^artifact: /m);
+  const third = sends({ phases, replies: [freshReply("2026-10-23T11:00:00.000Z"), freshReply("2026-10-23T12:00:00.000Z")] }, implement(1));
+  assert.equal(third[0].to, "developer-3");
+});
+
+test("after three cumulative rejections and a fresh reply, developer-2 is spawned to fix the findings with the review and the artifact", () => {
+  const input: SnapshotInput = {
+    phases: [{ n: 1, done: true, approved: true }],
+    verdicts: Array.from({ length: 3 }, () => verdictRow("reviewer", "CHANGES REQUIRED", "cumulative", S)),
+    replies: [freshReply("2026-10-23T11:00:00.000Z")],
+  };
+  const snap = snapshotOf(input);
+  const step = nextStep(snap, []);
+  assert.equal(step.action, "fix_findings");
+  assert.deepEqual(sendsFor(snap, step, S), [
+    { tool: "Agent", to: "developer-2", type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
+  ]);
+});
+
+test("a fresh developer is continued only by a developer row of this session after the fresh reply", () => {
+  const phases = [{ n: 1 }];
+  const replies = [freshReply("2026-10-23T11:00:00.000Z")];
+  const before = verdictRow("developer", "PHASE STALLED", null, S, "2026-10-23T10:30:00.000Z");
+  const after = verdictRow("developer", "PHASE DONE", null, S, "2026-10-23T11:30:00.000Z");
+  assert.equal(sends({ phases, replies, verdicts: [before] }, implement(1))[0].tool, "Agent");
+  assert.equal(sends({ phases, replies, verdicts: [before, after] }, implement(1))[0].tool, "SendMessage");
 });

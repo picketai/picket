@@ -124,6 +124,16 @@ test("a third drift with an amendment pending is a stall the user decides", () =
   assert.deepEqual(next.options, STALL_OPTIONS);
 });
 
+test("a fresh developer after three cumulative rejections ends the stop and fixes the findings; without one the stop holds", () => {
+  const phases = numbered(2, { done: true, approved: true });
+  const rejections = [row("approved"), ...times(3, "CHANGES REQUIRED", "cumulative")];
+  const fresh = { ts: "2026-10-23T11:00:00.000Z", action: "resolve_rejections", phase: null, reply: "c", fresh: true } as const;
+  assert.equal(step({ phases, verdicts: rejections, replies: [fresh] }).action, "fix_findings");
+  assert.equal(step({ phases, verdicts: rejections }).action, "resolve_rejections");
+  const older = { ...fresh, ts: "2026-10-23T09:00:00.000Z" };
+  assert.equal(step({ phases, verdicts: rejections, replies: [older] }).action, "resolve_rejections");
+});
+
 test("a fast or research item never stops on cumulative rejections", () => {
   const verdicts = times(3, "CHANGES REQUIRED", "cumulative");
   assert.equal(step({ lane: "fast", verdicts }).action, "close");

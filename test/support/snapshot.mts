@@ -1,6 +1,7 @@
 import { ARTIFACT_BY_LANE, type WorkState } from "../../src/lib/shared/work/state.mts";
 import type { PhaseStatus, SnapshotArtifact, WorkSnapshot } from "../../src/lib/shared/work/snapshot.mts";
 import type { VerdictRow } from "../../src/lib/shared/work/verdict-log.mts";
+import type { ReplyRow } from "../../src/lib/shared/work/replies.mts";
 import type { AmbiguousRef } from "../../src/lib/shared/sources/resolve.mts";
 
 const PROBE_TIME = "2026-10-23T10:00:00.000Z";
@@ -10,6 +11,7 @@ export type SnapshotInput = Partial<Omit<WorkState, "id">> & {
   id?: string;
   phases?: PhaseInput[];
   verdicts?: Partial<VerdictRow>[];
+  replies?: ReplyRow[];
   ambiguousRefs?: AmbiguousRef[];
   warnings?: string[];
   artifact?: SnapshotArtifact | null;
@@ -24,13 +26,14 @@ function defaultArtifact(state: WorkState): SnapshotArtifact | null {
   return expected ? { path: `/probe/work/${state.id}/${expected}`, expected, body: "" } : null;
 }
 
-export function snapshotOf({ phases = [], verdicts = [], ambiguousRefs = [], warnings = [], artifact, ...fields }: SnapshotInput = {}): WorkSnapshot {
+export function snapshotOf({ phases = [], verdicts = [], replies = [], ambiguousRefs = [], warnings = [], artifact, ...fields }: SnapshotInput = {}): WorkSnapshot {
   const state = { id: "20261023-probe", lane: "order", title: "Probe", status: "open", created: PROBE_TIME, updated: PROBE_TIME, ...fields } as WorkState;
   return {
     state,
     artifact: artifact === undefined ? defaultArtifact(state) : artifact,
     phases: phases.map(phaseStatus),
     verdicts: verdicts as VerdictRow[],
+    replies,
     ambiguousRefs,
     warnings,
   };

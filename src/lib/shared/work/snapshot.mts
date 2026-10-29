@@ -5,6 +5,7 @@ import type { PhaseView as WirePhaseView, StateView as WireStateView } from "../
 import { parseArtifact, type ArtifactPhase } from "./artifact.mts";
 import { workFile, type WorkFile, type WorkId } from "./files.mts";
 import { hasMarker } from "./markers.mts";
+import { readReplies, type ReplyRow } from "./replies.mts";
 import { ARTIFACT_BY_LANE, readState, type WorkState } from "./state.mts";
 import { readVerdicts, type VerdictRow } from "./verdict-log.mts";
 
@@ -16,6 +17,7 @@ export type WorkSnapshot = {
   artifact: SnapshotArtifact | null;
   phases: PhaseStatus[];
   verdicts: VerdictRow[];
+  replies: ReplyRow[];
   ambiguousRefs: AmbiguousRef[];
   warnings: string[];
 };
@@ -42,22 +44,24 @@ function withMarkers(root: string, id: WorkId, phase: ArtifactPhase): PhaseStatu
   return { ...phase, done: hasMarker(root, id, phase.n, "done"), approved: hasMarker(root, id, phase.n, "approved"), reviewed: hasMarker(root, id, phase.n, "reviewed") };
 }
 
-function skippedWarning(skipped: number): string[] {
+function skippedWarning(file: WorkFile, skipped: number): string[] {
   if (!skipped) return [];
-  return [`verdicts.jsonl: ${skipped} unreadable ${skipped === 1 ? "line" : "lines"} skipped`];
+  return [`${file}: ${skipped} unreadable ${skipped === 1 ? "line" : "lines"} skipped`];
 }
 
 export function readSnapshot(root: string, id: WorkId): WorkSnapshot {
   const state = readState(root, id);
   const read = readArtifactFile(root, id, ARTIFACT_BY_LANE[state.lane]);
   const verdicts = readVerdicts(root, id);
+  const replies = readReplies(root, id);
   return {
     state,
     artifact: read?.artifact ?? null,
     phases: (read?.phases ?? []).map((phase) => withMarkers(root, id, phase)),
     verdicts: verdicts.rows,
+    replies: replies.rows,
     ambiguousRefs: ambiguousRefs(root, id),
-    warnings: skippedWarning(verdicts.skipped),
+    warnings: [...skippedWarning("verdicts.jsonl", verdicts.skipped), ...skippedWarning("replies.jsonl", replies.skipped)],
   };
 }
 
