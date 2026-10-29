@@ -1,9 +1,9 @@
 id: 20261029-structure-tests-for-agents-and-skills
 lane: order
 title: Structure tests for agents and skills
-status: open
+status: done
 created: 2026-10-29T07:02:14.161Z
-updated: 2026-10-29T07:18:23.090Z
+updated: 2026-10-29T07:30:30.828Z
 session: 43b73270-9af6-4c2f-be1b-deb7965a4c6c
 base: 3fa610ccf292118a6f7dd9dc81ddbe9fbf99b0d7
 run_through: 3
