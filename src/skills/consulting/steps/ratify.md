@@ -7,7 +7,7 @@ Only on the user's word ("ratify", "write it up", "make it an SDR"). Pick the ar
 | a subdomain's investment posture, a build-or-buy, a relationship pattern | `../documenting/templates/sdr.md` | `picket name sdr "<subject>"` |
 | a bounded context's purpose, language, ownership | `../documenting/templates/charter.md` | `picket name charter "<context>"` |
 | how contexts relate | `../documenting/templates/context-map.md` | `picket name context-map "<scope>"` |
-| a term | `../documenting/templates/glossary.md` | `picket name glossary "<term>"`, or the `.claude/MEMORY.md` glossary section for a short entry |
+| a term | `../documenting/templates/glossary.md` | `picket name glossary "<term>"` (under `artifacts/strategy/glossary/`), with the short entry in `.claude/MEMORY.md` pointing to the file; or that glossary section alone for a short entry |
 
 1. Run the path column's `picket name <kind> "<subject>"` for the path; an `exists` line under it means update that file.
 2. Read the template.

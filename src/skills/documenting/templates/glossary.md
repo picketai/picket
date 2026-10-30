@@ -12,7 +12,7 @@ confidence: high
 
 # [REPLACE: Term]
 
-<!-- location: this work item's directory, or artifacts/<kind>/<term-slug>.md. <term-slug> is the lowercased, hyphen-joined term. When one word means different things in different bounded contexts, write one file per (term, context) pair as <term>-in-<context>.md; never merge context-distinct meanings. -->
+<!-- location: artifacts/strategy/glossary/<term-slug>.md (from picket name glossary "<term>"). <term-slug> is the lowercased, hyphen-joined term. When one word means different things in different bounded contexts, write one file per (term, context) pair as <term>-in-<context>.md; never merge context-distinct meanings. -->
 <!-- one entry per term-meaning, updated in place when the definition is refined -->
 <!-- cap: at most 40 lines of body. Past 40 the entry has become a design note: move the long content to a charter, SDR or report and keep definition, distinguished-from, aliases, related terms and anti-examples here. -->
 <!-- index: after every write, add or replace one line in INDEX.md beside this file and re-sort the file alphabetically by term:

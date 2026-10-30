@@ -27,6 +27,8 @@ const ELSEWHERE = [
       ".picket/state/scratch/",
       ".picket/state/scratch/drive.mjs",
       ".worktrees/",
+      "artifacts/strategy/glossary/",
+      "artifacts/strategy/glossary/INDEX.md",
       "bench/.runs/",
       "bench/results/spend.log",
     ],

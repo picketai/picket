@@ -13,6 +13,7 @@ The single output is `.claude/MEMORY.md` at project root, the project's shared g
 
 **{Term}**:
 {One or two sentence definition of what it IS, not what it does.}
+Pointer: {one path or command, no explanation}
 _Avoid_: {alias-1}, {alias-2}
 
 ## Flagged ambiguities
@@ -33,6 +34,7 @@ _Avoid_: {alias-1}, {alias-2}
 5. Group under subheadings only when natural clusters emerge.
 6. Never overwrite an existing entry silently. On conflict with an existing entry, surface it to the user and reconcile before writing.
 7. Never write implementation detail, code, or specs here, and never batch updates.
+8. The `Pointer:` line is optional. A term that needs more than this short shape (distinguished-from, anti-examples, per-context meanings) gets a long entry under `artifacts/strategy/glossary/` through the term row of `steps/ratify.md`, on the user's word like every ratification. Its short entry here keeps the definition and a `Pointer:` to that file. Once `artifacts/strategy/glossary/INDEX.md` exists, `## Language` carries one line pointing to it.
 
 ## Closing summary
 
