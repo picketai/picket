@@ -1,0 +1,66 @@
+{
+  "work_id": "20261030-backticked-review-flags-are-not-flags",
+  "base": "bf68998fc899c9f583419ca22638b072c99cd03a",
+  "request": "work/20261030-backticked-review-flags-are-not-flags/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/lib/shared/work/artifact.mts",
+    "src/lib/shared/work/artifact.test.mts",
+    "src/lib/shared/work/report.mts",
+    "src/lib/shared/work/report.test.mts"
+  ],
+  "lines_added": 142,
+  "lines_removed": 4,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 1,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-10-30T09:06:24.386Z",
+    "base": "bf68998fc899c9f583419ca22638b072c99cd03a",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "no candidate",
+    "rebuild": null,
+    "ms": 76792
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
