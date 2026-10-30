@@ -5,7 +5,7 @@ import { setMarker } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
 import { isSessionId, writeState, type WorkState } from "../work/state.mts";
 import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
-import { commitPhase } from "./commit.mts";
+import { commitCheckouts, commitPhase } from "./commit.mts";
 import type { Change } from "./plan.mts";
 
 export type ApplyOptions = { now: Date; env: NodeJS.ProcessEnv; session: string | null | undefined; row: VerdictEntry };
@@ -58,14 +58,39 @@ function appliedLine(change: Change): string | null {
   return change.kind === "commit" || change.kind === "publish" ? null : change.line;
 }
 
-export function applyChanges(root: string, snap: WorkSnapshot, changes: Change[], { now, env, session, row }: ApplyOptions): string[] {
+type CommitChange = Extract<Change, { kind: "commit" }>;
+
+function isCommitChange(change: Change): change is CommitChange {
+  return change.kind === "commit";
+}
+
+function grantsRun(change: Change): boolean {
+  return isStateChange(change) && change.set !== undefined && "run_through" in change.set;
+}
+
+function withoutApproval(changes: Change[], phase: number, refusal: string): Change[] {
+  const approves = (change: Change) => change.kind === "marker" && change.phase === phase && change.mark === "approved";
+  const kept = changes.filter((change) => !approves(change) && !isCommitChange(change) && !grantsRun(change));
+  return [...kept, { kind: "state", unset: ["run_through"], line: null }, { kind: "note", line: refusal }];
+}
+
+function commitNestedFirst(root: string, snap: WorkSnapshot, changes: Change[], env: NodeJS.ProcessEnv): { changes: Change[]; lines: string[] } {
+  const commit = changes.find(isCommitChange);
+  if (!commit) return { changes, lines: [] };
+  const { lines, refused } = commitCheckouts(root, snap, commit.phase, env);
+  return refused ? { changes: withoutApproval(changes, commit.phase, refused), lines } : { changes, lines };
+}
+
+export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[], { now, env, session, row }: ApplyOptions): string[] {
   const id = snap.state.id;
+  const nested = commitNestedFirst(root, snap, planned, env);
+  const changes = nested.changes;
   const published = changes.filter(isPublishChange).map((change) => publish(root, id, change));
   for (const change of changes) if (change.kind === "marker") setMarker(root, id, change.phase, change.mark, now);
   const state = changedState(snap.state, changes, session);
   if (state) writeState(root, state, now);
   appendVerdict(root, id, row, now);
-  const applied = [...published, ...changes.map(appliedLine).filter((line): line is string => line !== null)];
+  const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null)];
   for (const change of changes) if (change.kind === "commit") applied.push(...commitPhase(root, snap, change.phase, env, now));
   return applied;
 }

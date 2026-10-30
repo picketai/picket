@@ -13,7 +13,9 @@ import { saveBlock } from "../../shared/work/block.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { fixedContext } from "#test/context.mts";
-import { gitAt } from "#test/git.mts";
+import { writeLayout } from "../../shared/repos.mts";
+import { readNext } from "../../shared/work/next-view.mts";
+import { gitAt, umbrella } from "#test/git.mts";
 import { openItem, withProject } from "#test/project.mts";
 
 type Routed = Partial<RouteInput> & { id: WorkId; verdict: string; agent: string; root: string; classes?: string[] };
@@ -416,6 +418,85 @@ test("one PHASE DONE under a run grant reads state.yaml and order.md at most twi
   assert.ok(counts["order.md"] >= 1 && counts["order.md"] <= 2, `order.md read ${counts["order.md"]} times`);
   assert.deepEqual(result.applied.slice(0, 2), ["phases/1.done", "phases/1.approved (run grant through 2)"]);
   assert.ok(result.applied[2].startsWith("committed "), result.applied.join(" | "));
+});
+
+const WORKTREE = "src/Orders/.worktrees/RMS-12";
+const ORDERS_PLAN = "---\nlane: order\nphases:\n  - n: 1\n    files: [src/Orders/pricing.cs]\n  - n: 2\n    files: [src/Orders/fees.cs]\n---\n# O\n\n## Phase 1: Pricing\n\nt\n\n## Phase 2: Fees\n\nt\n";
+
+function worktreeItem(t: TestContext) {
+  const { root, repos } = umbrella(t, { repos: ["Orders"] });
+  const umbrellaGit = gitAt(root);
+  writeFileSync(join(root, ".gitignore"), ".picket/state/\nsrc/Orders/\n");
+  const { id } = openItem(root, { lane: "order", title: "Orders" });
+  writeFileSync(join(root, "work", id, "order.md"), ORDERS_PLAN);
+  umbrellaGit("add", "-A");
+  umbrellaGit("commit", "-q", "-m", "item");
+  const worktree = join(root, WORKTREE);
+  gitAt(repos.Orders)("worktree", "add", "-q", "-b", "RMS-12", worktree);
+  writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: gitAt(worktree)("rev-parse", "HEAD"), worktree: WORKTREE }] });
+  return { root, id, umbrellaGit, worktreeGit: gitAt(worktree), worktree, hook: join(repos.Orders, ".git", "hooks", "pre-commit") };
+}
+
+function refuseCommits(hook: string) {
+  writeFileSync(hook, "#!/bin/sh\necho 'blocked by hook' >&2\nexit 1\n");
+  chmodSync(hook, 0o755);
+}
+
+const nextAction = (root: string, id: WorkId) => readNext(root, id).action;
+
+test("an approval commits the phase in the worktree, then work/ in the umbrella, naming both shas (T-5.1, T-5.2)", (t) => {
+  const { root, id, umbrellaGit, worktreeGit, worktree } = worktreeItem(t);
+  writeFileSync(join(worktree, "pricing.cs"), "class Pricing { int Rate; }\n");
+  writeFileSync(join(worktree, "other.cs"), "class Other {}\n");
+  worktreeGit("add", "--", "pricing.cs", "other.cs");
+  writeFileSync(join(worktree, "notes.txt"), "unstaged\n");
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+
+  const subject = `Pricing, phase 1 of ${id}`;
+  assert.equal(worktreeGit("log", "-1", "--format=%s"), subject);
+  assert.deepEqual(lines(worktreeGit("show", "--name-only", "--format=", "HEAD")), ["pricing.cs"]);
+  assert.ok(r.applied.includes(`committed ${WORKTREE} ${worktreeGit("rev-parse", "--short", "HEAD")}: ${subject}`), r.applied.join(" | "));
+  assert.ok(r.applied.includes(`committed ${umbrellaGit("rev-parse", "--short", "HEAD")}: ${subject}`), r.applied.join(" | "));
+  assert.ok(lines(umbrellaGit("show", "--name-only", "--format=", "HEAD")).includes(`work/${id}/phases/1.approved`));
+  assert.ok(r.applied.includes(`left staged in ${WORKTREE}, not phase 1's: other.cs`), r.applied.join(" | "));
+  assert.equal(worktreeGit("diff", "--cached", "--name-only"), "other.cs");
+  assert.match(worktreeGit("status", "--porcelain"), /^\?\? notes\.txt$/m);
+});
+
+test("a worktree that refuses the commit leaves the phase unapproved, and a retry after the fix commits both (T-5.3, T-5.4)", (t) => {
+  const { root, id, umbrellaGit, worktreeGit, worktree, hook } = worktreeItem(t);
+  refuseCommits(hook);
+  writeFileSync(join(worktree, "pricing.cs"), "class Pricing { int Rate; }\n");
+  worktreeGit("add", "--", "pricing.cs");
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  const before = umbrellaGit("rev-parse", "HEAD");
+  const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  assert.ok(r.applied.includes(`${WORKTREE} refused the commit: blocked by hook`), r.applied.join(" | "));
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), false);
+  assert.equal(umbrellaGit("rev-parse", "HEAD"), before);
+  assert.equal(nextAction(root, id), "approve_phase");
+
+  fs.rmSync(hook);
+  const retried = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  assert.ok(retried.applied.some((line) => line.startsWith(`committed ${WORKTREE} `)), retried.applied.join(" | "));
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), true);
+  assert.notEqual(umbrellaGit("rev-parse", "HEAD"), before);
+});
+
+test("under a run grant a worktree refusal unsets the grant and leaves the phase at approve_phase (T-5.5)", (t) => {
+  const { root, id, worktreeGit, worktree, hook } = worktreeItem(t);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  route({ id, verdict: "approved", agent: "user", phase: 1, through: 2, root });
+  assert.equal(readState(root, id).run_through, 2);
+  refuseCommits(hook);
+  writeFileSync(join(worktree, "fees.cs"), "class Fees {}\n");
+  worktreeGit("add", "--", "fees.cs");
+  const r = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.ok(r.applied.includes(`${WORKTREE} refused the commit: blocked by hook`), r.applied.join(" | "));
+  assert.equal(readState(root, id).run_through, undefined);
+  assert.equal(existsSync(join(root, "work", id, "phases", "2.approved")), false);
+  assert.deepEqual([nextAction(root, id), readNext(root, id).phase], ["approve_phase", 2]);
 });
 
 test("an approval that grants a run and claims a new session writes state.yaml once", (t) => {

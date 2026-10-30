@@ -6,6 +6,7 @@ import { basename, join } from "node:path";
 import { cut, packet, WIDTH } from "../../dist/lib/verbs/packet/packet.mjs";
 import { blockFiles, parseBlock, saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { setMarker } from "../../dist/lib/shared/work/markers.mjs";
+import { writeLayout } from "../../dist/lib/shared/repos.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 
 // The block the user's screenshot came from, in the developer's contract shape.
@@ -60,6 +61,22 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   assert.match(text, /^  commit {4}3f9c2a1 \(staged; approval commits it\)$/m);
   assert.equal(lines.at(-1), "[a] approve   [r] run through 2   [x] reject: <why>");
   assert.equal(lines.at(-2), "");
+});
+
+test("the commit line names the worktree the approval commits in, and today's text without a nested path (T-5.6)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "order", title: "Orders" });
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/Orders/pricing.cs]\n  - n: 2\n    files: [README.md]\n---\n# O\n\n## Phase 1: Pricing\n\nt\n\n## Phase 2: Readme\n\nt\n");
+  writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: "src/Orders/.worktrees/RMS-12" }] });
+  const block = (n) => `## Phase ${n} of ${id}: P\n\nDone.\n\nFiles: ${n === 1 ? "src/Orders/pricing.cs" : "README.md"}\nCommit: fix: a\n\nPHASE DONE`;
+  phaseDone(root, id);
+  saveBlock(root, id, 1, block(1));
+  assert.match(packet(id, root).text, /^  commit {4}fix: a \(staged; approval commits it in src\/Orders\/\.worktrees\/RMS-12 and the umbrella\)$/m);
+
+  setMarker(root, id, 1, "approved", new Date());
+  setMarker(root, id, 2, "done", new Date());
+  saveBlock(root, id, 2, block(2));
+  assert.match(packet(id, root).text, /^  commit {4}fix: a \(staged; approval commits it\)$/m);
 });
 
 test("a Files: line of twelve paths shows whole paths up to the width, then +k more (T-1.3)", (t) => {

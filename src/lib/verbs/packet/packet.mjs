@@ -6,6 +6,7 @@ import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, proposedCommit, r
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { liveLookup } from "../../shared/sources/places.mts";
 import { reportFindings } from "../../shared/work/report.mts";
+import { nestedCheckoutPaths } from "../../shared/route/commit.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -82,6 +83,11 @@ function describeCandidates(ref, root) {
   });
 }
 
+function approvalCommits(root, snap, phase) {
+  const dirs = [...nestedCheckoutPaths(root, snap, phase).keys()];
+  return dirs.length ? `approval commits it in ${dirs.join(", ")} and the umbrella` : "approval commits it";
+}
+
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
@@ -124,7 +130,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     }
     // The developer stages and proposes a message; approval is what commits.
     const commit = proposedCommit(b);
-    if (commit !== null) lines.push(field("commit", `${commit}  (staged; approval commits it)`, width));
+    if (commit !== null) lines.push(field("commit", `${commit}  (staged; ${approvalCommits(root, snap, n.phase)})`, width));
   } else if (n.action === "approve_phase") {
     const body = snap.artifact?.body ?? "";
     const summary = body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";
