@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readLayout } from "../../dist/lib/shared/repos.mjs";
 import { runCli } from "#test/cli.mts";
 import { gitIn, gitOut, umbrella } from "#test/git.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
@@ -89,6 +90,18 @@ test("an uninitialised submodule is hydrated, and one ahead of its recorded comm
   const again = created(root, id).json.repos[0];
   assert.deepEqual([again.hydrated, again.reported], [[], ["libs/lib"]]);
   assert.equal(gitOut(sub, "rev-parse", "HEAD"), ahead);
+});
+
+test("a repo the plan gains after --record starts from its default branch and records its from and base (T-2.8)", (t) => {
+  const { root, id } = ordersItem(t);
+  created(root, id, "--record", "RMS-12");
+  created(root, id);
+  writeArtifact(root, id, "design.md", DESIGN.replace("files: [src/Orders/pricing.cs]", "files: [src/Orders/pricing.cs, src/Billing/pricing.cs]"));
+  const r = created(root, id);
+  const billingWorktree = join(root, "src", "Billing", ".worktrees", "RMS-12");
+  assert.deepEqual(r.json.repos.map((repo) => [repo.repo, repo.state]), [["src/Billing", "created"], ["src/Orders", "resumed"]]);
+  const billing = readLayout(root, id).repos.find((repo) => repo.path === "src/Billing");
+  assert.deepEqual(billing, { path: "src/Billing", base: gitOut(billingWorktree, "rev-parse", "HEAD"), from: "main", worktree: "src/Billing/.worktrees/RMS-12" });
 });
 
 test("the bare form refuses with no branch recorded and creates nothing after --none (T-2.6)", (t) => {

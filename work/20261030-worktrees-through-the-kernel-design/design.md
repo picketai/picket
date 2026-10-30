@@ -107,7 +107,7 @@ phases:
     drive: true
     security: false
   - n: 8
-    files: [src/skills/branching/SKILL.md, src/skills/branching/steps/create.md, src/skills/branching/steps/remove.md, test/repo/skills.test.mjs, test/repo/description-cases.json, docs/reference/skills.md, docs/how-to.md]
+    files: [src/skills/branching/SKILL.md, src/skills/branching/steps/create.md, src/skills/branching/steps/into.md, src/skills/branching/steps/remove.md, test/repo/skills.test.mjs, test/repo/description-cases.json, docs/reference/skills.md, docs/how-to.md]
     greps:
       - path: test/repo/skills.test.mjs
         pattern: 'UNCONVERTED_SKILLS = \["benchmarking"\]'
@@ -120,6 +120,10 @@ phases:
         pattern: 'picket worktree'
       - path: src/skills/branching/steps/remove.md
         pattern: '^# Branching: '
+      - path: src/skills/branching/steps/into.md
+        pattern: '^# Branching: into\b'
+      - path: src/skills/branching/SKILL.md
+        pattern: '--into'
       - path: docs/reference/skills.md
         pattern: 'picket worktree'
       - path: docs/how-to.md
@@ -189,8 +193,8 @@ Development shows the developer never reads `branching` (the user typed `/picket
 **Risks:**
 - **RISK-009** The guard now parses the artifact on every `picket verify` call. Mitigation: `test/timing/budgets.test.mjs` holds the guard to its cold budget; a miss fails `npm test`.
 
-### D-008: `branching` keeps list and remove, and its create step calls the verb
-**Decision:** `branching` takes bundle 2's shape: `description` plus `when_to_use`, `## Steps` as one ordered list, `## Rules`, `## Output`, step files `steps/create.md` and `steps/remove.md` opening `# Branching: <name>`. The developer claim goes. Create resolves the open item and runs `picket worktree <id> --record <branch> [--from <ref>]`, then `picket worktree <id>`, which covers every repo the plan touches. List and remove keep their read-only survey and confirmed teardown. `--into` (switching an existing worktree onto a new branch by hand) is dropped; OQ-002 asks the user. `UNCONVERTED_SKILLS` is left with `benchmarking` only.
+### D-008 (r2): `branching` keeps into, list and remove, and its create step calls the verb
+**Decision:** `branching` takes bundle 2's shape: `description` plus `when_to_use`, `## Steps` as one ordered list, `## Rules`, `## Output`, step files `steps/create.md`, `steps/into.md` and `steps/remove.md` opening `# Branching: <name>`. The developer claim goes. Create resolves the open item and runs `picket worktree <id> --record <branch> [--from <ref>]`, then `picket worktree <id>`, which covers every repo the plan touches. `--into` (switch an existing linked worktree onto a new branch) stays a manual step the user invokes: every `git switch` and `git submodule` command it runs is shown for the user's confirmation first, it hydrates submodules by D-006's rule, and it is not a kernel verb, so it records nothing in a work item's layout. List and remove keep their read-only survey and confirmed teardown. `UNCONVERTED_SKILLS` is left with `benchmarking` only.
 **Instead of:** retiring `branching`: teardown needs a survey of uncommitted and unpushed work and the user's confirmation, which the kernel does not own.
 
 ## Scope
@@ -206,7 +210,7 @@ Development shows the developer never reads `branching` (the user typed `/picket
 **Out:**
 - Merge orchestration, runtime collisions between worktrees (ports, shared databases), benchmarking changes (the brief).
 - The fast-lane offer (`picket worktree <id> --repos <paths>`): a fast item closes through `picket close --touched`, which commits only in the umbrella, so the offer needs per-repo commits in `close` too; that exceeds this record.
-- `picket check` in worktrees (OQ-001).
+- `picket check` in worktrees: the user answered OQ-001 on 2026-10-30; `check` gains no `--work`, and the developer's `Tests:` line cites `picket verify`, which runs each checkout's tests.
 
 ## Phase 1: Item layout and path mapping
 
@@ -412,7 +416,8 @@ Development shows the developer never reads `branching` (the user typed `/picket
 **Touch set:**
 - `src/skills/branching/SKILL.md`: frontmatter, Steps, Rules, Output
 - `src/skills/branching/steps/create.md`: new name; calls the verb
-- `src/skills/branching/steps/10-create.md`: removed by `git mv`
+- `src/skills/branching/steps/10-create.md`: removed by `git mv`; INTO text moves out
+- `src/skills/branching/steps/into.md`: new; the confirmed manual switch
 - `src/skills/branching/steps/remove.md`: new name; survey and ladder kept
 - `src/skills/branching/steps/20-remove.md`: removed by `git mv`
 - `src/skills/branching/templates/manifest.example.yaml`: manifest shape, read only
@@ -422,18 +427,20 @@ Development shows the developer never reads `branching` (the user typed `/picket
 - `docs/how-to.md`: the worktree stop in the daily loop
 
 **Changes:**
-- `SKILL.md`: `description` says what it does; `when_to_use` carries `Use when` and the trigger phrasings ("start a branch", "spin up a worktree", "resume work on <branch>", "list my worktrees", "tear down the worktree for <branch>"); `argument-hint`; no `user-invocable: true`. One purpose paragraph. `## Steps` is one ordered list: no branch name for create or remove, ask and stop; create per `steps/create.md`; list, read-only, `git -C <repo> worktree list` per nested repo; remove per `steps/remove.md`. `## Rules`: naming and path rule, resume before create, guarded deletions, runtime collisions out of scope, the manifest is optional because the kernel scans `src/`. `## Output`: what create, list and remove report.
+- `SKILL.md`: `description` says what it does; `when_to_use` carries `Use when` and the trigger phrasings ("start a branch", "spin up a worktree", "resume work on <branch>", "list my worktrees", "tear down the worktree for <branch>"); `argument-hint` naming the create, `--into`, `--list` and `--remove` forms; no `user-invocable: true`. One purpose paragraph. `## Steps` is one ordered list: no branch name for create, into or remove, ask and stop; create per `steps/create.md`; `<branch> --into <branch|path> [--from <ref>]` per `steps/into.md`; list, read-only, `git -C <repo> worktree list` per nested repo; remove per `steps/remove.md`. `## Rules`: naming and path rule, resume before create, guarded deletions, runtime collisions out of scope, the manifest is optional because the kernel scans `src/`. `## Output`: what create, list and remove report.
 - `steps/create.md`, `# Branching: create`, an ordered list: find the open item (`picket next --latest`; none, say worktrees belong to a work item and stop), run `picket worktree <id> --record <branch> [--from <ref>]`, then `picket worktree <id>`, print its map. No `git worktree` or `git submodule` command.
+- `steps/into.md`, `# Branching: into`, an ordered list carrying today's INTO procedure from `10-create.md`: a resume hit on `<branch>` wins and `--into` is ignored with a note; resolve the value as a branch, then as a registered linked worktree path, refusing the main worktree; the base from `--from` per selected repo, else the worktree's current HEAD; a read-only `status --porcelain` survey, dirty means carry over or stop; `git -C <worktree> switch <branch>` or `switch -c <branch> [<base>]`, never `checkout`; then submodules by D-006's rule (hydrate only `-` paths, report `+`, stop on `U`). Every `switch` and `submodule update` command is shown for the user's confirmation before it runs. The report names the path, new branch, base, the displaced branch and the way back, `/picket:branching <displaced> --into <branch>`. It records nothing in a work item.
 - `steps/remove.md`, `# Branching: remove`: today's survey, release and ladder, with the manifest step replaced by the nested repos `picket worktree` printed or the `src/` scan.
 - `skills.test.mjs`: `UNCONVERTED_SKILLS` becomes `["benchmarking"]`; `PENDING.names` and `PENDING.claims` lose the branching entries.
-- `docs/reference/skills.md`: the section names `picket worktree`, drops the developer claim and `--into`. `docs/how-to.md`: a short subsection under the order and design lanes on the `create_worktrees` stop, its three replies, and that a project allowing only `Bash(git add *)` adds an allow rule for `git -C * add *`.
+- `docs/reference/skills.md`: the section names `picket worktree`, drops the developer claim, and keeps `--into` as a confirmed manual step. `docs/how-to.md`: a short subsection under the order and design lanes on the `create_worktrees` stop, its three replies, and that a project allowing only `Bash(git add *)` adds an allow rule for `git -C * add *`.
 
 **Done when:**
 - **T-8.1** `test/repo/skills.test.mjs` passes with `UNCONVERTED_SKILLS = ["benchmarking"]` and no branching path in any `PENDING` list.
-- **T-8.2** No file under `src/skills/branching/` says the developer reads it; its steps are `create.md` and `remove.md`, and `10-create.md` and `20-remove.md` no longer exist.
+- **T-8.2** No file under `src/skills/branching/` says the developer reads it; its steps are `create.md`, `into.md` and `remove.md`, and `10-create.md` and `20-remove.md` no longer exist.
 - **T-8.3** `steps/create.md` holds no `git worktree` or `git submodule` command and runs `picket worktree`.
 - **T-8.4** The description routing test passes with the branching cases.
 - **T-8.5** `docs/reference/skills.md` and `docs/how-to.md` describe `picket worktree` and the `create_worktrees` stop, and `npm test` passes.
+- **T-8.6** `steps/into.md` opens `# Branching: into`, says each `switch` and `submodule update` command is shown for confirmation before it runs, never uses `checkout`, and hydrates only `-` submodules; `SKILL.md` lists the `--into` form in its Steps and `argument-hint`.
 
 ## Phase 9: Close names the worktrees; lint flags worktree plan paths
 
@@ -457,10 +464,11 @@ Development shows the developer never reads `branching` (the user typed `/picket
 
 ## Open questions
 
-- **OQ-001** `picket check` takes no item and runs only the umbrella's tooling, so a developer working in a worktree gets no `CHECK OK` from the repo it changed. Should `check` gain `--work <id>` and run per checkout? Owner: user. Fallback: the developer's `Tests:` line cites `picket verify`, which runs each checkout's tests from phase 3 on.
-- **OQ-002** `branching --into` (switch an existing worktree onto a new branch, by hand) is dropped by D-008. Keep it as a confirmed manual step? Owner: user. Fallback: dropped; `picket worktree` covers create and resume.
+none
 
 ## Revision log
 - 2026-10-30: D-001 (r2): a repo added after the reply starts from the planWorktrees chain and records its from; cross-check Minor 3.
 - 2026-10-30: D-004 (r2): a refused nested commit appends no verdict row, keeping the rejection count; cross-check Minor 1.
 - 2026-10-30: D-005 (r2): reply words are never branch names, so y without [y] is refused; cross-check Minor 2.
+- 2026-10-30: D-008 (r2): --into stays as a confirmed manual step in steps/into.md; the user's answer to OQ-002.
+- 2026-10-30: OQ-001 closed: check gains no --work; the Tests line cites picket verify; the user's answer.

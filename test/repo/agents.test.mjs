@@ -27,6 +27,7 @@ const SUBAGENT_REFUSED_BASENAME = /^(REPORT|SUMMARY|FINDINGS|ANALYSIS).*\.md$/i;
 const FIXTURE_TS = "2026-10-29T10:00:00.000Z";
 const FIXTURE_SESSION = "S";
 const FIXTURE_BRIEF = { purpose: "bill late fees", in_scope: "the fees module", out_of_scope: "refunds" };
+const FIXTURE_LAYOUT = { nested: ["src/Orders"], worktrees: null, repos: [] };
 
 function developerRow(phase) {
   return { ts: FIXTURE_TS, agent: "developer", verdict: "PHASE DONE", phase, scope: null, through: null, session: FIXTURE_SESSION };
@@ -41,6 +42,7 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ phases, run_through: 2 }), implement, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases, verdicts: [developerRow(1)] }), implement, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases: [{ n: 1, done: true, approved: true }] }), fix, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ branch: "RMS-12", layout: FIXTURE_LAYOUT, phases: [{ n: 1, entry: { n: 1, files: ["src/Orders/pricing.cs"] } }] }), { ...implement, phase: 1 }, FIXTURE_SESSION),
     ];
   },
   architect: () => {
@@ -301,7 +303,7 @@ test("every shell outside PENDING has Entry fixtures", () => {
 });
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
-  assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
+  assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work", "worktrees"]);
   assert.deepEqual(sentKeys("architect"), ["amend", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
   assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);

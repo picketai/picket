@@ -11,6 +11,7 @@ export type CheckoutState = "created" | "resumed" | "failed";
 export type RepoOutcome = {
   repo: string;
   worktree: string;
+  from: string;
   state: CheckoutState;
   base: string | null;
   hydrated: string[];
@@ -74,7 +75,7 @@ function addWorktree(root: string, repoDir: string, branch: string, worktree: st
   else gitRun(repoDir, ["worktree", "add", "-b", branch, target, from]);
 }
 
-function openCheckout(root: string, planned: PlannedWorktree, recorded: RepoLayout | undefined, branch: string): Pick<RepoOutcome, "worktree" | "state" | "base"> {
+function openCheckout(root: string, planned: PlannedWorktree, recorded: RepoLayout | undefined, branch: string, from: string): Pick<RepoOutcome, "worktree" | "state" | "base"> {
   const repoDir = join(root, planned.repo);
   const existing = worktreeOnBranch(repoDir, branch);
   if (existing) {
@@ -82,18 +83,19 @@ function openCheckout(root: string, planned: PlannedWorktree, recorded: RepoLayo
     return { worktree, state: "resumed", base: recorded?.base ?? revParse(join(root, worktree), "HEAD") };
   }
   const worktree = `${planned.repo}/.worktrees/${worktreeDirName(branch)}`;
-  addWorktree(root, repoDir, branch, worktree, recorded?.from ?? planned.from);
+  addWorktree(root, repoDir, branch, worktree, from);
   return { worktree, state: "created", base: revParse(join(root, worktree), "HEAD") };
 }
 
 export function createOrResume(root: string, planned: PlannedWorktree, recorded: RepoLayout | undefined, branch: string): RepoOutcome {
+  const from = recorded?.from ?? planned.from;
   try {
-    const checkout = openCheckout(root, planned, recorded, branch);
+    const checkout = openCheckout(root, planned, recorded, branch, from);
     excludeWorktrees(join(root, planned.repo));
-    return { repo: planned.repo, ...checkout, ...settleSubmodules(join(root, checkout.worktree)) };
+    return { repo: planned.repo, from, ...checkout, ...settleSubmodules(join(root, checkout.worktree)) };
   } catch (err) {
     if (!(err instanceof GitFailed)) throw err;
-    return { repo: planned.repo, worktree: planned.worktree, state: "failed", base: null, hydrated: [], reported: [], conflicted: [], error: err.message };
+    return { repo: planned.repo, worktree: planned.worktree, from, state: "failed", base: null, hydrated: [], reported: [], conflicted: [], error: err.message };
   }
 }
 

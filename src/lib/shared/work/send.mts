@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+import { touchedRepos } from "../checkouts.mts";
 import type { AgentType, NextView, SendView } from "../views.mts";
+import { phasePaths } from "./artifact.mts";
 import { briefLines } from "./brief.mts";
 import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
@@ -97,11 +99,17 @@ function needsCrosscheck(snap: WorkSnapshot): boolean {
   return snap.state.lane === "design" && !phaseOf(snap, 1)?.done && !snap.verdicts.some((row) => isReviewer(row) && row.scope === "crosscheck");
 }
 
+function worktreesLines({ state, layout, phases }: WorkSnapshot): string[] {
+  if (!state.branch || layout.worktrees === "none") return [];
+  return touchedRepos(layout, phases.flatMap(phasePaths)).length ? [`worktrees: picket worktree ${state.id}`] : [];
+}
+
 function implementSends(snap: WorkSnapshot, phase: number, session: string | null): SendView[] {
   const through = snap.state.run_through;
   const implementer = send(snap, developer(snap), session, (tool) => [
     workLine(snap),
     `phase: ${phase}`,
+    ...worktreesLines(snap),
     ...(tool === "Agent" ? [artifactLine(snap)] : []),
     ...(through !== undefined && through >= phase ? [`run through ${through}`] : []),
   ]);
@@ -158,7 +166,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "review_cumulative":
       return [cumulativeSend(snap, session)];
     case "fix_findings":
-      return [send(snap, developer(snap), session, (tool) => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`, ...(tool === "Agent" ? [artifactLine(snap)] : [])])];
+      return [send(snap, developer(snap), session, (tool) => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`, ...worktreesLines(snap), ...(tool === "Agent" ? [artifactLine(snap)] : [])])];
     case "amend":
       return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`])];
     case "review_crosscheck":

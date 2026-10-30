@@ -20,9 +20,9 @@ function withOutcomes(repos: RepoLayout[], outcomes: RepoOutcome[]): RepoLayout[
   const settled = outcomes.filter((o) => o.state !== "failed");
   const updated = repos.map((r) => {
     const outcome = settled.find((o) => o.repo === r.path);
-    return outcome ? { ...r, base: outcome.base, worktree: outcome.worktree } : r;
+    return outcome ? { ...r, from: outcome.from, base: outcome.base, worktree: outcome.worktree } : r;
   });
-  const added = settled.filter((o) => !repos.some((r) => r.path === o.repo)).map((o) => ({ path: o.repo, base: o.base, worktree: o.worktree }));
+  const added = settled.filter((o) => !repos.some((r) => r.path === o.repo)).map((o) => ({ path: o.repo, from: o.from, base: o.base, worktree: o.worktree }));
   return [...updated, ...added];
 }
 

@@ -45,6 +45,7 @@ const ELSEWHERE = [
       "Infrastructure/",
       "Presentation/",
       "Shared/",
+      "src/Orders/pricing.cs",
       "src/auth.ts",
       "src/auth/",
       "src/crypto/",

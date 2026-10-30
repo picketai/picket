@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { nextStep, type NextStep } from "./next-step.mts";
 import type { ReplyRow } from "./replies.mts";
 import { instanceTag, sendsFor } from "./send.mts";
+import type { ItemLayout } from "../repos.mts";
 import { snapshotOf, type SnapshotInput } from "#test/snapshot.mts";
 
 const ID = "20261023-probe";
@@ -187,4 +188,25 @@ test("a fresh developer is continued only by a developer row of this session aft
   const after = verdictRow("developer", "PHASE DONE", null, S, "2026-10-23T11:30:00.000Z");
   assert.equal(sends({ phases, replies, verdicts: [before] }, implement(1))[0].tool, "Agent");
   assert.equal(sends({ phases, replies, verdicts: [before, after] }, implement(1))[0].tool, "SendMessage");
+});
+
+const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };
+const ORDERS_PHASES = [{ n: 1, done: true, approved: true, entry: { n: 1, files: ["src/Orders/pricing.cs"] } }, { n: 2 }];
+const WORKTREES_LINE = `worktrees: picket worktree ${ID}`;
+const fixFindings: NextStep = { action: "fix_findings", actor: "developer", phase: 2, detail: "d" };
+
+test("a branch over a plan touching a nested repo sends the worktrees line at phase 1, later phases and fix_findings (T-7.1)", () => {
+  const item = { branch: "RMS-12", layout: ORDERS_LAYOUT, phases: ORDERS_PHASES };
+  assert.equal(sends({ ...item, phases: [{ ...ORDERS_PHASES[0], done: false, approved: false }] }, implement(1))[0].message, `work: ${ID}\nphase: 1\n${WORKTREES_LINE}\nartifact: work/${ID}/order.md`);
+  assert.equal(sends(item, implement(2))[0].message, `work: ${ID}\nphase: 2\n${WORKTREES_LINE}\nartifact: work/${ID}/order.md`);
+  assert.equal(sends(item, fixFindings)[0].message, `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\n${WORKTREES_LINE}\nartifact: work/${ID}/order.md`);
+});
+
+test("no worktrees line without a branch, with worktrees: none, or with no nested path in the plan (T-7.2)", () => {
+  const item = { branch: "RMS-12", layout: ORDERS_LAYOUT, phases: ORDERS_PHASES };
+  const carriesLine = (input: SnapshotInput) => sends(input, implement(2))[0].message.includes("worktrees:");
+  assert.equal(carriesLine(item), true);
+  assert.equal(carriesLine({ ...item, branch: undefined }), false);
+  assert.equal(carriesLine({ ...item, layout: { ...ORDERS_LAYOUT, worktrees: "none" } }), false);
+  assert.equal(carriesLine({ ...item, phases: [{ n: 1, done: true, approved: true, entry: { n: 1, files: ["README.md"] } }, { n: 2 }] }), false);
 });

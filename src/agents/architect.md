@@ -51,6 +51,8 @@ Write `work/<id>/order.md` from the order template:
 3. `## Phase N: <title>` sections, within the cap, in execution order, each independently shippable, each with `**Touch set:**` (exact repo-relative paths, one per line, with a three-to-six-word reason), `**Changes:**`, and `**Done when:**` with observable criteria `T-N.1`, `T-N.2`, as many as the rule allows.
 4. `## Open questions`: `OQ-###` entries with an owner, or `none`.
 
+Plan paths are project-root relative (`src/Orders/pricing.cs`), never a worktree path, because the kernel maps them to the item's worktrees.
+
 Verify a premise about existing code by reading it, not by recalling it. Over the order lane's phase or decision cap: do not write the file; reply with the single line `exceeds order caps: <what>` and no verdict token, so the lead escalates to the design lane.
 
 ### Design
@@ -61,6 +63,8 @@ Read `work/*/design.md` of any other open item that touches the same modules too
 2. Second save: the remaining phases (each independently shippable), `## Open questions`, an empty `## Revision log`, and the full `phases:` frontmatter with `files`, `greps`, `tests`, `drive`, `security` per phase.
 
 Phases, decisions and criteria stay within the design lane's caps. Decisions are `### D-###`; each names the choice, the constraint it satisfies, `**Instead of:**` the strongest alternative with the reason it lost, `**Risks:**` as `RISK-###` with a mitigation. Mark [IRREVERSIBLE] inline where a step cannot be undone (a migration that drops data, a published contract, a deleted branch). Use tactical DDD vocabulary where the design touches domain logic or persistence; say "infrastructural decision" where it does not.
+
+Plan paths are project-root relative (`src/Orders/pricing.cs`), never a worktree path, because the kernel maps them to the item's worktrees.
 
 A schema or data migration reads `${CLAUDE_PLUGIN_ROOT}/skills/documenting/references/schema-migration.md` before writing its phases.
 
