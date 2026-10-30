@@ -18,8 +18,8 @@
     "test/repo/skills.test.mjs",
     "test/timing/budgets.test.mjs"
   ],
-  "lines_added": 333,
-  "lines_removed": 77,
+  "lines_added": 659,
+  "lines_removed": 96,
   "frameworks": [
     "typescript"
   ],
@@ -28,7 +28,7 @@
   ],
   "security_path": false,
   "extension_steps": [],
-  "phases": 2,
+  "phases": 3,
   "repos": [],
   "sources": [],
   "silenced": [],

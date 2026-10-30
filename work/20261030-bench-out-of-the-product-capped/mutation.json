@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-30T12:59:43.160Z",
+  "ts": "2026-10-30T13:35:24.345Z",
   "base": "7ba21a42ef50fe66c9bc4d839e0b43ecd95cd533",
   "mutant": {
     "path": "bench/lib/spend.mjs",
@@ -10,5 +10,5 @@
   "command": "npm test",
   "outcome": "killed",
   "rebuild": "passed",
-  "ms": 127024
+  "ms": 127495
 }
