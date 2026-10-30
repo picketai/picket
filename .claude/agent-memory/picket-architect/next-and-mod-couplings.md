@@ -17,4 +17,11 @@ Checked 2026-10-29 at 576f2cc while designing work/20261029-kernel-groundwork-fo
 - Claude Code renames an Agent spawn whose name is already taken in the session (`cumulative-reviewer-2`, `-3` seen 2026-10-29), so a send to a bare role name can reach an earlier item's live instance. Item B's design (work/20261029-convert-architect-analyst-and-reviewer-item-b-de, D-001) names instances `<tag>-<role>` per item; `bareAgentName` parses that prefix form, not a suffix tag.
 - Checked 2026-10-29 (work/20261029-documenting-and-consulting-skills-picket-name): the research gate never routes. `picket reply` refused research items, the lead closes on `a`, and the user `approved` effect (`phaseApproved` in the route plan module) throws without a `work/<id>/phases/N.done` marker, which research items never get. `picket close` commits only `work/<id>/` plus `--touched`, so anything a research verdict writes elsewhere must be recorded (that design put `published` on the verdict row). No `artifacts/reports/*.md` carried `kind: report` then.
 
+Checked 2026-10-30 (work/20261030-worktrees-through-the-kernel-design):
+
+- `applyChanges` in the route service writes the `approved` marker and state before `commitPhase` runs, and `commitPhase` turns a commit error into an output line, so a failed umbrella commit still leaves the phase approved.
+- The guard's `verify` special case (`verifyRunsNoProjectCode` in `src/lib/hooks/guard/bash/kernel.mts`) classifies only the umbrella's detected test command; anything that makes `verify` run another command must change it in the same phase.
+- `.claude/settings.json` allows `Bash(git add *)`; `git -C <dir> add` does not match that prefix, and `picket init` writes no permissions.
+- `reply` handles only `GATE_ACTIONS` (`approve_phase`, `resolve_block`, `resolve_rejections`); `resolve_sources` is answered by `picket source pick`, not `reply`.
+
 **How to apply:** read these before designing next actions, sends, gate replies or mod imports. Related: [[zone-and-root-facts]], [[block-format-couplings]], [[verify-grep-patterns]].
