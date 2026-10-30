@@ -4,6 +4,7 @@ import type { VerdictRow } from "../../src/lib/shared/work/verdict-log.mts";
 import type { ReplyRow } from "../../src/lib/shared/work/replies.mts";
 import type { AmbiguousRef } from "../../src/lib/shared/sources/resolve.mts";
 import type { Brief } from "../../src/lib/shared/work/brief.mts";
+import type { ItemLayout } from "../../src/lib/shared/repos.mts";
 
 const PROBE_TIME = "2026-10-23T10:00:00.000Z";
 
@@ -17,7 +18,10 @@ export type SnapshotInput = Partial<Omit<WorkState, "id">> & {
   warnings?: string[];
   artifact?: SnapshotArtifact | null;
   brief?: Brief | null;
+  layout?: ItemLayout;
 };
+
+const NO_LAYOUT: ItemLayout = { nested: [], worktrees: null, repos: [] };
 
 function phaseStatus(partial: PhaseInput): PhaseStatus {
   return { title: `Phase ${partial.n}`, entry: null, touchSet: [], irreversible: false, done: false, approved: false, reviewed: false, ...partial };
@@ -28,7 +32,7 @@ function defaultArtifact(state: WorkState): SnapshotArtifact | null {
   return expected ? { path: `/probe/work/${state.id}/${expected}`, expected, body: "" } : null;
 }
 
-export function snapshotOf({ phases = [], verdicts = [], replies = [], ambiguousRefs = [], warnings = [], artifact, brief = null, ...fields }: SnapshotInput = {}): WorkSnapshot {
+export function snapshotOf({ phases = [], verdicts = [], replies = [], ambiguousRefs = [], warnings = [], artifact, brief = null, layout = NO_LAYOUT, ...fields }: SnapshotInput = {}): WorkSnapshot {
   const state = { id: "20261023-probe", lane: "order", title: "Probe", status: "open", created: PROBE_TIME, updated: PROBE_TIME, ...fields } as WorkState;
   return {
     state,
@@ -38,6 +42,7 @@ export function snapshotOf({ phases = [], verdicts = [], replies = [], ambiguous
     verdicts: verdicts as VerdictRow[],
     replies,
     ambiguousRefs,
+    layout,
     warnings,
   };
 }

@@ -63,13 +63,44 @@ export function recordBases(root: string, id: WorkId): RepoBase[] {
     const base = revParse(join(root, r.path), "HEAD");
     return base ? [{ path: r.path, base }] : [];
   });
-  if (repos.length) writeFileSync(workFile(root, id, "repos.yaml"), stringify({ repos }) + "\n");
+  if (repos.length) writeLayout(root, id, { worktrees: null, repos });
   return repos;
 }
 
-export function readBases(root: string, id: WorkId): Record<string, string> {
+export type RepoLayout = { path: string; base: string | null; from?: string; worktree?: string };
+export type ItemLayout = { nested: string[]; worktrees: "none" | null; repos: RepoLayout[] };
+export type RecordedLayout = Omit<ItemLayout, "nested">;
+
+type RepoRow = { path?: unknown; base?: unknown; from?: unknown; worktree?: unknown } | null;
+
+function repoLayout(row: RepoRow): RepoLayout[] {
+  const path = stringOf(row?.path);
+  if (!path) return [];
+  const from = stringOf(row?.from);
+  const worktree = stringOf(row?.worktree);
+  return [{ path, base: row?.base ? String(row.base) : null, ...(from ? { from } : {}), ...(worktree ? { worktree } : {}) }];
+}
+
+function readRecorded(root: string, id: WorkId): RecordedLayout {
   const text = readText(workFile(root, id, "repos.yaml"));
-  if (text === null) return {};
-  const { repos } = parse(text) as { repos?: { path?: string; base?: unknown }[] | null };
-  return Object.fromEntries((repos ?? []).filter((r) => r?.path && r?.base).map((r) => [r.path, String(r.base)]));
+  if (text === null) return { worktrees: null, repos: [] };
+  const { repos, worktrees } = parse(text) as { repos?: RepoRow[] | null; worktrees?: unknown };
+  return { worktrees: worktrees === "none" ? "none" : null, repos: (repos ?? []).flatMap(repoLayout) };
+}
+
+export function readLayout(root: string, id: WorkId): ItemLayout {
+  return { nested: nestedRepos(root).map((r) => r.path), ...readRecorded(root, id) };
+}
+
+function repoRow({ path, base, from, worktree }: RepoLayout): Record<string, string> {
+  return { path, ...(base ? { base } : {}), ...(from ? { from } : {}), ...(worktree ? { worktree } : {}) };
+}
+
+export function writeLayout(root: string, id: WorkId, { worktrees, repos }: RecordedLayout): void {
+  const file = { ...(worktrees ? { worktrees } : {}), ...(repos.length ? { repos: repos.map(repoRow) } : {}) };
+  writeFileSync(workFile(root, id, "repos.yaml"), stringify(file) + "\n");
+}
+
+export function readBases(root: string, id: WorkId): Record<string, string> {
+  return Object.fromEntries(readRecorded(root, id).repos.flatMap((r) => (r.base ? [[r.path, r.base]] : [])));
 }

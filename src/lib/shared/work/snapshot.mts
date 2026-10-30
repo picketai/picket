@@ -1,4 +1,5 @@
 import { readText } from "../../util/io.mts";
+import { readLayout, type ItemLayout } from "../repos.mts";
 import { ambiguousRefs } from "../sources/intake.mts";
 import type { AmbiguousRef } from "../sources/resolve.mts";
 import type { PhaseView as WirePhaseView, StateView as WireStateView } from "../views.mts";
@@ -21,6 +22,7 @@ export type WorkSnapshot = {
   verdicts: VerdictRow[];
   replies: ReplyRow[];
   ambiguousRefs: AmbiguousRef[];
+  layout: ItemLayout;
   warnings: string[];
 };
 
@@ -64,6 +66,7 @@ export function readSnapshot(root: string, id: WorkId): WorkSnapshot {
     verdicts: verdicts.rows,
     replies: replies.rows,
     ambiguousRefs: ambiguousRefs(root, id),
+    layout: readLayout(root, id),
     warnings: [...skippedWarning("verdicts.jsonl", verdicts.skipped), ...skippedWarning("replies.jsonl", replies.skipped)],
   };
 }
