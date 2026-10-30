@@ -39,4 +39,5 @@ export const REGISTRY = {
   uninstall: () => import("../verbs/uninstall/index.mts"),
   verify: () => import("../verbs/verify/index.mts"),
   waive: () => import("../verbs/waive/index.mts"),
+  worktree: () => import("../verbs/worktree/index.mts"),
 } satisfies Record<Command, () => Promise<SpecModule>>;

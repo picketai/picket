@@ -327,3 +327,11 @@ Only the lead runs it; the Bash guard denies it to agents.
 ```sh
 picket waive <id> --path <p> (--text "<added line>" | --deleted)
 ```
+
+## picket worktree
+
+Record the branch for a work item's worktrees, or create and resume them.
+
+```sh
+picket worktree <id> [--record <name> [--from <ref>] | --none]
+```

@@ -58,6 +58,7 @@ export const VERB_NAMES = {
   uninstall: { summary: "remove Picket from a project: what init added, its state and, if chosen, work/", readOnly: false, leadOnly: true },
   verify: { summary: "check one phase against its must_haves", readOnly: true },
   waive: { summary: "record the user's approval of one silenced check", readOnly: false, leadOnly: true },
+  worktree: { summary: "record the branch for a work item's worktrees, or create and resume them", readOnly: false },
 } as const satisfies Record<string, VerbEntry | GroupEntry>;
 
 export type Verb = keyof typeof VERB_NAMES;

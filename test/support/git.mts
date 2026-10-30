@@ -32,9 +32,26 @@ export type RepoOptions = ProjectOptions & { branch?: string; files?: Record<str
 
 export function gitRepo(t: TestContext, { branch = "main", files = { "a.txt": "one\n" }, message = "init", picket = false, ...project }: RepoOptions = {}): string {
   const root = withProject(t, { picket, ...project });
-  gitIn(root, "init", "-q", "-b", branch);
-  for (const [rel, text] of Object.entries(files)) writeIn(root, rel, text);
-  gitIn(root, "add", "-A");
-  gitIn(root, "commit", "-q", "-m", message);
+  initRepo(root, { branch, files, message });
   return root;
+}
+
+function initRepo(dir: string, { branch, files, message }: Required<Pick<RepoOptions, "branch" | "files" | "message">>): void {
+  mkdirSync(dir, { recursive: true });
+  gitIn(dir, "init", "-q", "-b", branch);
+  for (const [rel, text] of Object.entries(files)) writeIn(dir, rel, text);
+  gitIn(dir, "add", "-A");
+  gitIn(dir, "commit", "-q", "-m", message);
+}
+
+export type Umbrella = { root: string; repos: Record<string, string> };
+
+export function umbrella(t: TestContext, { repos }: { repos: string[] }): Umbrella {
+  const root = gitRepo(t, { host: true, branch: "trunk", files: { "README.md": "umbrella\n" }, message: "root" });
+  const dirs = repos.map((name) => {
+    const dir = join(root, "src", name);
+    initRepo(dir, { branch: "main", files: { "pricing.cs": `class ${name} {}\n` }, message: name });
+    return [name, dir];
+  });
+  return { root, repos: Object.fromEntries(dirs) };
 }
