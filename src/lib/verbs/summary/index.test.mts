@@ -5,6 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { itemSummary, rangeSummary, verb, type RepoReport } from "./index.mts";
 import { branchingManifestPath } from "../../shared/paths.mts";
 import { nestedRepos, readBases } from "../../shared/repos.mts";
+import { planPathOf } from "../../shared/checkouts.mts";
+import { markWaived } from "../../shared/review-summary.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { appendWaiver } from "../../shared/work/approvals.mts";
 import { setMarker } from "../../shared/work/markers.mts";
@@ -298,6 +300,18 @@ for (const [securityPaths, file, expected] of SECURITY_CASES) {
     assert.equal(rangeSummary(root, base, gitOut(root, "rev-parse", "HEAD"), process.env).security_path, expected, "range");
   });
 }
+
+test("a waiver in plan shape marks the silenced move at the worktree path waived, and the reverse (T-4.4)", () => {
+  const worktree = "src/Orders/.worktrees/RMS-12";
+  const layout = { nested: ["src/Orders"], worktrees: null, repos: [{ path: "src/Orders", base: null, worktree }] };
+  const planPath = (path: string) => planPathOf(layout, path);
+  const atWorktree = [{ path: `${worktree}/a.test.cs`, kind: "focused-test", text: focus }];
+  const atPlan = [{ path: "src/Orders/a.test.cs", kind: "focused-test", text: focus }];
+  const waiver = (path: string) => [{ ts: "2026-10-30T10:00:00.000Z", path, text: focus }];
+  assert.equal(markWaived(atWorktree, waiver("src/Orders/a.test.cs"), "linux", planPath)[0].waived, true);
+  assert.equal(markWaived(atPlan, waiver(`${worktree}/a.test.cs`), "linux", planPath)[0].waived, true);
+  assert.equal(markWaived(atWorktree, waiver("src/Orders/a.test.cs"), "linux")[0].waived, false, "without the mapper the shapes differ");
+});
 
 test("the review summary carries the saved mutation (T-6.5)", (t) => {
   const source = "export function same(a, b) {\n  return 0;\n}\n";

@@ -5,8 +5,9 @@ import { dirname, join } from "node:path";
 import { mutate, renderMutation, verb } from "./index.mts";
 import { STATE_FILES, statePath } from "../../shared/paths.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
-import { gitRepo, writeIn } from "#test/git.mts";
-import { openItem, writeConfig } from "#test/project.mts";
+import { writeLayout } from "../../shared/repos.mts";
+import { gitIn, gitOut, gitRepo, umbrella, writeIn } from "#test/git.mts";
+import { openItem, writeArtifact, writeConfig } from "#test/project.mts";
 
 const SOURCE = "export function same(a, b) {\n  return 0;\n}\n";
 const CHANGED = "export function same(a, b) {\n  if (a === b) return 1;\n  return 0;\n}\n";
@@ -94,6 +95,34 @@ test("a suite that is red before any mutant is baseline red, and no mutant is wr
   assert.deepEqual([result.outcome, result.mutant], ["baseline red", null]);
   assert.equal(renderMutation(result), "mutant none: baseline red");
   assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), before);
+});
+
+const WORKTREE = "src/Orders/.worktrees/RMS-12";
+const CALC = "export const small = 1;\n";
+const CALC_CHANGED = "export const small = 1;\nexport const isSmall = (n) => n < 10;\n";
+const CALC_PROBE = 'process.exit(require("fs").readFileSync("calc.js", "utf8").includes(">=") ? 1 : 0);\n';
+const CALC_PLAN = "---\nlane: order\nphases:\n  - n: 1\n    files: [src/Orders/calc.js]\n---\n# O\n\n## Phase 1: Calc\n";
+
+test("mutate plants its mutant in the recorded worktree, runs that checkout's tests and restores the file (T-4.5)", (t) => {
+  const { root, repos } = umbrella(t, { repos: ["Orders"] });
+  writeIn(repos.Orders, "package.json", JSON.stringify({ scripts: { test: "node probe.cjs" } }));
+  writeIn(repos.Orders, "probe.cjs", CALC_PROBE);
+  writeIn(repos.Orders, "calc.js", CALC);
+  gitIn(repos.Orders, "add", "-A");
+  gitIn(repos.Orders, "commit", "-q", "-m", "calc");
+  const { id } = openItem(root, { lane: "order", title: "Calc" });
+  writeArtifact(root, id, "order.md", CALC_PLAN);
+  gitIn(repos.Orders, "worktree", "add", "-q", "-b", "RMS-12", join(root, WORKTREE));
+  const base = gitOut(join(root, WORKTREE), "rev-parse", "HEAD");
+  writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base, worktree: WORKTREE }] });
+  writeIn(root, `${WORKTREE}/calc.js`, CALC_CHANGED);
+
+  const result = mutate(root, id, OPTIONS);
+  const planted = { path: `${WORKTREE}/calc.js`, line: 2, from: "<", to: ">=" };
+  assert.deepEqual([result.outcome, result.mutant, result.base], ["killed", planted, base]);
+  assert.equal(readFileSync(join(root, WORKTREE, "calc.js"), "utf8"), CALC_CHANGED);
+  assert.equal(readFileSync(join(repos.Orders, "calc.js"), "utf8"), CALC);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, "work", id, "mutation.json"), "utf8")).mutant, planted);
 });
 
 test("a restore record left by an interrupted run is applied before the next pick (T-6.3)", (t) => {

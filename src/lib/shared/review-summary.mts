@@ -3,21 +3,31 @@
 // project root and every nested repo (repos.mjs).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { planPathOf } from "./checkouts.mts";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
 import * as git from "./git.mts";
-import { nestedRepos, readBases } from "./repos.mts";
+import { nestedRepos, readLayout, type ItemLayout } from "./repos.mts";
 import { securityPathOf } from "./security-paths.mts";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
 import type { Approval } from "./work/approvals.mts";
-import type { WorkId } from "./work/files.mts";
-import type { WorkSnapshot } from "./work/snapshot.mts";
+import type { WorkState } from "./work/state.mts";
 
 export type Size = "small" | "medium" | "large";
 export type QualityBar = Record<string, unknown>;
 export type SummaryConfig = { security_paths: readonly string[]; quality: QualityBar };
 export type SilencedInput = { dir: string; base: string; head: string | null; files: string[]; prefix: string };
-export type RepoChange = { path: string; worktree: string | null; base: string | null; base_from?: "recorded" | "merge-base"; changed: string[]; added: number; removed: number; skipped?: string };
-export type ChangeSet = { base: string; head: string | null; files: string[]; added: number; removed: number; silencedInputs: SilencedInput[]; repos: RepoChange[] };
+export type RepoChange = {
+  path: string;
+  worktree: string | null;
+  prefix: string;
+  base: string | null;
+  base_from?: "recorded" | "merge-base";
+  changed: string[];
+  added: number;
+  removed: number;
+  skipped?: string;
+};
+export type ChangeSet = { base: string; head: string | null; files: string[]; planFiles: string[]; added: number; removed: number; silencedInputs: SilencedInput[]; repos: RepoChange[] };
 export type ExtensionStep = { extension: string; path: string };
 export type Move = { path: string; kind: string; text: string | null };
 export type MarkedMove = Move & { waived: boolean };
@@ -62,8 +72,8 @@ function pathKey(path: string, platform: NodeJS.Platform): string {
   return platform === "win32" ? slashed.toLowerCase() : slashed;
 }
 
-export function markWaived(moves: readonly Move[], waivers: readonly Approval[], platform: NodeJS.Platform): MarkedMove[] {
-  const key = (path: string, text: string) => `${pathKey(path, platform)}\n${text}`;
+export function markWaived(moves: readonly Move[], waivers: readonly Approval[], platform: NodeJS.Platform, planPath: (path: string) => string = (path) => path): MarkedMove[] {
+  const key = (path: string, text: string) => `${pathKey(planPath(path), platform)}\n${text}`;
   const waived = new Set(waivers.map((w) => key(w.path, w.deleted ? DELETED : normaliseLine(w.text))));
   return moves.map(({ path, kind, text }) => ({ path, kind, text, waived: waived.has(key(path, text ?? DELETED)) }));
 }
@@ -127,25 +137,33 @@ function hasFile(root: string, pred: (rel: string) => boolean, depth: number, di
   return false;
 }
 
-function nestedChanges(id: WorkId, root: string, branch: string | null): RepoChange[] {
-  const bases = readBases(root, id);
+function checkoutOf(root: string, repoPath: string, recordedWorktree: string | undefined, branch: string | null): { worktree: string; prefix: string } {
+  if (recordedWorktree) return { worktree: join(root, recordedWorktree).replaceAll("\\", "/"), prefix: `${recordedWorktree}/` };
+  const repoDir = join(root, repoPath);
+  return { worktree: ((branch && git.worktreeOnBranch(repoDir, branch)) || repoDir).replaceAll("\\", "/"), prefix: `${repoPath}/` };
+}
+
+function nestedChanges(root: string, layout: ItemLayout, branch: string | null): RepoChange[] {
   return nestedRepos(root).map((repo) => {
     const repoDir = join(root, repo.path);
-    const entry: RepoChange = { path: repo.path, worktree: null, base: null, changed: [], added: 0, removed: 0 };
+    const entry: RepoChange = { path: repo.path, worktree: null, prefix: `${repo.path}/`, base: null, changed: [], added: 0, removed: 0 };
     if (!git.isRepo(repoDir)) return { ...entry, skipped: "not a git repository" };
-    const worktree = ((branch && git.worktreeOnBranch(repoDir, branch)) || repoDir).replaceAll("\\", "/");
-    const recorded = bases[repo.path];
+    const layoutEntry = layout.repos.find((r) => r.path === repo.path);
+    const checkout = checkoutOf(root, repo.path, layoutEntry?.worktree, branch);
+    const { worktree } = checkout;
+    const recorded = layoutEntry?.base ?? null;
     const fallbackBranch = recorded ? null : (repo.default_branch ?? git.defaultBranch(worktree));
     const base = recorded ?? (fallbackBranch && git.mergeBase(worktree, "HEAD", fallbackBranch));
-    if (!base) return { ...entry, worktree, skipped: "no recorded base and no default branch to merge-base with" };
+    if (!base) return { ...entry, ...checkout, skipped: "no recorded base and no default branch to merge-base with" };
     const { added, removed } = git.diffStat(worktree, base, null);
-    const changed = git.changedSince(worktree, base).map((f) => `${repo.path}/${f}`);
-    return { ...entry, worktree, base, base_from: recorded ? "recorded" : "merge-base", changed, added, removed };
+    const changed = git.changedSince(worktree, base).map((f) => `${checkout.prefix}${f}`);
+    return { ...entry, ...checkout, base, base_from: recorded ? "recorded" : "merge-base", changed, added, removed };
   });
 }
 
-export function changesOfItem(root: string, snap: WorkSnapshot, base: string): ChangeSet {
-  const nested = nestedChanges(snap.state.id, root, snap.state.branch ?? null);
+export function changesOfItem(root: string, state: WorkState, base: string): ChangeSet {
+  const layout = readLayout(root, state.id);
+  const nested = nestedChanges(root, layout, state.branch ?? null);
   // The root sees a nested repo as one untracked directory entry; its files are counted below instead.
   const nestedEntries = new Set(nested.flatMap((r) => [r.path, `${r.path}/`]));
   const rootChanged = git.changedSince(root, base).filter((f) => !git.isNonProduct(f) && !nestedEntries.has(f));
@@ -153,29 +171,29 @@ export function changesOfItem(root: string, snap: WorkSnapshot, base: string): C
   const { added, removed } = nested.reduce((sum, r) => ({ added: sum.added + r.added, removed: sum.removed + r.removed }), git.diffStat(root, base, null));
   const silencedInputs: SilencedInput[] = [
     { dir: root, base, head: null, files: rootChanged, prefix: "" },
-    ...nested.filter((r) => !r.skipped).map((r) => ({ dir: r.worktree as string, base: r.base as string, head: null, files: r.changed.map((f) => f.slice(r.path.length + 1)), prefix: `${r.path}/` })),
+    ...nested.filter((r) => !r.skipped).map((r) => ({ dir: r.worktree as string, base: r.base as string, head: null, files: r.changed.map((f) => f.slice(r.prefix.length)), prefix: r.prefix })),
   ];
-  return { base, head: null, files, added, removed, silencedInputs, repos: nested };
+  return { base, head: null, files, planFiles: files.map((f) => planPathOf(layout, f)), added, removed, silencedInputs, repos: nested };
 }
 
 /** The summary for a committed range (a pull request): `git diff base head`, nothing from the working tree. */
 export function changesOfRange(root: string, base: string, head: string): ChangeSet {
   const files = git.rangeFiles(root, base, head).filter((f) => !git.isNonProduct(f)).sort();
   const { added, removed } = git.diffStat(root, base, head);
-  return { base, head, files, added, removed, silencedInputs: [{ dir: root, base, head, files, prefix: "" }], repos: [] };
+  return { base, head, files, planFiles: files, added, removed, silencedInputs: [{ dir: root, base, head, files, prefix: "" }], repos: [] };
 }
 
 export function summarize(root: string, changes: ChangeSet, config: SummaryConfig): Summary {
-  const { files, added, removed } = changes;
+  const { files, planFiles, added, removed } = changes;
   const size = sizeClass(files.length, added + removed);
-  const securityPath = files.some((file) => securityPathOf(file, config.security_paths) !== null);
+  const securityPath = planFiles.some((file) => securityPathOf(file, config.security_paths) !== null);
   return {
     size,
     changed_files: files,
     lines_added: added,
     lines_removed: removed,
     frameworks: detectFrameworks(root),
-    concerns: detectConcerns(root, files),
+    concerns: detectConcerns(root, planFiles),
     security_path: securityPath,
     extension_steps: extensionSteps(root, size, securityPath),
     silenced: unwaived(changes.silencedInputs.flatMap((input) => silencedIn(input, config.quality))),

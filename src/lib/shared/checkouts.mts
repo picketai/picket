@@ -76,7 +76,7 @@ export function ticketKey(source: string | null | undefined): string | null {
   return source && TICKET_KEY.test(source) ? source : null;
 }
 
-function readPlan(root: string, id: WorkId): { state: WorkState; phases: ArtifactPhase[] } {
+export function readPlan(root: string, id: WorkId): { state: WorkState; phases: ArtifactPhase[] } {
   const state = readState(root, id);
   const artifact = ARTIFACT_BY_LANE[state.lane];
   const text = artifact ? readText(workFile(root, id, artifact)) : null;

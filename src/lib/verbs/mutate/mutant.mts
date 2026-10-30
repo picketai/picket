@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { commentOf, extOf, LANGS, MARKUP, maskStrings } from "../../shared/comments.mjs";
 import { changedSince, fileAt, isNonProduct } from "../../shared/git.mts";
 import { STATE_FILES, stateDir, statePath } from "../../shared/paths.mts";
@@ -69,6 +69,17 @@ export function pickMutant(root: string, base: string): Mutant | null {
     const lang = codeLang(path);
     const mutant = lang && fileMutant(root, base, path, lang);
     if (mutant) return mutant;
+  }
+  return null;
+}
+
+export type Checkout = { dir: string; base: string };
+export type PlacedMutant = { dir: string; base: string; mutant: Mutant };
+
+export function pickMutantIn(root: string, checkouts: readonly Checkout[]): PlacedMutant | null {
+  for (const { dir, base } of checkouts) {
+    const mutant = pickMutant(join(root, dir), base);
+    if (mutant) return { dir, base, mutant: { ...mutant, path: posix.join(dir, mutant.path) } };
   }
   return null;
 }

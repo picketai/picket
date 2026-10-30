@@ -1,5 +1,6 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { action, done } from "../../shared/action.mts";
+import { planPathOf } from "../../shared/checkouts.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { readMutation } from "../../shared/mutation.mjs";
 import { CHECKLIST_SCOPES, isChecklistScope, reviewChecklists, type Checklist, type ChecklistScope } from "../../shared/review-checklists.mts";
@@ -52,7 +53,7 @@ export function itemSummary(root: string, id: WorkId, { base, env, platform, sco
   const snap = readSnapshot(root, id);
   const from = base ?? snap.state.base ?? "HEAD";
   const config = itemConfig(root, env);
-  const changes = changesOfItem(root, snap, from);
+  const changes = changesOfItem(root, snap.state, from);
   const summary = summarize(root, changes, config);
   const chosen = scope ?? defaultScope(root, snap);
   return {
@@ -70,7 +71,7 @@ export function itemSummary(root: string, id: WorkId, { base, env, platform, sco
     phases: snap.phases.length,
     repos: changes.repos.filter((r) => r.skipped || r.changed.length).map(repoReport),
     sources: liveDrift(root, id, config.sources),
-    silenced: markWaived(summary.silenced, itemWaivers(root, id), platform),
+    silenced: markWaived(summary.silenced, itemWaivers(root, id), platform, (path) => planPathOf(snap.layout, path)),
     mutation: readMutation(id, root),
     scope: chosen,
     checklists: reviewChecklists(summary, chosen),
