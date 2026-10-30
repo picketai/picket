@@ -6,7 +6,7 @@ Each hook name starts with its kind. `guard.*` hooks deny a tool call or bounce 
 
 | Hook | Events | Matcher | Does |
 |---|---|---|---|
-| `inject.state` | SessionStart |  | open work items with their next action, plus the host folder's `MEMORY.md` |
+| `inject.state` | SessionStart |  | open work items with their next action, plus the host folder's `MEMORY.md` cut at the last whole entry within 6,000 characters |
 | `inject.rules` | SessionStart, SubagentStart |  | the five rules in `rules/`, joined, for the lead and every agent |
 | `inject.extensions` | SessionStart, SubagentStart |  | each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension |
 | `inject.consulting` | UserPromptSubmit |  | one line suggesting `picket:consulting` when a user prompt reads as a direction or stress-test question; silent on gate replies, short prompts and prompts naming a `picket:` skill |

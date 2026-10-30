@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { loadConfig, securityPaths } from "../../../shared/config.mjs";
+import { glossaryBody, injectedGlossary } from "../../../shared/glossary.mts";
 import { hostPath, hostRel } from "../../../shared/paths.mts";
 import { ACTION_TEXT, isNextAction } from "../../../shared/work/action-text.mts";
 import { nextOf } from "../../../shared/work/next-view.mts";
@@ -9,7 +10,6 @@ import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
 
 const SHOWN_ITEMS = 8;
-const GLOSSARY_CHARS = 6000;
 
 function openItemLine(snap: WorkSnapshot, secured: readonly string[]): string {
   const s = stateView(snap);
@@ -37,8 +37,8 @@ function sourcesPart(root: string): string | null {
 function glossaryPart(root: string): string | null {
   const memory = hostPath(root, "MEMORY.md");
   if (!existsSync(memory)) return null;
-  const text = readFileSync(memory, "utf8").trim();
-  return text ? `# Project glossary and decisions (${hostRel("MEMORY.md")})\n${text.slice(0, GLOSSARY_CHARS)}` : null;
+  const text = glossaryBody(readFileSync(memory, "utf8"));
+  return text ? `# Project glossary and decisions (${hostRel("MEMORY.md")})\n${injectedGlossary(text)}` : null;
 }
 
 function collectParts(root: string): string[] {

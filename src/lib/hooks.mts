@@ -6,7 +6,7 @@ export type HookEntry = { summary: string; on: readonly { event: HookEvent; matc
 
 export const HOOKS = {
   "inject.state": {
-    summary: "open work items with their next action, plus the host folder's `MEMORY.md`",
+    summary: "open work items with their next action, plus the host folder's `MEMORY.md` cut at the last whole entry within 6,000 characters",
     on: [{ event: "SessionStart" }],
   },
   "inject.rules": {
