@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { action, done, failed } from "../../shared/action.mts";
+import { locate, testRuns, type TestRun } from "../../shared/checkouts.mts";
 import { runStep } from "../../shared/checks.mts";
 import { readDriveLog } from "../../shared/drive-log.mts";
-import { detectTooling } from "../../shared/tooling.mts";
+import type { ItemLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import type { GrepEntry } from "../../shared/work/artifact.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
@@ -23,24 +24,50 @@ function notVerified(phase: number, result: VerifyResult): VerifyReport {
   return { ok: false, phase, results: [result] };
 }
 
-function fileResults(root: string, files: string[]): VerifyResult[] {
-  return files.map((file) => ({ name: `file:${file}`, ok: existsSync(join(root, file)), detail: "" }));
+function physicalPath(layout: ItemLayout, planPath: string): string {
+  const { dir, rel } = locate(layout, planPath);
+  return posix.join(dir, rel);
 }
 
-function grepResults(root: string, greps: GrepEntry[]): VerifyResult[] {
-  return greps.map(({ path, pattern, flags }) => {
-    const file = join(root, path);
-    const ok = existsSync(file) && new RegExp(pattern, flags ?? "m").test(readFileSync(file, "utf8"));
-    return { name: `grep:${path}:${pattern}`, ok, detail: "" };
+function physicalDetail(planPath: string, physical: string): string {
+  return physical === planPath ? "" : `at ${physical}`;
+}
+
+function fileResults(root: string, layout: ItemLayout, files: string[]): VerifyResult[] {
+  return files.map((file) => {
+    const physical = physicalPath(layout, file);
+    return { name: `file:${file}`, ok: existsSync(join(root, physical)), detail: physicalDetail(file, physical) };
   });
 }
 
-function testsResult(root: string, command: string | null, { runTests, env }: VerifyOptions): VerifyResult {
+function grepResults(root: string, layout: ItemLayout, greps: GrepEntry[]): VerifyResult[] {
+  return greps.map(({ path, pattern, flags }) => {
+    const physical = physicalPath(layout, path);
+    const file = join(root, physical);
+    const ok = existsSync(file) && new RegExp(pattern, flags ?? "m").test(readFileSync(file, "utf8"));
+    return { name: `grep:${path}:${pattern}`, ok, detail: physicalDetail(path, physical) };
+  });
+}
+
+function umbrellaTests(root: string, command: string | null, { runTests, env }: VerifyOptions): VerifyResult {
   if (!command) return { name: "tests", ok: false, detail: "no test command detected" };
   if (!runTests) return { name: "tests", ok: true, detail: `skipped (${command})` };
   const step = runStep(root, "test", command, { env, timeoutMs: TEST_TIMEOUT_MS, logPrefix: "verify" });
   if (step.status === "passed") return { name: "tests", ok: true, detail: command };
   return { name: "tests", ok: false, detail: `${step.status} · ${command} · log ${step.log}` };
+}
+
+function checkoutTests(root: string, { dir, command }: TestRun, { runTests, env }: VerifyOptions): VerifyResult {
+  const name = `tests:${dir}`;
+  if (!command) return { name, ok: true, detail: "no suite detected" };
+  if (!runTests) return { name, ok: true, detail: `skipped (${command})` };
+  const step = runStep(root, "test", command, { env, timeoutMs: TEST_TIMEOUT_MS, logPrefix: `verify-${dir.replaceAll("/", "-")}`, cwd: join(root, dir) });
+  if (step.status === "passed") return { name, ok: true, detail: command };
+  return { name, ok: false, detail: `${step.status} · ${command} · log ${step.log}` };
+}
+
+function testsResult(root: string, run: TestRun, options: VerifyOptions): VerifyResult {
+  return run.dir === "" ? umbrellaTests(root, run.command, options) : checkoutTests(root, run, options);
 }
 
 function skippedNote(skipped: number): string {
@@ -63,11 +90,12 @@ export function verify(root: string, id: WorkId, n: number, options: VerifyOptio
   if (!mustHaves) return notVerified(n, { name: "must_haves_declared", ok: false, detail: `frontmatter has no phases[] entry for n: ${n}` });
   const results: VerifyResult[] = [
     { name: "must_haves_declared", ok: true, detail: Object.keys(mustHaves).filter((key) => key !== "n").join(", ") },
-    ...fileResults(root, mustHaves.files ?? []),
-    ...grepResults(root, mustHaves.greps ?? []),
+    ...fileResults(root, snap.layout, mustHaves.files ?? []),
+    ...grepResults(root, snap.layout, mustHaves.greps ?? []),
   ];
-  const { tooling, warnings } = mustHaves.tests ? detectTooling(root) : { tooling: null, warnings: [] };
-  if (tooling) results.push(testsResult(root, tooling.test, options));
+  const runs = mustHaves.tests ? testRuns(root, id, n) : [];
+  results.push(...runs.map((run) => testsResult(root, run, options)));
+  const warnings = runs.flatMap((run) => run.warnings);
   if (mustHaves.drive) results.push(driveResult(root, id, n));
   const report = { ok: results.every((result) => result.ok), phase: n, results };
   return warnings.length ? { ...report, warnings } : report;

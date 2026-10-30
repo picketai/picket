@@ -1,6 +1,7 @@
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
+import { testRuns, type TestRun } from "../../../shared/checkouts.mts";
 import { kernelVerbStart } from "../../../shared/shell/kernel-call.mts";
-import { detectTooling } from "../../../shared/tooling.mts";
+import { workId } from "../../../shared/work/files.mts";
 import { VERB_NAMES } from "../../../verbs.mts";
 
 type VerbTable = Record<string, { readOnly?: boolean; leadOnly?: boolean; subverbs?: Record<string, { readOnly: boolean }> }>;
@@ -8,6 +9,8 @@ type KernelScope = { cwd: string | null; depth: number; hookRoot: string | null;
 
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 export const BARE_KERNEL = "picket";
+
+const PHASE_NUMBER = /^\d+$/;
 
 const VERBS: VerbTable = VERB_NAMES;
 
@@ -46,18 +49,25 @@ function sameDirectory(a: string, b: string, platform: NodeJS.Platform): boolean
   return platform === "win32" ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
 }
 
+function verifyTarget(words: string[]): { id: string; n: number } | null {
+  const [id, n] = words.slice(2).filter((word) => !word.startsWith("-"));
+  return id && n && PHASE_NUMBER.test(n) ? { id, n: Number(n) } : null;
+}
+
 function verifyRunsNoProjectCode(tokens: readonly unknown[], { cwd, hookRoot, depth, platform, classifyText }: KernelScope): boolean {
   const words = tokens.filter((t): t is string => typeof t === "string");
   if (words.includes("--no-tests")) return true;
   if (!hookRoot || !cwd || !sameDirectory(cwd, hookRoot, platform)) return false;
   if (words.some((t) => t === "--root" || t.startsWith("--root="))) return false;
-  let testCommand: string | null | undefined;
+  const target = verifyTarget(words);
+  if (!target) return false;
+  let runs: TestRun[];
   try {
-    testCommand = detectTooling(hookRoot).tooling.test;
+    runs = testRuns(hookRoot, workId(target.id), target.n);
   } catch {
     return false;
   }
-  return !testCommand || classifyText(testCommand, hookRoot, depth) === "safe";
+  return runs.every(({ dir, command }) => !command || classifyText(command, join(hookRoot, dir), depth) === "safe");
 }
 
 export function classifyKernelCall(tokens: readonly unknown[], scope: KernelScope): "safe" | "unknown" | "kernel" {

@@ -1,16 +1,19 @@
 import { join } from "node:path";
 import { gitRead } from "../util/git.mts";
+import { readText } from "../util/io.mts";
 import { Refused } from "./action.mts";
 import { defaultBranch, revParse } from "./git.mts";
 import { nestedRepos, readLayout, writeLayout, type ItemLayout, type RepoLayout } from "./repos.mts";
-import { phasePaths } from "./work/artifact.mts";
-import type { WorkId } from "./work/files.mts";
-import { readSnapshot, type WorkSnapshot } from "./work/snapshot.mts";
-import { writeState } from "./work/state.mts";
+import { detectTooling } from "./tooling.mts";
+import { parseArtifact, phasePaths, type ArtifactPhase } from "./work/artifact.mts";
+import { workFile, type WorkId } from "./work/files.mts";
+import { ARTIFACT_BY_LANE, readState, writeState, type WorkState } from "./work/state.mts";
 
 export type Located = { dir: string; rel: string; repo: string | null };
 export type BranchChoice = { name: string; from?: string };
 export type PlannedWorktree = { repo: string; from: string; base: string | null; worktree: string };
+export type ItemPlan = { layout: ItemLayout; phases: Pick<ArtifactPhase, "entry" | "touchSet">[] };
+export type TestRun = { dir: string; command: string | null; warnings: string[] };
 
 const WORKTREE_FOLDER = /^\.worktrees\/[^/]+(?:\/|$)/;
 const TICKET_KEY = /^[A-Z][A-Z0-9]+-\d+$/;
@@ -60,7 +63,6 @@ export function planPathOf(layout: ItemLayout, path: string): string {
   const { repo, rel } = locate(layout, path);
   return repo === null ? rel : joined(repo, rel.replace(WORKTREE_FOLDER, ""));
 }
-
 export function touchedRepos(layout: ItemLayout, paths: string[]): string[] {
   const repos = paths.map((path) => locate(layout, path).repo).filter((repo): repo is string => repo !== null);
   return [...new Set(repos)].sort();
@@ -74,8 +76,26 @@ export function ticketKey(source: string | null | undefined): string | null {
   return source && TICKET_KEY.test(source) ? source : null;
 }
 
-function planTouchedRepos(snap: WorkSnapshot): string[] {
-  return touchedRepos(snap.layout, snap.phases.flatMap(phasePaths));
+function readPlan(root: string, id: WorkId): { state: WorkState; phases: ArtifactPhase[] } {
+  const state = readState(root, id);
+  const artifact = ARTIFACT_BY_LANE[state.lane];
+  const text = artifact ? readText(workFile(root, id, artifact)) : null;
+  return { state, phases: text === null ? [] : parseArtifact(text).phases };
+}
+
+export function testRuns(root: string, id: WorkId, n: number): TestRun[] {
+  const phase = readPlan(root, id).phases.find((p) => p.n === n);
+  if (!phase?.entry) throw new Error(`${id} has no phases[] entry for n: ${n}`);
+  const layout = readLayout(root, id);
+  const dirs = [...new Set(phasePaths(phase).map((path) => locate(layout, path).dir))].sort();
+  return (dirs.length ? dirs : [""]).map((dir) => {
+    const { tooling, warnings } = detectTooling(join(root, dir));
+    return { dir, command: tooling.test, warnings };
+  });
+}
+
+function planTouchedRepos({ layout, phases }: ItemPlan): string[] {
+  return touchedRepos(layout, phases.flatMap(phasePaths));
 }
 
 function startRef(root: string, repo: string, from: string | undefined): string {
@@ -83,8 +103,8 @@ function startRef(root: string, repo: string, from: string | undefined): string 
   return from ?? manifestDefault ?? defaultBranch(join(root, repo)) ?? "HEAD";
 }
 
-export function planWorktrees(root: string, snap: WorkSnapshot, { name, from }: BranchChoice): PlannedWorktree[] {
-  return planTouchedRepos(snap).map((repo) => {
+export function planWorktrees(root: string, plan: ItemPlan, { name, from }: BranchChoice): PlannedWorktree[] {
+  return planTouchedRepos(plan).map((repo) => {
     const ref = startRef(root, repo, from);
     return { repo, from: ref, base: revParse(join(root, repo), ref), worktree: `${repo}/.worktrees/${worktreeDirName(name)}` };
   });
@@ -106,12 +126,13 @@ function withPlanned(repos: RepoLayout[], planned: PlannedWorktree[]): RepoLayou
 
 export function recordBranch(root: string, id: WorkId, choice: BranchChoice, now: Date): PlannedWorktree[] {
   if (!isBranchName(root, choice.name)) throw new Refused(`"${choice.name}" is not a valid branch name`);
-  const snap = readSnapshot(root, id);
-  const planned = planWorktrees(root, snap, choice);
+  const { state, phases } = readPlan(root, id);
+  const layout = readLayout(root, id);
+  const planned = planWorktrees(root, { layout, phases }, choice);
   const unresolved = planned.find((p) => p.base === null);
   if (unresolved) throw new Refused(`${unresolved.repo} has no commit at "${unresolved.from}"`);
-  writeLayout(root, id, { worktrees: null, repos: withPlanned(snap.layout.repos, planned) });
-  writeState(root, { ...snap.state, branch: choice.name }, now);
+  writeLayout(root, id, { worktrees: null, repos: withPlanned(layout.repos, planned) });
+  writeState(root, { ...state, branch: choice.name }, now);
   return planned;
 }
 

@@ -4,9 +4,15 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { statePath, stateRel, STATE_FILES } from "../../../shared/paths.mts";
 import { decision } from "#test/hook.mts";
-import { withProject } from "#test/project.mts";
+import { openItem, withProject } from "#test/project.mts";
 
 const project = (t: TestContext) => withProject(t, { host: true, picket: false });
+
+function verifiable(root: string): string {
+  const { id } = openItem(root, { lane: "order", title: "Verified" });
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.ts]\n---\n# O\n\n## Phase 1: A\n");
+  return id;
+}
 
 function traceRows(root: string): { outcome: string; tool: string }[] {
   return readFileSync(statePath(root, STATE_FILES.guardLog), "utf8").trim().split("\n").map((l) => JSON.parse(l));
@@ -67,8 +73,9 @@ test("guardBash allows a compound of read-only pieces and bare picket calls that
 test("guardBash allows a lone read-only picket verb and leaves a mutating one to the allow rule", (t) => {
   const root = project(t);
   const decide = (command: string) => decision(command, { root, tool: "Bash" });
+  const id = verifiable(root);
 
-  for (const command of ["picket verify 20261012-touring-deleteorder-blank-input-returns-500 1", "picket state x", "picket next x", "picket packet x", "picket summary x", "picket extension list", "picket source grep analysis foo", "picket source find analysis Foo", "picket verify x 1 2>&1 | tail -20"]) {
+  for (const command of [`picket verify ${id} 1`, "picket state x", "picket next x", "picket packet x", "picket summary x", "picket extension list", "picket source grep analysis foo", "picket source find analysis Foo", `picket verify ${id} 1 2>&1 | tail -20`]) {
     assert.equal(decide(command), "allow", command);
   }
 
@@ -82,22 +89,25 @@ test("guardBash allows a lone picket verify only when the test command it would 
   const root = project(t);
   const decide = (command: string) => decision(command, { root, tool: "Bash" });
   const decideIn = (cwd: string, command: string) => decision(command, { root, cwd });
-  assert.equal(decide("picket verify x 1"), "allow");
-  assert.equal(decideIn(join(root, "..", "other"), "picket verify x 1"), null);
-  assert.equal(decideIn(join(root, "sub"), "picket verify x 1"), null);
-  assert.equal(decideIn(join(root, "..", "other"), "picket verify x 1 --no-tests"), "allow");
+  const id = verifiable(root);
+  const verifyOne = `picket verify ${id} 1`;
+  assert.equal(decide(verifyOne), "allow");
+  assert.equal(decide("picket verify x 1"), null, "an item that does not exist is not classified safe");
+  assert.equal(decideIn(join(root, "..", "other"), verifyOne), null);
+  assert.equal(decideIn(join(root, "sub"), verifyOne), null);
+  assert.equal(decideIn(join(root, "..", "other"), `${verifyOne} --no-tests`), "allow");
 
   writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: "node scripts/test.mjs" } }));
-  assert.equal(decide("picket verify x 1"), null);
-  assert.equal(decide("cd sub && picket verify x 1"), null);
-  assert.equal(decide("picket next x; picket verify x 1"), null);
-  assert.equal(decide("cd sub && picket verify x 1 --no-tests"), "allow");
-  assert.equal(decide(`picket verify x 1 --root ${join(root, "other")}`), null);
-  assert.equal(decide("picket verify x 1 --no-tests"), "allow");
+  assert.equal(decide(verifyOne), null);
+  assert.equal(decide(`cd sub && ${verifyOne}`), null);
+  assert.equal(decide(`picket next x; ${verifyOne}`), null);
+  assert.equal(decide(`cd sub && ${verifyOne} --no-tests`), "allow");
+  assert.equal(decide(`${verifyOne} --root ${join(root, "other")}`), null);
+  assert.equal(decide(`${verifyOne} --no-tests`), "allow");
 
   mkdirSync(join(root, ".picket"), { recursive: true });
   writeFileSync(join(root, ".picket", "config.json"), JSON.stringify({ version: 1, commands: { test: "dotnet test" } }));
-  assert.equal(decide("picket verify x 1"), "allow");
+  assert.equal(decide(verifyOne), "allow");
 });
 
 test("guardBash never allows a heredoc redirect into an extension file", (t) => {

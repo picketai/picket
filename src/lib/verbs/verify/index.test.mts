@@ -2,11 +2,13 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { verb, verify } from "./index.mts";
+import { verb, verify, type VerifyReport } from "./index.mts";
 import { stateDir, statePath, STATE_FILES } from "../../shared/paths.mts";
 import { phaseOf, readSnapshot } from "../../shared/work/snapshot.mts";
+import { writeLayout } from "../../shared/repos.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
-import { openItem, withProject } from "#test/project.mts";
+import { writeIn } from "#test/git.mts";
+import { openItem, withProject, writeArtifact } from "#test/project.mts";
 
 function setup(t: TestContext, tests = false) {
   const root = withProject(t, { picket: false });
@@ -90,6 +92,81 @@ test("verify on a malformed package.json fails tests as undetected and carries t
   const r = verify(root, id, 1, { runTests: true, env: process.env });
   assert.deepEqual(r.results.find((x) => x.name === "tests"), { name: "tests", ok: false, detail: "no test command detected" });
   assert.match(r.warnings?.[0] ?? "", /^package\.json is not valid JSON \(.+\); no npm scripts detected$/);
+});
+
+const WORKTREE = "src/Orders/.worktrees/RMS-12";
+const WRITES_RAN = { scripts: { test: "node -e \"require('fs').writeFileSync('ran.txt', 'x')\"" } };
+
+function worktreeSetup(t: TestContext) {
+  const root = withProject(t, { picket: false });
+  mkdirSync(stateDir(root), { recursive: true });
+  const { id } = openItem(root, { lane: "order", title: "Orders" });
+  writeArtifact(
+    root,
+    id,
+    "order.md",
+    [
+      "---",
+      "lane: order",
+      "phases:",
+      "  - n: 1",
+      "    files: [src/Orders/pricing.cs]",
+      "    greps:",
+      "      - path: src/Orders/pricing.cs",
+      "        pattern: worktree copy",
+      "  - n: 2",
+      "    files: [src/Orders/pricing.cs]",
+      "    tests: true",
+      "  - n: 3",
+      "    files: [src/Billing/fees.cs]",
+      "    tests: true",
+      "---",
+      "# O",
+      "",
+      "## Phase 1: Files",
+      "",
+      "## Phase 2: Orders tests",
+      "",
+      "## Phase 3: Billing tests",
+      "",
+    ].join("\n"),
+  );
+  writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: WORKTREE }, { path: "src/Billing", base: null }] });
+  return { root, id };
+}
+
+const resultNamed = (report: VerifyReport, name: string) => report.results.find((x) => x.name === name);
+
+test("verify reads a plan path's file and grep in the recorded worktree, not the main checkout (T-3.1, T-3.2)", (t) => {
+  const { root, id } = worktreeSetup(t);
+  const check = () => verify(root, id, 1, { runTests: false, env: process.env });
+  writeIn(root, "src/Orders/pricing.cs", "worktree copy\n");
+  assert.equal(resultNamed(check(), "file:src/Orders/pricing.cs")?.ok, false);
+
+  writeIn(root, `${WORKTREE}/pricing.cs`, "older text\n");
+  const report = check();
+  assert.deepEqual(resultNamed(report, "file:src/Orders/pricing.cs"), { name: "file:src/Orders/pricing.cs", ok: true, detail: `at ${WORKTREE}/pricing.cs` });
+  assert.equal(resultNamed(report, "grep:src/Orders/pricing.cs:worktree copy")?.ok, false);
+
+  writeIn(root, `${WORKTREE}/pricing.cs`, "worktree copy\n");
+  assert.equal(check().ok, true);
+});
+
+test("verify runs a nested phase's tests in its worktree only, and passes a checkout with no suite (T-3.3)", (t) => {
+  const { root, id } = worktreeSetup(t);
+  writeFileSync(join(root, "package.json"), JSON.stringify(WRITES_RAN));
+  writeIn(root, `${WORKTREE}/package.json`, JSON.stringify(WRITES_RAN));
+  writeIn(root, `${WORKTREE}/pricing.cs`, "x\n");
+  const orders = verify(root, id, 2, { runTests: true, env: process.env });
+  assert.deepEqual(resultNamed(orders, `tests:${WORKTREE}`), { name: `tests:${WORKTREE}`, ok: true, detail: "npm test" });
+  assert.equal(resultNamed(orders, "tests"), undefined);
+  assert.equal(existsSync(join(root, WORKTREE, "ran.txt")), true);
+  assert.equal(existsSync(join(root, "ran.txt")), false);
+  assert.equal(existsSync(statePath(root, "verify-src-Orders-.worktrees-RMS-12-test.log")), true);
+
+  mkdirSync(join(root, "src", "Billing"), { recursive: true });
+  const billing = verify(root, id, 3, { runTests: true, env: process.env });
+  assert.deepEqual(resultNamed(billing, "tests:src/Billing"), { name: "tests:src/Billing", ok: true, detail: "no suite detected" });
 });
 
 test("verify names the status, command and log of a failed test step", (t) => {

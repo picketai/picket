@@ -2,13 +2,13 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { locate, planPathOf, recordBranch, recordNone, ticketKey, touchedRepos, worktreeDirName } from "./checkouts.mts";
+import { locate, planPathOf, recordBranch, recordNone, testRuns, ticketKey, touchedRepos, worktreeDirName } from "./checkouts.mts";
 import { Refused } from "./action.mts";
 import { readBases, readLayout, writeLayout, type ItemLayout } from "./repos.mts";
 import { readState } from "./work/state.mts";
 import type { WorkId } from "./work/files.mts";
 import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
-import { openItem, writeArtifact } from "#test/project.mts";
+import { openItem, withProject, writeArtifact, writeConfig } from "#test/project.mts";
 
 const WORKTREE = "src/Orders/.worktrees/RMS-12";
 const RECORDED: ItemLayout = { nested: ["src/Orders", "src/Billing"], worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: WORKTREE }] };
@@ -108,6 +108,51 @@ test("recordNone records the main checkouts, and refuses once a worktree is reco
   assert.equal(readLayout(root, id).worktrees, null);
   writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: WORKTREE }] });
   assert.throws(() => recordNone(root, id), (err) => err instanceof Refused && err.message.includes(WORKTREE));
+});
+
+const TWO_PHASES = [
+  "---",
+  "lane: order",
+  "phases:",
+  "  - n: 1",
+  "    files: [src/Orders/pricing.cs, README.md]",
+  "  - n: 2",
+  "    files: [src/Orders/pricing.cs]",
+  "  - n: 3",
+  "    files: []",
+  "---",
+  "# O",
+  "",
+  "## Phase 1: Both",
+  "",
+  "## Phase 2: Orders",
+  "",
+  "## Phase 3: Nothing named",
+  "",
+  "## Phase 4: No entry",
+  "",
+].join("\n");
+
+function worktreeItem(t: TestContext): { root: string; id: WorkId } {
+  const root = withProject(t, { host: true });
+  const { id } = openItem(root, { lane: "order", title: "Runs" });
+  writeArtifact(root, id, "order.md", TWO_PHASES);
+  writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: WORKTREE }] });
+  writeConfig(root, { version: 1, commands: { test: "dotnet test" } });
+  writeConfig(join(root, WORKTREE), { version: 1, commands: { test: "node wt.js" } });
+  return { root, id };
+}
+
+test("testRuns names one test command per checkout the phase touches, the umbrella when it names none", (t) => {
+  const { root, id } = worktreeItem(t);
+  const runs = (n: number) => testRuns(root, id, n).map(({ dir, command }) => ({ dir, command }));
+  assert.deepEqual(runs(1), [
+    { dir: "", command: "dotnet test" },
+    { dir: WORKTREE, command: "node wt.js" },
+  ]);
+  assert.deepEqual(runs(2), [{ dir: WORKTREE, command: "node wt.js" }]);
+  assert.deepEqual(runs(3), [{ dir: "", command: "dotnet test" }]);
+  assert.throws(() => testRuns(root, id, 4), /no phases\[\] entry for n: 4/);
 });
 
 test("readLayout of an item with no repos.yaml has no repos and no worktrees choice", (t) => {
