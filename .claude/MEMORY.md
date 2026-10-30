@@ -46,25 +46,38 @@ One operator on a changed line inverted by `picket mutate` (`===` to `!==`) to t
 The reviewer row id (`Ts4`, `Rf8`) behind a Critical or Major finding. `picket close` reports a class named in two or more reviews.
 
 **Procedure**:
-A step file in the skills' shared procedures folder that two or more skills or agents follow (the phase loop, the gate, the cumulative review). It has one owner and is cited, never copied (refactor item 08a, 2026-10-23).
+A step file in the skills' shared procedures folder that two or more skills or agents follow (the phase loop, the gate, the cumulative review). It has one owner and is cited, never copied.
 _Avoid_: shared step, common step
 
 **Checklist**:
 A file in the reviewing skill's checklists folder that the reviewer loads by size, framework or concern; unlike a step file it is not run in order.
 _Avoid_: review step
 
+**Send**:
+One message the lead gives an agent exactly as `picket next` prints it: tool, instance name, agent type and text.
+_Avoid_: dispatch, prompt
+
+**Gate reply**:
+The user's answer at a stop (`a`, `r 9`, `x: <why>`), passed to `picket reply`, which routes it and prints the next send.
+_Avoid_: approval message
+
+**Instance tag**:
+The four letters before the role in an agent's instance name (`fllf-developer`), from the sha256 of the work item id, so a send never reaches another item's agent.
+
+**Shell**:
+An agent's file under `src/agents/`: frontmatter, then the same six parts in order. Procedure lives in skills; a shell names only its preloaded skills.
+_Avoid_: agent prompt, agent definition
+
+**Entry**:
+The `## Entry` part of a shell: what the agent reads first and which fields of the lead's send it expects.
+
 ## Decisions
 
-- **Product name Tether, project TetherAI** [superseded 2026-10-10 by Picket] (2026-10-02): plugin and CLI are `tether`, state lives in `.tether/`. npm, repository and organization names are settled at the alpha (2026-10-04); npm `tether` is taken, so expect a scope. Report: https://claude.ai/artifact/QyPJqATUoenwE4Cdc3R5km
-- **Product name Picket, project PicketAI** (2026-10-10): the npm package is `@picketai/picket`, the GitHub organization and repository `picketai/picket`, the command `picket`. Chosen over keeping the old name and over Hitch: the old name's npm scope and `hitch` are taken, `hitch-cli` is a rival AI coding tool, and `@picketai`, `picketai` and GitHub `picketai` were all free on 2026-10-10. The rename lands before the alpha tag.
-- **Packaging is a mix: one core, a Claude Code plugin, a CLI, and `picket init`** (2026-10-02): a bare plugin cannot carry rules, CLAUDE.md or permissions, and a bare installer CLI leaves copies that drift. The source is `src/`, and `npm run build` writes the plugin to `dist/`, generated and ignored by git (2026-10-23, refactor item 01; until then the tracked source was the plugin folder, with no build step).
-- **Claude Code only until the alpha** (2026-10-04): other hosts are revisited after the alpha; the only multi-host preparation kept is one paths module and hooks as thin shells over kernel verbs, which pay for themselves in tests anyway.
-- **Customization through extensions with a manifest, not an anonymous override folder** (2026-10-04): `.picket/extensions/<name>/extension.json`, enabled and ordered by `.picket/config.json`; chosen for maintainability (identity, version, compatibility check). Project-local only in the alpha; installing from a git URL comes later.
+- **Product name Picket, project PicketAI** (2026-10-10): npm `@picketai/picket`, GitHub `picketai/picket`, command `picket`; it replaced the working name Tether, whose npm scope was taken. Rejected: Hitch (`hitch-cli` is a rival AI coding tool).
+- **Packaging is a mix: one core, a Claude Code plugin, a CLI, and `picket init`** (2026-10-02): a bare plugin cannot carry rules, CLAUDE.md or permissions, and a bare installer leaves copies that drift. `npm run build` writes the plugin from `src/` to `dist/`.
+- **Claude Code only until the alpha** (2026-10-04): other hosts are revisited after it; the only multi-host preparation kept is one paths module and hooks as thin shells over kernel verbs.
+- **Customization through extensions with a manifest, not an anonymous override folder** (2026-10-04): a manifest gives identity, version and a compatibility check. Project-local only in the alpha; installing from a git URL comes later.
 - **Settings in `.picket/config.json`** (2026-10-04), tracked; runtime state in `.picket/state/`, ignored by git.
-- **Versioning: SemVer from 1.0.0-alpha.1, developed on the `framework` worktree until a shippable alpha** (2026-10-02).
-- **The Claude side ships as a plugin; `picket init` writes only what a plugin cannot** (2026-10-04): the spike carried agents, skills, hooks and the CLI as a plugin, and the whole harness graded the same as the copy-in run. `init` writes the CLAUDE.md block, settings and permission keys, `.picket/config.json`, and the marketplace keys. SDR 00001.
-- **Skills and agents are always named `picket:<name>`** (2026-10-04): a bare name loses to a project skill of the same name. The kernel strips the prefix in one function. SDR 00001.
-- **Rules reach the lead and every teammate by hook injection from the plugin** (2026-10-04): SessionStart for the lead, SubagentStart for each agent, extension additions after core. Rejected: `paths` skills (they never injected) and copied `.claude/rules/` (drift). SDR 00001.
-- **Hooks stay one Node process each under the 200 ms cold budget** (2026-10-04): measured 46 to 66 ms from the plugin, within 6 ms of today. SDR 00001.
-- **Nothing writes under the plugin root** (2026-10-04): the installed plugin folder is shared by projects and replaced on update, so all state goes to `.picket/state/`. SDR 00001.
-- **Local install is one command, `picket init`** (2026-10-08): it registers the `picketai` marketplace and installs `picket@picketai` with project scope through the `claude` CLI, and writes the CLAUDE.md block, settings and `.picket/config.json`; it replaced the two-command install of 2026-10-07 (D-005 of the 2026-10-08 work item that added `picket init`). The marketplace was named `picket-dev` until 2026-10-10.
+- **Versioning: SemVer from 1.0.0-alpha.1** (2026-10-02).
+- **The Claude side ships as a plugin, per SDR 00001** (2026-10-04): `picket init` writes only what a plugin cannot (the CLAUDE.md block, settings, `.picket/config.json`); skills and agents are always `picket:<name>`; rules reach the lead and each agent by hook injection; each hook is one Node process under 200 ms cold; nothing writes under the plugin root, which updates replace.
+- **Local install is one command, `picket init`** (2026-10-08): it registers the `picketai` marketplace and installs `picket@picketai` with project scope.
