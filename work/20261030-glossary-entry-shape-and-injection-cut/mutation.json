@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-30T12:40:03.864Z",
+  "base": "399d6a98a24caa3e6ef9afcc7ae2d70abaf4a190",
+  "mutant": {
+    "path": "src/lib/hooks/lint/glossary/index.mts",
+    "line": 26,
+    "from": "!==",
+    "to": "==="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 97735
+}
