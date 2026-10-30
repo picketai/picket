@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 // Golden-suite runner. One fresh fixture repo per run, the harness installed into it, a scripted
 // eager-approver user, HARD grading, and one JSON record per run appended to the results file.
-//
-//   node bench/run.mjs --harness trunk --tasks all --runs 5 --out bench/results/trunk.json
-//
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync, cpSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +11,7 @@ import { grade, changedFiles, linesAdded } from "./lib/grade.mjs";
 import { addUsage, cacheHitRatio, totalTokens, round } from "./lib/metrics.mjs";
 import { defaultExec, nextPort, parseNetstatListeners, runOrphans, stopProcesses } from "./lib/ports.mjs";
 import { trustWorkspace, untrustWorkspace } from "./lib/trust.mjs";
+import { plannedSpend, spendRefusal, taskBudget } from "./lib/spend.mjs";
 
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(BENCH, "..");
@@ -22,7 +20,7 @@ const HARNESSES = ["plugin", "trunk"];
 const QUOTA = /session limit|usage limit|rate limit|quota|overloaded/i;
 
 function parseArgs(argv) {
-  const o = { harness: "trunk", tasks: "all", runs: 1, out: null, keep: false, dry: false, harnessRoot: null, budget: null, label: null };
+  const o = { harness: "trunk", tasks: "all", runs: 1, out: null, keep: false, dry: false, harnessRoot: null, budget: null, maxUsd: null, label: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -32,6 +30,7 @@ function parseArgs(argv) {
     else if (a === "--runs") o.runs = Number(next());
     else if (a === "--out") o.out = next();
     else if (a === "--budget-usd") o.budget = Number(next());
+    else if (a === "--max-usd") o.maxUsd = Number(next());
     else if (a === "--label") o.label = next();
     else if (a === "--keep") o.keep = true;
     else if (a === "--dry") o.dry = true;
@@ -177,7 +176,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       env: { PORT: String(port) },
       permissionMode: "acceptEdits",
       allowedTools: adapter.allowedTools,
-      maxBudgetUsd: args.budget ?? task.budget_usd ?? 10,
+      maxBudgetUsd: taskBudget(task, args.budget),
       maxTurns: task.max_turns ?? 150,
       pluginDir: adapter.pluginDir?.(harnessRoot),
       model: adapter.model,
@@ -285,6 +284,12 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   return record;
 }
 
+function logPlan({ rows, total }, log) {
+  for (const row of rows) log(`  ${row.id} [${row.lane}] budget $${row.budget} × ${row.runs.length}`);
+  const runCount = rows.reduce((sum, row) => sum + row.runs.length, 0);
+  log(`  planned $${total.toFixed(2)} for ${runCount} run(s)`);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!HARNESSES.includes(args.harness)) throw new Error(`unknown harness ${args.harness}; use ${HARNESSES.join(" or ")}`);
@@ -298,14 +303,19 @@ async function main() {
   const { template, hash } = buildTemplate({ fixtureDir: join(BENCH, "fixture"), cacheDir: join(BENCH, ".cache"), log });
   const man = manifest(adapter, harnessRoot, hash, args);
   log(`harness ${man.harness}@${man.harness_commit}${man.harness_dirty ? "+dirty" : ""} · fixture ${hash} · claude ${man.claude_version} · ${tasks.length} task(s) × ${args.runs}`);
-  if (args.dry) {
-    for (const t of tasks) log(`  ${t.id} [${t.lane}] budget $${t.budget_usd ?? 10}`);
+  const existing = existsSync(out) ? JSON.parse(readFileSync(out, "utf8")) : { manifest: man, records: [] };
+  const plan = plannedSpend({ tasks, runs: args.runs, budgetUsd: args.budget, records: existing.records });
+  logPlan(plan, log);
+  if (args.dry) return;
+  const refusal = spendRefusal(args.maxUsd, plan.total);
+  if (refusal) {
+    console.error(`refused: ${refusal}`);
+    process.exitCode = 1;
     return;
   }
   adapter.build?.(harnessRoot);
 
   mkdirSync(dirname(out), { recursive: true });
-  const existing = existsSync(out) ? JSON.parse(readFileSync(out, "utf8")) : { manifest: man, records: [] };
   existing.manifest = existing.manifest ?? man;
   const save = () => writeFileSync(out, JSON.stringify(existing, null, 2));
   save();

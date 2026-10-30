@@ -21,9 +21,9 @@ time to first reviewable output, on a fixed set of tasks against a fixed reposit
 
 ```sh
 npm run bench:test                                  # metrics math and adapters, no LLM
-node bench/run.mjs --harness trunk --dry            # list tasks and the manifest, spend nothing
-node bench/run.mjs --harness trunk --tasks lane:fast --runs 1 --out bench/results/smoke.json
-node bench/run.mjs --harness trunk --tasks all --runs 5 --out bench/results/baseline-trunk.json
+node bench/run.mjs --harness trunk --dry            # print the plan and the manifest, spend nothing
+node bench/run.mjs --harness trunk --tasks lane:fast --runs 1 --max-usd 10 --out bench/results/smoke.json
+node bench/run.mjs --harness trunk --tasks all --runs 5 --max-usd 900 --out bench/results/baseline-trunk.json
 node bench/report.mjs bench/results/baseline-trunk.json
 node bench/report.mjs bench/results/baseline-trunk.json bench/results/plugin-2026-10-18.json --check
 ```
@@ -54,6 +54,11 @@ Every `claude -p` invocation writes the full system prompt to the cache: about 3
 is roughly $0.75 at list price on Fable 5.1 before any work happens. A gate stop is a new
 invocation, so a five-phase task with per-phase approval pays that six times. Run `--dry` first,
 then one lane at `--runs 1`, and read `bench/results/spend.log` before committing to five runs.
+
+Every real run takes a dollar cap as `--max-usd`. The runner prints the plan first: one row per
+task with its budget and the runs still to do (recorded runs of a resumed file are left out), then
+the planned total. A real run without `--max-usd`, or with a plan over it, is refused with exit
+code 1 before anything is built or written.
 
 ## Layout
 
