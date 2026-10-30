@@ -26,6 +26,7 @@ const PLUGIN_ROOT = "${CLAUDE_PLUGIN_ROOT}/";
 const SUBAGENT_REFUSED_BASENAME = /^(REPORT|SUMMARY|FINDINGS|ANALYSIS).*\.md$/i;
 const FIXTURE_TS = "2026-10-29T10:00:00.000Z";
 const FIXTURE_SESSION = "S";
+const FIXTURE_BRIEF = { purpose: "bill late fees", in_scope: "the fees module", out_of_scope: "refunds" };
 
 function developerRow(phase) {
   return { ts: FIXTURE_TS, agent: "developer", verdict: "PHASE DONE", phase, scope: null, through: null, session: FIXTURE_SESSION };
@@ -46,11 +47,11 @@ const ENTRY_FIXTURES = {
     const write = { action: "write_artifact", actor: "architect", detail: "d" };
     const amend = { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-001 x" };
     return [
-      ...sendsFor(snapshotOf({ lane: "order", artifact: null }), write, FIXTURE_SESSION, () => true),
+      ...sendsFor(snapshotOf({ lane: "order", artifact: null, brief: FIXTURE_BRIEF }), write, FIXTURE_SESSION, () => true),
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), amend, FIXTURE_SESSION),
     ];
   },
-  analyst: () => sendsFor(snapshotOf({ lane: "research", artifact: null }), { action: "write_artifact", actor: "analyst", detail: "d" }, FIXTURE_SESSION),
+  analyst: () => sendsFor(snapshotOf({ lane: "research", artifact: null, brief: FIXTURE_BRIEF }), { action: "write_artifact", actor: "analyst", detail: "d" }, FIXTURE_SESSION),
   reviewer: () => {
     const approved = [{ n: 1, done: true, approved: true }];
     return [
@@ -301,8 +302,8 @@ test("every shell outside PENDING has Entry fixtures", () => {
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work"]);
-  assert.deepEqual(sentKeys("architect"), ["amend", "lane", "preflight", "request", "sources", "work"]);
-  assert.deepEqual(sentKeys("analyst"), ["pass", "request", "work"]);
+  assert.deepEqual(sentKeys("architect"), ["amend", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "sources", "work"]);
+  assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
   assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);

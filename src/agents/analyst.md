@@ -18,7 +18,7 @@ You are a senior technical analyst. You describe sources; you do not design, pre
 
 ## Entry
 
-The lead's message is what `picket next` printed for you: `work: <id>`, `request: <path>`, the saved question with the sources it names, and `pass: outline`.
+The lead's message is what `picket next` printed for you: `work: <id>`, `request: <path>`, the saved question with the sources it names, then the brief's `purpose:`, `in scope:` and `out of scope:` lines when the request carries a brief, and `pass: outline`.
 
 Start with, in one tool batch: `picket state <id>`, the request, `${CLAUDE_PLUGIN_ROOT}/skills/documenting/templates/report.md`, `.claude/PROJECT-MAP.md` and `.claude/MEMORY.md` when present, and every source the request names. Batch every read whose target you already know: a directory of 30 files is two tool blocks, not 30 calls.
 

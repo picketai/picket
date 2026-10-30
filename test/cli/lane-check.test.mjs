@@ -51,7 +51,7 @@ const OPEN_STEPS = { expediting: ["SKILL.md", "fast"], ordering: ["steps/open.md
 for (const [lane, [file, laneArg]] of Object.entries(OPEN_STEPS)) {
   test(`${lane}: picket open carries the request, so open checks the lane against admit`, () => {
     const text = readFileSync(resolve("src/skills", lane, file), "utf8");
-    assert.match(text, new RegExp(`picket open --lane ${laneArg} --title "<six-word title>" --request - <<'PICKET_REQUEST_END'`));
+    assert.match(text, new RegExp(`picket open --lane ${laneArg} --title "<six-word title>"(?: --[a-z-]+ "<[a-z]>")* --request - <<'PICKET_REQUEST_END'`));
   });
 }
 

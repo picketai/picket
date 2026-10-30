@@ -155,7 +155,7 @@ picket next <id> | next --latest [--session <id>]
 Open a work item in a lane.
 
 ```sh
-picket open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--ticket <KEY> --story <file>] [--id <id>] [--user-lane]
+picket open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--purpose "<p>" --in-scope "<s>" --out-of-scope "<o>"] [--ticket <KEY> --story <file>] [--id <id>] [--user-lane]
 ```
 
 ## picket packet

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AgentType, NextView, SendView } from "../views.mts";
+import { briefLines } from "./brief.mts";
 import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
 import { freshReplies } from "./replies.mts";
@@ -74,6 +75,10 @@ function artifactLine(snap: WorkSnapshot): string {
   return `artifact: ${itemFile(snap, ARTIFACT_BY_LANE[snap.state.lane] ?? "")}`;
 }
 
+function requestLine(snap: WorkSnapshot): string {
+  return `request: ${itemFile(snap, "request.md")}`;
+}
+
 const ARCHITECT_INPUTS: readonly (readonly [string, WorkFile])[] = [
   ["preflight", "preflight.txt"],
   ["sources", "sources.yaml"],
@@ -81,11 +86,11 @@ const ARCHITECT_INPUTS: readonly (readonly [string, WorkFile])[] = [
 
 function architectSend(snap: WorkSnapshot, session: string | null, hasFile: HasFile): SendView {
   const optional = ARCHITECT_INPUTS.filter(([, name]) => hasFile(name)).map(([key, name]) => `${key}: ${itemFile(snap, name)}`);
-  return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `lane: ${snap.state.lane}`, `request: ${itemFile(snap, "request.md")}`, ...optional]);
+  return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `lane: ${snap.state.lane}`, requestLine(snap), ...briefLines(snap.brief), ...optional]);
 }
 
 function analystSend(snap: WorkSnapshot, session: string | null): SendView {
-  return send(snap, instance(snap, "analyst"), session, () => [workLine(snap), `request: ${itemFile(snap, "request.md")}`, "pass: outline"]);
+  return send(snap, instance(snap, "analyst"), session, () => [workLine(snap), requestLine(snap), ...briefLines(snap.brief), "pass: outline"]);
 }
 
 function needsCrosscheck(snap: WorkSnapshot): boolean {

@@ -67,6 +67,15 @@ test("a research item's artifact goes to the analyst for the outline pass", () =
   assert.deepEqual(sends({ lane: "research", artifact: null }, write), [{ tool: "Agent", to: named("analyst"), type: "picket:analyst", message: `work: ${ID}\nrequest: work/${ID}/request.md\npass: outline` }]);
 });
 
+test("a brief adds purpose, in scope and out of scope after the request for the analyst and the architect", () => {
+  const brief = { purpose: "bill late fees", in_scope: "the fees module", out_of_scope: "refunds" };
+  const lines = "purpose: bill late fees\nin scope: the fees module\nout of scope: refunds";
+  const analyst = sends({ lane: "research", artifact: null, brief }, { action: "write_artifact", actor: "analyst", detail: "d" });
+  assert.equal(analyst[0].message, `work: ${ID}\nrequest: work/${ID}/request.md\n${lines}\npass: outline`);
+  const architect = sends({ lane: "order", artifact: null, brief }, { action: "write_artifact", actor: "architect", detail: "d" }, S, ["preflight.txt"]);
+  assert.equal(architect[0].message, `work: ${ID}\nlane: order\nrequest: work/${ID}/request.md\n${lines}\npreflight: work/${ID}/preflight.txt`);
+});
+
 test("the analyst is continued only by an analyst row of this session, never by another agent's", () => {
   const write: NextStep = { action: "write_artifact", actor: "analyst", detail: "d" };
   const research = { lane: "research", artifact: null } as const;

@@ -9,6 +9,7 @@ import { liveLookup } from "../../shared/sources/places.mts";
 import { resolveReferences, type Resolution } from "../../shared/sources/resolve.mts";
 import { isReachable, type Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
+import { withBrief, type Brief } from "../../shared/work/brief.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { createItem, LANES, type Lane } from "../../shared/work/state.mts";
@@ -22,6 +23,7 @@ export type OpenInput = {
   title: string;
   id: string | undefined;
   request: Request | null;
+  brief: Brief | null;
   ticket: string | undefined;
   story: string | undefined;
   source: string | undefined;
@@ -33,6 +35,8 @@ export type Opened = { id: string; lane: string; dir: string; warnings: string[]
 const STDIN = "-";
 const EMPTY_REQUEST = 'open: the request is empty; pass the request text with --text "<request>" or drop the flag';
 const USER_LANE = "user-lane";
+const BRIEF_FLAGS: Record<keyof Brief, string> = { purpose: "purpose", in_scope: "in-scope", out_of_scope: "out-of-scope" };
+const BRIEF_USAGE = "open needs --purpose, --in-scope and --out-of-scope together, each one non-empty line, and only with a request";
 
 function readFile(path: string): string {
   const text = readText(path);
@@ -90,7 +94,8 @@ export const openItem = action<OpenInput, Opened>(async (input, { root, session,
   const resolution = storyResolution(story, sources);
   if (resolution?.failures.length) return refuse(notFoundMessage(resolution.failures), { failures: resolution.failures });
   const at = now();
-  const created = createItem(root, { lane: input.lane, title: input.title, id: input.id, source: input.ticket ?? input.source, request, story, session: input.session ?? session }, at);
+  const saved = request !== null && input.brief ? withBrief(request, input.brief) : request;
+  const created = createItem(root, { lane: input.lane, title: input.title, id: input.id, source: input.ticket ?? input.source, request: saved, story, session: input.session ?? session }, at);
   if (overridden) recordUserLane(root, created.id, overridden, at);
   if (resolution) writeIntake(root, created.id, resolution);
   recordBases(root, created.id);
@@ -111,6 +116,17 @@ function parseRequest(args: Args): Request | null {
   return { text: piped };
 }
 
+function isBriefLine(value: string | undefined): value is string {
+  return value !== undefined && value.trim() !== "" && !/[\r\n]/.test(value);
+}
+
+function parseBrief(args: Args, request: Request | null): Brief | null {
+  const [purpose, in_scope, out_of_scope] = Object.values(BRIEF_FLAGS).map((name) => str(args, name));
+  if (purpose === undefined && in_scope === undefined && out_of_scope === undefined) return null;
+  if (request === null || !isBriefLine(purpose) || !isBriefLine(in_scope) || !isBriefLine(out_of_scope)) throw new UsageError(BRIEF_USAGE);
+  return { purpose: purpose.trim(), in_scope: in_scope.trim(), out_of_scope: out_of_scope.trim() };
+}
+
 function parseOpen(args: Args): OpenInput {
   const lane = str(args, "lane");
   const title = str(args, "title");
@@ -118,7 +134,8 @@ function parseOpen(args: Args): OpenInput {
   const ticket = str(args, "ticket");
   const story = str(args, "story");
   if ((ticket === undefined) !== (story === undefined)) throw new UsageError("open needs --ticket <KEY> and --story <file> together");
-  return { lane, title, id: str(args, "id"), request: parseRequest(args), ticket, story, source: str(args, "source"), session: str(args, "session"), userLane: flag(args, USER_LANE) };
+  const request = parseRequest(args);
+  return { lane, title, id: str(args, "id"), request, brief: parseBrief(args, request), ticket, story, source: str(args, "source"), session: str(args, "session"), userLane: flag(args, USER_LANE) };
 }
 
 function renderOpen(v: Opened): string {
@@ -126,7 +143,7 @@ function renderOpen(v: Opened): string {
 }
 
 export const verb: VerbSpec<OpenInput, Opened> = {
-  usage: 'open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--ticket <KEY> --story <file>] [--id <id>] [--user-lane]',
+  usage: 'open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--purpose "<p>" --in-scope "<s>" --out-of-scope "<o>"] [--ticket <KEY> --story <file>] [--id <id>] [--user-lane]',
   output: "json",
   parse: parseOpen,
   run: openItem,

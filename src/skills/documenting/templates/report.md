@@ -17,7 +17,7 @@ confidence: [REPLACE: high | medium | low, the weakest marker that carries a top
 [REPLACE]
 
 ## Context
-<!-- required; what was asked, what was in scope, what was not read and why -->
+<!-- required; opens with "Scope as understood: …", the purpose and scope in your words; then what was asked, what was in scope, what was not read and why -->
 [REPLACE]
 
 ## Structure

@@ -1,10 +1,12 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs, UsageError } from "../../util/args.mts";
-import { workId } from "../../shared/work/files.mts";
+import type { Brief } from "../../shared/work/brief.mts";
+import { workFile, workId } from "../../shared/work/files.mts";
 import { instanceTag } from "../../shared/work/send.mts";
+import { readSnapshot } from "../../shared/work/snapshot.mts";
 import { readVerdicts } from "../../shared/work/verdict-log.mts";
 import { verb, type OpenInput } from "./index.mts";
 import { fixedContext } from "#test/context.mts";
@@ -15,14 +17,20 @@ const parse = (argv: string[], stdin?: () => string) => verb.parse(parseArgs(arg
 const ENDPOINT = "add a /summary endpoint";
 const MIGRATION = "migrate the fees table to the new schema";
 const QUESTION = "how does the fee rounding work today?";
+const BRIEF: Brief = { purpose: "bill late fees", in_scope: "the fees module", out_of_scope: "refunds" };
+const BRIEF_FLAGS = ["--purpose", "bill late fees", "--in-scope", "the fees module", "--out-of-scope", "refunds"];
 
-function input(lane: string, text: string | null, userLane = false): OpenInput {
-  return { lane, title: `Open ${lane}`, id: undefined, request: text === null ? null : { text }, ticket: undefined, story: undefined, source: undefined, session: undefined, userLane };
+function input(lane: string, text: string | null, userLane = false, brief: Brief | null = null): OpenInput {
+  return { lane, title: `Open ${lane}`, id: undefined, request: text === null ? null : { text }, brief, ticket: undefined, story: undefined, source: undefined, session: undefined, userLane };
 }
 
-async function opened(t: TestContext, lane: string, text: string | null, userLane = false) {
+async function opened(t: TestContext, lane: string, text: string | null, userLane = false, brief: Brief | null = null) {
   const root = withProject(t, { host: true, picket: false });
-  return { root, outcome: await verb.run(input(lane, text, userLane), fixedContext(root, { session: "S" })) };
+  return { root, outcome: await verb.run(input(lane, text, userLane, brief), fixedContext(root, { session: "S" })) };
+}
+
+function savedRequest(root: string, id: string): string {
+  return readFileSync(workFile(root, workId(id), "request.md"), "utf8");
 }
 
 function workItems(root: string): string[] {
@@ -79,7 +87,7 @@ test("with --user-lane the refused item opens and its first verdict row records 
 });
 
 test("open needs a lane and a title, and takes the request from --text, a file or standard input", () => {
-  const base = { lane: "order", title: "Fees", id: undefined, request: null, ticket: undefined, story: undefined, source: undefined, session: undefined, userLane: false };
+  const base = { lane: "order", title: "Fees", id: undefined, request: null, brief: null, ticket: undefined, story: undefined, source: undefined, session: undefined, userLane: false };
   assert.deepEqual(parse(["--lane", "order", "--title", "Fees"]), base);
   assert.equal(parse(["--lane", "fast", "--title", "Fees", "--user-lane"]).userLane, true);
   assert.deepEqual(parse(["--lane", "order", "--title", "Fees", "--text", "add a fee"]).request, { text: "add a fee" });
@@ -89,4 +97,33 @@ test("open needs a lane and a title, and takes the request from --text, a file o
   assert.throws(() => parse(["--lane", "order", "--title", "Fees", "--text", ""]), UsageError);
   assert.throws(() => parse(["--lane", "order", "--title", "Fees", "--request", "-"], () => ""), UsageError);
   assert.throws(() => parse(["--lane", "order", "--title", "Fees", "--ticket", "SHOP-1"]), UsageError);
+});
+
+test("open takes the three brief flags together with a request", () => {
+  assert.deepEqual(parse(["--lane", "order", "--title", "Fees", "--text", "add a fee", ...BRIEF_FLAGS]).brief, BRIEF);
+  assert.equal(parse(["--lane", "order", "--title", "Fees", "--text", "add a fee"]).brief, null);
+});
+
+test("open refuses two of the three brief flags, an empty or multi-line value, and a brief with no request", () => {
+  const brief = (flags: string[], request = ["--text", "add a fee"]) => () => parse(["--lane", "order", "--title", "Fees", ...request, ...flags]);
+  const isBriefUsage = (err: unknown) => err instanceof UsageError && /--purpose, --in-scope and --out-of-scope together/.test(err.message);
+  assert.throws(brief(BRIEF_FLAGS.slice(0, 4)), isBriefUsage);
+  assert.throws(brief(["--purpose", " ", ...BRIEF_FLAGS.slice(2)]), isBriefUsage);
+  assert.throws(brief([...BRIEF_FLAGS.slice(0, 2), "--in-scope", "fees\nand refunds", ...BRIEF_FLAGS.slice(4)]), isBriefUsage);
+  assert.throws(brief(BRIEF_FLAGS, []), isBriefUsage);
+});
+
+test("an item opened with a brief saves it under ## Brief after the request and reads it back", async (t) => {
+  const { root, outcome } = await opened(t, "order", "add a fee", false, BRIEF);
+  assert.ok(outcome.status === "done");
+  assert.equal(savedRequest(root, outcome.value.id), "add a fee\n\n## Brief\npurpose: bill late fees\nin scope: the fees module\nout of scope: refunds\n");
+  assert.deepEqual(readSnapshot(root, workId(outcome.value.id)).brief, BRIEF);
+  assert.match(outcome.value.next.send[0].message, /^request: .*\npurpose: bill late fees\nin scope: the fees module\nout of scope: refunds$/m);
+});
+
+test("an item opened without a brief saves the request exactly as given", async (t) => {
+  const { root, outcome } = await opened(t, "order", "add a fee");
+  assert.ok(outcome.status === "done");
+  assert.equal(savedRequest(root, outcome.value.id), "add a fee");
+  assert.equal(readSnapshot(root, workId(outcome.value.id)).brief, null);
 });

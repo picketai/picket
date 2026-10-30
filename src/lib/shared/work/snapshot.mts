@@ -3,6 +3,7 @@ import { ambiguousRefs } from "../sources/intake.mts";
 import type { AmbiguousRef } from "../sources/resolve.mts";
 import type { PhaseView as WirePhaseView, StateView as WireStateView } from "../views.mts";
 import { parseArtifact, type ArtifactPhase } from "./artifact.mts";
+import { readBrief, type Brief } from "./brief.mts";
 import { workFile, type WorkFile, type WorkId } from "./files.mts";
 import { hasMarker } from "./markers.mts";
 import { readReplies, type ReplyRow } from "./replies.mts";
@@ -15,6 +16,7 @@ export type SnapshotArtifact = { path: string; expected: WorkFile; body: string 
 export type WorkSnapshot = {
   state: WorkState;
   artifact: SnapshotArtifact | null;
+  brief: Brief | null;
   phases: PhaseStatus[];
   verdicts: VerdictRow[];
   replies: ReplyRow[];
@@ -57,6 +59,7 @@ export function readSnapshot(root: string, id: WorkId): WorkSnapshot {
   return {
     state,
     artifact: read?.artifact ?? null,
+    brief: readBrief(readText(workFile(root, id, "request.md"))),
     phases: (read?.phases ?? []).map((phase) => withMarkers(root, id, phase)),
     verdicts: verdicts.rows,
     replies: replies.rows,
