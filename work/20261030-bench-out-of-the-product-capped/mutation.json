@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-30T12:59:43.160Z",
+  "base": "7ba21a42ef50fe66c9bc4d839e0b43ecd95cd533",
+  "mutant": {
+    "path": "bench/lib/spend.mjs",
+    "line": 8,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 127024
+}

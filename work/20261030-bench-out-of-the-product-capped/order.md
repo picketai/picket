@@ -60,6 +60,32 @@ phases:
         pattern: '--max-usd'
     tests: true
     drive: true
+  - n: 3
+    files: [bench/lib/spend.mjs, bench/test/spend.test.mjs, bench/run.mjs, bench/README.md]
+    greps:
+      - path: bench/lib/spend.mjs
+        pattern: 'export function openLedger\b'
+      - path: bench/lib/spend.mjs
+        pattern: 'export function charge\b'
+      - path: bench/lib/spend.mjs
+        pattern: 'export function capLeft\b'
+      - path: bench/lib/spend.mjs
+        pattern: 'export function callLimit\b'
+      - path: bench/run.mjs
+        pattern: 'callLimit\('
+      - path: bench/run.mjs
+        pattern: '^(?![\s\S]*maxBudgetUsd: taskBudget)'
+        flags: i
+      - path: bench/run.mjs
+        pattern: 'cap reached: spent \$'
+      - path: bench/test/spend.test.mjs
+        pattern: 'limits a call to the cap left'
+      - path: bench/test/spend.test.mjs
+        pattern: 'stops the suite when no cap is left'
+      - path: bench/test/spend.test.mjs
+        pattern: 'leaves a resumed file.s recorded cost out of the cap'
+    tests: true
+    drive: true
 ---
 # Order: Bench out of the product, capped
 
@@ -69,11 +95,15 @@ phases:
 
 ## Decisions
 
-### D-001: Planned spend is a pure module that the runner and its tests share
-**Decision:** a new `bench/lib/spend.mjs` exports three pure functions. `taskBudget(task, budgetUsd)` returns `budgetUsd ?? task.budget_usd ?? 10`, and `runOnce` takes its `maxBudgetUsd` from it, so the cap and the per-run limit read one expression. `plannedSpend({ tasks, runs, budgetUsd, records })` returns `{ rows, total }`: one row per task with `id`, `lane`, `budget` and `runs` (the run numbers 1 to `runs` that no record with the same `task` and `run` holds), and `total` as the sum of `budget × runs`. `spendRefusal(maxUsd, total)` returns `null` or the reason text.
-**Instead of:** the functions inside `bench/run.mjs`: it calls `main()` at import, so a test cannot import it without starting a run.
+### D-001 (r2): Planned and actual spend are pure functions that the runner and its tests share
+**Decision:** a new `bench/lib/spend.mjs` exports three pure functions. `taskBudget(task, budgetUsd)` returns `budgetUsd ?? task.budget_usd ?? 10`, so the cap and the per-call limit read one expression. `plannedSpend({ tasks, runs, budgetUsd, records })` returns `{ rows, total }`: one row per task with `id`, `lane`, `budget` and `runs` (the run numbers 1 to `runs` that no record with the same `task` and `run` holds), and `total` as the sum of `budget × runs`. `spendRefusal(maxUsd, total)` returns `null` or the reason text. The planned check stays the first gate.
+
+The user chose a hard cap on actual spend (2026-10-30): one run makes up to `max_stops + 1` calls, so the planned total alone does not bound it. The same module adds a ledger, a plain object `{ maxUsd, spentUsd }`, with four pure functions: `openLedger(maxUsd)` starts at `spentUsd: 0` and takes no records, so a resumed file's recorded cost never counts against the new cap; `charge(ledger, usd)` returns a new ledger; `capLeft(ledger)` returns the dollars left in whole cents (D-003), never below 0; `callLimit(ledger, budgetUsd)` returns `null` when `capLeft` is 0, else `min(budgetUsd, capLeft)`. Before every `claude -p` call `runOnce` passes `callLimit(ledger, taskBudget(task, args.budget))` as `maxBudgetUsd`. After the call it charges `res.total_cost_usd`. A call that ends with no result event is charged its whole limit, because its real cost is unknown. `main()` keeps the ledger across the suite: it checks `callLimit` before starting a run, and `runOnce` checks it before each gate reply. On `null` the suite stops before the call. It records nothing for a run that has not finished, prints `cap reached: spent $<spent> of --max-usd $<cap>; re-run with a new --max-usd to resume`, and exits 3, the code for a resumable stop that the quota stop already uses. `done` reports the ledger's `spentUsd`.
+**Instead of:** the functions inside `bench/run.mjs`: it calls `main()` at import, so a test cannot import it without starting a run. For the hard cap, the strongest alternative was `max_stops + 1` times the budget in the plan: it bounds the spend without a ledger, but it inflates every plan about ninefold and refuses runs the user can afford.
 **Risks:**
-- **RISK-001** `runOnce` keeps its own budget expression and drifts from the plan. Mitigation: a grep criterion names `taskBudget` in `bench/run.mjs`.
+- **RISK-001** `runOnce` keeps its own budget expression and drifts from the plan. Mitigation: grep criteria name `taskBudget` and `callLimit` in `bench/run.mjs` and forbid `maxBudgetUsd: taskBudget`.
+- **RISK-005** `--max-budget-usd` is checked by Claude Code between turns, so the last call can pass its limit by one turn (about $0.75 of prompt cache). Mitigation: the overshoot is charged, so the suite stops at the next check; the cap holds to within one turn.
+- **RISK-006** A run stopped mid-way by the cap is lost and its spend with it; a resume runs it again from the start. Mitigation: the message says how much was spent, and a partial run is not a measurement.
 
 ### D-002: The plan is read and checked before anything is built or written
 **Decision:** `main()` reads the `--out` file's records (when the file exists) before the `--dry` branch, computes the plan once, and prints it in one shape for both uses: a row `  <id> [<lane>] budget $<budget> × <runs to do>` per task, then `  planned $<total, two decimals> for <n> run(s)`. `--dry` prints it and returns. A real run with a refusal prints the same lines, writes `refused: <reason>` to stderr, sets exit code 1 and returns before `adapter.build`, `mkdirSync` and the first `save()`. `--max-usd` parses with `Number`; a missing flag, `NaN` or a negative value gets the reason "a real run needs --max-usd <dollars>"; a plan over the cap gets "planned $<total> is over --max-usd $<cap>".
@@ -102,6 +132,7 @@ phases:
 - `src/.claude-plugin/plugin.json` and `src/skills/benchmarking/` (removed); the docs entry from `docs/reference/skills.md` to `CONTRIBUTING.md`
 - the routing case, `UNCONVERTED_SKILLS`, the `.claude/` tracking test and skill count, the budget test scanning `.claude/skills/`
 - `bench/lib/spend.mjs`, its tests, `bench/run.mjs` refusing without or over `--max-usd`, `bench/README.md` commands
+- the hard cap on actual spend: each call limited to the cap left, the suite stopping at zero (phase 3)
 
 **Out:**
 - editing `.claude/` (7ba21a4 holds the project skill and the rule lines)
@@ -144,7 +175,24 @@ phases:
 - **T-2.4** `bench/run.mjs` imports `taskBudget`, `plannedSpend` and `spendRefusal` from `./lib/spend.mjs` and contains no other `?? 10` budget fallback.
 - **T-2.5** `bench/README.md` shows `--max-usd` on every real-run command.
 
+## Phase 3: The cap bounds what the suite actually spends
+**Touch set:**
+- `bench/lib/spend.mjs`: ledger, `capLeft`, `callLimit`
+- `bench/test/spend.test.mjs`: the three running-cap cases
+- `bench/run.mjs`: ledger through `main` and `runOnce`
+- `bench/README.md`: the cap is hard
+- `bench/lib/claude.mjs`: read only, `--max-budget-usd`
+**Changes:** Add `openLedger`, `charge`, `capLeft` and `callLimit` to `bench/lib/spend.mjs` per D-001 (r2), with no comments, and reuse `cents` from D-003. In `bench/run.mjs`, `main()` opens the ledger after the refusal check. Before each unrecorded run it calls `callLimit` and stops the suite on `null` (D-001 (r2) message, exit 3, nothing recorded, no fixture materialized). It passes the ledger to `runOnce`, which returns `{ record, ledger }`. In `runOnce`'s step loop, each call gets `maxBudgetUsd: callLimit(...)`. A `null` before a gate reply sets `record.terminal = "cap"` and breaks, so cleanup and the orphan sweep still run. A call is charged `res.total_cost_usd ?? 0`, or its whole limit when there is no result event. `main()` treats `terminal === "cap"` like the quota stop: no record, the message, exit 3. The `spent` counter gives way to the ledger, and `done` prints `ledger.spentUsd`. Calls of a suspended run count too. In `bench/test/spend.test.mjs` add three tests: `limits a call to the cap left` (`callLimit(charge(openLedger(10), 7.5), 5)` is 2.5; with 2 spent it is 5); `stops the suite when no cap is left` (`callLimit` is `null` at 10 spent, at 10.004 spent, and at 12 spent, where `capLeft` is 0); `leaves a resumed file's recorded cost out of the cap` (records with `cost_usd` summing 30, `plannedSpend` with cap 10 for one unrecorded $5 run passes, and `callLimit(openLedger(10), 5)` is 5). In `bench/README.md`, `## Cost of running it` says each call is limited to the task budget or the cap left, whichever is lower, that the suite stops when nothing is left and can be resumed with a new cap, and that the last call can pass the cap by about one turn.
+**Done when:**
+- **T-3.1** The three new tests pass under `npm run bench:test`, the earlier spend tests still pass, and `npm test` passes.
+- **T-3.2** Every `maxBudgetUsd` in `bench/run.mjs` is the value `callLimit(...)` returned for that call, and the file contains no `maxBudgetUsd: taskBudget`.
+- **T-3.3** `bench/run.mjs` checks `callLimit` before a run starts and before each gate reply. A `null` stops the suite with exit 3 and prints `cap reached: spent $` and `--max-usd`. The run is not pushed to the records.
+- **T-3.4** A call with no result event charges the ledger with its whole limit.
+- **T-3.5** Drive, after T-3.1 passes: `node bench/run.mjs --harness plugin --tasks fast-03-rename --runs 1 --budget-usd 0.001 --max-usd 0 --out <temp>/r.json` passes the planned gate ($0.001 rounds to 0 cents), exits 3 with `cap reached: spent $0.00 of --max-usd $0.00` before any `claude` call, and leaves `<temp>/r.json` with no records. If the stop were broken, the worst case is one call limited to $0.001, which Claude Code ends after its first turn.
+- **T-3.6** `bench/README.md` states the per-call limit, the stop at zero and the one-turn overshoot.
+
 ## Open questions
 none
 
 ## Revision log
+- 2026-10-30: D-001 (r2): ledger limits each call to the cap left and stops the suite at zero; the user chose a hard cap on actual spend.

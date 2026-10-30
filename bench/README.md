@@ -58,7 +58,15 @@ then one lane at `--runs 1`, and read `bench/results/spend.log` before committin
 Every real run takes a dollar cap as `--max-usd`. The runner prints the plan first: one row per
 task with its budget and the runs still to do (recorded runs of a resumed file are left out), then
 the planned total. A real run without `--max-usd`, or with a plan over it, is refused with exit
-code 1 before anything is built or written.
+code 1 before the harness is built or the results file is written. So is a `--budget-usd` that is
+not a positive number, which would otherwise drop the per-call cap.
+
+The cap is hard: it bounds what the suite spends, not only what it plans. Each `claude -p` call
+is limited to the task budget or the cap left, whichever is lower, and a gate stop is a new call.
+When nothing is left, the suite stops before the next call, records nothing for the unfinished
+run, prints `cap reached` with the dollars spent, and exits 3; re-run the same command with a new
+`--max-usd` to resume. Claude Code checks its limit between turns, so the last call can pass the
+cap by about one turn.
 
 ## Layout
 

@@ -11,7 +11,7 @@ import { grade, changedFiles, linesAdded } from "./lib/grade.mjs";
 import { addUsage, cacheHitRatio, totalTokens, round } from "./lib/metrics.mjs";
 import { defaultExec, nextPort, parseNetstatListeners, runOrphans, stopProcesses } from "./lib/ports.mjs";
 import { trustWorkspace, untrustWorkspace } from "./lib/trust.mjs";
-import { plannedSpend, spendRefusal, taskBudget } from "./lib/spend.mjs";
+import { budgetRefusal, callLimit, charge, openLedger, plannedSpend, spendRefusal, taskBudget } from "./lib/spend.mjs";
 
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(BENCH, "..");
@@ -113,7 +113,7 @@ function manifest(adapter, harnessRoot, fixtureHash, args) {
   };
 }
 
-async function runOnce({ task, run, adapter, harnessRoot, template, args, log }) {
+async function runOnce({ task, run, adapter, harnessRoot, template, args, log, ledger }) {
   const runId = `${task.id}-r${run}-${Date.now().toString(36)}`;
   const runDir = join(BENCH, ".runs", runId);
   const { repo, sha } = materializeRun({ template, runDir });
@@ -169,6 +169,11 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
   record.trusted = trustWorkspace(repo);
   const timeoutMs = task.timeout_ms ?? 25 * 60_000;
   for (let step = 0; step <= maxStops; step++) {
+    const limit = callLimit(ledger, taskBudget(task, args.budget));
+    if (limit === null) {
+      record.terminal = "cap";
+      break;
+    }
     const r = await runClaude({
       cwd: repo,
       prompt,
@@ -176,7 +181,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       env: { PORT: String(port) },
       permissionMode: "acceptEdits",
       allowedTools: adapter.allowedTools,
-      maxBudgetUsd: taskBudget(task, args.budget),
+      maxBudgetUsd: limit,
       maxTurns: task.max_turns ?? 150,
       pluginDir: adapter.pluginDir?.(harnessRoot),
       model: adapter.model,
@@ -187,6 +192,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       jobFile,
     });
     const res = r.result;
+    ledger = charge(ledger, res ? (res.total_cost_usd ?? 0) : limit);
     record.rate_limits = (record.rate_limits ?? 0) + (r.summary.rateLimits ?? 0);
     if (!res) {
       record.error = `no result event (exit ${r.exitCode}, signal ${r.signal ?? "none"}, ${r.summary.events} events): ${r.stderr.slice(-500)}`;
@@ -281,13 +287,18 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log })
       rmSync(runDir, { recursive: true, force: true });
     } catch {}
   }
-  return record;
+  return { record, ledger };
 }
 
 function logPlan({ rows, total }, log) {
   for (const row of rows) log(`  ${row.id} [${row.lane}] budget $${row.budget} × ${row.runs.length}`);
   const runCount = rows.reduce((sum, row) => sum + row.runs.length, 0);
   log(`  planned $${total.toFixed(2)} for ${runCount} run(s)`);
+}
+
+function stopAtCap(ledger, log) {
+  log(`  cap reached: spent $${ledger.spentUsd.toFixed(2)} of --max-usd $${ledger.maxUsd.toFixed(2)}; re-run with a new --max-usd to resume`);
+  process.exitCode = 3;
 }
 
 async function main() {
@@ -307,7 +318,7 @@ async function main() {
   const plan = plannedSpend({ tasks, runs: args.runs, budgetUsd: args.budget, records: existing.records });
   logPlan(plan, log);
   if (args.dry) return;
-  const refusal = spendRefusal(args.maxUsd, plan.total);
+  const refusal = budgetRefusal(args.budget) ?? spendRefusal(args.maxUsd, plan.total);
   if (refusal) {
     console.error(`refused: ${refusal}`);
     process.exitCode = 1;
@@ -320,7 +331,7 @@ async function main() {
   const save = () => writeFileSync(out, JSON.stringify(existing, null, 2));
   save();
 
-  let spent = 0;
+  let ledger = openLedger(args.maxUsd);
   for (const task of tasks) {
     for (let run = 1; run <= args.runs; run++) {
       const already = existing.records.find((r) => r.task === task.id && r.run === run);
@@ -328,8 +339,12 @@ async function main() {
         log(`  ${task.id} run ${run}: already recorded, skipping`);
         continue;
       }
+      if (callLimit(ledger, taskBudget(task, args.budget)) === null) return stopAtCap(ledger, log);
       log(`  ${task.id} run ${run}/${args.runs} [${task.lane}] …`);
-      const rec = await runOnce({ task, run, adapter, harnessRoot, template, args, log });
+      const result = await runOnce({ task, run, adapter, harnessRoot, template, args, log, ledger });
+      const rec = result.record;
+      ledger = result.ledger;
+      if (rec.terminal === "cap") return stopAtCap(ledger, log);
       if (QUOTA.test(rec.error ?? "")) {
         // Not a measurement of the harness: record nothing, stop burning the task list, say when to resume.
         log(`  ${task.id} run ${run}: quota exhausted (${rec.error.slice(0, 120)}); stopping. Re-run the same command later, it resumes.`);
@@ -343,14 +358,13 @@ async function main() {
       }
       existing.records.push(rec);
       save();
-      spent += rec.cost_usd;
       log(
         `    ${rec.pass ? "PASS" : "FAIL"} · ${rec.terminal} · $${rec.cost_usd.toFixed(2)} · ${(rec.wall_ms / 1000).toFixed(0)}s · stops ${rec.stops} · turns ${rec.turns} · tools ${rec.tool_calls} · TTFR ${rec.first_reviewable_ms !== null ? (rec.first_reviewable_ms / 1000).toFixed(0) + "s" : "-"} · route ${rec.signals.route}${rec.error ? " · " + rec.error.slice(0, 120) : ""}`,
       );
       appendFileSync(join(BENCH, "results", "spend.log"), `${new Date().toISOString()} ${adapter.name} ${task.id} r${run} $${rec.cost_usd.toFixed(3)}\n`);
     }
   }
-  log(`done · ${existing.records.length} record(s) in ${out} · this invocation spent $${spent.toFixed(2)}`);
+  log(`done · ${existing.records.length} record(s) in ${out} · this invocation spent $${ledger.spentUsd.toFixed(2)}`);
 }
 
 main().catch((err) => {
