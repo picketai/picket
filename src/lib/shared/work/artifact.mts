@@ -1,5 +1,4 @@
 import { frontmatter } from "../../util/yaml-lite.mts";
-import { carriesFlag, STRATEGIC_REVIEW } from "./report.mts";
 
 export type GrepEntry = { path: string; pattern: string; flags?: string };
 export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tests?: boolean; drive?: boolean; security?: unknown } & Record<string, unknown>;
@@ -11,6 +10,7 @@ const FENCED_BLOCK = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm;
 const INLINE_CODE = /(`+)[^\n]*?\1/g;
 const BACKTICK_RUN = /`+/g;
 const IRREVERSIBLE = /\[IRREVERSIBLE\]/;
+export const STRATEGIC_REVIEW = "[STRATEGIC REVIEW NEEDED]";
 
 function hasUnpairedBacktick(line: string): boolean {
   const runsByLength = new Map<number, number>();
@@ -20,6 +20,10 @@ function hasUnpairedBacktick(line: string): boolean {
 
 function lineWithoutCode(line: string): string {
   return hasUnpairedBacktick(line) ? line : line.replace(INLINE_CODE, "");
+}
+
+export function carriesFlag(line: string, flag: string): boolean {
+  return lineWithoutCode(line).includes(flag);
 }
 
 function withoutCode(section: string): string {

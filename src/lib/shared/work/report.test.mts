@@ -17,6 +17,10 @@ test("a flag quoted in backticks on a finding line flags nothing", () => {
   assert.deepEqual(reportFindings(body), { findings: 2, architect_review: [], strategic_review: [] });
 });
 
+test("a stray backtick before a bare flag does not hide it", () => {
+  assert.deepEqual(reportFindings("- **R-001** it`s odd [STRATEGIC REVIEW NEEDED] and `x`"), { findings: 1, architect_review: [], strategic_review: ["R-001"] });
+});
+
 test("a report with no finding lines has none to count or flag", () => {
   assert.deepEqual(reportFindings("# Report\n\nNothing found.\n"), { findings: 0, architect_review: [], strategic_review: [] });
 });

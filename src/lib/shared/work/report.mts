@@ -1,13 +1,9 @@
+import { carriesFlag, STRATEGIC_REVIEW } from "./artifact.mts";
+
 export type ReportFindings = { findings: number; architect_review: string[]; strategic_review: string[] };
 
 const FINDING_LINE = /^(?:- \*\*(R-\d{3})\*\*|### (R-\d{3})|(R-\d{3}))/;
 const ARCHITECT_REVIEW = "[ARCHITECT REVIEW NEEDED]";
-export const STRATEGIC_REVIEW = "[STRATEGIC REVIEW NEEDED]";
-const CODE_SPAN = /`[^`]*`/g;
-
-export function carriesFlag(line: string, flag: string): boolean {
-  return line.replace(CODE_SPAN, "").includes(flag);
-}
 
 export function reportFindings(body: string): ReportFindings {
   const findings = body

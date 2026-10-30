@@ -1,0 +1,1 @@
+Fix carriesFlag in src/lib/shared/work/report.mts so a stray unpaired backtick before a bare review flag no longer hides it, reusing the inline code helpers of artifact.mts (cumulative review Minor of 20261030-backticked-review-flags-are-not-flags).
