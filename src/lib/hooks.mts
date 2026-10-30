@@ -41,6 +41,10 @@ export const HOOKS = {
     summary: "order and design artifacts: frontmatter, phase headings, decision ids, caps, placeholders, revision protocol against git HEAD; reports: kind, confidence, one marker per finding, finding and summary caps, placeholders",
     on: [{ event: "PostToolUse", matcher: "Write|Edit" }],
   },
+  "lint.glossary": {
+    summary: "warns, never blocks, when a write leaves the host folder's `MEMORY.md` past the 6,000 characters `inject.state` injects",
+    on: [{ event: "PostToolUse", matcher: "Write|Edit" }],
+  },
   "observe.drive": {
     summary: "appends drive or inspect rows to `.picket/state/drive-log.jsonl` with the current work item and its phase; `picket verify` reads the rows",
     on: [

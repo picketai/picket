@@ -15,7 +15,7 @@ const EXPECTED_GROUPS = [
   ["UserPromptSubmit", undefined, ["inject.consulting"]],
   ["PreToolUse", "Write|Edit", ["guard.scope", "guard.comments", "guard.silenced"]],
   ["PreToolUse", "Bash|PowerShell", ["guard.bash"]],
-  ["PostToolUse", "Write|Edit", ["lint.schema"]],
+  ["PostToolUse", "Write|Edit", ["lint.schema", "lint.glossary"]],
   ["PostToolUse", "Bash|PowerShell", ["observe.drive"]],
   ["PostToolUse", "Read|Grep|Glob|WebFetch|WebSearch", ["monitor.context"]],
   ["PostToolUseFailure", "Bash|PowerShell", ["observe.drive"]],
