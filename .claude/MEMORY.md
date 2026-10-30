@@ -73,7 +73,7 @@ The `## Entry` part of a shell: what the agent reads first and which fields of t
 
 ## Decisions
 
-- **Product name Picket, project PicketAI** (2026-10-10): npm `@picketai/picket`, GitHub `picketai/picket`, command `picket`; it replaced the working name Tether, whose npm scope was taken. Rejected: Hitch (`hitch-cli` is a rival AI coding tool).
+- **Product name Picket, project PicketAI** (2026-10-10): npm `@picketai/picket`, GitHub `picketai/picket`, command `picket`; it replaced an earlier working name whose npm scope was taken. Rejected: Hitch (`hitch-cli` is a rival AI coding tool).
 - **Packaging is a mix: one core, a Claude Code plugin, a CLI, and `picket init`** (2026-10-02): a bare plugin cannot carry rules, CLAUDE.md or permissions, and a bare installer leaves copies that drift. `npm run build` writes the plugin from `src/` to `dist/`.
 - **Claude Code only until the alpha** (2026-10-04): other hosts are revisited after it; the only multi-host preparation kept is one paths module and hooks as thin shells over kernel verbs.
 - **Customization through extensions with a manifest, not an anonymous override folder** (2026-10-04): a manifest gives identity, version and a compatibility check. Project-local only in the alpha; installing from a git URL comes later.
