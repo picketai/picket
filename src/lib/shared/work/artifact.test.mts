@@ -93,6 +93,10 @@ test("strategicReviewIds names the flagged decision headings and open question l
   assert.deepEqual(strategicReviewIds(lines("### D-001: Plain", "- **OQ-001** none")), []);
 });
 
+test("strategicReviewIds skips a heading that quotes the flag in backticks", () => {
+  assert.deepEqual(strategicReviewIds(lines("### D-003: One flag, `[STRATEGIC REVIEW NEEDED]`, on the line that carries the id")), []);
+});
+
 test("a phase heading without a frontmatter entry has a null entry", () => {
   const [only] = parseArtifact(lines("# O", "", "## Phase 1: Only", "", "text")).phases;
   assert.equal(only.entry, null);

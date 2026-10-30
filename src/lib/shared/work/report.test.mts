@@ -12,6 +12,11 @@ test("reportFindings names the findings flagged for strategic review, apart from
   assert.deepEqual(reportFindings(body), { findings: 2, architect_review: [], strategic_review: ["R-002"] });
 });
 
+test("a flag quoted in backticks on a finding line flags nothing", () => {
+  const body = ["- **R-001** [VERIFIED] the shell names `[ARCHITECT REVIEW NEEDED]`", "- **R-002** [VERIFIED] the template quotes `[STRATEGIC REVIEW NEEDED]`"].join("\n");
+  assert.deepEqual(reportFindings(body), { findings: 2, architect_review: [], strategic_review: [] });
+});
+
 test("a report with no finding lines has none to count or flag", () => {
   assert.deepEqual(reportFindings("# Report\n\nNothing found.\n"), { findings: 0, architect_review: [], strategic_review: [] });
 });

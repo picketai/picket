@@ -1,0 +1,3 @@
+Fix the strategic and architect review flag scans so a flag quoted in backticks on a decision heading or finding line is not counted; picket close named D-003 of the consulting order only because its heading quotes `[STRATEGIC REVIEW NEEDED]`.
+
+Escalated from the fast lane (4 touched files). The working tree already holds the change, unstaged: `carriesFlag(line, flag)` in src/lib/shared/work/report.mts strips backtick code spans before the check, used by reportFindings and by strategicReviewIds in src/lib/shared/work/artifact.mts, with one red-then-green test in each of report.test.mts and artifact.test.mts. One phase is enough.
