@@ -32,3 +32,5 @@ Unverified as of 2026-10-30: whether a skill's dynamic injection (a `!` before a
 Design-record trap: the lint.schema PostToolUse hook runs after every edit of design.md and flags frontmatter phases with no `## Phase N` heading. When adding phases in a second save, write the body headings first (or in the same Edit), then the frontmatter entries.
 
 Related: [[transcript-facts]]
+
+Read from the 2.1.314 binary (2026-10-30, `grep -a` on claude.exe, item 20261030-consulting-the-brief-and-the-prompt-hook): the `UserPromptSubmit` input carries `prompt` and an optional `source` (user, sdk, system, loop_wakeup, schedule_wakeup, poll_event); the output takes `hookSpecificOutput.hookEventName: "UserPromptSubmit"` with optional `additionalContext`, `sessionTitle`, and `suppressOriginalPrompt` on a block. Grepping the binary is a zero-quota way to settle a hook contract.

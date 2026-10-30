@@ -42,3 +42,4 @@ Source list: `artifacts/reports/instructions-candidates-2026-10-25.md`, walked t
 | 14 | [The reviewing skill](14-reviewing.md) | approved 2026-10-29 |
 | 15 | [Documenting and consulting](15-documenting-and-consulting.md) | approved 2026-10-29 |
 | 16 | [The remaining skills](16-remaining-skills.md) | approved 2026-10-30 |
+| 17 | [Consulting, the brief and the prompt hook](17-consulting.md) | approved 2026-10-30 |

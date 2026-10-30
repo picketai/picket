@@ -8,4 +8,5 @@
 - [Verbs import only shared](verbs-import-only-shared.md) — conventions.test.mjs layer rule; a verb never imports another verb (route())
 - [Hook-continued phase routing fixed](hook-continued-phase-not-routed.md) — fixed e15d2ba; continued turns route unless they repeat the last row
 - [Scratch drive root](scratch-drive-root.md) — scratchpad picket runs land in the home folder; set CLAUDE_PROJECT_DIR first
+- [Lane open line pinned](lane-open-line-pinned.md) — lane-check.test.mjs matches each lane's `picket open` line; update it with the step
 - [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag
