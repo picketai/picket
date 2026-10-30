@@ -29,7 +29,7 @@ Probed 2026-10-25 on 2.1.310 (F-1 order, a scratch copy of the built plugin): `v
 
 Unverified as of 2026-10-30: whether a skill's dynamic injection (a `!` before a backticked command) expands when indented inside a list item. Item 20261029-remaining-skills-in-bundle-2-shape D-003 kept the lines at column 0 in the purpose paragraph instead; a probe would settle it.
 
-Design-record trap: the lint.schema PostToolUse hook runs after every edit of design.md and flags frontmatter phases with no `## Phase N` heading. When adding phases in a second save, write the body headings first (or in the same Edit), then the frontmatter entries.
+Design-record trap: the lint.schema PostToolUse hook runs after every edit of design.md and flags frontmatter phases with no `## Phase N` heading. When adding phases in a second save, write the body headings first (or in the same Edit), then the frontmatter entries. It also flags any literal `<!--` in an order or design body as "template comment left", even inside backticks (seen 2026-10-30), so name a template's comment in words ("the comment that starts `location:`").
 
 Related: [[transcript-facts]]
 
