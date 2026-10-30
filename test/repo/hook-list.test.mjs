@@ -12,6 +12,7 @@ const HOOK_FOLDERS = resolve("src/lib/hooks");
 const EXPECTED_GROUPS = [
   ["SessionStart", undefined, ["inject.state", "inject.rules", "inject.extensions"]],
   ["SubagentStart", undefined, ["inject.rules", "inject.extensions"]],
+  ["UserPromptSubmit", undefined, ["inject.consulting"]],
   ["PreToolUse", "Write|Edit", ["guard.scope", "guard.comments", "guard.silenced"]],
   ["PreToolUse", "Bash|PowerShell", ["guard.bash"]],
   ["PostToolUse", "Write|Edit", ["lint.schema"]],

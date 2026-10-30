@@ -16,15 +16,20 @@ function decisionsPart({ count, amended }: DecisionCounts): string {
   return `decisions: ${count}${amended ? ` (${amended} amended)` : ""}`;
 }
 
-function phasesLine({ phases, decisions, commits, review }: Closing): string {
-  const parts = [`Phases: ${phases}`, decisions && decisionsPart(decisions), commits && `commits ${commits.first}..${commits.last}`, review && `review: ${review}`];
+function strategicPart(ids: readonly string[]): string | null {
+  return ids.length ? `strategic review: ${ids.join(", ")}` : null;
+}
+
+function phasesLine({ phases, decisions, commits, review, strategic }: Closing): string {
+  const parts = [`Phases: ${phases}`, decisions && decisionsPart(decisions), commits && `commits ${commits.first}..${commits.last}`, review && `review: ${review}`, strategicPart(strategic)];
   return parts.filter(Boolean).join(SEPARATOR);
 }
 
 function reportLine(v: CloseResult, report: ReportFindings | null): string | null {
   if (!report) return null;
   const flagged = report.architect_review.length ? report.architect_review.join(", ") : "no";
-  return [`Report: ${workRel(v.id)}${ARTIFACT_BY_LANE.research}`, `findings: ${report.findings}`, `architect review: ${flagged}`].join(SEPARATOR);
+  const parts = [`Report: ${workRel(v.id)}${ARTIFACT_BY_LANE.research}`, `findings: ${report.findings}`, `architect review: ${flagged}`, strategicPart(v.closing.strategic)];
+  return parts.filter(Boolean).join(SEPARATOR);
 }
 
 function laneLine(v: CloseResult): string | null {

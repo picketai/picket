@@ -52,7 +52,7 @@ phases:
 <!-- optional: repeat the phase block; a phase with `security: true` or a security path never shares a run grant -->
 
 ## Open questions
-<!-- required; write "none" when empty; [STRATEGIC] flags a question for consulting -->
+<!-- required; write "none" when empty; [STRATEGIC REVIEW NEEDED] on the OQ line flags a question for consulting -->
 - **OQ-001** [REPLACE: question]. Owner: [REPLACE: who]. Fallback: [REPLACE: what the phase does meanwhile]
 
 ## Revision log

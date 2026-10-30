@@ -9,6 +9,7 @@ Each hook name starts with its kind. `guard.*` hooks deny a tool call or bounce 
 | `inject.state` | SessionStart |  | open work items with their next action, plus the host folder's `MEMORY.md` |
 | `inject.rules` | SessionStart, SubagentStart |  | the five rules in `rules/`, joined, for the lead and every agent |
 | `inject.extensions` | SessionStart, SubagentStart |  | each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension |
+| `inject.consulting` | UserPromptSubmit |  | one line suggesting `picket:consulting` when a user prompt reads as a direction or stress-test question; silent on gate replies, short prompts and prompts naming a `picket:` skill |
 | `guard.scope` | PreToolUse | `Write\|Edit` | denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `waivers.jsonl`, `.picket/state/` except `branching.yaml`); denies an Edit on a file this transcript never read |
 | `guard.comments` | PreToolUse | `Write\|Edit` | denies an edit that adds a comment line to a code file, doc comments included, unless `picket comment` recorded the user's approval for that path and text on an open or blocked item |
 | `guard.silenced` | PreToolUse | `Write\|Edit` | denies an edit that adds a silenced check (a suppression, a skipped or focused test, a weaker coverage or warning threshold), unless `picket waive` recorded the user's approval for that path and line on an open or blocked item |

@@ -2,7 +2,7 @@ import { Refused } from "../../shared/action.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
 import { recordAccept } from "../../shared/ledger.mts";
-import { decisionCounts, phasePaths, type DecisionCounts } from "../../shared/work/artifact.mts";
+import { decisionCounts, phasePaths, strategicReviewIds, type DecisionCounts } from "../../shared/work/artifact.mts";
 import { blockFiles } from "../../shared/work/block.mts";
 import { workRel, type WorkId } from "../../shared/work/files.mts";
 import { readLeft, type LeftEntry } from "../../shared/work/left.mts";
@@ -24,6 +24,7 @@ export type Closing = {
   review: string | null;
   questions: string | null;
   report: ReportFindings | null;
+  strategic: string[];
 };
 export type CloseResult = WorkState & {
   commit: string | null;
@@ -129,14 +130,20 @@ function cumulativeVerdict(snap: WorkSnapshot): string | null {
 function closingFacts(root: string, snap: WorkSnapshot, closeCommit: string | null): Closing {
   const { id, lane } = snap.state;
   const body = snap.artifact?.body ?? "";
+  const report = lane === "research" ? reportFindings(body) : null;
   return {
     phases: snap.phases.length,
     commits: commitRange(root, snap, closeCommit),
     decisions: lane === "design" ? decisionCounts(body) : null,
     review: cumulativeVerdict(snap),
     questions: reviewQuestions(root, id),
-    report: lane === "research" ? reportFindings(body) : null,
+    report,
+    strategic: report?.strategic_review ?? recordStrategicIds(lane, body),
   };
+}
+
+function recordStrategicIds(lane: Lane, body: string): string[] {
+  return PHASED_LANES.includes(lane) ? strategicReviewIds(body) : [];
 }
 
 export function close(root: string, id: WorkId, { message, touched = [] }: CloseOptions, { now, env }: CloseContext): CloseResult {

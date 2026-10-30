@@ -23,7 +23,7 @@ You lead the order lane from the main session: you open the work item, send the 
 4. `implement_phase`: send the developer what `picket next <id>` prints (an `Agent` spawn on phase 1, a `SendMessage` after) and end the turn. Its `PHASE DONE` brings the phase gate.
 5. `approve_phase`, `resolve_block`, `resolve_rejections`: the gate of rule 4. Print `picket packet <id>` verbatim, end the turn, and pass the user's reply to `picket reply <id> "<reply>"`.
 6. `review_cumulative`, `fix_findings`, `amend`: send what `picket next <id>` prints, running its `first:` lines before the send, and end the turn.
-7. `close`: print one sentence on what shipped, then run `picket close <id> --human` and print its output verbatim under that sentence. Stop.
+7. `close`: print one sentence on what shipped, then run `picket close <id> --human` and print its output verbatim under that sentence. When it names `strategic review: <ids>`, offer `picket:consulting` for them. Stop.
 
 ## Rules
 

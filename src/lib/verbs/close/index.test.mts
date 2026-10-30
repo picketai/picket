@@ -10,7 +10,7 @@ import { verb } from "./index.mts";
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
-const NO_FACTS: Closing = { phases: 0, commits: null, decisions: null, review: null, questions: null, report: null };
+const NO_FACTS: Closing = { phases: 0, commits: null, decisions: null, review: null, questions: null, report: null, strategic: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -55,9 +55,16 @@ test("a design close counts its decisions and the amended ones", () => {
 });
 
 test("a research close names the report, its findings and the ones for architect review", () => {
-  const flagged = closingBlock(closed("research", { report: { findings: 2, architect_review: ["R-002"] } }));
+  const flagged = closingBlock(closed("research", { report: { findings: 2, architect_review: ["R-002"], strategic_review: [] } }));
   assert.equal(flagged, `## Research closed: ${ID}\nReport: work/${ID}/research.md · findings: 2 · architect review: R-002`);
-  assert.match(closingBlock(closed("research", { report: { findings: 0, architect_review: [] } })), /architect review: no$/);
+  assert.match(closingBlock(closed("research", { report: { findings: 0, architect_review: [], strategic_review: [] } })), /architect review: no$/);
+});
+
+test("ids flagged for strategic review close the research Report line and the design Phases line", () => {
+  const report = closingBlock(closed("research", { report: { findings: 2, architect_review: [], strategic_review: ["R-002"] }, strategic: ["R-002"] }));
+  assert.equal(report.split("\n")[1], `Report: work/${ID}/research.md · findings: 2 · architect review: no · strategic review: R-002`);
+  const design = closingBlock(closed("design", { phases: 2, decisions: { count: 2, amended: 0 }, review: "APPROVED", strategic: ["D-002"] }));
+  assert.equal(design.split("\n")[1], "Phases: 2 · decisions: 2 · review: APPROVED · strategic review: D-002");
 });
 
 test("Questions shows only when the cumulative review asked some", () => {

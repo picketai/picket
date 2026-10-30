@@ -7,10 +7,12 @@ type ToolInput = { file_path?: string; command?: string } & Record<string, unkno
 type ToolPayload = CommonPayload & { tool_name?: string; tool_input?: ToolInput };
 type StopPayload = CommonPayload & { stop_hook_active?: boolean };
 type NotificationPayload = CommonPayload & { notification_type?: string; message?: string };
+type PromptPayload = CommonPayload & { prompt?: string; source?: string };
 
 type Payloads = {
   SessionStart: CommonPayload;
   SubagentStart: CommonPayload;
+  UserPromptSubmit: PromptPayload;
   PreToolUse: ToolPayload;
   PostToolUse: ToolPayload;
   PostToolUseFailure: ToolPayload;
@@ -23,7 +25,7 @@ export type PayloadOf<E extends HookEvent> = { [K in E]: Payloads[K] & { hook_ev
 
 export type OutputFor<E extends HookEvent> = E extends "PreToolUse"
   ? PermissionOutput
-  : E extends "SessionStart" | "SubagentStart" | "PostToolUse" | "PostToolUseFailure"
+  : E extends "SessionStart" | "SubagentStart" | "UserPromptSubmit" | "PostToolUse" | "PostToolUseFailure"
     ? ContextOutput
     : E extends "Stop" | "SubagentStop"
       ? BounceOutput | ContextOutput

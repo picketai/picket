@@ -1,4 +1,4 @@
-export const HOOK_EVENTS = ["SessionStart", "SubagentStart", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "SubagentStop", "Notification"] as const;
+export const HOOK_EVENTS = ["SessionStart", "SubagentStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "SubagentStop", "Notification"] as const;
 
 export type HookEvent = (typeof HOOK_EVENTS)[number];
 
@@ -16,6 +16,10 @@ export const HOOKS = {
   "inject.extensions": {
     summary: "each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension",
     on: [{ event: "SessionStart" }, { event: "SubagentStart" }],
+  },
+  "inject.consulting": {
+    summary: "one line suggesting `picket:consulting` when a user prompt reads as a direction or stress-test question; silent on gate replies, short prompts and prompts naming a `picket:` skill",
+    on: [{ event: "UserPromptSubmit" }],
   },
   "guard.scope": {
     summary: "denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `waivers.jsonl`, `.picket/state/` except `branching.yaml`); denies an Edit on a file this transcript never read",

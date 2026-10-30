@@ -6,24 +6,25 @@ Vocabulary: "decisions" means `## Problem` plus `## Decisions` (each `### D-###`
 
 ## Scope
 
-Delta pass when the message carries a `delta: <D-### ids>` line: read only those `### D-###` sections, the `## Revision log`, and the phases whose criteria cite those ids or that the amendment edited, and run the five checks over them; do not re-read untouched decisions, phases, or cited sources. Record `scope: delta (D-###, ...)`. Full pass when the message carries no `delta:` line: read the whole record and every report, SDR, or charter it cites by path. Record `scope: full`.
+Delta pass when the message carries a `delta: <D-### ids>` line: read only those `### D-###` sections, the `## Revision log`, and the phases whose criteria cite those ids or that the amendment edited, and run the six checks over them; do not re-read untouched decisions, phases, or cited sources, and read only the ratified SDRs the amended decisions touch. Record `scope: delta (D-###, ...)`. Full pass when the message carries no `delta:` line: read the whole record, every report, SDR, or charter it cites by path, and every SDR under `artifacts/strategy/decisions/` whose `**Status:**` is `Ratified`. Record `scope: full`.
 
 Caps: 30 finding rows on a full pass, 10 on a delta. Past the cap the record is structurally broken: emit one Critical row naming the structural problem ("plan has no acceptance criteria") and stop enumerating. The reference walk is one hop (record to cited report, SDR, or charter); never follow a report's own citations.
 
-## Five checks, in order
+## Six checks, in order
 
 1. Terminology. For every term used in both decisions and phases: find its entry in `.claude/MEMORY.md` (its `## Language`; a missing entry is its own Minor row); if the two sections use the term for materially different things, one row; if a phase introduces a domain term absent from the decisions and not common English, one row.
 2. Decision coverage. Every `D-###` has at least one phase criterion implementing it. A decision with zero criteria: Critical. A `D-###` cited by a phase that does not exist in the record: Critical.
 3. Reverse coverage. Every phase implements at least one decision. A phase whose criteria implement none: Major (scope creep or an incomplete decision set; the architect decides which).
 4. Driver-finding resolution. For each analyst report cited in `## Problem`, walk its `R-###` findings: a critical or major finding neither resolved by a phase nor marked out of scope in an `**Instead of:**` line is Major. For a cited SDR or charter, walk `TF-###` and `INV-###`: a `[TACTICAL DESIGN NEEDED]` item with no implementing phase is Major.
 5. Reference integrity. For every `<short-title>#<ID>` reference in the record: target artifact missing is Critical; artifact present but id missing or `[withdrawn]` is Major; a prose reference with no id ("the auth audit's session-token finding") is Minor.
+6. Strategy. For every ratified SDR in scope, compare its `## Decision` with each `D-###`: a decision that contradicts it is Major; the row names the SDR path. A project with no `artifacts/strategy/` folder skips this check.
 
 Evidence rules 2 and 3 of the skill apply: never infer a section's content from its heading, and try to disprove a row (the criterion may sit in a phase you have not read, or the wording may be elsewhere in the decisions) before writing it. A row that does not survive is dropped silently.
 
 ## Severity
 
 - Critical: a decision no phase implements; a phase citing a decision that does not exist; a reference to an artifact that does not exist. The record cannot be implemented as written.
-- Major: a phase implementing no decision; an unresolved critical or major driver finding; a reference whose id is missing or withdrawn.
+- Major: a phase implementing no decision; an unresolved critical or major driver finding; a reference whose id is missing or withdrawn; a decision that contradicts a ratified SDR.
 - Minor: terminology drift on a term that already has a glossary entry; a prose reference that works but should be an id.
 
 ## Findings and verdict

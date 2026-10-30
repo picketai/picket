@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decisionCounts, decisionsRevisedSince, parseArtifact, phasePaths } from "./artifact.mts";
+import { decisionCounts, decisionsRevisedSince, parseArtifact, phasePaths, strategicReviewIds } from "./artifact.mts";
 
 const lines = (...rows: string[]) => rows.join("\n") + "\n";
 
@@ -73,6 +73,24 @@ test("decisionsRevisedSince gives the ids on revision log lines dated on or afte
   assert.deepEqual(decisionsRevisedSince(body, "2026-10-29"), ["D-003", "D-002"]);
   assert.deepEqual(decisionsRevisedSince(body, "2026-10-31"), []);
   assert.deepEqual(decisionsRevisedSince("# no log", "2026-10-29"), []);
+});
+
+test("strategicReviewIds names the flagged decision headings and open question lines, never a flag in a paragraph", () => {
+  const body = lines(
+    "## Decisions",
+    "",
+    "### D-001: Queue the exports",
+    "**Decision:** quote the [STRATEGIC REVIEW NEEDED] flag here and it does not count.",
+    "",
+    "### D-002: Buy the tax engine [STRATEGIC REVIEW NEEDED]",
+    "",
+    "## Open questions",
+    "",
+    "- **OQ-001** Who owns pricing? [STRATEGIC REVIEW NEEDED]",
+    "- **OQ-002** Which queue? Default: the existing one.",
+  );
+  assert.deepEqual(strategicReviewIds(body), ["D-002", "OQ-001"]);
+  assert.deepEqual(strategicReviewIds(lines("### D-001: Plain", "- **OQ-001** none")), []);
 });
 
 test("a phase heading without a frontmatter entry has a null entry", () => {

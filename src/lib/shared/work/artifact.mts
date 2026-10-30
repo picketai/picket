@@ -1,4 +1,5 @@
 import { frontmatter } from "../../util/yaml-lite.mts";
+import { STRATEGIC_REVIEW } from "./report.mts";
 
 export type GrepEntry = { path: string; pattern: string; flags?: string };
 export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tests?: boolean; drive?: boolean; security?: unknown } & Record<string, unknown>;
@@ -74,6 +75,16 @@ export type DecisionCounts = { count: number; amended: number };
 export function decisionCounts(body: string): DecisionCounts {
   const headings = [...body.matchAll(DECISION_HEADING)];
   return { count: headings.length, amended: headings.filter((heading) => REVISION_MARK.test(heading[1])).length };
+}
+
+const FLAGGABLE_LINE = /^(?:### (D-\d{3})\b|- \*\*(OQ-\d{3})\*\*)/;
+
+export function strategicReviewIds(body: string): string[] {
+  return body
+    .split(/\r?\n/)
+    .filter((line) => line.includes(STRATEGIC_REVIEW))
+    .map((line) => line.match(FLAGGABLE_LINE)?.slice(1).find(Boolean))
+    .filter((id): id is string => id !== undefined);
 }
 
 export function decisionsRevisedSince(body: string, day: string): string[] {

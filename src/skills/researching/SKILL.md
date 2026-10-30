@@ -25,7 +25,7 @@ You lead the research lane from the main session: one analyst per work item, spa
 
 ## Rules
 
-The analyst writes `work/<id>/research.md` only and never proposes designs. A finding that needs a decision is flagged `[ARCHITECT REVIEW NEEDED]`; `picket close` names those ids, and you offer `picket:ordering` or `picket:designing` in your closing sentence.
+The analyst writes `work/<id>/research.md` only and never proposes designs. A finding that needs a decision is flagged `[ARCHITECT REVIEW NEEDED]`; `picket close` names those ids, and you offer `picket:ordering` or `picket:designing` in your closing sentence. A finding flagged `[STRATEGIC REVIEW NEEDED]` appears as `strategic review: <ids>`; offer `picket:consulting` for those ids.
 
 On a research item `picket reply` takes `p` only, which approves the report and copies it to the `artifacts/reports/` path the option names. The `a`, `d` and `x` replies are yours to apply as the Steps say; never route them through the kernel.
 
@@ -47,4 +47,4 @@ The packet is rendered by code from the report on disk. Print `picket packet <id
 [a] accept   [p] accept and publish to artifacts/reports/<slug>.md   [d] deeper pass   [x] reject: <why>
 ```
 
-The closing block is `picket close <id> --human` under your one sentence: `## Research closed: <id>`, then `Report: work/<id>/research.md · findings: <n> · architect review: <R-ids | no>`, and the `Left for you` and `Left staged` lines when there are any.
+The closing block is `picket close <id> --human` under your one sentence: `## Research closed: <id>`, then `Report: work/<id>/research.md · findings: <n> · architect review: <R-ids | no>`, ending ` · strategic review: <R-ids>` when a finding carries that flag, and the `Left for you` and `Left staged` lines when there are any.
