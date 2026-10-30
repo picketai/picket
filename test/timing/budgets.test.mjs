@@ -22,6 +22,7 @@ const BUDGETS = {
 };
 
 const RULE_FOLDERS = [join(ROOT, ".claude", "rules"), join(ROOT, "src", "rules")];
+const SKILL_FOLDERS = [join(ROOT, "src", "skills"), join(ROOT, ".claude", "skills")];
 
 function lines(p) {
   return readFileSync(p, "utf8").split(/\r?\n/).length;
@@ -54,8 +55,8 @@ test("CLAUDE.md stays under the always-on budget", { skip: !existsSync(join(ROOT
 test("agent shells, skills, step files and rules stay within their line budgets", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {
   const over = [];
   for (const p of walk(join(ROOT, "src", "agents"), (f) => f.endsWith(".md"))) if (lines(p) > BUDGETS.agent_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.agent_lines}`);
-  for (const p of walk(join(ROOT, "src", "skills"), (f) => f.endsWith("SKILL.md"))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
-  over.push(...overStepBudget(join(ROOT, "src", "skills")));
+  for (const p of SKILL_FOLDERS.flatMap((dir) => walk(dir, (f) => f.endsWith("SKILL.md")))) if (lines(p) > BUDGETS.skill_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.skill_lines}`);
+  over.push(...SKILL_FOLDERS.flatMap(overStepBudget));
   for (const p of RULE_FOLDERS.flatMap((dir) => walk(dir, (f) => f.endsWith(".md")))) if (lines(p) > BUDGETS.rule_lines) over.push(`${rel(p)}: ${lines(p)} > ${BUDGETS.rule_lines}`);
   assert.deepEqual(over, []);
 });

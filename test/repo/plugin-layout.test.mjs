@@ -95,9 +95,10 @@ test(".claude/settings.json carries no hooks, so the plugin is the only loader",
   assert.equal("hooks" in readJson(SETTINGS), false);
 });
 
-test(".claude/ tracks no skills, agents or output styles", () => {
-  const tracked = execFileSync("git", ["ls-files", "--", ".claude/skills", ".claude/agents", ".claude/output-styles"], { encoding: "utf8" });
-  assert.equal(tracked.trim(), "");
+test(".claude/ tracks no agents or output styles, and only the project skills", () => {
+  const tracked = (paths) => execFileSync("git", ["ls-files", "--", ...paths], { encoding: "utf8" }).trim();
+  assert.equal(tracked([".claude/agents", ".claude/output-styles"]), "");
+  assert.equal(tracked([".claude/skills"]), ".claude/skills/benchmarking/SKILL.md");
 });
 
 function skillFolders(skillsDir) {
@@ -117,7 +118,7 @@ test("a folder under skills/ without a SKILL.md is not a skill", (t) => {
   mkdirSync(join(skills, "sampling"), { recursive: true });
   writeFileSync(join(skills, "sampling", "SKILL.md"), "");
   assert.deepEqual(skillFolders(skills), ["./skills/sampling"]);
-  assert.equal(skillFolders(join(SRC, "skills")).length, 17);
+  assert.equal(skillFolders(join(SRC, "skills")).length, 16);
 });
 
 test("every import under src/ is a Node built-in or a path inside src/", () => {

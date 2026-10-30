@@ -1,0 +1,4 @@
+warn artifact: order.md not written yet (next action will ask for it)
+warn tree: 1 uncommitted path(s) outside work/: artifacts/refactor/20-bench-guard.md
+warn project_map: absent; the analyst can write one
+warn legacy_paths: .claude/ledger, .claude/branching/manifest.yaml still present; run picket migrate

@@ -4,7 +4,6 @@
   "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel.",
   "author": { "name": "Vlad Apetre" },
   "skills": [
-    "./skills/benchmarking",
     "./skills/branching",
     "./skills/consulting",
     "./skills/debugging",

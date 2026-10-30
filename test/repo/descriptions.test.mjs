@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { rank, similarPairs, skillDescriptions, vectorise } from "#test/routing.mts";
+import { rank, similarPairs, skillDescriptions, terms, vectorise } from "#test/routing.mts";
 
 const MIN_SHARE = 0.95;
 const FAIL_SIMILARITY = 0.75;
@@ -10,6 +10,8 @@ const REPORT_SIMILARITY = 0.5;
 const MIN_POSITIVE = 3;
 const MIN_NEGATIVE = 2;
 const LANE_SKILLS = ["designing", "expediting", "ordering", "researching"];
+const BENCH_TERMS = ["bench", "benchmark", "baseline", "trunk"];
+const BENCH_PROMPTS = ["run the bench against trunk", "benchmark the plugin and compare it with the baseline"];
 
 const DOCS = skillDescriptions(resolve("."));
 const MODEL = vectorise(DOCS);
@@ -52,4 +54,12 @@ test("the descriptions route the cases on at least the minimum share", () => {
   const share = (results.length - failed.length) / results.length;
   const listed = failed.map((r) => `${r.skill} ${r.kind}: "${r.prompt}" -> ${r.top.slice(0, 2).map((x) => `${x.name} ${x.score.toFixed(2)}`).join(", ")}`).join("\n");
   assert.ok(share >= MIN_SHARE, `routing share ${share.toFixed(3)} under ${MIN_SHARE}; failing cases:\n${listed}`);
+});
+
+test("no plugin skill claims a bench prompt", () => {
+  for (const prompt of BENCH_PROMPTS) {
+    const benchTerms = terms(prompt).filter((term) => BENCH_TERMS.includes(term));
+    assert.ok(benchTerms.length > 0, `"${prompt}" carries no bench term`);
+    assert.deepEqual(benchTerms.filter((term) => MODEL.idf.has(term)), [], `"${prompt}": a plugin skill description uses these bench terms`);
+  }
 });

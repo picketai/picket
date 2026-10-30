@@ -155,6 +155,12 @@ To check a release before tagging, start the `release` workflow by hand from the
 
 Publish only from the workflow. Its `prepack` script builds `dist/` before the publish packs it. It packs a Linux checkout, where `src/bin/picket` keeps its executable bit and its LF line ends, and the build copies both into `dist/bin/picket`; a pack made on Windows drops the bit.
 
+## Benchmarking
+
+The suite under `bench/` measures Picket itself: pass rate, lane agreement, cost, time to first reviewable output, stops and cache hit ratio. Only this repository reaches it, through `/benchmarking` (the project skill `.claude/skills/benchmarking/SKILL.md`); the model never starts it on its own, and `bench/` is not part of the npm package.
+
+Every real run spends API budget, so it passes a dollar cap as `--max-usd`, and `bench/run.mjs` refuses a run without one or with a plan over it. `bench/README.md` has the commands.
+
 ## Folders outside the product
 
 `work/` holds one dated folder per work item and `artifacts/` holds dated reports and decision records; both are records of their time, so the Markdown path test does not check them.

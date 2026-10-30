@@ -1,13 +1,5 @@
 [
   {
-    "skill": "benchmarking",
-    "positive": ["run the bench against trunk", "benchmark the plugin and show pass@1 and cost", "did this change to the agent regress the baseline"],
-    "negative": [
-      { "prompt": "how much has this session cost so far", "owner": "inspecting" },
-      { "prompt": "review the diff of this phase", "owner": "reviewing" }
-    ]
-  },
-  {
     "skill": "branching",
     "positive": ["spin up a worktree for feature-x", "start a branch for this feature in every nested repo", "tear down the worktree for feature-x"],
     "negative": [
@@ -61,7 +53,7 @@
     "positive": ["status", "show the ledger and the cache ratio", "what's open and what's next"],
     "negative": [
       { "prompt": "continue the work item where we left off", "owner": "resuming" },
-      { "prompt": "run the bench and compare plugin and trunk", "owner": "benchmarking" }
+      { "prompt": "walk me through how admit picks a lane", "owner": "explaining" }
     ]
   },
   {

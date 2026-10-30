@@ -20,7 +20,6 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 | `picket:documenting` | used by agents | templates for every structured document | agents, or `/picket:documenting <kind> <subject>` |
 | `picket:reviewing` | used by agents | review checklist and pull request review | the reviewer, or `/picket:reviewing <pull request URL>` |
 | `picket:implementing` | used by agents | prove, check and drive a change, and the developer block | the developer and the fast lane; you never run it |
-| `picket:benchmarking` | contributors | measure Picket itself | `/picket:benchmarking ...` in the Picket repository |
 
 ## picket:expediting
 
@@ -149,11 +148,3 @@ How a change is made and proven: the kind of change named first, a red test befo
 **How you reach it.** You never invoke it. The [developer](agents.md#picketdeveloper) preloads it for every phase, and the fast lane loads it before its first edit.
 
 **Where it fits.** It decides what the block's `Red:`, `Root cause:`, `Tests:`, `Lint:` and `Verified:` lines say. A bug handed over by `picket:debugging` keeps its red test: the lane runs that test first instead of writing another. The fast lane prints the same block under `## Expedited: <id>` and ends it with `[c] commit   [x] discard: <why>` instead of a verdict.
-
-## picket:benchmarking
-
-Runs the golden task suite against a Picket build and prints the metric table: pass rate, lane agreement, cost, time to first reviewable output, stops and cache hit ratio.
-
-**How you reach it.** `/picket:benchmarking <run|baseline|check|report> [--tasks all|lane:<lane>|<id,...>] [--runs N]`, plus an option that picks the build (`plugin` or `trunk`), or "run the bench", "did this change regress".
-
-**Where it fits.** It is for people changing Picket itself. It runs the code under `bench/`, which exists only in the Picket repository and is not part of the npm package. Every run spends real API budget (about 2 dollars per fast task, 10 to 15 per order task), so it does a dry run first and quotes the cost before spending.
