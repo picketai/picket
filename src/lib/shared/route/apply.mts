@@ -74,11 +74,17 @@ function withoutApproval(changes: Change[], phase: number, refusal: string): Cha
   return [...kept, { kind: "state", unset: ["run_through"], line: null }, { kind: "note", line: refusal }];
 }
 
-function commitNestedFirst(root: string, snap: WorkSnapshot, changes: Change[], env: NodeJS.ProcessEnv): { changes: Change[]; lines: string[] } {
+type NestedOutcome = { changes: Change[]; lines: string[]; refused: boolean };
+
+function commitNestedFirst(root: string, snap: WorkSnapshot, changes: Change[], env: NodeJS.ProcessEnv): NestedOutcome {
   const commit = changes.find(isCommitChange);
-  if (!commit) return { changes, lines: [] };
+  if (!commit) return { changes, lines: [], refused: false };
   const { lines, refused } = commitCheckouts(root, snap, commit.phase, env);
-  return refused ? { changes: withoutApproval(changes, commit.phase, refused), lines } : { changes, lines };
+  return refused ? { changes: withoutApproval(changes, commit.phase, refused), lines, refused: true } : { changes, lines, refused: false };
+}
+
+function isRefusedApproval(nested: NestedOutcome, row: VerdictEntry): boolean {
+  return nested.refused && row.verdict === "approved";
 }
 
 export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[], { now, env, session, row }: ApplyOptions): string[] {
@@ -89,7 +95,7 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   for (const change of changes) if (change.kind === "marker") setMarker(root, id, change.phase, change.mark, now);
   const state = changedState(snap.state, changes, session);
   if (state) writeState(root, state, now);
-  appendVerdict(root, id, row, now);
+  if (!isRefusedApproval(nested, row)) appendVerdict(root, id, row, now);
   const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null)];
   for (const change of changes) if (change.kind === "commit") applied.push(...commitPhase(root, snap, change.phase, env, now));
   return applied;

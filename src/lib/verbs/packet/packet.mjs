@@ -7,6 +7,7 @@ import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { liveLookup } from "../../shared/sources/places.mts";
 import { reportFindings } from "../../shared/work/report.mts";
 import { nestedCheckoutPaths } from "../../shared/route/commit.mts";
+import { planWorktrees, ticketKey } from "../../shared/checkouts.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -83,6 +84,10 @@ function describeCandidates(ref, root) {
   });
 }
 
+function plannedLine({ repo, from, base, worktree }) {
+  return `${repo} from ${from} @${base ? base.slice(0, 8) : "unresolved"} -> ${worktree}`;
+}
+
 function approvalCommits(root, snap, phase) {
   const dirs = [...nestedCheckoutPaths(root, snap, phase).keys()];
   return dirs.length ? `approval commits it in ${dirs.join(", ")} and the umbrella` : "approval commits it";
@@ -148,6 +153,12 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
       lines.push("", `  ${cut(ref.ref, width - 2)}`);
       for (const c of describeCandidates(ref, root)) lines.push(`    ${cut(c, width - 4)}`);
     }
+  } else if (n.action === "create_worktrees") {
+    lines.push(`▶ worktrees before phase ${n.phase} · ${id}`);
+    lines.push(`  ${cut(n.detail, width - 2)}`);
+    lines.push("");
+    const name = ticketKey(snap.state.source) ?? "<name>";
+    for (const planned of planWorktrees(root, snap, { name })) lines.push(`  ${cut(plannedLine(planned), width - 2)}`);
   } else if (n.action === "resolve_block") {
     const raw = s.current_phase ? readBlock(root, id, s.current_phase) : null;
     const b = parseBlock(raw ?? "");

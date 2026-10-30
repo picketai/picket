@@ -11,7 +11,8 @@ import type { WorkId } from "../../shared/work/files.mts";
 import { instanceTag } from "../../shared/work/send.mts";
 import { verb, type ReplyResult } from "./index.mts";
 import { fixedContext } from "#test/context.mts";
-import { gitAt } from "#test/git.mts";
+import { readLayout } from "../../shared/repos.mts";
+import { gitAt, gitIn, umbrella } from "#test/git.mts";
 import { openItem, withProject } from "#test/project.mts";
 
 const SESSION = "S";
@@ -178,6 +179,48 @@ test("a, d and x on a research item are the lead's, and are refused saying so", 
   const { root, id } = researchItem(t);
   for (const text of ["a", "d", "x too shallow"]) assert.equal(await refused(root, id, text), "on a research item reply takes p; a, d and x are the lead's (picket:researching)", text);
   assert.equal(existsSync(join(root, "artifacts")), false);
+});
+
+const ORDERS_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/Orders/pricing.cs]\n    security: false\n---\n# D\n\n## Phase 1: Pricing\n\nt\n";
+
+function worktreeItem(t: TestContext, source?: string) {
+  const { root, repos } = umbrella(t, { repos: ["Orders"] });
+  gitIn(repos.Orders, "branch", "develop");
+  const { id } = openItem(root, { lane: "design", title: "Orders pricing", ...(source ? { source } : {}) });
+  writeFileSync(join(root, "work", id, "design.md"), ORDERS_DESIGN);
+  return { root, id };
+}
+
+test("y at create_worktrees records the ticket key and sends phase 1 with the cross-check (T-6.3)", async (t) => {
+  const { root, id } = worktreeItem(t, "RMS-12");
+  const result = await applied(root, id, "y");
+  assert.equal(readState(root, id).branch, "RMS-12");
+  assert.equal(result.applied[0], "branch RMS-12 recorded");
+  assert.match(result.applied[1], /^src\/Orders from main @[0-9a-f]{8} -> src\/Orders\/\.worktrees\/RMS-12$/);
+  assert.equal(result.next.action, "implement_phase");
+  assert.deepEqual(result.send.map((s) => s.to), [`${instanceTag(id)}-developer`, `${instanceTag(id)}-reviewer`]);
+  assert.match(result.send[1].message, /^scope: crosscheck$/m);
+});
+
+test("a free name with from records each touched repo's start; n records the main checkouts (T-6.4)", async (t) => {
+  const named = worktreeItem(t);
+  await applied(named.root, named.id, "feature/x from develop");
+  assert.equal(readState(named.root, named.id).branch, "feature/x");
+  assert.deepEqual(readLayout(named.root, named.id).repos.map((r) => [r.path, r.from]), [["src/Orders", "develop"]]);
+
+  const none = worktreeItem(t);
+  const result = await applied(none.root, none.id, "n");
+  assert.equal(readLayout(none.root, none.id).worktrees, "none");
+  assert.equal(readState(none.root, none.id).branch, undefined);
+  assert.equal(result.send[0].to, `${instanceTag(none.id)}-developer`);
+  assert.match(result.send[0].message, /^phase: 1$/m);
+});
+
+test("with no ticket source y, yes, ok and a are refused and record no branch (T-6.8)", async (t) => {
+  const { root, id } = worktreeItem(t);
+  for (const word of ["y", "yes", "ok", "a", "OK"]) assert.match(await refused(root, id, word), /matches no option at create_worktrees/, word);
+  assert.equal(readState(root, id).branch, undefined);
+  assert.match(await refused(root, id, "bad..name"), /"bad\.\.name" is not a valid branch name/);
 });
 
 test("p on a research item whose title gives no file name is refused saying why publish is not offered", async (t) => {

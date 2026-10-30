@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { NEXT_ACTIONS, nextStep } from "./next-step.mts";
 import { nextView } from "./next-view.mts";
 import { instanceTag } from "./send.mts";
+import type { ItemLayout } from "../repos.mts";
 import { snapshotOf, type PhaseInput, type SnapshotInput } from "#test/snapshot.mts";
 
 const SECURITY_PATHS = ["src/auth/"];
@@ -78,9 +79,33 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with fix_findings, amend and review_crosscheck, thirteen in all", () => {
-  assert.equal(NEXT_ACTIONS.length, 13);
-  assert.deepEqual(NEXT_ACTIONS.slice(-3), ["fix_findings", "amend", "review_crosscheck"]);
+test("the actions end with fix_findings, amend, review_crosscheck and create_worktrees, fourteen in all (T-6.6)", () => {
+  assert.equal(NEXT_ACTIONS.length, 14);
+  assert.deepEqual(NEXT_ACTIONS.slice(-4), ["fix_findings", "amend", "review_crosscheck", "create_worktrees"]);
+});
+
+const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };
+const ORDERS_PHASE = { n: 1, entry: { n: 1, files: ["src/Orders/pricing.cs"] } };
+const WORKTREE_OPTIONS = ["reply: <name> [from <ref>]", "[n] use the main checkouts"];
+
+test("a plan touching a nested repo with no branch named stops at create_worktrees, offering the ticket key (T-6.1)", () => {
+  const stop = step({ source: "RMS-12", layout: ORDERS_LAYOUT, phases: [ORDERS_PHASE, { n: 2 }] });
+  assert.deepEqual(stop, {
+    action: "create_worktrees",
+    actor: "user",
+    phase: 1,
+    detail: "the plan touches src/Orders; name the branch for their worktrees before phase 1",
+    options: ["[y] create RMS-12", ...WORKTREE_OPTIONS],
+  });
+  assert.deepEqual(step({ source: "story.md", layout: ORDERS_LAYOUT, phases: [ORDERS_PHASE] }).options, WORKTREE_OPTIONS);
+});
+
+test("no nested repo, no nested path, a recorded branch, or worktrees: none goes straight to implement_phase (T-6.2)", () => {
+  const plain = { layout: ORDERS_LAYOUT, phases: [ORDERS_PHASE] };
+  assert.equal(step({ ...plain, layout: { nested: [], worktrees: null, repos: [] } }).action, "implement_phase");
+  assert.equal(step({ ...plain, phases: [{ n: 1, entry: { n: 1, files: ["README.md"] } }] }).action, "implement_phase");
+  assert.equal(step({ ...plain, branch: "RMS-12" }).action, "implement_phase");
+  assert.equal(step({ ...plain, layout: { ...ORDERS_LAYOUT, worktrees: "none" } }).action, "implement_phase");
 });
 
 const AMEND_LINE ="AMENDMENT NEEDED: D-002 the port moved";

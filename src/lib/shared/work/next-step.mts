@@ -1,5 +1,6 @@
+import { ticketKey, touchedRepos } from "../checkouts.mts";
 import { documentRel, documentSlug } from "../document-path.mts";
-import { decisionsRevisedSince } from "./artifact.mts";
+import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
 import { freshReplies } from "./replies.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
@@ -19,7 +20,8 @@ export type NextStep =
   | { action: "close"; actor: "lead"; detail: string }
   | { action: "fix_findings"; actor: "developer"; phase: number; detail: string }
   | { action: "amend"; actor: "architect"; detail: string }
-  | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] };
+  | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
+  | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] };
 
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
@@ -127,6 +129,19 @@ function startStep(snap: WorkSnapshot, current: PhaseStatus): NextStep {
   return { action: "implement_phase", actor: "developer", phase: current.n, detail: `phase ${current.n} of ${snap.phases.length}: ${current.title}` };
 }
 
+function worktreeOptions(source: string | undefined): string[] {
+  const key = ticketKey(source);
+  return [...(key ? [`[y] create ${key}`] : []), "reply: <name> [from <ref>]", "[n] use the main checkouts"];
+}
+
+function worktreesStep({ state, layout, phases }: WorkSnapshot, current: PhaseStatus): NextStep | null {
+  if (!layout.nested.length || state.branch || layout.worktrees === "none") return null;
+  const repos = touchedRepos(layout, phases.flatMap(phasePaths));
+  if (!repos.length) return null;
+  const detail = `the plan touches ${repos.join(", ")}; name the branch for their worktrees before phase ${current.n}`;
+  return { action: "create_worktrees", actor: "user", phase: current.n, detail, options: worktreeOptions(state.source) };
+}
+
 function approvalStep(snap: WorkSnapshot, current: PhaseStatus, securityPaths: readonly string[]): NextStep {
   const remaining = snap.phases.filter((p) => p.n > current.n && !p.approved).map((p) => p.n);
   const runOffer = remaining.length ? `[r] run through ${remaining.at(-1)}` : null;
@@ -148,7 +163,7 @@ function phasedStep(snap: WorkSnapshot, securityPaths: readonly string[]): NextS
   if (!current) return allApprovedStep(snap);
   const amendOrRecheck = amendStep(snap) ?? recheckStep(snap);
   if (amendOrRecheck) return amendOrRecheck;
-  if (!current.done) return startStep(snap, current);
+  if (!current.done) return worktreesStep(snap, current) ?? startStep(snap, current);
   return approvalStep(snap, current, securityPaths);
 }
 

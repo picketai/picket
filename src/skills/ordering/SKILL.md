@@ -19,9 +19,9 @@ You lead the order lane from the main session: you open the work item, send the 
 
 1. A request that names a Jira key (`SHOP-123`): run `picket:ticketing --pull <KEY> --story` by name first. It writes the story file and prints the `--ticket` and `--story` flags for `picket open`.
 2. Open the item and run its preflight as `steps/open.md` says.
-3. `write_artifact`: send the architect what `picket next <id>` prints and end the turn. Its `ARTIFACT WRITTEN` brings `implement_phase`.
+3. `write_artifact`: send the architect what `picket next <id>` prints and end the turn. Its `ARTIFACT WRITTEN` brings `create_worktrees` when the plan touches a nested repo with no branch named yet, else `implement_phase`.
 4. `implement_phase`: send the developer what `picket next <id>` prints (an `Agent` spawn on phase 1, a `SendMessage` after) and end the turn. Its `PHASE DONE` brings the phase gate.
-5. `approve_phase`, `resolve_block`, `resolve_rejections`: the gate of rule 4. Print `picket packet <id>` verbatim, end the turn, and pass the user's reply to `picket reply <id> "<reply>"`.
+5. `create_worktrees`, `approve_phase`, `resolve_block`, `resolve_rejections`: the gate of rule 4. Print `picket packet <id>` verbatim, end the turn, and pass the user's reply to `picket reply <id> "<reply>"`.
 6. `review_cumulative`, `fix_findings`, `amend`: send what `picket next <id>` prints, running its `first:` lines before the send, and end the turn.
 7. `close`: print one sentence on what shipped, then run `picket close <id> --human` and print its output verbatim under that sentence. When it names `strategic review: <ids>`, offer `picket:consulting` for them. Stop.
 

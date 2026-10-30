@@ -471,8 +471,10 @@ test("a worktree that refuses the commit leaves the phase unapproved, and a retr
   worktreeGit("add", "--", "pricing.cs");
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
   const before = umbrellaGit("rev-parse", "HEAD");
+  const verdictsBefore = readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8");
   const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
   assert.ok(r.applied.includes(`${WORKTREE} refused the commit: blocked by hook`), r.applied.join(" | "));
+  assert.equal(readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8"), verdictsBefore, "a refused approval appends no verdict row");
   assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), false);
   assert.equal(umbrellaGit("rev-parse", "HEAD"), before);
   assert.equal(nextAction(root, id), "approve_phase");

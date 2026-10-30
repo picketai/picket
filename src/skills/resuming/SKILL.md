@@ -20,7 +20,7 @@ Current work items:
 1. No id given: print the list above and ask which one, unless exactly one item is open, which you resume.
 2. `picket state <id>` and `picket next <id> --human`. These two lines are the whole history you need; do not read the transcript, the ledger, or the artifact beyond the phase `next` names.
 3. Act on `next`:
-   - `approve_phase`, `resolve_block` or `resolve_rejections` by user: the gate of CLAUDE.md rule 4. Print `picket packet <id>` verbatim and stop; pass the reply to `picket reply <id> "<reply>"`.
+   - `create_worktrees`, `approve_phase`, `resolve_block` or `resolve_rejections` by user: the gate of CLAUDE.md rule 4. Print `picket packet <id>` verbatim and stop; pass the reply to `picket reply <id> "<reply>"`.
    - `implement_phase`, `write_artifact`, `review_cumulative`, `review_checkpoint`, `review_crosscheck`: open the lane skill the item's `lane` names (`picket:ordering`, `picket:designing`, `picket:researching`) and follow its `## Steps` for that action, sending the messages `picket next` prints. Agents from the previous session are gone: `picket next` prints an `Agent` spawn for each, and you note in one line that the instance is new.
    - `resolve_sources`: the opening gate. Print `picket packet <id>` verbatim and stop; apply each reply with `picket source pick <id> <ref> <label>`, then continue the lane's `## Steps`.
    - `close` or `none`: say so in one line.

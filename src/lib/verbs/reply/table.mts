@@ -11,14 +11,29 @@ export type Matched =
   | { kind: "continue" }
   | { kind: "redesign" }
   | { kind: "abandon" }
-  | { kind: "publish" };
+  | { kind: "publish" }
+  | { kind: "worktrees"; name: string; from?: string }
+  | { kind: "no_worktrees" };
 
 type Form = { pattern: RegExp; letter: string | null; match: (m: RegExpMatchArray, step: NextStep, proposals: Proposals) => Matched | null };
 
-export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "resolve_block", "resolve_rejections"];
+export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "resolve_block", "resolve_rejections", "create_worktrees"];
 
 const OPTION_LETTER = /^\[(\w)\]/;
 const RUN_LIMIT = /^\[r\] run through (\d+)/;
+const OFFERED_KEY = /^\[y\] create (\S+)$/;
+const REPLY_WORD = /^(?:y|yes|ok|a|n|no|none)$/i;
+
+function offeredKey(step: NextStep): string | null {
+  if (!("options" in step)) return null;
+  return step.options.map((option) => option.match(OFFERED_KEY)?.[1]).find((key) => key !== undefined) ?? null;
+}
+
+function namedBranch(m: RegExpMatchArray): Matched | null {
+  const [, name, from] = m;
+  if (REPLY_WORD.test(name)) return null;
+  return from ? { kind: "worktrees", name, from } : { kind: "worktrees", name };
+}
 
 function offered(step: NextStep, letter: string): boolean {
   return "options" in step && step.options.some((option) => option.match(OPTION_LETTER)?.[1] === letter);
@@ -61,9 +76,23 @@ export const PUBLISH_REPLY = /^(?:p|publish)$/i;
 
 const RESEARCH_FORMS: readonly Form[] = [{ pattern: PUBLISH_REPLY, letter: "p", match: () => ({ kind: "publish" }) }];
 
+const WORKTREE_FORMS: readonly Form[] = [
+  {
+    pattern: /^(?:y|yes)$/i,
+    letter: "y",
+    match: (_m, step) => {
+      const key = offeredKey(step);
+      return key ? { kind: "worktrees", name: key } : null;
+    },
+  },
+  { pattern: /^(?:n|no|none)$/i, letter: "n", match: () => ({ kind: "no_worktrees" }) },
+  { pattern: /^(\S+)(?:\s+from\s+(\S+))?$/i, letter: null, match: namedBranch },
+];
+
 function formsFor(step: NextStep, lane: Lane): readonly Form[] {
   if (lane === "research") return step.action === "approve_phase" ? RESEARCH_FORMS : [];
   if (step.action === "approve_phase") return APPROVE_FORMS;
+  if (step.action === "create_worktrees") return WORKTREE_FORMS;
   return step.action === "resolve_block" || step.action === "resolve_rejections" ? BLOCK_FORMS : [];
 }
 

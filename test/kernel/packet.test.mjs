@@ -8,6 +8,7 @@ import { blockFiles, parseBlock, saveBlock } from "../../dist/lib/shared/work/bl
 import { setMarker } from "../../dist/lib/shared/work/markers.mjs";
 import { writeLayout } from "../../dist/lib/shared/repos.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
+import { gitOut, umbrella } from "#test/git.mts";
 
 // The block the user's screenshot came from, in the developer's contract shape.
 const BLOCK = `## Phase 1 of X: Stop the sync write
@@ -61,6 +62,23 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   assert.match(text, /^  commit {4}3f9c2a1 \(staged; approval commits it\)$/m);
   assert.equal(lines.at(-1), "[a] approve   [r] run through 2   [x] reject: <why>");
   assert.equal(lines.at(-2), "");
+});
+
+test("the create_worktrees packet lists every touched repo with its start, an 8-character base and its worktree (T-6.5)", (t) => {
+  const { root, repos } = umbrella(t, { repos: ["Billing", "Orders"] });
+  const { id } = openItem(root, { lane: "order", title: "Prices", source: "RMS-12" });
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/Orders/pricing.cs, src/Billing/pricing.cs]\n---\n# O\n\n## Phase 1: Prices\n\nt\n");
+  const { lines } = packet(id, root);
+  const base = (dir) => gitOut(dir, "rev-parse", "HEAD").slice(0, 8);
+  assert.deepEqual(lines, [
+    `▶ worktrees before phase 1 · ${id}`,
+    "  the plan touches src/Billing, src/Orders; name the branch for their worktrees before phase 1",
+    "",
+    `  src/Billing from main @${base(repos.Billing)} -> src/Billing/.worktrees/RMS-12`,
+    `  src/Orders from main @${base(repos.Orders)} -> src/Orders/.worktrees/RMS-12`,
+    "",
+    "[y] create RMS-12   reply: <name> [from <ref>]   [n] use the main checkouts",
+  ]);
 });
 
 test("the commit line names the worktree the approval commits in, and today's text without a nested path (T-5.6)", (t) => {

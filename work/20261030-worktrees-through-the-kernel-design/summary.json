@@ -1,0 +1,78 @@
+{
+  "work_id": "20261030-worktrees-through-the-kernel-design",
+  "base": "181d9c0f87797f8da9e5c049b34da9036a197df2",
+  "request": "work/20261030-worktrees-through-the-kernel-design/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "src/lib/cli/registry.mts",
+    "src/lib/hooks/guard/bash/index.test.mts",
+    "src/lib/hooks/guard/bash/kernel.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/shared/checkouts.mts",
+    "src/lib/shared/checkouts.test.mts",
+    "src/lib/shared/checks.mts",
+    "src/lib/shared/repos.mts",
+    "src/lib/shared/review-summary.mts",
+    "src/lib/shared/route/apply.mts",
+    "src/lib/shared/route/commit.mts",
+    "src/lib/shared/work/snapshot.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/mutate/index.mts",
+    "src/lib/verbs/mutate/index.test.mts",
+    "src/lib/verbs/mutate/mutant.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/route/index.test.mts",
+    "src/lib/verbs/summary/index.mts",
+    "src/lib/verbs/summary/index.test.mts",
+    "src/lib/verbs/verify/index.mts",
+    "src/lib/verbs/verify/index.test.mts",
+    "src/lib/verbs/worktree/create.mts",
+    "src/lib/verbs/worktree/index.mts",
+    "src/lib/verbs/worktree/index.test.mts",
+    "test/cli/summary.test.mjs",
+    "test/cli/worktree.test.mjs",
+    "test/kernel/packet.test.mjs",
+    "test/support/git.mts",
+    "test/support/snapshot.mts"
+  ],
+  "lines_added": 1920,
+  "lines_removed": 92,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 9,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

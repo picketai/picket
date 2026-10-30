@@ -1,4 +1,5 @@
 import { action, done, refuse, Refused, type Outcome } from "../../shared/action.mts";
+import { recordBranch, recordNone, type BranchChoice } from "../../shared/checkouts.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import type { Context } from "../../shared/context.mts";
 import { route } from "../../shared/route/route.mts";
@@ -26,6 +27,7 @@ const FRESH_DEVELOPER = "[c] continue with a fresh developer";
 const REDESIGN_IN_DESIGN_LANE = "abandoned; open the same request in the design lane";
 const RESEARCH_REPLY = "on a research item reply takes p; a, d and x are the lead's (picket:researching)";
 const NO_PROPOSALS: Proposals = { comments: [], waivers: [] };
+const SHORT_SHA = 8;
 
 function blockProposals(root: string, id: WorkId, phase: number | null): Proposals {
   if (phase === null) return NO_PROPOSALS;
@@ -92,7 +94,18 @@ function applyMatched(gate: Gate, matched: Matched, found: Proposals): Effect {
       return effect(setStatus(gate, "abandoned"));
     case "publish":
       return effect(routeUser(gate, "approved", { publish: true }));
+    case "worktrees":
+      return recordWorktreeBranch(gate, matched.from === undefined ? { name: matched.name } : { name: matched.name, from: matched.from });
+    case "no_worktrees":
+      recordNone(gate.ctx.root, gate.snap.state.id);
+      return effect(["worktrees: none, the item works in the main checkouts"]);
   }
+}
+
+function recordWorktreeBranch({ snap, ctx }: Gate, choice: BranchChoice): Effect {
+  const planned = recordBranch(ctx.root, snap.state.id, choice, ctx.now());
+  const lines = planned.map(({ repo, from, base, worktree }) => `${repo} from ${from} @${(base ?? "").slice(0, SHORT_SHA)} -> ${worktree}`);
+  return effect([`branch ${choice.name} recorded`, ...lines]);
 }
 
 function optionsOf(step: NextStep): string[] {
