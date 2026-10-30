@@ -9,3 +9,4 @@
 - [Lead-only verbs denied to the reviewer](lead-only-verbs-denied-to-reviewer.md) — uninstall dry run is denied even in scratch; verify from code
 - [Probe lint with the shell's wording](probe-lint-with-shell-wording.md) — a new flag placement in a shell: run lint.schema on the literal reading
 - [left.jsonl is not proof of cleanup](left-jsonl-is-not-proof-of-cleanup.md) — ls every out-of-repo path a phase block admits to writing
+- [Probe numeric caps to the consumer](probe-numeric-caps-to-consumer.md) — NaN, 0, negative through the guard and on to the CLI arg; ask what multiplies the cap

@@ -22,3 +22,4 @@
 - [Route owns directory prefixes](route-owns-directory-prefixes.md): a plan path ending in a slash owns every staged path under it, deletions included
 - [New skill touchpoints](new-skill-touchpoints.md): routing cases, Use when, plugin.json, docs section, EVERY_SKILL, CLAUDE.md template prefix, npm test rebuilds dist; when_to_use unread, Entry fixtures, one touch path per bullet
 - [Next and mod couplings](next-and-mod-couplings.md): mod imports limited to MOD_LIB_SHARED; rejection keeps approve_phase; rows lost the amend line; guard classes per verb; cli.md headings
+- [Bench runner drive safety](bench-runner-drive-safety.md): run.mjs runs main at import; drives use --dry or --runs 0 with a temp --out; routing idf for vocabulary checks

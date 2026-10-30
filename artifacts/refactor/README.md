@@ -45,3 +45,4 @@ Source list: `artifacts/reports/instructions-candidates-2026-10-25.md`, walked t
 | 17 | [Consulting, the brief and the prompt hook](17-consulting.md) | approved 2026-10-30 |
 | 18 | [Worktrees through the kernel](18-worktrees.md) | approved 2026-10-30 |
 | 19 | [The glossary entry shape and the injection cut](19-glossary.md) | approved 2026-10-30 |
+| 20 | [Benchmarking out of the product, and a spend cap](20-bench-guard.md) | approved 2026-10-30 |
