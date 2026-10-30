@@ -221,6 +221,8 @@ test("with no ticket source y, yes, ok and a are refused and record no branch (T
   for (const word of ["y", "yes", "ok", "a", "OK"]) assert.match(await refused(root, id, word), /matches no option at create_worktrees/, word);
   assert.equal(readState(root, id).branch, undefined);
   assert.match(await refused(root, id, "bad..name"), /"bad\.\.name" is not a valid branch name/);
+  for (const word of ["approve", "Go", "continue", "x", "r"]) assert.match(await refused(root, id, word), /matches no option at create_worktrees/, `a gate word is not a branch: ${word}`);
+  assert.equal(readState(root, id).branch, undefined);
 });
 
 test("p on a research item whose title gives no file name is refused saying why publish is not offered", async (t) => {

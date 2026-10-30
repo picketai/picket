@@ -4,11 +4,16 @@
   "request": "work/20261030-worktrees-through-the-kernel-design/request.md",
   "size": "large",
   "changed_files": [
+    "docs/how-to.md",
     "docs/reference/cli.md",
+    "docs/reference/skills.md",
+    "src/agents/architect.md",
+    "src/agents/developer.md",
     "src/lib/cli/registry.mts",
     "src/lib/hooks/guard/bash/index.test.mts",
     "src/lib/hooks/guard/bash/kernel.mts",
     "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/hooks/lint/schema/index.mts",
     "src/lib/shared/checkouts.mts",
     "src/lib/shared/checkouts.test.mts",
     "src/lib/shared/checks.mts",
@@ -16,12 +21,23 @@
     "src/lib/shared/review-summary.mts",
     "src/lib/shared/route/apply.mts",
     "src/lib/shared/route/commit.mts",
+    "src/lib/shared/work/action-text.mts",
+    "src/lib/shared/work/next-step.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/send.mts",
+    "src/lib/shared/work/send.test.mts",
     "src/lib/shared/work/snapshot.mts",
     "src/lib/verbs.mts",
+    "src/lib/verbs/close/block.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/index.test.mts",
     "src/lib/verbs/mutate/index.mts",
     "src/lib/verbs/mutate/index.test.mts",
     "src/lib/verbs/mutate/mutant.mts",
     "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/reply/index.mts",
+    "src/lib/verbs/reply/index.test.mts",
+    "src/lib/verbs/reply/table.mts",
     "src/lib/verbs/route/index.test.mts",
     "src/lib/verbs/summary/index.mts",
     "src/lib/verbs/summary/index.test.mts",
@@ -30,14 +46,27 @@
     "src/lib/verbs/worktree/create.mts",
     "src/lib/verbs/worktree/index.mts",
     "src/lib/verbs/worktree/index.test.mts",
+    "src/skills/branching/SKILL.md",
+    "src/skills/branching/steps/10-create.md",
+    "src/skills/branching/steps/create.md",
+    "src/skills/branching/steps/into.md",
+    "src/skills/branching/steps/remove.md",
+    "src/skills/designing/SKILL.md",
+    "src/skills/ordering/SKILL.md",
+    "src/skills/resuming/SKILL.md",
+    "test/cli/close.test.mjs",
     "test/cli/summary.test.mjs",
     "test/cli/worktree.test.mjs",
+    "test/hooks/lint.schema.test.mjs",
     "test/kernel/packet.test.mjs",
+    "test/repo/agents.test.mjs",
+    "test/repo/markdown-paths.test.mjs",
+    "test/repo/skills.test.mjs",
     "test/support/git.mts",
     "test/support/snapshot.mts"
   ],
-  "lines_added": 1920,
-  "lines_removed": 92,
+  "lines_added": 2527,
+  "lines_removed": 182,
   "frameworks": [
     "typescript"
   ],
@@ -50,14 +79,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-10-30T12:12:33.945Z",
+    "base": "181d9c0f87797f8da9e5c049b34da9036a197df2",
+    "mutant": {
+      "path": "src/lib/hooks/guard/bash/kernel.mts",
+      "line": 54,
+      "from": "&&",
+      "to": "||"
+    },
+    "command": "npm test",
+    "outcome": "survived",
+    "rebuild": "passed",
+    "ms": 139588
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

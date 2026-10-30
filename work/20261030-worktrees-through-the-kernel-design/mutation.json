@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-30T12:12:33.945Z",
+  "base": "181d9c0f87797f8da9e5c049b34da9036a197df2",
+  "mutant": {
+    "path": "src/lib/hooks/guard/bash/kernel.mts",
+    "line": 54,
+    "from": "&&",
+    "to": "||"
+  },
+  "command": "npm test",
+  "outcome": "survived",
+  "rebuild": "passed",
+  "ms": 139588
+}

@@ -63,6 +63,8 @@ test("picket verify is safe only when every checkout's test command is safe in i
 
 test("picket verify of a missing item, a phase with no entry, or no phase classifies unknown (T-3.6)", (t) => {
   const { root, id } = worktreeItem(t, "dotnet build");
+  assert.equal(classifyVerify(root, id, "1").verdict, "safe", "the same item and phase 1 is safe");
+  for (const phase of ["1e0", "1.0", "0x1", "+1"]) assert.equal(classifyVerify(root, id, phase).verdict, "unknown", `phase ${phase} is not a whole number`);
   assert.equal(classifyVerify(root, "nosuchitem", "1").verdict, "unknown");
   assert.equal(classifyVerify(root, id, "2").verdict, "unknown");
   assert.equal(classifyVerify(root, id).verdict, "unknown");

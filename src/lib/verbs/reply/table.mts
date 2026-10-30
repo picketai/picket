@@ -22,7 +22,7 @@ export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "re
 const OPTION_LETTER = /^\[(\w)\]/;
 const RUN_LIMIT = /^\[r\] run through (\d+)/;
 const OFFERED_KEY = /^\[y\] create (\S+)$/;
-const REPLY_WORD = /^(?:y|yes|ok|a|n|no|none)$/i;
+const REPLY_WORD = /^(?:y|yes|ok|okay|a|approve|approved|go|proceed|continue|confirm|c|i|r|x|d|n|no|none|reject|abandon|redesign)$/i;
 
 function offeredKey(step: NextStep): string | null {
   if (!("options" in step)) return null;
