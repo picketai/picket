@@ -38,6 +38,14 @@ test("a quoted or backticked lane directive is a mention and forces nothing", ()
   ]) assert.equal(forcedLane(p), undefined, p);
 });
 
+test("a dotted identifier such as lint.schema is not migration work", () => {
+  assert.equal(signalsOf("Trim the report Summary to the 3 ids lint.schema allows.", [], [], []).migration, false);
+  assert.equal(signalsOf("Rename `lint.schema` to lint.report.", [], [], []).migration, false);
+  assert.equal(signalsOf("Change the schema of the orders table.", [], [], []).migration, true);
+  assert.equal(signalsOf("Add a schema for the export file.", [], [], []).migration, true);
+  assert.equal(signalsOf("Run alter table on orders.", [], [], []).migration, true);
+});
+
 test("a request that opens with a change verb is not research because it mentions a report", () => {
   assert.equal(signalsOf("Implement the lint over artifacts/reports and the report template.", [], [], []).research, false);
   assert.equal(signalsOf("Update the report schema check to cap findings at 50.", [], [], []).research, false);
