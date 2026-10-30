@@ -1,0 +1,1 @@
+Fix the strategic and architect review flag scans so a flag quoted in backticks on a decision heading or finding line is not counted; picket close named D-003 of the consulting order only because its heading quotes `[STRATEGIC REVIEW NEEDED]`.
