@@ -28,6 +28,7 @@ function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseR
     left: [],
     repeats: [],
     closing: { ...NO_FACTS, ...closing },
+    worktrees: [],
     ...rest,
   };
 }

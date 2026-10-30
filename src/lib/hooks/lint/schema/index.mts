@@ -14,6 +14,7 @@ type PhaseCheck = { problems: string[]; headings: number[] };
 type DecisionSection = { r: number; body: string };
 
 const ARTIFACT = /^work\/[^/]+\/(order|design)\.md$/;
+const WORKTREE_SEGMENT = "/.worktrees/";
 const PUBLISHED_REPORT = /^artifacts\/reports\/[^/]+\.md$/;
 
 function hasValidSecurityMark(entry: PhaseEntry | null, lane: ArtifactLane): boolean {
@@ -39,6 +40,17 @@ function grepProblems(p: PhaseEntry): string[] {
   return problems;
 }
 
+function isWorktreePath(path: unknown): path is string {
+  return typeof path === "string" && `/${path.replaceAll("\\", "/")}`.includes(WORKTREE_SEGMENT);
+}
+
+function worktreePathProblems(p: PhaseEntry): string[] {
+  const files: unknown[] = Array.isArray(p.files) ? p.files : [];
+  const greps: (GrepEntry | null)[] = Array.isArray(p.greps) ? p.greps : [];
+  const paths = [...files, ...greps.map((g) => g?.path)].filter(isWorktreePath);
+  return [...new Set(paths)].map((path) => `phases[n=${p.n}] ${path} is a worktree path; plan paths are project-root relative`);
+}
+
 function phaseProblems(front: Record<string, unknown>, body: string, lane: ArtifactLane): PhaseCheck {
   const problems: string[] = [];
   const fmPhases: PhaseEntry[] = Array.isArray(front.phases) ? front.phases : [];
@@ -51,7 +63,7 @@ function phaseProblems(front: Record<string, unknown>, body: string, lane: Artif
     if (!Array.isArray(p.files)) problems.push(`phases[n=${p.n}].files must be a list`);
     if (!headings.includes(Number(p.n))) problems.push(`frontmatter phase ${p.n} has no "## Phase ${p.n}" heading`);
     if (!hasValidSecurityMark(p, lane)) problems.push(`phases[n=${p.n}].security must be true or false`);
-    problems.push(...grepProblems(p));
+    problems.push(...grepProblems(p), ...worktreePathProblems(p));
   }
   return { problems, headings };
 }

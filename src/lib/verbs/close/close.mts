@@ -36,6 +36,7 @@ export type CloseResult = WorkState & {
   left: LeftEntry[];
   repeats: Repeat[];
   closing: Closing;
+  worktrees: string[];
 };
 
 const PHASED_LANES: readonly Lane[] = ["order", "design"];
@@ -146,19 +147,24 @@ function recordStrategicIds(lane: Lane, body: string): string[] {
   return PHASED_LANES.includes(lane) ? strategicReviewIds(body) : [];
 }
 
+function recordedWorktrees(snap: WorkSnapshot): string[] {
+  return snap.layout.repos.flatMap((repo) => (repo.worktree ? [repo.worktree] : []));
+}
+
 export function close(root: string, id: WorkId, { message, touched = [] }: CloseOptions, { now, env }: CloseContext): CloseResult {
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
   const commitMessage = message ?? defaultCloseMessage(id);
   const repeats = repeatedClasses(root);
+  const worktrees = recordedWorktrees(snap);
   if (!isRepo(root)) {
     const state = markDone(root, snap.state, now);
-    return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing: closingFacts(root, snap, null) };
+    return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing: closingFacts(root, snap, null), worktrees };
   }
   refuseUntouchedFastClose(root, snap.state, touched);
   const state = markDone(root, snap.state, now);
   const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env);
   if (commit) recordAccept(root, id, commit, null, now);
   const committed = commit ? filesInCommit(root, commit) : [];
-  return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing: closingFacts(root, snap, commit) };
+  return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing: closingFacts(root, snap, commit), worktrees };
 }

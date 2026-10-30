@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { appendVerdict } from "../../src/lib/shared/work/verdict-log.mts";
 import { setMarker } from "../../src/lib/shared/work/markers.mts";
 import { readState, writeState } from "../../src/lib/shared/work/state.mts";
+import { writeLayout } from "../../src/lib/shared/repos.mts";
 import { runCli } from "#test/cli.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -114,6 +115,22 @@ test("close with nothing left prints no left line and returns an empty list", (t
   const closed = picket(root, "close", id, "--human");
   assert.equal(closed.code, 0, closed.stdout);
   assert.doesNotMatch(closed.stdout, /Left for you/);
+});
+
+test("close --human names the branch and every recorded worktree on the remove line (T-9.2)", (t) => {
+  const { root, id } = repoWithOpenItem(t);
+  writeState(root, { ...readState(root, id), branch: "RMS-12" }, new Date());
+  writeLayout(root, id, {
+    worktrees: null,
+    repos: [
+      { path: "src/Billing", base: null, worktree: "src/Billing/.worktrees/RMS-12" },
+      { path: "src/Orders", base: null, worktree: "src/Orders/.worktrees/RMS-12" },
+      { path: "src/Shipping", base: null },
+    ],
+  });
+  const closed = picket(root, "close", id, "--human");
+  assert.equal(closed.code, 0, closed.stdout);
+  assert.match(closed.stdout, /^Left for you: \/picket:branching --remove RMS-12 \(worktrees: src\/Billing\/\.worktrees\/RMS-12, src\/Orders\/\.worktrees\/RMS-12\)$/m);
 });
 
 const changesRequired = (classes) => ({ agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 1, classes });

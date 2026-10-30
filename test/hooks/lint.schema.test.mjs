@@ -56,6 +56,24 @@ test("lint.schema requires a boolean security on every design phase entry and no
   assert.doesNotMatch(lint(join(root, "work", id, "order.md")), /security/, "an order record needs no security key");
 });
 
+test("lint.schema flags a plan path inside a worktree, in files and in greps, and passes the project-root path (T-9.1)", (t) => {
+  const { root } = hookProject(t);
+  const lint = (file) => run({ hook_event_name: "PostToolUse", tool_name: "Write", tool_input: { file_path: file }, cwd: root }, root)?.hookSpecificOutput.additionalContext ?? "";
+  const s = openItem(root, { lane: "design", title: "Worktree paths" });
+  const p = join(root, "work", s.id, "design.md");
+  const record = (file, grep) =>
+    `---\nlane: design\nphases:\n  - n: 1\n    files: [${file}]\n    greps:\n      - path: ${grep}\n        pattern: Rate\n    security: false\n---\n# D\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n## Phase 1: A\n\n- **T-1.1** a\n- **T-1.2** b\n- **T-1.3** c\n\n## Revision log\n`;
+  const worktreeFile = "src/Orders/.worktrees/RMS-12/pricing.cs";
+  const worktreeGrep = "src/Orders/.worktrees/RMS-12/rates.cs";
+
+  writeFileSync(p, record(worktreeFile, worktreeGrep));
+  const flagged = lint(p);
+  assert.ok(flagged.includes(`phases[n=1] ${worktreeFile} is a worktree path; plan paths are project-root relative`), flagged);
+  assert.ok(flagged.includes(`phases[n=1] ${worktreeGrep} is a worktree path; plan paths are project-root relative`), flagged);
+  writeFileSync(p, record("src/Orders/pricing.cs", "src/Orders/rates.cs"));
+  assert.doesNotMatch(lint(p), /worktree path/);
+});
+
 function reportText(front) {
   return `---\n${front}\n---\n# Report: Pricing\n\n## Summary\nPrices round half-up [VERIFIED].\n\n## Findings\n- **R-001** [VERIFIED] Prices round half-up.\n`;
 }

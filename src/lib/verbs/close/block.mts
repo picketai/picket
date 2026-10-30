@@ -42,6 +42,11 @@ function leftForYou({ command, why }: LeftEntry): string {
   return `Left for you: ${command}${why ? ` (${why})` : ""}`;
 }
 
+function worktreesLeft({ branch, worktrees }: CloseResult): string | null {
+  if (!worktrees.length) return null;
+  return `Left for you: /picket:branching --remove ${branch ?? "<branch>"} (worktrees: ${worktrees.join(", ")})`;
+}
+
 function warningLines(v: CloseResult): string[] {
   const dirty = v.dirty.length ? [`uncommitted changes: ${v.dirty.join(", ")} (commit them or \`git checkout -- <path>\`)`] : [];
   return [...v.warnings, ...dirty].map((warning) => `WARNING: ${warning}`);
@@ -58,6 +63,7 @@ export function closingBlock(v: CloseResult): string {
     v.closing.questions && `Questions: ${v.closing.questions}`,
     ...v.repeats.map((r) => `Repeats: ${r.class} (${r.items.join(", ")})`),
     ...v.left.map(leftForYou),
+    worktreesLeft(v),
     v.left_staged.length ? `Left staged: ${v.left_staged.join(", ")}` : null,
     ...warningLines(v),
     ...v.repeats.map(followUp),
