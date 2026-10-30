@@ -1,0 +1,1 @@
+lane: fast. Trim the Summary of work/20261004-tether-plugin-spike-eleven-packaging-checks/research.md so it cites at most 3 finding ids, the cap lint.schema enforces on reports (cumulative review S-7 of the documenting item). Keep the facts; the other ids stay in the findings below. The two 20261017 compare reports with 77 and 66 findings stay as they are.
