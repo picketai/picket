@@ -13,6 +13,10 @@ export function withBrief(request: string, brief: Brief): string {
   return `${request}${separator}${HEADING}\n${briefLines(brief).join("\n")}\n`;
 }
 
+export function hasBriefHeading(text: string): boolean {
+  return text.split(/\r?\n/).includes(HEADING);
+}
+
 function lastSection(text: string): string[] {
   const lines = text.split(/\r?\n/);
   const start = lines.lastIndexOf(HEADING);

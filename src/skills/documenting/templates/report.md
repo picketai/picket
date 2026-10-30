@@ -38,7 +38,7 @@ confidence: [REPLACE: high | medium | low, the weakest marker that carries a top
 - [UNKNOWN] [REPLACE]
 
 ## Recommendations
-<!-- optional: only what the question asked for; describe, never design. A finding that needs a decision is flagged [ARCHITECT REVIEW NEEDED]; one that needs a strategic call is flagged [STRATEGIC REVIEW NEEDED] on its R-### line -->
+<!-- optional: only what the question asked for; describe, never design. A finding that needs a decision is flagged [ARCHITECT REVIEW NEEDED]; one that needs a strategic call is flagged [STRATEGIC REVIEW NEEDED] at the end of its R-### line -->
 - [REPLACE]
 
 ## Sources for the deep pass

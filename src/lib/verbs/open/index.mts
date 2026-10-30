@@ -9,7 +9,7 @@ import { liveLookup } from "../../shared/sources/places.mts";
 import { resolveReferences, type Resolution } from "../../shared/sources/resolve.mts";
 import { isReachable, type Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { withBrief, type Brief } from "../../shared/work/brief.mts";
+import { hasBriefHeading, withBrief, type Brief } from "../../shared/work/brief.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readNext, type NextView } from "../../shared/work/next-view.mts";
 import { createItem, LANES, type Lane } from "../../shared/work/state.mts";
@@ -37,6 +37,7 @@ const EMPTY_REQUEST = 'open: the request is empty; pass the request text with --
 const USER_LANE = "user-lane";
 const BRIEF_FLAGS: Record<keyof Brief, string> = { purpose: "purpose", in_scope: "in-scope", out_of_scope: "out-of-scope" };
 const BRIEF_USAGE = "open needs --purpose, --in-scope and --out-of-scope together, each one non-empty line, and only with a request";
+const UNFLAGGED_BRIEF = 'open: the request already holds a "## Brief" heading; pass --purpose, --in-scope and --out-of-scope so the saved brief is the one given, or remove the heading from the request';
 
 function readFile(path: string): string {
   const text = readText(path);
@@ -87,6 +88,7 @@ function recordUserLane(root: string, id: WorkId, admission: Admission, at: Date
 
 export const openItem = action<OpenInput, Opened>(async (input, { root, session, now }) => {
   const request = requestText(input.request);
+  if (request !== null && !input.brief && hasBriefHeading(request)) return refuse(UNFLAGGED_BRIEF);
   const overridden = overriddenAdmission(root, input.lane, request);
   if (overridden && !input.userLane) return refuse(laneRefusal(input.lane, overridden), { admitted: overridden.lane, reasons: overridden.reasons });
   const story = input.story === undefined ? null : readFile(input.story);

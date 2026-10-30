@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-30T08:48:01.790Z",
+  "base": "eab3d6d7019fd769d331dc0bbbf0a69c12706ed0",
+  "mutant": {
+    "path": "src/lib/hooks/inject/consulting/index.mts",
+    "line": 18,
+    "from": "<=",
+    "to": ">"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 86774
+}

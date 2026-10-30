@@ -121,6 +121,21 @@ test("an item opened with a brief saves it under ## Brief after the request and 
   assert.match(outcome.value.next.send[0].message, /^request: .*\npurpose: bill late fees\nin scope: the fees module\nout of scope: refunds$/m);
 });
 
+const PASTED_BRIEF = "add a fee\n\n## Brief\npurpose: pasted purpose\nin scope: pasted scope\nout of scope: pasted exclusion\n";
+
+test("open refuses a request that already holds a ## Brief heading when no brief flags are given, names the flags, and writes nothing", async (t) => {
+  const { root, outcome } = await opened(t, "order", PASTED_BRIEF);
+  assert.ok(outcome.status === "refused");
+  assert.match(outcome.message, /"## Brief" heading; pass --purpose, --in-scope and --out-of-scope/);
+  assert.deepEqual(workItems(root), []);
+});
+
+test("with the brief flags, a request holding its own ## Brief opens and the flags' brief is the one read back", async (t) => {
+  const { root, outcome } = await opened(t, "order", PASTED_BRIEF, false, BRIEF);
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(readSnapshot(root, workId(outcome.value.id)).brief, BRIEF);
+});
+
 test("an item opened without a brief saves the request exactly as given", async (t) => {
   const { root, outcome } = await opened(t, "order", "add a fee");
   assert.ok(outcome.status === "done");

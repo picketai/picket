@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { briefLines, readBrief, withBrief, type Brief } from "./brief.mts";
+import { briefLines, hasBriefHeading, readBrief, withBrief, type Brief } from "./brief.mts";
 
 const BRIEF: Brief = { purpose: "bill late fees", in_scope: "the fees module", out_of_scope: "refunds" };
 
@@ -26,6 +26,11 @@ test("no request, no section or a missing or empty key reads as no brief", () =>
   assert.equal(readBrief("add a fee\n"), null);
   assert.equal(readBrief("x\n\n## Brief\npurpose: p\nin scope: s\n"), null);
   assert.equal(readBrief("x\n\n## Brief\npurpose: p\nin scope: s\nout of scope: \n"), null);
+});
+
+test("hasBriefHeading finds a ## Brief line on its own, never one inside a longer line", () => {
+  assert.equal(hasBriefHeading("add a fee\r\n## Brief\r\npurpose: p"), true);
+  assert.equal(hasBriefHeading("add a fee; see ## Brief in the wiki\n### Brief\n"), false);
 });
 
 test("the message lines are purpose, in scope, out of scope in that order, and none without a brief", () => {

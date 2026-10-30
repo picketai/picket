@@ -1,0 +1,115 @@
+{
+  "work_id": "20261030-consulting-the-brief-and-the-prompt-hook",
+  "base": "eab3d6d7019fd769d331dc0bbbf0a69c12706ed0",
+  "request": "work/20261030-consulting-the-brief-and-the-prompt-hook/request.md",
+  "size": "large",
+  "changed_files": [
+    "CLAUDE.md",
+    "docs/how-to.md",
+    "docs/reference/cli.md",
+    "docs/reference/hooks.md",
+    "docs/reference/skills.md",
+    "src/.claude-plugin/plugin.json",
+    "src/agents/analyst.md",
+    "src/agents/architect.md",
+    "src/lib/hooks.mts",
+    "src/lib/hooks/hook-spec.mts",
+    "src/lib/hooks/inject/consulting/index.mts",
+    "src/lib/hooks/inject/consulting/index.test.mts",
+    "src/lib/shared/work/artifact.mts",
+    "src/lib/shared/work/artifact.test.mts",
+    "src/lib/shared/work/brief.mts",
+    "src/lib/shared/work/brief.test.mts",
+    "src/lib/shared/work/report.mts",
+    "src/lib/shared/work/report.test.mts",
+    "src/lib/shared/work/send.mts",
+    "src/lib/shared/work/send.test.mts",
+    "src/lib/shared/work/snapshot.mts",
+    "src/lib/verbs/close/block.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/open/index.mts",
+    "src/lib/verbs/open/index.test.mts",
+    "src/skills/consulting/SKILL.md",
+    "src/skills/consulting/steps/capture.md",
+    "src/skills/consulting/steps/discuss.md",
+    "src/skills/consulting/steps/interview.md",
+    "src/skills/designing/SKILL.md",
+    "src/skills/designing/steps/open.md",
+    "src/skills/documenting/SKILL.md",
+    "src/skills/documenting/templates/design.md",
+    "src/skills/documenting/templates/report.md",
+    "src/skills/explaining/steps/gather.md",
+    "src/skills/ordering/SKILL.md",
+    "src/skills/ordering/steps/open.md",
+    "src/skills/researching/SKILL.md",
+    "src/skills/researching/steps/outline.md",
+    "src/skills/reviewing/checklists/crosscheck.md",
+    "src/skills/understanding/SKILL.md",
+    "src/skills/understanding/steps/10-prepare.md",
+    "src/skills/understanding/steps/30-capture.md",
+    "src/templates/claude-block.md",
+    "test/cli/lane-check.test.mjs",
+    "test/repo/agents.test.mjs",
+    "test/repo/description-cases.json",
+    "test/repo/hook-list.test.mjs",
+    "test/repo/plugin-layout.test.mjs",
+    "test/repo/skills.test.mjs",
+    "test/support/snapshot.mts"
+  ],
+  "lines_added": 755,
+  "lines_removed": 223,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-10-30T08:48:01.790Z",
+    "base": "eab3d6d7019fd769d331dc0bbbf0a69c12706ed0",
+    "mutant": {
+      "path": "src/lib/hooks/inject/consulting/index.mts",
+      "line": 18,
+      "from": "<=",
+      "to": ">"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 86774
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

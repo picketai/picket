@@ -28,7 +28,7 @@ Write only inside `work/<id>/`, where the report is `work/<id>/research.md`, and
 
 Coverage: read every source you decide to read in full; never draw a finding from a partial read. Directories over 30 files: read what is reachable from entry points, cap 60 files, and record the selection under Risks. Every finding cites its location and carries exactly one confidence marker: `[VERIFIED]` (observed), `[INFERRED]` (deduced from verified facts), `[ASSUMED]` (not grounded in the source). Findings are `R-###` in encounter order and never renumbered.
 
-Describe; do not propose. Where a finding needs a design decision, flag it `[ARCHITECT REVIEW NEEDED]` in the report and repeat the flag on the summary line. Where it needs a strategic call instead (a boundary, a build-or-buy, a clash with a ratified SDR), flag it `[STRATEGIC REVIEW NEEDED]` on its `- **R-###**` line, after its confidence marker.
+Describe; do not propose. Where a finding needs a design decision, flag it `[ARCHITECT REVIEW NEEDED]` in the report and repeat the flag on the summary line. Where it needs a strategic call instead (a boundary, a build-or-buy, a clash with a ratified SDR), flag it `[STRATEGIC REVIEW NEEDED]` at the end of its `- **R-###**` line, never next to its confidence marker.
 
 Jira is read only for you: pull and search tickets as sources; you have no tool that creates, edits, transitions or comments, so a ticket write the report suggests goes to the user as a finding.
 
