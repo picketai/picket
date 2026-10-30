@@ -122,9 +122,9 @@ Writes the pull request description for the branch into your repository's pull r
 
 Creates, lists and removes git worktrees (separate working folders on their own branch) across the nested repositories of a multi-repository umbrella.
 
-**How you reach it.** `/picket:branching <branch>` to create or resume, `/picket:branching <branch> --into <branch|path> [--from <base>]` to branch inside an existing worktree, `/picket:branching --list [branch]`, and `/picket:branching --remove <branch>`. A branch name is required; it never invents one.
+**How you reach it.** `/picket:branching <branch> [--from <ref>]` to create or resume, `/picket:branching <branch> --into <branch|path> [--from <base>]` to switch an existing worktree onto a branch, `/picket:branching --list [branch]`, and `/picket:branching --remove <branch>`. A branch name is required; it never invents one. Inside a lane you rarely need it: the `create_worktrees` stop asks for the branch and the developer runs `picket worktree <id>` itself.
 
-**Where it fits.** It keeps a list of the nested repositories in `.picket/state/branching.yaml` and puts each worktree under the repository's `.worktrees/` folder. Every command that changes a worktree, a submodule or deletes files is shown for confirmation first. The developer reads it at a work item's first phase when the project has nested repositories.
+**Where it fits.** Create records the branch on the open work item and runs `picket worktree`, which puts each worktree under the repository's `.worktrees/` folder for every nested repository the plan touches. `--into` is a manual switch: every `switch` and `submodule update` command is shown for confirmation first, and it records nothing in a work item. Remove surveys uncommitted and unpushed work before anything is deleted, and every deletion is confirmed. The nested repositories come from `.picket/state/branching.yaml` when it exists, else from the folders under `src/` that hold a `.git`.
 
 ## picket:documenting
 

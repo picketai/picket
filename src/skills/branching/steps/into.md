@@ -1,0 +1,10 @@
+# Branching: into
+
+1. Resume check: in each nested repo, parse `git -C <repo> worktree list --porcelain` for `branch refs/heads/<branch>`. A hit wins over `--into`: report each path, say `--into` is ignored (resume before create), and stop.
+2. Resolve `<branch|path>` first as a branch: the same porcelain parse across the nested repos; every worktree holding it is a candidate, and the user multi-selects (never all by default). Else as a path: it must equal the `worktree` line of a registered entry in one nested repo. Nothing resolves: print the `--list` output and stop.
+3. Refuse the main worktree (the first porcelain entry, the repo checkout itself) with a one-line reason; only linked worktrees qualify.
+4. Base: no `--from` means the new branch starts at the worktree's current HEAD, so no file changes. With `--from <base>`, run `git -C <repo> rev-parse --verify --quiet refs/heads/<base>` per selected repo; a failure is reported and the user gives that repo's base or drops the repo.
+5. Survey, read-only: `git -C <worktree> status --porcelain`. Dirty: report it; the user chooses to carry the changes over or to stop (no stash).
+6. Command: when `<branch>` exists locally (`git -C <repo> show-ref --verify --quiet refs/heads/<branch>`), `git -C <worktree> switch <branch>`, with `--from` ignored and a note; else `git -C <worktree> switch -c <branch> [<base>]`. Always `switch`; the guard denies the older subcommand. Show each `switch` command for confirmation before it runs.
+7. Submodules, when `git -C <worktree> ls-files --stage` has a mode `160000` entry: classify with `git -C <worktree> submodule status --recursive`. Hydrate only the `-` paths with `git -C <worktree> submodule update --init --recursive -- <those paths>`, shown for confirmation before it runs; report `+` paths with both commits and leave them alone; a `U` path stops the step with a report.
+8. Report per worktree: the path, the new branch, its base, the displaced branch (checked out there before, now checked out nowhere) and the way back, `/picket:branching <displaced> --into <branch>`. Nothing is recorded in a work item.

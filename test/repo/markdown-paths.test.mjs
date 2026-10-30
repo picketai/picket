@@ -31,7 +31,7 @@ const ELSEWHERE = [
       "bench/results/spend.log",
     ],
   },
-  { why: "relative to a work item or a git remote", paths: ["phases/", "origin/"] },
+  { why: "relative to a work item", paths: ["phases/"] },
   {
     why: "the layout of a host project, not this repository",
     paths: [

@@ -168,6 +168,27 @@ Sometimes the developer cannot meet a check without changing a decision. It stop
 
 `d` sends the problem to the architect, who amends the plan in place (the decision keeps its number and gets a revision mark such as `D-002 (r2)`), and the developer carries on with the work it already has.
 
+#### Worktrees in an umbrella
+
+When the project holds nested repositories (folders under `src/` with their own `.git`) and the plan touches one, Claude stops once before the developer starts, at `create_worktrees`:
+
+```
+▶ worktrees before phase 1 · 20261030-orders-pricing
+  the plan touches src/Orders; name the branch for their worktrees before phase 1
+
+  src/Orders from main @1a2b3c4d -> src/Orders/.worktrees/RMS-12
+
+[y] create RMS-12   reply: <name> [from <ref>]   [n] use the main checkouts
+```
+
+| Reply | Effect |
+|---|---|
+| `y` | names the branch after the ticket key; offered only when the item came from a ticket |
+| `feature/x from develop` | names the branch `feature/x`, started from `develop` in each touched repository; `from` is optional |
+| `n` | no worktrees; the developer works in each repository's main checkout |
+
+The developer then runs `picket worktree <id>` at every phase, which creates or resumes one worktree per touched repository and hydrates only uninitialised submodules. Plans keep naming `src/Orders/pricing.cs`; `picket verify`, the review summary and the approval map those paths into the worktree, and an approval commits the phase in each worktree before the umbrella. A project whose settings allow only `Bash(git add *)` adds an allow rule for `git -C * add *`, since the developer stages inside each worktree. `/picket:branching --remove <branch>` tears the worktrees down when you are done.
+
 ### Research lane
 
 Ask a question that needs a report ("how does checkout compute tax?", "map the order lifecycle"). The analyst first returns an outline: a summary, the section headings and the sources it will read. Redirect it if it is off; otherwise say go, and it writes the full report to `work/<id>/research.md`.

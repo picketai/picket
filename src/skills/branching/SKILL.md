@@ -1,46 +1,41 @@
 ---
 name: branching
 description: >
-  Per-feature git worktrees across the nested repositories of a multi-repo umbrella: one
-  isolated working folder per repo the feature touches, on a named branch, with submodules
-  hydrated on the way in and released on the way out. Use when the user says "start a branch",
-  "spin up a worktree", "resume work on <branch>", "set up branches for this feature", "list
-  my worktrees", or "tear down the worktree for <branch>". Needs an explicit branch name and
-  never invents one. `/picket:branching <branch>`, `/picket:branching <branch> --into <branch|path> [--from
-  <base>]` (branch inside an existing worktree), `/picket:branching --list [branch]`, `/picket:branching --remove
-  <branch>`. The developer reads it at a work item's first phase when the project has nested repos.
-user-invocable: true
+  Per-feature git worktrees across the nested repositories of a multi-repo umbrella: records the
+  branch for the open work item and lets `picket worktree` create or resume one worktree per
+  repo the plan touches, switches an existing worktree onto a branch, lists the worktrees, and
+  tears one down after a survey of unsaved work.
+when_to_use: >
+  Use when the user says "start a branch", "spin up a worktree", "resume work on <branch>",
+  "set up branches for this feature", "list my worktrees", or "tear down the worktree for
+  <branch>".
+argument-hint: "<branch> [--from <ref>] | <branch> --into <branch|path> [--from <base>] | --list [branch] | --remove <branch>"
 ---
 
 # Branching
 
-Scope: one branch per repo per feature, one worktree per (repo, branch). The branch name is the feature's identity across repos. No merge orchestration.
+One branch per feature, one worktree per (repo, branch), named by the user and never invented; the kernel's `picket worktree` creates and resumes them for the open work item, and this skill adds the manual switch, the listing and the guarded teardown.
 
-## Manifest
+## Steps
 
-`.picket/state/branching.yaml` maps each nested repo (immediate children of `scan_root`, default `src`) to `path`, `git_dir` and `default_branch`. It records repos only; branches and worktrees are read live from git. On every invocation: absent → scan and write it; present → validate every entry (`path` is a work tree, `git_dir` resolves) and detect new children; any broken or new entry → rescan, rewrite, report `added/removed/repaired`.
+1. Create, `--into` and `--remove` need a branch name. Missing: print the four forms of the argument hint, ask for the name and stop.
+2. `<branch> [--from <ref>]`: create or resume per `steps/create.md`.
+3. `<branch> --into <branch|path> [--from <base>]`: switch an existing linked worktree onto `<branch>` per `steps/into.md`.
+4. `--list [branch]`: read-only, run `git -C <repo> worktree list` in each nested repo and keep the lines of `<branch>` when one is given.
+5. `--remove <branch>`: survey, release and remove per `steps/remove.md`.
 
-Scan is read-only: for each child with a `.git` entry or a passing `git rev-parse --git-dir`, record `git -C <dir> rev-parse --absolute-git-dir` and the default branch by cascade: `symbolic-ref --short refs/remotes/origin/HEAD` minus `origin/`; else the current branch unless detached; else `main` or `master` if present; else `init.defaultBranch`. Deeper nesting: note it and ask before widening.
+## Rules
 
-## Operations
+The branch and the worktree path derive from the explicit name: `<repo>/.worktrees/<branch with / and spaces as ->`. A clash gives git's loud "already checked out", never corruption. With `--into` the folder keeps its name, and the branch it held before is checked out nowhere, its ref untouched.
 
-| Input | Operation | Read |
-|---|---|---|
-| `<branch>` | create or resume | `steps/10-create.md` |
-| `<branch> --into <branch\|path> [--from <base>]` | create inside an existing linked worktree (switch it onto `<branch>`), from `<base>` or its current HEAD | `steps/10-create.md` |
-| `--list [branch]` | list, read-only: `git -C <repo> worktree list` per repo, filtered to the branch when given | none |
-| `--remove <branch>` | scoped removal | `steps/20-remove.md` |
+Resume before create: a worktree already on the branch is reused, in every form.
 
-A branch name is mandatory for create and remove. Missing: print the operations and ask; stop.
+Every mutating `git worktree`, `git switch`, `git submodule` or deletion command this skill runs by hand is shown for confirmation before it runs. Deletion commands are guard-denied unless every operand names a path inside a `.worktrees/<name>` directory, quoted; a refusal means the path is wrong, not that another tool should be tried.
 
-## Invariants
+Each worktree owns its untracked state: `node_modules`, build output, `.env`. Runtime collisions between worktrees (ports, a shared dev database) are out of scope; flag the risk when the repo has a fixed-port or shared-database test setup.
 
-Feature-scoped naming: branch and worktree path (`<repo>/.worktrees/<branch with / and spaces as ->`) derive from the explicit name, never random; a clash gives git's loud "already checked out", never corruption. One exception: with `--into` the worktree folder keeps its original name, and the branch it held before (the displaced branch) is checked out nowhere, its ref untouched. Resume before create. Scoped teardown: only the named worktree, prune only in that repo after listing its registrations. Submodules hydrated on entry and released on exit, each gated on `submodule status`, never with `--force` against unsurveyed content. No shared untracked state: each worktree owns its `node_modules`, build output and `.env`.
+The nested repos are the entries of `.picket/state/branching.yaml` when the file exists (shape in `templates/manifest.example.yaml`), else every immediate child of `src/` holding a `.git` entry. The manifest is optional: the kernel scans `src/` without it.
 
-Every mutating `git worktree`, `git submodule` or deletion command is shown for confirmation before it runs. Deletion commands are guard-denied unless every operand names a path inside a `.worktrees/<name>` directory, quoted; a refusal means the path is wrong, not that another tool should be tried.
+## Output
 
-Runtime collisions between worktrees (ports, a shared dev database) are out of scope; flag the risk when the repo has a fixed-port or shared-DB test setup.
-
-## Report
-
-Manifest state (created, healed, unchanged); then per repo: resumed or created worktree with path and base, submodules hydrated or left alone; for INTO, the worktree path, new branch, base, displaced branch and the switch-back command `/picket:branching <displaced> --into <branch>`; or the listing; or what was removed, which rung cleared it, which submodules were released first, and that the branch ref itself still exists.
+Create prints the map `picket worktree` printed: per repo the worktree path, created or resumed, its base, and the submodules hydrated, reported or conflicted. `--into` reports per worktree the path, the new branch, its base, the displaced branch and the way back, `/picket:branching <displaced> --into <branch>`. `--list` prints the listing. Remove reports per repo the rung that cleared the worktree, what was discarded, which submodules were released first, what prune cleared, and that the branch ref itself still exists.

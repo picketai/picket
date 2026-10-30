@@ -1,7 +1,7 @@
 # Branching: remove
 
-1. Ensure the manifest; a missing branch name is asked for, then stop.
-2. Locate the branch's worktrees with the resume check across all repos. None → report nothing to remove; stop.
+1. Take the nested repos `picket worktree` printed for the item, or else the manifest or the `src/` scan (SKILL.md, Rules).
+2. Locate the branch's worktrees: in each nested repo, parse `git -C <repo> worktree list --porcelain` for `branch refs/heads/<branch>`. None → report nothing to remove; stop.
 3. Survey each worktree before proposing anything, all read-only: `git -C <wt> status --porcelain` (uncommitted or untracked content); `git -C <wt> ls-files --stage` for mode `160000` entries, then `git -C <wt> submodule status --recursive` to learn which are populated (any line not prefixed `-`); for each populated submodule `git -C <wt>/<sub> status --porcelain` and `git -C <wt>/<sub> log --branches --not --remotes --oneline` (commits that exist nowhere else). This is the only pass that can still save that work.
 4. Release populated submodules before removing the worktree. Report what step 3 found in each (uncommitted, unpushed, or neither) and ask before releasing anything that is not "neither". On confirmation: `git -C <wt> submodule deinit --all --force` (plain `deinit` refuses on the modified case you just surfaced). `deinit` writes to the repo's shared `.git/config`, so it unregisters `submodule.<name>.url` for every worktree of that repo; say so. No populated submodules → skip.
 5. Walk the ladder, each rung shown for confirmation, stopping at the first that succeeds:

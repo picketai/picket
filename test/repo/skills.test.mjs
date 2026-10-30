@@ -20,16 +20,16 @@ const CLAIM = new RegExp(`\\bthe ${AGENT}(?:(?:,? (?:and|or) |, )(?:the )?${AGEN
 const TITLE_LINE = /^# /;
 const CONTINUATION = /^\s+\S/;
 
-const UNCONVERTED_SKILLS = ["benchmarking", "branching"].map((name) => `src/skills/${name}/SKILL.md`);
+const UNCONVERTED_SKILLS = ["benchmarking"].map((name) => `src/skills/${name}/SKILL.md`);
 
 const PENDING = {
   frontmatter: UNCONVERTED_SKILLS,
   sections: UNCONVERTED_SKILLS,
-  names: ["src/skills/branching/steps/10-create.md", "src/skills/branching/steps/20-remove.md"],
+  names: [],
   headers: [],
   lists: [],
   repeats: [],
-  claims: ["src/skills/branching/SKILL.md"],
+  claims: [],
 };
 
 function markdownUnder(dir) {
