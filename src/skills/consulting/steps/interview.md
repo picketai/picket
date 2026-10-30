@@ -1,6 +1,12 @@
-# Step 2: interview
+# Consulting: interview
 
-Walk the design tree depth-first. Resolve dependencies one by one. Ask one question, give your recommended answer with it, and wait for the reply before asking the next.
+Walk the design tree of the user's plan one branch at a time. Empty input: ask "What should we work through? Provide the plan, design, or idea you want stress-tested." and stop.
+
+1. Read `.claude/MEMORY.md` if it exists. If it does not, note that and do not create it; `steps/capture.md` creates it on the first resolved term or decision.
+2. Skim the codebase for prior art. Grep for the key nouns in the user's plan and note the terminology the plan touches: existing type names, module names, and glossary entries that overlap or conflict. This is the material the interview challenges against.
+3. Build a working list of the design tree's branches from the plan: each concept, relationship, or claim that has to hold for the plan to work.
+4. Walk the list depth-first, resolving dependencies one by one. Ask one question, give your recommended answer with it, and wait for the reply before asking the next.
+5. Capture each resolved term or decision at once, as `steps/capture.md` says. Do not batch.
 
 ## Protocol
 
@@ -14,11 +20,9 @@ Stress-test with concrete scenarios. When a relationship between concepts is und
 
 Cross-reference with code. When the user states how something works, check that the code agrees. On contradiction, surface it: "The code cancels entire Orders, but you said partial cancellation is possible. Which is right?"
 
-Capture as you go. Each resolved term or decision goes to `.claude/MEMORY.md` immediately, per step 3. Do not batch.
-
 ## Termination
 
-Count only questions actually asked of the user, not your own Grep or Read lookups. Stop at the first condition that fires and emit the closing summary from step 3.
+Count only questions actually asked of the user, not your own Grep or Read lookups. Stop at the first condition that fires and emit the closing summary from `steps/capture.md`.
 
 1. User stop signal: the user replies `done`, `stop`, `that's enough`, `enough`, `wrap up`, or `summarise` (case-insensitive, on its own line or as the whole turn).
 2. Question cap: 12 questions asked and none of the last 3 resolved a new term or decision. Offer to continue and stop pending an explicit `continue`.

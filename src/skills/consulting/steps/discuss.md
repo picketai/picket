@@ -7,4 +7,4 @@
 5. Name the blocking unknowns and ask one focused question for each, with your recommended default.
 6. Emit the output block from `SKILL.md`. Offer ratification only if a direction was reached.
 
-Capture as you go: a resolved term goes into `.claude/MEMORY.md` under the glossary with the business definition first and the implementation pointer second; a non-trivial decision (hard to reverse, surprising without context, the outcome of a real trade-off) goes under `## Decisions` with the date. Do not batch captures to the end.
+Capture as you go: each resolved term or non-trivial decision is written at once, as `steps/capture.md` says. Do not batch captures to the end.

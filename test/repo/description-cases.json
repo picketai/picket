@@ -17,10 +17,10 @@
   },
   {
     "skill": "consulting",
-    "positive": ["should we build or buy the invoicing engine", "where does this boundary go between billing and orders", "is this a separate bounded context or part of sales"],
+    "positive": ["should we build or buy the invoicing engine", "where does this boundary go between billing and orders", "is this a separate bounded context or part of sales", "question me on this plan to stress-test it", "interview me and sharpen the terminology"],
     "negative": [
       { "prompt": "write a charter for the billing context", "owner": "documenting" },
-      { "prompt": "question me on this plan to stress-test it", "owner": "understanding" }
+      { "prompt": "explain with an example what happens to the data", "owner": "explaining" }
     ]
   },
   {
@@ -52,7 +52,7 @@
     "positive": ["walk me through what happens to the data when a customer pays, with an example", "explain with real data how a discount is applied", "explain the concept of idempotency simply, with an example"],
     "negative": [
       { "prompt": "map the flow and write a report on disk, no code changes", "owner": "researching" },
-      { "prompt": "stress-test my thinking on this design", "owner": "understanding" },
+      { "prompt": "stress-test my thinking on this design", "owner": "consulting" },
       { "prompt": "why does the export crash on an empty list", "owner": "debugging" }
     ]
   },
@@ -102,14 +102,6 @@
     "negative": [
       { "prompt": "write the PR description", "owner": "summarizing" },
       { "prompt": "add a glossary entry and document the term", "owner": "documenting" }
-    ]
-  },
-  {
-    "skill": "understanding",
-    "positive": ["question me on this plan", "interview me and sharpen the terminology", "help me think this through before we implement"],
-    "negative": [
-      { "prompt": "should we build or buy, and what is the strategy", "owner": "consulting" },
-      { "prompt": "explain with an example what happens to the data", "owner": "explaining" }
     ]
   }
 ]

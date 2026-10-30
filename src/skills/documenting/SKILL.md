@@ -34,7 +34,7 @@ Every structured document starts from its kind's template and the shared rules b
 | charter | `templates/charter.md` | consulting | `artifacts/strategy/charters/<slug>.md` |
 | context-map | `templates/context-map.md` | consulting | `artifacts/strategy/context-maps/<slug>.md` |
 | sdr | `templates/sdr.md` | consulting | `artifacts/strategy/decisions/NNNNN-<slug>.md` |
-| glossary | `templates/glossary.md` | consulting, understanding | `artifacts/strategy/glossary/<slug>.md`, short entries in `.claude/MEMORY.md` |
+| glossary | `templates/glossary.md` | consulting | `artifacts/strategy/glossary/<slug>.md`, short entries in `.claude/MEMORY.md` |
 | api | `templates/api.md` | the lead standalone | `artifacts/api/<slug>.md` |
 
 Paths come from `picket name <kind> "<subject>"` (`picket name <order|design> --work <id>` for a work item file); never derive one by hand. It prints the project-relative path from the registry: the subject lowercased, stopwords dropped, hyphenated, cut to five words, with the next five-digit sequence for an SDR.

@@ -10,8 +10,7 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 | `picket:researching` | lane | a report instead of a change | `picket admit` answers research |
 | `picket:inspecting` | command | status and cost | `/picket:inspecting [<work-id>]` |
 | `picket:resuming` | command | continue an open work item | `/picket:resuming [<work-id>]` |
-| `picket:consulting` | command | think a strategic question through | `/picket:consulting` |
-| `picket:understanding` | command | stress-test a plan by questions | `/picket:understanding <plan, design, or idea>` |
+| `picket:consulting` | command | think a strategic question through, or stress-test a plan by questions | `/picket:consulting [<question or plan>]` |
 | `picket:proofreading` | command | proofread text for outside readers | `/picket:proofreading <path or pasted text>` |
 | `picket:explaining` | command | walk one scenario or concept with real data, start to end | `/picket:explaining <scenario or concept>` |
 | `picket:debugging` | command | find a bug's root cause and leave a failing test, never a fix | `/picket:debugging <symptom>` |
@@ -73,19 +72,11 @@ Continues a work item from its state on disk, with no replay of the old conversa
 
 ## picket:consulting
 
-A thinking partner for strategic and domain design questions before any change: "should we", "build or buy", "where does this boundary go", "is this a separate context".
+A thinking partner for strategic and domain design questions before any change: "should we", "build or buy", "where does this boundary go", "is this a separate context". It also runs a questioning session that tests a plan, design or idea against the project's existing words and code, one question at a time.
 
-**How you reach it.** `/picket:consulting`, or one of those phrases.
+**How you reach it.** `/picket:consulting [<question or plan>]`, or one of those phrases. For the questioning session: "question me on this", "stress-test this plan", "interview me", "challenge my thinking", "sharpen the terminology".
 
-**Where it fits.** It runs in the main session with no agent. It recommends one direction, weighs the real alternatives with what each gains and gives up, and names what cannot be undone. Settled terms and decisions go to `.claude/MEMORY.md`. When a direction is reached, say "ratify" and it writes a strategic decision record, a context charter or a context map. A tactical question ("how do I structure this module") is sent to the order or design lane instead.
-
-## picket:understanding
-
-A questioning session that tests a plan, design or idea against the project's existing words and code, one question at a time.
-
-**How you reach it.** `/picket:understanding <plan, design, or idea>`, or "question me on this", "stress-test this plan", "interview me".
-
-**Where it fits.** It runs in the main session with no agent. Each question comes with Claude's recommended answer, and claims are checked against the code. Every term or decision that settles is written to `.claude/MEMORY.md` at once, never code or specs. The consulting skill, the analyst and the architect also read it when they need the same questioning.
+**Where it fits.** It runs in the main session with no agent. In discuss mode, the default, it recommends one direction, weighs the real alternatives with what each gains and gives up, and names what cannot be undone. In interview mode each question comes with Claude's recommended answer, and claims are checked against the code. Settled terms and decisions go to `.claude/MEMORY.md` at once, never code or specs; a code convention goes to a project rule under `.claude/rules/`. When a direction is reached, say "ratify" and it writes a strategic decision record, a context charter or a context map. A tactical question ("how do I structure this module") is sent to the order or design lane instead.
 
 ## picket:proofreading
 

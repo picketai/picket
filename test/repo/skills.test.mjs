@@ -20,29 +20,16 @@ const CLAIM = new RegExp(`\\bthe ${AGENT}(?:(?:,? (?:and|or) |, )(?:the )?${AGEN
 const TITLE_LINE = /^# /;
 const CONTINUATION = /^\s+\S/;
 
-const UNCONVERTED_SKILLS = ["benchmarking", "branching", "understanding"].map((name) => `src/skills/${name}/SKILL.md`);
+const UNCONVERTED_SKILLS = ["benchmarking", "branching"].map((name) => `src/skills/${name}/SKILL.md`);
 
 const PENDING = {
   frontmatter: UNCONVERTED_SKILLS,
   sections: UNCONVERTED_SKILLS,
-  names: [
-    "src/skills/branching/steps/10-create.md",
-    "src/skills/branching/steps/20-remove.md",
-    "src/skills/understanding/steps/10-prepare.md",
-    "src/skills/understanding/steps/20-interview.md",
-    "src/skills/understanding/steps/30-capture.md",
-  ],
-  headers: [
-    "src/skills/understanding/steps/10-prepare.md",
-    "src/skills/understanding/steps/20-interview.md",
-    "src/skills/understanding/steps/30-capture.md",
-  ],
-  lists: [
-    "src/skills/understanding/steps/10-prepare.md",
-    "src/skills/understanding/steps/30-capture.md",
-  ],
+  names: ["src/skills/branching/steps/10-create.md", "src/skills/branching/steps/20-remove.md"],
+  headers: [],
+  lists: [],
   repeats: [],
-  claims: ["src/skills/branching/SKILL.md", "src/skills/understanding/SKILL.md"],
+  claims: ["src/skills/branching/SKILL.md"],
 };
 
 function markdownUnder(dir) {

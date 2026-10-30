@@ -6,7 +6,7 @@ Codebase mode is the default: the question names a behaviour, screen, endpoint, 
 
 ## Actor and entry point
 
-Name who goes through the flow (a customer, a QA tester, an operator, a browser) and where they start (a screen, an endpoint, a CLI command). When either is unclear, ask one question with your recommended default, as `picket:understanding` does, and stop:
+Name who goes through the flow (a customer, a QA tester, an operator, a browser) and where they start (a screen, an endpoint, a CLI command). When either is unclear, ask one question with your recommended default, and stop:
 
 "Which entry point: the checkout page or `POST /orders`? I would take `POST /orders`, because the page only calls it."
 
