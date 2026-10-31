@@ -100,10 +100,10 @@ function readYaml(root, id) {
 
 test("a story naming a folder opens the work item and resolves only the files it names", (t) => {
   const { main, source } = tempSource(t);
-  mkdirSync(join(main, "src", "DriverPlatformWebapp"), { recursive: true });
-  assert.deepEqual(candidates(source, "src/DriverPlatformWebapp", places(main)), []);
+  mkdirSync(join(main, "src", "Webapp"), { recursive: true });
+  assert.deepEqual(candidates(source, "src/Webapp", places(main)), []);
   const root = tempProject(t);
-  const story = "The webapp lives in `src/DriverPlatformWebapp`, priced by `docs/pricing.md`, weekly and/or monthly, per https://x.io/a/b.md.\n";
+  const story = "The webapp lives in `src/Webapp`, priced by `docs/pricing.md`, weekly and/or monthly, per https://x.io/a/b.md.\n";
   const r = openWithStory(root, story, main);
   assert.equal(r.code, 0, r.err);
   const { id, source: ticket } = JSON.parse(r.out);

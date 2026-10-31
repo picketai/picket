@@ -5,6 +5,7 @@ node_modules/
 
 # runtime and scratch
 .picket/state/
+.picket/private-terms.txt
 bench/.cache/
 bench/.runs/
 bench/results/spend.log
