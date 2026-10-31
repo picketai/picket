@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decisionCounts, decisionsRevisedSince, parseArtifact, phasePaths, strategicReviewIds } from "./artifact.mts";
+import { decisionCounts, decisionsRevisedSince, deferredCriteria, malformedDeferrals, parseArtifact, phasePaths, strategicReviewIds } from "./artifact.mts";
 
 const lines = (...rows: string[]) => rows.join("\n") + "\n";
 
@@ -95,6 +95,34 @@ test("strategicReviewIds names the flagged decision headings and open question l
 
 test("strategicReviewIds skips a heading that quotes the flag in backticks", () => {
   assert.deepEqual(strategicReviewIds(lines("### D-003: One flag, `[STRATEGIC REVIEW NEEDED]`, on the line that carries the id")), []);
+});
+
+test("deferredCriteria reads the owner and gate of a marker that follows the criterion id", () => {
+  const body = lines(
+    "## Phase 5: Mail",
+    "",
+    "- **T-5.1** the order confirmation is queued",
+    "- **T-5.4** [DEFERRED: QA, before go-live] the mail renders in a real client",
+    "- **T-5.5** the mail renders in a real client [DEFERRED: QA, before go-live]",
+    "- **T-5.6** `[DEFERRED: QA, before go-live]` the mail is sent",
+  );
+  assert.deepEqual(deferredCriteria(body), [{ id: "T-5.4", owner: "QA", gate: "before go-live" }]);
+});
+
+test("deferredCriteria skips a criterion inside a fenced block", () => {
+  assert.deepEqual(deferredCriteria(lines("```", "- **T-5.4** [DEFERRED: QA, before go-live] x", "```")), []);
+});
+
+test("malformedDeferrals names criteria whose marker lacks the owner or the gate", () => {
+  assert.deepEqual(malformedDeferrals(lines("- **T-2.1** [DEFERRED: QA] x")), ["T-2.1"]);
+  assert.deepEqual(malformedDeferrals(lines("- **T-2.1** [DEFERRED] x")), ["T-2.1"]);
+  assert.deepEqual(malformedDeferrals(lines("- **T-2.1** [DEFERRED: QA, ] x")), ["T-2.1"]);
+  assert.deepEqual(malformedDeferrals(lines("- **T-2.1** x [DEFERRED: QA, before go-live]")), ["T-2.1"]);
+});
+
+test("malformedDeferrals passes a well-formed marker and one quoted in a code span", () => {
+  assert.deepEqual(malformedDeferrals(lines("- **T-2.1** [DEFERRED: QA, before go-live] x")), []);
+  assert.deepEqual(malformedDeferrals(lines("- **T-2.1** write it as `[DEFERRED: <owner>, <gate>]` x", "- **T-2.2** `[DEFERRED]` x")), []);
 });
 
 test("a phase heading without a frontmatter entry has a null entry", () => {

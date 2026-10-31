@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { loadConfig } from "../../../shared/config.mjs";
+import { malformedDeferrals } from "../../../shared/work/artifact.mts";
 import { frontmatter } from "../../../util/yaml-lite.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
@@ -83,6 +84,10 @@ function capProblems(body: string, lane: ArtifactLane, headings: number[], root:
   return problems;
 }
 
+function deferralProblems(body: string): string[] {
+  return malformedDeferrals(body).map((id) => `${id}: write a deferral as [DEFERRED: <owner>, <gate>] right after the id`);
+}
+
 function committedVersion(root: string, rel: string): string | null {
   try {
     return execFileSync("git", ["-C", root, "show", `HEAD:${rel}`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
@@ -125,7 +130,7 @@ function artifactProblems(abs: string, rel: string, root: string): string[] {
   const lane: ArtifactLane = rel.endsWith("order.md") ? "order" : "design";
   const problems = front.lane !== lane ? [`frontmatter lane must be ${lane}`] : [];
   const phases = phaseProblems(front, body, lane);
-  problems.push(...phases.problems, ...capProblems(body, lane, phases.headings, root), ...leftoverProblems(text));
+  problems.push(...phases.problems, ...capProblems(body, lane, phases.headings, root), ...deferralProblems(body), ...leftoverProblems(text));
   problems.push(...revisionProblems(committedVersion(root, rel), body));
   return problems;
 }

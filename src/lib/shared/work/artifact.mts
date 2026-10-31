@@ -91,6 +91,37 @@ export function strategicReviewIds(body: string): string[] {
     .filter((id): id is string => id !== undefined);
 }
 
+export type Deferral = { id: string; owner: string; gate: string };
+
+const CRITERION_LINE = /^- \*\*(T-\d+\.\d+)\*\*\s*(.*)$/;
+const DEFERRAL_MARKER = "[DEFERRED";
+const DEFERRAL_FORM = /^\[DEFERRED: ([^,\]]+),([^\]]+)\]/;
+
+function criterionLines(body: string): RegExpMatchArray[] {
+  return withoutCode(body)
+    .split(/\r?\n/)
+    .map((line) => line.match(CRITERION_LINE))
+    .filter((criterion): criterion is RegExpMatchArray => criterion !== null);
+}
+
+function deferralOf([, id, rest]: RegExpMatchArray): Deferral | null {
+  const marker = rest.match(DEFERRAL_FORM);
+  if (!marker) return null;
+  const owner = marker[1].trim();
+  const gate = marker[2].trim();
+  return owner && gate ? { id, owner, gate } : null;
+}
+
+export function deferredCriteria(body: string): Deferral[] {
+  return criterionLines(body).flatMap((criterion) => deferralOf(criterion) ?? []);
+}
+
+export function malformedDeferrals(body: string): string[] {
+  return criterionLines(body)
+    .filter((criterion) => criterion[2].includes(DEFERRAL_MARKER) && deferralOf(criterion) === null)
+    .map(([, id]) => id);
+}
+
 export function decisionsRevisedSince(body: string, day: string): string[] {
   const log = body.match(REVISION_LOG)?.[1] ?? "";
   const ids = log

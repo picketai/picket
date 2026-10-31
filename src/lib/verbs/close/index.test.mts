@@ -10,7 +10,7 @@ import { verb } from "./index.mts";
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
-const NO_FACTS: Closing = { phases: 0, commits: null, decisions: null, review: null, questions: null, report: null, strategic: [] };
+const NO_FACTS: Closing = { phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -71,6 +71,17 @@ test("ids flagged for strategic review close the research Report line and the de
 test("Questions shows only when the cumulative review asked some", () => {
   assert.match(closingBlock(closed("order", { phases: 1, questions: "S-4 header row" })), /^Questions: S-4 header row$/m);
   assert.doesNotMatch(closingBlock(closed("order", { phases: 1 })), /^Questions:/m);
+});
+
+test("each deferred criterion gets a Deferred line right after Questions", () => {
+  const deferred = [{ id: "T-5.4", owner: "QA", gate: "before go-live" }];
+  const lines = closingBlock(closed("design", { phases: 5, decisions: { count: 2, amended: 0 }, questions: "S-4 header row", deferred })).split("\n");
+  assert.deepEqual(lines.slice(2), ["Questions: S-4 header row", "Deferred: T-5.4 QA, before go-live"]);
+});
+
+test("a close with no deferred criteria prints no Deferred line", () => {
+  assert.doesNotMatch(closingBlock(closed("fast")), /^Deferred:/m);
+  assert.doesNotMatch(closingBlock(closed("research", { report: { findings: 0, architect_review: [], strategic_review: [] } })), /^Deferred:/m);
 });
 
 test("each repeat gets a Repeats line and a Follow-up line, after what is left and the warnings", () => {

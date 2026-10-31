@@ -51,6 +51,7 @@ The closing block is `picket close <id> --human`, under your one sentence:
 ## Order closed: <id>
 Phases: <n> · commits <first>..<last> · review: APPROVED
 Questions: <the cumulative review's open questions, when it asked some>
+Deferred: <id> <owner>, <gate>   (one line per deferred criterion, when the plan marks some)
 Left for you: <one line per command left for the user>
 Left staged: <staged paths that are not this item's>
 ```

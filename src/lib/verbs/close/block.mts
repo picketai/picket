@@ -61,6 +61,7 @@ export function closingBlock(v: CloseResult): string {
     `## ${HEADING[v.lane]} closed: ${v.id}`,
     laneLine(v),
     v.closing.questions && `Questions: ${v.closing.questions}`,
+    ...v.closing.deferred.map(({ id, owner, gate }) => `Deferred: ${id} ${owner}, ${gate}`),
     ...v.repeats.map((r) => `Repeats: ${r.class} (${r.items.join(", ")})`),
     ...v.left.map(leftForYou),
     worktreesLeft(v),

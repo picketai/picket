@@ -2,7 +2,7 @@ import { Refused } from "../../shared/action.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
 import { recordAccept } from "../../shared/ledger.mts";
-import { decisionCounts, phasePaths, strategicReviewIds, type DecisionCounts } from "../../shared/work/artifact.mts";
+import { decisionCounts, deferredCriteria, phasePaths, strategicReviewIds, type DecisionCounts, type Deferral } from "../../shared/work/artifact.mts";
 import { blockFiles } from "../../shared/work/block.mts";
 import { workRel, type WorkId } from "../../shared/work/files.mts";
 import { readLeft, type LeftEntry } from "../../shared/work/left.mts";
@@ -23,6 +23,7 @@ export type Closing = {
   decisions: DecisionCounts | null;
   review: string | null;
   questions: string | null;
+  deferred: Deferral[];
   report: ReportFindings | null;
   strategic: string[];
 };
@@ -138,6 +139,7 @@ function closingFacts(root: string, snap: WorkSnapshot, closeCommit: string | nu
     decisions: lane === "design" ? decisionCounts(body) : null,
     review: cumulativeVerdict(snap),
     questions: reviewQuestions(root, id),
+    deferred: PHASED_LANES.includes(lane) ? deferredCriteria(body) : [],
     report,
     strategic: report?.strategic_review ?? recordStrategicIds(lane, body),
   };

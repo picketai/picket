@@ -74,6 +74,21 @@ test("lint.schema flags a plan path inside a worktree, in files and in greps, an
   assert.doesNotMatch(lint(p), /worktree path/);
 });
 
+test("lint.schema names a malformed deferral and still counts the phase's three criteria", (t) => {
+  const { root } = hookProject(t);
+  const s = openItem(root, { lane: "design", title: "Deferred mail" });
+  const p = join(root, "work", s.id, "design.md");
+  const record = (marker) =>
+    `---\nlane: design\nphases:\n  - n: 1\n    files: [src/mail.ts]\n    security: false\n---\n# D\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n## Phase 1: A\n\n- **T-1.1** a\n- **T-1.2** b\n- **T-1.3** ${marker} the mail renders in a real client\n\n## Revision log\n`;
+
+  writeFileSync(p, record("[DEFERRED: QA]"));
+  const flagged = lintWrite(root, p);
+  assert.ok(flagged.includes("T-1.3: write a deferral as [DEFERRED: <owner>, <gate>] right after the id"), flagged);
+  assert.doesNotMatch(flagged, /criteria; 3 to 8 required/);
+  writeFileSync(p, record("[DEFERRED: QA, before go-live]"));
+  assert.equal(lintWrite(root, p), "");
+});
+
 function reportText(front) {
   return `---\n${front}\n---\n# Report: Pricing\n\n## Summary\nPrices round half-up [VERIFIED].\n\n## Findings\n- **R-001** [VERIFIED] Prices round half-up.\n`;
 }

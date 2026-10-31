@@ -11,12 +11,12 @@ Scope `pr` has no plan. The PR description stands in for it: split it into its c
 1. Extract every bullet under the phase's `**Done when:**` (or the plan's own label: "Acceptance criteria", "Exit criteria"). Each bullet leads with its `T-<phase>.<seq>` id; record it verbatim.
 2. No typed ids (older plan): number the bullets in source order as `T-N.1`, `T-N.2`, and so on, and add one Major finding asking the architect to backfill ids.
 3. For each criterion find the evidence: the function, class, or module that implements it; a test assertion that verifies it; or a configuration entry or schema definition that satisfies it.
-4. Classify. PASS: evidence exists and satisfies both the what and the how (criterion says "returns 404 when not found"; a 400 or an exception is FAIL). FAIL: evidence absent, partial, or contradicting. UNCLEAR: the criterion says "should", "consider", "as needed", or "if applicable" without a concrete condition; do not interpret, mark it and surface it to the architect.
+4. Classify. PASS: evidence exists and satisfies both the what and the how (criterion says "returns 404 when not found"; a 400 or an exception is FAIL). FAIL: evidence absent, partial, or contradicting. UNCLEAR: the criterion says "should", "consider", "as needed", or "if applicable" without a concrete condition; do not interpret, mark it and surface it to the architect. DEFERRED: only on a criterion the plan marks `[DEFERRED: <owner>, <gate>]`; it is never PASS, and its evidence names the owner and the gate. A criterion this environment cannot verify that the plan does not mark is FAIL.
 5. Fill the table, fixed columns, criterion text quoted from the plan and never paraphrased:
 
 | ID | Criterion | Result | Evidence | Note |
 |---|---|---|---|---|
-| T-N.1 | text from the plan | PASS, FAIL, or UNCLEAR | path:line or test name | one short clause |
+| T-N.1 | text from the plan | PASS, FAIL, UNCLEAR, or DEFERRED | path:line or test name; owner and gate for DEFERRED | one short clause |
 
 Cap: 15 rows per phase. Past 15 the phase was too large to review; grade the 15 highest-priority criteria (FAIL candidates first, then UNCLEAR, then PASS) and flag "phase too large, N criteria exceed cap" to the architect.
 
@@ -34,6 +34,7 @@ When the plan gives a count with the search that produces it (four test files, t
 |---|---|---|
 | Fully satisfied with cited evidence | PASS | none |
 | Ambiguous wording | UNCLEAR, blocks | none; the plan is the defect |
+| Marked `[DEFERRED: <owner>, <gate>]` by the plan | DEFERRED, does not block | none; the owner checks it at the gate |
 | Partially satisfied (core present, edge case missing) | FAIL, blocks | Major on the diff-level gap |
 | Absent or contradicted | FAIL, blocks | Critical if the missing behaviour is the criterion's core, else Major |
 
