@@ -11,6 +11,8 @@ const FINDING_LINE = /^- \[(Critical|Major|Minor|Nit)\]/;
 const RED_FORMS = /^(.+?\bfailed: \S.*|pinned: \S.*|n\/a: \S.*)$/;
 const CAUSE_FORM = /\S because \S/;
 const FOLDED_FILES = /\+\d+ more/;
+const BLOCKED_KINDS = ["data", "configuration", "environment"] as const;
+const BLOCKED_FORM = new RegExp(`^blocked: (?:${BLOCKED_KINDS.join("|")}): \\S`);
 const PICKET_AGENT = "picket:";
 const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
 
@@ -41,7 +43,13 @@ function proofProblems(lines: string[]): string[] {
   const cause = fieldValue(lines, "Root cause");
   if (cause === null) problems.push('the block has no "Root cause:" line (Root cause: <X> because <Y> | none)');
   else if (cause !== "none" && !CAUSE_FORM.test(cause)) problems.push(`"Root cause: ${cause.slice(0, 60)}" is neither none nor <X> because <Y>`);
-  return problems;
+  return [...problems, ...blockedProblems(lines)];
+}
+
+function blockedProblems(lines: string[]): string[] {
+  const verified = fieldValue(lines, "Verified");
+  if (verified === null || !verified.startsWith("blocked") || BLOCKED_FORM.test(verified)) return [];
+  return [`"Verified: ${verified.slice(0, 60)}" names no blocked kind; write blocked: <${BLOCKED_KINDS.join(" | ")}>: <what>. A request that needs another shape or route is not a block: send the one that reaches the changed code`];
 }
 
 function blockProblems(block: string, isDeveloperBlock: boolean): string[] {

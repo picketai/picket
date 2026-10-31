@@ -61,7 +61,50 @@ test("guard.block does not ask a stalled block or another agent's block for proo
   assert.equal(blockVerdict(root, `## Report: ${id}\n\nWritten.\n\nREPORT WRITTEN`), null, "analyst");
 });
 
-const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
+function verifiedPhase(id, verified) {
+  const fields = verified === null ? [] : [`Verified: ${verified}`];
+  return [`## Phase 1 of ${id}: A`, "", "Done.", "", ...fields, "Red: n/a: docs only", "Root cause: none", "", "PHASE DONE"].join("\n");
+}
+
+test("guard.block passes a PHASE DONE block whose Verified: is blocked: data: <what>", (t) => {
+  const { root, id } = hookProject(t);
+  assert.equal(blockVerdict(root, verifiedPhase(id, "blocked: data: no order rows to list until the shop is seeded")), null);
+});
+
+test("guard.block passes a PHASE DONE block whose Verified: is blocked: configuration: <what>", (t) => {
+  const { root, id } = hookProject(t);
+  assert.equal(blockVerdict(root, verifiedPhase(id, "blocked: configuration: the payment provider key is not set")), null);
+});
+
+test("guard.block passes a PHASE DONE block whose Verified: is blocked: environment: <what>", (t) => {
+  const { root, id } = hookProject(t);
+  assert.equal(blockVerdict(root, verifiedPhase(id, "blocked: environment: the orders database is not reachable")), null);
+});
+
+test("guard.block bounces a blocked: Verified: line without one of the three kinds and names them", (t) => {
+  const { root, id } = hookProject(t);
+  for (const verified of ["blocked: seed rows missing", "blocked: env: no database", "blocked: data:"]) {
+    const out = blockVerdict(root, verifiedPhase(id, verified));
+    assert.equal(out?.decision, "block", verified);
+    assert.match(out.reason, /blocked: <data \| configuration \| environment>: <what>/, verified);
+    assert.match(out.reason, /another shape or route is not a block/, verified);
+  }
+});
+
+test("guard.block leaves the other Verified: forms and a block without Verified: as they were", (t) => {
+  const { root, id } = hookProject(t);
+  assert.equal(blockVerdict(root, verifiedPhase(id, "npm run cli -- list → exit 0")), null);
+  assert.equal(blockVerdict(root, verifiedPhase(id, "no drivable surface: pure function")), null);
+  assert.equal(blockVerdict(root, verifiedPhase(id, null)), null);
+});
+
+test("guard.block does not check Verified: on a fast lane block", (t) => {
+  const { root, id } = hookProject(t);
+  const expedited = [`## Expedited: ${id}`, "", "Done.", "", "Verified: blocked: seed rows missing", "", "[c] commit   [x] discard: <why>"].join("\n");
+  assert.equal(blockVerdict(root, expedited), null);
+});
+
+const MISSING_BLOCK ="guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
 
 function agentTurn(root, text, fields) {
   const tp = transcript(root, [user("x"), assistant([{ type: "text", text }])]);

@@ -29,7 +29,7 @@ Prove before change, check, drive, then report. These steps decide what the bloc
 3. A refactor gets a pinning test first: a characterization test of today's observable behaviour, odd outputs included. Example: `formatName(null)` returns `"undefined undefined"` today, so the test asserts exactly that, and the refactor keeps it unless the plan says otherwise. A type check and a lint run are not a pin; they prove the code compiles, not that it does the same thing. The block line is `Red: pinned: test/name.test.ts`.
 4. A symptom fix names its cause. A retry, a null guard, a `.skip`, a raised timeout or a snapshot update makes a symptom go away without saying why it happened; each one needs `Root cause: <X> because <Y>`, for example `Root cause: totals were off because the rate was read in percent`. A change that adds none of these writes `Root cause: none`. When you cannot name the cause, you have not found it yet: keep looking, or stop with the question.
 5. Run `picket check` (add `--human` in the main session) until it prints `CHECK OK`. It runs the detected test and lint commands, logs to `.picket/state/check-*.log`, prints the failing tail only and stops at the first red step. Never shell-redirect test output yourself; that shape costs a permission prompt every time.
-6. Drive the changed flow through its real entry point when the change touches one (endpoint, CLI, worker, startup wiring), and loop drive, observe, fix until the statuses and bodies match the request or the criteria. A green suite is not verification. A change with no runtime surface (a pure function, a test, docs) records `no drivable surface: <reason>` on `Verified:` instead.
+6. Drive the changed flow through its real entry point when the change touches one (endpoint, CLI, worker, startup wiring), and loop drive, observe, fix until the statuses and bodies match the request or the criteria. A green suite is not verification. A change with no runtime surface (a pure function, a test, docs) records `no drivable surface: <reason>` on `Verified:` instead. When the drive cannot run, `blocked:` names its kind: `data` (a row or record that must be seeded first), `configuration` (a flag, secret or setting), or `environment` (a service, host or tool that is not available). A request that needs a different shape or route is not a block: send the one that reaches the changed code.
 
 ## Rules
 
@@ -62,7 +62,7 @@ A developer phase ends with this block, staged and uncommitted:
 Files: <every path you staged, comma-separated>
 Tests: passed | failed: <what> | no suite detected
 Lint: passed | failed: <what> | none detected
-Verified: <command> → <observed result> | no drivable surface: <reason> | blocked: <what>
+Verified: <command> → <observed result> | no drivable surface: <reason> | blocked: <data | configuration | environment>: <what>
 Red: <test> failed: <first failure line> | pinned: <test> | n/a: <reason>
 Root cause: <X> because <Y> | none
 Decisions: <ambiguity resolved and the reading chosen; one clause each, separated by semicolons, under 90 characters each> | none
