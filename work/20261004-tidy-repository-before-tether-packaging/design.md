@@ -92,7 +92,7 @@ Step 1 of the Tether packaging plan asks for a clean baseline before step 2 ("Se
 - **RISK-004** A credential change worded only with a subtracted phrase ("rotate the cache token") drops a lane. Mitigation: the list holds only harness and model-usage senses; a test pins that a mixed request ("verdict token" plus "bearer token") stays in design.
 
 ### D-005: What the Markdown path test counts as a path, and where it looks
-**Decision:** Infrastructural decision. A candidate is an inline backtick span outside fenced blocks, with no whitespace and none of `< > * { } [ ] $ ~ | " ' = ( ) ,` or `…`, not starting with `/`, `../`, a drive letter or a URL scheme, that contains `/` and ends with `/` or a file extension, after a trailing `:line` or `#anchor` is cut. So `.claude/lib/admit.mjs:18` checks `.claude/lib/admit.mjs`, while `work/<id>/`, `work/**`, `tok/line`, `src/Rent` and `SKILL.md` are skipped. It resolves against the Markdown file's directory, then each ancestor up to the root. It exists when `git ls-files --cached --others --exclude-standard` lists it, or a file under it, and it is on disk. Gitignored files never count, so a local `.claude/ledger/` cannot hide a miss and the result matches a fresh worktree.
+**Decision:** Infrastructural decision. A candidate is an inline backtick span outside fenced blocks, with no whitespace and none of `< > * { } [ ] $ ~ | " ' = ( ) ,` or `…`, not starting with `/`, `../`, a drive letter or a URL scheme, that contains `/` and ends with `/` or a file extension, after a trailing `:line` or `#anchor` is cut. So `.claude/lib/admit.mjs:18` checks `.claude/lib/admit.mjs`, while `work/<id>/`, `work/**`, `tok/line`, `src/Orders` and `SKILL.md` are skipped. It resolves against the Markdown file's directory, then each ancestor up to the root. It exists when `git ls-files --cached --others --exclude-standard` lists it, or a file under it, and it is on disk. Gitignored files never count, so a local `.claude/ledger/` cannot hide a miss and the result matches a fresh worktree.
 **Instead of:** `existsSync` alone: it passes locally on gitignored files and fails in a fresh worktree, the bug class of item 6.
 **Risks:**
 - **RISK-005** An extensionless path without a trailing slash (`bench/fixture`) is never checked. Mitigation: accepted as a cost; the common forms are covered, and the rule is written in `CONTRIBUTING.md`.
@@ -199,7 +199,7 @@ Stale references, repointed or removed per D-007 (each target read on 2026-10-04
 
 **Done when:**
 - **T-3.1** `node --test test/markdown-paths.test.mjs` passes and `npm test` exits 0.
-- **T-3.2** The candidate test pins `.claude/lib/admit.mjs:18` to `.claude/lib/admit.mjs` and `.claude/rules/` as candidates, and `work/<id>/`, `work/**`, `tok/line`, `src/Rent`, `SKILL.md`, `https://x.y/a.md` as not.
+- **T-3.2** The candidate test pins `.claude/lib/admit.mjs:18` to `.claude/lib/admit.mjs` and `.claude/rules/` as candidates, and `work/<id>/`, `work/**`, `tok/line`, `src/Orders`, `SKILL.md`, `https://x.y/a.md` as not.
 - **T-3.3** Adding `` `.claude/hooks/inject.prose.mjs` `` to `README.md` fails the test with a line naming `README.md` and that path; the edit is reverted.
 - **T-3.4** Adding an uncited path to `ELSEWHERE` fails the test naming that path; the edit is reverted.
 - **T-3.5** `git grep -n -e inject.prose -e shared:begin -e shared:end -- .claude` prints nothing.

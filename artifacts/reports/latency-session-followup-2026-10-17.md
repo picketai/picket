@@ -14,7 +14,7 @@ The record measured the September 2026 Design Record contract. That contract ran
 
 | # | Item | Data | Verdict | Numbers |
 |---|---|---|---|---|
-| 1 | DRIFT on SELF_CHECKED records (kill metric) | window; Picket | old metric has no cases; equivalent measured | 0 SELF_CHECKED records (00085 had 7 to 8 phases, so its check fired). Equivalent: 1 order-lane item (rc-7509) got a cumulative CHANGES REQUIRED, then D-003 (r3) and D-004 (r3) |
+| 1 | DRIFT on SELF_CHECKED records (kill metric) | window; Picket | old metric has no cases; equivalent measured | 0 SELF_CHECKED records (00085 had 7 to 8 phases, so its check fired). Equivalent: 1 order-lane item got a cumulative CHANGES REQUIRED, then D-003 (r3) and D-004 (r3) |
 | 2 | Cross-check fire rate and yield | window; Picket | measured | window: fired 1 of 1, DRIFT in 2 of 5 rounds. Picket: design checked 7 of 7, order 0 of 11; DRIFT on 1 of 7 items (14%, just under the 15 to 30% band) |
 | 3 | Cumulative CHANGES REQUIRED rate | all eras | equivalent measured | baseline about 35%. 00085: 1 of 1. Rework: 0 of 24. Picket: 2 of 16 (13%); any review 4 of 17 (24%); design 3 of 7, order 1 of 10 |
 | 4 | Amendment shape | all eras | measured | 0 new `-rN` files in every era. Revision log lines: 00085 and 00086 have 5 each; Picket at most 2 on order 9 of 10 and design 3 of 6 (max 14). 0 `SELF_CHECKED (delta)` waivers |
@@ -29,7 +29,7 @@ The middle band met its stops prediction in the order lane (2.3 per item against
 
 ## The item 1 instance
 
-The rc-7509 cumulative reviewer found a missing concurrency decision (two overlapping paid deliveries can both commit an extension) and one exception path that broke D-003 (r2). The change committed a paid extension that is never undone, which is close to the design lane's irreversible trigger. One instance means inspect. If a second appears, the condition to add is that paid or never-undone commits route to the design lane, the record's own first candidate.
+That item's cumulative reviewer found a missing concurrency decision (two overlapping paid deliveries can both commit an extension) and one exception path that broke D-003 (r2). The change committed a paid extension that is never undone, which is close to the design lane's irreversible trigger. One instance means inspect. If a second appears, the condition to add is that paid or never-undone commits route to the design lane, the record's own first candidate.
 
 ## Open questions carried forward
 

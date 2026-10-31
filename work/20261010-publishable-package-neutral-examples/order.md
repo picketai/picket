@@ -85,7 +85,7 @@ phases:
 
 ## Problem
 
-`@picketai/picket` is not ready for npm. Its URLs point at the old repository, its version is `1.0.0`, and its licence is the npm default (ISC). It has no `files` field, so `npm pack` ships all 700 tracked files, `work/` and `bench/` included. It also lists two runtime dependencies that the product never imports. Separately, the public repository still teaches with one client's domain: the TANKINHOUD telematics poll in the gate example, `RENT-` Jira keys, `Fleet/_git/Rent` URLs and a car-rental-for-assistance-companies domain in the ticketing and API examples. Records (`work/`, `artifacts/`, `bench/results/`) and git history stay as they are.
+`@picketai/picket` is not ready for npm. Its URLs point at the old repository, its version is `1.0.0`, and its licence is the npm default (ISC). It has no `files` field, so `npm pack` ships all 700 tracked files, `work/` and `bench/` included. It also lists two runtime dependencies that the product never imports. Separately, the public repository still teaches with one client's domain: its table and column names in the gate example, its Jira keys and Azure DevOps URLs, and its business domain in the ticketing and API examples. Records (`work/`, `artifacts/`, `bench/results/`) and git history stay as they are.
 
 ## Decisions
 
@@ -99,23 +99,23 @@ phases:
 **Decision:** Remove `shell-quote`, because `core/` imports only Node built-ins and its own files. CONTRIBUTING.md:27 says so and `test/kernel/plugin-layout.test.mjs` enforces it. The parser is vendored at `core/lib/vendor/shell-quote-parse.mjs` and already carries the MIT copyright and permission notice of James Halliday. `opensrc` moves to `devDependencies`, because only the `opensrc` npm script uses it. Do both with `npm uninstall shell-quote` and `npm install -D opensrc@^0.7.2`, so `package-lock.json` changes only through npm. The package also takes version `1.0.0-alpha.1` (the SemVer decision in `.claude/MEMORY.md`), the plugin description, author `Vlad Apetre`, licence `MIT` with a `LICENSE` file, and `picketai/picket` URLs. `core/.claude-plugin/plugin.json` takes the same version.
 **Instead of:** keeping `shell-quote` as a dependency for attribution: the vendored file already carries the notice that MIT requires, and the dependency would install code that nothing loads.
 
-### D-003: one invented domain, an online bookshop, for every renamed example
-**Decision:** Every client name outside the records becomes a name from one invented domain, so the examples stay concrete and agree with each other. Use this mapping:
-- **Projects and repositories:** ADO project `Fleet` and repository `Rent` become `Shop` and `Orders`. So `src/Rent` becomes `src/Orders`, folder `rent/` becomes `orders/`, branch `rent-feat` becomes `orders-feat`, and `owner/rent` becomes `owner/orders`.
-- **Jira and PR ids:** Jira keys `RENT-n` become `SHOP-n` and the label `rentals` becomes `orders`. PR 7287 becomes 412, and work id `20260914-rc-7287-stop-poll-write` becomes `20260914-shop-412-stop-sync-write`.
+### D-003 (r2): one invented domain, an online bookshop, for every renamed example
+**Decision:** Every client name outside the records becomes a name from one invented domain, so the examples stay concrete and agree with each other. The client's names are not repeated here; the neutral names are:
+- **Projects and repositories:** ADO project `Shop` and repository `Orders`, so `src/Orders`, folder `orders/`, branch `orders-feat` and `owner/orders`.
+- **Jira and PR ids:** Jira keys `SHOP-n`, the label `orders`, PR 412, and work id `20260914-shop-412-stop-sync-write`.
 - **The gate example:**
-  - the telematics poll becomes the nightly stock sync;
-  - `WAGENS.TANKINHOUD` becomes `STOCK.RESERVED_QTY` and `Car.TankSize` becomes `Product.ReservedQty`;
-  - `CarTelematicsColumnEvaluator.cs` and `CarTelematicsColumnChanges.cs` become `StockSyncColumnEvaluator.cs` and `StockSyncColumnChanges.cs`;
-  - `RunTelematicsPollCommandHandler.cs` becomes `RunStockSyncCommandHandler.cs` and `ICarRepository.cs` becomes `IProductRepository.cs`;
-  - `Rent.Fleet.Tests` becomes `Shop.Inventory.Tests` and `RentDbContext` becomes `ShopDbContext`;
-  - LowFuel tests that computed litres become LowStock tests that computed units.
+  - the nightly stock sync;
+  - `STOCK.RESERVED_QTY` and `Product.ReservedQty`;
+  - `StockSyncColumnEvaluator.cs` and `StockSyncColumnChanges.cs`;
+  - `RunStockSyncCommandHandler.cs` and `IProductRepository.cs`;
+  - `Shop.Inventory.Tests` and `ShopDbContext`;
+  - LowStock tests that compute units.
 - **Ticketing and API prose:**
-  - a rental order or reservation becomes a book order, and a vehicle becomes a book;
-  - a licence plate becomes an ISBN, and `bestelbon` becomes `orderNumber`;
-  - an assistance company becomes a partner store, and a back-office agent becomes a support agent;
-  - vehicle type RTF becomes delivery type PICKUP, and `/api/b2a/reservations/{bestelbon}` becomes `/api/partners/orders/{orderNumber}`;
-  - live GPS positions become live stock levels.
+  - a book order, and a book as the ordered item;
+  - an ISBN, and `orderNumber`;
+  - a partner store, and a support agent;
+  - delivery type PICKUP, and `/api/partners/orders/{orderNumber}`;
+  - live stock levels.
 
 The money example in `core/output-styles/custom.md` (monthly rent at 7%) is everyday housing rent, not the client's domain, so it stays.
 **Instead of:** neutral placeholders such as `Foo` and `src/App`: the gate packet and the Jira examples teach through concrete detail, and placeholders would remove it.
@@ -170,10 +170,10 @@ Make the dependency changes with the two npm commands in D-002. `LICENSE` is the
 
 **Touch set:**
 - `core/skills/ordering/steps/30-gate.md`: gate packet example
-- `core/skills/ordering/steps/10-order.md`: `RENT-123` to `SHOP-123`
-- `core/skills/designing/steps/10-design.md`: `RENT-123` to `SHOP-123`
-- `core/skills/reviewing/SKILL.md`: `src/Rent` to `src/Orders`
-- `core/skills/reviewing/steps/15-traced.md`: `src/Rent/Fees.cs` example finding
+- `core/skills/ordering/steps/10-order.md`: the ticket key becomes `SHOP-123`
+- `core/skills/designing/steps/10-design.md`: the ticket key becomes `SHOP-123`
+- `core/skills/reviewing/SKILL.md`: the nested repo becomes `src/Orders`
+- `core/skills/reviewing/steps/15-traced.md`: the `src/Orders/Fees.cs` example finding
 - `core/skills/documenting/templates/api.md`: the eight API examples
 - `core/skills/ticketing/templates/jira/bug.md`: title example
 - `core/skills/ticketing/templates/jira/change-request.md`: title example
@@ -190,10 +190,10 @@ Make the dependency changes with the two npm commands in D-002. `LICENSE` is the
 - the commit line;
 - the options line.
 
-Each ticketing example and `api.md` keeps every heading, table column and section order. Only domain words change, and sentences are rewritten where a literal swap would read wrong. Example: "Confirm reservation endpoint returns 500 when vehicle type is RTF and voucher is absent" becomes "Confirm order endpoint returns 500 when delivery type is PICKUP and voucher is absent". Sentry, SignalR and other generic tools may stay.
+Each ticketing example and `api.md` keeps every heading, table column and section order. Only domain words change, and sentences are rewritten where a literal swap would read wrong. Example: a ticket title becomes "Confirm order endpoint returns 500 when delivery type is PICKUP and voucher is absent". Sentry, SignalR and other generic tools may stay.
 
 **Done when:**
-- **T-2.1** `git grep -n -I -i -E "TANKINHOUD|WAGENS|telematic|LowFuel|rc-7287|RENT-[0-9]|reservation|rental|vehicle|bestelbon|b2a|assistance compan|licence plate|\brent\b|\bfleet\b" -- core` prints only the six OQ-001 comment lines in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` (Phase 3 rewrites them), plus the one `rent` line in `core/output-styles/custom.md`.
+- **T-2.1** A `git grep -n -I -i -E` over `core` for the client's vocabulary (the list is kept outside the repository) prints only the six OQ-001 comment lines in `core/lib/pr.mjs`, `core/lib/repos.mjs` and `core/skills/documenting/scripts/filename.mjs` (Phase 3 rewrites them), plus the one `rent` line in `core/output-styles/custom.md`.
 - **T-2.2** `git diff -U0 -- core/skills | grep -E '^[-+]#'` prints nothing: no heading changed.
 - **T-2.3** The `30-gate.md` example shows `20260914-shop-412-stop-sync-write` and the files line `StockSyncColumnEvaluator.cs, StockSyncColumnChanges.cs, +7 more`, and every line in it is at most 100 characters.
 - **T-2.4** `npm test` passes, including `test/markdown-paths.test.mjs`.
@@ -205,7 +205,7 @@ Each ticketing example and `api.md` keeps every heading, table column and sectio
 - `test/kernel/pr.test.mjs`: PR URLs, repos and findings
 - `test/kernel/review.test.mjs`: nested repo `src/Orders`, branches
 - `test/kernel/sources.test.mjs`: `orders/` documents, `SHOP-1`
-- `test/markdown-paths.test.mjs`: the `src/Rent` non-path span
+- `test/markdown-paths.test.mjs`: the nested repo non-path span
 - `core/lib/pr.mjs`: approved comment lines 15 to 17 and 48
 - `core/lib/repos.mjs`: approved comment line 2
 - `core/skills/documenting/scripts/filename.mjs`: approved comment line 40
@@ -245,3 +245,4 @@ Per D-004 (r3), replace the eight approved comment lines (OQ-001, all but `.clau
 
 - 2026-10-10: D-004 (r2): approved comment texts written in Phase 3, lint.craft.mjs left to a later fast change; T-2.3 matches the packet's two names and `+7 more` (user ruling).
 - 2026-10-10: D-004 (r3): Phase 3 fixes `normalise()` to strip a trailing `*/`, since one-line block comment approvals never matched; adds a test (user ruling, Phase 3 stall).
+- 2026-10-31: D-003 (r2): the old client names are dropped from the record, only the neutral names stay (privacy, user ruling).

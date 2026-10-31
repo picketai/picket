@@ -87,7 +87,7 @@ phases:
 
 ## Problem
 
-The cumulative reviewer checks the code against the architect's artifact only (`.claude/agents/reviewer.md:21`, `:29`; `reviewing/steps/10-alignment.md:11`). The original request is not saved (`state.yaml` holds id, lane, title, status, base), the Jira story never reaches the work item, and the same reviewer instance that cross-checked the plan runs the final pass, so a plan that misread the story passes review. `review-summary` diffs only the project root (`.claude/lib/git.mjs:36`, `.claude/lib/review.mjs:121`); verified in a scratch umbrella, the root reports a changed nested repo as the single untracked entry `src/Rent/` and never names the changed file. The requirements live in a separate analysis repository with several worktrees and branches, whose path differs per machine and must never be written. Binding constraints: the kernel stays dependency-free (yaml-lite, Node built-ins, git), hooks stay under 200 ms cold (`test/budgets.test.mjs:17`), agents stay the four named roles, and step files stay under 80 lines.
+The cumulative reviewer checks the code against the architect's artifact only (`.claude/agents/reviewer.md:21`, `:29`; `reviewing/steps/10-alignment.md:11`). The original request is not saved (`state.yaml` holds id, lane, title, status, base), the Jira story never reaches the work item, and the same reviewer instance that cross-checked the plan runs the final pass, so a plan that misread the story passes review. `review-summary` diffs only the project root (`.claude/lib/git.mjs:36`, `.claude/lib/review.mjs:121`); verified in a scratch umbrella, the root reports a changed nested repo as the single untracked entry `src/Orders/` and never names the changed file. The requirements live in a separate analysis repository with several worktrees and branches, whose path differs per machine and must never be written. Binding constraints: the kernel stays dependency-free (yaml-lite, Node built-ins, git), hooks stay under 200 ms cold (`test/budgets.test.mjs:17`), agents stay the four named roles, and step files stay under 80 lines.
 
 ## Decisions
 
@@ -105,7 +105,7 @@ The cumulative reviewer checks the code against the architect's artifact only (`
 - **RISK-003** An escalated item (order to design) gets a new id and loses the request. Mitigation: the design step passes the same `--text` to `harness new`; the order item is abandoned, as today.
 
 ### D-003: The review summary spans nested repositories
-**Decision:** Infrastructural decision. A new `.claude/lib/repos.mjs` exports `nestedRepos(root)`: the entries of `.claude/branching/manifest.yaml` whose `path` is not `.`, else every immediate child of `src/` holding a `.git` entry. `harness new` records each nested repo's HEAD in `work/<id>/repos.yaml` (no file when there are none). `reviewSummary` then diffs each nested repo in its work tree (the linked worktree on `refs/heads/<state.branch>` when the item has a branch, else the repo path) against the recorded base, falling back to `merge-base HEAD <default_branch>`; paths are prefixed with the repo path, the root's untracked `src/Rent/` entry is dropped, line counts are summed, and a `repos` list names every touched repo with its work tree and base. `reviewSummaryRange` (pull requests) is unchanged.
+**Decision:** Infrastructural decision. A new `.claude/lib/repos.mjs` exports `nestedRepos(root)`: the entries of `.claude/branching/manifest.yaml` whose `path` is not `.`, else every immediate child of `src/` holding a `.git` entry. `harness new` records each nested repo's HEAD in `work/<id>/repos.yaml` (no file when there are none). `reviewSummary` then diffs each nested repo in its work tree (the linked worktree on `refs/heads/<state.branch>` when the item has a branch, else the repo path) against the recorded base, falling back to `merge-base HEAD <default_branch>`; paths are prefixed with the repo path, the root's untracked `src/Orders/` entry is dropped, line counts are summed, and a `repos` list names every touched repo with its work tree and base. `reviewSummaryRange` (pull requests) is unchanged.
 **Instead of:** no recorded base, always `merge-base` against the default branch: an item worked in the main tree on the default branch has `merge-base = HEAD` and its commits vanish from the review.
 **Risks:**
 - **RISK-004** The manifest carries inline `#` comments that yaml-lite may reject. Mitigation: a parse error falls back to the `src/` scan; a test parses the manifest shape this repo has.
@@ -193,7 +193,7 @@ Everything else under a source is denied: build, format and test tools (`prettie
 
 ```yaml
 repos:
-  - path: src/Rent
+  - path: src/Orders
     base: 1a2b3c4d5e6f...
 ```
 
@@ -206,9 +206,9 @@ repos:
 Both lane steps change the `harness new` line to `--text "<the request, verbatim>"`, with `--request <file>` named for a request that carries quotes or newlines.
 
 **Done when:**
-- **T-1.1** In a temp umbrella whose nested repo `src/Rent` has a modified tracked file, `reviewSummary` lists `src/Rent/<file>` in `changed_files` and does not list `src/Rent/`.
+- **T-1.1** In a temp umbrella whose nested repo `src/Orders` has a modified tracked file, `reviewSummary` lists `src/Orders/<file>` in `changed_files` and does not list `src/Orders/`.
 - **T-1.2** A commit made in the nested repo after `createWork` appears in `changed_files`, with `base_from: "recorded"` and the base taken from `work/<id>/repos.yaml`.
-- **T-1.3** With `branch: feat-x` in state and a linked worktree of `src/Rent` on `feat-x`, `repos[0].worktree` is that worktree's path and its uncommitted change is counted.
+- **T-1.3** With `branch: feat-x` in state and a linked worktree of `src/Orders` on `feat-x`, `repos[0].worktree` is that worktree's path and its uncommitted change is counted.
 - **T-1.4** Without `repos.yaml`, the nested repo is diffed from `merge-base HEAD <default_branch>` and reports `base_from: "merge-base"`.
 - **T-1.5** `harness new --lane order --title t --text "<text with \" and newline>"` writes `work/<id>/request.md` equal to the text byte for byte; without `--text` or `--request` no `request.md` exists.
 - **T-1.6** For a work item in this repository (manifest holds only `.`), `changed_files`, `size` and `base` match what the trunk version printed before the phase, and `repos` is `[]`.
