@@ -36,6 +36,8 @@ const CMD_RUN_FLAG = /^\/\/?c$/i;
 const DELETE_HOSTS = new Set(["cmd", "powershell", "pwsh"]);
 const WRAPPED_DELETES = new Set(["del", "erase", "rd", "rmdir", "rm", "Remove-Item", "ri"].map((name) => name.toLowerCase()));
 const CMD_SEPARATOR = /&&?|\|\|?/;
+const PS_SEPARATOR = /[;&|]+/;
+const COMMAND_PREFIX = /^[(@{&]+/;
 const STATE_PREFIX_REL = `${stateRel("")}/`.toLowerCase();
 const POWERSHELL_WRITERS = new Set(["Set-Content", "sc", "Add-Content", "ac", "Out-File"].map((name) => name.toLowerCase()));
 const POWERSHELL_PATH_PARAMS = /^-(path|filepath|literalpath)$/i;
@@ -163,13 +165,13 @@ export function leadOnlyInside(seg: Segment, agent: string | null, mentionsKerne
 }
 
 function hostOf(seg: Segment): string {
-  return String(normalizeRoot(seg[0] ?? "")).toLowerCase();
+  const name = stringWords(seg).map((word) => word.replace(COMMAND_PREFIX, "")).find(Boolean) ?? "";
+  return String(normalizeRoot(name)).toLowerCase();
 }
 
-function cmdCommands(tail: Segment): Segment[] {
-  return stringWords(tail)
-    .join(" ")
-    .split(CMD_SEPARATOR)
+function textCommands(text: string, separator: RegExp): Segment[] {
+  return text
+    .split(separator)
     .map((part) => part.trim().split(/\s+/).filter(Boolean))
     .filter((words) => words.length > 0);
 }
@@ -177,8 +179,8 @@ function cmdCommands(tail: Segment): Segment[] {
 function wrappedSegments(seg: Segment): Segment[] {
   const payload = metaPayload(seg);
   if (!payload) return [];
-  if ("tail" in payload) return cmdCommands(payload.tail);
-  return payloadParse(payload.text, payload.dialect)?.segments ?? [];
+  if ("tail" in payload) return textCommands(stringWords(payload.tail).join(" "), CMD_SEPARATOR);
+  return payloadParse(payload.text, payload.dialect)?.segments ?? textCommands(payload.text, PS_SEPARATOR);
 }
 
 export function deletesInsideWrapper(seg: Segment, depth = 0): boolean {

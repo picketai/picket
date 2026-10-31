@@ -17,3 +17,7 @@
 {"ts":"2026-10-31T20:57:25.561Z","agent":"developer","verdict":"PHASE DONE","phase":6,"scope":null,"through":null,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c"}
 {"ts":"2026-10-31T21:23:29.558Z","agent":"user","verdict":"approved","phase":6,"scope":null,"through":7,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c"}
 {"ts":"2026-10-31T21:27:55.690Z","agent":"developer","verdict":"PHASE DONE","phase":7,"scope":null,"through":null,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c"}
+{"ts":"2026-10-31T21:34:07.423Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":null,"scope":"cumulative","through":null,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c","amend":"AMENDMENT NEEDED: D-001 record the OQ-001 ruling: the premise paragraph sits once in architect.md Constraints; rewrite T-1.2, phase 1 Changes and RISK-002, close OQ-001"}
+{"ts":"2026-10-31T21:34:53.594Z","agent":"architect","verdict":"AMENDED","phase":null,"scope":null,"through":null,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c"}
+{"ts":"2026-10-31T21:37:07.175Z","agent":"developer","verdict":"PHASE DONE","phase":7,"scope":null,"through":null,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c"}
+{"ts":"2026-10-31T21:38:12.850Z","agent":"reviewer","verdict":"APPROVED","phase":null,"scope":"cumulative","through":null,"session":"43b73270-9af6-4c2f-be1b-deb7965a4c6c"}

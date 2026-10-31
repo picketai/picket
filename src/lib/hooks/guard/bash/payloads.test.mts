@@ -175,6 +175,13 @@ test("a delete wrapped in cmd or a PowerShell host is denied from the Bash tool 
   }
 });
 
+test("a wrapped delete behind a group, an echo-off @ or a PowerShell script block is still denied", (t) => {
+  const root = project(t);
+  for (const command of ['cmd /c "(del a.txt)"', "cmd /c @del a.txt", 'pwsh -Command "& { Remove-Item a.txt }"']) {
+    assert.equal(decision(command, { root, tool: "Bash", agent: "picket:developer" }), "deny", command);
+  }
+});
+
 test("cmd /c del from the PowerShell tool is denied with the PowerShell destructive denial", (t) => {
   const root = project(t);
   const out = guardOutput("cmd /c del a.txt", { root, tool: "PowerShell", agent: "picket:developer" });

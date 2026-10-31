@@ -1,0 +1,14 @@
+{
+  "ts": "2026-10-31T21:29:58.655Z",
+  "base": "9cd31897858523ec377eee7c18c3ff7682aa783d",
+  "mutant": {
+    "path": "src/lib/hooks/guard/bash/payloads.mts",
+    "line": 174,
+    "from": ">",
+    "to": "<="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 94532
+}

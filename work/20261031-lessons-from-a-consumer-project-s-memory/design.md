@@ -137,12 +137,12 @@ phases:
 
 ## Decisions
 
-### D-001: Exact text from the report; each prose half ships with its check
-**Decision:** Every instruction change copies its outcome's text from the report verbatim, at the place the outcome names. Prose that only describes a kernel contract (the `blocked:` kinds of item 3, the `[DEFERRED: <owner>, <gate>]` marker of item 6, `absent: true` of item 8, the `picket leave` sentence of K1) ships in the same phase as the code that accepts it, so no phase tells an agent to write something the kernel still bounces or ignores. Infrastructural decision.
+### D-001 (r2): Exact text from the report; each prose half ships with its check
+**Decision:** Every instruction change copies its outcome's text from the report verbatim, at the place the outcome names, with one exception the user ruled on OQ-001: item 4's widened premise paragraph, with items 5 and 18 joined to it, sits once in `architect.md`'s `## Constraints` (line 37, read by both lanes), and the `### Design` copy at line 71 is dropped. Prose that only describes a kernel contract (the `blocked:` kinds of item 3, the `[DEFERRED: <owner>, <gate>]` marker of item 6, `absent: true` of item 8, the `picket leave` sentence of K1) ships in the same phase as the code that accepts it, so no phase tells an agent to write something the kernel still bounces or ignores. Infrastructural decision.
 **Instead of:** one prose phase holding every item, as the draft's split suggests: an agent following it before the kernel phases land writes `absent: true`, which `picket verify` ignores today and fails, or a `blocked:` kind nothing checks yet.
 **Risks:**
 - **RISK-001** The rule additions push the injected rules past the 10,000-character limit. Mitigation: measured with a script on the current `src/rules/` files joined as `joinedRules` joins them: 8,889 now, 9,513 with K4 and item 14; `test/timing/budgets.test.mjs` fails the phase if a later edit crosses the limit.
-- **RISK-002** Item 4 trims the premise rule from `architect.md:37` (Constraints, both lanes) and widens the copy at line 71, which sits under `### Design`; the order lane then keeps only line 56's "Verify a premise about existing code". Mitigation: OQ-001 puts the placement to the user; phase 1 follows the report meanwhile.
+- **RISK-002** Phase 1 is approved, so its Changes and T-1.2 still describe the report's placement (trim line 37, widen line 71) while the code follows the ruling. Mitigation: D-001 (r2) governs; reviewers grade phase 1's placement against it, not the approved phase's wording.
 
 ### D-002: Blocked kinds are checked by guard.block on the developer's phase block
 **Decision:** `proofProblems` in `src/lib/hooks/guard/block/index.mts` reads the `Verified:` field (already in `BLOCK_FIELDS.phase`) of a developer `PHASE DONE` block. A value starting `blocked` must match `blocked: <data|configuration|environment>: <non-empty text>`; any other `blocked` form bounces with a message naming the three kinds and saying a different request shape is not a block. The other two forms (`<command> → <result>`, `no drivable surface: <reason>`) and a missing `Verified:` line are unchanged. The fast lane's `## Expedited:` block stays unchecked, as it is for `Red:` and `Root cause:`. Infrastructural decision.
@@ -338,6 +338,7 @@ Items 6 and 8's architect text, the K1 developer sentence and every skill or che
 - **T-7.6** `npm test` passes, and a drive runs the built `picket check --steps test` from a nested checkout of a temporary project and observes the nested test command.
 
 ## Open questions
-- **OQ-001** Item 4 removes the premise rule from `architect.md:37`, which both lanes read, and keeps the widened copy at line 71 under `### Design`, so an order-lane architect loses the schema, data, legacy and contract list and the example check. Should the widened rule sit at line 37 instead, with line 71 dropped? Owner: the user. Fallback: phase 1 follows the report as approved.
+- **OQ-001** Item 4 removes the premise rule from `architect.md:37`, which both lanes read, and keeps the widened copy at line 71 under `### Design`, so an order-lane architect loses the schema, data, legacy and contract list and the example check. Should the widened rule sit at line 37 instead, with line 71 dropped? Owner: the user. Fallback: phase 1 follows the report as approved. Resolved 2026-10-31: the user ruled for one widened paragraph in Constraints and none at line 71; see D-001 (r2).
 
 ## Revision log
+- 2026-10-31: D-001 (r2): premise paragraph sits once in architect.md Constraints, Design copy dropped; records the user's OQ-001 ruling, closes OQ-001.

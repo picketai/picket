@@ -7,16 +7,32 @@
     "src/agents/analyst.md",
     "src/agents/architect.md",
     "src/agents/developer.md",
+    "src/lib/hooks/guard/bash/judge.mts",
+    "src/lib/hooks/guard/bash/payloads.mts",
+    "src/lib/hooks/guard/bash/payloads.test.mts",
     "src/lib/hooks/guard/block/index.mts",
+    "src/lib/hooks/guard/scope/index.mts",
     "src/lib/hooks/lint/schema/index.mts",
+    "src/lib/shared/checkouts.mts",
+    "src/lib/shared/checkouts.test.mts",
     "src/lib/shared/work/artifact.mts",
     "src/lib/shared/work/artifact.test.mts",
+    "src/lib/verbs/check/index.mts",
+    "src/lib/verbs/check/index.test.mts",
     "src/lib/verbs/close/block.mts",
     "src/lib/verbs/close/close.mts",
     "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/drive/index.mts",
+    "src/lib/verbs/drive/index.test.mts",
+    "src/lib/verbs/drive/run.mts",
+    "src/lib/verbs/drive/server.mts",
+    "src/lib/verbs/verify/index.mts",
+    "src/lib/verbs/verify/index.test.mts",
     "src/rules/prose.md",
     "src/rules/tests.md",
     "src/skills/designing/SKILL.md",
+    "src/skills/documenting/templates/design.md",
+    "src/skills/documenting/templates/order.md",
     "src/skills/implementing/SKILL.md",
     "src/skills/ordering/SKILL.md",
     "src/skills/resuming/SKILL.md",
@@ -26,10 +42,11 @@
     "src/skills/ticketing/steps/jira.md",
     "test/cli/close.test.mjs",
     "test/hooks/guard.block.test.mjs",
+    "test/hooks/guard.scope.test.mjs",
     "test/hooks/lint.schema.test.mjs"
   ],
-  "lines_added": 677,
-  "lines_removed": 19,
+  "lines_added": 1189,
+  "lines_removed": 55,
   "frameworks": [
     "typescript"
   ],
@@ -42,14 +59,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-10-31T21:29:58.655Z",
+    "base": "9cd31897858523ec377eee7c18c3ff7682aa783d",
+    "mutant": {
+      "path": "src/lib/hooks/guard/bash/payloads.mts",
+      "line": 174,
+      "from": ">",
+      "to": "<="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 94532
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
