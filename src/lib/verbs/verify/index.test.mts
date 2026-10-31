@@ -169,6 +169,38 @@ test("verify runs a nested phase's tests in its worktree only, and passes a chec
   assert.deepEqual(resultNamed(billing, "tests:src/Billing"), { name: "tests:src/Billing", ok: true, detail: "no suite detected" });
 });
 
+function grepSetup(t: TestContext, absentLine: string[]) {
+  const root = withProject(t, { picket: false });
+  mkdirSync(stateDir(root), { recursive: true });
+  const { id } = openItem(root, { lane: "order", title: "Units" });
+  const front = ["---", "lane: order", "phases:", "  - n: 1", "    files: []", "    greps:", "      - path: src/units.ts", "        pattern: \\bmetres\\b", ...absentLine, "---"];
+  writeArtifact(root, id, "order.md", [...front, "# O", "", "## Phase 1: Units", ""].join("\n"));
+  const result = () => verify(root, id, 1, { runTests: false, env: process.env }).results[1];
+  return { root, result };
+}
+
+test("an absent grep passes when the pattern does not match and fails when it does", (t) => {
+  const { root, result } = grepSetup(t, ["        absent: true"]);
+  writeIn(root, "src/units.ts", "export const unit = 'kilometres';\n");
+  assert.deepEqual(result(), { name: "absent:src/units.ts:\\bmetres\\b", ok: true, detail: "" });
+  writeIn(root, "src/units.ts", "export const unit = 'metres';\n");
+  assert.deepEqual(result(), { name: "absent:src/units.ts:\\bmetres\\b", ok: false, detail: "" });
+});
+
+test("an absent grep passes on a missing file and says so", (t) => {
+  const { result } = grepSetup(t, ["        absent: true"]);
+  assert.deepEqual(result(), { name: "absent:src/units.ts:\\bmetres\\b", ok: true, detail: "file missing" });
+});
+
+test("a grep without absent passes on a match and fails on no match or a missing file", (t) => {
+  const { root, result } = grepSetup(t, []);
+  assert.deepEqual(result(), { name: "grep:src/units.ts:\\bmetres\\b", ok: false, detail: "" });
+  writeIn(root, "src/units.ts", "export const unit = 'kilometres';\n");
+  assert.deepEqual(result(), { name: "grep:src/units.ts:\\bmetres\\b", ok: false, detail: "" });
+  writeIn(root, "src/units.ts", "export const unit = 'metres';\n");
+  assert.deepEqual(result(), { name: "grep:src/units.ts:\\bmetres\\b", ok: true, detail: "" });
+});
+
 test("verify names the status, command and log of a failed test step", (t) => {
   const { root, id } = setup(t, true);
   writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { test: 'node -e "process.exit(1)"' } }));

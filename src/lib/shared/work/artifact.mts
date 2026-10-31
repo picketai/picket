@@ -1,6 +1,6 @@
 import { frontmatter } from "../../util/yaml-lite.mts";
 
-export type GrepEntry = { path: string; pattern: string; flags?: string };
+export type GrepEntry = { path: string; pattern: string; flags?: string; absent?: boolean };
 export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tests?: boolean; drive?: boolean; security?: unknown } & Record<string, unknown>;
 export type ArtifactPhase = { n: number; title: string; entry: PhaseEntry | null; touchSet: string[]; irreversible: boolean };
 export type ParsedArtifact = { front: Record<string, unknown>; body: string; phases: ArtifactPhase[] };

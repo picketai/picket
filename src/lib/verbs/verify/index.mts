@@ -40,13 +40,18 @@ function fileResults(root: string, layout: ItemLayout, files: string[]): VerifyR
   });
 }
 
+function grepResult(root: string, layout: ItemLayout, { path, pattern, flags, absent }: GrepEntry): VerifyResult {
+  const physical = physicalPath(layout, path);
+  const file = join(root, physical);
+  const exists = existsSync(file);
+  const present = exists && new RegExp(pattern, flags ?? "m").test(readFileSync(file, "utf8"));
+  const detail = physicalDetail(path, physical);
+  if (!absent) return { name: `grep:${path}:${pattern}`, ok: present, detail };
+  return { name: `absent:${path}:${pattern}`, ok: !present, detail: exists ? detail : "file missing" };
+}
+
 function grepResults(root: string, layout: ItemLayout, greps: GrepEntry[]): VerifyResult[] {
-  return greps.map(({ path, pattern, flags }) => {
-    const physical = physicalPath(layout, path);
-    const file = join(root, physical);
-    const ok = existsSync(file) && new RegExp(pattern, flags ?? "m").test(readFileSync(file, "utf8"));
-    return { name: `grep:${path}:${pattern}`, ok, detail: physicalDetail(path, physical) };
-  });
+  return greps.map((grep) => grepResult(root, layout, grep));
 }
 
 function umbrellaTests(root: string, command: string | null, { runTests, env }: VerifyOptions): VerifyResult {

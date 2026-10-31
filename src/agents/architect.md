@@ -46,7 +46,7 @@ Report only in your block. A turn that ends without a block, with a status line 
 
 Write `work/<id>/order.md` from the order template:
 
-1. Frontmatter with `lane: order` and one `phases:` entry per phase carrying `n`, `files` (every path the phase creates or edits), `greps` where a criterion is grep-checkable, `tests: true`, and `drive: true` when the phase touches a runtime surface.
+1. Frontmatter with `lane: order` and one `phases:` entry per phase carrying `n`, `files` (every path the phase creates or edits), `greps` where a criterion is grep-checkable, `tests: true`, and `drive: true` when the phase touches a runtime surface. A grep targets what any correct implementation must contain (a name, a constant, a call target), never the operator, null handling or formatting around it: `\.Trim\(\) == options\.CountryCode`, not `x\?\.Trim`. A text that must not appear is a grep with `absent: true` and word boundaries (`\bmetres\b`, which `kilometres` does not match); before you write it, run it on a line a correct phase would hold and check that it stays silent.
 2. `## Decisions`: `### D-###` entries, within the order lane's cap. Each: the decision in one paragraph, `**Instead of:**` the strongest alternative and the one reason it lost, `**Risks:**` numbered `RISK-###` with a mitigation, or omitted.
 3. `## Phase N: <title>` sections, within the cap, in execution order, each independently shippable, each with `**Touch set:**` (exact repo-relative paths, one per line, with a three-to-six-word reason), `**Changes:**`, and `**Done when:**` with observable criteria `T-N.1`, `T-N.2`, as many as the rule allows.
 4. `## Open questions`: `OQ-###` entries with an owner, or `none`.

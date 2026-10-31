@@ -11,6 +11,7 @@ phases:
     greps:
       - path: [REPLACE: repo-relative path]
         pattern: [REPLACE: regex a criterion makes true]
+        absent: [REPLACE: true when the text must not appear; omit the key otherwise]
     tests: true
     drive: [REPLACE: true when the phase touches an endpoint, CLI, worker or startup wiring]
 ---

@@ -9,7 +9,7 @@ import { context, type ContextOutput } from "../../output.mts";
 import { leftoverProblems, reportProblems } from "./report.mts";
 
 type ArtifactLane = "order" | "design";
-type GrepEntry = { path?: string; pattern?: string; flags?: string };
+type GrepEntry = { path?: string; pattern?: string; flags?: string; absent?: unknown };
 type PhaseEntry = { n?: unknown; files?: unknown; greps?: unknown; security?: unknown };
 type PhaseCheck = { problems: string[]; headings: number[] };
 type DecisionSection = { r: number; body: string };
@@ -17,6 +17,7 @@ type DecisionSection = { r: number; body: string };
 const ARTIFACT = /^work\/[^/]+\/(order|design)\.md$/;
 const WORKTREE_SEGMENT = "/.worktrees/";
 const PUBLISHED_REPORT = /^artifacts\/reports\/[^/]+\.md$/;
+const WHOLE_FILE_LOOKAHEAD = "^(?!";
 
 function hasValidSecurityMark(entry: PhaseEntry | null, lane: ArtifactLane): boolean {
   if (entry == null || !Object.hasOwn(entry, "security")) return lane !== "design";
@@ -37,6 +38,8 @@ function grepProblems(p: PhaseEntry): string[] {
       problems.push(`phases[n=${p.n}] grep pattern ${JSON.stringify(g.pattern)} is not a valid regex: ${(err as Error).message}`);
     }
     if (/\\\\/.test(g.pattern)) problems.push(`phases[n=${p.n}] grep pattern ${JSON.stringify(g.pattern)} contains a doubled backslash after parsing; write the regex once, e.g. pattern: lines\\[0\\]\\.quantity`);
+    if (Object.hasOwn(g, "absent") && typeof g.absent !== "boolean") problems.push(`phases[n=${p.n}] grep absent must be true or false`);
+    if (g.pattern.startsWith(WHOLE_FILE_LOOKAHEAD)) problems.push(`phases[n=${p.n}] grep pattern ${g.pattern} is a whole-file lookahead; write it as absent: true with the plain pattern`);
   }
   return problems;
 }

@@ -11,6 +11,7 @@ phases:
     greps:
       - path: [REPLACE: repo-relative path]
         pattern: [REPLACE: regex a criterion makes true]
+        absent: [REPLACE: true when the text must not appear; omit the key otherwise]
     tests: true
     drive: [REPLACE: true when the phase touches a runtime surface]
     security: [REPLACE: true when the phase changes authentication, authorisation, secret handling, or how the system decides a security concern or when it stops the user; false otherwise]

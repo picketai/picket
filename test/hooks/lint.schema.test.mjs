@@ -89,6 +89,23 @@ test("lint.schema names a malformed deferral and still counts the phase's three 
   assert.equal(lintWrite(root, p), "");
 });
 
+function grepRecord(grep) {
+  return `---\nlane: design\nphases:\n  - n: 1\n    files: [src/units.ts]\n    greps:\n      - path: src/units.ts\n${grep}    security: false\n---\n# D\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n## Phase 1: A\n\n- **T-1.1** a\n- **T-1.2** b\n- **T-1.3** c\n\n## Revision log\n`;
+}
+
+test("lint.schema flags a non-boolean absent and a whole-file lookahead, and passes absent: true with a plain pattern", (t) => {
+  const { root } = hookProject(t);
+  const s = openItem(root, { lane: "design", title: "Units" });
+  const p = join(root, "work", s.id, "design.md");
+
+  writeFileSync(p, grepRecord('        pattern: \\bmetres\\b\n        absent: "yes"\n'));
+  assert.ok(lintWrite(root, p).includes("phases[n=1] grep absent must be true or false"));
+  writeFileSync(p, grepRecord("        pattern: ^(?![\\s\\S]*metres)\n"));
+  assert.ok(lintWrite(root, p).includes("phases[n=1] grep pattern ^(?![\\s\\S]*metres) is a whole-file lookahead; write it as absent: true with the plain pattern"));
+  writeFileSync(p, grepRecord("        pattern: \\bmetres\\b\n        absent: true\n"));
+  assert.equal(lintWrite(root, p), "");
+});
+
 function reportText(front) {
   return `---\n${front}\n---\n# Report: Pricing\n\n## Summary\nPrices round half-up [VERIFIED].\n\n## Findings\n- **R-001** [VERIFIED] Prices round half-up.\n`;
 }
