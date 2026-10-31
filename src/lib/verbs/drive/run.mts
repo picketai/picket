@@ -10,7 +10,7 @@ function outputOf({ output, timedOut, ms }: ShellResult): string {
   return timedOut ? `${output}${output && !output.endsWith("\n") ? "\n" : ""}timed out after ${ms} ms` : output;
 }
 
-export function runMode({ run, env }: RunInput, ctx: Context, timeoutMs: number): RunReport {
-  const result = runShell(run, { cwd: ctx.root, env: { ...ctx.env, ...env }, timeoutMs });
+export function runMode({ run, env }: RunInput, ctx: Context, dir: string, timeoutMs: number): RunReport {
+  const result = runShell(run, { cwd: dir, env: { ...ctx.env, ...env }, timeoutMs });
   return { ok: result.exitCode === 0, mode: "run", command: run, exit_code: result.exitCode, ms: result.ms, output: outputOf(result).slice(-OUTPUT_CHARS) };
 }

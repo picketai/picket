@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { locate, planPathOf, recordBranch, recordNone, testRuns, ticketKey, touchedRepos, worktreeDirName } from "./checkouts.mts";
+import { locate, planPathOf, recordBranch, recordNone, testRuns, ticketKey, touchedRepos, workingCheckout, worktreeDirName } from "./checkouts.mts";
 import { Refused } from "./action.mts";
 import { readBases, readLayout, writeLayout, type ItemLayout } from "./repos.mts";
 import { readState } from "./work/state.mts";
@@ -50,6 +50,29 @@ function umbrellaItem(t: TestContext): { root: string; id: WorkId } {
 }
 
 const itemFiles = (root: string, id: WorkId) => ["state.yaml", "repos.yaml"].map((name) => readFileSync(join(root, "work", id, name), "utf8"));
+
+test("workingCheckout names the nested repository or worktree that holds the folder, and nothing for the root", (t) => {
+  const root = gitRepo(t, { host: true, files: { "README.md": "shop\n" } });
+  const app = join(root, "app");
+  mkdirSync(join(app, "src"), { recursive: true });
+  gitIn(app, "init", "-q", "-b", "main");
+  writeIn(app, "src/orders.ts", "export const orders = [];\n");
+  gitIn(app, "add", "-A");
+  gitIn(app, "commit", "-q", "-m", "app");
+  gitIn(app, "worktree", "add", "-q", "-b", "x", join(app, ".worktrees", "x"));
+  assert.equal(workingCheckout(root, root), "");
+  assert.equal(workingCheckout(root, app), "app");
+  assert.equal(workingCheckout(root, join(app, "src")), "app");
+  assert.equal(workingCheckout(root, join(app, ".worktrees", "x")), "app/.worktrees/x");
+});
+
+test("workingCheckout gives nothing for a repository outside the root or a folder in no repository", (t) => {
+  const root = gitRepo(t, { host: true, files: { "README.md": "shop\n" } });
+  const elsewhere = gitRepo(t, { host: true, files: { "README.md": "other\n" } });
+  const bare = withProject(t, { host: true, picket: false });
+  assert.equal(workingCheckout(root, elsewhere), "");
+  assert.equal(workingCheckout(root, bare), "");
+});
 
 test("locate maps a plan path and a worktree path of a repo with a recorded worktree to that worktree (T-1.1)", () => {
   const inWorktree = { dir: WORKTREE, rel: "pricing.cs", repo: "src/Orders" };

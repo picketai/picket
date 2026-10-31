@@ -114,15 +114,15 @@ async function stop(server: Server, port: number, platform: NodeJS.Platform): Pr
   return !(await portOpen(port));
 }
 
-export async function serverMode(input: ServerInput, ctx: Context, timeoutMs: number): Promise<ServerReport> {
+export async function serverMode(input: ServerInput, ctx: Context, dir: string, timeoutMs: number): Promise<ServerReport> {
   if (!input.hits.length) throw new Refused('drive needs at least one --hit "GET /path", or --run "<command>" for a CLI');
-  const start = input.start ?? detectTooling(ctx.root).tooling.run;
+  const start = input.start ?? detectTooling(dir).tooling.run;
   if (!start) throw new Refused('no start command detected: pass --start "<command>"');
   const port = Number(input.port ?? ctx.env.PORT ?? (await freePort()));
   const wait = input.wait ?? input.hits[0].path;
   const base = `http://127.0.0.1:${port}`;
 
-  const server = watch(startShell(start, { cwd: ctx.root, env: { ...ctx.env, PORT: String(port), ...input.env }, platform: ctx.platform }));
+  const server = watch(startShell(start, { cwd: dir, env: { ...ctx.env, PORT: String(port), ...input.env }, platform: ctx.platform }));
   const started = Date.now();
   const up = await waitUntilUp(server, base, wait, timeoutMs);
   const waitMs = Date.now() - started;

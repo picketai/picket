@@ -1,4 +1,6 @@
+import { join } from "node:path";
 import { action, done, failed, refuse } from "../../shared/action.mts";
+import { workingCheckout } from "../../shared/checkouts.mts";
 import { runStep, type StepName, type StepOptions, type StepResult } from "../../shared/checks.mts";
 import { destructiveCommand, destructiveRefusal } from "../../shared/destructive.mts";
 import { detectTooling, type Tooling } from "../../shared/tooling.mts";
@@ -8,7 +10,8 @@ import { list, seconds, str, type Args } from "../../util/args.mts";
 export const CHECK_ORDER = ["test", "lint", "build"] as const;
 
 export type CheckInput = { steps: string[] | undefined; only: string | undefined; timeoutMs: number | undefined };
-export type CheckReport = { ok: boolean; steps: StepResult[]; skipped: StepName[]; warnings?: string[] };
+export type CheckReport = { ok: boolean; steps: StepResult[]; skipped: StepName[]; checkout: string; warnings?: string[] };
+type StepRun = Omit<CheckReport, "checkout" | "warnings">;
 
 type PlannedStep = { name: StepName; command: string | null };
 
@@ -26,7 +29,7 @@ function isRed(step: StepResult): boolean {
   return RED.includes(step.status);
 }
 
-function runUntilRed(root: string, plan: PlannedStep[], options: StepOptions): CheckReport {
+function runUntilRed(root: string, plan: PlannedStep[], options: StepOptions): StepRun {
   const steps: StepResult[] = [];
   for (const { name, command } of plan) {
     const step = runStep(root, name, command, options);
@@ -36,11 +39,17 @@ function runUntilRed(root: string, plan: PlannedStep[], options: StepOptions): C
   return { ok: !steps.some(isRed), steps, skipped: plan.slice(steps.length).map((step) => step.name) };
 }
 
-export const runChecks = action<CheckInput, CheckReport>(async (input, { root, env }) => {
+function logPrefix(checkout: string): string {
+  return checkout ? `check-${checkout.replaceAll("/", "-")}` : "check";
+}
+
+export const runChecks = action<CheckInput, CheckReport>(async (input, { root, cwd, env }) => {
   const match = input.only ? destructiveCommand(input.only) : null;
   if (match) return refuse(destructiveRefusal("check", match), { command: input.only });
-  const { tooling, warnings } = detectTooling(root);
-  const report = runUntilRed(root, planOf(input, tooling), { env, timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS, logPrefix: "check" });
+  const checkout = workingCheckout(root, cwd);
+  const dir = join(root, checkout);
+  const { tooling, warnings } = detectTooling(dir);
+  const report = { ...runUntilRed(root, planOf(input, tooling), { env, timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS, logPrefix: logPrefix(checkout), cwd: dir }), checkout };
   const withWarnings = warnings.length ? { ...report, warnings } : report;
   return report.ok ? done(withWarnings) : failed(withWarnings);
 });
@@ -55,7 +64,7 @@ function stepLine({ name, status, command, ms }: StepResult): string {
 }
 
 export function renderCheck(v: CheckReport): string {
-  const lines = v.steps.map(stepLine);
+  const lines = [...(v.checkout ? [`checkout: ${v.checkout}`] : []), ...v.steps.map(stepLine)];
   for (const step of v.steps) if (step.tail) lines.push(`--- ${step.log} (last lines)`, step.tail);
   if (v.skipped.length) lines.push(`not run: ${v.skipped.join(", ")}`);
   for (const warning of v.warnings ?? []) lines.push(`warning: ${warning}`);

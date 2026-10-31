@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { realpathSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { gitRead } from "../util/git.mts";
 import { readText } from "../util/io.mts";
 import { Refused } from "./action.mts";
@@ -81,6 +82,21 @@ export function readPlan(root: string, id: WorkId): { state: WorkState; phases: 
   const artifact = ARTIFACT_BY_LANE[state.lane];
   const text = artifact ? readText(workFile(root, id, artifact)) : null;
   return { state, phases: text === null ? [] : parseArtifact(text).phases };
+}
+
+function realPath(path: string): string {
+  try {
+    return realpathSync.native(resolve(path));
+  } catch {
+    return resolve(path);
+  }
+}
+
+export function workingCheckout(root: string, cwd: string): string {
+  const top = gitRead(cwd, ["rev-parse", "--show-toplevel"])?.trim();
+  if (!top) return "";
+  const rel = relative(realPath(root), realPath(top)).replaceAll("\\", "/");
+  return rel === "" || rel === ".." || rel.startsWith("../") || isAbsolute(rel) ? "" : rel;
 }
 
 export function testRuns(root: string, id: WorkId, n: number): TestRun[] {
