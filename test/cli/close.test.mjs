@@ -314,6 +314,50 @@ test("close --human on an order item gives the phase commit range up to the clos
   assert.equal(r.stdout.split("\n")[1], `Phases: 1 · commits ${first}..${git("rev-parse", "--short", "HEAD")} · review: APPROVED`);
 });
 
+const DEFERRING_DESIGN = [
+  "---",
+  "lane: design",
+  "phases:",
+  "  - n: 1",
+  "    files: [src/mail.ts]",
+  "    security: false",
+  "---",
+  "# Design: Order mail",
+  "",
+  "## Phase 1: Mail",
+  "",
+  "- **T-1.1** the confirmation is queued",
+  "- **T-1.2** the queue retries once",
+  "- **T-1.3** [DEFERRED: QA, before go-live] the mail renders in a real client",
+  "",
+].join("\n");
+
+test("a design close lists each deferred criterion of its record, after the Phases line", (t) => {
+  const { root, id } = repoWithOpenItem(t, "design");
+  writeFileSync(join(root, "work", id, "design.md"), DEFERRING_DESIGN);
+  writeState(root, { ...readState(root, id), status: "done" }, new Date());
+  assert.deepEqual(picket(root, "close", id).json.closing.deferred, [{ id: "T-1.3", owner: "QA", gate: "before go-live" }]);
+  const human = picket(root, "close", id, "--human");
+  assert.equal(human.code, 0, human.stdout);
+  assert.equal(human.stdout.split("\n")[2], "Deferred: T-1.3 QA, before go-live");
+});
+
+test("a fast close carries no deferred criteria and prints no Deferred line", (t) => {
+  const { root, id } = repoWithOpenItem(t);
+  const r = picket(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  assert.deepEqual(r.json.closing.deferred, []);
+  assert.doesNotMatch(picket(root, "close", id, "--human").stdout, /^Deferred:/m);
+});
+
+test("a research close carries no deferred criteria even when its report quotes a marker", (t) => {
+  const { root, id } = repoWithOpenItem(t, "research");
+  writeFileSync(join(root, "work", id, "research.md"), "---\nkind: report\n---\n# Report\n\n- **T-1.3** [DEFERRED: QA, before go-live] quoted\n");
+  const r = picket(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  assert.deepEqual(r.json.closing.deferred, []);
+});
+
 function orderAwaitingCumulativeReview(t) {
   const repo = repoWithOpenItem(t, "order");
   writeFileSync(join(repo.root, "work", repo.id, "order.md"), "---\nlane: order\n---\n# Order\n\n## Phase 1: Module\n\ntext\n");

@@ -104,7 +104,7 @@ test("guard.block does not check Verified: on a fast lane block", (t) => {
   assert.equal(blockVerdict(root, expedited), null);
 });
 
-const MISSING_BLOCK ="guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
+const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
 
 function agentTurn(root, text, fields) {
   const tp = transcript(root, [user("x"), assistant([{ type: "text", text }])]);
