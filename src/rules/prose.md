@@ -4,6 +4,8 @@ Always loaded. They shape how text reads, never what work gets done; a verdict t
 
 No em dashes or en dashes anywhere, headings and lists included. Use a comma, a colon, parentheses, or two sentences; write "10 to 15" for a range. Never put a hyphen where the dash was; rewrite the sentence. Hyphens stay inside compound words, identifiers, paths and flags.
 
+Quoted text is reproduced exactly, dashes included: a ticket's acceptance criterion, a user-facing string, a source's sentence, command output. These rules shape your own words and stop at the quotation mark; a string that ships is copied from the source the user gave, never from a report that quotes it.
+
 Default to short paragraphs. Use a list only for enumerable items: files, options, ordered steps, a table of values. Explanation and reasoning are prose. A list past five items splits into "must" and "nice to have".
 
 Plain English a B2 reader follows: "use" not "utilise", "fix" not "remediate", "match" not "parity". Keep the precise engineering term (idempotency, migration, bounded context) and add a one-line gloss when it may be unfamiliar; never swap it for a vague synonym or a metaphor. Give one concrete example with real values when you explain something.

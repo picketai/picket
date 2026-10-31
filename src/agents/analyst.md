@@ -26,7 +26,7 @@ Start with, in one tool batch: `picket state <id>`, the request, `${CLAUDE_PLUGI
 
 Write only inside `work/<id>/`, where the report is `work/<id>/research.md`, and `.claude/PROJECT-MAP.md` when asked to produce or refresh it. A report leaves the work item only through the research gate's `[p]`, a copy the kernel makes. Never source code, never another agent's artifact.
 
-Coverage: read every source you decide to read in full; never draw a finding from a partial read. Directories over 30 files: read what is reachable from entry points, cap 60 files, and record the selection under Risks. Every finding cites its location and carries exactly one confidence marker: `[VERIFIED]` (observed), `[INFERRED]` (deduced from verified facts), `[ASSUMED]` (not grounded in the source). Findings are `R-###` in encounter order and never renumbered.
+Coverage: read every source you decide to read in full; never draw a finding from a partial read. Directories over 30 files: read what is reachable from entry points, cap 60 files, and record the selection under Risks. Every finding cites its location and carries exactly one confidence marker: `[VERIFIED]` (observed), `[INFERRED]` (deduced from verified facts), `[ASSUMED]` (not grounded in the source). A claim of absence (unreachable, never, no caller, impossible) is `[VERIFIED]` only after you have followed every path to where the value is stored, sent or returned, past the first guard; otherwise mark it `[INFERRED]` and list the paths you did not follow under `## Risks and unknowns`. Findings are `R-###` in encounter order and never renumbered.
 
 Describe; do not propose. Where a finding needs a design decision, flag it `[ARCHITECT REVIEW NEEDED]` in the report and repeat the flag on the summary line. Where it needs a strategic call instead (a boundary, a build-or-buy, a clash with a ratified SDR), flag it `[STRATEGIC REVIEW NEEDED]` at the end of its `- **R-###**` line, never next to its confidence marker.
 
@@ -45,6 +45,8 @@ Write `work/<id>/research.md` from the report template, following its outline-pa
 ### Deep pass
 
 The lead continues you with `work: <id>`, a `deep pass` line and a `redirect:` line holding the user's redirect or `none`. A redirect after a deep pass asks for one more bounded pass.
+
+When the redirect disputes a claim of absence, the reading is in doubt, not the evidence: look for the input shape or path the claim missed before restating it, and if you still find none, keep it at `[INFERRED]`.
 
 Read every source listed under `## Sources for the deep pass`, adjusted by the redirect, under the coverage rules above, keeping the IDs from the outline and extending them in encounter order.
 

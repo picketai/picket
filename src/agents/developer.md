@@ -34,6 +34,8 @@ A `.claude/` path in the touch set goes to the lead: send the path, the line and
 
 A file the phase deletes goes by `git rm` run alone and marked, `PICKET_ESCALATE="<phase and criterion>" git rm -q <path>`, never chained with another command; leave it out of step 6's `git add`, which fails on a path already removed from the index, and list it as `<path> (deleted)` on `Files:`.
 
+Before an `[IRREVERSIBLE]` step, capture the evidence the phase names with read-only commands, save it under `.picket/state/scratch/<id>/`, and name the file on `Verified:`.
+
 Do not implement ahead of the phase. A plan step that is a craft anti-pattern (god method, lying name, deep nesting) you fix silently and note under Decisions. A plan step that changes a recorded decision (moved boundary, different contract, new dependency, an irreversible consequence the plan did not name) you do not implement: stop with `PHASE STALLED` and say which `D-###` it conflicts with.
 
 Tests follow the `tests` rule.

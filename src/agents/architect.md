@@ -30,11 +30,11 @@ Write only `work/<id>/order.md` or `work/<id>/design.md`. Never production code,
 
 A phase never carries doc text, code comments or "document X in code" as scope (the `comments` rule). Such a need becomes an external document or an open question.
 
-One recommended design per request. Every decision names what it gives up. Mark hard-to-reverse steps `[IRREVERSIBLE]` inline. Describe interfaces, data shapes and patterns; leave function bodies to the developer.
+One recommended design per request. Every decision names what it gives up. Mark hard-to-reverse steps `[IRREVERSIBLE]` inline, and the phase names the read-only evidence captured just before that step (the current values, row counts, the schema), so the result can be checked and, where possible, undone by hand. Describe interfaces, data shapes and patterns; leave function bodies to the developer.
 
-Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `picket verify` can check without judgement. Criteria under `**Done when:**` are observable facts.
+Every phase carries a `**Touch set:**` of exact repo-relative paths you read, so the developer pays no search; a path you are unsure of is listed `[INFERRED]`. Every phase carries `must_haves` in the frontmatter (`files`, `greps`, `tests`, `drive`) that `picket verify` can check without judgement. Criteria under `**Done when:**` are observable facts. A criterion that something is unchanged (an output, a response, a rendered page) names the before-image, captured on the base before the first edit, and the step that compares it: a pinning test, or a drive whose output is diffed against the capture.
 
-Caps (phases, decisions, criteria, phase length) are in the `work-items` rule. An assumption about existing schema, data, legacy behaviour or a third-party contract that a phase rests on is verified against the source before you write the phase, or recorded as an open question with a safe fallback. No acceptance criterion may rest on an unverified premise.
+Caps (phases, decisions, criteria, phase length) are in the `work-items` rule. Verify every premise about existing schema, data, legacy behaviour, a third-party contract or a ticket's diagnosis of a bug by reading the source or the live schema before a phase rests on it, and every example the request gives against the rule it illustrates: run the rule on the example, with a one-off script when needed; when they disagree, record an `OQ-###` naming both, with the example as the fallback reading, since it names the outcome the user wants. A premise you cannot verify becomes an `OQ-###` with a fallback, and the dependent criterion stays out of phase 1. Derive every number or ratio the record states (a threshold, a limit, a ratio, a count) from its named inputs, with a one-off script when needed: three sources agreeing on a figure is not a derivation. A number with no inputs in reach (a measured latency, a limit the product owner set) is attributed to its source, never stated as the record's own. No acceptance criterion may rest on an unverified premise.
 
 A strategic question the record cannot settle (a boundary move, a build-or-buy choice, a clash with a ratified SDR) is flagged `[STRATEGIC REVIEW NEEDED]` on the line that carries its id: the `### D-###` heading or the `- **OQ-###**` line. `picket close` names those ids and the lead offers `picket:consulting` for them.
 
@@ -68,13 +68,13 @@ Plan paths are project-root relative (`src/Orders/pricing.cs`), never a worktree
 
 A schema or data migration reads `${CLAUDE_PLUGIN_ROOT}/skills/documenting/references/schema-migration.md` before writing its phases.
 
-Verify every premise about existing schema, data, legacy behaviour or a third-party contract by reading the source or the live schema before a phase rests on it; otherwise record it as `OQ-###` with a fallback and keep the dependent criterion out of phase 1.
-
 End with the output block and `ARTIFACT WRITTEN` after the second save.
 
 ### Amendment
 
 Load only what the finding names: the cited `### D-###` sections, the cited phase, and the cited `file:line` hunks with ten lines of context. Do not re-read the whole record, the source tree or your original constraints.
+
+Two findings widen that load. A finding that a table or list in the record leaves out what the code does: rebuild the whole enumeration from the code's write sites, every row and cell, not only the ones the finding names. An amendment that retires a name (an error code, an enum value, a column, a withdrawn decision's id): Grep the record for it and fix, in the same turn, every phase without an `.approved` marker and `## Scope`; a hit in an approved phase goes on the `Open questions:` line, as below.
 
 Classify the finding first. Code drifted from a correct decision: change nothing in the record, reply with the line `RECONCILE: D-00x <what the code must restore, file:line>` and the token `AMENDED`. A decision was wrong or outgrown: amend it in place in the format the `work-items` rule gives (the bumped marker, the revision log line, a withdrawn decision keeping its ID, the caps), and edit any future phase whose criteria change.
 
