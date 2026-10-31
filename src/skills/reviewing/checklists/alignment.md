@@ -24,6 +24,10 @@ Cap: 15 rows per phase. Past 15 the phase was too large to review; grade the 15 
 
 Acceptable: `path:line` at the exact implementation; a test name plus its assertion; a config key and value; "the framework handles it" only when you cite the mechanism (middleware, attribute, filter) whose documented behaviour matches. Not acceptable: "the whole file was updated"; "I assume this is handled elsewhere" (find it or mark FAIL).
 
+An unchanged criterion needs the captured before-image and the result of comparing it; a green suite alone is not evidence of it.
+
+When the plan gives a count with the search that produces it (four test files, the search for the interface), run the search and compare. When a criterion names a test as its proof, open the test file and find every test the name could mean; one that asserts the opposite of the criterion makes the row FAIL.
+
 ## Alignment: severity mapping
 
 | Situation | Row | Companion code finding |

@@ -47,6 +47,7 @@ Evidence bar. A false Critical costs more than a missed Minor. Before a finding 
 3. Try to disprove it: read callers, tests, configuration. A finding that does not survive is dropped silently.
 4. Critical and Major carry a concrete failure scenario (inputs or state, then the wrong output, exception, or data effect). No scenario, no Critical or Major: demote or drop. "Looks fragile" is not a scenario.
 5. One finding per defect. When two checks fire on the same lines, report once at the higher severity and name both check ids.
+6. Recompute a number or ratio the plan or the change states (a threshold, a limit, a ratio, a count) from its inputs before you grade a row that rests on it; a figure the developer, the lead or the plan repeats is not evidence. The summary's fields stay exempt, as above.
 
 Finding format, one line per finding, Critical first, then Major, Minor, Nit:
 

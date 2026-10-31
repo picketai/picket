@@ -23,6 +23,7 @@ Prove before change, check, drive, then report. These steps decide what the bloc
    - Run it through `picket check` before touching the code. It must fail for the reported reason; a failure on a missing import or a typo in the test is not red.
    - Keep its first failure line for the block: `Red: test/fee.test.ts failed: expected 1.05, got 1.04`. Fix the code and see the same test pass.
    - A test that passes before the fix does not reach the defect: change the test, never the expectation.
+   - A test that reproduces the reported failure proves the failure, not the ticket's explanation of it: `Root cause:` names the cause you found in the code.
    - When the request carries a red test from `picket:debugging` (its hand-off names the test path and its failure line), run that test first instead: it is the red, no second test is written, and the block's `Red:` and `Root cause:` lines repeat the diagnosis once you have seen the same failure.
    - The red test and the fix land in the same commit.
 3. A refactor gets a pinning test first: a characterization test of today's observable behaviour, odd outputs included. Example: `formatName(null)` returns `"undefined undefined"` today, so the test asserts exactly that, and the refactor keeps it unless the plan says otherwise. A type check and a lint run are not a pin; they prove the code compiles, not that it does the same thing. The block line is `Red: pinned: test/name.test.ts`.
@@ -33,6 +34,10 @@ Prove before change, check, drive, then report. These steps decide what the bloc
 ## Rules
 
 Tests follow the `tests` rule: unit tests by default, another kind only when the plan or the request names it, no real infrastructure in a unit test, and every test asserts the rule its name claims.
+
+A bulk edit by script reads and writes bytes, keeps each file's BOM and line endings, and prints how many matches it changed per file. Prove it with `git diff --numstat`: a file whose whole length shows in both columns flipped its encoding or line endings.
+
+After you move or rename a namespace, module or symbol, search the whole repository for the old name: strings, configuration and docs miss the compiler. A failure you call pre-existing is proven on the base: run the same test at `base` and show it fails there too.
 
 One `picket drive` command does the whole drive loop and costs no permission prompt:
 

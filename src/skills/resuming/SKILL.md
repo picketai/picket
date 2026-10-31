@@ -30,6 +30,8 @@ Current work items:
 
 Never rewrite `state.yaml` by hand and never guess a phase number: `picket next` is the only source.
 
+When the item's source is a ticket key, compare the live ticket's updated time with the story's `Ticket updated:` line; when it moved, say so and offer a pull before continuing.
+
 ## Output
 
 At a gate, `picket packet <id>` printed verbatim and nothing else. For `close` or `none`, one line. Any other action replies as the lane skill's `## Output` says.
