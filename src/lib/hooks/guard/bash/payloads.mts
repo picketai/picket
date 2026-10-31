@@ -32,7 +32,10 @@ const EXPRESSION_ROOTS = new Map<string, PayloadDialect>([["eval", "sh"], ["Invo
 const ARGV_TAIL_ROOTS = new Set(["xargs", "env", "nohup", "timeout", "watch", "command", "exec", "nice"]);
 const SHELL_COMMAND_FLAG = /^-[a-z]*c[a-z]*$/;
 const POWERSHELL_COMMAND_FLAG = /^-(c|command)$/i;
-const CMD_RUN_FLAG = /^\/c$/i;
+const CMD_RUN_FLAG = /^\/\/?c$/i;
+const DELETE_HOSTS = new Set(["cmd", "powershell", "pwsh"]);
+const WRAPPED_DELETES = new Set(["del", "erase", "rd", "rmdir", "rm", "Remove-Item", "ri"].map((name) => name.toLowerCase()));
+const CMD_SEPARATOR = /&&?|\|\|?/;
 const STATE_PREFIX_REL = `${stateRel("")}/`.toLowerCase();
 const POWERSHELL_WRITERS = new Set(["Set-Content", "sc", "Add-Content", "ac", "Out-File"].map((name) => name.toLowerCase()));
 const POWERSHELL_PATH_PARAMS = /^-(path|filepath|literalpath)$/i;
@@ -157,6 +160,30 @@ export function leadOnlyInside(seg: Segment, agent: string | null, mentionsKerne
     if (found) return found;
   }
   return null;
+}
+
+function hostOf(seg: Segment): string {
+  return String(normalizeRoot(seg[0] ?? "")).toLowerCase();
+}
+
+function cmdCommands(tail: Segment): Segment[] {
+  return stringWords(tail)
+    .join(" ")
+    .split(CMD_SEPARATOR)
+    .map((part) => part.trim().split(/\s+/).filter(Boolean))
+    .filter((words) => words.length > 0);
+}
+
+function wrappedSegments(seg: Segment): Segment[] {
+  const payload = metaPayload(seg);
+  if (!payload) return [];
+  if ("tail" in payload) return cmdCommands(payload.tail);
+  return payloadParse(payload.text, payload.dialect)?.segments ?? [];
+}
+
+export function deletesInsideWrapper(seg: Segment, depth = 0): boolean {
+  if (depth > MAX_SUBSTITUTION_DEPTH || !DELETE_HOSTS.has(hostOf(seg))) return false;
+  return wrappedSegments(seg).some((inner) => WRAPPED_DELETES.has(hostOf(inner)) || deletesInsideWrapper(inner, depth + 1));
 }
 
 export function codeWriteTarget(target: string | null, cwds: (string | null)[], root: string): string | null {

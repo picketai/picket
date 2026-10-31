@@ -163,6 +163,38 @@ test("a spawned agent's shell write to a code or test file is denied, naming the
   }
 });
 
+test("a delete wrapped in cmd or a PowerShell host is denied from the Bash tool with the destructive denial of rm", (t) => {
+  const root = project(t);
+  const reason = (command: string) => guardOutput(command, { root, tool: "Bash", agent: "picket:developer" });
+  const rm = reason("rm a.txt");
+  assert.equal(rm?.permissionDecision, "deny");
+  for (const command of ["cmd //c del a.txt", "cmd.exe /c erase a.txt", 'cmd /c "rd /s /q build"', "pwsh -Command Remove-Item a.txt", 'powershell -c "ri a.txt"', 'cmd /c "dir & del a.txt"']) {
+    const out = reason(command);
+    assert.equal(out?.permissionDecision, "deny", command);
+    assert.equal(out?.permissionDecisionReason, rm?.permissionDecisionReason, command);
+  }
+});
+
+test("cmd /c del from the PowerShell tool is denied with the PowerShell destructive denial", (t) => {
+  const root = project(t);
+  const out = guardOutput("cmd /c del a.txt", { root, tool: "PowerShell", agent: "picket:developer" });
+  assert.equal(out?.permissionDecision, "deny");
+  assert.match(out?.permissionDecisionReason ?? "", /^guard\.bash: PowerShell command contains a destructive sub-command/);
+});
+
+test("a wrapper that runs no delete keeps its decision", (t) => {
+  const root = project(t);
+  for (const command of ["cmd //c mklink b a", "cmd /c dir", "pwsh -c Get-ChildItem"]) {
+    assert.equal(decision(command, { root, tool: "Bash", agent: "picket:developer" }), null, command);
+  }
+});
+
+test("an escalated wrapped delete gets the same decision as an escalated rm", (t) => {
+  const root = project(t);
+  const outcome = (command: string) => decision(command, { root, tool: "Bash", agent: "picket:developer" });
+  assert.equal(outcome('PICKET_ESCALATE="you asked" cmd //c del a.txt'), outcome('PICKET_ESCALATE="you asked" rm a.txt'));
+});
+
 test("state files, docs, discards, stream plumbing and code outside the project are not shell-write denials (T-2.5)", (t) => {
   const root = project(t);
   const reason = (command: string) => guardOutput(command, { root, tool: "Bash", agent: "picket:developer" })?.permissionDecisionReason ?? "";

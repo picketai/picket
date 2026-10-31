@@ -36,6 +36,8 @@ A file the phase deletes goes by `git rm` run alone and marked, `PICKET_ESCALATE
 
 Before an `[IRREVERSIBLE]` step, capture the evidence the phase names with read-only commands, save it under `.picket/state/scratch/<id>/`, and name the file on `Verified:`.
 
+An untracked file you created and no longer need is recorded with `picket leave`; never delete it through another shell.
+
 Do not implement ahead of the phase. A plan step that is a craft anti-pattern (god method, lying name, deep nesting) you fix silently and note under Decisions. A plan step that changes a recorded decision (moved boundary, different contract, new dependency, an irreversible consequence the plan did not name) you do not implement: stop with `PHASE STALLED` and say which `D-###` it conflicts with.
 
 Tests follow the `tests` rule.

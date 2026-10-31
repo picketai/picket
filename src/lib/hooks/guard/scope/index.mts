@@ -1,4 +1,4 @@
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../../../shared/paths.mts";
 import { sourceRoots, underSource } from "../../../shared/sources/protection.mts";
@@ -50,8 +50,15 @@ function isLegacyState(rel: string): boolean {
 }
 
 function editsUnreadFile(event: EditEvent, abs: string): boolean {
+  const changesExisting = event.tool_name === "Edit" || (event.tool_name === "Write" && existsSync(abs));
+  if (!changesExisting) return false;
   const own = agentTranscript(event);
-  return event.tool_name === "Edit" && Boolean(own) && !wasRead(own, abs);
+  return Boolean(own) && !wasRead(own, abs);
+}
+
+function unreadReason(event: EditEvent, rel: string): string {
+  if (event.tool_name === "Write") return `${rel} already exists; read it before writing, or the plan's new file is not new`;
+  return `read ${rel} with the Read tool before editing it; the file may have changed since you last saw it`;
 }
 
 function denialReason(event: EditEvent, ctx: HookContext, target: EditTarget, rel: string): string | null {
@@ -60,7 +67,7 @@ function denialReason(event: EditEvent, ctx: HookContext, target: EditTarget, re
   if (isLegacyState(rel)) return `${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`;
   const source = underSource(target.abs, sourceRoots(ctx.root, ctx.env, ctx.platform), ctx.platform);
   if (source) return `${target.filePath} is inside source ${source}, which is read-only; read it through \`picket source\` and the snapshots`;
-  if (editsUnreadFile(event, target.abs)) return `read ${rel} with the Read tool before editing it; the file may have changed since you last saw it`;
+  if (editsUnreadFile(event, target.abs)) return unreadReason(event, rel);
   return null;
 }
 

@@ -52,6 +52,20 @@ test("guard.scope denies kernel-owned writes and unread edits, allows the rest",
   assert.equal(run(sub, root), null, "read in its own transcript: allowed");
 });
 
+test("guard.scope denies a Write over an existing file the transcript never read, and allows a read one or a new path", (t) => {
+  const { root } = hookProject(t);
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "read.ts"), "x");
+  writeFileSync(join(root, "src", "unread.ts"), "y");
+  const tp = transcript(root, [user("x"), assistant([tool("Read", { file_path: join(root, "src", "read.ts") })])]);
+  const write = (name) => run({ hook_event_name: "PreToolUse", transcript_path: tp, cwd: root, tool_name: "Write", tool_input: { file_path: join(root, "src", name), content: "z" } }, root);
+  const denied = write("unread.ts");
+  assert.equal(denied?.hookSpecificOutput.permissionDecision, "deny");
+  assert.equal(denied.hookSpecificOutput.permissionDecisionReason, "guard.scope: src/unread.ts already exists; read it before writing, or the plan's new file is not new");
+  assert.equal(write("read.ts"), null);
+  assert.equal(write("new.ts"), null);
+});
+
 test("a spawned guard.scope deny appends one block row naming the hook, the bare agent, the session and the open item (T-2.1)", (t) => {
   const { root, id } = hookProject(t);
   const out = run({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, "work", id, "state.yaml") }, cwd: root, session_id: "s30", agent_type: "picket:developer" }, root);
