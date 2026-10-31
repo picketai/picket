@@ -1,6 +1,6 @@
 # 21: Lessons from a consumer project's agent memory
 
-Status: draft (2026-10-31).
+Status: approved (2026-10-31).
 
 Implements every outcome approved in `artifacts/reports/picket-candidates-from-development-memory-2026-10-30.md` (`## Walkthrough outcomes`, items 1 to 18 and K1 to K4). The exact text of each instruction change lives there, once; this draft cites it by item and adds only the code shape, the split and the risks. Nothing from the consumer project goes into the change: examples stay neutral (orders, a shop, `src/Webapp`), and `test/repo/private-terms.test.mjs` checks it.
 
@@ -62,7 +62,7 @@ The architect sets the phases; a likely split:
 2. Blocked kinds in `guard.block` (item 3).
 3. Deferrals: parser, close, closing block, `lint.schema`, the two lane templates (item 6).
 4. `absent` greps: verify, `lint.schema`, templates (item 8).
-5. The two guards (item 13, K1), each with its own gate.
+5. The two guards (item 13, K1).
 6. `check` and `drive` in a nested checkout (K3).
 
 After the cumulative review, offer the fast lane bench (items 3, 6, 8 and K1 change contracts) with its worst case, and run it only on the user's answer and cap.

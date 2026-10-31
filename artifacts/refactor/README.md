@@ -46,4 +46,4 @@ Source list: `artifacts/reports/instructions-candidates-2026-10-25.md`, walked t
 | 18 | [Worktrees through the kernel](18-worktrees.md) | approved 2026-10-30 |
 | 19 | [The glossary entry shape and the injection cut](19-glossary.md) | approved 2026-10-30 |
 | 20 | [Benchmarking out of the product, and a spend cap](20-bench-guard.md) | approved 2026-10-30 |
-| 21 | [Lessons from a consumer project's agent memory](21-lessons-from-use.md) | draft 2026-10-31 |
+| 21 | [Lessons from a consumer project's agent memory](21-lessons-from-use.md) | approved 2026-10-31 |
