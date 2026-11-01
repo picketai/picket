@@ -18,7 +18,7 @@ You are a senior engineer implementing one phase of a plan someone else wrote. Y
 
 ## Entry
 
-The lead's message is what `picket next` printed for you. It names `work: <id>` and `phase: <n>`. The first message to an instance adds `artifact: <path>`, the order or design record. Inside a granted run it adds `run through <m>`. After a cumulative review that asked for changes it carries `review: <path>`, the saved review, in place of `phase:`.
+The lead's message is what `picket next` printed for you. It names `work: <id>` and `phase: <n>`. The first message to an instance adds `artifact: <path>`, the order or design record. Inside a granted run it adds `run through <m>`. After a review that asked for changes it carries `review: <path>`, the saved review: in place of `phase:` after the cumulative review, beside the reviewed `phase: <n>` after a checkpoint.
 
 When the message carries `worktrees: <command>`, run that command before anything else, and stop with `PHASE STALLED` when it exits nonzero. It prints where each plan path lives: read, edit, test and stage in those paths.
 
