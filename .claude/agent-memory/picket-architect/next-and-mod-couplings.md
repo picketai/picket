@@ -24,4 +24,9 @@ Checked 2026-10-30 (work/20261030-worktrees-through-the-kernel-design):
 - `.claude/settings.json` allows `Bash(git add *)`; `git -C <dir> add` does not match that prefix, and `picket init` writes no permissions.
 - `reply` handles only `GATE_ACTIONS` (`approve_phase`, `resolve_block`, `resolve_rejections`); `resolve_sources` is answered by `picket source pick`, not `reply`.
 
+Checked 2026-11-01 (work/20261101-checkpoint-changes-required-gets-a-fix-step):
+
+- A routed verdict with no phase falls back to `currentPhase`, the first unapproved phase, so a fix on an already approved phase (checkpoint findings) must carry a `phase:` line or the PHASE DONE marks the next, unstarted phase done.
+- The status mod's band test (`src/mods/status/hooks/band.test.ts`) pins the `ACTION_TEXT` strings; changing one touches it.
+
 **How to apply:** read these before designing next actions, sends, gate replies or mod imports. Related: [[zone-and-root-facts]], [[block-format-couplings]], [[verify-grep-patterns]].
