@@ -10,4 +10,5 @@
 - [Scratch drive root](scratch-drive-root.md) — scratchpad picket runs land in the home folder; set CLAUDE_PROJECT_DIR first
 - [Lane open line pinned](lane-open-line-pinned.md) — lane-check.test.mjs matches each lane's `picket open` line; update it with the step
 - [Reply is lead-only](reply-is-lead-only.md) — guard.bash denies `picket reply` to agents; drive next/packet, unit-test the reply
+- [Temp short names](temp-short-names.md) — tmpdir is 8.3 short form, git prints long form; realpath both before relative
 - [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag
