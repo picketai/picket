@@ -17,7 +17,7 @@ export const ACTION_TEXT: Readonly<Record<NextAction, (step: ActionStep, voice: 
   resolve_rejections: (_step, voice) => (voice === "user" ? "you decide after repeated rejections" : "waits for a decision after repeated rejections"),
   close: () => "lead closes the item",
   none: (step) => step.detail,
-  fix_findings: () => "developer fixes the cumulative review findings",
+  fix_findings: () => "developer fixes the review findings",
   amend: (step) => `architect amends ${step.lane}.md`,
   review_crosscheck: () => "reviewer re-checks the amended decisions",
   create_worktrees: (_step, voice) => (voice === "user" ? "you name the worktree branch" : "waits for a worktree branch name"),
