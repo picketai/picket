@@ -6,6 +6,7 @@ import { briefLines } from "./brief.mts";
 import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
 import { freshReplies } from "./replies.mts";
+import { reviewRel } from "./reviews.mts";
 import { phaseOf, type WorkSnapshot } from "./snapshot.mts";
 import { ARTIFACT_BY_LANE } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
@@ -141,6 +142,17 @@ function cumulativeSend(snap: WorkSnapshot, session: string | null): SendView {
   return send(snap, reviewer, session, (tool) => [...(tool === "Agent" ? [FRESH_REVIEW] : []), workLine(snap), "scope: cumulative", ...summaryLines(snap)], { model: "opus", first });
 }
 
+function findingsSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "fix_findings" }>, session: string | null): SendView {
+  const phaseLines = step.review === "checkpoint" ? [`phase: ${step.phase}`] : [];
+  return send(snap, developer(snap), session, (tool) => [
+    workLine(snap),
+    `review: ${reviewRel(snap.state.id, step.review, null)}`,
+    ...phaseLines,
+    ...worktreesLines(snap),
+    ...(tool === "Agent" ? [artifactLine(snap)] : []),
+  ]);
+}
+
 function renderSend(s: SendView): string {
   const heading = `${s.tool} ${s.to} · ${s.type}${s.model ? ` · model ${s.model}` : ""}`;
   return [heading, ...(s.first ?? []).map((command) => `first: ${command}`), "```text", s.message, "```"].join("\n");
@@ -166,7 +178,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "review_cumulative":
       return [cumulativeSend(snap, session)];
     case "fix_findings":
-      return [send(snap, developer(snap), session, (tool) => [workLine(snap), `review: ${itemFile(snap, "reviews/cumulative.md")}`, ...worktreesLines(snap), ...(tool === "Agent" ? [artifactLine(snap)] : [])])];
+      return [findingsSend(snap, step, session)];
     case "amend":
       return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`])];
     case "review_crosscheck":

@@ -42,7 +42,7 @@ test("every send row addresses its instance by the item's tag and the role", () 
     [{ phases: [{ n: 1 }] }, implement(1), "developer"],
     [{ lane: "design", phases: approved }, { action: "review_checkpoint", actor: "reviewer", phase: 1, detail: "d" }, "reviewer"],
     [{ phases: approved }, { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" }, "cumulative-reviewer"],
-    [{ phases: approved }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" }, "developer"],
+    [{ phases: approved }, { action: "fix_findings", actor: "developer", phase: 1, review: "cumulative", detail: "d" }, "developer"],
     [{ phases: approved }, { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-001 x" }, "architect"],
   ];
   for (const [input, step, role] of rows) assert.deepEqual(sends(input, step).map((s) => s.to), [named(role)], step.action);
@@ -140,10 +140,10 @@ test("checkpoint, findings and amendment sends carry their lines; user, lead and
   assert.deepEqual(sends({ lane: "design", phases }, { action: "review_checkpoint", actor: "reviewer", phase: 3, detail: "d" }), [
     { tool: "Agent", to: named("reviewer"), type: "picket:reviewer", first: [`picket summary ${ID} --save`], message: `work: ${ID}\nscope: checkpoint\nphase: 3\nsummary: work/${ID}/summary.json` },
   ]);
-  assert.deepEqual(sends({ phases }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" }), [
+  assert.deepEqual(sends({ phases }, { action: "fix_findings", actor: "developer", phase: 1, review: "cumulative", detail: "d" }), [
     { tool: "Agent", to: named("developer"), type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md\nartifact: work/${ID}/order.md` },
   ]);
-  const continued = sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }, { action: "fix_findings", actor: "developer", phase: 1, detail: "d" });
+  const continued = sends({ phases, verdicts: [verdictRow("developer", "PHASE DONE", null, S)] }, { action: "fix_findings", actor: "developer", phase: 1, review: "cumulative", detail: "d" });
   assert.equal(continued[0].message, `work: ${ID}\nreview: work/${ID}/reviews/cumulative.md`);
   assert.deepEqual(sends({ phases }, { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-002 x" }), [
     { tool: "Agent", to: named("architect"), type: "picket:architect", message: `work: ${ID}\namend: AMENDMENT NEEDED: D-002 x` },
@@ -155,6 +155,14 @@ test("checkpoint, findings and amendment sends carry their lines; user, lead and
     { action: "none", actor: null, detail: "d" },
   ];
   for (const step of silent) assert.deepEqual(sends({ phases }, step), [], step.action);
+});
+
+test("a checkpoint fix spawns the developer with the checkpoint review and the phase it fixes (T-1.4)", () => {
+  const phases = Array.from({ length: 6 }, (_, i) => (i < 3 ? { n: i + 1, done: true, approved: true } : { n: i + 1 }));
+  const fix: NextStep = { action: "fix_findings", actor: "developer", phase: 3, review: "checkpoint", detail: "d" };
+  assert.deepEqual(sends({ lane: "design", phases }, fix), [
+    { tool: "Agent", to: named("developer"), type: "picket:developer", message: `work: ${ID}\nreview: work/${ID}/reviews/checkpoint.md\nphase: 3\nartifact: work/${ID}/design.md` },
+  ]);
 });
 
 test("each fresh developer reply names the next instance, developer-2 first, spawned with the artifact", () => {
@@ -193,7 +201,7 @@ test("a fresh developer is continued only by a developer row of this session aft
 const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };
 const ORDERS_PHASES = [{ n: 1, done: true, approved: true, entry: { n: 1, files: ["src/Orders/pricing.cs"] } }, { n: 2 }];
 const WORKTREES_LINE = `worktrees: picket worktree ${ID}`;
-const fixFindings: NextStep = { action: "fix_findings", actor: "developer", phase: 2, detail: "d" };
+const fixFindings: NextStep = { action: "fix_findings", actor: "developer", phase: 2, review: "cumulative", detail: "d" };
 
 test("a branch over a plan touching a nested repo sends the worktrees line at phase 1, later phases and fix_findings (T-7.1)", () => {
   const item = { branch: "RMS-12", layout: ORDERS_LAYOUT, phases: ORDERS_PHASES };

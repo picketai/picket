@@ -117,7 +117,7 @@ function amending(verdict: string, scope: string | null = null) {
 test("an open cumulative rejection sends the developer to fix its findings until a PHASE DONE answers it", () => {
   const phases = numbered(3, { done: true, approved: true });
   const rejected = [row("approved"), row("CHANGES REQUIRED", "cumulative")];
-  assert.deepEqual(step({ phases, verdicts: rejected }), { action: "fix_findings", actor: "developer", phase: 3, detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" });
+  assert.deepEqual(step({ phases, verdicts: rejected }), { action: "fix_findings", actor: "developer", phase: 3, review: "cumulative", detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" });
   assert.equal(step({ phases, verdicts: [...rejected, { ...row("PHASE DONE"), agent: "developer" }] }).action, "review_cumulative");
 });
 
@@ -243,6 +243,40 @@ test("every phase reviewed, or a cumulative APPROVED row, lets the lead close", 
 test("phase 4 of a six-phase design starts with a checkpoint on phase 3", () => {
   const phases = numbered(6).map((p) => (p.n <= 3 ? { ...p, done: true, approved: true } : p));
   assert.deepEqual(step({ lane: "design", phases }), { action: "review_checkpoint", actor: "reviewer", phase: 3, detail: "mid-plan checkpoint before phase 4" });
+});
+
+function checkpointed(marks: Partial<PhaseInput> = {}): PhaseInput[] {
+  return numbered(6).map((p) => (p.n <= 3 ? { ...p, done: true, approved: true, ...(p.n === 3 ? marks : {}) } : p));
+}
+
+const CHECKPOINT_REJECTION = row("CHANGES REQUIRED", "checkpoint");
+const DEVELOPER_DONE = { ...row("PHASE DONE"), agent: "developer" };
+
+test("a checkpoint CHANGES REQUIRED sends the developer to fix its findings on the checkpoint phase (T-1.1)", () => {
+  assert.deepEqual(step({ lane: "design", phases: checkpointed(), verdicts: [CHECKPOINT_REJECTION] }), {
+    action: "fix_findings",
+    actor: "developer",
+    phase: 3,
+    review: "checkpoint",
+    detail: "the checkpoint review returned CHANGES REQUIRED; fix its findings",
+  });
+});
+
+test("a PHASE DONE after the checkpoint rejection sends the item back to the checkpoint review (T-1.2)", () => {
+  assert.deepEqual(step({ lane: "design", phases: checkpointed(), verdicts: [CHECKPOINT_REJECTION, DEVELOPER_DONE] }), {
+    action: "review_checkpoint",
+    actor: "reviewer",
+    phase: 3,
+    detail: "mid-plan checkpoint before phase 4",
+  });
+});
+
+test("a reviewed checkpoint phase lets phase 4 start, rejection row or not (T-1.3)", () => {
+  const phases = checkpointed({ reviewed: true });
+  for (const verdicts of [[CHECKPOINT_REJECTION], []]) {
+    const { action, phase } = step({ lane: "design", phases, verdicts });
+    assert.deepEqual([action, phase], ["implement_phase", 4]);
+  }
 });
 
 test("the first unfinished phase goes to the developer", () => {

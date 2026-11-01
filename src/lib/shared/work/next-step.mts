@@ -9,6 +9,8 @@ import type { VerdictRow } from "./verdict-log.mts";
 
 export { NEXT_ACTIONS, type NextAction } from "./action-text.mts";
 
+export type FindingsReview = "checkpoint" | "cumulative";
+
 export type NextStep =
   | { action: "none"; actor: null; detail: string }
   | { action: "resolve_block" | "resolve_rejections"; actor: "user"; detail: string; options: string[] }
@@ -18,7 +20,7 @@ export type NextStep =
   | { action: "approve_phase"; actor: "user"; phase: number; detail: string; options: string[]; own_gate?: Gate | null }
   | { action: "review_checkpoint" | "review_cumulative"; actor: "reviewer"; phase: number; detail: string }
   | { action: "close"; actor: "lead"; detail: string }
-  | { action: "fix_findings"; actor: "developer"; phase: number; detail: string }
+  | { action: "fix_findings"; actor: "developer"; phase: number; review: FindingsReview; detail: string }
   | { action: "amend"; actor: "architect"; detail: string }
   | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
   | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] };
@@ -88,14 +90,14 @@ function recheckStep(snap: WorkSnapshot): NextStep | null {
   return { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta };
 }
 
-function findingsOpen({ verdicts }: WorkSnapshot): boolean {
-  const at = lastIndexWhere(verdicts, (v) => v.agent === "reviewer" && v.scope === "cumulative");
-  return isCumulativeRejection(verdicts[at]) && !verdicts.slice(at + 1).some((v) => v.verdict === "PHASE DONE");
+function findingsOpen({ verdicts }: WorkSnapshot, review: FindingsReview): boolean {
+  const at = lastIndexWhere(verdicts, (v) => v.agent === "reviewer" && v.scope === review);
+  return verdicts[at]?.verdict === "CHANGES REQUIRED" && !verdicts.slice(at + 1).some((v) => v.verdict === "PHASE DONE");
 }
 
 function findingsStep(snap: WorkSnapshot): NextStep | null {
-  if (!findingsOpen(snap)) return null;
-  return { action: "fix_findings", actor: "developer", phase: snap.phases.length, detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" };
+  if (!findingsOpen(snap, "cumulative")) return null;
+  return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "cumulative", detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" };
 }
 
 function allApprovedStep(snap: WorkSnapshot): NextStep {
@@ -123,9 +125,14 @@ function isMidpoint(snap: WorkSnapshot, current: PhaseStatus): boolean {
   return HEAVY.includes(snap.state.lane) && count >= MIDPOINT_MIN_PHASES && current.n === Math.ceil(count / 2) + 1;
 }
 
+function checkpointStep(snap: WorkSnapshot, prev: PhaseStatus, current: PhaseStatus): NextStep {
+  if (findingsOpen(snap, "checkpoint")) return { action: "fix_findings", actor: "developer", phase: prev.n, review: "checkpoint", detail: "the checkpoint review returned CHANGES REQUIRED; fix its findings" };
+  return { action: "review_checkpoint", actor: "reviewer", phase: prev.n, detail: `mid-plan checkpoint before phase ${current.n}` };
+}
+
 function startStep(snap: WorkSnapshot, current: PhaseStatus): NextStep {
   const prev = phaseOf(snap, current.n - 1);
-  if (prev && isMidpoint(snap, current) && !prev.reviewed) return { action: "review_checkpoint", actor: "reviewer", phase: prev.n, detail: `mid-plan checkpoint before phase ${current.n}` };
+  if (prev && isMidpoint(snap, current) && !prev.reviewed) return checkpointStep(snap, prev, current);
   return { action: "implement_phase", actor: "developer", phase: current.n, detail: `phase ${current.n} of ${snap.phases.length}: ${current.title}` };
 }
 
