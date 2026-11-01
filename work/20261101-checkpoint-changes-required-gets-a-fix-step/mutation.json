@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-01T15:52:08.854Z",
+  "base": "6b778047beb9be00fc31dde8c83d4c42b3277aa0",
+  "mutant": {
+    "path": "src/lib/shared/work/next-step.mts",
+    "line": 94,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 92839
+}
