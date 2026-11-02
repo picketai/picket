@@ -78,6 +78,11 @@ async function transcriptTitle($: EngineInterface, path: string, id: string, mti
   return title
 }
 
+export async function listTranscriptIds($: EngineInterface): Promise<string[]> {
+  const files = await $.fs.list(await transcriptFolder($)).catch(() => [])
+  return files.filter(one => one.kind === 'file' && one.name.endsWith(TRANSCRIPT)).map(one => one.name.slice(0, -TRANSCRIPT.length))
+}
+
 export async function listSessions($: EngineInterface): Promise<SessionEntry[]> {
   const [dir, root, currentId] = await Promise.all([configDir($), $.session.root(), $.session.id()])
   const folder = `${dir}/projects/${projectSlug(root)}`

@@ -11,6 +11,7 @@ Newest release first; each heading is a version.
 
 ### Added
 
+- The picket-status band draws in every session, even one with no work item. On its right it shows `◀ <n> need you` while sessions other than this one wait on you, `☰ <n>` (the sessions not marked done, which opens the work pane) and `M↓` (which opens the Markdown pane while picket-markdown is installed). It runs `picket list` only when an item that is not closed changes.
 - picket-status has a work pane, opened and closed with `/picket-session` (it runs while a turn streams). It lists this project's sessions under NEEDS YOU, WORKING, OPEN, CLOSED and NO WORK ITEM, peeks at a session's work items, copies `claude --resume <id>`, renames a session, and moves a session to a Done tab and back.
 - Each `picket list` row carries `attention` (`needs-you`, `working`, `open` or `closed`), the item's `sessions` with the latest as `session`, its `branch`, and its `worktrees` with whether each folder is still on disk. The `--human` output is unchanged.
 

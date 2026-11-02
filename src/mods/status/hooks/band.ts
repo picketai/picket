@@ -1,7 +1,7 @@
 import { elapsed, minutes } from '../../../lib/shared/format.mts'
 import { ACTION_TEXT, isNextAction, type Voice } from '../../../lib/shared/work/action-text.mts'
 import { TONES } from '../../shared/theme'
-import type { AgentRow, Line, Piece, Work } from '../types'
+import type { AgentRow, BandEntry, Line, Piece, Work } from '../types'
 
 const GAP = 2
 const INDENT: Piece = { text: '  ' }
@@ -70,16 +70,27 @@ const agentPieces = (row: AgentRow, state: Exclude<AgentState, 'idle'>, now: num
         { text: ` (${minutes(now - (row.idleAt ?? now))})`, color: TONES.warning },
       ]
 
-export const agentsLine = (all: AgentRow[], work: Work | null, now: number): Line | null => {
+const ENTRY_GAP: Piece = { text: '  ' }
+
+export const entryPieces = ({ needYou, sessions, hasMarkdown }: BandEntry): Piece[] => {
+  const parts: Piece[][] = [
+    needYou > 0 ? [{ text: `◀ ${needYou} need you`, color: TONES.warning, bold: true }] : [],
+    [{ text: `☰ ${sessions}`, press: 'work' }],
+    hasMarkdown ? [{ text: 'M↓', press: 'markdown' }] : [],
+  ]
+  return joined(
+    parts.filter(part => part.length > 0),
+    ENTRY_GAP,
+  )
+}
+
+export const agentsLine = (all: AgentRow[], work: Work | null, now: number, entry: BandEntry): Line => {
   const live = all.filter(row => !isEnded(row.status))
   const agents = live.flatMap(row => {
     const state = agentState(row, live, work)
     return state === 'idle' ? [] : [agentPieces(row, state, now)]
   })
-  if (agents.length === 0) {
-    return null
-  }
-  return { left: [INDENT, ...joined(agents, DOT)], right: [] }
+  return { left: agents.length === 0 ? [] : [INDENT, ...joined(agents, DOT)], right: entryPieces(entry) }
 }
 
 const actionText = (work: Work, voice: Voice): string =>

@@ -3,12 +3,13 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import { roleOf } from '../../../lib/shared/format.mts'
 import { resetLaunchers, runPicket } from '../../shared/kernel'
-import type { AgentRow, Work } from '../types'
+import type { AgentRow, Piece, Work } from '../types'
 import { agentsLine, isEnded, isWorking, rows, workLine } from './band'
 import { renderPane, paneLimit } from './pane'
-import { isPaneOpen, PANE, refreshPane, scrollPane, togglePane } from './pane-actions'
+import { isPaneOpen, PANE, readBandEntry, refreshBand, refreshPane, scrollPane, startBand, togglePane } from './pane-actions'
 
 const PANE_REFRESH_MS = 15_000
+const MARKDOWN_COMMAND = 'picket-markdown'
 
 const time = atom({ plugin: 'picket-status', key: 'now' } as const, 0)
 
@@ -73,10 +74,12 @@ export const register: Register = on => {
     await update($, time, () => now)
     resetLaunchers()
     await refreshWork($)
+    await startBand($, await hasMarkdownCommand($))
     $.clock.every(30_000, async () => {
       const tick = await $.clock.now()
       await update($, time, () => tick)
       await refreshWork($)
+      await tickBand($)
     })
     await syncRoster($)
     $.clock.every(5_000, async () => {
@@ -109,6 +112,7 @@ export const register: Register = on => {
     const called = await next(e)
     if (/\bpicket\b/.test(e.command)) {
       await refreshWork($)
+      await tickBand($)
     }
     return called
   }).catch(($, e, next) => next(e))
@@ -142,26 +146,71 @@ export const register: Register = on => {
     if (e.props.hasSurvey) {
       return next(e)
     }
-    const [now, latest, roster] = await Promise.all([read($, time), read($, work), read($, agents)])
-    const lines = [workLine(latest, now), agentsLine(roster, latest, now)].filter(line => line !== null)
-    if (lines.length === 0) {
-      return next(e)
-    }
-    const { Box, Text } = $.ui.resolve(e)
+    const [now, latest, roster, entry] = await Promise.all([read($, time), read($, work), read($, agents), readBandEntry($)])
+    const lines = [workLine(latest, now), agentsLine(roster, latest, now, entry)].filter(line => line !== null)
+    const ui = $.ui.resolve(e)
     const drawn = lines.flatMap(line => rows(line, e.props.bodyColumns))
 
     return (
-      <Box flexDirection="column" paddingTop={1}>
-        {drawn.map((row, rowIndex) => (
-          <Text key={`row:${rowIndex}`} wrap="truncate-end">
-            {row.map((piece, pieceIndex) => (
-              <Text key={`piece:${pieceIndex}`} color={piece.color} bold={piece.bold} dimColor={piece.dim}>
-                {piece.text}
-              </Text>
-            ))}
-          </Text>
-        ))}
-      </Box>
+      <ui.Box flexDirection="column" paddingTop={1}>
+        {drawn.map((row, rowIndex) => drawRow($, ui, row, `row:${rowIndex}`))}
+      </ui.Box>
     )
   })
+}
+
+type Ui = ReturnType<EngineInterface['ui']['resolve']>
+
+function pieceText(ui: Ui, piece: Piece, key: string) {
+  return (
+    <ui.Text key={key} color={piece.color} bold={piece.bold} dimColor={piece.dim}>
+      {piece.text}
+    </ui.Text>
+  )
+}
+
+function pressPiece($: EngineInterface, ui: Ui, piece: Piece, key: string) {
+  const onPress = piece.press === 'work' ? () => void togglePane($) : () => void openMarkdown($)
+  return (
+    <ui.Button key={`band-${piece.press}`} plain onPress={onPress}>
+      {pieceText(ui, piece, key)}
+    </ui.Button>
+  )
+}
+
+function drawRow($: EngineInterface, ui: Ui, row: Piece[], key: string) {
+  if (!row.some(piece => piece.press !== undefined)) {
+    return (
+      <ui.Text key={key} wrap="truncate-end">
+        {row.map((piece, pieceIndex) => pieceText(ui, piece, `piece:${pieceIndex}`))}
+      </ui.Text>
+    )
+  }
+  return (
+    <ui.Box key={key}>
+      {row.map((piece, pieceIndex) =>
+        piece.press === undefined ? pieceText(ui, piece, `piece:${pieceIndex}`) : pressPiece($, ui, piece, `piece:${pieceIndex}`),
+      )}
+    </ui.Box>
+  )
+}
+
+async function hasMarkdownCommand($: EngineInterface): Promise<boolean> {
+  try {
+    return (await $.command.list()).some(command => command.name === MARKDOWN_COMMAND)
+  } catch {
+    return false
+  }
+}
+
+async function openMarkdown($: EngineInterface) {
+  try {
+    await $.command.run({ command: MARKDOWN_COMMAND })
+  } catch {
+    $.ui.toast('Could not open the Markdown pane.')
+  }
+}
+
+async function tickBand($: EngineInterface) {
+  await refreshBand($, await hasMarkdownCommand($))
 }

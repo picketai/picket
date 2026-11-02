@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { AgentRow, Piece, Work } from '../types'
+import { TONES } from '../../shared/theme'
+import type { AgentRow, BandEntry, Piece, Work } from '../types'
 import { agentsLine, rows, stepText, widthOf, workLine } from './band'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
@@ -107,41 +108,63 @@ const agent = (name: string, status: string, clocks: Partial<AgentRow> = {}): Ag
   ...clocks,
 })
 
+const ENTRY: BandEntry = { needYou: 0, sessions: 3, hasMarkdown: true }
+
+const agentsLeft = (all: AgentRow[], work: Work | null) => agentsLine(all, work, NOW, ENTRY).left
+
 describe('agents line', () => {
   test('a working agent shows its time since start and an idle one is not drawn', async () => {
-    const line = agentsLine(
-      [agent('developer', 'running', { startedAt: NOW - 192_000 }), agent('architect', 'idle', { idleAt: NOW })],
-      null,
-      NOW,
-    )
-    expect(text(line?.left ?? [])).toBe('  developer working (3m12s)')
-    expect(line?.left.find(piece => piece.text === 'working')).toEqual({ text: 'working', color: 'claude', bold: true })
-    expect(line?.left.find(piece => piece.text === ' (3m12s)')?.color).toBe('inactive')
-    expect(line?.right).toEqual([])
+    const left = agentsLeft([agent('developer', 'running', { startedAt: NOW - 192_000 }), agent('architect', 'idle', { idleAt: NOW })], null)
+    expect(text(left)).toBe('  developer working (3m12s)')
+    expect(left.find(piece => piece.text === 'working')).toEqual({ text: 'working', color: 'claude', bold: true })
+    expect(left.find(piece => piece.text === ' (3m12s)')?.color).toBe('inactive')
   })
 
   test('the idle agent whose verdict the user is answering waits', async () => {
     const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE })
     const gate = { ...WORK, actor: 'user', by: 'developer' }
-    const waiting = agentsLine([developer], gate, NOW)
-    expect(text(waiting?.left ?? [])).toBe('  developer waiting (6m)')
-    expect(waiting?.left.find(piece => piece.text === 'waiting')?.color).toBe('warning')
-    expect(agentsLine([developer], { ...gate, by: 'reviewer' }, NOW)).toBe(null)
+    const waiting = agentsLeft([developer], gate)
+    expect(text(waiting)).toBe('  developer waiting (6m)')
+    expect(waiting.find(piece => piece.text === 'waiting')?.color).toBe('warning')
+    expect(agentsLeft([developer], { ...gate, by: 'reviewer' })).toEqual([])
 
     const earlier = { ...developer, id: 'id-old', name: 'developer-old', idleAt: NOW - 20 * MINUTE }
-    expect(text(agentsLine([earlier, developer], gate, NOW)?.left ?? [])).toBe('  developer waiting (6m)')
+    expect(text(agentsLeft([earlier, developer], gate))).toBe('  developer waiting (6m)')
   })
 
   test('the first agent name starts in the same column as the lane name', async () => {
     const lane = text(workLine(WORK, NOW)?.left ?? []).indexOf(WORK.lane)
-    const name = text(agentsLine([agent('developer', 'running')], null, NOW)?.left ?? []).indexOf('developer')
+    const name = text(agentsLeft([agent('developer', 'running')], null)).indexOf('developer')
     expect(name).toBe(lane)
   })
 
-  test('no working or waiting agent means no agents line', async () => {
-    expect(agentsLine([], null, NOW)).toBe(null)
-    expect(agentsLine([agent('a', 'completed'), agent('b', 'failed'), agent('c', 'killed')], null, NOW)).toBe(null)
-    expect(agentsLine([agent('a', 'idle'), agent('b', 'idle')], null, NOW)).toBe(null)
+  test('no working or waiting agent leaves the left side empty', async () => {
+    expect(agentsLeft([], null)).toEqual([])
+    expect(agentsLeft([agent('a', 'completed'), agent('b', 'failed'), agent('c', 'killed')], null)).toEqual([])
+    expect(agentsLeft([agent('a', 'idle'), agent('b', 'idle')], null)).toEqual([])
+  })
+})
+
+describe('band entry (T-6.1)', () => {
+  test('with no agents and no work the line still draws, its right side reading ☰ then M↓', async () => {
+    const line = agentsLine([], null, NOW, ENTRY)
+    expect(line.left).toEqual([])
+    expect(text(line.right)).toBe('☰ 3  M↓')
+    expect(line.right.filter(piece => piece.press !== undefined)).toEqual([
+      { text: '☰ 3', press: 'work' },
+      { text: 'M↓', press: 'markdown' },
+    ])
+  })
+
+  test('sessions needing you lead the right side in the warning tone', async () => {
+    const right = agentsLine([], null, NOW, { ...ENTRY, needYou: 2 }).right
+    expect(right[0]).toEqual({ text: '◀ 2 need you', color: TONES.warning, bold: true })
+    expect(text(right)).toBe('◀ 2 need you  ☰ 3  M↓')
+  })
+
+  test('no session needing you draws no ◀, and no markdown command draws no M↓', async () => {
+    expect(text(agentsLine([], null, NOW, { ...ENTRY, hasMarkdown: false }).right)).toBe('☰ 3')
+    expect(text(agentsLine([], null, NOW, ENTRY).right).includes('◀')).toBe(false)
   })
 })
 
@@ -172,7 +195,7 @@ describe('another session', () => {
 
   test('the idle agent whose verdict another session is answering does not wait', async () => {
     const developer = agent('developer', 'idle', { idleAt: NOW - 6 * MINUTE })
-    expect(agentsLine([developer], { ...other, actor: 'user', by: 'developer' }, NOW)).toBe(null)
+    expect(agentsLine([developer], { ...other, actor: 'user', by: 'developer' }, NOW, ENTRY).left).toEqual([])
   })
 
   test('the same session reads as before', async () => {

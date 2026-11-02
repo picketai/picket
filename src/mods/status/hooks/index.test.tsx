@@ -11,7 +11,12 @@ const world = (on: On, roster: AgentInfo[] = []) => {
   on('agent.list', () => ({ value: roster }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', () => ({ value: undefined }))
+  on('command.list', () => ({ value: [] }))
   on('ui.panes', () => ({ value: [] }))
+  on('env.get', () => ({ value: undefined }))
+  on('session.root', () => ({ value: 'D:/repo' }))
+  on('fs.list', () => ({ value: [] }))
+  on('store.get', () => ({ value: undefined }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
@@ -34,7 +39,6 @@ const band = ($: Engine, hasSurvey = false) =>
     },
   })
 
-const engineText = async ($: Engine) => (await (await band($)).find({ type: 'Text' }))?.text
 
 const LATEST = {
   id: '20261016-ship',
@@ -86,7 +90,7 @@ test('a picket that cannot start is retried through cmd and the work line draws'
   })
 
   await $.session.start(START)
-  expect(runs).toEqual([
+  expect(runs.filter(isLatest)).toEqual([
     ['picket', 'next', '--latest'],
     ['cmd', '/c', 'picket', 'next', '--latest'],
   ])
@@ -103,7 +107,7 @@ test('the latest call carries the session id the engine answers', async ($, on) 
   })
 
   await $.session.start(START)
-  expect(runs).toEqual([['picket', 'next', '--latest', '--session', 'sid-1']])
+  expect(runs.filter(argv => argv.includes('next'))).toEqual([['picket', 'next', '--latest', '--session', 'sid-1']])
 })
 
 test('a session id that cannot be read leaves the latest call without it', async ($, on) => {
@@ -116,10 +120,10 @@ test('a session id that cannot be read leaves the latest call without it', async
   })
 
   await $.session.start(START)
-  expect(runs).toEqual([['picket', 'next', '--latest']])
+  expect(runs.filter(argv => argv.includes('next'))).toEqual([['picket', 'next', '--latest']])
 })
 
-test('a failed, unreadable or empty answer with no agent at work leaves the engine its own tree', async ($, on) => {
+test('a failed, unreadable or empty answer draws no work line, and the band still draws ☰ (T-6.3)', async ($, on) => {
   world(on)
   const answers = [exited(1, ''), exited(0, 'not json'), exited(0, JSON.stringify({ ...LATEST, id: null, action: 'none' }))]
   let answer = answers[0]
@@ -128,7 +132,9 @@ test('a failed, unreadable or empty answer with no agent at work leaves the engi
   for (const next of answers) {
     answer = next
     await $.session.start(START)
-    expect(await engineText($)).toBe('engine')
+    const drawn = await band($)
+    expect(await drawn.find({ type: 'Text', text: /^▶/ })).toBeUndefined()
+    expect(await drawn.find({ type: 'Text', text: '☰ 0' })).toBeDefined()
   }
 })
 
@@ -194,7 +200,7 @@ test('a spawned agent leaves the band when idle and works again from a message',
 
   roster[0] = { ...developer(), status: 'idle' }
   await $.turn.complete({ answer: '', durationMs: 250_000, isAborted: false, turnId: 't1', agentId: 'a1', reason: 'answer' })
-  expect(await engineText($)).toBe('engine')
+  expect(await shows($, 'developer ')).toBe(false)
 
   await timer.advance(60_000)
   roster[0] = developer()
@@ -245,11 +251,38 @@ type PaneWorld = {
   closed: string[]
   registered: { name: string; immediate?: true }[]
   runs: (readonly string[])[]
+  commands: string[]
+  commandRuns: string[]
+  reads: string[]
+  work: Record<string, { 'state.yaml': number; 'verdicts.jsonl': number }>
 }
 
 const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE], list: unknown[] = LIST) => {
   const timer = mock.clock(on, { now: NOW })
-  const w: PaneWorld = { stored: {}, copied: [], toasts: [], written: {}, opened: [], closed: [], registered: [], runs: [] }
+  const w: PaneWorld = {
+    stored: {},
+    copied: [],
+    toasts: [],
+    written: {},
+    opened: [],
+    closed: [],
+    registered: [],
+    runs: [],
+    commands: ['picket-markdown'],
+    commandRuns: [],
+    reads: [],
+    work: {},
+  }
+  on('command.list', () => ({ value: w.commands.map(name => ({ name, description: '', source: 'plugin' as const })) }))
+  on('command.run', ($, e) => {
+    w.commandRuns.push(e.command)
+    return { text: '' }
+  })
+  on('fs.stat', ($, e) => {
+    const [id, file] = e.path.replace(/\\/g, '/').split('/').slice(-2) as [string, 'state.yaml' | 'verdicts.jsonl']
+    const mtimeMs = w.work[id]?.[file]
+    return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file' as const, size: 10, mtimeMs, isLink: false } }
+  })
   let panes: { id: string }[] = []
   on('agent.list', () => ({ value: [] }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -266,10 +299,12 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
       return { value: transcripts.map((id, at) => ({ name: `${id}.jsonl`, kind: 'file' as const, size: 10, mtimeMs: NOW - (at + 1) * 60_000, isLink: false })) }
     }
     if (path === `${CONFIG}/sessions`) return { value: [{ name: '4444.json', kind: 'file' as const, size: 10, mtimeMs: NOW, isLink: false }] }
+    if (path === 'D:/repo/work') return { value: Object.keys(w.work).map(name => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })) }
     return { value: [] }
   })
   on('fs.read', ($, e) => {
     const path = e.path.replace(/\\/g, '/')
+    w.reads.push(path)
     if (path === `${CONFIG}/sessions/4444.json`) return { value: JSON.stringify({ sessionId: S_LIVE, cwd: 'D:/repo' }) }
     const id = path.slice(PROJECT.length + 1, -'.jsonl'.length)
     return { value: w.written[path] ?? `{"type":"ai-title","aiTitle":"${TITLES[id] ?? id}"}\n` }
@@ -461,6 +496,54 @@ test('a Cleanup worktree row copies its git -C remove command (T-5.6)', async ($
   await drawn.press({ key: 'copy-command-w-shipped-svc' })
   expect(w.copied).toEqual(['git -C svc worktree remove .worktrees/feat'])
   expect(w.toasts).toEqual(['Copied the worktree remove command'])
+})
+
+const TICK_MS = 30_000
+
+const WATCHED = [listRow('w-open', 'open', [S_WORKING]), listRow('w-shut', 'closed', [S_NONE]), listRow('w-gate', 'needs-you', [S_NONE])]
+
+test('the band runs picket list at start and then only when a not-closed item changes (T-6.4)', async ($, on) => {
+  const { w, timer } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE], WATCHED)
+  w.work = { 'w-open': { 'state.yaml': 1, 'verdicts.jsonl': 1 }, 'w-shut': { 'state.yaml': 1, 'verdicts.jsonl': 1 }, 'w-gate': { 'state.yaml': 1, 'verdicts.jsonl': 1 } }
+  const lists = () => w.runs.filter(isList).length
+  await $.session.start(START)
+  expect(lists()).toBe(1)
+
+  await timer.advance(TICK_MS)
+  await timer.advance(TICK_MS)
+  expect(lists()).toBe(1)
+
+  w.work['w-open'] = { 'state.yaml': 1, 'verdicts.jsonl': 2 }
+  await timer.advance(TICK_MS)
+  expect(lists()).toBe(2)
+
+  w.work['w-shut'] = { 'state.yaml': 2, 'verdicts.jsonl': 1 }
+  await timer.advance(TICK_MS)
+  expect(lists()).toBe(2)
+})
+
+test('the band counts sessions that need you outside this one, and its ☰ and M↓ open the panes (T-6.5)', async ($, on) => {
+  const { w, timer } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE], WATCHED)
+  await $.session.start(START)
+  const drawn = await band($)
+  expect(await drawn.find({ type: 'Text', text: '◀ 1 need you' })).toBeDefined()
+  expect(await drawn.find({ type: 'Text', text: '☰ 3' })).toBeDefined()
+
+  await drawn.press({ key: 'band-work' })
+  expect(w.opened).toEqual(['work'])
+  await drawn.press({ key: 'band-markdown' })
+  expect(w.commandRuns).toEqual(['picket-markdown'])
+
+  w.commands = []
+  await timer.advance(TICK_MS)
+  expect(await drawn.find({ type: 'Text', text: 'M↓' })).toBeUndefined()
+})
+
+test('no transcript is read over three ticks while the work pane is closed (T-6.6)', async ($, on) => {
+  const { w, timer } = paneWorld(on)
+  await $.session.start(START)
+  for (let tick = 0; tick < 3; tick += 1) await timer.advance(TICK_MS)
+  expect(w.reads.filter(path => path.endsWith('.jsonl'))).toEqual([])
 })
 
 test('a working agent clock moves with the five second timer', async ($, on) => {

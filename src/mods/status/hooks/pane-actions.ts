@@ -3,8 +3,9 @@ import type { EngineInterface, UiPressArgument } from 'claude-code'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { runPicket } from '../../shared/kernel'
-import type { PaneTab, PaneView, SessionEntry } from '../types'
-import { deleteTranscript, isDeletable, listSessions, renameSession } from './session-files'
+import type { BandEntry, PaneTab, PaneView, SessionEntry } from '../types'
+import { deleteTranscript, isDeletable, listSessions, listTranscriptIds, renameSession } from './session-files'
+import { activeSessionCount, needYouCount, watchedIds, workSignature, type WorkStat } from './watch'
 
 export const DELETE_ALL = 'all'
 
@@ -22,6 +23,12 @@ const sessions = atom({ plugin: 'picket-status', key: 'sessions' } as const, [] 
 const done = atom({ plugin: 'picket-status', key: 'done' } as const, [] as string[])
 
 const paneView = atom({ plugin: 'picket-status', key: 'paneView' } as const, VIEW_DEFAULTS)
+
+const transcriptIds = atom({ plugin: 'picket-status', key: 'transcriptIds' } as const, [] as string[])
+
+const hasMarkdown = atom({ plugin: 'picket-status', key: 'hasMarkdown' } as const, false)
+
+const currentId = atom({ plugin: 'picket-status', key: 'currentId' } as const, null as string | null)
 
 export function readRows($: EngineInterface) {
   return read($, rows)
@@ -45,11 +52,74 @@ function updateView($: EngineInterface, change: Partial<PaneView>) {
 
 const storedIds = (value: unknown): string[] => (Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [])
 
-export async function refreshPane($: EngineInterface) {
-  const [entries, listed, stored] = await Promise.all([listSessions($), runPicket<ListRowView[]>($, ['list']), $.store.get(DONE_KEY)])
-  await update($, sessions, () => entries)
-  if (listed !== null) await update($, rows, () => listed)
+const watch = { signature: null as string | null }
+
+async function workFolders($: EngineInterface, root: string): Promise<string[]> {
+  const entries = await $.fs.list(`${root}/work`).catch(() => [])
+  return entries.filter(entry => entry.kind === 'dir').map(entry => entry.name)
+}
+
+async function modifiedAt($: EngineInterface, path: string): Promise<number | null> {
+  try {
+    return (await $.fs.stat(path)).mtimeMs
+  } catch {
+    return null
+  }
+}
+
+async function workStats($: EngineInterface, root: string, ids: readonly string[]): Promise<WorkStat[]> {
+  const stats: WorkStat[] = []
+  for (const id of ids) {
+    const folder = `${root}/work/${id}`
+    stats.push({ id, stateMs: await modifiedAt($, `${folder}/state.yaml`), verdictsMs: await modifiedAt($, `${folder}/verdicts.jsonl`) })
+  }
+  return stats
+}
+
+async function currentSignature($: EngineInterface, root: string): Promise<string> {
+  const folders = await workFolders($, root)
+  return workSignature(folders, await workStats($, root, watchedIds(folders, await read($, rows))))
+}
+
+export async function refreshRows($: EngineInterface, { force }: { force: boolean }) {
+  const root = await $.session.root()
+  const signature = await currentSignature($, root)
+  if (!force && signature === watch.signature) return
+  watch.signature = signature
+  const listed = await runPicket<unknown>($, ['list'])
+  if (!Array.isArray(listed)) return
+  await update($, rows, () => listed as ListRowView[])
+  watch.signature = await currentSignature($, root)
+}
+
+async function loadDone($: EngineInterface) {
+  const stored = await $.store.get(DONE_KEY)
   await update($, done, () => storedIds(stored))
+}
+
+export async function refreshPane($: EngineInterface) {
+  const entries = await listSessions($)
+  await update($, sessions, () => entries)
+  await refreshRows($, { force: true })
+  await loadDone($)
+}
+
+export async function refreshBand($: EngineInterface, markdown: boolean) {
+  const [ids, current] = await Promise.all([listTranscriptIds($), $.session.id().catch(() => null)])
+  await update($, transcriptIds, () => ids)
+  await update($, hasMarkdown, () => markdown)
+  await update($, currentId, () => current || null)
+  await refreshRows($, { force: false })
+}
+
+export async function startBand($: EngineInterface, markdown: boolean) {
+  await loadDone($)
+  await refreshBand($, markdown)
+}
+
+export async function readBandEntry($: EngineInterface): Promise<BandEntry> {
+  const [listed, ids, closed, markdown, current] = await Promise.all([read($, rows), read($, transcriptIds), read($, done), read($, hasMarkdown), read($, currentId)])
+  return { needYou: needYouCount(listed, current), sessions: activeSessionCount(ids, closed), hasMarkdown: markdown }
 }
 
 export async function isPaneOpen($: EngineInterface): Promise<boolean> {

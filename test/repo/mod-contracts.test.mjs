@@ -38,7 +38,7 @@ test("the status contract holds no import and declares its band and work pane st
   assert.doesNotMatch(text, /\bimport\b/);
   assert.match(
     text,
-    /'picket-status': \{\s+now: number\s+work: Work \| null\s+agents: AgentRow\[\]\s+rows: ListRow\[\]\s+sessions: SessionEntry\[\]\s+done: string\[\]\s+paneView: PaneView\s+\}/,
+    /'picket-status': \{\s+now: number\s+work: Work \| null\s+agents: AgentRow\[\]\s+rows: ListRow\[\]\s+sessions: SessionEntry\[\]\s+done: string\[\]\s+paneView: PaneView\s+transcriptIds: string\[\]\s+hasMarkdown: boolean\s+currentId: string \| null\s+\}/,
   );
 });
 

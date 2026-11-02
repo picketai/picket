@@ -1,6 +1,8 @@
-export type Piece = { text: string; color?: string; bold?: boolean; dim?: boolean }
+export type Piece = { text: string; color?: string; bold?: boolean; dim?: boolean; press?: 'work' | 'markdown' }
 
 export type Line = { left: Piece[]; right: Piece[] }
+
+export type BandEntry = { needYou: number; sessions: number; hasMarkdown: boolean }
 
 export type Work = {
   id: string
@@ -88,6 +90,9 @@ declare module 'claude-code' {
       sessions: SessionEntry[]
       done: string[]
       paneView: PaneView
+      transcriptIds: string[]
+      hasMarkdown: boolean
+      currentId: string | null
     }
   }
 }
