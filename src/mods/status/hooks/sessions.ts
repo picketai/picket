@@ -46,14 +46,18 @@ export const clampOffset = (offset: number, total: number, capacity: number): nu
 const SIZE_UNITS = ['B', 'KB', 'MB', 'GB'] as const
 const SIZE_STEP = 1024
 
+const isWhole = (value: number, unit: number): boolean => unit === 0 || value >= 10
+
+const rounded = (value: number, unit: number): number => (isWhole(value, unit) ? Math.round(value) : Math.round(value * 10) / 10)
+
 export const sizeLabel = (bytes: number): string => {
   let value = bytes
   let unit = 0
-  while (value >= SIZE_STEP && unit < SIZE_UNITS.length - 1) {
+  while (rounded(value, unit) >= SIZE_STEP && unit < SIZE_UNITS.length - 1) {
     value /= SIZE_STEP
     unit += 1
   }
-  const shown = unit === 0 || value >= 10 ? String(Math.round(value)) : value.toFixed(1)
+  const shown = isWhole(value, unit) ? String(Math.round(value)) : value.toFixed(1)
   return `${shown} ${SIZE_UNITS[unit]}`
 }
 

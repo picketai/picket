@@ -42,8 +42,10 @@ export function readDone($: EngineInterface) {
   return read($, done)
 }
 
-export function readPaneView($: EngineInterface) {
-  return read($, paneView)
+export const viewOf = (stored: Partial<PaneView>): PaneView => ({ ...VIEW_DEFAULTS, ...stored })
+
+export async function readPaneView($: EngineInterface) {
+  return viewOf(await read($, paneView))
 }
 
 function updateView($: EngineInterface, change: Partial<PaneView>) {
@@ -141,10 +143,10 @@ export function select($: EngineInterface, id: string) {
 }
 
 export function toggleGroup($: EngineInterface, group: FoldableGroup) {
-  return update($, paneView, current => ({
-    ...current,
-    folded: current.folded.includes(group) ? current.folded.filter(one => one !== group) : [...current.folded, group],
-  }))
+  return update($, paneView, stored => {
+    const { folded } = viewOf(stored)
+    return { ...stored, folded: folded.includes(group) ? folded.filter(one => one !== group) : [...folded, group] }
+  })
 }
 
 export function copyResume($: EngineInterface, id: string) {

@@ -33,8 +33,8 @@ const PEEK_ROWS = 10
 const MIN_LIST_ROWS = 3
 const AGE_COLUMNS = 6
 
-const listHeight = (bodyRows: number): number =>
-  Math.max(MIN_LIST_ROWS, bodyRows - 2 * PANE_PADDING - CHROME_ROWS - MORE_ROWS - PEEK_ROWS)
+const listHeight = (bodyRows: number, hasPeek: boolean): number =>
+  Math.max(MIN_LIST_ROWS, bodyRows - 2 * PANE_PADDING - CHROME_ROWS - MORE_ROWS - (hasPeek ? PEEK_ROWS : 0))
 
 export const paneLimit = { maxOffset: 0 }
 
@@ -42,7 +42,7 @@ type Ui = ReturnType<EngineInterface['ui']['resolve']>
 
 type Pane = { ui: Ui; view: PaneView; now: number; lineWidth: number; selectedId: string | null }
 
-type Drawn = { rows: number; node: JSX.Element; isSession?: true }
+type Drawn = { rows: number; node: JSX.Element; isCounted?: true }
 
 type ShownGroup = { group: FoldableGroup; label: string; sessions: GroupedSession[] }
 
@@ -195,7 +195,7 @@ function renameLine($: EngineInterface, pane: Pane, entry: SessionEntry): Drawn[
   return [
     {
       rows: 1,
-      isSession: true,
+      isCounted: true,
       node: (
         <Box key={`rename-row-${entry.id}`} width={pane.lineWidth} paddingLeft={2}>
           <Input
@@ -218,7 +218,7 @@ function sessionRows($: EngineInterface, pane: Pane, session: GroupedSession): D
   const pieces = detailPieces(session)
   return {
     rows: pieces.length > 0 ? 3 : 2,
-    isSession: true,
+    isCounted: true,
     node: (
       <Box
         key={`session-${entry.id}`}
@@ -246,7 +246,7 @@ function sessionLines($: EngineInterface, pane: Pane, session: GroupedSession): 
   if (pane.view.confirm === entry.id) {
     return confirmLines($, pane, entry.id, `Delete "${fit(entry.title, 24)}" (${entry.id}) for good?`, () => void confirmDelete($, entry)).map(line => ({
       ...line,
-      isSession: true,
+      isCounted: true,
     }))
   }
   if (pane.view.renamingId === entry.id) {
@@ -328,6 +328,7 @@ function cleanupRow(pane: Pane, row: CleanupRow): Drawn {
   const { Box, Text } = pane.ui
   return {
     rows: 3,
+    isCounted: true,
     node: (
       <Box key={`cleanup-${row.key}`} flexDirection="column" width={pane.lineWidth}>
         <Box justifyContent="flex-end" width={pane.lineWidth}>
@@ -350,7 +351,7 @@ function cleanupRow(pane: Pane, row: CleanupRow): Drawn {
 function worktreeLines($: EngineInterface, pane: Pane, tree: CleanupWorktree): Drawn {
   const key = `${tree.item.id}-${tree.repo.replace(/[^A-Za-z0-9_-]/g, '-')}`
   const owner = tree.item.session
-  const done = owner === null ? [] : [actionButton(pane, `done-tree-${key}`, '✓', TONES.control, () => markDone($, owner))]
+  const done = owner === null ? [] : [actionButton(pane, `done-tree-${key}`, '✓', TONES.success, () => markDone($, owner))]
   return cleanupRow(pane, {
     key: `tree-${key}`,
     title: tree.item.title,
@@ -368,7 +369,7 @@ function oldSessionLines($: EngineInterface, pane: Pane, entry: SessionEntry): D
     below: `${age(pane.now - entry.mtimeMs)} old`,
     actions: [
       actionButton(pane, `copy-${entry.id}`, '⧉', TONES.control, copyResume($, entry.id)),
-      actionButton(pane, `done-old-${entry.id}`, '✓', TONES.control, () => markDone($, entry.id)),
+      actionButton(pane, `done-old-${entry.id}`, '✓', TONES.success, () => markDone($, entry.id)),
     ],
   })
 }
@@ -416,7 +417,7 @@ function tabButton($: EngineInterface, pane: Pane, tab: PaneTab, label: string) 
 function tabRow($: EngineInterface, pane: Pane, grouped: GroupedPane, cleanup: Cleanup) {
   const { Box, Text } = pane.ui
   const activeCount = grouped.active.reduce((sum, list) => sum + list.sessions.length, 0)
-  const canDeleteAll = pane.view.tab === 'done' && grouped.done.length > 0
+  const canDeleteAll = pane.view.tab === 'done' && grouped.done.length > 0 && pane.view.confirm !== DELETE_ALL
   return (
     <Box marginTop={1} justifyContent="space-between" width={pane.lineWidth}>
       <Box>
@@ -475,11 +476,12 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const selected = selectedOf(view, groups)
   const pane: Pane = { ui, view, now, lineWidth: Math.max(20, e.props.bodyColumns - 2 * PANE_PADDING), selectedId: selected?.entry.id ?? null }
   const lines = tabLines($, pane, grouped, groups, cleanup)
-  const room = listHeight(e.props.scroll.bodyRows)
+  const hasPeek = view.tab !== 'cleanup'
+  const room = listHeight(e.props.scroll.bodyRows, hasPeek)
   paneLimit.maxOffset = lastStart(lines, room)
   const offset = Math.min(view.offset, paneLimit.maxOffset)
   const shown = fitting(lines.slice(offset), room)
-  const below = lines.slice(offset + shown.length).filter(line => line.isSession).length
+  const below = lines.slice(offset + shown.length).filter(line => line.isCounted).length
 
   return (
     <Box key="pane" flexDirection="column" paddingX={PANE_PADDING} paddingY={PANE_PADDING}>
@@ -490,7 +492,7 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
         {shown.map(line => line.node)}
       </Box>
       <Text dimColor>{below > 0 ? `↓ ${below} more` : ' '}</Text>
-      {peekSection(pane, selected)}
+      {hasPeek ? peekSection(pane, selected) : null}
     </Box>
   )
 }

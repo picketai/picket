@@ -649,6 +649,53 @@ test('on Cleanup an old session copies its resume command and ✓ marks it done;
   expect(w.stored['done-sessions']).toEqual([S_NONE, S_WORKING])
 })
 
+test('Cleanup draws no Peek and gives the list the rows Peek would take', async ($, on) => {
+  cleanupWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'tab-cleanup' })
+
+  expect(await drawn.find({ key: 'peek' })).toBeUndefined()
+  expect((await drawn.find({ key: 'list' }))?.props.height).toBe(LIST_ROWS + 10)
+})
+
+test('both Cleanup ✓ buttons draw in the success tone', async ($, on) => {
+  cleanupWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'tab-cleanup' })
+
+  expect(await glyphOf(drawn, `done-old-${S_NONE}`)).toEqual({ key: `done-old-${S_NONE}`, text: '✓', color: TONES.success })
+  expect(await glyphOf(drawn, 'done-tree-w-shipped-svc')).toEqual({ key: 'done-tree-w-shipped-svc', text: '✓', color: TONES.success })
+})
+
+test('Cleanup rows below a short list are counted as more', async ($, on) => {
+  const shipped = { ...listRow('w-shipped', 'closed', [S_WORKING]), worktrees: [{ repo: 'svc', path: 'svc/.worktrees/feat', present: true }] }
+  const { w } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE, S_LIVE], [shipped])
+  w.mtimes[S_NONE] = OLD_MS
+  w.mtimes[S_LIVE] = OLD_MS
+  await openWorkPane($)
+  const short = await paneOfRows($, 20)
+  await short.press({ key: 'tab-cleanup' })
+
+  expect(await short.find({ key: `cleanup-old-${S_LIVE}` })).toBeUndefined()
+  expect(await short.find({ type: 'Text', text: '↓ 1 more' })).toBeDefined()
+})
+
+test('the Delete all ⊘ leaves the tab row while its confirmation is open', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: `done-${S_WORKING}` })
+  await drawn.press({ key: 'tab-done' })
+
+  await drawn.press({ key: 'ask-delete-all' })
+  expect(await drawn.find({ type: 'Text', text: 'Delete all 1 done sessions for good?' })).toBeDefined()
+  expect(await drawn.find({ key: 'ask-delete-all' })).toBeUndefined()
+  await drawn.press({ key: 'cancel-all' })
+  expect(await drawn.find({ key: 'ask-delete-all' })).toBeDefined()
+})
+
 test('Cleanup with nothing to clean says so and draws no section (T-3.6)', async ($, on) => {
   paneWorld(on)
   await openWorkPane($)

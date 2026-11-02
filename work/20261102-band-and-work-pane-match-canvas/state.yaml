@@ -1,9 +1,8 @@
 id: 20261102-band-and-work-pane-match-canvas
 lane: order
 title: Band and work pane match canvas
-status: open
+status: done
 created: 2026-11-02T13:16:41.571Z
-updated: 2026-11-02T13:39:57.566Z
+updated: 2026-11-02T14:15:43.015Z
 session: 13e4b056-abbf-4738-98a3-a9bcb06d5cc4
 base: d3093ab91736a8f5a6b0fb6dd0fe3d26caf695bd
-run_through: 3

@@ -115,8 +115,8 @@ The design item for SDR-00002 shipped the band buttons and the work pane, but dr
 **Risks:**
 - **RISK-001** A long blocked reason overflows the 50-column pane. Mitigation: the detail row is drawn with `wrap="truncate-end"`.
 
-### D-002: The detail row shows the session's most urgent item
-**Decision:** A new pure module `src/mods/status/hooks/detail.ts` exports `detailPieces(session: GroupedSession): Piece[]`. It returns `[]` when `session.items` is empty (no work item, or only items continued elsewhere), so no detail row is drawn. Otherwise it takes the item first in `SESSION_GROUPS` order (`work-pane.ts:8`), list order on a tie, and appends `  +<n>` (muted) for the other items. A closed item reads `closed` (success; `abandoned` in muted when the status is `abandoned`), `  ⎇ <branch>` (accent, left out when `branch` is null) and `  worktree` (warning, while any of its worktrees is present). Any other item reads the lane (accent), then, when `phase_count > 0`, two spaces and `●` per approved phase (accent) and `○` per open one (rule), then two spaces and the step: status `blocked` gives error bold with ` ◀`; attention `needs-you` gives warning bold with ` ◀`; `working` gives accent; `open` gives muted. The separators are two spaces, as the board's `detailOf` draws them.
+### D-002 (r2): The detail row shows the session's most urgent item
+**Decision:** A new pure module `src/mods/status/hooks/detail.ts` exports `detailPieces(session: GroupedSession): Piece[]`. It returns `[]` when `session.items` is empty (no work item, or only items continued elsewhere), so no detail row is drawn. Otherwise it takes the item first in `SESSION_GROUPS` order (`work-pane.ts:8`), list order on a tie, and appends `  +<n>` (muted) for the other items. A closed item reads `closed` (success; `abandoned` in muted when the status is `abandoned`), `  ⎇ <branch>` (accent, left out when `branch` is null) and `  worktree` (warning, while any of its worktrees is present). Any other item reads the lane (accent), then, when `phase_count > 0`, two spaces and `●` per approved phase (accent) and `○` per open one (rule), then two spaces and the step: status `blocked` gives error bold with ` ◀`; attention `needs-you` gives warning bold with ` ◀`; `working` gives accent with ` ⋯`, as the band's `stepText` ends a working step (the user's ruling on OQ-001, 2026-11-02); `open` gives muted. The separators are two spaces, as the board's `detailOf` draws them.
 **Instead of:** one detail row per item: three rows per session is the board's fixed shape, and Peek already lists every item.
 
 ### D-003 (r2): Peek is a fixed bottom section and the list keeps its height
@@ -129,8 +129,8 @@ The design item for SDR-00002 shipped the band buttons and the work pane, but dr
 **Decision:** `PaneView` (`src/mods/status/types/index.d.ts:89`) gains `folded: (SessionGroup | 'done')[]`, default `['none']` in `VIEW_DEFAULTS` (`pane-actions.ts:17`), and `pane-actions.ts` exports `toggleGroup($, group)`. A group header is a Button keyed `group-<group>` (`group-done` on the Done tab) that flips its membership; a folded group draws only its header, with `▸` in place of `▾`. Changing tab keeps the folds.
 **Instead of:** keeping folds in the mod store: the board keeps them only in view state, and a fold that outlives the session hides a group the developer forgot about.
 
-### D-005: Cleanup rows follow the board, with no delete
-**Decision:** Each Cleanup row draws `⧉ ✓` right-aligned above the title, the title with a size on the right, and the worktree path or `<age> old` below, indented two columns. ⧉ copies the remove command (worktree rows) or `claude --resume <id>` (old sessions); ✓ marks done `item.session` (not drawn when it is null) or the old session. The `⊘` delete leaves Cleanup: an old session is deleted by marking it done and deleting it on the Done tab, behind the same confirmation. `SessionEntry` gains `size: number`, the transcript's `file.size` from the folder listing `listSessions` already makes (`session-files.ts:91`), shown through `sizeLabel(bytes)` in `sessions.ts` (1024 steps, `B`, `KB`, `MB`, `GB`, one decimal below 10, whole numbers from 10). A worktree row shows no size until OQ-002 is answered.
+### D-005 (r2): Cleanup rows follow the board, with no delete
+**Decision:** Each Cleanup row draws `⧉ ✓` right-aligned above the title, the title, and the worktree path or `<age> old` below, indented two columns. ⧉ copies the remove command (worktree rows) or `claude --resume <id>` (old sessions); ✓ marks done `item.session` (not drawn when it is null) or the old session. The `⊘` delete leaves Cleanup: an old session is deleted by marking it done and deleting it on the Done tab, behind the same confirmation. `SessionEntry` gains `size: number`, the transcript's `file.size` from the folder listing `listSessions` already makes (`session-files.ts:91`), shown through `sizeLabel(bytes)` in `sessions.ts` (1024 steps, `B`, `KB`, `MB`, `GB`, one decimal below 10, whole numbers from 10). Only old-session rows show this size on the right of the title. Worktree rows show no size and carry their path below the title: the user decided this on OQ-002 (2026-11-02), because a size means walking every file of the worktree.
 **Instead of:** keeping `⊘` in Cleanup: the board and the request draw `⧉ ✓` only, and SDR-00002 RISK-001 allows delete on the Done tab alone.
 **Risks:**
 - **RISK-003** A user who deleted old sessions straight from Cleanup now takes two presses. Mitigation: a CHANGELOG line says so.
@@ -144,7 +144,7 @@ The design item for SDR-00002 shipped the band buttons and the work pane, but dr
 
 **Out:**
 - Session name prefixes (SDR TF-006) and the board's sample Peek prose (summaries, files, tests).
-- The worktree size on Cleanup rows (OQ-002).
+- The worktree size on Cleanup rows, decided out by the user on OQ-002 (D-005 r2).
 - The delete confirmation texts and `isDeletable` rules; they stay as shipped.
 
 ## Phase 1: Band separators, button colours, the Markdown toggle and one pane inset
@@ -240,8 +240,10 @@ The design item for SDR-00002 shipped the band buttons and the work pane, but dr
 - **T-3.7** `npm test` passes, and `node scripts/test.mjs build mods` passes for `dist/mods/status`.
 
 ## Open questions
-- **OQ-001** The request and the WorkPane board disagree in three places: the request puts `⋯` after a working step, the board draws none; the request puts the Done-tab `⊘` in the control tone, the board draws it (and the Delete-all `⊘`) in error; the request spaces the tabs three columns apart, the board two (`gap: 2ch`). Owner: product owner. Fallback: the board in all three (no `⋯`, `⊘` in error, two spaces), as T-2.3, T-2.5 and the phase 2 changes state.
-- **OQ-002** The board shows a worktree's size (`214 MB`); measuring it means walking every file of the worktree while the Cleanup tab draws, and the allowed kernel change covers only the detail row. Owner: product owner. Fallback: worktree rows show no size; old-session rows show the transcript size.
+- **OQ-001** The request and the WorkPane board disagree in three places: the request puts `⋯` after a working step, the board draws none; the request puts the Done-tab `⊘` in the control tone, the board draws it (and the Delete-all `⊘`) in error; the request spaces the tabs three columns apart, the board two (`gap: 2ch`). Owner: product owner. Answered 2026-11-02 for two of the three: the working step keeps the request's ` ⋯` (D-002 r2), and the tabs keep the board's two spaces. Still open: the Done-tab `⊘` colour. Fallback: the board (error), as shipped.
+- **OQ-002** The board shows a worktree's size (`214 MB`); measuring it means walking every file of the worktree while the Cleanup tab draws, and the allowed kernel change covers only the detail row. Owner: product owner. Answered 2026-11-02: worktree rows show no size and their path below the title; old-session rows keep the transcript size (D-005 r2).
 
 ## Revision log
 - 2026-11-02: D-003 (r2): list height formula names PANE_PADDING; item 10 moves the pane padding into theme.ts
+- 2026-11-02: D-002 (r2): a working step ends with " ⋯" in accent; user ruling on OQ-001
+- 2026-11-02: D-005 (r2): worktree rows show no size, path below the title; user ruling on OQ-002

@@ -44,6 +44,12 @@ describe('sessions', () => {
     expect(sizeLabel(5 * 1024 ** 3)).toBe('5.0 GB')
   })
 
+  test('a size that rounds up to the next step reads in the next unit', async () => {
+    expect(sizeLabel(1048570)).toBe('1.0 MB')
+    expect(sizeLabel(1023)).toBe('1023 B')
+    expect(sizeLabel(1048064)).toBe('1.0 MB')
+  })
+
   test('ages read in minutes, hours and days', async () => {
     expect(age(30_000)).toBe('now')
     expect(age(17 * 60_000)).toBe('17m')

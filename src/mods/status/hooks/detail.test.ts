@@ -95,9 +95,9 @@ describe('session detail row (T-2.2)', () => {
 })
 
 describe('session detail row (T-2.3)', () => {
-  test('a working step is accent with no marker, an open one muted', async () => {
+  test('a working step is accent and ends with ⋯, an open one muted with no marker', async () => {
     const working = item({ next: 'implement_phase', actor: 'developer', phase: 2, attention: 'working' })
-    expect(detailPieces(session([working])).at(-1)).toEqual({ text: 'developer implements phase 2', color: TONES.accent })
+    expect(detailPieces(session([working])).at(-1)).toEqual({ text: 'developer implements phase 2 ⋯', color: TONES.accent })
     const open = item({ next: 'close', actor: 'lead', attention: 'open' })
     expect(detailPieces(session([open])).at(-1)).toEqual({ text: 'lead closes the item', color: TONES.muted })
   })

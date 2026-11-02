@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-02T13:58:46.914Z",
+  "base": "d3093ab91736a8f5a6b0fb6dd0fe3d26caf695bd",
+  "mutant": {
+    "path": "src/mods/markdown/hooks/actions.ts",
+    "line": 71,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 187063
+}

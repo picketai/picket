@@ -34,7 +34,8 @@ const stepPiece = (item: ListRowView): Piece => {
   const text = stepText(item)
   if (item.status === 'blocked') return { text: `${text} ◀`, color: TONES.error, bold: true }
   if (item.attention === 'needs-you') return { text: `${text} ◀`, color: TONES.warning, bold: true }
-  return { text, color: item.attention === 'working' ? TONES.accent : TONES.muted }
+  if (item.attention === 'working') return { text: `${text} ⋯`, color: TONES.accent }
+  return { text, color: TONES.muted }
 }
 
 const openPieces = (item: ListRowView): Piece[] => [{ text: item.lane, color: TONES.accent }, ...phaseDots(item), GAP, stepPiece(item)]

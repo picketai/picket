@@ -1,0 +1,88 @@
+{
+  "work_id": "20261102-band-and-work-pane-match-canvas",
+  "base": "d3093ab91736a8f5a6b0fb6dd0fe3d26caf695bd",
+  "request": "work/20261102-band-and-work-pane-match-canvas/request.md",
+  "size": "large",
+  "changed_files": [
+    "CHANGELOG.md",
+    "src/lib/shared/views.mts",
+    "src/lib/verbs/list/index.mts",
+    "src/lib/verbs/list/index.test.mts",
+    "src/mods/markdown/hooks/actions.ts",
+    "src/mods/markdown/hooks/index.test.tsx",
+    "src/mods/markdown/hooks/index.tsx",
+    "src/mods/markdown/hooks/picket-markdown.test.tsx",
+    "src/mods/markdown/hooks/view.tsx",
+    "src/mods/shared/theme.ts",
+    "src/mods/status/hooks/band.test.ts",
+    "src/mods/status/hooks/band.ts",
+    "src/mods/status/hooks/detail.test.ts",
+    "src/mods/status/hooks/detail.ts",
+    "src/mods/status/hooks/index.test.tsx",
+    "src/mods/status/hooks/pane-actions.test.ts",
+    "src/mods/status/hooks/pane-actions.ts",
+    "src/mods/status/hooks/pane.tsx",
+    "src/mods/status/hooks/session-files.ts",
+    "src/mods/status/hooks/sessions.test.ts",
+    "src/mods/status/hooks/sessions.ts",
+    "src/mods/status/hooks/watch.test.ts",
+    "src/mods/status/hooks/work-pane.test.ts",
+    "src/mods/status/hooks/work-pane.ts",
+    "src/mods/status/types/index.d.ts"
+  ],
+  "lines_added": 1478,
+  "lines_removed": 219,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-02T13:58:46.914Z",
+    "base": "d3093ab91736a8f5a6b0fb6dd0fe3d26caf695bd",
+    "mutant": {
+      "path": "src/mods/markdown/hooks/actions.ts",
+      "line": 71,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 187063
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
