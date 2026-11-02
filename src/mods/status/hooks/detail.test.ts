@@ -26,7 +26,7 @@ const item = (fields: Partial<ListRowView>): ListRowView => ({
 })
 
 const session = (items: ListRowView[]): GroupedSession => ({
-  entry: { id: 's1', title: 'Session', mtimeMs: 0, isLive: false, isCurrent: false },
+  entry: { id: 's1', title: 'Session', mtimeMs: 0, size: 0, isLive: false, isCurrent: false },
   group: 'open',
   items,
   greyed: [],

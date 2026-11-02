@@ -262,6 +262,8 @@ type PaneWorld = {
   commandRuns: string[]
   reads: string[]
   work: Record<string, { 'state.yaml': number; 'verdicts.jsonl': number }>
+  mtimes: Record<string, number>
+  sizes: Record<string, number>
 }
 
 const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE], list: unknown[] = LIST) => {
@@ -279,6 +281,8 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     commandRuns: [],
     reads: [],
     work: {},
+    mtimes: {},
+    sizes: {},
   }
   on('command.list', () => ({ value: w.commands.map(name => ({ name, description: '', source: 'plugin' as const })) }))
   on('command.run', ($, e) => {
@@ -303,7 +307,15 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
   on('fs.list', ($, e) => {
     const path = e.path.replace(/\\/g, '/')
     if (path === PROJECT) {
-      return { value: transcripts.map((id, at) => ({ name: `${id}.jsonl`, kind: 'file' as const, size: 10, mtimeMs: NOW - (at + 1) * 60_000, isLink: false })) }
+      return {
+        value: transcripts.map((id, at) => ({
+          name: `${id}.jsonl`,
+          kind: 'file' as const,
+          size: w.sizes[id] ?? 10,
+          mtimeMs: w.mtimes[id] ?? NOW - (at + 1) * 60_000,
+          isLink: false,
+        })),
+      }
     }
     if (path === `${CONFIG}/sessions`) return { value: [{ name: '4444.json', kind: 'file' as const, size: 10, mtimeMs: NOW, isLink: false }] }
     if (path === 'D:/repo/work') return { value: Object.keys(w.work).map(name => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })) }
@@ -368,7 +380,16 @@ const HEADER_OR_TITLE = /^[▾▸] (NEEDS YOU|WORKING|OPEN|CLOSED|NO WORK ITEM|D
 
 type Drawing = Awaited<ReturnType<typeof workPane>>
 
-const outline = async (drawn: Drawing) => (await drawn.findAll({ type: 'Text', text: HEADER_OR_TITLE })).map(found => found.text)
+type Described = { type?: string; props?: Record<string, unknown>; children?: unknown[] }
+
+const textsIn = (node: unknown): string[] => {
+  if (node === null || typeof node !== 'object') return []
+  const { type, children = [] } = node as Described
+  if (type === 'Text') return [children.filter((child): child is string => typeof child === 'string').join('')]
+  return children.flatMap(textsIn)
+}
+
+const outline = async (drawn: Drawing) => textsIn(await drawn.find({ key: 'list' })).filter(text => HEADER_OR_TITLE.test(text))
 
 const openWorkPane = async ($: Engine) => {
   await $.session.start(START)
@@ -508,18 +529,135 @@ test('a session draws its detail row under its title', async ($, on) => {
   expect(detail).toBeDefined()
 })
 
-test('a list taller than the pane draws how many sessions are below it (T-2.8)', async ($, on) => {
-  paneWorld(on)
-  await openWorkPane($)
-  const short = await $.ui.mount({
+const paneOfRows = ($: Engine, bodyRows: number) =>
+  $.ui.mount({
     plugin: 'picket-status',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'work',
-    props: { title: 'Work', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 14 }, view: {} },
+    props: { title: 'Work', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows }, view: {} },
   })
-  expect(await outline(short)).toEqual(['▾ NEEDS YOU', 'Gate the release'])
+
+test('a list taller than the pane draws how many sessions are below it (T-2.8)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const short = await paneOfRows($, 24)
+  expect(await outline(short)).toEqual(['▾ NEEDS YOU', 'Gate the release', '▾ WORKING'])
   expect((await short.find({ type: 'Text', text: '↓ 1 more' }))?.props).toEqual({ dimColor: true })
+})
+
+const BODY_ROWS = 60
+const LIST_ROWS = BODY_ROWS - 2 * PANE_PADDING - 4 - 1 - 10
+
+const keysIn = (node: unknown): string[] => {
+  if (node === null || typeof node !== 'object') return []
+  const own = 'props' in node && node.props !== null && typeof node.props === 'object' && 'key' in node.props ? [String(node.props.key)] : []
+  const children = 'children' in node && Array.isArray(node.children) ? node.children : []
+  return [...own, ...children.flatMap(keysIn)]
+}
+
+test('Peek is the last section: a rule, PEEK and read-only, the selected title and its items, none between rows (T-3.1)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  const peek = await drawn.find({ key: 'peek' })
+  const [rule] = (peek?.children ?? []) as { props: { color?: string }; children: string[] }[]
+
+  expect(rule).toEqual({ type: 'Text', props: { color: TONES.rule }, children: ['─'.repeat(50 - 2 * PANE_PADDING)] })
+  expect((await drawn.find({ type: 'Text', text: 'PEEK' }))?.props).toEqual({ dimColor: true, bold: true })
+  expect((await drawn.find({ type: 'Text', text: 'read-only' }))?.props).toEqual({ dimColor: true })
+  expect((await drawn.find({ key: 'peek-title' }))?.children).toEqual([{ type: 'Text', props: { bold: true, wrap: 'truncate-end' }, children: ['Gate the release'] }])
+  expect(keysIn(peek)).toContain(`peek-${S_CURRENT}-w-gate`)
+  expect(keysIn(await drawn.find({ key: 'list' })).filter(key => /^peek-.*-w-/.test(key))).toEqual([])
+
+  await drawn.press({ key: `peek-${S_WORKING}` })
+  expect((await drawn.find({ key: 'peek-title' }))?.text).toBe('Build the pane')
+  expect(keysIn(await drawn.find({ key: 'peek' }))).toContain(`peek-${S_WORKING}-w-pane`)
+  expect(keysIn(await drawn.find({ key: 'list' })).filter(key => /^peek-.*-w-/.test(key))).toEqual([])
+})
+
+test('with no session on the tab Peek says nothing is selected', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'tab-done' })
+  expect(await drawn.find({ type: 'Text', text: 'Nothing selected' })).toBeDefined()
+  expect(await drawn.find({ type: 'Text', text: 'Click a title to peek at it.' })).toBeDefined()
+})
+
+test('the list keeps its height whatever is selected, and never falls below three rows (T-3.2)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  const height = async () => (await drawn.find({ key: 'list' }))?.props.height
+
+  expect(await height()).toBe(LIST_ROWS)
+  await drawn.press({ key: `peek-${S_WORKING}` })
+  expect(await height()).toBe(LIST_ROWS)
+})
+
+test('on a short pane the list keeps three rows (T-3.2)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  expect((await (await paneOfRows($, 14)).find({ key: 'list' }))?.props.height).toBe(3)
+})
+
+const OLD_MS = NOW - 20 * 24 * 60 * 60 * 1000
+
+const cleanupWorld = (on: On) => {
+  const shipped = { ...listRow('w-shipped', 'closed', [S_WORKING]), worktrees: [{ repo: 'svc', path: 'svc/.worktrees/feat', present: true }] }
+  const world = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE], [shipped])
+  world.w.mtimes[S_NONE] = OLD_MS
+  world.w.sizes[S_NONE] = 3250586
+  return world
+}
+
+test('Cleanup draws worktrees on disk and old sessions with their hints, sizes and ages, and no delete (T-3.4)', async ($, on) => {
+  cleanupWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'tab-cleanup' })
+
+  expect((await drawn.find({ type: 'Text', text: 'WORKTREES ON DISK' }))?.props).toEqual({ color: TONES.warning, bold: true })
+  expect(await drawn.find({ type: 'Text', text: 'Closed items whose worktree is still there.' })).toBeDefined()
+  const tree = await drawn.find({ key: 'cleanup-tree-w-shipped-svc' })
+  expect(tree?.text).toContain('Item w-shipped')
+  expect(tree?.text).toContain('svc/.worktrees/feat')
+
+  expect((await drawn.find({ type: 'Text', text: 'OLD SESSIONS' }))?.props).toEqual({ color: TONES.muted, bold: true })
+  expect(await drawn.find({ type: 'Text', text: 'Over 14 days old, no work item.' })).toBeDefined()
+  const old = await drawn.find({ key: `cleanup-old-${S_NONE}` })
+  expect(old?.text).toContain('Read the logs')
+  expect(old?.text).toContain('3.1 MB')
+  expect(old?.text).toContain('20d old')
+
+  expect(await drawn.find({ type: 'Text', text: '⧉ copies a command; the pane never runs it.' })).toBeDefined()
+  expect(keysIn(await drawn.find({ key: 'list' })).filter(key => key.startsWith('ask-delete-'))).toEqual([])
+})
+
+test('on Cleanup an old session copies its resume command and ✓ marks it done; a worktree ✓ marks its session done (T-3.5)', async ($, on) => {
+  const { w } = cleanupWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'tab-cleanup' })
+
+  await drawn.press({ key: `copy-${S_NONE}` })
+  expect(w.copied).toEqual([`claude --resume ${S_NONE}`])
+  await drawn.press({ key: `done-old-${S_NONE}` })
+  expect(w.stored['done-sessions']).toEqual([S_NONE])
+  await drawn.press({ key: 'done-tree-w-shipped-svc' })
+  expect(w.stored['done-sessions']).toEqual([S_NONE, S_WORKING])
+})
+
+test('Cleanup with nothing to clean says so and draws no section (T-3.6)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'tab-cleanup' })
+
+  expect(await drawn.find({ type: 'Text', text: 'Nothing to clean up.' })).toBeDefined()
+  expect(await drawn.find({ type: 'Text', text: 'WORKTREES ON DISK' })).toBeUndefined()
+  expect(await drawn.find({ type: 'Text', text: 'OLD SESSIONS' })).toBeUndefined()
 })
 
 test('copy puts the resume command on the clipboard, and pressing a row peeks at its items with the moved one dimmed (T-4.4)', async ($, on) => {

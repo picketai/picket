@@ -4,7 +4,7 @@ import type { ListRowView } from '../../../lib/shared/views.mts'
 import type { SessionEntry } from '../types'
 import { cleanupOf, groupSessions } from './work-pane'
 
-const entry = (id: string, mtimeMs = 0, isCurrent = false): SessionEntry => ({ id, title: `title ${id}`, mtimeMs, isLive: false, isCurrent })
+const entry = (id: string, mtimeMs = 0, isCurrent = false): SessionEntry => ({ id, title: `title ${id}`, mtimeMs, size: 0, isLive: false, isCurrent })
 
 const row = (id: string, attention: ListRowView['attention'], sessions: string[]): ListRowView => ({
   id,
@@ -77,7 +77,7 @@ const FEAT = { repo: 'svc', path: 'svc/.worktrees/feat', present: true }
 describe('cleanup worktrees (T-5.1)', () => {
   test('a closed item with a present worktree gives the git -C remove command', async () => {
     const item = { ...row('a', 'closed', []), worktrees: [FEAT] }
-    expect(cleanupOf([item], [], NOW)).toEqual({ worktrees: [{ item, repo: 'svc', command: 'git -C svc worktree remove .worktrees/feat' }], sessions: [] })
+    expect(cleanupOf([item], [], NOW)).toEqual({ worktrees: [{ item, repo: 'svc', path: 'svc/.worktrees/feat', command: 'git -C svc worktree remove .worktrees/feat' }], sessions: [] })
   })
 
   test('a worktree no longer on disk gives no row', async () => {

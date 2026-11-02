@@ -57,7 +57,7 @@ export function cleanupOf(rows: readonly ListRowView[], entries: readonly Sessio
   return {
     worktrees: rows
       .filter(row => row.attention === 'closed')
-      .flatMap(item => item.worktrees.filter(tree => tree.present).map(tree => ({ item, repo: tree.repo, command: removeCommand(tree.repo, tree.path) }))),
+      .flatMap(item => item.worktrees.filter(tree => tree.present).map(tree => ({ item, repo: tree.repo, path: tree.path, command: removeCommand(tree.repo, tree.path) }))),
     sessions: entries.filter(entry => now - entry.mtimeMs > CLEANUP_AGE_DAYS * DAY_MS && !listed.has(entry.id)),
   }
 }

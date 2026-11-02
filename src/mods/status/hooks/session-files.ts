@@ -95,6 +95,7 @@ export async function listSessions($: EngineInterface): Promise<SessionEntry[]> 
       id,
       title: running?.name ?? (await transcriptTitle($, `${folder}/${file.name}`, id, file.mtimeMs, file.size)),
       mtimeMs: file.mtimeMs,
+      size: file.size,
       isLive: running !== undefined,
       isCurrent: id === currentId,
     })

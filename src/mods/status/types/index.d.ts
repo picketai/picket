@@ -37,6 +37,7 @@ export type SessionEntry = {
   id: string
   title: string
   mtimeMs: number
+  size: number
   isLive: boolean
   isCurrent: boolean
 }
@@ -71,7 +72,7 @@ export type GroupedSession = {
   greyed: ListRow[]
 }
 
-export type CleanupWorktree = { item: ListRow; repo: string; command: string }
+export type CleanupWorktree = { item: ListRow; repo: string; path: string; command: string }
 
 export type Cleanup = { worktrees: CleanupWorktree[]; sessions: SessionEntry[] }
 

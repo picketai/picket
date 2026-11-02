@@ -24,13 +24,17 @@ import {
   submitRename,
   toggleGroup,
 } from './pane-actions'
-import { age } from './sessions'
-import { cleanupOf, groupSessions, type GroupedPane } from './work-pane'
+import { age, sizeLabel } from './sessions'
+import { CLEANUP_AGE_DAYS, cleanupOf, groupSessions, type GroupedPane } from './work-pane'
 
 const CHROME_ROWS = 4
 const MORE_ROWS = 1
-const ACTION_COLUMNS = 14
+const PEEK_ROWS = 10
+const MIN_LIST_ROWS = 3
 const AGE_COLUMNS = 6
+
+const listHeight = (bodyRows: number): number =>
+  Math.max(MIN_LIST_ROWS, bodyRows - 2 * PANE_PADDING - CHROME_ROWS - MORE_ROWS - PEEK_ROWS)
 
 export const paneLimit = { maxOffset: 0 }
 
@@ -60,24 +64,60 @@ const ATTENTION_LABELS: Record<ListRowView['attention'], string> = {
   closed: 'closed',
 }
 
-function peekLines(pane: Pane, session: GroupedSession): Drawn[] {
+function peekLines(pane: Pane, session: GroupedSession): JSX.Element[] {
   const { Box, Text } = pane.ui
-  const line = (item: ListRowView, isGreyed: boolean): Drawn => ({
-    rows: 2,
-    node: (
-      <Box key={`peek-${session.entry.id}-${item.id}`} flexDirection="column" paddingLeft={2} width={pane.lineWidth}>
-        <Text dimColor={isGreyed} bold={!isGreyed} wrap="truncate-end">
-          {item.title}
-        </Text>
-        <Text dimColor wrap="truncate-end">
-          {[item.lane, ATTENTION_LABELS[item.attention], item.phases, item.branch ?? 'no branch'].join(' · ')}
-        </Text>
-      </Box>
-    ),
-  })
+  const line = (item: ListRowView, isGreyed: boolean) => (
+    <Box key={`peek-${session.entry.id}-${item.id}`} flexDirection="column" paddingLeft={2} width={pane.lineWidth}>
+      <Text dimColor={isGreyed} bold={!isGreyed} wrap="truncate-end">
+        {item.title}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {[item.lane, ATTENTION_LABELS[item.attention], item.phases, item.branch ?? 'no branch'].join(' · ')}
+      </Text>
+    </Box>
+  )
   const lines = [...session.items.map(item => line(item, false)), ...session.greyed.map(item => line(item, true))]
   if (lines.length > 0) return lines
-  return [{ rows: 1, node: <Text key={`peek-${session.entry.id}-none`} dimColor>{'  No work item in this session.'}</Text> }]
+  return [
+    <Text key={`peek-${session.entry.id}-none`} dimColor>
+      {'  No work item in this session.'}
+    </Text>,
+  ]
+}
+
+function peekSection(pane: Pane, session: GroupedSession | null) {
+  const { Box, Text } = pane.ui
+  const body =
+    session === null
+      ? [
+          <Text key="peek-nothing" dimColor>
+            Nothing selected
+          </Text>,
+          <Text key="peek-hint" dimColor>
+            Click a title to peek at it.
+          </Text>,
+        ]
+      : [
+          <Box key="peek-title" width={pane.lineWidth}>
+            <Text bold wrap="truncate-end">
+              {session.entry.title}
+            </Text>
+          </Box>,
+          ...peekLines(pane, session),
+        ]
+  return (
+    <Box key="peek" flexDirection="column" height={PEEK_ROWS} width={pane.lineWidth} overflow="hidden">
+      <Text color={TONES.rule}>{'─'.repeat(pane.lineWidth)}</Text>
+      <Box justifyContent="space-between" width={pane.lineWidth}>
+        <Text dimColor bold>
+          PEEK
+        </Text>
+        <Text dimColor>read-only</Text>
+      </Box>
+      <Text> </Text>
+      {body}
+    </Box>
+  )
 }
 
 function piecesText(pane: Pane, pieces: readonly Piece[]) {
@@ -213,8 +253,7 @@ function sessionLines($: EngineInterface, pane: Pane, session: GroupedSession): 
     const renaming = renameLine($, pane, entry)
     if (renaming.length > 0) return renaming
   }
-  const rows = sessionRows($, pane, session)
-  return pane.selectedId === entry.id ? [rows, ...peekLines(pane, session)] : [rows]
+  return [sessionRows($, pane, session)]
 }
 
 const isFolded = (pane: Pane, group: FoldableGroup) => pane.view.folded.includes(group)
@@ -247,9 +286,9 @@ function shownGroups(tab: PaneTab, grouped: GroupedPane): ShownGroup[] {
   return grouped.active
 }
 
-function selectedOf(view: PaneView, groups: readonly ShownGroup[]): string | null {
-  const visible = groups.filter(shown => !view.folded.includes(shown.group)).flatMap(shown => shown.sessions.map(session => session.entry.id))
-  return view.selectedId !== null && visible.includes(view.selectedId) ? view.selectedId : (visible[0] ?? null)
+function selectedOf(view: PaneView, groups: readonly ShownGroup[]): GroupedSession | null {
+  const visible = groups.filter(shown => !view.folded.includes(shown.group)).flatMap(shown => shown.sessions)
+  return visible.find(session => session.entry.id === view.selectedId) ?? visible[0] ?? null
 }
 
 function doneLines($: EngineInterface, pane: Pane, grouped: GroupedPane, groups: readonly ShownGroup[]): Drawn[] {
@@ -261,65 +300,99 @@ function doneLines($: EngineInterface, pane: Pane, grouped: GroupedPane, groups:
   return [...head, ...groupLines($, pane, groups)]
 }
 
-function sectionHeader(pane: Pane, label: string, count: number): Drawn {
+type Section = { key: string; label: string; tone: string; hint: string; count: number }
+
+function sectionHeader(pane: Pane, section: Section): Drawn {
   const { Box, Text } = pane.ui
   return {
-    rows: 2,
+    rows: 3,
     node: (
-      <Box key={`section-${label}`} marginTop={1}>
-        <Text dimColor bold>{`${label} · ${count}`}</Text>
+      <Box key={`section-${section.key}`} flexDirection="column" marginTop={1} width={pane.lineWidth}>
+        <Box justifyContent="space-between" width={pane.lineWidth}>
+          <Text color={section.tone} bold>
+            {section.label}
+          </Text>
+          <Text dimColor>{String(section.count)}</Text>
+        </Box>
+        <Text dimColor wrap="truncate-end">
+          {section.hint}
+        </Text>
+      </Box>
+    ),
+  }
+}
+
+type CleanupRow = { key: string; title: string; size: string; below: string; actions: JSX.Element[] }
+
+function cleanupRow(pane: Pane, row: CleanupRow): Drawn {
+  const { Box, Text } = pane.ui
+  return {
+    rows: 3,
+    node: (
+      <Box key={`cleanup-${row.key}`} flexDirection="column" width={pane.lineWidth}>
+        <Box justifyContent="flex-end" width={pane.lineWidth}>
+          {row.actions.flatMap((button, at) => (at === 0 ? [button] : [<Text key={`gap-${at}`}> </Text>, button]))}
+        </Box>
+        <Box justifyContent="space-between" width={pane.lineWidth}>
+          <Text wrap="truncate-end">{fit(row.title, pane.lineWidth - AGE_COLUMNS - 2)}</Text>
+          <Text dimColor>{row.size}</Text>
+        </Box>
+        <Box paddingLeft={2}>
+          <Text dimColor wrap="truncate-end">
+            {row.below}
+          </Text>
+        </Box>
       </Box>
     ),
   }
 }
 
 function worktreeLines($: EngineInterface, pane: Pane, tree: CleanupWorktree): Drawn {
-  const { Box, Button, Text } = pane.ui
   const key = `${tree.item.id}-${tree.repo.replace(/[^A-Za-z0-9_-]/g, '-')}`
-  return {
+  const owner = tree.item.session
+  const done = owner === null ? [] : [actionButton(pane, `done-tree-${key}`, '✓', TONES.control, () => markDone($, owner))]
+  return cleanupRow(pane, {
+    key: `tree-${key}`,
+    title: tree.item.title,
+    size: '',
+    below: tree.path,
+    actions: [actionButton(pane, `copy-command-${key}`, '⧉', TONES.control, copyRemoveCommand($, tree.command)), ...done],
+  })
+}
+
+function oldSessionLines($: EngineInterface, pane: Pane, entry: SessionEntry): Drawn {
+  return cleanupRow(pane, {
+    key: `old-${entry.id}`,
+    title: entry.title,
+    size: sizeLabel(entry.size),
+    below: `${age(pane.now - entry.mtimeMs)} old`,
+    actions: [
+      actionButton(pane, `copy-${entry.id}`, '⧉', TONES.control, copyResume($, entry.id)),
+      actionButton(pane, `done-old-${entry.id}`, '✓', TONES.control, () => markDone($, entry.id)),
+    ],
+  })
+}
+
+const WORKTREES_SECTION = { key: 'worktrees', label: 'WORKTREES ON DISK', tone: TONES.warning, hint: 'Closed items whose worktree is still there.' }
+
+const OLD_SECTION = { key: 'old', label: 'OLD SESSIONS', tone: TONES.muted, hint: `Over ${CLEANUP_AGE_DAYS} days old, no work item.` }
+
+function cleanupLines($: EngineInterface, pane: Pane, cleanup: Cleanup): Drawn[] {
+  const { Box, Text } = pane.ui
+  if (cleanup.worktrees.length === 0 && cleanup.sessions.length === 0) {
+    return [{ rows: 1, node: <Text key="cleanup-none" dimColor>Nothing to clean up.</Text> }]
+  }
+  const trees = cleanup.worktrees.length === 0 ? [] : [sectionHeader(pane, { ...WORKTREES_SECTION, count: cleanup.worktrees.length }), ...cleanup.worktrees.map(tree => worktreeLines($, pane, tree))]
+  const old = cleanup.sessions.length === 0 ? [] : [sectionHeader(pane, { ...OLD_SECTION, count: cleanup.sessions.length }), ...cleanup.sessions.map(entry => oldSessionLines($, pane, entry))]
+  const footer: Drawn = {
     rows: 2,
     node: (
-      <Box key={`tree-${key}`} flexDirection="column" width={pane.lineWidth}>
-        <Text wrap="truncate-end">{tree.item.title}</Text>
-        <Box justifyContent="space-between" width={pane.lineWidth}>
-          <Text dimColor wrap="truncate-end">
-            {fit(tree.command, pane.lineWidth - 3)}
-          </Text>
-          <Button key={`copy-command-${key}`} plain label="⧉" onPress={copyRemoveCommand($, tree.command)} />
-        </Box>
+      <Box key="cleanup-footer" marginTop={1}>
+        <Text dimColor>⧉ copies a command; the pane never runs it.</Text>
       </Box>
     ),
   }
-}
-
-function oldSessionLines($: EngineInterface, pane: Pane, entry: SessionEntry): Drawn[] {
-  const { Box, Text } = pane.ui
-  if (pane.view.confirm === entry.id) {
-    return confirmLines($, pane, entry.id, `Delete "${fit(entry.title, 24)}" (${entry.id}) for good?`, () => void confirmDelete($, entry))
-  }
-  return [
-    {
-      rows: 1,
-      node: (
-        <Box key={`old-${entry.id}`} justifyContent="space-between" width={pane.lineWidth}>
-          <Text wrap="truncate-end">{fit(entry.title, pane.lineWidth - ACTION_COLUMNS)}</Text>
-          <Box>
-            <Text dimColor>{age(pane.now - entry.mtimeMs)} </Text>
-            {actionButton(pane, `ask-delete-${entry.id}`, '⊘', TONES.error, () => askDelete($, entry.id))}
-          </Box>
-        </Box>
-      ),
-    },
-  ]
-}
-
-function cleanupLines($: EngineInterface, pane: Pane, cleanup: Cleanup): Drawn[] {
-  return [
-    sectionHeader(pane, 'WORKTREES OF CLOSED ITEMS', cleanup.worktrees.length),
-    ...cleanup.worktrees.map(tree => worktreeLines($, pane, tree)),
-    sectionHeader(pane, 'OLD SESSIONS WITH NO ITEM', cleanup.sessions.length),
-    ...cleanup.sessions.flatMap(entry => oldSessionLines($, pane, entry)),
-  ]
+  return [...trees, ...old, footer]
 }
 
 function tabLines($: EngineInterface, pane: Pane, grouped: GroupedPane, groups: readonly ShownGroup[], cleanup: Cleanup): Drawn[] {
@@ -399,9 +472,10 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const grouped = groupSessions(entries, rows, done)
   const groups = shownGroups(view.tab, grouped)
   const cleanup = cleanupOf(rows, entries, now)
-  const pane: Pane = { ui, view, now, lineWidth: Math.max(20, e.props.bodyColumns - 2 * PANE_PADDING), selectedId: selectedOf(view, groups) }
+  const selected = selectedOf(view, groups)
+  const pane: Pane = { ui, view, now, lineWidth: Math.max(20, e.props.bodyColumns - 2 * PANE_PADDING), selectedId: selected?.entry.id ?? null }
   const lines = tabLines($, pane, grouped, groups, cleanup)
-  const room = Math.max(1, e.props.scroll.bodyRows - CHROME_ROWS - 2 * PANE_PADDING - MORE_ROWS)
+  const room = listHeight(e.props.scroll.bodyRows)
   paneLimit.maxOffset = lastStart(lines, room)
   const offset = Math.min(view.offset, paneLimit.maxOffset)
   const shown = fitting(lines.slice(offset), room)
@@ -411,11 +485,12 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
     <Box key="pane" flexDirection="column" paddingX={PANE_PADDING} paddingY={PANE_PADDING}>
       {header(pane, grouped)}
       {tabRow($, pane, grouped, cleanup)}
-      <Box flexDirection="column">
+      <Box key="list" flexDirection="column" height={room} overflow="hidden">
         {lines.length === 0 && <Text dimColor>No sessions here.</Text>}
         {shown.map(line => line.node)}
       </Box>
-      {below > 0 ? <Text dimColor>{`↓ ${below} more`}</Text> : null}
+      <Text dimColor>{below > 0 ? `↓ ${below} more` : ' '}</Text>
+      {peekSection(pane, selected)}
     </Box>
   )
 }
