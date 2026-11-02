@@ -247,7 +247,7 @@ type PaneWorld = {
   runs: (readonly string[])[]
 }
 
-const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE]) => {
+const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE], list: unknown[] = LIST) => {
   const timer = mock.clock(on, { now: NOW })
   const w: PaneWorld = { stored: {}, copied: [], toasts: [], written: {}, opened: [], closed: [], registered: [], runs: [] }
   let panes: { id: string }[] = []
@@ -304,7 +304,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
   })
   on('process.run', ($, e) => {
     w.runs.push(e.argv)
-    return isList(e.argv) ? exited(0, JSON.stringify(LIST)) : exited(0, JSON.stringify(LATEST))
+    return isList(e.argv) ? exited(0, JSON.stringify(list)) : exited(0, JSON.stringify(LATEST))
   })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -397,6 +397,70 @@ test('renaming a closed session appends an agent-name record; a live other sessi
   await drawn.input({ key: `rename-input-${S_LIVE}`, text: 'Renamed' })
   expect(w.toasts).toEqual(['That session is open in another window; rename it there.'])
   expect(w.written[`${PROJECT}/${S_LIVE}.jsonl`]).toBeUndefined()
+})
+
+const isUnlink = (argv: readonly string[]) => argv[0] === 'node' && String(argv[2]).includes('unlinkSync')
+
+const unlinked = (w: PaneWorld) => w.runs.filter(isUnlink).map(argv => String(argv.at(-1)).replace(/\\/g, '/'))
+
+const onDoneTab = async (drawn: Drawing, ids: string[]) => {
+  for (const id of ids) await drawn.press({ key: `done-${id}` })
+  await drawn.press({ key: 'tab-done' })
+}
+
+test('delete on the Done tab confirms first; confirming unlinks the transcript and cancelling runs nothing (T-5.3)', async ($, on) => {
+  const { w } = paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await onDoneTab(drawn, [S_NONE, S_WORKING])
+
+  await drawn.press({ key: `ask-delete-${S_WORKING}` })
+  expect(await drawn.find({ type: 'Text', text: `Delete "Build the pane" (${S_WORKING}) for good?` })).toBeDefined()
+  await drawn.press({ key: `cancel-${S_WORKING}` })
+  expect(unlinked(w)).toEqual([])
+
+  await drawn.press({ key: `ask-delete-${S_NONE}` })
+  await drawn.press({ key: `delete-${S_NONE}` })
+  expect(unlinked(w)).toEqual([`${PROJECT}/${S_NONE}.jsonl`])
+  expect(await outline(drawn)).toEqual(['Build the pane'])
+})
+
+test('the current session, a live one and an id that is not a session id are refused with a toast and run nothing (T-5.4)', async ($, on) => {
+  const { w } = paneWorld(on, [S_CURRENT, S_LIVE, 'notes'])
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await onDoneTab(drawn, [S_CURRENT, S_LIVE, 'notes'])
+
+  for (const id of [S_CURRENT, S_LIVE, 'notes']) {
+    await drawn.press({ key: `ask-delete-${id}` })
+    await drawn.press({ key: `delete-${id}` })
+  }
+  expect(w.toasts).toEqual(['Only a closed session can be deleted.', 'Only a closed session can be deleted.', 'Only a closed session can be deleted.'])
+  expect(unlinked(w)).toEqual([])
+})
+
+test('Delete all deletes every closed Done session after one confirmation and names the skipped one (T-5.5)', async ($, on) => {
+  const { w } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE, S_LIVE])
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await onDoneTab(drawn, [S_WORKING, S_NONE, S_LIVE])
+
+  await drawn.press({ key: 'ask-delete-all' })
+  await drawn.press({ key: 'delete-all' })
+  expect(unlinked(w).sort()).toEqual([`${PROJECT}/${S_WORKING}.jsonl`, `${PROJECT}/${S_NONE}.jsonl`].sort())
+  expect(w.toasts).toEqual(['Deleted 2 of 3 sessions; skipped 1 open or current.'])
+})
+
+test('a Cleanup worktree row copies its git -C remove command (T-5.6)', async ($, on) => {
+  const shipped = { ...listRow('w-shipped', 'closed', [S_NONE]), worktrees: [{ repo: 'svc', path: 'svc/.worktrees/feat', present: true }] }
+  const { w } = paneWorld(on, [S_CURRENT, S_NONE], [shipped])
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  await drawn.press({ key: 'tab-cleanup' })
+  await drawn.press({ key: 'copy-command-w-shipped-svc' })
+  expect(w.copied).toEqual(['git -C svc worktree remove .worktrees/feat'])
+  expect(w.toasts).toEqual(['Copied the worktree remove command'])
 })
 
 test('a working agent clock moves with the five second timer', async ($, on) => {

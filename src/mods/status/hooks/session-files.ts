@@ -5,6 +5,10 @@ import { projectSlug, TITLE_RECORD, titleOf } from './sessions'
 
 const MAX_TRANSCRIPT_BYTES = 4 * 1024 * 1024
 const TRANSCRIPT = '.jsonl'
+const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const UNLINK = 'require("fs").unlinkSync(process.argv[1])'
+
+export const isDeletable = (entry: SessionEntry): boolean => !entry.isCurrent && !entry.isLive && SESSION_ID.test(entry.id)
 
 const titles = new Map<string, string>()
 
@@ -91,6 +95,21 @@ export async function listSessions($: EngineInterface): Promise<SessionEntry[]> 
     })
   }
   return entries
+}
+
+export async function deleteTranscript($: EngineInterface, entry: SessionEntry): Promise<boolean> {
+  if (!isDeletable(entry)) {
+    $.ui.toast('Only a closed session can be deleted.')
+    return false
+  }
+  const removed = await $.process
+    .run(['node', '-e', UNLINK, await transcriptPath($, entry.id)])
+    .catch(() => ({ exitCode: 1 }))
+  if (removed.exitCode !== 0) {
+    $.ui.toast(`Could not delete "${entry.title}".`)
+    return false
+  }
+  return true
 }
 
 async function appendName($: EngineInterface, path: string, id: string, name: string) {

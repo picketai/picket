@@ -64,6 +64,10 @@ export type GroupedSession = {
   greyed: ListRow[]
 }
 
+export type CleanupWorktree = { item: ListRow; repo: string; command: string }
+
+export type Cleanup = { worktrees: CleanupWorktree[]; sessions: SessionEntry[] }
+
 export type PaneTab = 'active' | 'done' | 'cleanup'
 
 export type PaneView = {

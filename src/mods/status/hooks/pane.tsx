@@ -2,10 +2,28 @@ import type { EngineInterface, RenderInput } from 'claude-code'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { SURFACES, TONES } from '../../shared/theme'
-import type { GroupedSession, PaneTab, PaneView } from '../types'
-import { back, copyResume, markDone, readDone, readPaneView, readRows, readSessions, select, selectTab, startRename, submitRename } from './pane-actions'
+import type { CleanupWorktree, GroupedSession, PaneTab, PaneView, SessionEntry } from '../types'
+import {
+  askDelete,
+  back,
+  cancelDelete,
+  confirmDelete,
+  copyRemoveCommand,
+  copyResume,
+  DELETE_ALL,
+  deleteAll,
+  markDone,
+  readDone,
+  readPaneView,
+  readRows,
+  readSessions,
+  select,
+  selectTab,
+  startRename,
+  submitRename,
+} from './pane-actions'
 import { age, windowLabel } from './sessions'
-import { groupSessions } from './work-pane'
+import { cleanupOf, groupSessions, type GroupedPane } from './work-pane'
 
 const PADDING = 1
 const CHROME_ROWS = 4
@@ -58,7 +76,11 @@ function rowActions($: EngineInterface, pane: Pane, session: GroupedSession) {
       <Button key={`copy-${id}`} plain label="⧉" onPress={copyResume($, id)} />
       <Text> </Text>
       {pane.view.tab === 'done' ? (
-        <Button key={`back-${id}`} plain label="↺" onPress={() => back($, id)} />
+        <Box>
+          <Button key={`back-${id}`} plain label="↺" onPress={() => back($, id)} />
+          <Text> </Text>
+          {deleteButton($, pane, id)}
+        </Box>
       ) : (
         <Button key={`done-${id}`} plain label="✓" onPress={() => markDone($, id)} />
       )}
@@ -66,10 +88,49 @@ function rowActions($: EngineInterface, pane: Pane, session: GroupedSession) {
   )
 }
 
+function deleteButton($: EngineInterface, pane: Pane, id: string) {
+  const { Button, Text } = pane.ui
+  return (
+    <Button key={`ask-delete-${id}`} plain onPress={() => askDelete($, id)}>
+      <Text color={TONES.error}>⊘</Text>
+    </Button>
+  )
+}
+
+function confirmLines($: EngineInterface, pane: Pane, key: string, question: string, onDelete: () => void): Drawn[] {
+  const { Box, Button, Text } = pane.ui
+  return [
+    {
+      rows: 2,
+      node: (
+        <Box key={`confirm-${key}`} flexDirection="column" width={pane.lineWidth}>
+          <Text color={TONES.error} wrap="truncate-end">
+            {question}
+          </Text>
+          <Box>
+            <Button key={`delete-${key}`} plain onPress={onDelete}>
+              <Text color={TONES.error} bold>
+                Delete
+              </Text>
+            </Button>
+            <Text> </Text>
+            <Button key={`cancel-${key}`} plain onPress={() => cancelDelete($)}>
+              <Text dimColor>Cancel</Text>
+            </Button>
+          </Box>
+        </Box>
+      ),
+    },
+  ]
+}
+
 function sessionLines($: EngineInterface, pane: Pane, session: GroupedSession): Drawn[] {
   const { Box, Button, Text } = pane.ui
   const Input = 'Input' in pane.ui ? pane.ui.Input : null
   const { entry } = session
+  if (pane.view.confirm === entry.id) {
+    return confirmLines($, pane, entry.id, `Delete "${fit(entry.title, 24)}" (${entry.id}) for good?`, () => void confirmDelete($, entry))
+  }
   if (Input && pane.view.renamingId === entry.id) {
     return [
       {
@@ -120,6 +181,88 @@ function groupHeader(pane: Pane, label: string, count: number): Drawn {
   }
 }
 
+function activeLines($: EngineInterface, pane: Pane, grouped: GroupedPane): Drawn[] {
+  return grouped.active.flatMap(list => [groupHeader(pane, list.label, list.sessions.length), ...list.sessions.flatMap(session => sessionLines($, pane, session))])
+}
+
+function doneLines($: EngineInterface, pane: Pane, grouped: GroupedPane): Drawn[] {
+  const { Box, Button, Text } = pane.ui
+  if (grouped.done.length === 0) return []
+  const entries = grouped.done.map(session => session.entry)
+  const head =
+    pane.view.confirm === DELETE_ALL
+      ? confirmLines($, pane, DELETE_ALL, `Delete all ${entries.length} done sessions for good?`, () => void deleteAll($, entries))
+      : [
+          {
+            rows: 1,
+            node: (
+              <Box key="delete-all-row" justifyContent="flex-end" width={pane.lineWidth}>
+                <Button key={`ask-delete-${DELETE_ALL}`} plain onPress={() => askDelete($, DELETE_ALL)}>
+                  <Text color={TONES.error}>Delete all</Text>
+                </Button>
+              </Box>
+            ),
+          },
+        ]
+  return [...head, ...grouped.done.flatMap(session => sessionLines($, pane, session))]
+}
+
+function worktreeLines($: EngineInterface, pane: Pane, tree: CleanupWorktree): Drawn {
+  const { Box, Button, Text } = pane.ui
+  const key = `${tree.item.id}-${tree.repo.replace(/[^A-Za-z0-9_-]/g, '-')}`
+  return {
+    rows: 2,
+    node: (
+      <Box key={`tree-${key}`} flexDirection="column" width={pane.lineWidth}>
+        <Text wrap="truncate-end">{tree.item.title}</Text>
+        <Box justifyContent="space-between" width={pane.lineWidth}>
+          <Text dimColor wrap="truncate-end">
+            {fit(tree.command, pane.lineWidth - 3)}
+          </Text>
+          <Button key={`copy-command-${key}`} plain label="⧉" onPress={copyRemoveCommand($, tree.command)} />
+        </Box>
+      </Box>
+    ),
+  }
+}
+
+function oldSessionLines($: EngineInterface, pane: Pane, entry: SessionEntry): Drawn[] {
+  const { Box, Text } = pane.ui
+  if (pane.view.confirm === entry.id) {
+    return confirmLines($, pane, entry.id, `Delete "${fit(entry.title, 24)}" (${entry.id}) for good?`, () => void confirmDelete($, entry))
+  }
+  return [
+    {
+      rows: 1,
+      node: (
+        <Box key={`old-${entry.id}`} justifyContent="space-between" width={pane.lineWidth}>
+          <Text wrap="truncate-end">{fit(entry.title, pane.lineWidth - ACTION_COLUMNS)}</Text>
+          <Box>
+            <Text dimColor>{age(pane.now - entry.mtimeMs)} </Text>
+            {deleteButton($, pane, entry.id)}
+          </Box>
+        </Box>
+      ),
+    },
+  ]
+}
+
+function cleanupLines($: EngineInterface, pane: Pane, rows: readonly ListRowView[], entries: readonly SessionEntry[]): Drawn[] {
+  const cleanup = cleanupOf(rows, entries, pane.now)
+  return [
+    groupHeader(pane, 'WORKTREES OF CLOSED ITEMS', cleanup.worktrees.length),
+    ...cleanup.worktrees.map(tree => worktreeLines($, pane, tree)),
+    groupHeader(pane, 'OLD SESSIONS WITH NO ITEM', cleanup.sessions.length),
+    ...cleanup.sessions.flatMap(entry => oldSessionLines($, pane, entry)),
+  ]
+}
+
+function tabLines($: EngineInterface, pane: Pane, grouped: GroupedPane, rows: readonly ListRowView[], entries: readonly SessionEntry[]): Drawn[] {
+  if (pane.view.tab === 'done') return doneLines($, pane, grouped)
+  if (pane.view.tab === 'cleanup') return cleanupLines($, pane, rows, entries)
+  return activeLines($, pane, grouped)
+}
+
 function tabButton($: EngineInterface, pane: Pane, tab: PaneTab, label: string) {
   const { Button, Text } = pane.ui
   const isSelected = pane.view.tab === tab
@@ -155,10 +298,7 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const [entries, rows, done, view, now] = await Promise.all([readSessions($), readRows($), readDone($), readPaneView($), $.clock.now()])
   const pane: Pane = { ui, view, now, lineWidth: Math.max(20, e.props.bodyColumns - 2 * PADDING) }
   const grouped = groupSessions(entries, rows, done)
-  const lines =
-    view.tab === 'done'
-      ? grouped.done.flatMap(session => sessionLines($, pane, session))
-      : grouped.active.flatMap(list => [groupHeader(pane, list.label, list.sessions.length), ...list.sessions.flatMap(session => sessionLines($, pane, session))])
+  const lines = tabLines($, pane, grouped, rows, entries)
   const room = Math.max(1, e.props.scroll.bodyRows - CHROME_ROWS - 2 * PADDING)
   paneLimit.maxOffset = lastStart(lines, room)
   const offset = Math.min(view.offset, paneLimit.maxOffset)
@@ -177,6 +317,8 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
         {tabButton($, pane, 'active', `Active · ${activeCount}`)}
         <Text> </Text>
         {tabButton($, pane, 'done', `Done · ${grouped.done.length}`)}
+        <Text> </Text>
+        {tabButton($, pane, 'cleanup', 'Cleanup')}
       </Box>
       <Box flexDirection="column">
         {lines.length === 0 && <Text dimColor>No sessions here.</Text>}

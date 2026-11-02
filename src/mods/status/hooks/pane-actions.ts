@@ -4,7 +4,9 @@ import type { EngineInterface, UiPressArgument } from 'claude-code'
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { runPicket } from '../../shared/kernel'
 import type { PaneTab, PaneView, SessionEntry } from '../types'
-import { listSessions, renameSession } from './session-files'
+import { deleteTranscript, isDeletable, listSessions, renameSession } from './session-files'
+
+export const DELETE_ALL = 'all'
 
 export const PANE = 'work'
 export const PANE_TITLE = 'Work'
@@ -101,6 +103,44 @@ export function markDone($: EngineInterface, id: string) {
 
 export function back($: EngineInterface, id: string) {
   return saveDone($, ids => ids.filter(one => one !== id))
+}
+
+export function askDelete($: EngineInterface, target: string) {
+  return updateView($, { confirm: target })
+}
+
+export function cancelDelete($: EngineInterface) {
+  return updateView($, { confirm: null })
+}
+
+async function forget($: EngineInterface, ids: readonly string[]) {
+  await update($, sessions, list => list.filter(one => !ids.includes(one.id)))
+  await saveDone($, list => list.filter(one => !ids.includes(one)))
+}
+
+export async function confirmDelete($: EngineInterface, entry: SessionEntry) {
+  await cancelDelete($)
+  if (await deleteTranscript($, entry)) await forget($, [entry.id])
+}
+
+export async function deleteAll($: EngineInterface, entries: readonly SessionEntry[]) {
+  await cancelDelete($)
+  const eligible = entries.filter(isDeletable)
+  const deleted: string[] = []
+  for (const entry of eligible) {
+    if (await deleteTranscript($, entry)) deleted.push(entry.id)
+  }
+  await forget($, deleted)
+  const skipped = entries.length - eligible.length
+  $.ui.toast(`Deleted ${deleted.length} of ${entries.length} sessions${skipped > 0 ? `; skipped ${skipped} open or current` : ''}.`)
+}
+
+export function copyRemoveCommand($: EngineInterface, command: string) {
+  return (press: UiPressArgument) => {
+    void $.ui.copy({ text: command, surface: press.surface }).then(result => {
+      if (result.isCopied) $.ui.toast('Copied the worktree remove command')
+    })
+  }
 }
 
 export function selectTab($: EngineInterface, tab: PaneTab) {

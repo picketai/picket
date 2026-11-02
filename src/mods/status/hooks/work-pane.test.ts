@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import type { SessionEntry } from '../types'
-import { groupSessions } from './work-pane'
+import { cleanupOf, groupSessions } from './work-pane'
 
 const entry = (id: string, mtimeMs = 0, isCurrent = false): SessionEntry => ({ id, title: `title ${id}`, mtimeMs, isLive: false, isCurrent })
 
@@ -62,5 +62,41 @@ describe('work pane grouping (T-4.1)', () => {
 
   test('the current session comes first in its group, then the newest', async () => {
     expect(activeOf([entry('old', 1), entry('me', 2, true), entry('new', 3)], [])).toEqual([{ label: 'NO WORK ITEM', ids: ['me', 'new', 'old'] }])
+  })
+})
+
+const NOW = Date.parse('2026-11-02T10:00:00Z')
+const DAY = 24 * 60 * 60 * 1000
+const FEAT = { repo: 'svc', path: 'svc/.worktrees/feat', present: true }
+
+describe('cleanup worktrees (T-5.1)', () => {
+  test('a closed item with a present worktree gives the git -C remove command', async () => {
+    const item = { ...row('a', 'closed', []), worktrees: [FEAT] }
+    expect(cleanupOf([item], [], NOW)).toEqual({ worktrees: [{ item, repo: 'svc', command: 'git -C svc worktree remove .worktrees/feat' }], sessions: [] })
+  })
+
+  test('a worktree no longer on disk gives no row', async () => {
+    const item = { ...row('a', 'closed', []), worktrees: [{ ...FEAT, present: false }] }
+    expect(cleanupOf([item], [], NOW)).toEqual({ worktrees: [], sessions: [] })
+  })
+
+  test('an item that is not closed gives no row', async () => {
+    const item = { ...row('a', 'open', []), worktrees: [FEAT] }
+    expect(cleanupOf([item], [], NOW)).toEqual({ worktrees: [], sessions: [] })
+  })
+})
+
+describe('cleanup sessions (T-5.2)', () => {
+  test('a session 15 days old with no item is listed', async () => {
+    const old = entry('s1', NOW - 15 * DAY)
+    expect(cleanupOf([], [old], NOW)).toEqual({ worktrees: [], sessions: [old] })
+  })
+
+  test('a session 13 days old is not listed', async () => {
+    expect(cleanupOf([], [entry('s1', NOW - 13 * DAY)], NOW)).toEqual({ worktrees: [], sessions: [] })
+  })
+
+  test('a session 15 days old that an item lists is not listed', async () => {
+    expect(cleanupOf([row('a', 'closed', ['s1', 's2'])], [entry('s1', NOW - 15 * DAY)], NOW)).toEqual({ worktrees: [], sessions: [] })
   })
 })
