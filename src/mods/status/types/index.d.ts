@@ -36,12 +36,54 @@ export type SessionEntry = {
   title: string
   mtimeMs: number
   isLive: boolean
-  status: string | null
   isCurrent: boolean
+}
+
+export type Attention = 'needs-you' | 'working' | 'open' | 'closed'
+
+export type ListRow = {
+  id: string
+  lane: string
+  status: string
+  title: string
+  phases: string
+  next: string
+  attention: Attention
+  sessions: string[]
+  session: string | null
+  branch: string | null
+  worktrees: { repo: string; path: string; present: boolean }[]
+}
+
+export type SessionGroup = Attention | 'none'
+
+export type GroupedSession = {
+  entry: SessionEntry
+  group: SessionGroup
+  items: ListRow[]
+  greyed: ListRow[]
+}
+
+export type PaneTab = 'active' | 'done' | 'cleanup'
+
+export type PaneView = {
+  tab: PaneTab
+  selectedId: string | null
+  renamingId: string | null
+  confirm: string | null
+  offset: number
 }
 
 declare module 'claude-code' {
   interface PluginState {
-    'picket-status': { now: number; work: Work | null; agents: AgentRow[] }
+    'picket-status': {
+      now: number
+      work: Work | null
+      agents: AgentRow[]
+      rows: ListRow[]
+      sessions: SessionEntry[]
+      done: string[]
+      paneView: PaneView
+    }
   }
 }

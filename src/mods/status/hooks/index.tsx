@@ -5,6 +5,10 @@ import { roleOf } from '../../../lib/shared/format.mts'
 import { resetLaunchers, runPicket } from '../../shared/kernel'
 import type { AgentRow, Work } from '../types'
 import { agentsLine, isEnded, isWorking, rows, workLine } from './band'
+import { renderPane, paneLimit } from './pane'
+import { isPaneOpen, PANE, refreshPane, scrollPane, togglePane } from './pane-actions'
+
+const PANE_REFRESH_MS = 15_000
 
 const time = atom({ plugin: 'picket-status', key: 'now' } as const, 0)
 
@@ -82,8 +86,24 @@ export const register: Register = on => {
         await update($, time, () => tick)
       }
     })
+    await $.command.register({ name: 'picket-session', description: 'Show or hide the work pane', immediate: true })
+    $.clock.every(PANE_REFRESH_MS, async () => {
+      if (await isPaneOpen($)) await refreshPane($)
+    })
     return started
   })
+
+  on('command.run', { command: 'picket-session' }, async $ => {
+    const isOpen = await togglePane($)
+    return { text: isOpen ? 'Work pane opened.' : 'Work pane closed.' }
+  })
+
+  on('ui.scroll', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    await scrollPane($, e.by, paneLimit.maxOffset)
+    return {}
+  }).catch(($, e, next) => next(e))
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, ($, e) => renderPane($, e))
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const called = await next(e)

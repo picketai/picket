@@ -33,10 +33,21 @@ function contract() {
   return readFileSync(STATUS_CONTRACT, "utf8");
 }
 
-test("the status contract holds no import and declares its now, work and agents state", () => {
+test("the status contract holds no import and declares its band and work pane state", () => {
   const text = contract();
   assert.doesNotMatch(text, /\bimport\b/);
-  assert.match(text, /'picket-status': \{ now: number; work: Work \| null; agents: AgentRow\[\] \}/);
+  assert.match(
+    text,
+    /'picket-status': \{\s+now: number\s+work: Work \| null\s+agents: AgentRow\[\]\s+rows: ListRow\[\]\s+sessions: SessionEntry\[\]\s+done: string\[\]\s+paneView: PaneView\s+\}/,
+  );
+});
+
+test("a planted contract whose ListRow drops branch fails the check", (t) => {
+  const planted = contract().replace("  branch: string | null\n", "");
+  assert.notEqual(planted, contract());
+  const r = tsc(plantedProject(t, planted));
+  assert.notEqual(r.status, 0);
+  assert.match(r.output, CHECK_ERROR);
 });
 
 test("status's Work is the open LatestView of views.mts, cut down to Work's keys (D-004)", () => {

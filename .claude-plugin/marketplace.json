@@ -13,7 +13,7 @@
     {
       "name": "picket-status",
       "source": "./dist/mods/status",
-      "description": "The open work item and its agents, above the prompt"
+      "description": "The open work item and its agents, above the prompt, and this project's sessions grouped by their work items in a work pane"
     },
     {
       "name": "picket-markdown",

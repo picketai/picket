@@ -11,6 +11,7 @@ Newest release first; each heading is a version.
 
 ### Added
 
+- picket-status has a work pane, opened and closed with `/picket-session` (it runs while a turn streams). It lists this project's sessions under NEEDS YOU, WORKING, OPEN, CLOSED and NO WORK ITEM, peeks at a session's work items, copies `claude --resume <id>`, renames a session, and moves a session to a Done tab and back.
 - Each `picket list` row carries `attention` (`needs-you`, `working`, `open` or `closed`), the item's `sessions` with the latest as `session`, its `branch`, and its `worktrees` with whether each folder is still on disk. The `--human` output is unchanged.
 
 ## 1.0.0-alpha.5 (2026-11-02)

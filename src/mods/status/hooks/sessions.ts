@@ -1,5 +1,3 @@
-import type { SessionEntry } from '../types'
-
 const USER_TITLES: Record<string, string> = {
   'agent-name': 'agentName',
   'custom-title': 'customTitle',
@@ -54,12 +52,3 @@ export const age = (ms: number): string => {
   if (ms < DAY) return `${Math.floor(ms / HOUR)}h`
   return `${Math.floor(ms / DAY)}d`
 }
-
-export const visible = (
-  entries: SessionEntry[],
-  archived: readonly string[],
-  tab: 'active' | 'archived',
-): SessionEntry[] =>
-  entries
-    .filter(entry => archived.includes(entry.id) === (tab === 'archived'))
-    .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent) || Number(b.isLive) - Number(a.isLive) || b.mtimeMs - a.mtimeMs)

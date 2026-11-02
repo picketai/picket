@@ -1,17 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { SessionEntry } from '../types'
-import { age, clampOffset, projectSlug, titleOf, visible, windowLabel } from './sessions'
-
-const entry = (id: string, change: Partial<SessionEntry> = {}): SessionEntry => ({
-  id,
-  title: id,
-  mtimeMs: 0,
-  isLive: false,
-  status: null,
-  isCurrent: false,
-  ...change,
-})
+import { age, clampOffset, projectSlug, titleOf, windowLabel } from './sessions'
 
 describe('sessions', () => {
   test('the project folder name replaces every non-alphanumeric character', async () => {
@@ -56,17 +45,5 @@ describe('sessions', () => {
     expect(age(17 * 60_000)).toBe('17m')
     expect(age(5 * 3_600_000)).toBe('5h')
     expect(age(8 * 86_400_000)).toBe('8d')
-  })
-
-  test('tabs split by the archive list; current first, then live, then newest', async () => {
-    const entries = [
-      entry('old', { mtimeMs: 1 }),
-      entry('live', { mtimeMs: 2, isLive: true }),
-      entry('me', { mtimeMs: 3, isCurrent: true, isLive: true }),
-      entry('new', { mtimeMs: 9 }),
-      entry('gone', { mtimeMs: 5 }),
-    ]
-    expect(visible(entries, ['gone'], 'active').map(one => one.id)).toEqual(['me', 'live', 'new', 'old'])
-    expect(visible(entries, ['gone'], 'archived').map(one => one.id)).toEqual(['gone'])
   })
 })

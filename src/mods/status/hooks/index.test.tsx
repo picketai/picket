@@ -10,6 +10,8 @@ const world = (on: On, roster: AgentInfo[] = []) => {
   const timer = mock.clock(on, { now: NOW })
   on('agent.list', () => ({ value: roster }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.register', () => ({ value: undefined }))
+  on('ui.panes', () => ({ value: [] }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
@@ -200,6 +202,201 @@ test('a spawned agent leaves the band when idle and works again from a message',
   expect(await shows($, ' (0s)')).toBe(true)
   await timer.advance(5_000)
   expect(await shows($, ' (5s)')).toBe(true)
+})
+
+const CONFIG = 'D:/home/.claude'
+const PROJECT = `${CONFIG}/projects/D--repo`
+const S_CURRENT = '11111111-1111-4111-8111-111111111111'
+const S_WORKING = '22222222-2222-4222-8222-222222222222'
+const S_NONE = '33333333-3333-4333-8333-333333333333'
+const S_LIVE = '44444444-4444-4444-8444-444444444444'
+
+const TITLES: Record<string, string> = {
+  [S_CURRENT]: 'Gate the release',
+  [S_WORKING]: 'Build the pane',
+  [S_NONE]: 'Read the logs',
+  [S_LIVE]: 'Other window',
+}
+
+const listRow = (id: string, attention: string, sessions: string[]) => ({
+  id,
+  lane: 'design',
+  status: attention === 'closed' ? 'done' : 'open',
+  title: `Item ${id}`,
+  phases: '1/3',
+  next: 'none',
+  attention,
+  sessions,
+  session: sessions.at(-1) ?? null,
+  branch: null,
+  worktrees: [],
+})
+
+const LIST = [listRow('w-gate', 'needs-you', [S_CURRENT]), listRow('w-pane', 'working', [S_WORKING]), listRow('w-moved', 'open', [S_WORKING, S_CURRENT])]
+
+const isList = (argv: readonly string[]) => argv.at(-1) === 'list'
+
+type PaneWorld = {
+  stored: Record<string, unknown>
+  copied: string[]
+  toasts: string[]
+  written: Record<string, string>
+  opened: string[]
+  closed: string[]
+  registered: { name: string; immediate?: true }[]
+  runs: (readonly string[])[]
+}
+
+const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE]) => {
+  const timer = mock.clock(on, { now: NOW })
+  const w: PaneWorld = { stored: {}, copied: [], toasts: [], written: {}, opened: [], closed: [], registered: [], runs: [] }
+  let panes: { id: string }[] = []
+  on('agent.list', () => ({ value: [] }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.register', ($, e) => {
+    w.registered.push({ name: e.name, immediate: e.immediate })
+    return { value: undefined }
+  })
+  on('session.root', () => ({ value: 'D:/repo' }))
+  on('session.id', () => ({ value: S_CURRENT }))
+  on('env.get', ($, e) => ({ value: e.name === 'CLAUDE_CONFIG_DIR' ? CONFIG : undefined }))
+  on('fs.list', ($, e) => {
+    const path = e.path.replace(/\\/g, '/')
+    if (path === PROJECT) {
+      return { value: transcripts.map((id, at) => ({ name: `${id}.jsonl`, kind: 'file' as const, size: 10, mtimeMs: NOW - (at + 1) * 60_000, isLink: false })) }
+    }
+    if (path === `${CONFIG}/sessions`) return { value: [{ name: '4444.json', kind: 'file' as const, size: 10, mtimeMs: NOW, isLink: false }] }
+    return { value: [] }
+  })
+  on('fs.read', ($, e) => {
+    const path = e.path.replace(/\\/g, '/')
+    if (path === `${CONFIG}/sessions/4444.json`) return { value: JSON.stringify({ sessionId: S_LIVE, cwd: 'D:/repo' }) }
+    const id = path.slice(PROJECT.length + 1, -'.jsonl'.length)
+    return { value: w.written[path] ?? `{"type":"ai-title","aiTitle":"${TITLES[id] ?? id}"}\n` }
+  })
+  on('fs.write', ($, e) => {
+    w.written[e.path.replace(/\\/g, '/')] = e.text
+    return { value: undefined }
+  })
+  on('store.get', ($, e) => ({ value: w.stored[e.key] }))
+  on('store.set', ($, e) => {
+    w.stored[e.key] = e.value
+    return { value: undefined }
+  })
+  on('ui.open', ($, e) => {
+    w.opened.push(e.id)
+    panes = [{ id: e.id }]
+    return { value: { isPlaced: true } }
+  })
+  on('ui.panes', () => ({ value: panes }))
+  on('ui.close', ($, e) => {
+    w.closed.push(e.id)
+    panes = []
+    return { value: undefined }
+  })
+  on('ui.copy', ($, e) => {
+    w.copied.push(e.text)
+    return { value: { isCopied: true } }
+  })
+  on('ui.toast', ($, e) => {
+    w.toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('process.run', ($, e) => {
+    w.runs.push(e.argv)
+    return isList(e.argv) ? exited(0, JSON.stringify(LIST)) : exited(0, JSON.stringify(LATEST))
+  })
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>engine</Text>
+  })
+  return { w, timer }
+}
+
+const workPane = ($: Engine) =>
+  $.ui.mount({
+    plugin: 'picket-status',
+    surface: 'terminal',
+    component: 'Pane',
+    requestId: 'work',
+    props: { title: 'Work', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 60 }, view: {} },
+  })
+
+const HEADER_OR_TITLE = /^(NEEDS YOU|WORKING|OPEN|CLOSED|NO WORK ITEM) · \d+$|^(Gate the release|Build the pane|Read the logs|Other window)$/
+
+type Drawing = Awaited<ReturnType<typeof workPane>>
+
+const outline = async (drawn: Drawing) => (await drawn.findAll({ type: 'Text', text: HEADER_OR_TITLE })).map(found => found.text)
+
+const openWorkPane = async ($: Engine) => {
+  await $.session.start(START)
+  await $.command.run({ command: 'picket-session', args: '' })
+}
+
+test('/picket-session opens the work pane, closes it the second time, and runs mid-turn (T-4.2)', async ($, on) => {
+  const { w } = paneWorld(on)
+  await openWorkPane($)
+  expect(w.opened).toEqual(['work'])
+
+  await $.command.run({ command: 'picket-session', args: '' })
+  expect(w.closed).toEqual(['work'])
+  expect(w.registered).toEqual([{ name: 'picket-session', immediate: true }])
+})
+
+test('the work pane groups sessions under NEEDS YOU, WORKING and NO WORK ITEM in that order (T-4.3)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+
+  expect(await outline(await workPane($))).toEqual(['NEEDS YOU · 1', 'Gate the release', 'WORKING · 1', 'Build the pane', 'NO WORK ITEM · 1', 'Read the logs'])
+})
+
+test('copy puts the resume command on the clipboard, and pressing a row peeks at its items with the moved one dimmed (T-4.4)', async ($, on) => {
+  const { w } = paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  await drawn.press({ key: `copy-${S_WORKING}` })
+  expect(w.copied).toEqual([`claude --resume ${S_WORKING}`])
+
+  await drawn.press({ key: `peek-${S_WORKING}` })
+  const own = await drawn.find({ type: 'Text', text: 'Item w-pane' })
+  const moved = await drawn.find({ type: 'Text', text: 'Item w-moved' })
+  expect(own?.props.dimColor).toBe(false)
+  expect(moved?.props.dimColor).toBe(true)
+})
+
+test('marking a session done moves it to the Done tab and the store, and back returns it (T-4.5)', async ($, on) => {
+  const { w } = paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  await drawn.press({ key: `done-${S_NONE}` })
+  expect(await outline(drawn)).not.toContain('Read the logs')
+  expect(w.stored['done-sessions']).toEqual([S_NONE])
+
+  await drawn.press({ key: 'tab-done' })
+  expect(await outline(drawn)).toEqual(['Read the logs'])
+
+  await drawn.press({ key: `back-${S_NONE}` })
+  expect(w.stored['done-sessions']).toEqual([])
+  await drawn.press({ key: 'tab-active' })
+  expect(await outline(drawn)).toContain('Read the logs')
+})
+
+test('renaming a closed session appends an agent-name record; a live other session is refused (T-4.6)', async ($, on) => {
+  const { w } = paneWorld(on, [S_CURRENT, S_NONE, S_LIVE])
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  await drawn.press({ key: `rename-${S_NONE}` })
+  await drawn.input({ key: `rename-input-${S_NONE}`, text: 'Logs reviewed' })
+  expect(w.written[`${PROJECT}/${S_NONE}.jsonl`]).toContain(JSON.stringify({ type: 'agent-name', agentName: 'Logs reviewed', sessionId: S_NONE }))
+  expect(await drawn.find({ type: 'Text', text: 'Logs reviewed' })).toBeDefined()
+
+  await drawn.press({ key: `rename-${S_LIVE}` })
+  await drawn.input({ key: `rename-input-${S_LIVE}`, text: 'Renamed' })
+  expect(w.toasts).toEqual(['That session is open in another window; rename it there.'])
+  expect(w.written[`${PROJECT}/${S_LIVE}.jsonl`]).toBeUndefined()
 })
 
 test('a working agent clock moves with the five second timer', async ($, on) => {

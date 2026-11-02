@@ -1,0 +1,99 @@
+{
+  "work_id": "20261102-session-list-merges-into-picket-status-design",
+  "base": "b337dc77ad2550ca26fef64b048adb09b41b05ad",
+  "request": "work/20261102-session-list-merges-into-picket-status-design/request.md",
+  "size": "large",
+  "changed_files": [
+    ".claude-plugin/marketplace.json",
+    "CHANGELOG.md",
+    "README.md",
+    "docs/how-to.md",
+    "docs/reference/mods.md",
+    "src/lib/mods.mts",
+    "src/lib/shared/host-sessions.mts",
+    "src/lib/shared/host-sessions.test.mts",
+    "src/lib/shared/views.mts",
+    "src/lib/shared/work/attention.mts",
+    "src/lib/shared/work/attention.test.mts",
+    "src/lib/verbs/list/index.mts",
+    "src/lib/verbs/list/index.test.mts",
+    "src/mods/markdown/hooks/actions.ts",
+    "src/mods/markdown/hooks/index.test.tsx",
+    "src/mods/markdown/hooks/index.tsx",
+    "src/mods/markdown/hooks/picket-markdown.test.tsx",
+    "src/mods/markdown/hooks/view.tsx",
+    "src/mods/session/hooks/actions.ts",
+    "src/mods/session/hooks/data.test.ts",
+    "src/mods/session/hooks/data.ts",
+    "src/mods/session/hooks/index.test.tsx",
+    "src/mods/session/hooks/index.tsx",
+    "src/mods/session/hooks/messages.test.tsx",
+    "src/mods/session/hooks/sprite.test.ts",
+    "src/mods/session/hooks/sprite.ts",
+    "src/mods/session/hooks/view.tsx",
+    "src/mods/session/types/index.d.ts",
+    "src/mods/shared/theme.ts",
+    "src/mods/status/hooks/sessions.test.ts",
+    "src/mods/status/hooks/sessions.ts",
+    "src/mods/status/types/index.d.ts",
+    "test/repo/dashes.test.mjs"
+  ],
+  "lines_added": 923,
+  "lines_removed": 1445,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 6,
+  "repos": [],
+  "sources": [],
+  "silenced": [
+    {
+      "path": "src/mods/session/hooks/data.test.ts",
+      "kind": "deleted-test",
+      "text": null,
+      "waived": false
+    },
+    {
+      "path": "src/mods/session/hooks/messages.test.tsx",
+      "kind": "deleted-test",
+      "text": null,
+      "waived": false
+    },
+    {
+      "path": "src/mods/session/hooks/sprite.test.ts",
+      "kind": "deleted-test",
+      "text": null,
+      "waived": false
+    }
+  ],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

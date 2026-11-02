@@ -7,8 +7,8 @@ export type ModEntry = { plugin: string; summary: string; description: string; i
 export const MODS = {
   status: {
     plugin: "picket-status",
-    summary: "a band above the prompt with the open work item, its next action and its running agents",
-    description: "The open work item and its agents, above the prompt",
+    summary: "a band above the prompt with the open work item, its next action and its running agents, and a work pane (/picket-session) listing this project's sessions by what they need",
+    description: "The open work item and its agents, above the prompt, and this project's sessions grouped by their work items in a work pane",
     install: "default",
   },
   markdown: {
