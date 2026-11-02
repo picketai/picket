@@ -397,7 +397,7 @@ test('a picket state that fails is asked again on the next poll, with no file ch
   })
 
   await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
-  await $.command.run({ command: 'md', args: 'work/w1/order.md' })
+  await $.command.run({ command: 'picket-markdown', args: 'work/w1/order.md' })
   const pane = await $.ui.mount({
     plugin: 'picket-markdown',
     surface: 'terminal',

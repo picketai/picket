@@ -333,7 +333,7 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   if (viewed === null) {
     return (
       <Box flexDirection="column" height={Math.max(1, e.props.scroll.bodyRows)} backgroundColor={SURFACES.pane}>
-        <Text color={TONES.muted}>No file open. Click a .md path in a reply, or run /md path.</Text>
+        <Text color={TONES.muted}>{'No file open. Click a .md path in a reply, or run /picket-markdown <path>.'}</Text>
       </Box>
     )
   }

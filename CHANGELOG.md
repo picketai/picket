@@ -4,6 +4,10 @@ Newest release first; each heading is a version.
 
 ## 1.0.0-alpha.6 (not released yet)
 
+### Changed, act on these
+
+- `/md` is now `/picket-markdown`, with no alias. It runs while a turn streams, and with no file to reopen it opens the empty pane.
+
 ### Added
 
 - Each `picket list` row carries `attention` (`needs-you`, `working`, `open` or `closed`), the item's `sessions` with the latest as `session`, its `branch`, and its `worktrees` with whether each folder is still on disk. The `--human` output is unchanged.

@@ -34,15 +34,23 @@ const world = (on: On) => {
   const timer = mock.clock(on, { now: NOW })
   const modified: Record<string, number> = { [DESIGN]: 1, [STATE_YAML]: 1 }
   const runs: (readonly string[])[] = []
+  const registered: { name: string; immediate?: true }[] = []
+  const opened: string[] = []
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.cwd', () => ({ value: REPO }))
   on('session.messages', () => ({ value: [] }))
-  on('command.register', () => ({ value: undefined }))
+  on('command.register', ($, e) => {
+    registered.push({ name: e.name, immediate: e.immediate })
+    return { value: undefined }
+  })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
   })
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.open', ($, e) => {
+    opened.push(e.id)
+    return { value: { isPlaced: true } }
+  })
   on('fs.stat', ($, e) => {
     const mtimeMs = modified[modelled(e.path)]
     return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file', size: 10, mtimeMs, isLink: false } }
@@ -53,7 +61,7 @@ const world = (on: On) => {
     runs.push(e.argv)
     return isStateCall(e.argv) ? exited(0, JSON.stringify(STATE)) : exited(0, '')
   })
-  return { timer, modified, runs }
+  return { timer, modified, runs, registered, opened }
 }
 
 const pane = ($: Engine) =>
@@ -65,13 +73,29 @@ const pane = ($: Engine) =>
     props: { title: 'design.md', isFocused: false, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} },
   })
 
-test('/md on a work item document shows the status picket state answers', async ($, on) => {
+test('/picket-markdown on a work item document shows the status picket state answers', async ($, on) => {
   const { runs } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'md', args: 'work/w2/design.md' })
+  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
 
   expect(await (await pane($)).find({ type: 'Text', text: 'work w2 · design · open · phase 1/3 approved' })).toBeDefined()
   expect(runs.filter(isStateCall)).toEqual([['picket', 'state', 'w2']])
+})
+
+test('the mod registers only /picket-markdown, and it runs mid-turn (T-2.3)', async ($, on) => {
+  const { registered } = world(on)
+  await $.session.start(START)
+
+  expect(registered).toEqual([{ name: 'picket-markdown', immediate: true }])
+})
+
+test('/picket-markdown with no argument and no document opens the empty pane naming the command (T-2.2)', async ($, on) => {
+  const { opened } = world(on)
+  await $.session.start(START)
+  await $.command.run({ command: 'picket-markdown', args: '' })
+
+  expect(opened).toEqual(['picket-markdown'])
+  expect(await (await pane($)).find({ type: 'Text', text: /\/picket-markdown <path>/ })).toBeDefined()
 })
 
 test('a rendered reply adds its linked file to the pane list with no session.append', async ($, on) => {
@@ -86,7 +110,7 @@ test('a rendered reply adds its linked file to the pane list with no session.app
     props: { text: 'Read guide.md first.', isFirstOfReply: true },
   })
   await timer.advance(0)
-  await $.command.run({ command: 'md', args: 'work/w2/design.md' })
+  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
 
   expect(await (await pane($)).find({ key: `file:${guide}` })).toBeDefined()
 })
@@ -94,7 +118,7 @@ test('a rendered reply adds its linked file to the pane list with no session.app
 test('the poll asks picket state again only when the work signature changes', async ($, on) => {
   const { timer, modified, runs } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'md', args: 'work/w2/design.md' })
+  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
   expect(runs.filter(isStateCall).length).toBe(1)
 
   await timer.advance(POLL_MS)

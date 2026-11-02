@@ -67,9 +67,8 @@ export async function show($: EngineInterface, path: string, isBack = false) {
 
 export async function reopen($: EngineInterface) {
   const last = await readDoc($)
-  if (last === null) return null
-  await $.ui.open({ id: PANE, title: baseName(last.path) })
-  return last.path
+  await $.ui.open({ id: PANE, title: last === null ? 'Markdown' : baseName(last.path) })
+  return last?.path ?? null
 }
 
 export async function refresh($: EngineInterface, force: boolean) {

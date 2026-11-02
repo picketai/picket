@@ -8,15 +8,17 @@ import { renderPane, renderReply } from './view'
 
 const POLL_MS = 2000
 const FILE_TOOLS = ['Read', 'Write', 'Edit']
+const COMMAND = 'picket-markdown'
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     resetLaunchers()
     forgetWork()
     await $.command.register({
-      name: 'md',
+      name: COMMAND,
       description: 'Open a markdown file read-only in the side pane',
       argumentHint: '[path]',
+      immediate: true,
     })
     await rememberMessages($)
     $.clock.every(POLL_MS, () => {
@@ -39,11 +41,11 @@ export const register: Register = on => {
     return ran
   }).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'md' }, async ($, e) => {
+  on('command.run', { command: COMMAND }, async ($, e) => {
     const asked = e.args.trim().replace(/^["']|["']$/g, '')
     if (asked === '') {
       const reopened = await reopen($)
-      return { text: reopened === null ? 'Usage: /md <path to a markdown file>' : `Reopened ${reopened}` }
+      return { text: reopened === null ? `Opened the empty pane: /${COMMAND} <path> shows a markdown file` : `Reopened ${reopened}` }
     }
     const path = resolvePath(await $.session.cwd(), asked)
     const opened = await show($, path)
