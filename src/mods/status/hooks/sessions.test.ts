@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { age, clampOffset, projectSlug, titleOf, windowLabel } from './sessions'
+import { age, clampOffset, projectSlug, titleOf } from './sessions'
 
 describe('sessions', () => {
   test('the project folder name replaces every non-alphanumeric character', async () => {
@@ -33,11 +33,6 @@ describe('sessions', () => {
     expect(clampOffset(30, 25, 10)).toBe(15)
     expect(clampOffset(-2, 25, 10)).toBe(0)
     expect(clampOffset(3, 4, 10)).toBe(0)
-  })
-
-  test('the window label shows the visible range only when the list overflows', async () => {
-    expect(windowLabel(3, 10, 25)).toBe('↕ 4 to 13 / 25')
-    expect(windowLabel(0, 4, 4)).toBe('')
   })
 
   test('ages read in minutes, hours and days', async () => {

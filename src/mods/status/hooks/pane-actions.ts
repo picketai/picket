@@ -3,7 +3,7 @@ import type { EngineInterface, UiPressArgument } from 'claude-code'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { runPicket } from '../../shared/kernel'
-import type { BandEntry, PaneTab, PaneView, SessionEntry } from '../types'
+import type { BandEntry, FoldableGroup, PaneTab, PaneView, SessionEntry } from '../types'
 import { deleteTranscript, isDeletable, listSessions, listTranscriptIds, renameSession } from './session-files'
 import { activeSessionCount, needYouCount, watchedIds, workSignature, type WorkStat } from './watch'
 
@@ -14,7 +14,7 @@ export const PANE_TITLE = 'Work'
 export const PANE_COLUMNS = 50
 export const DONE_KEY = 'done-sessions'
 
-const VIEW_DEFAULTS: PaneView = { tab: 'active', selectedId: null, renamingId: null, confirm: null, offset: 0 }
+const VIEW_DEFAULTS: PaneView = { tab: 'active', selectedId: null, renamingId: null, confirm: null, offset: 0, folded: ['none'] }
 
 const rows = atom({ plugin: 'picket-status', key: 'rows' } as const, [] as ListRowView[])
 
@@ -136,9 +136,15 @@ export async function togglePane($: EngineInterface): Promise<boolean> {
   return true
 }
 
-export async function select($: EngineInterface, id: string) {
-  const view = await read($, paneView)
-  await updateView($, { selectedId: view.selectedId === id ? null : id })
+export function select($: EngineInterface, id: string) {
+  return updateView($, { selectedId: id })
+}
+
+export function toggleGroup($: EngineInterface, group: FoldableGroup) {
+  return update($, paneView, current => ({
+    ...current,
+    folded: current.folded.includes(group) ? current.folded.filter(one => one !== group) : [...current.folded, group],
+  }))
 }
 
 export function copyResume($: EngineInterface, id: string) {

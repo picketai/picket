@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { AgentInfo, On } from 'claude-code'
 
-import { PANE_PADDING } from '../../shared/theme'
+import { PANE_PADDING, SURFACES, TONES } from '../../shared/theme'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 
@@ -233,6 +233,11 @@ const listRow = (id: string, attention: string, sessions: string[]) => ({
   title: `Item ${id}`,
   phases: '1/3',
   next: 'none',
+  phase: null,
+  actor: null,
+  detail: 'nothing to do',
+  phases_approved: 1,
+  phase_count: 3,
   attention,
   sessions,
   session: sessions.at(-1) ?? null,
@@ -359,7 +364,7 @@ const workPane = ($: Engine) =>
     props: { title: 'Work', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 60 }, view: {} },
   })
 
-const HEADER_OR_TITLE = /^(NEEDS YOU|WORKING|OPEN|CLOSED|NO WORK ITEM) · \d+$|^(Gate the release|Build the pane|Read the logs|Other window)$/
+const HEADER_OR_TITLE = /^[▾▸] (NEEDS YOU|WORKING|OPEN|CLOSED|NO WORK ITEM|DONE)$|^(Gate the release|Build the pane|Read the logs|Other window)$/
 
 type Drawing = Awaited<ReturnType<typeof workPane>>
 
@@ -380,11 +385,141 @@ test('/picket-session opens the work pane, closes it the second time, and runs m
   expect(w.registered).toEqual([{ name: 'picket-session', immediate: true }])
 })
 
-test('the work pane groups sessions under NEEDS YOU, WORKING and NO WORK ITEM in that order (T-4.3)', async ($, on) => {
+test('the work pane groups sessions under NEEDS YOU, WORKING and a folded NO WORK ITEM, and a header press folds or unfolds its group (T-4.3, T-2.6)', async ($, on) => {
   paneWorld(on)
   await openWorkPane($)
+  const drawn = await workPane($)
 
-  expect(await outline(await workPane($))).toEqual(['NEEDS YOU · 1', 'Gate the release', 'WORKING · 1', 'Build the pane', 'NO WORK ITEM · 1', 'Read the logs'])
+  expect(await outline(drawn)).toEqual(['▾ NEEDS YOU', 'Gate the release', '▾ WORKING', 'Build the pane', '▸ NO WORK ITEM'])
+  expect(await drawn.find({ type: 'Text', text: 'Read the logs' })).toBeUndefined()
+
+  await drawn.press({ key: 'group-none' })
+  expect(await outline(drawn)).toEqual(['▾ NEEDS YOU', 'Gate the release', '▾ WORKING', 'Build the pane', '▾ NO WORK ITEM', 'Read the logs'])
+
+  await drawn.press({ key: 'group-needs-you' })
+  expect(await outline(drawn)).toEqual(['▸ NEEDS YOU', '▾ WORKING', 'Build the pane', '▾ NO WORK ITEM', 'Read the logs'])
+})
+
+test('group headers take their group tone and a muted count', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  expect((await drawn.find({ type: 'Text', text: '▾ NEEDS YOU' }))?.props).toEqual({ color: TONES.warning, bold: true })
+  expect((await drawn.find({ type: 'Text', text: '▾ WORKING' }))?.props).toEqual({ color: TONES.accent, bold: true })
+  expect((await drawn.find({ type: 'Text', text: '▸ NO WORK ITEM' }))?.props).toEqual({ color: TONES.muted, bold: true })
+  expect((await drawn.find({ key: 'header-working' }))?.children.at(-1)).toEqual({ type: 'Text', props: { dimColor: true }, children: ['1'] })
+})
+
+test('the header says how many sessions need you, or that nothing waits (T-2.4)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const needing = await (await workPane($)).find({ type: 'Text', text: '◀ 1 need you' })
+  expect(needing?.props).toEqual({ color: TONES.warning, bold: true })
+})
+
+test('with no session needing you the header reads nothing waits, dimmed (T-2.4)', async ($, on) => {
+  paneWorld(on, [S_WORKING, S_NONE], [listRow('w-pane', 'working', [S_WORKING])])
+  await openWorkPane($)
+  const drawn = await workPane($)
+  expect((await drawn.find({ type: 'Text', text: 'nothing waits' }))?.props).toEqual({ dimColor: true })
+  expect(await drawn.find({ type: 'Text', text: /need you/ })).toBeUndefined()
+})
+
+test('the tabs read their counts, the selected one bold and underlined with no background (T-2.5)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  expect((await drawn.find({ type: 'Text', text: 'Active 3' }))?.props).toEqual({ bold: true, underline: true, dimColor: false })
+  expect((await drawn.find({ type: 'Text', text: 'Done 0' }))?.props).toEqual({ bold: false, underline: false, dimColor: true })
+  expect(await drawn.find({ type: 'Text', text: 'Cleanup 0' })).toBeDefined()
+  expect(await drawn.find({ key: 'ask-delete-all' })).toBeUndefined()
+})
+
+test('the Done tab with done sessions draws ⊘ for delete all in the tab row and no Delete all text (T-2.5)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: `done-${S_WORKING}` })
+  await drawn.press({ key: 'tab-done' })
+
+  expect((await drawn.find({ key: 'ask-delete-all' }))?.children).toEqual([{ type: 'Text', props: { color: TONES.error }, children: ['⊘'] }])
+  expect(await drawn.find({ type: 'Text', text: 'Delete all' })).toBeUndefined()
+  expect((await drawn.find({ type: 'Text', text: 'Done 1' }))?.props.underline).toBe(true)
+})
+
+const glyphOf = async (drawn: Drawing, key: string) => {
+  const button = await drawn.find({ key })
+  const [glyph] = (button?.children ?? []) as { props: { color?: string }; children: string[] }[]
+  return { key: button?.key, text: glyph?.children.join(''), color: glyph?.props.color }
+}
+
+const actionKeys = async (drawn: Drawing, id: string) => {
+  const session = await drawn.find({ key: `session-${id}` })
+  const [actions] = (session?.children ?? []) as { children: { props?: { key?: string } }[] }[]
+  return (actions?.children ?? []).flatMap(child => (child.props?.key === undefined || child.props.key.startsWith('gap') ? [] : [child.props.key]))
+}
+
+test('each session draws ⧉ ✎ ✓ in the control tone above its title, and ⧉ ✎ ↺ ⊘ on the Done tab (T-2.7)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+
+  expect(await actionKeys(drawn, S_WORKING)).toEqual([`copy-${S_WORKING}`, `rename-${S_WORKING}`, `done-${S_WORKING}`])
+  expect(await glyphOf(drawn, `copy-${S_WORKING}`)).toEqual({ key: `copy-${S_WORKING}`, text: '⧉', color: TONES.control })
+  expect(await glyphOf(drawn, `rename-${S_WORKING}`)).toEqual({ key: `rename-${S_WORKING}`, text: '✎', color: TONES.control })
+  expect(await glyphOf(drawn, `done-${S_WORKING}`)).toEqual({ key: `done-${S_WORKING}`, text: '✓', color: TONES.control })
+
+  await drawn.press({ key: `done-${S_WORKING}` })
+  await drawn.press({ key: 'tab-done' })
+  expect(await actionKeys(drawn, S_WORKING)).toEqual([`copy-${S_WORKING}`, `rename-${S_WORKING}`, `back-${S_WORKING}`, `ask-delete-${S_WORKING}`])
+  expect(await glyphOf(drawn, `back-${S_WORKING}`)).toEqual({ key: `back-${S_WORKING}`, text: '↺', color: TONES.control })
+  expect(await glyphOf(drawn, `ask-delete-${S_WORKING}`)).toEqual({ key: `ask-delete-${S_WORKING}`, text: '⊘', color: TONES.error })
+})
+
+test('a CLOSED session draws its ✓ in the success tone (T-2.7)', async ($, on) => {
+  paneWorld(on, [S_CURRENT, S_NONE], [listRow('w-shipped', 'closed', [S_NONE])])
+  await openWorkPane($)
+  const drawn = await workPane($)
+  expect(await glyphOf(drawn, `done-${S_NONE}`)).toEqual({ key: `done-${S_NONE}`, text: '✓', color: TONES.success })
+})
+
+test('the first session is selected before any press, and a title press selects its session (T-2.7)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const drawn = await workPane($)
+  const background = async (id: string) => (await drawn.find({ key: `session-${id}` }))?.props.backgroundColor
+
+  expect(await background(S_CURRENT)).toBe(SURFACES.row)
+  expect(await background(S_WORKING)).toBeUndefined()
+
+  await drawn.press({ key: `peek-${S_WORKING}` })
+  expect(await background(S_WORKING)).toBe(SURFACES.row)
+  expect(await background(S_CURRENT)).toBeUndefined()
+  await drawn.press({ key: `peek-${S_WORKING}` })
+  expect(await background(S_WORKING)).toBe(SURFACES.row)
+})
+
+test('a session draws its detail row under its title', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const detail = await (await workPane($)).find({ type: 'Text', text: 'design  ●○○  nothing to do' })
+  expect(detail).toBeDefined()
+})
+
+test('a list taller than the pane draws how many sessions are below it (T-2.8)', async ($, on) => {
+  paneWorld(on)
+  await openWorkPane($)
+  const short = await $.ui.mount({
+    plugin: 'picket-status',
+    surface: 'terminal',
+    component: 'Pane',
+    requestId: 'work',
+    props: { title: 'Work', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 14 }, view: {} },
+  })
+  expect(await outline(short)).toEqual(['▾ NEEDS YOU', 'Gate the release'])
+  expect((await short.find({ type: 'Text', text: '↓ 1 more' }))?.props).toEqual({ dimColor: true })
 })
 
 test('copy puts the resume command on the clipboard, and pressing a row peeks at its items with the moved one dimmed (T-4.4)', async ($, on) => {
@@ -406,13 +541,14 @@ test('marking a session done moves it to the Done tab and the store, and back re
   const { w } = paneWorld(on)
   await openWorkPane($)
   const drawn = await workPane($)
+  await drawn.press({ key: 'group-none' })
 
   await drawn.press({ key: `done-${S_NONE}` })
   expect(await outline(drawn)).not.toContain('Read the logs')
   expect(w.stored['done-sessions']).toEqual([S_NONE])
 
   await drawn.press({ key: 'tab-done' })
-  expect(await outline(drawn)).toEqual(['Read the logs'])
+  expect(await outline(drawn)).toEqual(['▾ DONE', 'Read the logs'])
 
   await drawn.press({ key: `back-${S_NONE}` })
   expect(w.stored['done-sessions']).toEqual([])
@@ -424,6 +560,7 @@ test('renaming a closed session appends an agent-name record; a live other sessi
   const { w } = paneWorld(on, [S_CURRENT, S_NONE, S_LIVE])
   await openWorkPane($)
   const drawn = await workPane($)
+  await drawn.press({ key: 'group-none' })
 
   await drawn.press({ key: `rename-${S_NONE}` })
   await drawn.input({ key: `rename-input-${S_NONE}`, text: 'Logs reviewed' })
@@ -441,6 +578,7 @@ const isUnlink = (argv: readonly string[]) => argv[0] === 'node' && String(argv[
 const unlinked = (w: PaneWorld) => w.runs.filter(isUnlink).map(argv => String(argv.at(-1)).replace(/\\/g, '/'))
 
 const onDoneTab = async (drawn: Drawing, ids: string[]) => {
+  await drawn.press({ key: 'group-none' })
   for (const id of ids) await drawn.press({ key: `done-${id}` })
   await drawn.press({ key: 'tab-done' })
 }
@@ -459,7 +597,7 @@ test('delete on the Done tab confirms first; confirming unlinks the transcript a
   await drawn.press({ key: `ask-delete-${S_NONE}` })
   await drawn.press({ key: `delete-${S_NONE}` })
   expect(unlinked(w)).toEqual([`${PROJECT}/${S_NONE}.jsonl`])
-  expect(await outline(drawn)).toEqual(['Build the pane'])
+  expect(await outline(drawn)).toEqual(['▾ DONE', 'Build the pane'])
 })
 
 test('the current session, a live one and an id that is not a session id are refused with a toast and run nothing (T-5.4)', async ($, on) => {

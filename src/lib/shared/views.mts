@@ -57,6 +57,11 @@ export type ListRowView = {
   title: string;
   phases: string;
   next: string;
+  phase: number | null;
+  actor: string | null;
+  detail: string;
+  phases_approved: number;
+  phase_count: number;
   attention: Attention;
   sessions: string[];
   session: string | null;

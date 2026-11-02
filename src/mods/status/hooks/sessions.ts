@@ -43,9 +43,6 @@ export const titleOf = (transcript: string): string | null => {
 export const clampOffset = (offset: number, total: number, capacity: number): number =>
   Math.max(0, Math.min(offset, total - capacity))
 
-export const windowLabel = (offset: number, shownCount: number, total: number): string =>
-  total > shownCount ? `↕ ${offset + 1} to ${offset + shownCount} / ${total}` : ''
-
 export const age = (ms: number): string => {
   if (ms < MINUTE) return 'now'
   if (ms < HOUR) return `${Math.floor(ms / MINUTE)}m`

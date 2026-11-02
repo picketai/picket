@@ -50,6 +50,11 @@ export type ListRow = {
   title: string
   phases: string
   next: string
+  phase: number | null
+  actor: string | null
+  detail: string
+  phases_approved: number
+  phase_count: number
   attention: Attention
   sessions: string[]
   session: string | null
@@ -78,7 +83,10 @@ export type PaneView = {
   renamingId: string | null
   confirm: string | null
   offset: number
+  folded: FoldableGroup[]
 }
+
+export type FoldableGroup = SessionGroup | 'done'
 
 declare module 'claude-code' {
   interface PluginState {
