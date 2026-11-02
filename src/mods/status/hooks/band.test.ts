@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { TONES } from '../../shared/theme'
 import type { AgentRow, BandEntry, Piece, Work } from '../types'
-import { agentsLine, rows, stepText, widthOf, workLine } from './band'
+import { agentsLine, entryPieces, rows, stepText, widthOf, workLine } from './band'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 const MINUTE = 60_000
@@ -149,17 +149,33 @@ describe('band entry (T-6.1)', () => {
   test('with no agents and no work the line still draws, its right side reading ☰ then M↓', async () => {
     const line = agentsLine([], null, NOW, ENTRY)
     expect(line.left).toEqual([])
-    expect(text(line.right)).toBe('☰ 3  M↓')
+    expect(text(line.right)).toBe('☰ 3 · M↓')
     expect(line.right.filter(piece => piece.press !== undefined)).toEqual([
-      { text: '☰ 3', press: 'work' },
-      { text: 'M↓', press: 'markdown' },
+      { text: '☰ 3', color: TONES.control, press: 'work' },
+      { text: 'M↓', color: TONES.control, press: 'markdown' },
     ])
   })
 
   test('sessions needing you lead the right side in the warning tone', async () => {
     const right = agentsLine([], null, NOW, { ...ENTRY, needYou: 2 }).right
     expect(right[0]).toEqual({ text: '◀ 2 need you', color: TONES.warning, bold: true })
-    expect(text(right)).toBe('◀ 2 need you  ☰ 3  M↓')
+    expect(text(right)).toBe('◀ 2 need you · ☰ 3 · M↓')
+  })
+
+  test('the entry parts are joined by rule-toned dots, the buttons in the control tone (T-1.1, T-1.2)', async () => {
+    const entry: BandEntry = { needYou: 3, sessions: 12, hasMarkdown: true }
+    const pieces = entryPieces(entry)
+    expect(text(pieces)).toBe('◀ 3 need you · ☰ 12 · M↓')
+    expect(pieces).toEqual([
+      { text: '◀ 3 need you', color: TONES.warning, bold: true },
+      { text: ' · ', color: TONES.rule },
+      { text: '☰ 12', color: TONES.control, press: 'work' },
+      { text: ' · ', color: TONES.rule },
+      { text: 'M↓', color: TONES.control, press: 'markdown' },
+    ])
+    expect(text(entryPieces({ ...entry, needYou: 0 }))).toBe('☰ 12 · M↓')
+    expect(entryPieces({ ...entry, hasMarkdown: false })[0]?.text).toBe('◀ 3 need you')
+    expect(text(entryPieces({ ...entry, needYou: 0, hasMarkdown: false }))).toBe('☰ 12')
   })
 
   test('no session needing you draws no ◀, and no markdown command draws no M↓', async () => {

@@ -1,7 +1,7 @@
 import type { Register } from 'claude-code'
 
 import { resetLaunchers } from '../../shared/kernel'
-import { noteFileTool, refresh, reopen, scrollPane, show } from './actions'
+import { noteFileTool, refresh, scrollPane, show, toggle, type Toggled } from './actions'
 import { addFiles, forgetWork, link, PANE, remember, rememberMessages, textOf, toolPath } from './data'
 import { candidatePaths, fromHref, resolvePath } from './links'
 import { renderPane, renderReply } from './view'
@@ -9,6 +9,11 @@ import { renderPane, renderReply } from './view'
 const POLL_MS = 2000
 const FILE_TOOLS = ['Read', 'Write', 'Edit']
 const COMMAND = 'picket-markdown'
+
+function toggleReply(toggled: Toggled): string {
+  if (toggled.kind === 'closed') return 'Markdown pane closed.'
+  return toggled.path === null ? `Opened the empty pane: /${COMMAND} <path> shows a markdown file` : `Reopened ${toggled.path}`
+}
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -43,10 +48,7 @@ export const register: Register = on => {
 
   on('command.run', { command: COMMAND }, async ($, e) => {
     const asked = e.args.trim().replace(/^["']|["']$/g, '')
-    if (asked === '') {
-      const reopened = await reopen($)
-      return { text: reopened === null ? `Opened the empty pane: /${COMMAND} <path> shows a markdown file` : `Reopened ${reopened}` }
-    }
+    if (asked === '') return { text: toggleReply(await toggle($)) }
     const path = resolvePath(await $.session.cwd(), asked)
     const opened = await show($, path)
     return { text: opened.isPlaced ? `Opened ${path}` : `Opened ${path} (the pane waits for a wider terminal)` }

@@ -12,6 +12,8 @@ export const TONES: Record<Tone, string> = {
   control: 'claudeShimmer',
 }
 
+export const PANE_PADDING = 1
+
 export const SURFACES = {
   pane: 'bashMessageBackgroundColor',
   code: 'userMessageBackground',

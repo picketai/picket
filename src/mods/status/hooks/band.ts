@@ -70,17 +70,15 @@ const agentPieces = (row: AgentRow, state: Exclude<AgentState, 'idle'>, now: num
         { text: ` (${minutes(now - (row.idleAt ?? now))})`, color: TONES.warning },
       ]
 
-const ENTRY_GAP: Piece = { text: '  ' }
-
 export const entryPieces = ({ needYou, sessions, hasMarkdown }: BandEntry): Piece[] => {
   const parts: Piece[][] = [
     needYou > 0 ? [{ text: `◀ ${needYou} need you`, color: TONES.warning, bold: true }] : [],
-    [{ text: `☰ ${sessions}`, press: 'work' }],
-    hasMarkdown ? [{ text: 'M↓', press: 'markdown' }] : [],
+    [{ text: `☰ ${sessions}`, color: TONES.control, press: 'work' }],
+    hasMarkdown ? [{ text: 'M↓', color: TONES.control, press: 'markdown' }] : [],
   ]
   return joined(
     parts.filter(part => part.length > 0),
-    ENTRY_GAP,
+    DOT,
   )
 }
 

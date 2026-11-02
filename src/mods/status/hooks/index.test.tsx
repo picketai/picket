@@ -2,6 +2,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { AgentInfo, On } from 'claude-code'
 
+import { PANE_PADDING } from '../../shared/theme'
+
 const NOW = Date.parse('2026-10-16T10:00:00Z')
 
 const START = { cwd: 'D:/repo', surface: 'terminal', isInteractive: true } as const
@@ -537,6 +539,13 @@ test('the band counts sessions that need you outside this one, and its ☰ and M
   w.commands = []
   await timer.advance(TICK_MS)
   expect(await drawn.find({ type: 'Text', text: 'M↓' })).toBeUndefined()
+})
+
+test('the work pane keeps the same inset as the Markdown pane (T-1.7)', async ($, on) => {
+  paneWorld(on)
+  await $.session.start(START)
+  const root = await (await workPane($)).find({ key: 'pane' })
+  expect({ paddingX: root?.props.paddingX, paddingY: root?.props.paddingY }).toEqual({ paddingX: PANE_PADDING, paddingY: PANE_PADDING })
 })
 
 test('no transcript is read over three ticks while the work pane is closed (T-6.6)', async ($, on) => {

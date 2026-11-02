@@ -99,7 +99,7 @@ test('clicking a report path in a reply opens it in the pane, and its links navi
   expect((await pane.find({ type: 'Text', text: '?' }))?.props.color).toBe('claudeShimmer')
   expect((await pane.find({ type: 'Text', text: '✎' }))?.props.color).toBe('claudeShimmer')
   expect((await pane.find({ type: 'Text', text: ' ─╮' }))?.props.color).toBe('promptBorder')
-  expect(await pane.find({ type: 'Text', text: `╰${'─'.repeat(54)}╯` })).toBeDefined()
+  expect(await pane.find({ type: 'Text', text: `╰${'─'.repeat(52)}╯` })).toBeDefined()
   expect((await pane.find({ type: 'Text', text: '── ' }))?.props.color).toBe('promptBorder')
   expect((await pane.find({ type: 'Text', text: ' ──' }))?.props.color).toBe('promptBorder')
   expect(await pane.find({ key: `file:${REPORT}` })).toBeDefined()
@@ -236,7 +236,7 @@ test('outline jumps to a heading and the divider shows the position', async ($, 
       isFocused: false,
       bodyColumns: 60,
       placement: 'dock',
-      scroll: { offset: 0, bodyRows: 30 },
+      scroll: { offset: 0, bodyRows: 32 },
       view: {},
     },
   })

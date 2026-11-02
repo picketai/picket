@@ -65,10 +65,16 @@ export async function show($: EngineInterface, path: string, isBack = false) {
   return $.ui.open({ id: PANE, title: baseName(path) })
 }
 
-export async function reopen($: EngineInterface) {
+export type Toggled = { kind: 'closed' } | { kind: 'opened'; path: string | null }
+
+export async function toggle($: EngineInterface): Promise<Toggled> {
+  if ((await $.ui.panes()).some(pane => pane.id === PANE)) {
+    await $.ui.close({ id: PANE })
+    return { kind: 'closed' }
+  }
   const last = await readDoc($)
   await $.ui.open({ id: PANE, title: last === null ? 'Markdown' : baseName(last.path) })
-  return last?.path ?? null
+  return { kind: 'opened', path: last?.path ?? null }
 }
 
 export async function refresh($: EngineInterface, force: boolean) {

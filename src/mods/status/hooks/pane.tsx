@@ -1,7 +1,7 @@
 import type { EngineInterface, RenderInput } from 'claude-code'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
-import { SURFACES, TONES } from '../../shared/theme'
+import { PANE_PADDING, SURFACES, TONES } from '../../shared/theme'
 import type { CleanupWorktree, GroupedSession, PaneTab, PaneView, SessionEntry } from '../types'
 import {
   askDelete,
@@ -25,7 +25,6 @@ import {
 import { age, windowLabel } from './sessions'
 import { cleanupOf, groupSessions, type GroupedPane } from './work-pane'
 
-const PADDING = 1
 const CHROME_ROWS = 4
 const ACTION_COLUMNS = 14
 
@@ -296,17 +295,17 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const ui = $.ui.resolve(e)
   const { Box, Text } = ui
   const [entries, rows, done, view, now] = await Promise.all([readSessions($), readRows($), readDone($), readPaneView($), $.clock.now()])
-  const pane: Pane = { ui, view, now, lineWidth: Math.max(20, e.props.bodyColumns - 2 * PADDING) }
+  const pane: Pane = { ui, view, now, lineWidth: Math.max(20, e.props.bodyColumns - 2 * PANE_PADDING) }
   const grouped = groupSessions(entries, rows, done)
   const lines = tabLines($, pane, grouped, rows, entries)
-  const room = Math.max(1, e.props.scroll.bodyRows - CHROME_ROWS - 2 * PADDING)
+  const room = Math.max(1, e.props.scroll.bodyRows - CHROME_ROWS - 2 * PANE_PADDING)
   paneLimit.maxOffset = lastStart(lines, room)
   const offset = Math.min(view.offset, paneLimit.maxOffset)
   const shown = fitting(lines.slice(offset), room)
   const activeCount = grouped.active.reduce((sum, list) => sum + list.sessions.length, 0)
 
   return (
-    <Box flexDirection="column" paddingX={PADDING} paddingY={PADDING}>
+    <Box key="pane" flexDirection="column" paddingX={PANE_PADDING} paddingY={PANE_PADDING}>
       <Box justifyContent="space-between" width={pane.lineWidth}>
         <Text dimColor bold>
           WORK

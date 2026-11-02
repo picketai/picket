@@ -1,6 +1,6 @@
 import type { EngineInterface, RenderInput } from 'claude-code'
 
-import { SURFACES, TONES } from '../../shared/theme'
+import { PANE_PADDING, SURFACES, TONES } from '../../shared/theme'
 import type { BrowseMode, ViewedDoc } from '../types'
 import { ask, chooseMode, copy, goBack, openInEditor, openPressed, scrollTable, scrollTo, showOrToast, toggleFolder } from './actions'
 import {
@@ -330,23 +330,31 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const ui = $.ui.resolve(e)
   const { Box, Text } = ui
   const viewed = await readDoc($)
+  const inset = 2 * PANE_PADDING
   if (viewed === null) {
     return (
-      <Box flexDirection="column" height={Math.max(1, e.props.scroll.bodyRows)} backgroundColor={SURFACES.pane}>
+      <Box
+        key="pane"
+        flexDirection="column"
+        height={Math.max(1 + inset, e.props.scroll.bodyRows)}
+        paddingX={PANE_PADDING}
+        paddingY={PANE_PADDING}
+        backgroundColor={SURFACES.pane}
+      >
         <Text color={TONES.muted}>{'No file open. Click a .md path in a reply, or run /picket-markdown <path>.'}</Text>
       </Box>
     )
   }
 
   const cwd = await $.session.cwd()
-  const bodyRows = Math.max(8, e.props.scroll.bodyRows)
-  const columns = Math.max(20, e.props.bodyColumns)
+  const bodyRows = Math.max(8, e.props.scroll.bodyRows - inset)
+  const columns = Math.max(20, e.props.bodyColumns - inset)
   const room = columns - 4
   const treeHeight = clamp(Math.floor(bodyRows / 5), 5, bodyRows - 4)
   const contentRows = bodyRows - treeHeight
 
   const laid = laidOut(viewed, room)
-  const top: Row[] = [{ kind: 'line', spans: [] }]
+  const top: Row[] = []
   if (viewed.work !== undefined) {
     top.push({ kind: 'line', spans: [{ text: statusLine(viewed.work), style: { tone: 'muted' } }] }, { kind: 'line', spans: [] })
   }
@@ -368,7 +376,7 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const listLength = browse === 'files' ? tree.length : laid.headings.length
   const maxTreeOffset = Math.max(0, listLength - listRows)
   const treeShown = Math.min(await readTreeOffset($), maxTreeOffset)
-  rememberPaneView({ path: viewed.path, treeTop: contentRows, maxOffset, maxTreeOffset, listRows })
+  rememberPaneView({ path: viewed.path, treeTop: PANE_PADDING + contentRows, maxOffset, maxTreeOffset, listRows })
 
   const pane: Pane = { ui, viewed, laid, room, columns, marks, scrolled: await readHscroll($), links: { count: 0 } }
   const where = maxOffset === 0 ? 'all' : `${Math.round((shown / maxOffset) * 100)}%`
@@ -379,8 +387,15 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
       : outline($, pane, treeShown, listRows, headRows, shown)
 
   return (
-    <Box key="pane" flexDirection="column" height={bodyRows} backgroundColor={SURFACES.pane}>
-      <Box height={contentRows} flexDirection="column" paddingRight={2} overflow="hidden">
+    <Box
+      key="pane"
+      flexDirection="column"
+      height={bodyRows + inset}
+      paddingX={PANE_PADDING}
+      paddingY={PANE_PADDING}
+      backgroundColor={SURFACES.pane}
+    >
+      <Box key="document" height={contentRows} flexDirection="column" paddingRight={2} overflow="hidden">
         {body($, pane, rows.slice(shown, shown + contentRows), shown)}
       </Box>
       <Box height={treeHeight} flexDirection="column" overflow="hidden" paddingTop={1}>
