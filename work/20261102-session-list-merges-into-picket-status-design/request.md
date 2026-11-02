@@ -1,0 +1,17 @@
+Implement SDR-00002 (artifacts/strategy/decisions/00002-session-list-merges-picket-status.md), tactical items TF-001 to TF-005; TF-006 (session name prefixes) is out of scope.
+
+- TF-001: picket-status gains a work pane opened by /picket-session. It lists this project's Claude Code sessions (project root session folder) grouped NEEDS YOU, WORKING, OPEN, CLOSED, NO WORK ITEM by the work items routed in each session; Active, Done and Cleanup tabs; a read-only Peek of the selected session's items; per-row actions copy `claude --resume <id>`, rename, mark done (Done tab: back, delete with confirmation, delete all with confirmation); Cleanup lists closed items whose worktree is still on disk (copies `git worktree remove <path>`) and sessions older than 14 days with no work item. It never opens, resumes or creates a session. Done is kept per machine in the mod's store. Design: canvas https://claude.ai/artifact/JriMuvHWEkjXaiCQyZLiBe, page Work pane, board WorkPane.dc.html.
+- TF-002: the band's agents line always ends with `☰ <active sessions>` (opens the work pane) and `M↓` (runs /picket-markdown; hidden when that command is not listed), preceded by `◀ <n> need you` in warning only while items in other sessions need the developer; the band also draws in a session with no work item. Cheap: count session files with one folder listing; ask the kernel again only when a work item's state.yaml or verdicts.jsonl modification time changed; read transcript titles only while the pane is open. Board BandEntry.dc.html.
+- TF-003: one kernel function classifies a work item as needs-you, working, open or closed; `picket list` JSON rows carry it plus session(s), branch and status, typed in src/lib/shared/views.mts. Sessions per item come from the session field of each verdicts.jsonl line; an item belongs to its latest session and shows greyed in earlier ones.
+- TF-004: rename the markdown mod's /md command to /picket-markdown with no alias (code, user-facing strings, tests, docs); register /picket-markdown and /picket-session as immediate commands; /picket-markdown with nothing to reopen opens the pane on its empty state.
+- TF-005: retire the picket-session plugin: for one release a stub plugin whose only job is a toast telling users to uninstall it, a CHANGELOG line; the session sidebar code, agent cards and sprites leave src/mods/session.
+
+## Brief
+purpose: Let a developer with dozens of Claude Code sessions see which ones need them, from the picket-status band and a work pane, without the mod ever opening or resuming a session (SDR-00002)
+in scope: SDR-00002 TF-001 to TF-005: work pane in picket-status, band buttons and need-you count, kernel classification in picket list, /md renamed /picket-markdown and immediate commands, picket-session retired with a one-release stub
+out of scope: TF-006 session name prefixes; PR status; day view; links from Peek; any session open, resume or terminal control
+
+## Brief
+purpose: Let a developer with dozens of Claude Code sessions see which ones need them, from the picket-status band and a work pane, without the mod ever opening or resuming a session (SDR-00002)
+in scope: SDR-00002 TF-001 to TF-005: work pane in picket-status, band buttons and need-you count, kernel classification in picket list, /md renamed /picket-markdown and immediate commands, picket-session retired with a one-release stub
+out of scope: TF-006 session name prefixes; PR status; day view; links from Peek; any session open, resume or terminal control

@@ -2,6 +2,12 @@
 
 Newest release first; each heading is a version.
 
+## 1.0.0-alpha.6 (not released yet)
+
+### Added
+
+- Each `picket list` row carries `attention` (`needs-you`, `working`, `open` or `closed`), the item's `sessions` with the latest as `session`, its `branch`, and its `worktrees` with whether each folder is still on disk. The `--human` output is unchanged.
+
 ## 1.0.0-alpha.5 (2026-11-02)
 
 ### Changed, act on these

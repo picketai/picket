@@ -46,6 +46,24 @@ export type NextView = {
   warnings?: string[];
 };
 
+export type Attention = "needs-you" | "working" | "open" | "closed";
+
+export type WorktreeView = { repo: string; path: string; present: boolean };
+
+export type ListRowView = {
+  id: string;
+  lane: string;
+  status: string;
+  title: string;
+  phases: string;
+  next: string;
+  attention: Attention;
+  sessions: string[];
+  session: string | null;
+  branch: string | null;
+  worktrees: WorktreeView[];
+};
+
 export type LatestView =
   | { id: null; action: "none"; actor: null; phase: null; detail: string; options: string[] }
   | (Omit<NextView, "send"> & {
