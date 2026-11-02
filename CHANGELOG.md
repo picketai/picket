@@ -2,6 +2,39 @@
 
 Newest release first; each heading is a version.
 
+## 1.0.0-alpha.5 (2026-11-02)
+
+### Changed, act on these
+
+- `picket:understanding` is folded into `picket:consulting` as its interview mode ("question me on this", "stress-test this plan"). `picket:benchmarking` is no longer in the plugin; the benchmark stays in the Picket repository.
+- `picket open` refuses a lane lighter than the one `admit` chose; `--user-lane` overrides it on the user's word.
+- A developer's `Verified: blocked:` line names its kind: `blocked: data: <what>`, `blocked: configuration: <what>` or `blocked: environment: <what>`. A bare `blocked:` is sent back.
+- A plan asserts that text is missing with `absent: true` on a grep entry. `lint.schema` flags a grep pattern starting `^(?!` and an `absent` that is not a boolean; closed records keep their old greps.
+- The scope guard denies a Write over an existing file the session has not read.
+- The Bash guard denies a delete wrapped in `cmd` or PowerShell (`cmd /c del`, `cmd.exe /c erase`, `pwsh -Command Remove-Item`) the same way it denies `rm`.
+- Every session and agent gets the `tests` rule: unit tests by default, no real infrastructure in a unit test, and every test asserts the rule its name claims.
+- `MEMORY.md` is cut at the last whole entry within 6,000 characters when a session loads it, with a note saying so; `lint.glossary` warns when a write leaves it longer.
+
+### Added
+
+- `picket worktree <id>` creates and resumes one worktree per nested repository a plan touches. The plan stops once to ask for the branch name; `route` commits each touched nested checkout before the umbrella, and `verify`, `summary`, `mutate` and `close` follow the item's worktrees.
+- `picket reply <id> "<reply>"` applies a gate reply and prints the next send; `picket name` prints document paths.
+- `picket:implementing`: the red or pinning test first, the check, the drive, and the developer block's `Red:`, `Root cause:` and `Verified:` lines, for the developer and the fast lane alike.
+- A criterion marked `[DEFERRED: <owner>, <gate>]` is printed on a `Deferred:` line of the closing block.
+- `picket check` and `picket drive` run in the nested checkout that holds the working directory.
+- A checkpoint review that returns `CHANGES REQUIRED` sends the developer to fix its findings, then back to the checkpoint review.
+- `picket open` takes `--purpose`, `--in-scope` and `--out-of-scope`, which reach the analyst and the architect.
+- The research gate offers `[p]` to publish the report under `artifacts/reports/`.
+- A direction prompt ("should we", "which approach") suggests `picket:consulting`, and a review can flag a strategic question for it.
+- `pullrequest prepare` carries the review checklists, and a `post` dry run shows the code at each anchor.
+- `lint.schema` checks a report's frontmatter, confidence markers and caps.
+
+### Fixed
+
+- `admit` no longer reads a dotted identifier such as `lint.schema` as migration work, or a request that opens with a change verb as research.
+- `close` ignores a review flag quoted in backticks, and a stray backtick no longer hides one.
+- `route` routes verdicts on continued agent turns, keeps an approved phase's block and commit body, and gives every cross-check drift the text the architect amends from.
+
 ## 1.0.0-alpha.4 (2026-10-25)
 
 ### Changed, act on these
