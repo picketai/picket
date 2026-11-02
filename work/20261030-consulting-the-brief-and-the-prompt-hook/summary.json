@@ -1,6 +1,6 @@
 {
   "work_id": "20261030-consulting-the-brief-and-the-prompt-hook",
-  "base": "eab3d6d7019fd769d331dc0bbbf0a69c12706ed0",
+  "base": "b996573fb5308b3ece08392a28567bc6dd116382",
   "request": "work/20261030-consulting-the-brief-and-the-prompt-hook/request.md",
   "size": "large",
   "changed_files": [
@@ -73,7 +73,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-30T08:48:01.790Z",
-    "base": "eab3d6d7019fd769d331dc0bbbf0a69c12706ed0",
+    "base": "b996573fb5308b3ece08392a28567bc6dd116382",
     "mutant": {
       "path": "src/lib/hooks/inject/consulting/index.mts",
       "line": 18,

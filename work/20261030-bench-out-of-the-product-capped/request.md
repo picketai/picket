@@ -3,4 +3,4 @@ Implement artifacts/refactor/20-bench-guard.md, the work item part: drop benchma
 ## Brief
 purpose: Stop the model from starting bench spend and cap every real run
 in scope: plugin.json and src/skills/benchmarking removal; docs entry to CONTRIBUTING.md; bench/run.mjs --max-usd refusal with planned-spend tests; routing case; UNCONVERTED_SKILLS; budget test scans .claude/skills/
-out of scope: editing .claude/ (the lead committed the project skill and rule in 7ba21a4); running the bench; the move of development's memory
+out of scope: editing .claude/ (the lead committed the project skill and rule in 6403d5b); running the bench; the move of development's memory

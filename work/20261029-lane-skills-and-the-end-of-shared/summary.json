@@ -1,6 +1,6 @@
 {
   "work_id": "20261029-lane-skills-and-the-end-of-shared",
-  "base": "ff064713cbe22706c4dbf57af76f83da304c7c0a",
+  "base": "6a38c20a8820cab51f19904dd021ca6d7b40fbd7",
   "request": "work/20261029-lane-skills-and-the-end-of-shared/request.md",
   "size": "large",
   "changed_files": [
@@ -90,7 +90,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-29T20:45:44.690Z",
-    "base": "ff064713cbe22706c4dbf57af76f83da304c7c0a",
+    "base": "6a38c20a8820cab51f19904dd021ca6d7b40fbd7",
     "mutant": {
       "path": "src/lib/shared/admission/admit.mts",
       "line": 13,

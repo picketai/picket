@@ -24,6 +24,6 @@ Classes: none
 Checked:
 - The staged `src/agents/analyst.md:31` and `src/skills/documenting/templates/report.md` place the flag at the end of the `R-###` line. In the earlier probe, `lint.schema` passes that form, and `reportFindings` still returns the id for it.
 - D-003's "as `[ARCHITECT REVIEW NEEDED]` sits today" matches the new wording.
-- Nothing else changed since f6144f1 outside the work item and the unrelated agent-memory files.
+- Nothing else changed since 997afd7 outside the work item and the unrelated agent-memory files.
 
 APPROVED

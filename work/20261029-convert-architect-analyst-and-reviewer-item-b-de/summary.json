@@ -1,6 +1,6 @@
 {
   "work_id": "20261029-convert-architect-analyst-and-reviewer-item-b-de",
-  "base": "94aca2054b001331788abdb7be1fd0f25a178a47",
+  "base": "1e75e896d8f0756712c4a9cb47e85dd9f8b2716b",
   "request": "work/20261029-convert-architect-analyst-and-reviewer-item-b-de/request.md",
   "size": "large",
   "changed_files": [
@@ -43,7 +43,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-29T19:59:04.701Z",
-    "base": "94aca2054b001331788abdb7be1fd0f25a178a47",
+    "base": "1e75e896d8f0756712c4a9cb47e85dd9f8b2716b",
     "mutant": {
       "path": "src/lib/shared/work/send.mts",
       "line": 22,

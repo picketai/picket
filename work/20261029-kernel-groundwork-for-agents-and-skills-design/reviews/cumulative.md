@@ -16,7 +16,7 @@ Requirements: PASS (12)
 | S-9 | "a new picket reply verb applies a gate reply" | request.md:1 | PASS | src/lib/verbs/reply/index.mts:98-112; reply/table.mts:63 |
 | S-10 | "picket packet prints its own text fence" | request.md:1 | PASS | src/lib/verbs/packet/index.mts:17-19,27 |
 | S-11 | "guard.block bounces a picket agent turn that ends without a block" | request.md:1 | PASS | src/lib/hooks/guard/block/index.mts:61-68,74; test/hooks/guard.block.test.mjs |
-| S-12 | "No agent, skill, rule or CLAUDE.md text changes." | request.md:1 | PASS | `git diff --stat 576f2cc HEAD -- src/agents src/skills src/rules src/output-styles CLAUDE.md` is empty |
+| S-12 | "No agent, skill, rule or CLAUDE.md text changes." | request.md:1 | PASS | `git diff --stat d281956 HEAD -- src/agents src/skills src/rules src/output-styles CLAUDE.md` is empty |
 Alignment: PASS (63)
 Decisions: HONOURED
 Regression: none

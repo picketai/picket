@@ -83,7 +83,7 @@ export const BLOCK_FIELDS: Readonly<Record<BlockKind, readonly string[]>> = {
 
 ## Evidence
 
-Measured on trunk at `3fa610c` (2026-10-29): frontmatter keys and `##` headings of the 4 shells and 17 SKILL.md files; first line and ordered-list count of every file under `steps/`, `checklists/` and `shared/procedures/`; a paragraph scan of the 81 Markdown files under `src/skills`, `src/agents` and `src/rules`. The labels in `BLOCK_FIELDS` come from `guard/block/index.mts:29-41` (`Files`, `Red`, `Root cause`), `route/commit.mts:13` and `block.mts:75,117` (`Commit`, `Files`), and `route/verdict/index.mts:36` (`Classes`).
+Measured on trunk at `6f61ebd` (2026-10-29): frontmatter keys and `##` headings of the 4 shells and 17 SKILL.md files; first line and ordered-list count of every file under `steps/`, `checklists/` and `shared/procedures/`; a paragraph scan of the 81 Markdown files under `src/skills`, `src/agents` and `src/rules`. The labels in `BLOCK_FIELDS` come from `guard/block/index.mts:29-41` (`Files`, `Red`, `Root cause`), `route/commit.mts:13` and `block.mts:75,117` (`Commit`, `Files`), and `route/verdict/index.mts:36` (`Classes`).
 
 The ordered-list count (17 of 29) is a plain count of lines that start `N. `; the walkthrough's 13 of 29 counted files whose action sequence is prose, so a few of the 17 hold lists in another form. The test uses the plain count.
 

@@ -1,6 +1,6 @@
 {
   "work_id": "20261029-route-verdicts-on-continued-turns-drift-amends",
-  "base": "f185a28aebce15f1470e7d0bdbf9bf528a60eefb",
+  "base": "3432887c19d270d7ac5d3e46d47e4a7383ef72b5",
   "request": "work/20261029-route-verdicts-on-continued-turns-drift-amends/request.md",
   "size": "medium",
   "changed_files": [
@@ -25,7 +25,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-29T22:52:54.145Z",
-    "base": "f185a28aebce15f1470e7d0bdbf9bf528a60eefb",
+    "base": "3432887c19d270d7ac5d3e46d47e4a7383ef72b5",
     "mutant": {
       "path": "src/lib/hooks/route/verdict/index.mts",
       "line": 68,

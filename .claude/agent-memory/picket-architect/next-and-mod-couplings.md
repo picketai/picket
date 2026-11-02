@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-Checked 2026-10-29 at 576f2cc while designing work/20261029-kernel-groundwork-for-agents-and-skills-design:
+Checked 2026-10-29 at d281956 while designing work/20261029-kernel-groundwork-for-agents-and-skills-design:
 
 - The status mod can import only the files `MOD_LIB_SHARED` in `scripts/build.mjs` copies (format, views, palette); a copied file must import nothing outside that list, or the built mod breaks. `next-step.mts` cannot be imported by the band.
 - A user `rejected` verdict only clears the run grant (the `rejection` effect in the route service's plan module), so `picket next` keeps saying `approve_phase` while the developer fixes.

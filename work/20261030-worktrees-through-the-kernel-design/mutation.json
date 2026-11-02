@@ -1,6 +1,6 @@
 {
   "ts": "2026-10-30T12:12:33.945Z",
-  "base": "181d9c0f87797f8da9e5c049b34da9036a197df2",
+  "base": "6c1e6dec84f52a2a0c8fd140542d4d40ad9e9fc9",
   "mutant": {
     "path": "src/lib/hooks/guard/bash/kernel.mts",
     "line": 54,

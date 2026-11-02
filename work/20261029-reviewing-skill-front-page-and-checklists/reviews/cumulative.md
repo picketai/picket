@@ -11,7 +11,7 @@ Requirements: PASS (13)
 | S-4 | "the prose load table and the Layout block go" | request.md:1 | PASS | SKILL.md has neither; the map is in review-checklists.mts:42-56, extension_steps included |
 | S-5 | "the verdict rule takes the reviewer memory literal-criterion-misses-go-to-amendment, which is then deleted" | request.md:1 | PASS | SKILL.md:61; I compared it sentence by sentence and found every rule; the file and its index line are gone |
 | S-6 | "noise line becomes 'skip a finding the project's own gates already reject; name the gate once on the Checked: line'" | request.md:1 | PASS | SKILL.md:41 |
-| S-7 | "the 11 checklists lose their NN- prefix with review-checklists.mts changed in the same commit" | request.md:1 | PASS | 7b20ca9; the folder holds 11 unnumbered files; no old name is left in src, docs, test or .claude |
+| S-7 | "the 11 checklists lose their NN- prefix with review-checklists.mts changed in the same commit" | request.md:1 | PASS | 2d700e4; the folder holds 11 unnumbered files; no old name is left in src, docs, test or .claude |
 | S-8 | "the seven rows T3, N2, A1, E1, Co1, Na2, Uc2 pass on code evidence or a recorded decision, never a comment" | request.md:1 | PASS | framework-typescript.md T3/A1/E1, framework-dotnet.md N2, patterns-core.md Co1/Na2, concern-clean-architecture.md Uc2 |
 | S-9 | "a repo test banning 'no comment', 'or comment' and 'documented' in fail conditions" | request.md:1 | PASS | test/repo/checklists.test.mjs:10, :37, its self-test at :42 |
 | S-10 | "in scope pr a person's comment is a Minor recommendation and Uc2 takes its reason from the pull request description" | request.md:1 | PASS | SKILL.md:63 |

@@ -11,7 +11,7 @@ Step 3 of the suggested order in `artifacts/reports/instructions-candidates-2026
 | Shells | analyst 52, architect 59, developer 69, reviewer 66 lines; all four in `agents.test.mjs` `PENDING` |
 | Work sections | `## Two passes` (analyst), `## Amendment` (architect), `## Phase loop` (developer), none (reviewer); no `## Memory` anywhere |
 | Pasted sections | developer half of `phase-loop.md`, architect half of `amend.md`, architect halves of `ordering/steps/10-order.md` and `designing/steps/10-design.md`, analyst halves of the researching steps; each shell's Entry says "read the file your `step:` line names when the message lacks the section" |
-| What `picket next` sends | `send[]` since step 2 (`11dac1f`): `work`, `phase`, `artifact`, `scope`, `summary` path, `review` path, `amend`, `pass`; no `step:` line |
+| What `picket next` sends | `send[]` since step 2 (`6e9271b`): `work`, `phase`, `artifact`, `scope`, `summary` path, `review` path, `amend`, `pass`; no `step:` line |
 | `prove.md` | `src/skills/shared/procedures/prove.md`, cited by the developer shell, `expediting/SKILL.md`, `expediting/steps/10-check.md`, `debugging/steps/30-diagnose.md` |
 | Block template | written out twice: the developer shell's `## Output` and `expediting/SKILL.md`'s `## Output` (the expedited block lacks `Decisions` and `Waivers`) |
 | Test rules | the developer shell's "unit tests, plus architecture tests" paragraph and `reviewing` rows Ts1 to Ts4; no rule file |

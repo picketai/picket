@@ -74,7 +74,7 @@ phases:
 
 ## Problem
 
-The approved draft `artifacts/refactor/10-structure-tests.md` (2026-10-29) is the specification: its Target, its decisions D-1 to D-6 and its Migration carry over as given and are not re-decided here. This order adds the decisions that verifying the draft's premises against trunk at `3fa610c` forced. Three premises did not hold as written: the kernel reads more phase block labels than the draft lists (`packet.mjs`), no kernel code reads the expedited block's labels, and the Output fence headings in the four shells are templates that no `BLOCK_HEADINGS` entry matches until their placeholders are filled. The binding constraint is unchanged: no agent, skill or rule text changes, and `npm test` stays green after every phase.
+The approved draft `artifacts/refactor/10-structure-tests.md` (2026-10-29) is the specification: its Target, its decisions D-1 to D-6 and its Migration carry over as given and are not re-decided here. This order adds the decisions that verifying the draft's premises against trunk at `6f61ebd` forced. Three premises did not hold as written: the kernel reads more phase block labels than the draft lists (`packet.mjs`), no kernel code reads the expedited block's labels, and the Output fence headings in the four shells are templates that no `BLOCK_HEADINGS` entry matches until their placeholders are filled. The binding constraint is unchanged: no agent, skill or rule text changes, and `npm test` stays green after every phase.
 
 ## Decisions
 

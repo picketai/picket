@@ -1,6 +1,6 @@
 {
   "ts": "2026-10-30T09:06:24.386Z",
-  "base": "bf68998fc899c9f583419ca22638b072c99cd03a",
+  "base": "af6ff981680191df1dd51f37fff2fd2c797386ba",
   "mutant": null,
   "command": "npm test",
   "outcome": "no candidate",

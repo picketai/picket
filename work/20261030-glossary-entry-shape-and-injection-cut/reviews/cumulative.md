@@ -1,6 +1,6 @@
 ## Review: 20261030-glossary-entry-shape-and-injection-cut · cumulative
 
-APPROVED: every request sentence and every plan criterion is met in the committed range 399d6a9..d962938, and the edge cases I tried against the cut and the warning hook all held.
+APPROVED: every request sentence and every plan criterion is met in the committed range b60decf..0897650, and the edge cases I tried against the cut and the warning hook all held.
 
 Requirements: PASS (5)
 | ID | Requirement | Source | Result | Evidence |
@@ -9,7 +9,7 @@ Requirements: PASS (5)
 | S-2 | "ratify.md and the glossary template name artifacts/strategy/glossary/" | request.md:1 | PASS | src/skills/consulting/steps/ratify.md:10, src/skills/documenting/templates/glossary.md:15 |
 | S-3 | "inject.state cuts .claude/MEMORY.md at the last whole entry at or under 6,000 characters and appends a note" | request.md:1 | PASS | src/lib/shared/glossary.mts:22-31, src/lib/hooks/inject/state/index.mts:40-41; glossary.test.mts, index.test.mts:38 |
 | S-4 | "a PostToolUse hook on writes to .claude/MEMORY.md warns past 6,000 characters and never blocks" | request.md:1 | PASS | src/lib/hooks/lint/glossary/index.mts:22-33, src/lib/hooks.mts:44-47; index.test.mts:18 asserts only `hookSpecificOutput` |
-| S-5 | "The trimmed MEMORY.md itself is the lead's, after the user approves it." | request.md:1 | PASS | `git diff --stat 399d6a9 HEAD -- .claude` is empty |
+| S-5 | "The trimmed MEMORY.md itself is the lead's, after the user approves it." | request.md:1 | PASS | `git diff --stat b60decf HEAD -- .claude` is empty |
 
 Alignment: PASS (17)
 Decisions: HONOURED

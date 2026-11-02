@@ -43,7 +43,7 @@ phases:
 - **RISK-002** An unmatched single backtick before a bare flag leaves the line unstripped, so the flag counts. Mitigation: that is the safe direction, a false flag shows in `picket close` rather than a real one going silent.
 
 ### D-002: Fix the base failure of the path scan in this phase
-**Decision:** `npm test` fails on base `bf68998`: `test/repo/markdown-paths.test.mjs:167` rejects four short paths (`ordering/steps/open.md`, `designing/steps/open.md`, `researching/steps/outline.md`, `expediting/SKILL.md`) cited in `.claude/agent-memory/picket-developer/lane-open-line-pinned.md`, which that commit added. The phase rewrites them as the full repo paths under `src/skills/`, all four of which exist, so the phase's `tests` must_have can pass. This gives up a commit that holds only the flag fix.
+**Decision:** `npm test` fails on base `af6ff98`: `test/repo/markdown-paths.test.mjs:167` rejects four short paths (`ordering/steps/open.md`, `designing/steps/open.md`, `researching/steps/outline.md`, `expediting/SKILL.md`) cited in `.claude/agent-memory/picket-developer/lane-open-line-pinned.md`, which that commit added. The phase rewrites them as the full repo paths under `src/skills/`, all four of which exist, so the phase's `tests` must_have can pass. This gives up a commit that holds only the flag fix.
 **Instead of:** an open question that leaves `tests: true` failing until a separate item lands: the phase could not pass `picket verify`, and the fix is one line.
 **Risks:**
 - **RISK-003** The developer agent's memory changes under it. Mitigation: only the four citations change; the fact and its how-to-apply line stay as written.

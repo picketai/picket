@@ -1,6 +1,6 @@
 {
   "ts": "2026-10-29T22:28:57.096Z",
-  "base": "7148ec84655fb5d023720c5af0e12d825db3c356",
+  "base": "f2c0eec2abbad593d14c4649fcd4fb5e8fbe84b4",
   "mutant": {
     "path": "src/lib/hooks/lint/schema/index.mts",
     "line": 123,

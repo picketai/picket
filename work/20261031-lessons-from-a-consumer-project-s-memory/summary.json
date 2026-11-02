@@ -1,6 +1,6 @@
 {
   "work_id": "20261031-lessons-from-a-consumer-project-s-memory",
-  "base": "9cd31897858523ec377eee7c18c3ff7682aa783d",
+  "base": "e7ba97923ec84aba92cc592eea2dbba81f72c75a",
   "request": "work/20261031-lessons-from-a-consumer-project-s-memory/request.md",
   "size": "large",
   "changed_files": [
@@ -61,7 +61,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-31T21:29:58.655Z",
-    "base": "9cd31897858523ec377eee7c18c3ff7682aa783d",
+    "base": "e7ba97923ec84aba92cc592eea2dbba81f72c75a",
     "mutant": {
       "path": "src/lib/hooks/guard/bash/payloads.mts",
       "line": 174,

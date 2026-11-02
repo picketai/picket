@@ -6,7 +6,7 @@
 - [Mod validator rules](mod-validator-rules.md) — atoms per file, $ never in objects, function declarations, import-free types contract
 - [New skill checklist](new-skill-checklist.md) — plugin-layout test hard-codes the skill count; plus manifest, routing case, reference page
 - [Verbs import only shared](verbs-import-only-shared.md) — conventions.test.mjs layer rule; a verb never imports another verb (route())
-- [Hook-continued phase routing fixed](hook-continued-phase-not-routed.md) — fixed e15d2ba; continued turns route unless they repeat the last row
+- [Hook-continued phase routing fixed](hook-continued-phase-not-routed.md) — fixed 6b4385e; continued turns route unless they repeat the last row
 - [Scratch drive root](scratch-drive-root.md) — scratchpad picket runs land in the home folder; set CLAUDE_PROJECT_DIR first
 - [Lane open line pinned](lane-open-line-pinned.md) — lane-check.test.mjs matches each lane's `picket open` line; update it with the step
 - [Reply is lead-only](reply-is-lead-only.md) — guard.bash denies `picket reply` to agents; drive next/packet, unit-test the reply

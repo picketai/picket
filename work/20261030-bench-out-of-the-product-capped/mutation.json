@@ -1,6 +1,6 @@
 {
   "ts": "2026-10-30T13:35:24.345Z",
-  "base": "7ba21a42ef50fe66c9bc4d839e0b43ecd95cd533",
+  "base": "6403d5bd77f3d869b60df996e83722c0b2a7cce9",
   "mutant": {
     "path": "bench/lib/spend.mjs",
     "line": 8,

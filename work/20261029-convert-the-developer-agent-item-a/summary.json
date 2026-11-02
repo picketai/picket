@@ -1,6 +1,6 @@
 {
   "work_id": "20261029-convert-the-developer-agent-item-a",
-  "base": "74aa111202ce24e29da78e01da234deeef4b798b",
+  "base": "33e58baeb66ddaa2311b33aeb35a33b83eeb8f68",
   "request": "work/20261029-convert-the-developer-agent-item-a/request.md",
   "size": "large",
   "changed_files": [
@@ -46,7 +46,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-29T18:44:10.499Z",
-    "base": "74aa111202ce24e29da78e01da234deeef4b798b",
+    "base": "33e58baeb66ddaa2311b33aeb35a33b83eeb8f68",
     "mutant": null,
     "command": "npm test",
     "outcome": "no candidate",

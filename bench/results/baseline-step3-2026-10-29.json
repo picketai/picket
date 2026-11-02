@@ -2,7 +2,7 @@
   "manifest": {
     "harness": "plugin",
     "harness_root": "D:\\workspace\\github\\AISpec",
-    "harness_commit": "74aa111",
+    "harness_commit": "33e58ba",
     "harness_dirty": false,
     "fixture_hash": "ba1d8b716475",
     "claude_version": "2.1.312 (Claude Code)",

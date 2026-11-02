@@ -1,6 +1,6 @@
 {
   "work_id": "20261029-remaining-skills-in-bundle-2-shape",
-  "base": "3965dcb7fb8211d4221199b4b159906c69000757",
+  "base": "34ff9fdccfeff868fcdd7daf2d7b4b4ae45b1e52",
   "request": "work/20261029-remaining-skills-in-bundle-2-shape/request.md",
   "size": "large",
   "changed_files": [
@@ -38,7 +38,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-29T23:15:16.842Z",
-    "base": "3965dcb7fb8211d4221199b4b159906c69000757",
+    "base": "34ff9fdccfeff868fcdd7daf2d7b4b4ae45b1e52",
     "mutant": null,
     "command": "npm test",
     "outcome": "no candidate",

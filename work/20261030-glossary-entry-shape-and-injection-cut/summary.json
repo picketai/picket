@@ -1,6 +1,6 @@
 {
   "work_id": "20261030-glossary-entry-shape-and-injection-cut",
-  "base": "399d6a98a24caa3e6ef9afcc7ae2d70abaf4a190",
+  "base": "b60decfe042c5d2b31eadde7b1e9667af6a7ac9b",
   "request": "work/20261030-glossary-entry-shape-and-injection-cut/request.md",
   "size": "large",
   "changed_files": [
@@ -34,7 +34,7 @@
   "silenced": [],
   "mutation": {
     "ts": "2026-10-30T12:40:03.864Z",
-    "base": "399d6a98a24caa3e6ef9afcc7ae2d70abaf4a190",
+    "base": "b60decfe042c5d2b31eadde7b1e9667af6a7ac9b",
     "mutant": {
       "path": "src/lib/hooks/lint/glossary/index.mts",
       "line": 26,

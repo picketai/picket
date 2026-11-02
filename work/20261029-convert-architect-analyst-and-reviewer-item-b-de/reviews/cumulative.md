@@ -18,7 +18,7 @@ Requirements: PASS (14), 1 UNCLEAR
 | S-10 | "the pull request incident notes leave" | request.md:3 | PASS | src/agents/reviewer.md: no `scratchpad_pr5223`, no "two live reviews" |
 | S-11 | "noise" becomes "skip a finding the project's own gates already reject; name the gate once on the Checked: line" | request.md:3 | PASS | src/agents/reviewer.md:37 |
 | S-12 | "Constraints say Write and Edit are for the memory folder only" | request.md:3 | PASS | src/agents/reviewer.md:31 |
-| S-13 | "the reviewer memories send-review-by-message and new-next-action-check-band are deleted" | request.md:3 | PASS | c1ce2ad deletes both files and their index lines; their sentences land at reviewer.md:31, :45 |
+| S-13 | "the reviewer memories send-review-by-message and new-next-action-check-band are deleted" | request.md:3 | PASS | 68fcc2b deletes both files and their index lines; their sentences land at reviewer.md:31, :45 |
 | S-14 | "The step files and amend.md keep only their lead half. agents.test.mjs PENDING ends empty and its Entry check covers all four agents" | request.md:3 | PASS | src/skills/ordering/steps/10-order.md, designing/steps/10-design.md, shared/procedures/amend.md, researching/steps/10-outline.md, 20-deep.md; test/repo/agents.test.mjs:294, :298-301 |
 | S-15 | "The send's `to` must be a name the spawned instance will really carry and that continuations can address." | request.md:5 | PASS | src/lib/shared/work/send.mts:30-43; send.test.mts tests "every send row addresses its instance…" and "an item with no rows of its own…". Driven: `picket next <id> --human` prints `Agent hiop-cumulative-reviewer` |
 
