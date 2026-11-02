@@ -17,10 +17,3 @@ export const SURFACES = {
   code: 'userMessageBackground',
   row: 'userMessageBackgroundHover',
 } as const
-
-export const ROLE_TONES: Record<string, string> = {
-  architect: 'suggestion',
-  developer: 'success',
-  reviewer: 'permission',
-  analyst: 'claudeShimmer',
-}

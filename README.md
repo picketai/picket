@@ -26,7 +26,7 @@ src/                       the hand-written source of the picket plugin
   agents/                  picket:analyst, architect, developer, reviewer
   bin/                     the picket command
   lib/                     the kernel: verbs, hooks and the code they share
-  mods/                    picket-status, picket-markdown and picket-session
+  mods/                    picket-status, picket-markdown and the retired picket-session stub
   output-styles/           picket:custom, the response rules
   rules/                   the rules injected into the lead and every agent
   skills/                  the lane skills and the command skills

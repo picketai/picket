@@ -23,7 +23,7 @@
     {
       "name": "picket-session",
       "source": "./dist/mods/session",
-      "description": "Sessions of this project and every agent of this one, in a docked sidebar"
+      "description": "Retired: the session list is now the work pane of picket-status (/picket-session). Uninstall this plugin"
     }
   ]
 }

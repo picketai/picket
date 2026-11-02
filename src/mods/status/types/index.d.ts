@@ -31,6 +31,15 @@ export type AgentRow = {
   idleAt: number | null
 }
 
+export type SessionEntry = {
+  id: string
+  title: string
+  mtimeMs: number
+  isLive: boolean
+  status: string | null
+  isCurrent: boolean
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'picket-status': { now: number; work: Work | null; agents: AgentRow[] }

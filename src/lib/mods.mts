@@ -19,8 +19,8 @@ export const MODS = {
   },
   session: {
     plugin: "picket-session",
-    summary: "a docked sidebar with this project's sessions and every agent of the current one",
-    description: "Sessions of this project and every agent of this one, in a docked sidebar",
+    summary: "retired: the session list is now the work pane of picket-status; uninstall it",
+    description: "Retired: the session list is now the work pane of picket-status (/picket-session). Uninstall this plugin",
     install: "opt-in",
   },
 } as const satisfies Record<string, ModEntry>;

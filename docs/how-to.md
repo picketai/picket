@@ -14,10 +14,10 @@ The **`picket` command** is the kernel. It decides everything that code can deci
 
 **`picket init`** writes the few things a plugin cannot carry: a block in your `CLAUDE.md`, permission rules and the status line in `.claude/settings.json`, and the settings file `.picket/config.json`.
 
-`init` also installs two mods, small plugins from the same marketplace. **picket-status** shows the open work item and its agents above the prompt. **picket-markdown** opens a Markdown path you click in a reply in a read-only pane beside the transcript. A third mod, **picket-session**, shows this project's sessions and agents in a docked sidebar; it is opt-in:
+`init` also installs two mods, small plugins from the same marketplace. **picket-status** shows the open work item and its agents above the prompt. **picket-markdown** opens a Markdown path you click in a reply in a read-only pane beside the transcript. The old **picket-session** sidebar is retired; if you installed it, uninstall it:
 
 ```sh
-claude plugin install picket-session@picketai --scope project
+claude plugin uninstall picket-session@picketai --scope project
 ```
 
 ## Before you start
@@ -334,7 +334,7 @@ claude plugin update picket-status@picketai --scope project
 claude plugin update picket-markdown@picketai --scope project
 ```
 
-If you installed picket-session, also run `claude plugin update picket-session@picketai --scope project`.
+If you installed picket-session, uninstall it instead of updating it: `claude plugin uninstall picket-session@picketai --scope project`. Its session list is now the work pane of picket-status.
 
 Restart Claude Code to load the new version. Run `picket init` in each project afterwards: it is safe to repeat and adds any setting a new version needs.
 

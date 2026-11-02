@@ -64,6 +64,6 @@ test("the dash scans flag a planted dash in Markdown and in a code line, and ski
 
 test("the module scan reads code under src/mods and leaves test files out", () => {
   const modules = codeModules().map((file) => relative(ROOT, file).replaceAll("\\", "/"));
-  assert.ok(modules.includes("src/mods/session/hooks/sessions.ts"));
+  assert.ok(modules.includes("src/mods/status/hooks/sessions.ts"));
   assert.equal(modules.some((file) => TEST_FILE.test(file)), false);
 });

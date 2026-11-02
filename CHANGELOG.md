@@ -7,6 +7,7 @@ Newest release first; each heading is a version.
 ### Changed, act on these
 
 - `/md` is now `/picket-markdown`, with no alias. It runs while a turn streams, and with no file to reopen it opens the empty pane.
+- picket-session is retired: its session list moves to picket-status. Uninstall it with `claude plugin uninstall picket-session@picketai --scope project`; until then it only shows a toast saying so. Its Archived list is not carried over, so mark those sessions done again in the new pane.
 
 ### Added
 
