@@ -33,13 +33,26 @@
     "src/mods/session/hooks/view.tsx",
     "src/mods/session/types/index.d.ts",
     "src/mods/shared/theme.ts",
+    "src/mods/status/hooks/band.test.ts",
+    "src/mods/status/hooks/band.ts",
+    "src/mods/status/hooks/index.test.tsx",
+    "src/mods/status/hooks/index.tsx",
+    "src/mods/status/hooks/pane-actions.ts",
+    "src/mods/status/hooks/pane.tsx",
+    "src/mods/status/hooks/session-files.ts",
     "src/mods/status/hooks/sessions.test.ts",
     "src/mods/status/hooks/sessions.ts",
+    "src/mods/status/hooks/watch.test.ts",
+    "src/mods/status/hooks/watch.ts",
+    "src/mods/status/hooks/work-pane.test.ts",
+    "src/mods/status/hooks/work-pane.ts",
     "src/mods/status/types/index.d.ts",
-    "test/repo/dashes.test.mjs"
+    "test/repo/dashes.test.mjs",
+    "test/repo/mod-contracts.test.mjs",
+    "test/repo/mod-contracts/check.mts"
   ],
-  "lines_added": 923,
-  "lines_removed": 1445,
+  "lines_added": 2627,
+  "lines_removed": 1542,
   "frameworks": [
     "typescript"
   ],
@@ -71,14 +84,30 @@
       "waived": false
     }
   ],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-02T12:45:45.393Z",
+    "base": "b337dc77ad2550ca26fef64b048adb09b41b05ad",
+    "mutant": {
+      "path": "src/lib/shared/host-sessions.mts",
+      "line": 7,
+      "from": "||",
+      "to": "&&"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 73232
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

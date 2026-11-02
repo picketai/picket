@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-02T12:45:45.393Z",
+  "base": "b337dc77ad2550ca26fef64b048adb09b41b05ad",
+  "mutant": {
+    "path": "src/lib/shared/host-sessions.mts",
+    "line": 7,
+    "from": "||",
+    "to": "&&"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 73232
+}

@@ -1,9 +1,9 @@
 id: 20261102-session-list-merges-into-picket-status-design
 lane: design
 title: Session list merges into picket-status design
-status: open
+status: done
 created: 2026-11-02T11:32:32.249Z
-updated: 2026-11-02T12:04:54.259Z
+updated: 2026-11-02T12:50:42.512Z
 session: 13e4b056-abbf-4738-98a3-a9bcb06d5cc4
 base: b337dc77ad2550ca26fef64b048adb09b41b05ad
 run_through: 6
