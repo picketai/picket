@@ -74,6 +74,23 @@ test('/md on a work item document shows the status picket state answers', async 
   expect(runs.filter(isStateCall)).toEqual([['picket', 'state', 'w2']])
 })
 
+test('a rendered reply adds its linked file to the pane list with no session.append', async ($, on) => {
+  const { timer, modified } = world(on)
+  const guide = 'D:/repo/guide.md'
+  modified[guide] = 1
+  await $.session.start(START)
+  await $.ui.mount({
+    plugin: 'picket-markdown',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: 'Read guide.md first.', isFirstOfReply: true },
+  })
+  await timer.advance(0)
+  await $.command.run({ command: 'md', args: 'work/w2/design.md' })
+
+  expect(await (await pane($)).find({ key: `file:${guide}` })).toBeDefined()
+})
+
 test('the poll asks picket state again only when the work signature changes', async ($, on) => {
   const { timer, modified, runs } = world(on)
   await $.session.start(START)

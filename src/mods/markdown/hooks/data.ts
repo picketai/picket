@@ -151,11 +151,15 @@ async function existing($: EngineInterface, base: string, paths: readonly string
 
 export async function remember($: EngineInterface, paths: readonly string[]) {
   if (paths.length === 0) return
-  const found = await existing($, await $.session.cwd(), paths)
-  if (found.size === 0) return
+  await addFiles($, [...(await existing($, await $.session.cwd(), paths))])
+}
+
+export async function addFiles($: EngineInterface, found: readonly string[]) {
+  const listed = new Set((await readFiles($)).map(keyOf))
+  if (found.every(file => listed.has(keyOf(file)))) return
   await update($, files, list => {
     const known = new Set(list.map(keyOf))
-    const added = [...found].filter(file => !known.has(keyOf(file)))
+    const added = found.filter(file => !known.has(keyOf(file)))
     return added.length === 0 ? list : [...list, ...added].slice(-MAX_FILES)
   })
 }

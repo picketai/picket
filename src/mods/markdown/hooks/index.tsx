@@ -2,8 +2,8 @@ import type { Register } from 'claude-code'
 
 import { resetLaunchers } from '../../shared/kernel'
 import { noteFileTool, refresh, reopen, scrollPane, show } from './actions'
-import { forgetWork, link, PANE, remember, rememberMessages, textOf, toolPath } from './data'
-import { candidatePaths, resolvePath } from './links'
+import { addFiles, forgetWork, link, PANE, remember, rememberMessages, textOf, toolPath } from './data'
+import { candidatePaths, fromHref, resolvePath } from './links'
 import { renderPane, renderReply } from './view'
 
 const POLL_MS = 2000
@@ -54,6 +54,9 @@ export const register: Register = on => {
     if (e.surface !== 'terminal' || e.props.isSummary) return next(e)
     const linked = await link($, e.props.text, await $.session.cwd())
     if (linked.hrefs.length === 0) return next(e)
+    $.clock.after(0, () => {
+      addFiles($, linked.hrefs.map(fromHref)).catch(() => {})
+    })
     return renderReply($, e, linked)
   })
 
