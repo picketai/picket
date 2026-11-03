@@ -9,7 +9,7 @@ when_to_use: >
   Use when the user says "write a ticket", "log a bug", "make a Jira item", "pull JIRA-123",
   "update that story", "draft an epic", or mentions Jira, tickets, backlog items, issues or
   sprint work.
-argument-hint: "[--pull|--create|--update] [--story|--change|--bug|--debt|--spike|--epic] <text or key>"
+argument-hint: "[--pull|--create|--update] [--story|--change|--bug|--debt|--spike|--epic] [--to <path>] <text or key>"
 ---
 
 # Ticketing
@@ -42,7 +42,7 @@ Item type: first flag wins; without one, infer ("crash", "null ref" → bug; "re
 | `--spike` | spike | `spike.md` | Task | tech lead |
 | `--epic` | epic | `epic.md` | Epic | programme lead |
 
-Operation: none → draft (reply only, no file); `--pull` → fetch and render; `--pull <KEY> --story` → the lane intake: write the story file and print the `picket open` flags, no render; `--create` → draft then create; `--update` → change an existing item. Strip flags before reading the rest as text or key. The platform is the system of record.
+Operation: none → draft (reply only, no file); `--pull` → fetch and render; `--pull <KEY> --story` → the lane intake: write the story file and print the `picket open` flags, no render; `--pull <KEY> --story --to <path>` → the same story file at `<path>`, printing the path; `--create` → draft then create; `--update` → change an existing item. Strip flags before reading the rest as text or key. The platform is the system of record.
 
 Self-check before presenting: summary length and convention; description a non-engineer can follow; each criterion independently testable; Out of Scope present and non-empty; Definition of Done with 4 or more items; Priority with reason; `REQUIRES INPUT` wherever input was thin.
 

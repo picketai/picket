@@ -25,8 +25,8 @@ Server rules: `cloudId` is a top-level argument on every execute call, a sibling
 With a key and `--story` (`--pull SHOP-123 --story`), a lane is opening a work item, and the pull replaces steps 2 to 4:
 
 1. `getJiraIssue` with `view: full`.
-2. Write `Ticket updated: <time>` (the ticket's `updated` field) as the first line of `.picket/state/scratch/<KEY>.md`, then the description and the acceptance-criteria fields unedited, in that order. Never summarise or reword them: the reviewer quotes the story.
-3. Print one line with the flags for `picket open`: `--ticket <KEY> --story .picket/state/scratch/<KEY>.md`. Then stop; the lane opens the item.
+2. Write `Ticket updated: <time>` (the ticket's `updated` field) as the first line of `.picket/state/scratch/<KEY>.md`, or of the path given with `--to <path>`, then the description and the acceptance-criteria fields unedited, in that order. Never summarise or reword them: the reviewer quotes the story.
+3. Without `--to`, print one line with the flags for `picket open`: `--ticket <KEY> --story .picket/state/scratch/<KEY>.md`, and stop; the lane opens the item. With `--to <path>` (a pull request review), print only the path written, and stop.
 
 ## Create
 
