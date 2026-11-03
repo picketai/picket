@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-03T16:28:23.338Z",
+  "base": "2788aa4eae49917057a13e23e53f25b224398b3c",
+  "mutant": {
+    "path": "src/lib/hooks/guard/scope/index.mts",
+    "line": 45,
+    "from": "&&",
+    "to": "||"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 105942
+}

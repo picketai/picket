@@ -1,9 +1,9 @@
 id: 20261103-pr-reviews-read-the-linked-ticket
 lane: order
 title: PR reviews read the linked ticket
-status: open
+status: done
 created: 2026-11-03T13:19:22.059Z
-updated: 2026-11-03T16:18:40.438Z
+updated: 2026-11-03T16:30:55.055Z
 session: 13e4b056-abbf-4738-98a3-a9bcb06d5cc4
 base: 2788aa4eae49917057a13e23e53f25b224398b3c
 run_through: 3
