@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
-import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, stateRel } from "../../../shared/paths.mts";
+import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, isPrTicketRel, stateRel } from "../../../shared/paths.mts";
 import { sourceRoots, underSource } from "../../../shared/sources/protection.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { wasRead } from "../../../shared/transcript/entries.mts";
@@ -42,7 +42,7 @@ function confirmationReason(rel: string, platform: NodeJS.Platform): string | nu
 
 function isHookOnlyState(rel: string): boolean {
   const path = rel.toLowerCase();
-  return path.startsWith(STATE_PREFIX) && !path.startsWith(SCRATCH_PREFIX) && !MODEL_WRITABLE_STATE.includes(path);
+  return path.startsWith(STATE_PREFIX) && !path.startsWith(SCRATCH_PREFIX) && !MODEL_WRITABLE_STATE.includes(path) && !isPrTicketRel(rel);
 }
 
 function isLegacyState(rel: string): boolean {

@@ -54,6 +54,15 @@ test("guardScope denies the legacy state folder and hook state in any case, not 
   assert.equal(guard("Write", ".claude/ledger-notes.md"), null);
 });
 
+test("guardScope lets a PR ticket file through and keeps the saved review, deeper paths and other names hook-only", (t) => {
+  const root = project(t);
+  const decide = (rel: string) => scopeWrite(root, join(root, rel))?.permissionDecision ?? null;
+  assert.equal(decide(".picket/state/pr-412/SHOP-123.md"), null);
+  for (const rel of [".picket/state/pr-412.review.md", ".picket/state/pr-412/sub/SHOP-123.md", ".picket/state/pr-x/SHOP-123.md", ".picket/state/pr-412/notes.txt"]) {
+    assert.equal(decide(rel), "deny", rel);
+  }
+});
+
 test("guardScope asks before an edit to extension content or the config, and keeps its denials first", (t) => {
   const root = project(t);
   const decide = (tool_name: string, rel: string) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;

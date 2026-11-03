@@ -1,5 +1,7 @@
+import { rmSync } from "node:fs";
 import { action, done } from "../../shared/action.mts";
 import { loadConfig } from "../../shared/config.mjs";
+import { prTicketRel, statePath } from "../../shared/paths.mts";
 import { reviewChecklists, type Checklist } from "../../shared/review-checklists.mts";
 import { changesOfRange, renderSummary, summarize, type Summary, type SummaryConfig } from "../../shared/review-summary.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -7,6 +9,7 @@ import { str, UsageError, type Args } from "../../util/args.mts";
 import { pullRequestMeta, type PullRequestMeta } from "./azdo.mts";
 import { parsePullRequestUrl, patOf, type PullRequest } from "./pull-request.mts";
 import { fetchPullRequest, resolveRepo } from "./remote.mts";
+import { renderTickets, ticketKeys, type Ticket } from "./tickets.mts";
 
 export type PrepareInput = { url: string; repo: string | undefined };
 export type PrepareOptions = { repo: string | undefined; pat: string | null; env: NodeJS.ProcessEnv };
@@ -23,20 +26,28 @@ export type Prepared = {
   meta: PullRequestMeta | null;
   meta_reason: string | null;
   review_id: string;
+  tickets: Ticket[];
 };
 
 const SHORT_SHA = 10;
 
+function ticketsOf(meta: PullRequestMeta | null, reviewId: string): Ticket[] {
+  return ticketKeys(meta).map((t) => ({ ...t, path: prTicketRel(reviewId, t.key) }));
+}
+
 export async function preparePullRequest(root: string, url: string, { repo, pat, env }: PrepareOptions): Promise<Prepared> {
   const pr = parsePullRequestUrl(url);
+  const reviewId = `pr-${pr.id}`;
   const located = resolveRepo(root, pr, repo);
   if (located.remote === null) throw new Error(located.reason);
   const repoRoot = located.repo_root;
   const refs = fetchPullRequest(repoRoot, located.remote, pr.id);
+  rmSync(statePath(root, reviewId), { recursive: true, force: true });
   const config: SummaryConfig = loadConfig(repoRoot, env);
   const summary = summarize(repoRoot, changesOfRange(repoRoot, refs.base, refs.head), config);
   const { meta, reason } = await pullRequestMeta(pr, { pat, root: repoRoot });
-  return { pr, repo_root: repoRoot, remote: located.remote, ...refs, summary, checklists: reviewChecklists(summary, "phase"), meta, meta_reason: reason, review_id: `pr-${pr.id}` };
+  const tickets = ticketsOf(meta, reviewId);
+  return { pr, repo_root: repoRoot, remote: located.remote, ...refs, summary, checklists: reviewChecklists(summary, "phase"), meta, meta_reason: reason, review_id: reviewId, tickets };
 }
 
 export const prepare = action<PrepareInput, Prepared>(async ({ url, repo }, { root, env }) => done(await preparePullRequest(root, url, { repo, pat: patOf(env, root), env })));
@@ -60,6 +71,7 @@ function renderPrepared(v: Prepared): string {
   return [
     `${v.review_id} · ${v.pr.provider} · ${v.pr.repo} · remote ${v.remote} · clone ${v.repo_root}`,
     `  ${metaLine(v)}`,
+    `  ${renderTickets(v.tickets)}`,
     `  ${renderSummary(v.summary)}`,
     `  base ${v.base.slice(0, SHORT_SHA)} · head ${v.head.slice(0, SHORT_SHA)} (${v.ref})`,
   ].join("\n");

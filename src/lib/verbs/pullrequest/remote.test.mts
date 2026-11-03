@@ -1,13 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { parsePullRequestUrl } from "./pull-request.mts";
 import { findRemote, locateRepo, fetchPullRequest, mergeRef, resolveRepo } from "./remote.mts";
 import { preparePullRequest } from "./prepare.mts";
 import { anchorsAtHead } from "./post.mts";
 import { CHECKLIST_ROOT } from "../../shared/review-checklists.mts";
+import { statePath } from "../../shared/paths.mts";
 import { withProject } from "#test/project.mts";
 
 const PREPARE = { repo: undefined, pat: null, env: process.env };
@@ -50,8 +51,13 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   assert.equal(refs.base, base);
   assert.equal(refs.source, source);
 
+  const staleTicket = join(statePath(work, "pr-7"), "OLD-1.md");
+  mkdirSync(dirname(staleTicket), { recursive: true });
+  writeFileSync(staleTicket, "earlier review\n");
   const prep = await preparePullRequest(work, pr.url, PREPARE);
   assert.equal(prep.review_id, "pr-7");
+  assert.equal(existsSync(staleTicket), false);
+  assert.deepEqual(prep.tickets, []);
   assert.deepEqual(prep.summary.changed_files, ["src/b.ts"]);
   assert.equal(prep.summary.size, "small");
   assert.deepEqual(prep.summary.frameworks, ["typescript"]);

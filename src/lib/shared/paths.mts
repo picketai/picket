@@ -90,6 +90,16 @@ export function stateRel(name: string): string {
   return posixJoin(STATE_REL, name);
 }
 
+const PR_TICKET_REL = new RegExp(`^${STATE_REL.replace(".", "\\.")}/pr-\\d+/[A-Z][A-Z0-9_]+-\\d+\\.md$`, "i");
+
+export function prTicketRel(reviewId: string, key: string): string {
+  return stateRel(`${reviewId}/${key}.md`);
+}
+
+export function isPrTicketRel(rel: string): boolean {
+  return PR_TICKET_REL.test(rel);
+}
+
 export function stateDir(root: string): string {
   return underRoot(root, STATE_REL);
 }
