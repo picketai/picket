@@ -95,26 +95,52 @@ test("the create_worktrees packet lists every touched repo with its start, an 8-
   ]);
 });
 
-test("the commit lines name each repo the approval commits in, then the body; one repo shows the subject alone (T-2.4, T-2.5)", (t) => {
+function nestedOrdersItem(t, subject = "fix(pricing): a") {
   const root = withProject(t, { host: true, picket: false });
   const { id } = openItem(root, { lane: "order", title: "Orders" });
   writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/Orders/pricing.cs]\n  - n: 2\n    files: [README.md]\n---\n# O\n\n## Phase 1: Pricing\n\nt\n\n## Phase 2: Readme\n\nt\n");
   writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: "src/Orders/.worktrees/RMS-12" }] });
-  const block = (n) => `## Phase ${n} of ${id}: P\n\nDone.\n\nFiles: ${n === 1 ? "src/Orders/pricing.cs" : "README.md"}\nCommit: fix(pricing): a\n\n    Rate comes from the tariff.\n    - one line per tier\n\nPHASE DONE`;
+  const block = (n) => `## Phase ${n} of ${id}: P\n\nDone.\n\nFiles: ${n === 1 ? "src/Orders/pricing.cs" : "README.md"}\nCommit: ${subject}\n\n    Rate comes from the tariff.\n    - one line per tier\n\nPHASE DONE`;
   phaseDone(root, id);
   saveBlock(root, id, 1, block(1));
-  const commit = (lines) => lines.slice(lines.findIndex((l) => l.startsWith("  commit")), lines.indexOf("", 3));
-  assert.deepEqual(commit(packet(id, root).lines), [
-    "  commit    src/Orders/.worktrees/RMS-12  fix(pricing): a",
-    "            main repo  fix(pricing): a",
+  const toPhaseTwo = () => {
+    setMarker(root, id, 1, "approved", new Date());
+    setMarker(root, id, 2, "done", new Date());
+    saveBlock(root, id, 2, block(2));
+  };
+  return { root, id, toPhaseTwo };
+}
+
+const commitRows = (lines) => lines.slice(lines.findIndex((l) => l.startsWith("  commit")), lines.indexOf("", 3));
+
+const SUBJECT_AT_72 = `fix(pricing): ${"a".repeat(58)}`;
+
+test("the commit lines name each repo the approval commits in, its subject below it, then the body; one repo shows the subject alone (T-2.1, T-2.4)", (t) => {
+  const { root, id, toPhaseTwo } = nestedOrdersItem(t);
+  assert.deepEqual(commitRows(packet(id, root).lines), [
+    "  commit    src/Orders/.worktrees/RMS-12",
+    "              fix(pricing): a",
+    "            main repo",
+    "              fix(pricing): a",
     "            Rate comes from the tariff.",
     "            - one line per tier",
   ]);
 
-  setMarker(root, id, 1, "approved", new Date());
-  setMarker(root, id, 2, "done", new Date());
-  saveBlock(root, id, 2, block(2));
-  assert.deepEqual(commit(packet(id, root).lines), ["  commit    fix(pricing): a", "            Rate comes from the tariff.", "            - one line per tier"]);
+  toPhaseTwo();
+  assert.deepEqual(commitRows(packet(id, root).lines), ["  commit    fix(pricing): a", "            Rate comes from the tariff.", "            - one line per tier"]);
+});
+
+test("a 72-character subject shows whole under each repo (T-2.2)", (t) => {
+  assert.equal([...SUBJECT_AT_72].length, 72);
+  const { root, id } = nestedOrdersItem(t, SUBJECT_AT_72);
+  const lines = packet(id, root).lines;
+  assert.equal(lines.filter((l) => l === `${" ".repeat(14)}${SUBJECT_AT_72}`).length, 2);
+});
+
+test("one repo's 72-character subject shows whole on the commit line, even past a narrow width (T-2.3)", (t) => {
+  const { root, id, toPhaseTwo } = nestedOrdersItem(t, SUBJECT_AT_72);
+  toPhaseTwo();
+  assert.ok(packet(id, root, { width: 60 }).lines.includes(`  commit    ${SUBJECT_AT_72}`));
 });
 
 test("a Files: line of twelve paths shows whole paths up to the width, then +k more (T-1.3)", (t) => {

@@ -90,9 +90,9 @@ function plannedLine({ repo, from, base, worktree }) {
 
 const MAIN_REPO = "main repo";
 
-function repoLines(dirs, subject, room) {
-  if (!dirs.length) return [cut(subject, room)];
-  return [...dirs, MAIN_REPO].map((dir) => `${dir}  ${cut(subject, room - dir.length - 2)}`);
+function repoLines(dirs, subject) {
+  if (!dirs.length) return [subject];
+  return [...dirs, MAIN_REPO].flatMap((dir) => [dir, `  ${subject}`]);
 }
 
 function commitLines(root, snap, phase, width) {
@@ -102,7 +102,7 @@ function commitLines(root, snap, phase, width) {
   const room = width - indent.length;
   const [subject, ...body] = checked.message.split("\n");
   const dirs = [...nestedCheckoutPaths(root, snap, phase).keys()];
-  const [first, ...rest] = [...repoLines(dirs, subject, room), ...body.filter((line) => line.trim()).map((line) => cut(line, room))];
+  const [first, ...rest] = [...repoLines(dirs, subject),...body.filter((line) => line.trim()).map((line) => cut(line, room))];
   return [`  ${"commit".padEnd(LABEL)}${first}`, ...rest.map((line) => indent + line)];
 }
 
