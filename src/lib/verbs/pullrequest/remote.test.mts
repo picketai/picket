@@ -58,6 +58,8 @@ test("findRemote, fetchPullRequest and preparePullRequest work against a repo th
   assert.equal(prep.review_id, "pr-7");
   assert.equal(existsSync(staleTicket), false);
   assert.deepEqual(prep.tickets, []);
+  assert.deepEqual(prep.work_items, []);
+  assert.equal(prep.work_items_reason, null);
   assert.deepEqual(prep.summary.changed_files, ["src/b.ts"]);
   assert.equal(prep.summary.size, "small");
   assert.deepEqual(prep.summary.frameworks, ["typescript"]);

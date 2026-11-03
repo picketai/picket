@@ -80,9 +80,11 @@ test("paths exports locations only", () => {
     "configRel",
     "hostPath",
     "hostRel",
+    "isPrTicketRel",
     "legacyPath",
     "pluginManifestPath",
     "pluginRoot",
+    "prTicketRel",
     "projectRoot",
     "repoRelative",
     "rulesDir",
@@ -94,6 +96,12 @@ test("paths exports locations only", () => {
     "workRoot",
     "workspaceRoot",
   ]);
+});
+
+test("prTicketRel names a ticket file that isPrTicketRel accepts", () => {
+  assert.equal(paths.prTicketRel("pr-412", "SHOP-123"), ".picket/state/pr-412/SHOP-123.md");
+  assert.equal(paths.isPrTicketRel(paths.prTicketRel("pr-412", "SHOP-123")), true);
+  assert.equal(paths.isPrTicketRel("xpicket/state/pr-412/SHOP-123.md"), false);
 });
 
 test("sessionCostPath refuses ids that are not a plain file name", () => {

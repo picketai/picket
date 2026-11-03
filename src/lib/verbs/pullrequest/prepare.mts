@@ -6,7 +6,7 @@ import { reviewChecklists, type Checklist } from "../../shared/review-checklists
 import { changesOfRange, renderSummary, summarize, type Summary, type SummaryConfig } from "../../shared/review-summary.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { str, UsageError, type Args } from "../../util/args.mts";
-import { pullRequestMeta, type PullRequestMeta } from "./azdo.mts";
+import { pullRequestMeta, pullRequestWorkItems, type PullRequestMeta } from "./azdo.mts";
 import { parsePullRequestUrl, patOf, type PullRequest } from "./pull-request.mts";
 import { fetchPullRequest, resolveRepo } from "./remote.mts";
 import { renderTickets, ticketKeys, type Ticket } from "./tickets.mts";
@@ -27,6 +27,8 @@ export type Prepared = {
   meta_reason: string | null;
   review_id: string;
   tickets: Ticket[];
+  work_items: number[];
+  work_items_reason: string | null;
 };
 
 const SHORT_SHA = 10;
@@ -47,7 +49,21 @@ export async function preparePullRequest(root: string, url: string, { repo, pat,
   const summary = summarize(repoRoot, changesOfRange(repoRoot, refs.base, refs.head), config);
   const { meta, reason } = await pullRequestMeta(pr, { pat, root: repoRoot });
   const tickets = ticketsOf(meta, reviewId);
-  return { pr, repo_root: repoRoot, remote: located.remote, ...refs, summary, checklists: reviewChecklists(summary, "phase"), meta, meta_reason: reason, review_id: reviewId, tickets };
+  const workItems = await pullRequestWorkItems(pr, pat);
+  return {
+    pr,
+    repo_root: repoRoot,
+    remote: located.remote,
+    ...refs,
+    summary,
+    checklists: reviewChecklists(summary, "phase"),
+    meta,
+    meta_reason: reason,
+    review_id: reviewId,
+    tickets,
+    work_items: workItems.ids,
+    work_items_reason: workItems.reason,
+  };
 }
 
 export const prepare = action<PrepareInput, Prepared>(async ({ url, repo }, { root, env }) => done(await preparePullRequest(root, url, { repo, pat: patOf(env, root), env })));
@@ -67,11 +83,17 @@ function metaLine(v: Prepared): string {
   return `"${v.meta.title}" by ${v.meta.author ?? "?"} · ${branchName(v.meta.source_ref)} → ${branchName(v.meta.target_ref)}`;
 }
 
+function workItemsLines(v: Prepared): string[] {
+  if (v.work_items_reason) return [`  work items unavailable: ${v.work_items_reason}`];
+  return v.work_items.length === 0 ? [] : [`  work items: ${v.work_items.join(", ")} (Azure Boards, not pulled)`];
+}
+
 function renderPrepared(v: Prepared): string {
   return [
     `${v.review_id} · ${v.pr.provider} · ${v.pr.repo} · remote ${v.remote} · clone ${v.repo_root}`,
     `  ${metaLine(v)}`,
     `  ${renderTickets(v.tickets)}`,
+    ...workItemsLines(v),
     `  ${renderSummary(v.summary)}`,
     `  base ${v.base.slice(0, SHORT_SHA)} · head ${v.head.slice(0, SHORT_SHA)} (${v.ref})`,
   ].join("\n");

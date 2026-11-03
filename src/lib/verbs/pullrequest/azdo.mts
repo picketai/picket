@@ -87,6 +87,28 @@ export async function pullRequestMeta(pr: PullRequest, { pat, root }: { pat: str
   return pr.provider === "github" ? gitHubMeta(pr, root) : azdoMeta(pr, pat);
 }
 
+export type WorkItemsResult = { ids: number[]; reason: string | null };
+
+function positiveId(value: unknown): number | null {
+  const id = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+  return typeof id === "number" && Number.isInteger(id) && id > 0 ? id : null;
+}
+
+export function workItemIds(json: unknown): number[] {
+  const value = (json as { value?: unknown } | null)?.value;
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => positiveId((item as { id?: unknown } | null)?.id) ?? []);
+}
+
+export async function pullRequestWorkItems(pr: PullRequest, pat: string | null): Promise<WorkItemsResult> {
+  if (pr.provider !== "azdo" || !pat) return { ids: [], reason: null };
+  try {
+    return { ids: workItemIds(await azdoRequest(pr, "/workitems", { pat })), reason: null };
+  } catch (err) {
+    return { ids: [], reason: (err as Error).message };
+  }
+}
+
 export async function postThreads(pr: PullRequest, reviewText: string, { pat, dryRun }: { pat: string | null; dryRun: boolean }): Promise<PostResult> {
   if (pr.provider !== "azdo") throw new Error("posting is implemented for Azure DevOps only; use gh pr review for GitHub");
   const threads = buildThreads(reviewText);

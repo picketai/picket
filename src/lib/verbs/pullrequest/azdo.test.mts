@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { azdoRequest } from "./azdo.mts";
+import { azdoRequest, workItemIds } from "./azdo.mts";
 import { parsePullRequestUrl, type AzdoPullRequest } from "./pull-request.mts";
 
 const azdoPullRequest = (url: string) => parsePullRequestUrl(url) as AzdoPullRequest;
@@ -59,6 +59,14 @@ for (const [encoding, encode] of ENCODINGS) {
     });
   }
 }
+
+test("workItemIds reads each linked work item id, string or number", () => {
+  assert.deepEqual(workItemIds({ count: 2, value: [{ id: "4711", url: "u" }, { id: 4712 }] }), [4711, 4712]);
+});
+
+test("workItemIds returns nothing for a response it cannot read and drops ids that are not positive integers", () => {
+  for (const json of [null, {}, { value: "x" }, { value: [{ id: "abc" }, { id: -1 }] }]) assert.deepEqual(workItemIds(json), [], JSON.stringify(json));
+});
 
 test("an empty PAT leaves the error body as the server wrote it", async () => {
   const { server, url } = await deniedServer(() => "denied");
