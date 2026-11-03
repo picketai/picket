@@ -102,7 +102,7 @@ function commitLines(root, snap, phase, width) {
   const room = width - indent.length;
   const [subject, ...body] = checked.message.split("\n");
   const dirs = [...nestedCheckoutPaths(root, snap, phase).keys()];
-  const [first, ...rest] = [...repoLines(dirs, subject),...body.filter((line) => line.trim()).map((line) => cut(line, room))];
+  const [first, ...rest] = [...repoLines(dirs, subject), ...body.filter((line) => line.trim()).map((line) => cut(line, room))];
   return [`  ${"commit".padEnd(LABEL)}${first}`, ...rest.map((line) => indent + line)];
 }
 

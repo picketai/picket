@@ -110,7 +110,7 @@ test("leave records a command for the user, close lists it, and a closed item re
   assert.equal(picket(root, "leave", id, "--command", "git push origin v1").code, 2);
 });
 
-test("an order item titled Orders closes under chore: close orders (T-3.4)", (t) => {
+test("an order item titled Orders closes under chore: close orders (T-3.3)", (t) => {
   const { root, id, git } = orderAwaitingCumulativeReview(t, "Orders");
   verdict(root, id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" });
   const r = picket(root, "close", id);
@@ -119,7 +119,7 @@ test("an order item titled Orders closes under chore: close orders (T-3.4)", (t)
   assert.equal(r.json.message, "chore: close orders");
 });
 
-test("a --message keeps its capital: chore: close Orders commits as given (T-3.5)", (t) => {
+test("a --message keeps its capital: chore: close Orders commits as given (T-3.3)", (t) => {
   const { root, id, git } = orderAwaitingCumulativeReview(t, "Orders");
   verdict(root, id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" });
   const r = picket(root, "close", id, "--message", "chore: close Orders");

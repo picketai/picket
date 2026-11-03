@@ -6,7 +6,7 @@ import { agentTranscript, type HookData } from "../../../shared/transcript/agent
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
-import { BLOCK_HEADINGS, detectBlock, readHeading, saveBlock,type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
+import { BLOCK_HEADINGS, detectBlock, readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
 import { readVerdicts } from "../../../shared/work/verdict-log.mts";

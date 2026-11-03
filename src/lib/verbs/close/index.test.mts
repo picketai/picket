@@ -40,13 +40,13 @@ test("the default close message is the title after chore: close, its first lette
   assert.equal(defaultCloseMessage("A note"), "chore: close a note");
 });
 
-test("a title whose first word is an acronym keeps it as given (T-3.2)", () => {
+test("a title whose first word is an acronym keeps it as given (T-3.1)", () => {
   for (const title of ["PR reviews read the linked ticket", "PRs read tickets", "API keys", "iOS build", "RMS-12 pricing"]) {
     assert.equal(defaultCloseMessage(title), `chore: close ${title}`);
   }
 });
 
-test("a long title is cut at its last whole word so the default stays a valid subject (T-3.3)", () => {
+test("a long title is cut at its last whole word so the default stays a valid subject (T-3.2)", () => {
   const title = "Commit messages share one checked shape across every repository, today";
   assert.equal(title.length, 70);
   const message = defaultCloseMessage(title);
