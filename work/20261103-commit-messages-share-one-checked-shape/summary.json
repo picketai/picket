@@ -1,0 +1,86 @@
+{
+  "work_id": "20261103-commit-messages-share-one-checked-shape",
+  "base": "3b7f862e3da01450413768e54dbf9e9608b74221",
+  "request": "work/20261103-commit-messages-share-one-checked-shape/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/hooks.md",
+    "src/lib/hooks.mts",
+    "src/lib/hooks/guard/block/index.mts",
+    "src/lib/hooks/route/verdict/index.mts",
+    "src/lib/hooks/route/verdict/index.test.mts",
+    "src/lib/shared/commit-message.mts",
+    "src/lib/shared/commit-message.test.mts",
+    "src/lib/shared/route/apply.mts",
+    "src/lib/shared/route/commit.mts",
+    "src/lib/shared/work/block.mts",
+    "src/lib/shared/work/block.test.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/route/index.test.mts",
+    "src/mods/status/hooks/pane-actions.test.ts",
+    "src/skills/implementing/SKILL.md",
+    "test/cli/cli.test.mjs",
+    "test/cli/close.test.mjs",
+    "test/cli/route.test.mjs",
+    "test/hooks/guard.block.test.mjs",
+    "test/hooks/route.verdict.test.mjs",
+    "test/kernel/packet.test.mjs"
+  ],
+  "lines_added": 754,
+  "lines_removed": 87,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-03T11:53:21.343Z",
+    "base": "3b7f862e3da01450413768e54dbf9e9608b74221",
+    "mutant": {
+      "path": "src/lib/hooks/guard/block/index.mts",
+      "line": 66,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 141813
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
