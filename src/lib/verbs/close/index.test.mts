@@ -4,7 +4,8 @@ import { parseArgs, UsageError } from "../../util/args.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import type { Lane } from "../../shared/work/state.mts";
 import { closingBlock } from "./block.mts";
-import type { CloseResult, Closing } from "./close.mts";
+import { defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
+import { checkCommitMessage } from "../../shared/commit-message.mts";
 import { verb } from "./index.mts";
 
 const ID = "20261023-x";
@@ -20,7 +21,7 @@ function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseR
     status: "done",
     created: "2026-10-29T10:00:00.000Z",
     commit: null,
-    message: `chore: close ${ID}`,
+    message: "chore: close X",
     committed: [],
     left_staged: [],
     warnings: [],
@@ -32,6 +33,23 @@ function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseR
     ...rest,
   };
 }
+
+test("the default close message is the title after chore: close", () => {
+  assert.equal(defaultCloseMessage("Orders"), "chore: close Orders");
+});
+
+test("a long title is cut at its last whole word so the default stays a valid subject (T-3.2)", () => {
+  const title = "Commit messages share one checked shape across every repository, today";
+  assert.equal(title.length, 70);
+  const message = defaultCloseMessage(title);
+  assert.equal(message, "chore: close Commit messages share one checked shape across every");
+  assert.ok(message.length <= 72, message);
+  assert.deepEqual(checkCommitMessage(message), { message });
+});
+
+test("a long title without a space is cut at 59 characters", () => {
+  assert.equal(defaultCloseMessage("x".repeat(70)), `chore: close ${"x".repeat(59)}`);
+});
 
 test("close reads the message and the touched paths", () => {
   assert.deepEqual(parse([ID, "--message", "chore: done", "--touched", "a.ts,b.ts"]), { id: ID, message: "chore: done", touched: ["a.ts", "b.ts"] });

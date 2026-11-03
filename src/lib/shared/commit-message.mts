@@ -1,4 +1,6 @@
-export const COMMIT_TYPES = ["feat", "fix", "refactor", "perf", "test", "docs", "build", "ci", "chore", "style"] as const;
+import { parseBlock, proposedCommit } from "./work/block.mts";
+
+export const COMMIT_TYPES =["feat", "fix", "refactor", "perf", "test", "docs", "build", "ci", "chore", "style"] as const;
 
 export const SUBJECT_LIMIT = 72;
 
@@ -32,4 +34,11 @@ export function checkCommitMessage(raw: string): CheckedCommitMessage {
   const subject = normalisedSubject(end === -1 ? text : text.slice(0, end));
   const problem = subjectProblem(subject);
   return problem ? { problem } : { message: end === -1 ? subject : subject + text.slice(end) };
+}
+
+export function blockCommitProblem(block: string): string | null {
+  const proposed = proposedCommit(parseBlock(block));
+  if (proposed === null) return `the block has no "Commit:" line; write ${COMMIT_SHAPE}`;
+  const checked = checkCommitMessage(proposed);
+  return "problem" in checked ? checked.problem : null;
 }

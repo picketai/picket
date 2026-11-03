@@ -1,7 +1,7 @@
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict, VERDICTS } from "../../../shared/verdicts.mjs";
-import { checkCommitMessage, COMMIT_SHAPE } from "../../../shared/commit-message.mts";
-import { parseBlock, proposedCommit, readHeading, type BlockField } from "../../../shared/work/block.mts";
+import { blockCommitProblem } from "../../../shared/commit-message.mts";
+import { readHeading, type BlockField } from "../../../shared/work/block.mts";
 import type { HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { bounce, type BounceOutput } from "../../output.mts";
 
@@ -53,13 +53,6 @@ function blockedProblems(lines: string[]): string[] {
   return [`"Verified: ${verified.slice(0, 60)}" names no blocked kind; write blocked: <${BLOCKED_KINDS.join(" | ")}>: <what>. A request that needs another shape or route is not a block: send the one that reaches the changed code`];
 }
 
-function commitProblems(block: string): string[] {
-  const proposed = proposedCommit(parseBlock(block));
-  if (proposed === null) return [`the block has no "Commit:" line; write ${COMMIT_SHAPE}`];
-  const checked = checkCommitMessage(proposed);
-  return "problem" in checked ? [checked.problem] : [];
-}
-
 function blockProblems(block: string, isDeveloperBlock: boolean): string[] {
   const { nonEmpty, last } = blockLines(block);
   const problems: string[] = [];
@@ -69,7 +62,8 @@ function blockProblems(block: string, isDeveloperBlock: boolean): string[] {
   if (counted > BUDGET) problems.push(`the block is ${counted} non-empty lines; the budget is ${BUDGET}. Move detail into the artifact and keep the block to its fields`);
   if (token === "PHASE DONE" && isDeveloperBlock) {
     const lines = nonEmpty.map((l) => l.trim());
-    problems.push(...filesProblems(lines), ...proofProblems(lines), ...commitProblems(block));
+    const commit = blockCommitProblem(block);
+    problems.push(...filesProblems(lines), ...proofProblems(lines), ...(commit === null ? [] : [commit]));
   }
   return problems;
 }

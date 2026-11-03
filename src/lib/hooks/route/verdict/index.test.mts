@@ -1,10 +1,13 @@
-import { test } from "node:test";
+import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { reviewClasses, routeVerdict as verdictHandler } from "./index.mts";
 import { statePath, stateRel } from "../../../shared/paths.mts";
+import { workId } from "../../../shared/work/files.mts";
+import { readState, writeState } from "../../../shared/work/state.mts";
 import { hookContext } from "#test/context.mts";
+import { gitAt } from "#test/git.mts";
 import { assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -132,11 +135,55 @@ function twoPhaseOrder(root: string): string {
   return s.id;
 }
 
+const GIT_IDENTITY = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
+
 function routePhaseDone(root: string, id: string, n: number, continued: boolean, commit = "feat: p") {
   const block = `## Phase ${n} of ${id}: P\n\nP works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: ${commit}\n\nPHASE DONE`;
   const tp = transcript(root, [user(`work: ${id}\nphase: ${n}`), assistant(block)]);
-  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "picket:developer", stop_hook_active: continued }, hookContext(root));
+  const ctx = hookContext(root, { env: { ...process.env, ...GIT_IDENTITY } });
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "picket:developer", stop_hook_active: continued }, ctx);
 }
+
+function grantedRepoItem(t: TestContext) {
+  const root = withProject(t, { host: true, picket: false });
+  const git = gitAt(root);
+  git("init", "-q");
+  writeFileSync(join(root, ".gitignore"), ".picket/state/\n");
+  const id = twoPhaseOrder(root);
+  writeState(root, { ...readState(root, workId(id)), run_through: 2 }, new Date());
+  git("add", "-A");
+  git("commit", "-q", "-m", "base");
+  return { root, id, git };
+}
+
+const LONG_SUBJECT = `feat: ${"a".repeat(75)}`;
+const blockPath = (root: string, id: string) => join(root, "work", id, "phases", "1.block.md");
+
+test("a first PHASE DONE whose Commit: subject is too long is not routed, saved or allowed to spend the grant (T-3.6)", (t) => {
+  const { root, id } = grantedRepoItem(t);
+  assert.equal(LONG_SUBJECT.length, 81);
+  assert.equal(routePhaseDone(root, id, 1, false, LONG_SUBJECT), null);
+  assert.equal(existsSync(join(root, "work", id, "verdicts.jsonl")), false);
+  assert.equal(existsSync(blockPath(root, id)), false);
+  assert.equal(readState(root, workId(id)).run_through, 2);
+});
+
+test("the corrected block on the continued stop routes once, is saved, and the grant commits it (T-3.7)", (t) => {
+  const { root, id, git } = grantedRepoItem(t);
+  routePhaseDone(root, id, 1, false, LONG_SUBJECT);
+  routePhaseDone(root, id, 1, true, "feat(pricing): rate field");
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1]]);
+  assert.match(readFileSync(blockPath(root, id), "utf8"), /^Commit: feat\(pricing\): rate field$/m);
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), true);
+  assert.equal(git("log", "-1", "--format=%s"), "feat(pricing): rate field");
+});
+
+test("a continued stop routes a first PHASE DONE whose Commit: line is still bad (T-3.8)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routePhaseDone(root, id, 1, true, "Pricing, phase 1");
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1]]);
+});
 
 test("a continued turn routes a new phase's PHASE DONE", (t) => {
   const root = withProject(t, { host: true, picket: false });
@@ -160,7 +207,7 @@ test("a continued turn that repeats the last row routes nothing", (t) => {
 test("a block re-emitted after a bounce replaces the saved block and adds no second row (T-2.3)", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const id = twoPhaseOrder(root);
-  routePhaseDone(root, id, 1, false, "Pricing, phase 1");
+  routePhaseDone(root, id, 1, false, "feat: first try");
   assert.equal(routePhaseDone(root, id, 1, true, "feat(pricing): rate field"), null);
   assert.match(readFileSync(join(root, "work", id, "phases", "1.block.md"), "utf8"), /^Commit: feat\(pricing\): rate field$/m);
   assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1]]);

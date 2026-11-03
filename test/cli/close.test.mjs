@@ -16,12 +16,12 @@ function gitIn(dir) {
   return (...args) => execFileSync("git", ["-C", dir, "-c", "user.email=t@t", "-c", "user.name=t", ...args], { encoding: "utf8" }).trim();
 }
 
-function repoWithOpenItem(t, lane = "fast") {
+function repoWithOpenItem(t, lane = "fast", title = "Csv export") {
   const root = withProject(t);
   const git = gitIn(root);
   git("init", "-q");
   writeFileSync(join(root, "README.md"), "base\n");
-  const { id } = openItem(root, { lane, title: "Csv export" });
+  const { id } = openItem(root, { lane, title });
   git("add", "-A");
   git("commit", "-q", "-m", "base");
   return { root, id, git };
@@ -77,13 +77,13 @@ test("close outside a git repository commits nothing and appends no accept row (
   assert.deepEqual(acceptRows(root), []);
 });
 
-test("close commits the closing state with the untracked review marker under chore: close <id>", (t) => {
+test("close commits the closing state with the untracked review marker under chore: close <title>", (t) => {
   const { root, id, git } = repoWithOpenItem(t);
   mkdirSync(join(root, "work", id, "phases"), { recursive: true });
   writeFileSync(join(root, "work", id, "phases", "1.reviewed"), "2026-10-08T00:00:00Z\n");
   const r = picket(root, "close", id);
   assert.equal(r.code, 0, r.stdout);
-  assert.equal(git("log", "-1", "--format=%s"), `chore: close ${id}`);
+  assert.equal(git("log", "-1", "--format=%s"), "chore: close Csv export");
   const files = git("show", "--name-only", "--format=", "HEAD").split("\n");
   assert.ok(files.includes(`work/${id}/state.yaml`), files.join(", "));
   assert.ok(files.includes(`work/${id}/phases/1.reviewed`), files.join(", "));
@@ -108,6 +108,34 @@ test("leave records a command for the user, close lists it, and a closed item re
   assert.match(closed.stdout, /^Left for you: git worktree remove \.worktrees\/x \(cleanup\)$/m);
   assert.ok(git("show", "--name-only", "--format=", "HEAD").split("\n").includes(`work/${id}/left.jsonl`));
   assert.equal(picket(root, "leave", id, "--command", "git push origin v1").code, 2);
+});
+
+test("an order item titled Orders closes under chore: close Orders (T-3.1)", (t) => {
+  const { root, id, git } = orderAwaitingCumulativeReview(t, "Orders");
+  verdict(root, id, { agent: "reviewer", verdict: "APPROVED", scope: "cumulative" });
+  const r = picket(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(git("log", "-1", "--format=%s"), "chore: close Orders");
+  assert.equal(r.json.message, "chore: close Orders");
+});
+
+test("a fast close commits a wrapped --message under its cleaned subject (T-3.3)", (t) => {
+  const { root, id, git } = repoWithOpenItem(t);
+  const r = picket(root, "close", id, "--message", "`fix: a.`");
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(git("log", "-1", "--format=%s"), "fix: a");
+  assert.equal(r.json.message, "fix: a");
+});
+
+test("a close whose --message is not a Conventional Commits subject is refused and changes nothing (T-3.4)", (t) => {
+  const { root, id, git } = repoWithOpenItem(t);
+  const before = git("rev-parse", "HEAD");
+  const r = picket(root, "close", id, "--message", "update stuff");
+  assert.equal(r.code, 2, r.stdout);
+  assert.match(r.json.error, /the commit subject "update stuff" is not /);
+  assert.match(r.json.error, new RegExp(`${id} stays open`));
+  assert.equal(git("rev-parse", "HEAD"), before);
+  assert.match(stateText(root, id), /status: open/);
 });
 
 test("close with nothing left prints no left line and returns an empty list", (t) => {
@@ -260,7 +288,7 @@ test("a refused commit leaves the item done and staged, and the next close commi
   rmSync(hook);
   const retried = picket(root, "close", id);
   assert.equal(retried.code, 0, retried.stdout);
-  assert.equal(git("log", "-1", "--format=%s"), `chore: close ${id}`);
+  assert.equal(git("log", "-1", "--format=%s"), "chore: close Csv export");
 });
 
 test("outside a git repository close marks the item done and commits nothing", (t) => {
@@ -288,7 +316,7 @@ test("with the picket root in a repo subfolder, a retry after a refused commit c
   rmSync(hook);
   const retried = picket(root, "close", id);
   assert.equal(retried.code, 0, retried.stdout);
-  assert.equal(git("log", "-1", "--format=%s"), `chore: close ${id}`);
+  assert.equal(git("log", "-1", "--format=%s"), "chore: close Sub root");
   assert.ok(retried.json.committed.includes(`sub/work/${id}/state.yaml`), retried.json.committed.join(", "));
 });
 
@@ -299,7 +327,7 @@ test("close --human prints the commit and warns about a dirty path outside work/
   assert.equal(r.code, 0, r.stdout);
   const [heading, commit, warning] = r.stdout.split("\n");
   assert.equal(heading, `## Expedited closed: ${id}`);
-  assert.equal(commit, `Commit: ${git("rev-parse", "--short", "HEAD")} chore: close ${id}`);
+  assert.equal(commit, `Commit: ${git("rev-parse", "--short", "HEAD")} chore: close Csv export`);
   assert.match(warning, /^WARNING: uncommitted changes: README\.md/);
 });
 
@@ -358,8 +386,8 @@ test("a research close carries no deferred criteria even when its report quotes 
   assert.deepEqual(r.json.closing.deferred, []);
 });
 
-function orderAwaitingCumulativeReview(t) {
-  const repo = repoWithOpenItem(t, "order");
+function orderAwaitingCumulativeReview(t, title) {
+  const repo = repoWithOpenItem(t, "order", title);
   writeFileSync(join(repo.root, "work", repo.id, "order.md"), "---\nlane: order\n---\n# Order\n\n## Phase 1: Module\n\ntext\n");
   mark(repo.root, repo.id, 1, "done");
   mark(repo.root, repo.id, 1, "approved");

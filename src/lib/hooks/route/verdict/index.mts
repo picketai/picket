@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
+import { blockCommitProblem } from "../../../shared/commit-message.mts";
 import { stateDir, statePath, stateRel } from "../../../shared/paths.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
@@ -74,6 +75,10 @@ function repeatsLastRow(root: string, id: string, verdict: string, phase: number
   return last?.verdict === verdict && (phase === undefined || last.phase === phase);
 }
 
+function isBouncedForCommit(info: BlockInfo | null, verdict: string, text: string): boolean {
+  return info?.agent === "developer" && verdict === "PHASE DONE" && blockCommitProblem(text.slice(info.index)) !== null;
+}
+
 function amendmentText(text: string, agent: string, verdict: string, scope: string | undefined): string | null {
   const needed = text.match(AMENDMENT_LINE)?.[0];
   if (needed) return needed;
@@ -106,6 +111,7 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
   const continued = Boolean(event.stop_hook_active);
   if (info?.scope === "pr") return continued ? null : { text: keepPullRequestReview(id, verdict, text, ctx.root), notice: null };
   const phase = info?.phase ?? hints.phase ?? undefined;
+  if (!continued && isBouncedForCommit(info, verdict, text)) return null;
   if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) {
     saveDeveloperBlock(info, id, phase, text, ctx.root);
     return null;

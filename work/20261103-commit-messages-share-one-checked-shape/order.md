@@ -58,9 +58,17 @@ phases:
       - src/lib/verbs/close/close.mts
       - src/lib/verbs/close/index.test.mts
       - test/cli/close.test.mjs
+      - src/lib/shared/commit-message.mts
+      - src/lib/hooks/guard/block/index.mts
+      - src/lib/hooks/route/verdict/index.mts
+      - src/lib/hooks/route/verdict/index.test.mts
     greps:
       - path: src/lib/verbs/close/close.mts
         pattern: 'checkCommitMessage\('
+      - path: src/lib/hooks/route/verdict/index.mts
+        pattern: 'blockCommitProblem\('
+      - path: src/lib/hooks/guard/block/index.mts
+        pattern: 'blockCommitProblem\('
       - path: src/lib/verbs/close/close.mts
         pattern: 'chore: close \$\{id\}'
         absent: true
@@ -90,11 +98,12 @@ Picket builds commit messages in three places with three rules: `commitMessage` 
 **Decision:** Nested checkout commits and the main repo commit (code and work record) use the same full message, subject and body. In a single repo the code and `work/<id>/` stay one commit, as `commitPhase` already does with `add: [workRel(id)]`.
 **Instead of:** a subject-only message for the main repo's record commit: it gives up the body for no gain, and an identical message keeps "the record reuses the code commit's subject" true by construction.
 
-### D-004: A corrected block after a bounce replaces the saved one
-**Decision:** On a continued stop where `repeatsLastRow` holds, `routeTurn` still calls `saveDeveloperBlock` before returning, so the block the developer re-emits after a `guard.block` bounce becomes `phases/N.block.md`, and no second verdict row is appended. `guard.block` bounces a developer `PHASE DONE` block whose `Commit:` line is missing or fails `checkCommitMessage`, with the function's problem text.
-**Instead of:** having `route.verdict` refuse to route a `PHASE DONE` with a bad message: it would add a second refusal path inside a hook, while D-002 already refuses at the approval.
+### D-004 (r2): A corrected block after a bounce replaces the saved one
+**Decision:** `guard.block` bounces a developer `PHASE DONE` block whose `Commit:` line is missing or fails `checkCommitMessage`, with the function's problem text. That check is one shared function, `blockCommitProblem(block: string): string | null` in `src/lib/shared/commit-message.mts`, and `route.verdict` calls it too: on a stop that is not continued, a developer `PHASE DONE` block with a Commit problem is not routed and not saved (no verdict row, no run-grant approval, no grant cleared), so the block the developer re-emits after the bounce routes as the first `PHASE DONE`. A continued stop is routed whatever its Commit line says, because `guard.block` does not check continued stops; D-002 then refuses a still-bad message at the approval. On a continued stop where `repeatsLastRow` holds, `routeTurn` still calls `saveDeveloperBlock` (phase 2), which covers the other bounces (Files, Red, Root cause), whose first block routes with a committable message.
+**Instead of:** sharing all of `guard.block`'s problems with `route.verdict`, so any bounce skips routing: the other bounces leave a committable message and lose no grant, the user's ruling names the Commit check, and widening it would change routing for every bounce kind.
 **Risks:**
 - **RISK-003** `guardBlock` skips continued stops, so a second bad block passes the hook. Mitigation: D-002 refuses the approval and the gate packet shows the problem before the user answers.
+- **RISK-004** The two hooks disagree if one changes its check, and a block is then bounced and routed, or skipped and never bounced. Mitigation: both call `blockCommitProblem`, and T-3.6 to T-3.8 pin the skip and the route.
 
 ### D-005: Close message from the title, shortened at a word
 **Decision:** The default close message is `chore: close <title>` from `state.title`. A title longer than 59 characters (72 minus the 13 of `chore: close `) is cut at the last space within 59, or at 59 when it has none, so the default always passes D-001. `picket close --message` goes through `checkCommitMessage`; a problem refuses the close before `markDone`, so the item stays as it was. The longest title among the 157 items in `work/` today is 57 characters.
@@ -103,7 +112,7 @@ Picket builds commit messages in three places with three rules: `commitMessage` 
 ## Scope
 **In:**
 - `src/lib/shared/commit-message.mts` and its use by phase commits (nested checkouts and main repo), the gate packet, `guard.block` and `picket close`.
-- Saving the corrected developer block after a bounce.
+- Saving the corrected developer block after a bounce, and not routing a developer `PHASE DONE` that `guard.block` bounces for its `Commit:` line.
 - The per-repo commit lines in the gate packet; one sentence on the shape in the implementing skill.
 **Out:**
 - Rewriting existing history.
@@ -156,18 +165,25 @@ Picket builds commit messages in three places with three rules: `commitMessage` 
 - **T-2.6** `docs/reference/hooks.md` in the git index matches the build output (`git diff --exit-code docs/reference/hooks.md` after `npm run build` is empty).
 - **T-2.7** `npm test` passes, and `picket packet <id>` on a temporary nested-checkout item prints the per-repo lines.
 
-## Phase 3: The close commit goes through the same function
+## Phase 3: The close commit and route.verdict use the same check
 **Touch set:**
 - `src/lib/verbs/close/close.mts`: title default, check, refuse early
 - `src/lib/verbs/close/index.test.mts`: default message assertion
 - `test/cli/close.test.mjs`: subject assertions use the title
-**Changes:** Replace `defaultCloseMessage(id)` with one built from `state.title` per D-005. In `close`, after `refuseUnlessClosable` and before `markDone` (in both the repo and the no-repo path), run `message ?? default` through `checkCommitMessage`; a problem throws `Refused` with the problem text and the id; otherwise commit the normalised message and return it as `message`. Update the tests that assert `chore: close ${id}`.
+- `src/lib/shared/commit-message.mts`: blockCommitProblem moves here
+- `src/lib/hooks/guard/block/index.mts`: calls the shared check
+- `src/lib/hooks/route/verdict/index.mts`: skip a bounced PHASE DONE
+- `src/lib/hooks/route/verdict/index.test.mts`: skip and reroute tests
+**Changes:** Replace `defaultCloseMessage(id)` with one built from `state.title` per D-005. In `close`, after `refuseUnlessClosable` and before `markDone` (in both the repo and the no-repo path), run `message ?? default` through `checkCommitMessage`; a problem throws `Refused` with the problem text and the id; otherwise commit the normalised message and return it as `message`. Update the tests that assert `chore: close ${id}`. Move `commitProblems` from `src/lib/hooks/guard/block/index.mts:56` into `commit-message.mts` as `blockCommitProblem` (same texts, `null` for no problem; it may import `parseBlock` and `proposedCommit` from `src/lib/shared/work/block.mts`, which imports nothing from it), and call it from `blockProblems`. In `routeTurn` (`src/lib/hooks/route/verdict/index.mts:98`), after the phase is known and before the `repeatsLastRow` check, return null when the stop is not continued, `info?.agent` is `developer`, the verdict is `PHASE DONE` and `blockCommitProblem(text.slice(info.index))` is not null (D-004 r2).
 **Done when:**
 - **T-3.1** A CLI test closes an order item titled `Orders` without `--message` and `git log -1 --format=%s` is `chore: close Orders`.
 - **T-3.2** A unit test with a 70-character title of several words gets a default of at most 72 characters that ends with a whole word of the title and passes `checkCommitMessage`.
 - **T-3.3** A CLI test closes a fast item with `--message` set to `` `fix: a.` `` (backticks included) and the commit subject is `fix: a`.
 - **T-3.4** A CLI test runs `picket close <id> --message "update stuff"`: the command refuses with the problem, HEAD is unchanged, and `picket state <id>` still shows `status: open`.
 - **T-3.5** `npm test` passes, and in a temporary repo `picket close <id> --human` prints `Commit:` or the phase range with the title-based subject in `git log -1`.
+- **T-3.6** A hook test runs `route.verdict` on a developer `PHASE DONE` block for phase 1 with an 81-character `Commit:` subject, `stop_hook_active` false and `run_through: 2` in state: no verdict row is appended, `phases/1.block.md` is not written, and `run_through` is still 2.
+- **T-3.7** The same test then runs `route.verdict` with `stop_hook_active: true` and a valid `Commit:` line: one `PHASE DONE` row is appended, `phases/1.block.md` holds the corrected text, and the run grant approves the phase (`phases/1.approved` exists and `git log -1 --format=%s` is the corrected subject).
+- **T-3.8** A hook test runs `route.verdict` with `stop_hook_active: true` on a first `PHASE DONE` block whose `Commit:` line is still bad, and one `PHASE DONE` row is appended (the continued stop routes, as `guard.block` lets it pass).
 
 ## Open questions
 - **OQ-001** The request's "`**` around the label" is read as the field label (`**Commit:** feat: y`), not bold around the type. Owner: product owner. Fallback: the field-label reading of D-001.
@@ -175,3 +191,4 @@ Picket builds commit messages in three places with three rules: `commitMessage` 
 - **OQ-003** `work/20261103-one-shape-for-every-commit-message` holds the same request word for word. Owner: product owner. Fallback: this item is the one implemented; the other is abandoned by the lead.
 
 ## Revision log
+- 2026-11-03: D-004 (r2): route.verdict skips a developer PHASE DONE that fails the shared Commit check, so the corrected block routes first; a bounced block lost the run grant.

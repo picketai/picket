@@ -1,4 +1,5 @@
 import { Refused } from "../../shared/action.mts";
+import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
 import { recordAccept } from "../../shared/ledger.mts";
@@ -44,8 +45,25 @@ const PHASED_LANES: readonly Lane[] = ["order", "design"];
 const CLASSED_VERDICT = "CHANGES REQUIRED";
 const MIN_REPEATS = 2;
 
-export function defaultCloseMessage(id: WorkId): string {
-  return `chore: close ${id}`;
+const CLOSE_PREFIX = "chore: close ";
+const TITLE_ROOM = SUBJECT_LIMIT - CLOSE_PREFIX.length;
+
+function shortenedTitle(title: string): string {
+  const chars = [...title.trim()];
+  if (chars.length <= TITLE_ROOM) return chars.join("");
+  const head = chars.slice(0, TITLE_ROOM).join("");
+  const lastSpace = head.lastIndexOf(" ");
+  return (lastSpace > 0 ? head.slice(0, lastSpace) : head).trimEnd();
+}
+
+export function defaultCloseMessage(title: string): string {
+  return CLOSE_PREFIX + shortenedTitle(title);
+}
+
+function checkedCloseMessage(message: string | undefined, { id, title, status }: WorkState): string {
+  const checked = checkCommitMessage(message ?? defaultCloseMessage(title));
+  if ("problem" in checked) throw new Refused(`${checked.problem}; ${id} stays ${status}`, { id });
+  return checked.message;
 }
 
 function itemOwner(root: string, snap: WorkSnapshot, touched: string[]): (path: string) => boolean {
@@ -156,7 +174,7 @@ function recordedWorktrees(snap: WorkSnapshot): string[] {
 export function close(root: string, id: WorkId, { message, touched = [] }: CloseOptions, { now, env }: CloseContext): CloseResult {
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
-  const commitMessage = message ?? defaultCloseMessage(id);
+  const commitMessage = checkedCloseMessage(message, snap.state);
   const repeats = repeatedClasses(root);
   const worktrees = recordedWorktrees(snap);
   if (!isRepo(root)) {

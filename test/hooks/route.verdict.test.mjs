@@ -21,7 +21,7 @@ const mark = (id, n, kind, root) => setMarker(root, id, n, kind, new Date());
 
 test("route.verdict applies PHASE DONE from a developer block and reports the next action", (t) => {
   const { root, id } = hookProject(t);
-  const tp = transcript(root, [user(`work: ${id}\nphase: 1\nartifact: work/${id}/order.md`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1\nartifact: work/${id}/order.md`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\nCommit: feat(a): export header\n\nPHASE DONE` }])]);
   const out = run({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "developer" }, root);
   assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
   assert.match(out.hookSpecificOutput.additionalContext, /approve_phase by user/);
@@ -31,7 +31,7 @@ test("route.verdict applies PHASE DONE from a developer block and reports the ne
 
 test("route.verdict saves the block of a plugin-prefixed picket:developer", (t) => {
   const { root, id } = hookProject(t);
-  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\nCommit: feat(a): export header\n\nPHASE DONE` }])]);
   const out = run({ hook_event_name: "SubagentStop", session_id: "s5", transcript_path: tp, cwd: root, agent_type: "picket:developer" }, root);
   assert.match(out.hookSpecificOutput.additionalContext, /PHASE DONE applied/);
   assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /Block not saved/);
@@ -51,7 +51,7 @@ test("route.verdict reads the block a subagent handed back, not the paraphrase a
   const { root, id } = hookProject(t);
   const main = join(root, "main.jsonl");
   writeFileSync(main, JSON.stringify(user("fix the export")) + "\n");
-  const block = `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE`;
+  const block = `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\nCommit: feat(a): export header\n\nPHASE DONE`;
   const own = transcript(root, [
     user(`work: ${id}\nphase: 1\nartifact: work/${id}/order.md`),
     assistant([tool("SubagentHandback", { message: block })]),
@@ -141,7 +141,7 @@ test("route.verdict applies PHASE DONE from a picket:developer whose block has n
 test("route.verdict applies a PHASE DONE from a picket:developer", (t) => {
   const agent_type = "picket:developer";
   const { root, id } = hookProject(t);
-  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\n\nPHASE DONE` }])]);
+  const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: src/a.ts\nTests: passed\nCommit: feat(a): export header\n\nPHASE DONE` }])]);
   const out = run({ hook_event_name: "SubagentStop", session_id: `s-${agent_type}`, transcript_path: tp, cwd: root, agent_type }, root);
   assert.match(out.hookSpecificOutput.additionalContext, /^picket: PHASE DONE applied/);
   assert.equal(deriveState(id, root).phases[0].done, true);

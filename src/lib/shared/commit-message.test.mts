@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { checkCommitMessage, COMMIT_TYPES } from "./commit-message.mts";
+import { blockCommitProblem, checkCommitMessage, COMMIT_TYPES } from "./commit-message.mts";
 
 const problemOf = (raw: string): string => {
   const checked = checkCommitMessage(raw);
@@ -37,6 +37,13 @@ test("checkCommitMessage takes a 72-character subject and refuses a 73-character
 test("checkCommitMessage counts code points, not UTF-16 units", () => {
   const subject = `feat: ${"😀".repeat(66)}`;
   assert.deepEqual(checkCommitMessage(subject), { message: subject });
+});
+
+test("blockCommitProblem is null for a valid Commit: line and names a missing or bad one", () => {
+  const block = (commit: string) => `## Phase 1 of 20261103-x: A\n\nDone.\n\n${commit}\n\nPHASE DONE`;
+  assert.equal(blockCommitProblem(block("**Commit:** `feat(x): y.`")), null);
+  assert.match(blockCommitProblem(block("")) ?? "", /^the block has no "Commit:" line; write .*\b72\b/);
+  assert.match(blockCommitProblem(block("Commit: update stuff")) ?? "", /^the commit subject "update stuff" is not /);
 });
 
 test("every commit problem names all ten types and the limit 72 (T-1.2)", () => {
