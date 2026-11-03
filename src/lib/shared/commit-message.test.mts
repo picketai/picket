@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { blockCommitProblem, checkCommitMessage, COMMIT_TYPES } from "./commit-message.mts";
+import { blockCommitProblem, checkBlockCommit, checkCommitMessage, COMMIT_TYPES } from "./commit-message.mts";
 
 const problemOf = (raw: string): string => {
   const checked = checkCommitMessage(raw);
@@ -44,6 +44,25 @@ test("blockCommitProblem is null for a valid Commit: line and names a missing or
   assert.equal(blockCommitProblem(block("**Commit:** `feat(x): y.`")), null);
   assert.match(blockCommitProblem(block("")) ?? "", /^the block has no "Commit:" line; write .*\b72\b/);
   assert.match(blockCommitProblem(block("Commit: update stuff")) ?? "", /^the commit subject "update stuff" is not /);
+});
+
+test("checkBlockCommit returns the checked message from a block's Commit: line (T-1.1)", () => {
+  const block = "## Phase 1 of 20261103-x: A\n\nDone.\n\n**Commit:** `feat(x): y.`\n\nPHASE DONE";
+  assert.deepEqual(checkBlockCommit(block), { message: "feat(x): y" });
+});
+
+test("checkBlockCommit names a missing Commit: line with the shape, as blockCommitProblem does (T-1.2)", () => {
+  const block = "## Phase 1 of 20261103-x: A\n\nDone.\n\nPHASE DONE";
+  const checked = checkBlockCommit(block);
+  assert.ok("problem" in checked, `expected a problem, got ${JSON.stringify(checked)}`);
+  assert.match(checked.problem, /^the block has no "Commit:" line; write .*\b72\b/);
+  assert.equal(checked.problem, blockCommitProblem(block));
+});
+
+test("checkBlockCommit passes a bad Commit: line's problem through (T-1.2)", () => {
+  const checked = checkBlockCommit("## Phase 1 of 20261103-x: A\n\nCommit: update stuff\n\nPHASE DONE");
+  assert.ok("problem" in checked);
+  assert.match(checked.problem, /^the commit subject "update stuff" is not /);
 });
 
 test("every commit problem names all ten types and the limit 72 (T-1.2)", () => {

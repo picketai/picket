@@ -4,8 +4,8 @@ import { locate } from "../checkouts.mts";
 import { commitOwned, listedPathMatcher, type CommitResult } from "../git.mts";
 import { recordAccept } from "../ledger.mts";
 import { phasePaths } from "../work/artifact.mts";
-import { checkCommitMessage, COMMIT_SHAPE, type CheckedCommitMessage } from "../commit-message.mts";
-import { blockFiles, parseBlock, proposedCommit, readBlock } from "../work/block.mts";
+import { checkBlockCommit, type CheckedCommitMessage } from "../commit-message.mts";
+import { blockFiles, readBlock } from "../work/block.mts";
 import { workRel } from "../work/files.mts";
 import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
 
@@ -46,9 +46,7 @@ export function commitCheckouts(root: string, snap: WorkSnapshot, phase: number,
 }
 
 export function phaseCommitMessage(root: string, snap: WorkSnapshot, phase: number): CheckedCommitMessage {
-  const proposed = proposedCommit(parseBlock(readBlock(root, snap.state.id, phase) ?? ""));
-  if (proposed === null) return { problem: `the block has no "Commit:" line; write ${COMMIT_SHAPE}` };
-  return checkCommitMessage(proposed);
+  return checkBlockCommit(readBlock(root, snap.state.id, phase) ?? "");
 }
 
 function resultLines({ sha, committed, left_staged, warnings }: CommitResult, message: string, phase: number, listed: (path: string) => boolean): string[] {

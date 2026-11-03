@@ -36,9 +36,13 @@ export function checkCommitMessage(raw: string): CheckedCommitMessage {
   return problem ? { problem } : { message: end === -1 ? subject : subject + text.slice(end) };
 }
 
-export function blockCommitProblem(block: string): string | null {
+export function checkBlockCommit(block: string): CheckedCommitMessage {
   const proposed = proposedCommit(parseBlock(block));
-  if (proposed === null) return `the block has no "Commit:" line; write ${COMMIT_SHAPE}`;
-  const checked = checkCommitMessage(proposed);
+  if (proposed === null) return { problem: `the block has no "Commit:" line; write ${COMMIT_SHAPE}` };
+  return checkCommitMessage(proposed);
+}
+
+export function blockCommitProblem(block: string): string | null {
+  const checked = checkBlockCommit(block);
   return "problem" in checked ? checked.problem : null;
 }
