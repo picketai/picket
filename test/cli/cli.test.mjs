@@ -65,6 +65,8 @@ test("the CLI walks a work item end to end and speaks JSON", (t) => {
   const v = run(root, ["verify", created.id, "1", "--no-tests"]);
   assert.equal(v.ok, true);
 
+  mkdirSync(join(root, "work", created.id, "phases"), { recursive: true });
+  writeFileSync(join(root, "work", created.id, "phases", "1.block.md"), `## Phase 1 of ${created.id}: A\n\nDone.\n\nCommit: fix(a): the typo\n\nPHASE DONE\n`);
   const r1 = run(root, ["route", created.id, "--verdict", "PHASE DONE", "--agent", "developer", "--phase", "1"]);
   assert.equal(r1.next.action, "approve_phase");
   const r2 = run(root, ["route", created.id, "--verdict", "approved", "--agent", "user", "--phase", "1"]);

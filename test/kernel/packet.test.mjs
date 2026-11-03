@@ -20,7 +20,7 @@ Tests: passed (374/374 Shop.Inventory.Tests)
 Lint: none detected
 Verified: no drivable surface (background sync worker, no HTTP or CLI entry point); behaviour driven through HandleAsync against a real EF InMemory ShopDbContext
 Decisions: followed the Changes paragraph over T-1.1's grep list where they contradict (a third ReservedQty hit at RunStockSyncCommandHandler.cs:422, removed by Phase 2); re-seeded three LowStock tests that computed expected units from the deleted write; turned the applier commit-boundary test into a regression guard
-Commit: 3f9c2a1
+Commit: fix(sync): stop the reserved quantity write
 
 PHASE DONE`;
 
@@ -38,7 +38,7 @@ test("parseBlock reads the developer block into fields", () => {
   assert.equal(b.title, "Phase 1 of X: Stop the sync write");
   assert.match(b.headline, /^The nightly stock sync can no longer write/);
   assert.equal(b.fields.tests, "passed (374/374 Shop.Inventory.Tests)");
-  assert.equal(b.fields.commit, "3f9c2a1");
+  assert.equal(b.fields.commit, "fix(sync): stop the reserved quantity write");
   assert.equal(b.verdict, "PHASE DONE");
 });
 
@@ -59,9 +59,21 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   assert.match(text, /^  tests {5}passed \(374\/374 Shop\.Inventory\.Tests\)$/m);
   assert.match(text, /^  files {5}StockSyncColumnEvaluator\.cs, StockSyncColumnChanges\.cs, \+8 more$/m, "whole paths only, the rest counted");
   assert.equal(lines.filter((l) => /^ {12}· /.test(l) || /^  decisions/.test(l)).length, 3, "three decisions, one per line");
-  assert.match(text, /^  commit {4}3f9c2a1 \(staged; approval commits it\)$/m);
+  assert.match(text, /^  commit {4}fix\(sync\): stop the reserved quantity write \(staged; approval commits it\)$/m);
   assert.equal(lines.at(-1), "[a] approve   [r] run through 2   [x] reject: <why>");
   assert.equal(lines.at(-2), "");
+});
+
+test("the commit line shows the checked message, or why the block's message cannot be committed", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  const commitRow = (commit) => {
+    saveBlock(root, id, 1, BLOCK.replace(/^Commit: .*$/m, commit));
+    return packet(id, root).lines.find((l) => l.startsWith("  commit"));
+  };
+  assert.equal(commitRow("Commit: `fix: a.` (staged; approval commits it)"), "  commit    fix: a (staged; approval commits it)");
+  assert.match(commitRow("Commit: 3f9c2a1"), /^  commit {4}not committable: the commit subject "3f9c2a1" is not /);
+  assert.match(commitRow(""), /^  commit {4}not committable: the block has no "Commit:" line/);
 });
 
 test("the create_worktrees packet lists every touched repo with its start, an 8-character base and its worktree (T-6.5)", (t) => {
@@ -173,7 +185,8 @@ test("an ungated phase's packet has no gate line", (t) => {
   assert.equal(packet(id, root).lines.some((l) => l.startsWith("  gate")), false);
 });
 
-const withComments = (value) => BLOCK.replace("Commit: 3f9c2a1", `Comments: ${value}\nCommit: 3f9c2a1`);
+const beforeCommit = (lines) => BLOCK.replace(/^Commit: /m, `${lines}\nCommit: `);
+const withComments = (value) => beforeCommit(`Comments: ${value}`);
 
 test("comment proposals render numbered and add the keep option (T-3.1)", (t) => {
   const { root, id } = setup(t);
@@ -202,7 +215,7 @@ test("four proposals stay within the width and the fourth is counted (T-3.2)", (
   assert.ok(lines.includes(`  ${"".padEnd(10)}+1 more in the phase block`));
 });
 
-const withProof = (red, cause) => BLOCK.replace("Commit: 3f9c2a1", `Red: ${red}\nRoot cause: ${cause}\nCommit: 3f9c2a1`);
+const withProof = (red, cause) => beforeCommit(`Red: ${red}\nRoot cause: ${cause}`);
 
 test("parseBlock reads a two-word label, and the packet shows red always and cause only when not none (T-4.3)", (t) => {
   const block = withProof("test/fee.test.ts failed: expected 1.05, got 1.04", "totals were off because the rate was read in percent");
@@ -225,7 +238,7 @@ test("parseBlock reads a two-word label, and the packet shows red always and cau
   assert.equal(plain.some((l) => l.startsWith("  cause")), false);
 });
 
-const withWaivers =(value) => BLOCK.replace("Commit: 3f9c2a1", `Waivers: ${value}\nCommit: 3f9c2a1`);
+const withWaivers = (value) => beforeCommit(`Waivers: ${value}`);
 
 test("waiver proposals render numbered and end the options with the waive option (T-1.6)", (t) => {
   const { root, id } = setup(t);

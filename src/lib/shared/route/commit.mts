@@ -4,13 +4,12 @@ import { locate } from "../checkouts.mts";
 import { commitOwned, listedPathMatcher, type CommitResult } from "../git.mts";
 import { recordAccept } from "../ledger.mts";
 import { phasePaths } from "../work/artifact.mts";
-import { blockField, blockFiles, parseBlock, proposedCommit, readBlock } from "../work/block.mts";
+import { checkCommitMessage, COMMIT_SHAPE, type CheckedCommitMessage } from "../commit-message.mts";
+import { blockFiles, parseBlock, proposedCommit, readBlock } from "../work/block.mts";
 import { workRel } from "../work/files.mts";
 import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
 
 export type CheckoutCommits = { lines: string[]; refused: string | null };
-
-const COMMIT_SHA = /^[0-9a-f]{7,40}$/i;
 
 export function nestedCheckoutPaths(root: string, snap: WorkSnapshot, phase: number): Map<string, string[]> {
   const planned = phaseOf(snap, phase);
@@ -33,8 +32,7 @@ function refusalOf(dir: string, err: unknown): string {
   return `${dir} refused the commit: ${reason}`;
 }
 
-export function commitCheckouts(root: string, snap: WorkSnapshot, phase: number, env: NodeJS.ProcessEnv): CheckoutCommits {
-  const message = commitMessage(root, snap, phase);
+export function commitCheckouts(root: string, snap: WorkSnapshot, phase: number, message: string, env: NodeJS.ProcessEnv): CheckoutCommits {
   const lines: string[] = [];
   for (const [dir, rels] of nestedCheckoutPaths(root, snap, phase)) {
     const checkout = join(root, dir);
@@ -47,12 +45,10 @@ export function commitCheckouts(root: string, snap: WorkSnapshot, phase: number,
   return { lines, refused: null };
 }
 
-function commitMessage(root: string, snap: WorkSnapshot, phase: number): string {
-  const id = snap.state.id;
-  const block = parseBlock(readBlock(root, id, phase) ?? "");
-  const commit = blockField(block, "Commit");
-  const proposed = commit && !COMMIT_SHA.test(commit) ? proposedCommit(block) : null;
-  return proposed ?? `${phaseOf(snap, phase)?.title ?? `phase ${phase}`}, phase ${phase} of ${id}`;
+export function phaseCommitMessage(root: string, snap: WorkSnapshot, phase: number): CheckedCommitMessage {
+  const proposed = proposedCommit(parseBlock(readBlock(root, snap.state.id, phase) ?? ""));
+  if (proposed === null) return { problem: `the block has no "Commit:" line; write ${COMMIT_SHAPE}` };
+  return checkCommitMessage(proposed);
 }
 
 function resultLines({ sha, committed, left_staged, warnings }: CommitResult, message: string, phase: number, listed: (path: string) => boolean): string[] {
@@ -63,10 +59,9 @@ function resultLines({ sha, committed, left_staged, warnings }: CommitResult, me
   return [...lines, ...warnings];
 }
 
-export function commitPhase(root: string, snap: WorkSnapshot, phase: number, env: NodeJS.ProcessEnv, now: Date): string[] {
+export function commitPhase(root: string, snap: WorkSnapshot, phase: number, message: string, env: NodeJS.ProcessEnv, now: Date): string[] {
   const id = snap.state.id;
   const planned = phaseOf(snap, phase);
-  const message = commitMessage(root, snap, phase);
   const listed = listedPathMatcher(root, [workRel(id), ...(planned ? phasePaths(planned) : [])]);
   const reported = listedPathMatcher(root, blockFiles(root, id, phase));
   let result: CommitResult;

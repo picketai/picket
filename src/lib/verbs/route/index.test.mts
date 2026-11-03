@@ -9,7 +9,7 @@ import { bareAgentName } from "../../shared/agent-name.mts";
 import { statePath, STATE_FILES } from "../../shared/paths.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { readSnapshot, stateView } from "../../shared/work/snapshot.mts";
-import { saveBlock } from "../../shared/work/block.mts";
+import { readBlock, saveBlock } from "../../shared/work/block.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { fixedContext } from "#test/context.mts";
@@ -20,7 +20,14 @@ import { openItem, withProject } from "#test/project.mts";
 
 type Routed = Partial<RouteInput> & { id: WorkId; verdict: string; agent: string; root: string; classes?: string[] };
 
+const committableBlock = (phase: number, commit = `feat(x): phase ${phase}`) => `## Phase ${phase} of x: P\n\nDone.\n\nCommit: ${commit}\n\nPHASE DONE`;
+
+function saveBlockUnlessSaved(root: string, id: WorkId, phase: number) {
+  if (readBlock(root, id, phase) === null) saveBlock(root, id, phase, committableBlock(phase));
+}
+
 function route({ root, ...input }: Routed) {
+  if (input.verdict === "PHASE DONE" && input.phase) saveBlockUnlessSaved(root, input.id, input.phase);
   return routeAt(input as RouteInput, fixedContext(root, { env: process.env, now: new Date(), cwd: process.cwd() }));
 }
 
@@ -141,7 +148,7 @@ test("a staged path the block lists outside the plan rides along and is named; a
   stage(root, git, { "test/b.test.js": "t\n" });
   git("rm", "-q", "--", "src/old.js");
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
-  saveBlock(root, id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/old.js (+1 more: test/b.test.js)\n\nPHASE DONE");
+  saveBlock(root, id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/old.js (+1 more: test/b.test.js)\nCommit: feat(x): a\n\nPHASE DONE");
   const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
   const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
   assert.ok(committed.includes("test/b.test.js") && committed.includes("src/old.js"), committed.join(", "));
@@ -155,7 +162,7 @@ test("a staged file only the block's full Files: line names is committed with th
   const extra = Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`docs/n${i}.md`, `${i}\n`]));
   stage(root, git, { "src/a.js": "a\n", ...extra });
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
-  saveBlock(root, id, 1, `## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js, ${Object.keys(extra).join(", ")}\n\nPHASE DONE`);
+  saveBlock(root, id, 1, `## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js, ${Object.keys(extra).join(", ")}\nCommit: feat(x): a\n\nPHASE DONE`);
   route({ id, verdict: "approved", agent: "user", phase: 1, root });
   const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
   for (const path of ["src/a.js", ...Object.keys(extra)]) assert.ok(committed.includes(path), path);
@@ -166,7 +173,7 @@ test("a staged dot-file the block lists is committed with the phase (B11, T-3.3)
   const { root, id, git } = repoWithPhasedOrder(t);
   stage(root, git, { "src/a.js": "a\n", ".gitattributes": "* text=auto\n" });
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
-  saveBlock(root, id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js, .gitattributes\n\nPHASE DONE");
+  saveBlock(root, id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js, .gitattributes\nCommit: feat(x): a\n\nPHASE DONE");
   route({ id, verdict: "approved", agent: "user", phase: 1, root });
   const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
   assert.ok(committed.includes(".gitattributes"), committed.join(", "));
@@ -177,7 +184,7 @@ test("a staged test path neither the plan nor the block lists stays staged, as a
   const { root, id, git } = repoWithPhasedOrder(t);
   stage(root, git, { "src/a.js": "a\n", "test/foreign.test.js": "t\n" });
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
-  saveBlock(root, id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js\n\nPHASE DONE");
+  saveBlock(root, id, 1, "## Phase 1 of x: A\n\nDone.\n\nFiles: src/a.js\nCommit: feat(x): a\n\nPHASE DONE");
   const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
   const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
   assert.ok(committed.includes("src/a.js") && !committed.includes("test/foreign.test.js"), committed.join(", "));
@@ -386,6 +393,7 @@ test("another plugin's developer may not route PHASE DONE", (t) => {
 test("approved trusts the done marker on disk for a phase the record has no heading for", (t) => {
   const { root, id } = setup(t);
   writeFileSync(join(root, "work", id, "phases", "5.done"), "2026-10-23T10:00:00.000Z\n");
+  saveBlock(root, id, 5, committableBlock(5));
   const r = route({ id, verdict: "approved", agent: "user", phase: 5, root });
   assert.equal(r.applied[0], "phases/5.approved");
   assert.equal(existsSync(join(root, "work", id, "phases", "5.approved")), true);
@@ -453,7 +461,7 @@ test("an approval commits the phase in the worktree, then work/ in the umbrella,
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
   const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
 
-  const subject = `Pricing, phase 1 of ${id}`;
+  const subject = "feat(x): phase 1";
   assert.equal(worktreeGit("log", "-1", "--format=%s"), subject);
   assert.deepEqual(lines(worktreeGit("show", "--name-only", "--format=", "HEAD")), ["pricing.cs"]);
   assert.ok(r.applied.includes(`committed ${WORKTREE} ${worktreeGit("rev-parse", "--short", "HEAD")}: ${subject}`), r.applied.join(" | "));
@@ -463,6 +471,39 @@ test("an approval commits the phase in the worktree, then work/ in the umbrella,
   assert.equal(worktreeGit("diff", "--cached", "--name-only"), "other.cs");
   assert.match(worktreeGit("status", "--porcelain"), /^\?\? notes\.txt$/m);
 });
+
+test("the worktree and the umbrella commit carry the same subject and body (T-1.4)", (t) => {
+  const { root, id, umbrellaGit, worktreeGit, worktree } = worktreeItem(t);
+  writeFileSync(join(worktree, "pricing.cs"), "class Pricing { int Rate; }\n");
+  worktreeGit("add", "--", "pricing.cs");
+  saveBlock(root, id, 1, "## Phase 1 of x: P\n\nDone.\n\nCommit: `feat(pricing): rate field.` (staged)\n\n    Rate is read from the tariff.\n    - one line per tier\n\nPHASE DONE");
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  const message = "feat(pricing): rate field\n\nRate is read from the tariff.\n- one line per tier";
+  assert.equal(worktreeGit("log", "-1", "--format=%B").trim(), message);
+  assert.equal(umbrellaGit("log", "-1", "--format=%B").trim(), message);
+});
+
+for (const [label, commitLine, problem] of [
+  ["no Commit: line", "", /the block has no "Commit:" line/],
+  ["a free-text Commit: line", "Commit: Pricing, phase 1\n", /"Pricing, phase 1" is not/],
+] as const) {
+  test(`an approval of a block with ${label} commits in no repo, writes no marker and no verdict row (T-1.5)`, (t) => {
+    const { root, id, umbrellaGit, worktreeGit, worktree } = worktreeItem(t);
+    writeFileSync(join(worktree, "pricing.cs"), "class Pricing { int Rate; }\n");
+    worktreeGit("add", "--", "pricing.cs");
+    saveBlock(root, id, 1, `## Phase 1 of x: P\n\nDone.\n\n${commitLine}\nPHASE DONE`);
+    route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+    const heads = [umbrellaGit("rev-parse", "HEAD"), worktreeGit("rev-parse", "HEAD")];
+    const verdictsBefore = readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8");
+    const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+    assert.deepEqual([umbrellaGit("rev-parse", "HEAD"), worktreeGit("rev-parse", "HEAD")], heads);
+    assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), false);
+    assert.equal(readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8"), verdictsBefore);
+    assert.ok(r.applied.some((line) => line.startsWith("phase 1 is not committed: ") && problem.test(line)), r.applied.join(" | "));
+    assert.equal(nextAction(root, id), "approve_phase");
+  });
+}
 
 test("a worktree that refuses the commit leaves the phase unapproved, and a retry after the fix commits both (T-5.3, T-5.4)", (t) => {
   const { root, id, umbrellaGit, worktreeGit, worktree, hook } = worktreeItem(t);

@@ -2,11 +2,11 @@ import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
-import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, proposedCommit, readBlock, WAIVER_SEPARATOR } from "../../shared/work/block.mts";
+import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, readBlock, WAIVER_SEPARATOR } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { liveLookup } from "../../shared/sources/places.mts";
 import { reportFindings } from "../../shared/work/report.mts";
-import { nestedCheckoutPaths } from "../../shared/route/commit.mts";
+import { nestedCheckoutPaths, phaseCommitMessage } from "../../shared/route/commit.mts";
 import { planWorktrees, ticketKey } from "../../shared/checkouts.mts";
 
 export const WIDTH = 100;
@@ -93,6 +93,11 @@ function approvalCommits(root, snap, phase) {
   return dirs.length ? `approval commits it in ${dirs.join(", ")} and the umbrella` : "approval commits it";
 }
 
+function commitLine(root, snap, phase) {
+  const checked = phaseCommitMessage(root, snap, phase);
+  return "problem" in checked ? `not committable: ${checked.problem}` : `${checked.message}  (staged; ${approvalCommits(root, snap, phase)})`;
+}
+
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
@@ -133,9 +138,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
       lines.push(...proposalLines("waivers", waivers, width));
       if (options) options += "   [w] waive <n>";
     }
-    // The developer stages and proposes a message; approval is what commits.
-    const commit = proposedCommit(b);
-    if (commit !== null) lines.push(field("commit", `${commit}  (staged; ${approvalCommits(root, snap, n.phase)})`, width));
+    lines.push(field("commit", commitLine(root, snap, n.phase), width));
   } else if (n.action === "approve_phase") {
     const body = snap.artifact?.body ?? "";
     const summary = body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";

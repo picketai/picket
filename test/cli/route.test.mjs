@@ -46,10 +46,11 @@ test("approval commits the staged phase with the developer's proposed message; r
   assert.match(git("show", "--stat", "--format=", "HEAD"), /phases\/1\.approved/, "the phase commit carries the approval marker, so git log on that marker names the sha");
   assert.equal(git("log", "-1", "--format=%s", "--", `work/${s.id}/phases/1.approved`), "feat(export): add the csv formatter");
 
+  saveBlock(root, s.id, 2, `## Phase 2 of ${s.id}: Wire route\n\nRoute wired.\n\n**Commit:** feat(export): wire the csv route\n\nPHASE DONE`);
   route(root, s.id, "--verdict", "PHASE DONE", "--agent", "developer", "--phase", "2");
   r = route(root, s.id, "--verdict", "approved", "--agent", "user", "--phase", "2");
   assert.ok(r.applied.some((a) => a.startsWith("committed ")), r.applied.join(" | "));
-  assert.equal(git("log", "-1", "--format=%s"), `Wire route, phase 2 of ${s.id}`);
+  assert.equal(git("log", "-1", "--format=%s"), "feat(export): wire the csv route");
   assert.equal(git("status", "--porcelain"), "");
 });
 

@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { BLOCK_FIELDS, blockField, COMMENT_SEPARATOR, commentProposal, detectBlock, parseBlock, proposals, proposedCommit, readBlock, readHeading, saveBlock, WAIVER_SEPARATOR, waiverProposal } from "./block.mts";
 import { setMarker } from "./markers.mts";
+import { checkCommitMessage } from "../commit-message.mts";
 import { openItem, withProject } from "#test/project.mts";
 
 test("detectBlock names each contract heading and nothing for plain text", () => {
@@ -52,10 +53,21 @@ test("readHeading takes the earliest heading in the text and gives its index (T-
   assert.equal(heading?.index, text.indexOf("## Review"));
 });
 
-test("proposedCommit drops the staged tail and is null without a Commit field", () => {
-  const block = (commit: string) => `## Phase 1 of 20261023-x: One\n\nDone.\n\nFiles: a.ts\n${commit}\nPHASE DONE\n`;
-  assert.equal(proposedCommit(parseBlock(block("Commit: feat(x): y (staged; approval commits it)"))), "feat(x): y");
-  assert.equal(proposedCommit(parseBlock(block(""))), null);
+const commitBlock = (commit: string) => `## Phase 1 of 20261023-x: One\n\nDone.\n\nFiles: a.ts\n${commit}\nPHASE DONE\n`;
+
+test("proposedCommit returns the Commit line as written and is null without a Commit field", () => {
+  assert.equal(proposedCommit(parseBlock(commitBlock("Commit: feat(x): y (staged; approval commits it)"))), "feat(x): y (staged; approval commits it)");
+  assert.equal(proposedCommit(parseBlock(commitBlock(""))), null);
+});
+
+test("parseBlock reads a bold **Commit:** label as the Commit field (T-1.3)", () => {
+  const block = parseBlock(commitBlock("**Commit:** feat(x): y"));
+  assert.equal(blockField(block, "Commit"), "feat(x): y");
+  assert.deepEqual(checkCommitMessage(proposedCommit(block) ?? ""), { message: "feat(x): y" });
+});
+
+test("parseBlock reads a bold label only for Commit", () => {
+  assert.equal(blockField(parseBlock(commitBlock("**Tests:** 4 passed")), "Tests"), undefined);
 });
 
 test("readHeading gives null for text without a block heading (T-2.1)", () => {

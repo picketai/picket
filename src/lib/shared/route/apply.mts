@@ -5,7 +5,7 @@ import { setMarker } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
 import { isSessionId, writeState, type WorkState } from "../work/state.mts";
 import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
-import { commitCheckouts, commitPhase } from "./commit.mts";
+import { commitCheckouts, commitPhase, phaseCommitMessage } from "./commit.mts";
 import type { Change } from "./plan.mts";
 
 export type ApplyOptions = { now: Date; env: NodeJS.ProcessEnv; session: string | null | undefined; row: VerdictEntry };
@@ -74,13 +74,19 @@ function withoutApproval(changes: Change[], phase: number, refusal: string): Cha
   return [...kept, { kind: "state", unset: ["run_through"], line: null }, { kind: "note", line: refusal }];
 }
 
-type NestedOutcome = { changes: Change[]; lines: string[]; refused: boolean };
+type NestedOutcome = { changes: Change[]; lines: string[]; refused: boolean; message: string | null };
+
+function refusedOutcome(changes: Change[], phase: number, refusal: string, lines: string[] = []): NestedOutcome {
+  return { changes: withoutApproval(changes, phase, refusal), lines, refused: true, message: null };
+}
 
 function commitNestedFirst(root: string, snap: WorkSnapshot, changes: Change[], env: NodeJS.ProcessEnv): NestedOutcome {
   const commit = changes.find(isCommitChange);
-  if (!commit) return { changes, lines: [], refused: false };
-  const { lines, refused } = commitCheckouts(root, snap, commit.phase, env);
-  return refused ? { changes: withoutApproval(changes, commit.phase, refused), lines, refused: true } : { changes, lines, refused: false };
+  if (!commit) return { changes, lines: [], refused: false, message: null };
+  const checked = phaseCommitMessage(root, snap, commit.phase);
+  if ("problem" in checked) return refusedOutcome(changes, commit.phase, `phase ${commit.phase} is not committed: ${checked.problem}`);
+  const { lines, refused } = commitCheckouts(root, snap, commit.phase, checked.message, env);
+  return refused ? refusedOutcome(changes, commit.phase, refused, lines) : { changes, lines, refused: false, message: checked.message };
 }
 
 function isRefusedApproval(nested: NestedOutcome, row: VerdictEntry): boolean {
@@ -97,6 +103,6 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   if (state) writeState(root, state, now);
   if (!isRefusedApproval(nested, row)) appendVerdict(root, id, row, now);
   const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null)];
-  for (const change of changes) if (change.kind === "commit") applied.push(...commitPhase(root, snap, change.phase, env, now));
+  for (const change of changes) if (change.kind === "commit" && nested.message !== null) applied.push(...commitPhase(root, snap, change.phase, nested.message, env, now));
   return applied;
 }

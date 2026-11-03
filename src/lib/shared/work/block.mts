@@ -63,9 +63,9 @@ export function blockField(block: Block, label: BlockField<"phase">): string | u
 
 const PATH_TOKEN = /^[\w.@\-\/\\]*\.[A-Za-z0-9]+$/;
 const FIELD_LABEL = String.raw`Root cause|[A-Z][a-z]+`;
-const FIELD_START = new RegExp(`^(${FIELD_LABEL}):\\s`);
-const FIELD_LINE = new RegExp(`^(${FIELD_LABEL}):\\s*(.*)$`);
-const STAGED_TAIL = /\s*\(staged.*\)$/i;
+const BOLD_COMMIT = String.raw`\*\*(?<bold>Commit):\*\*`;
+const FIELD_START = new RegExp(`^(?:${BOLD_COMMIT}|(?:${FIELD_LABEL}):)\\s`);
+const FIELD_LINE = new RegExp(`^(?:${BOLD_COMMIT}|(?<label>${FIELD_LABEL}):)\\s*(?<value>.*)$`);
 const INDENTED = /^\s+\S/;
 
 export function blockPath(root: string, id: WorkId, n: number): string {
@@ -121,10 +121,11 @@ export function parseBlock(text: string | null | undefined): Block {
   while (i < lines.length && lines[i].trim() && !FIELD_START.test(lines[i])) para.push(lines[i].trim()), i++;
   out.headline = para.join(" ");
   for (; i < lines.length; i++) {
-    const m = lines[i].match(FIELD_LINE);
-    if (!m) continue;
-    out.fields[m[1].toLowerCase()] = m[2].trim();
-    if (m[1] === COMMIT) out.commitBody = indentedBody(lines, i + 1);
+    const groups = lines[i].match(FIELD_LINE)?.groups;
+    if (!groups) continue;
+    const label = groups.bold ?? groups.label;
+    out.fields[label.toLowerCase()] = groups.value.trim();
+    if (label === COMMIT) out.commitBody = indentedBody(lines, i + 1);
   }
   const last = lines.filter((l) => l.trim()).at(-1)?.trim() ?? "";
   if (isBlockVerdict(last)) out.verdict = last;
@@ -163,6 +164,5 @@ export function waiverProposal(text: string): WaiverProposal | null {
 export function proposedCommit(block: Block): string | null {
   const commit = blockField(block, "Commit");
   if (!commit) return null;
-  const subject = commit.replace(STAGED_TAIL, "");
-  return block.commitBody ? `${subject}\n\n${block.commitBody}` : subject;
+  return block.commitBody ? `${commit}\n\n${block.commitBody}` : commit;
 }
