@@ -42,9 +42,17 @@ phases:
       - src/lib/verbs/close/close.mts
       - src/lib/verbs/close/index.test.mts
       - test/cli/close.test.mjs
+      - src/lib/hooks/route/verdict/index.mts
+      - src/lib/hooks/route/verdict/index.test.mts
+      - src/lib/verbs/reply/table.mts
+      - src/lib/verbs/reply/index.test.mts
     greps:
       - path: src/lib/verbs/close/close.mts
         pattern: 'to(Locale)?LowerCase\('
+      - path: src/lib/hooks/route/verdict/index.mts
+        pattern: '\blast_assistant_message\b'
+      - path: src/lib/hooks/route/verdict/index.mts
+        pattern: '\bBLOCK_HEADINGS\b'
     tests: true
     drive: true
 ---
@@ -70,14 +78,27 @@ Review of the shared commit shape left three rough edges. The gate packet cuts a
 **Risks:**
 - **RISK-002** A mixed-case name such as `McAfee` loses its capital (`mcAfee`). Mitigation: the user passes `--message` for such a title.
 
+### D-004: route.verdict routes the newest block of the turn
+**Decision:** `routeTurn` first picks the turn's text: the hook payload's `last_assistant_message` when it carries a contract heading, otherwise `readTurn(...).text` as today. It then cuts that text at its last contract heading (the last match of any `BLOCK_HEADINGS` pattern from `src/lib/shared/work/block.mts:12`; `readHeading` returns the earliest), and the verdict, `blockInfo`, `isBouncedForCommit`, `saveDeveloperBlock`, `route` and `writtenNotice` all read the cut text. Both steps are local functions in `src/lib/hooks/route/verdict/index.mts`; `readTurn` and `readHeading` stay as they are. Which text the hook read at the phase 1 bounce is not proven. In the developer transcript the bounced text (prose, then the block) and the corrected block are separate assistant entries, and the verdict row was written 120 ms after the corrected entry's timestamp. So the decision covers both readings: a transcript tail not yet flushed (the payload is newer) and one text holding both blocks (the cut). This is an infrastructural decision.
+**Instead of:** putting `last_assistant_message` first in `readTurn` for every caller: guard.block and emit.ledger read `readTurn` too, and their behaviour is out of scope.
+**Risks:**
+- **RISK-003** A handback turn whose final text quotes an older block heading would route that text over the handback payload. Mitigation: the payload text wins only when it carries a heading; a handback's final text is a paraphrase without one (`src/lib/shared/transcript/turn.mts:47`).
+- **RISK-004** A block body holding a line that starts with a contract heading is cut at that line. Mitigation: the headings are line-anchored `## Phase <n> of <id>`, `## Review: <id>` and similar forms that a block body does not repeat.
+
+### D-005: A gate accepts `x: <why>`
+**Decision:** The reject form in `APPROVE_FORMS` (`src/lib/verbs/reply/table.mts:64`) becomes `/^(?:x:?|reject:)\s+(\S.*)$/i`, the form the gate prints as `[x] reject: <why>`. Checked by script on base: `x: too long` and `X: Why` reject with `too long` and `Why`; `x too long` and `reject: too long` keep their reason; `xylophone`, `x:` and `x:why` match nothing. The `x` abandon form in `BLOCK_FORMS` is unchanged.
+**Instead of:** `/^(?:x|reject):?\s*(\S.*)$/i`: it reads `xylophone` as a reject with the reason `ylophone`.
+
 ## Scope
 **In:**
 - `checkBlockCommit` in `commit-message.mts`, with `blockCommitProblem` and `phaseCommitMessage` built on it.
 - Packet commit lines: each repo's subject on its own line, never cut.
 - The default close subject lowercases the title's first letter unless the first word is an acronym.
+- `route.verdict` saves and routes the newest, last block of the turn (D-004).
+- `picket reply` accepts `x: <why>` as a reject (D-005).
 
 **Out:**
-- Any other change to the commit shape, `guard.block` or `route.verdict` behaviour.
+- Any other change to the commit shape, `guard.block` or `route.verdict` behaviour; `readTurn` and `readHeading`.
 - Body line cutting in the packet; a `--message` passed to `picket close`.
 
 ## Phase 1: One block commit check
@@ -108,21 +129,31 @@ Review of the shared commit shape left three rough edges. The gate packet cuts a
 - **T-2.5** `packet.mjs` holds no `cut(subject` (the phase grep), and `npm test` passes.
 - **T-2.6** In a temporary project with a nested checkout, `picket packet <id>` prints the dir line and the indented subject line for that checkout and for `main repo`.
 
-## Phase 3: Close subjects start lowercase
+## Phase 3: Close subjects, the routed block and the reject reply
 **Touch set:**
 - `src/lib/verbs/close/close.mts`: defaultCloseMessage lowercases per D-003
 - `src/lib/verbs/close/index.test.mts`: default message unit tests
 - `test/cli/close.test.mjs`: subjects at lines 86, 118, 119, 291, 319
-**Changes:** In `defaultCloseMessage`, lowercase the trimmed title's first character per D-003, then shorten it as today. Update the unit tests at `src/lib/verbs/close/index.test.mts:37` and `:41` and the CLI subjects `chore: close Csv export`, `chore: close Orders` and `chore: close Sub root` to their lowercase forms; rename test titles that quote the old subject.
+- `src/lib/hooks/route/verdict/index.mts`: routeTurn picks and cuts the text
+- `src/lib/hooks/route/verdict/index.test.mts`: bounce helper at line 142
+- `src/lib/shared/work/block.mts`: BLOCK_HEADINGS and readHeading, read only
+- `src/lib/shared/transcript/turn.mts`: readTurn candidate order, read only
+- `src/lib/verbs/reply/table.mts`: reject form at line 64
+- `src/lib/verbs/reply/index.test.mts`: reject reply test at line 100
+**Changes:** In `defaultCloseMessage`, lowercase the trimmed title's first character per D-003, then shorten it as today. Update the unit tests at `src/lib/verbs/close/index.test.mts:37` and `:41` and the CLI subjects `chore: close Csv export`, `chore: close Orders` and `chore: close Sub root` to their lowercase forms; rename test titles that quote the old subject. In `routeTurn`, pick and cut the turn's text per D-004 before `findVerdict`, and pass the cut text everywhere `text` goes today. Change the reject form per D-005. In the tests below, the bounced subject is the 76-character `refactor(commit-message): one block check returns the message or the problem` and the valid one is the 68-character `refactor(commit-message): one block check returns message or problem`.
 **Done when:**
-- **T-3.1** A unit test gets `chore: close commit messages share one checked shape` from `defaultCloseMessage("Commit messages share one checked shape")`.
-- **T-3.2** A unit test keeps the first word as given for `PR reviews read the linked ticket`, `PRs read tickets`, `API keys` and `iOS build`, and gets `chore: close a note` for `A note`.
-- **T-3.3** The 70-character title test expects `chore: close commit messages share one checked shape across every`, still at most 72 characters and passing `checkCommitMessage`.
-- **T-3.4** A CLI test closes an order item titled `Orders` without `--message`: `git log -1 --format=%s` and the JSON `message` are `chore: close orders`.
-- **T-3.5** A CLI test closes an item with `--message "chore: close Orders"` and the commit subject is `chore: close Orders`, unchanged.
-- **T-3.6** `npm test` passes, and in a temporary repo `picket close <id>` on an item titled `Csv export` leaves `chore: close csv export` in `git log -1 --format=%s`.
+- **T-3.1** Unit tests get `chore: close commit messages share one checked shape` and `chore: close a note` from those titles, and keep the first word as given for `PR reviews read the linked ticket`, `PRs read tickets`, `API keys` and `iOS build`.
+- **T-3.2** The 70-character title test expects `chore: close commit messages share one checked shape across every`, still at most 72 characters and passing `checkCommitMessage`.
+- **T-3.3** A CLI test closes an order item titled `Orders` without `--message`: `git log -1 --format=%s` and the JSON `message` are `chore: close orders`; with `--message "chore: close Orders"` the subject is `chore: close Orders`, unchanged.
+- **T-3.4** A hook test runs `route.verdict` with `stop_hook_active: true` on a transcript whose last assistant text holds a prose line, the bounced phase 1 block, then the valid block: one `PHASE DONE` row is appended and `phases/1.block.md` starts with `## Phase 1 of`, holds the valid `Commit:` subject and not the bounced one. It fails on base 2788aa4.
+- **T-3.5** A hook test runs `route.verdict` with `stop_hook_active: true` on a transcript ending at the bounced block, with the valid block in `last_assistant_message`: `phases/1.block.md` holds the valid subject and not the bounced one. It fails on base 2788aa4.
+- **T-3.6** The existing route.verdict tests pass unedited against base 2788aa4, and with `stop_hook_active` false the bounced block alone still appends no verdict row.
+- **T-3.7** A reply test at a phase gate applies `x: Tests are flaky`: the last verdict is `rejected` and the send to the developer ends `rejected: Tests are flaky`; `x Tests are flaky` still does the same, and `xylophone` is refused as matching no option.
+- **T-3.8** `npm test` passes. In a temporary repo `picket close <id>` on an item titled `Csv export` leaves `chore: close csv export` in `git log -1 --format=%s`, and `picket reply <id> "x: too long"` at a phase gate prints a send ending `rejected: too long`.
 
 ## Open questions
-none
+- **OQ-001** Does Claude Code's `last_assistant_message` on a continued SubagentStop carry the re-emitted text, and which text did the hook read at the phase 1 bounce? Owner: the lead, at the next live bounce. Fallback: D-004 covers both readings; T-3.4 and T-3.5 pin them with fixtures, and when the payload field is absent `readTurn` decides as today.
 
 ## Revision log
+- 2026-11-03: D-004 added: route.verdict routes the newest, last block; the user ruled at the phase 1 gate after a bounced block was saved.
+- 2026-11-03: D-005 added: a gate accepts `x: <why>`; the user ruled at the phase 1 gate after `picket reply` refused it.

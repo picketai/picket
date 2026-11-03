@@ -2,11 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { blockCommitProblem } from "../../../shared/commit-message.mts";
 import { stateDir, statePath, stateRel } from "../../../shared/paths.mts";
-import { agentTranscript } from "../../../shared/transcript/agent.mts";
+import { agentTranscript, type HookData } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
-import { readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
+import { BLOCK_HEADINGS, detectBlock, readHeading, saveBlock,type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
 import { readVerdicts } from "../../../shared/work/verdict-log.mts";
@@ -100,8 +100,26 @@ function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Rou
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
 
+function payloadBlockText(data: HookData): string | null {
+  const last = data?.last_assistant_message;
+  return typeof last === "string" && detectBlock(last) ? last : null;
+}
+
+function turnText(event: PayloadOf<StopEvent>): string {
+  return payloadBlockText(event) ?? readTurn(event, { includeToolPayloads: true }).text;
+}
+
+function lastHeadingIndex(text: string): number {
+  const starts = BLOCK_HEADINGS.flatMap(([, heading]) => [...text.matchAll(new RegExp(heading.source, `${heading.flags}g`))].map((m) => m.index));
+  return starts.length ? Math.max(...starts) : 0;
+}
+
+function newestBlock(text: string): string {
+  return text.slice(lastHeadingIndex(text));
+}
+
 function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | null {
-  const { text } = readTurn(event, { includeToolPayloads: true });
+  const text = newestBlock(turnText(event));
   const verdict = findVerdict(blockLines(text).last);
   if (!verdict) return null;
   const info = blockInfo(text);

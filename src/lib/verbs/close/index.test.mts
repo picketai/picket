@@ -34,15 +34,23 @@ function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseR
   };
 }
 
-test("the default close message is the title after chore: close", () => {
-  assert.equal(defaultCloseMessage("Orders"), "chore: close Orders");
+test("the default close message is the title after chore: close, its first letter lowercased (T-3.1)", () => {
+  assert.equal(defaultCloseMessage("Orders"), "chore: close orders");
+  assert.equal(defaultCloseMessage("Commit messages share one checked shape"), "chore: close commit messages share one checked shape");
+  assert.equal(defaultCloseMessage("A note"), "chore: close a note");
 });
 
-test("a long title is cut at its last whole word so the default stays a valid subject (T-3.2)", () => {
+test("a title whose first word is an acronym keeps it as given (T-3.2)", () => {
+  for (const title of ["PR reviews read the linked ticket", "PRs read tickets", "API keys", "iOS build", "RMS-12 pricing"]) {
+    assert.equal(defaultCloseMessage(title), `chore: close ${title}`);
+  }
+});
+
+test("a long title is cut at its last whole word so the default stays a valid subject (T-3.3)", () => {
   const title = "Commit messages share one checked shape across every repository, today";
   assert.equal(title.length, 70);
   const message = defaultCloseMessage(title);
-  assert.equal(message, "chore: close Commit messages share one checked shape across every");
+  assert.equal(message, "chore: close commit messages share one checked shape across every");
   assert.ok(message.length <= 72, message);
   assert.deepEqual(checkCommitMessage(message), { message });
 });

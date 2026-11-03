@@ -48,8 +48,20 @@ const MIN_REPEATS = 2;
 const CLOSE_PREFIX = "chore: close ";
 const TITLE_ROOM = SUBJECT_LIMIT - CLOSE_PREFIX.length;
 
+const UPPERCASE_LETTER = /\p{Lu}/u;
+
+function startsWithAcronym(chars: string[]): boolean {
+  return chars.length > 1 && UPPERCASE_LETTER.test(chars[1]);
+}
+
+function lowercasedFirstLetter(title: string): string {
+  const chars = [...title];
+  if (!chars.length || startsWithAcronym(chars)) return title;
+  return chars[0].toLowerCase() + chars.slice(1).join("");
+}
+
 function shortenedTitle(title: string): string {
-  const chars = [...title.trim()];
+  const chars = [...title];
   if (chars.length <= TITLE_ROOM) return chars.join("");
   const head = chars.slice(0, TITLE_ROOM).join("");
   const lastSpace = head.lastIndexOf(" ");
@@ -57,7 +69,7 @@ function shortenedTitle(title: string): string {
 }
 
 export function defaultCloseMessage(title: string): string {
-  return CLOSE_PREFIX + shortenedTitle(title);
+  return CLOSE_PREFIX + shortenedTitle(lowercasedFirstLetter(title.trim()));
 }
 
 function checkedCloseMessage(message: string | undefined, { id, title, status }: WorkState): string {

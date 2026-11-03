@@ -137,11 +137,55 @@ function twoPhaseOrder(root: string): string {
 
 const GIT_IDENTITY = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
-function routePhaseDone(root: string, id: string, n: number, continued: boolean, commit = "feat: p") {
-  const block = `## Phase ${n} of ${id}: P\n\nP works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: ${commit}\n\nPHASE DONE`;
-  const tp = transcript(root, [user(`work: ${id}\nphase: ${n}`), assistant(block)]);
+function phaseBlock(id: string, n: number, commit: string): string {
+  return `## Phase ${n} of ${id}: P\n\nP works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: ${commit}\n\nPHASE DONE`;
+}
+
+function routeDeveloperTurn(root: string, id: string, n: number, continued: boolean, transcriptText: string, lastMessage?: string) {
+  const tp = transcript(root, [user(`work: ${id}\nphase: ${n}`), assistant(transcriptText)]);
   const ctx = hookContext(root, { env: { ...process.env, ...GIT_IDENTITY } });
-  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "picket:developer", stop_hook_active: continued }, ctx);
+  const payload = lastMessage === undefined ? {} : { last_assistant_message: lastMessage };
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "picket:developer", stop_hook_active: continued, ...payload }, ctx);
+}
+
+function routePhaseDone(root: string, id: string, n: number, continued: boolean, commit = "feat: p") {
+  return routeDeveloperTurn(root, id, n, continued, phaseBlock(id, n, commit));
+}
+
+const BOUNCED_SUBJECT = "refactor(commit-message): one block check returns the message or the problem";
+const VALID_SUBJECT = "refactor(commit-message): one block check returns message or problem";
+
+test("a continued turn holding the bounced block and then the valid one routes and saves only the valid one (T-3.4)", (t) => {
+  assert.deepEqual([BOUNCED_SUBJECT.length, VALID_SUBJECT.length], [76, 68]);
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  const turn = `Phase 1 is done.\n\n${phaseBlock(id, 1, BOUNCED_SUBJECT)}\n\n${phaseBlock(id, 1, VALID_SUBJECT)}`;
+  routeDeveloperTurn(root, id, 1, true, turn);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1]]);
+  const saved = readFileSync(blockPath(root, id), "utf8");
+  assert.ok(saved.startsWith("## Phase 1 of"), saved);
+  assert.match(saved, new RegExp(`^Commit: ${escaped(VALID_SUBJECT)}$`, "m"));
+  assert.ok(!saved.includes(BOUNCED_SUBJECT), saved);
+});
+
+test("a continued turn whose transcript still ends at the bounced block saves the valid block from last_assistant_message (T-3.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routeDeveloperTurn(root, id, 1, true, phaseBlock(id, 1, BOUNCED_SUBJECT), phaseBlock(id, 1, VALID_SUBJECT));
+  const saved = readFileSync(blockPath(root, id), "utf8");
+  assert.match(saved, new RegExp(`^Commit: ${escaped(VALID_SUBJECT)}$`, "m"));
+  assert.ok(!saved.includes(BOUNCED_SUBJECT), saved);
+});
+
+test("a first stop on the bounced block alone appends no verdict row (T-3.6)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  assert.equal(routeDeveloperTurn(root, id, 1, false, phaseBlock(id, 1, BOUNCED_SUBJECT)), null);
+  assert.equal(existsSync(join(root, "work", id, "verdicts.jsonl")), false);
+});
+
+function escaped(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function grantedRepoItem(t: TestContext) {

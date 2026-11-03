@@ -61,7 +61,7 @@ const APPROVE_FORMS: readonly Form[] = [
   { pattern: /^(?:a|approved|ok|yes)$/i, letter: "a", match: () => ({ kind: "approve" }) },
   { pattern: /^(?:i|confirm)$/i, letter: "i", match: () => ({ kind: "approve" }) },
   { pattern: /^(?:r|approved through|run to)\s+(\d+)$/i, letter: "r", match: (m, step) => runThrough(m, step) },
-  { pattern: /^(?:x|reject:)\s+(\S.*)$/i, letter: "x", match: (m) => ({ kind: "reject", why: m[1].trim() }) },
+  { pattern: /^(?:x:?|reject:)\s+(\S.*)$/i, letter: "x", match: (m) => ({ kind: "reject", why: m[1].trim() }) },
   { pattern: /^(?:k|keep)\s+(\d+)$/i, letter: null, match: (m, _step, { comments }) => numbered("keep", comments.length, m) },
   { pattern: /^(?:w|waive)\s+(\d+)$/i, letter: null, match: (m, _step, { waivers }) => numbered("waive", waivers.length, m) },
 ];

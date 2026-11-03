@@ -108,6 +108,22 @@ test("x <why> rejects with the reason and sends it to the developer verbatim", a
   await refused(root, id, "x");
 });
 
+test("x: <why>, the form the gate prints, rejects with the reason; xylophone matches no option (T-3.7)", async (t) => {
+  const { root, id } = item(t);
+  phaseDone(root, id, 1);
+  const result = await applied(root, id, "x: Tests are flaky");
+  assert.equal(lastVerdict(root, id).verdict, "rejected");
+  assert.equal(result.send[0].message, `work: ${id}\nphase: 1\nrejected: Tests are flaky`);
+
+  const spaced = item(t);
+  phaseDone(spaced.root, spaced.id, 1);
+  assert.match((await applied(spaced.root, spaced.id, "x Tests are flaky")).send[0].message, /\nrejected: Tests are flaky$/);
+
+  const word = item(t);
+  phaseDone(word.root, word.id, 1);
+  for (const text of ["xylophone", "x:", "x:why"]) assert.match(await refused(word.root, word.id, text), /matches no option at approve_phase/, text);
+});
+
 test("k <n> records the comment and sends its approval; w <n> records a deleted-test waiver", async (t) => {
   const { root, id } = item(t);
   phaseDone(root, id, 1, 'Comments: src/a.ts:4 "half-up"\nWaivers: src/b.test.ts deleted because moved\n');
