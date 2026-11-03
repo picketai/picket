@@ -57,7 +57,7 @@ export const HOOKS = {
     on: [{ event: "PostToolUse", matcher: "Read|Grep|Glob|WebFetch|WebSearch" }],
   },
   "guard.block": {
-    summary: "a turn with a contract heading must end with an exact verdict token and stay within 40 lines",
+    summary: "a turn with a contract heading must end with an exact verdict token and stay within 40 lines; a developer PHASE DONE needs a Conventional Commits Commit: line",
     on: [{ event: "Stop" }, { event: "SubagentStop" }],
   },
   "route.verdict": {

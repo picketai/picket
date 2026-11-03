@@ -73,6 +73,6 @@ Commit: <type>(<scope>): <what>   (the message you propose; staged, committed on
 PHASE DONE
 ```
 
-The last line is exactly `PHASE DONE` or `PHASE STALLED`. A commit body goes as indented lines under `Commit:`.
+The last line is exactly `PHASE DONE` or `PHASE STALLED`. A commit body goes as indented lines under `Commit:`. The subject is a Conventional Commits line of at most 72 characters (`fix(export): quote csv cells`); `guard.block` bounces any other shape and names the types it accepts.
 
 The fast lane prints the same lines under the heading `## Expedited: <id>`, with `(staged; your answer commits it)` after the commit message, and ends with its options line instead of a verdict: `[c] commit   [x] discard: <why>`, plus `[k] keep comment <n>` when `Comments:` lists numbered proposals and `[w] waive <n>` when `Waivers:` does.

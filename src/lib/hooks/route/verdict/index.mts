@@ -106,7 +106,10 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
   const continued = Boolean(event.stop_hook_active);
   if (info?.scope === "pr") return continued ? null : { text: keepPullRequestReview(id, verdict, text, ctx.root), notice: null };
   const phase = info?.phase ?? hints.phase ?? undefined;
-  if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) return null;
+  if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) {
+    saveDeveloperBlock(info, id, phase, text, ctx.root);
+    return null;
+  }
   const routed = applyVerdict({ event, info, hints, id, verdict, phase, text, ctx });
   return { text: routed, notice: writtenNotice(info, verdict, text) };
 }

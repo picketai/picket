@@ -18,7 +18,7 @@ Each hook name starts with its kind. `guard.*` hooks deny a tool call or bounce 
 | `lint.glossary` | PostToolUse | `Write\|Edit` | warns, never blocks, when a write leaves the host folder's `MEMORY.md` past the 6,000 characters `inject.state` injects |
 | `observe.drive` | PostToolUse, PostToolUseFailure | `Bash\|PowerShell` | appends drive or inspect rows to `.picket/state/drive-log.jsonl` with the current work item and its phase; `picket verify` reads the rows |
 | `monitor.context` | PostToolUse | `Read\|Grep\|Glob\|WebFetch\|WebSearch` | the stall detector: six look-around calls with no action get one line of context |
-| `guard.block` | Stop, SubagentStop |  | a turn with a contract heading must end with an exact verdict token and stay within 40 lines |
+| `guard.block` | Stop, SubagentStop |  | a turn with a contract heading must end with an exact verdict token and stay within 40 lines; a developer PHASE DONE needs a Conventional Commits Commit: line |
 | `route.verdict` | Stop, SubagentStop |  | applies the verdict to the work item with the kernel and hands back `picket next` as context |
 | `emit.ledger` | Stop, SubagentStop |  | one v2 ledger row per turn (`bench/schema/ledger-v2.schema.json`) |
 | `notify.user` | Notification | `permission_prompt\|idle_prompt` | an OS notification in a detached process (a Windows toast through powershell.exe, osascript, notify-send); `PICKET_NOTIFY=off` skips it |

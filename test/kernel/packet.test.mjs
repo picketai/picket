@@ -59,7 +59,7 @@ test("the gate packet is fixed-shape, width-capped, and ends with the options", 
   assert.match(text, /^  tests {5}passed \(374\/374 Shop\.Inventory\.Tests\)$/m);
   assert.match(text, /^  files {5}StockSyncColumnEvaluator\.cs, StockSyncColumnChanges\.cs, \+8 more$/m, "whole paths only, the rest counted");
   assert.equal(lines.filter((l) => /^ {12}· /.test(l) || /^  decisions/.test(l)).length, 3, "three decisions, one per line");
-  assert.match(text, /^  commit {4}fix\(sync\): stop the reserved quantity write \(staged; approval commits it\)$/m);
+  assert.match(text, /^  commit {4}fix\(sync\): stop the reserved quantity write$/m);
   assert.equal(lines.at(-1), "[a] approve   [r] run through 2   [x] reject: <why>");
   assert.equal(lines.at(-2), "");
 });
@@ -71,9 +71,11 @@ test("the commit line shows the checked message, or why the block's message cann
     saveBlock(root, id, 1, BLOCK.replace(/^Commit: .*$/m, commit));
     return packet(id, root).lines.find((l) => l.startsWith("  commit"));
   };
-  assert.equal(commitRow("Commit: `fix: a.` (staged; approval commits it)"), "  commit    fix: a (staged; approval commits it)");
+  assert.equal(commitRow("Commit: `fix: a.` (staged; approval commits it)"), "  commit    fix: a");
   assert.match(commitRow("Commit: 3f9c2a1"), /^  commit {4}not committable: the commit subject "3f9c2a1" is not /);
+  assert.match(commitRow("Commit: update stuff"), /^  commit {4}not committable: /);
   assert.match(commitRow(""), /^  commit {4}not committable: the block has no "Commit:" line/);
+  assert.doesNotMatch(packet(id, root).text, /\(staged/);
 });
 
 test("the create_worktrees packet lists every touched repo with its start, an 8-character base and its worktree (T-6.5)", (t) => {
@@ -93,20 +95,26 @@ test("the create_worktrees packet lists every touched repo with its start, an 8-
   ]);
 });
 
-test("the commit line names the worktree the approval commits in, and today's text without a nested path (T-5.6)", (t) => {
+test("the commit lines name each repo the approval commits in, then the body; one repo shows the subject alone (T-2.4, T-2.5)", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const { id } = openItem(root, { lane: "order", title: "Orders" });
   writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/Orders/pricing.cs]\n  - n: 2\n    files: [README.md]\n---\n# O\n\n## Phase 1: Pricing\n\nt\n\n## Phase 2: Readme\n\nt\n");
   writeLayout(root, id, { worktrees: null, repos: [{ path: "src/Orders", base: null, worktree: "src/Orders/.worktrees/RMS-12" }] });
-  const block = (n) => `## Phase ${n} of ${id}: P\n\nDone.\n\nFiles: ${n === 1 ? "src/Orders/pricing.cs" : "README.md"}\nCommit: fix: a\n\nPHASE DONE`;
+  const block = (n) => `## Phase ${n} of ${id}: P\n\nDone.\n\nFiles: ${n === 1 ? "src/Orders/pricing.cs" : "README.md"}\nCommit: fix(pricing): a\n\n    Rate comes from the tariff.\n    - one line per tier\n\nPHASE DONE`;
   phaseDone(root, id);
   saveBlock(root, id, 1, block(1));
-  assert.match(packet(id, root).text, /^  commit {4}fix: a \(staged; approval commits it in src\/Orders\/\.worktrees\/RMS-12 and the umbrella\)$/m);
+  const commit = (lines) => lines.slice(lines.findIndex((l) => l.startsWith("  commit")), lines.indexOf("", 3));
+  assert.deepEqual(commit(packet(id, root).lines), [
+    "  commit    src/Orders/.worktrees/RMS-12  fix(pricing): a",
+    "            main repo  fix(pricing): a",
+    "            Rate comes from the tariff.",
+    "            - one line per tier",
+  ]);
 
   setMarker(root, id, 1, "approved", new Date());
   setMarker(root, id, 2, "done", new Date());
   saveBlock(root, id, 2, block(2));
-  assert.match(packet(id, root).text, /^  commit {4}fix: a \(staged; approval commits it\)$/m);
+  assert.deepEqual(commit(packet(id, root).lines), ["  commit    fix(pricing): a", "            Rate comes from the tariff.", "            - one line per tier"]);
 });
 
 test("a Files: line of twelve paths shows whole paths up to the width, then +k more (T-1.3)", (t) => {

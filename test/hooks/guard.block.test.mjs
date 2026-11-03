@@ -8,6 +8,8 @@ function run(payload, root) {
   return r.json;
 }
 
+const COMMIT = "Commit: docs(a): one line";
+
 function blockVerdict(root, text) {
   const tp = transcript(root, [user("x"), assistant([{ type: "text", text }])]);
   return run({ hook_event_name: "SubagentStop", transcript_path: tp, cwd: root }, root);
@@ -19,7 +21,7 @@ test("guard.block bounces a contract block without a token and passes one with i
   const b = run({ hook_event_name: "SubagentStop", transcript_path: bad, cwd: root }, root);
   assert.equal(b.decision, "block");
   assert.match(b.reason, /verdict token/);
-  const good = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nRed: n/a: docs only\nRoot cause: none\n\nPHASE DONE` }])]);
+  const good = transcript(root, [user("x"), assistant([{ type: "text", text: `## Phase 1 of ${id}: A\n\nDone.\n\nRed: n/a: docs only\nRoot cause: none\n${COMMIT}\n\nPHASE DONE` }])]);
   assert.equal(run({ hook_event_name: "SubagentStop", transcript_path: good, cwd: root }, root), null);
   const plain = transcript(root, [user("x"), assistant([{ type: "text", text: "just a chat reply" }])]);
   assert.equal(run({ hook_event_name: "Stop", transcript_path: plain, cwd: root }, root), null);
@@ -27,7 +29,7 @@ test("guard.block bounces a contract block without a token and passes one with i
 
 test("guard.block checks the Red and Root cause lines of a PHASE DONE developer block (T-4.1)", (t) => {
   const { root, id } = hookProject(t);
-  const phase = (...fields) => [`## Phase 1 of ${id}: A`, "", "Done.", "", ...fields, "", "PHASE DONE"].join("\n");
+  const phase = (...fields) => [`## Phase 1 of ${id}: A`, "", "Done.", "", ...fields, COMMIT, "", "PHASE DONE"].join("\n");
   const noRed = blockVerdict(root, phase("Root cause: none"));
   assert.equal(noRed?.decision, "block");
   assert.match(noRed.reason, /no "Red:" line/);
@@ -43,7 +45,7 @@ test("guard.block checks the Red and Root cause lines of a PHASE DONE developer 
 
 test("guard.block rejects a PHASE DONE block that folds Files: into +n more and passes the full list (T-1.1)", (t) => {
   const { root, id } = hookProject(t);
-  const phase = (files) => [`## Phase 1 of ${id}: A`, "", "Done.", "", `Files: ${files}`, "Red: n/a: docs only", "Root cause: none", "", "PHASE DONE"].join("\n");
+  const phase = (files) => [`## Phase 1 of ${id}: A`, "", "Done.", "", `Files: ${files}`, "Red: n/a: docs only", "Root cause: none", COMMIT, "", "PHASE DONE"].join("\n");
   for (const folded of ["src/a.ts, src/b.ts (+3 more)", "src/a.ts, src/b.ts, +3 more"]) {
     const out = blockVerdict(root, phase(folded));
     assert.equal(out?.decision, "block", folded);
@@ -63,8 +65,30 @@ test("guard.block does not ask a stalled block or another agent's block for proo
 
 function verifiedPhase(id, verified) {
   const fields = verified === null ? [] : [`Verified: ${verified}`];
-  return [`## Phase 1 of ${id}: A`, "", "Done.", "", ...fields, "Red: n/a: docs only", "Root cause: none", "", "PHASE DONE"].join("\n");
+  return [`## Phase 1 of ${id}: A`, "", "Done.", "", ...fields, "Red: n/a: docs only", "Root cause: none", COMMIT, "", "PHASE DONE"].join("\n");
 }
+
+const commitPhase = (id, commit) => [`## Phase 1 of ${id}: A`, "", "Done.", "", "Red: n/a: docs only", "Root cause: none", ...(commit === null ? [] : [commit]), "", "PHASE DONE"].join("\n");
+const TYPES = ["feat", "fix", "refactor", "perf", "test", "docs", "build", "ci", "chore", "style"];
+
+test("guard.block bounces a PHASE DONE block whose Commit: line is not a Conventional Commits subject, naming the types and 72 (T-2.1)", (t) => {
+  const { root, id } = hookProject(t);
+  const out = blockVerdict(root, commitPhase(id, "Commit: Pricing, phase 1"));
+  assert.equal(out?.decision, "block");
+  assert.match(out.reason, /"Pricing, phase 1" is not/);
+  for (const type of TYPES) assert.ok(out.reason.includes(type), `${out.reason} lacks ${type}`);
+  assert.match(out.reason, /\b72\b/);
+});
+
+test("guard.block bounces a PHASE DONE block without Commit:, passes a wrapped one, and leaves stalled and reviewer blocks alone (T-2.2)", (t) => {
+  const { root, id } = hookProject(t);
+  const missing = blockVerdict(root, commitPhase(id, null));
+  assert.equal(missing?.decision, "block");
+  assert.match(missing.reason, /the block has no "Commit:" line/);
+  assert.equal(blockVerdict(root, commitPhase(id, "Commit: `feat(x): y.`")), null);
+  assert.equal(blockVerdict(root, `## Phase 1 of ${id}: A\n\nStuck.\n\nPHASE STALLED`), null);
+  assert.equal(blockVerdict(root, `## Review: ${id} · phase 1\n\nClean.\n\nFindings: clean\n\nAPPROVED`), null);
+});
 
 test("guard.block passes a PHASE DONE block whose Verified: is blocked: data: <what>", (t) => {
   const { root, id } = hookProject(t);

@@ -88,14 +88,22 @@ function plannedLine({ repo, from, base, worktree }) {
   return `${repo} from ${from} @${base ? base.slice(0, 8) : "unresolved"} -> ${worktree}`;
 }
 
-function approvalCommits(root, snap, phase) {
-  const dirs = [...nestedCheckoutPaths(root, snap, phase).keys()];
-  return dirs.length ? `approval commits it in ${dirs.join(", ")} and the umbrella` : "approval commits it";
+const MAIN_REPO = "main repo";
+
+function repoLines(dirs, subject, room) {
+  if (!dirs.length) return [cut(subject, room)];
+  return [...dirs, MAIN_REPO].map((dir) => `${dir}  ${cut(subject, room - dir.length - 2)}`);
 }
 
-function commitLine(root, snap, phase) {
+function commitLines(root, snap, phase, width) {
   const checked = phaseCommitMessage(root, snap, phase);
-  return "problem" in checked ? `not committable: ${checked.problem}` : `${checked.message}  (staged; ${approvalCommits(root, snap, phase)})`;
+  if ("problem" in checked) return [field("commit", `not committable: ${checked.problem}`, width)];
+  const indent = `  ${"".padEnd(LABEL)}`;
+  const room = width - indent.length;
+  const [subject, ...body] = checked.message.split("\n");
+  const dirs = [...nestedCheckoutPaths(root, snap, phase).keys()];
+  const [first, ...rest] = [...repoLines(dirs, subject, room), ...body.filter((line) => line.trim()).map((line) => cut(line, room))];
+  return [`  ${"commit".padEnd(LABEL)}${first}`, ...rest.map((line) => indent + line)];
 }
 
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
@@ -138,7 +146,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
       lines.push(...proposalLines("waivers", waivers, width));
       if (options) options += "   [w] waive <n>";
     }
-    lines.push(field("commit", commitLine(root, snap, n.phase), width));
+    lines.push(...commitLines(root, snap, n.phase, width));
   } else if (n.action === "approve_phase") {
     const body = snap.artifact?.body ?? "";
     const summary = body.match(/^## Summary\s*\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? "";

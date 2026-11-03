@@ -132,8 +132,8 @@ function twoPhaseOrder(root: string): string {
   return s.id;
 }
 
-function routePhaseDone(root: string, id: string, n: number, continued: boolean) {
-  const block = `## Phase ${n} of ${id}: P\n\nP works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: feat: p\n\nPHASE DONE`;
+function routePhaseDone(root: string, id: string, n: number, continued: boolean, commit = "feat: p") {
+  const block = `## Phase ${n} of ${id}: P\n\nP works.\n\nFiles: a.mjs\nTests: passed\nLint: none detected\nVerified: no drivable surface: test\nDecisions: none\nComments: none\nCommit: ${commit}\n\nPHASE DONE`;
   const tp = transcript(root, [user(`work: ${id}\nphase: ${n}`), assistant(block)]);
   return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "picket:developer", stop_hook_active: continued }, hookContext(root));
 }
@@ -155,6 +155,15 @@ test("a continued turn that repeats the last row routes nothing", (t) => {
   routePhaseDone(root, id, 2, false);
   assert.equal(routePhaseDone(root, id, 2, true), null);
   assert.equal(verdictRows(root, id).length, 2);
+});
+
+test("a block re-emitted after a bounce replaces the saved block and adds no second row (T-2.3)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routePhaseDone(root, id, 1, false, "Pricing, phase 1");
+  assert.equal(routePhaseDone(root, id, 1, true, "feat(pricing): rate field"), null);
+  assert.match(readFileSync(join(root, "work", id, "phases", "1.block.md"), "utf8"), /^Commit: feat\(pricing\): rate field$/m);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1]]);
 });
 
 test("a continued turn returns no context for a pull request review or a routing error", (t) => {
