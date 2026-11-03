@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
+import { basename } from "node:path";
 import { stateDir, statePath, stateRel } from "../../../shared/paths.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
@@ -14,10 +15,15 @@ import { context, type ContextOutput } from "../../output.mts";
 
 type StopEvent = "Stop" | "SubagentStop";
 type BlockInfo = { agent: string; id: string; phase: number | null; scope: ReviewScope | null; index: number };
+type Outcome = { text: string; notice: string | null };
 type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hints; id: string; verdict: string; phase: number | undefined; text: string; ctx: HookContext };
 
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
+const WRITTEN: Partial<Record<string, string>> = { "ARTIFACT WRITTEN": "written", AMENDED: "amended", "REPORT WRITTEN": "written" };
+const ARTIFACT: BlockField<"artifact"> = "Artifact";
+const REPORT: BlockField<"report"> = "Report";
+const PATH_FIELD: Partial<Record<string, string>> = { architect: ARTIFACT, analyst: REPORT };
 const CLASS_ID = /^[A-Z][A-Za-z]*\d+$/;
 const CLASSES: BlockField<"review"> = "Classes";
 const CLASSES_LINE = new RegExp(`^${CLASSES}:\\s*(.*)$`, "m");
@@ -89,7 +95,7 @@ function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Rou
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
 
-function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): string | null {
+function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | null {
   const { text } = readTurn(event, { includeToolPayloads: true });
   const verdict = findVerdict(blockLines(text).last);
   if (!verdict) return null;
@@ -98,24 +104,33 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): string | null
   const id = info?.id ?? hints.work_id;
   if (!id) return null;
   const continued = Boolean(event.stop_hook_active);
-  if (info?.scope === "pr") return continued ? null : keepPullRequestReview(id, verdict, text, ctx.root);
+  if (info?.scope === "pr") return continued ? null : { text: keepPullRequestReview(id, verdict, text, ctx.root), notice: null };
   const phase = info?.phase ?? hints.phase ?? undefined;
   if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) return null;
-  return applyVerdict({ event, info, hints, id, verdict, phase, text, ctx });
+  const routed = applyVerdict({ event, info, hints, id, verdict, phase, text, ctx });
+  return { text: routed, notice: writtenNotice(info, verdict, text) };
 }
 
-function outcome(event: PayloadOf<StopEvent>, ctx: HookContext): string | null {
+export function writtenNotice(info: BlockInfo | null, verdict: string, text: string): string | null {
+  const done = WRITTEN[verdict];
+  const label = info ? PATH_FIELD[info.agent] : undefined;
+  if (!done || !label) return null;
+  const path = text.match(new RegExp(`^${label}:\\s*(\\S+)`, "m"))?.[1];
+  return path ? `picket · ${basename(path, ".md")} ${done}: ${path}` : null;
+}
+
+function outcome(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | null {
   try {
     return routeTurn(event, ctx);
   } catch (err) {
     if (event.stop_hook_active) return null;
-    return `picket: verdict not applied (${(err as Error).message}). Run \`picket next <id>\` yourself.`;
+    return { text: `picket: verdict not applied (${(err as Error).message}). Run \`picket next <id>\` yourself.`, notice: null };
   }
 }
 
 export function routeVerdict(event: PayloadOf<StopEvent>, ctx: HookContext): ContextOutput | null {
   const out = outcome(event, ctx);
-  return out ? context(event.hook_event_name, out) : null;
+  return out ? context(event.hook_event_name, out.text, out.notice) : null;
 }
 
 export const hook: HookSpec<StopEvent> = {

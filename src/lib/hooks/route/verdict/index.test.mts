@@ -169,3 +169,32 @@ test("a continued turn returns no context for a pull request review or a routing
   assert.equal(errorTurn(true), null);
   assert.match(errorTurn(false).hookSpecificOutput.additionalContext, /verdict not applied/);
 });
+
+function routeWritten(root: string, id: string, block: string, agent: string) {
+  const tp = transcript(root, [user(`work: ${id}`), assistant(block)]);
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: agent }, hookContext(root));
+}
+
+test("an architect's ARTIFACT WRITTEN and AMENDED show the user the path from the Artifact line", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  const written = routeWritten(root, id, `## Order: ${id}\n\nTwo phases.\n\nArtifact: work/${id}/order.md\nDecisions: D-001 x\n\nARTIFACT WRITTEN`, "picket:architect");
+  assert.equal(written.systemMessage, `picket · order written: work/${id}/order.md`);
+  const amended = routeWritten(root, id, `## Amendment: ${id}\n\nD-001 revised.\n\nArtifact: work/${id}/order.md\nRevision: D-001 (r2) y\n\nAMENDED`, "picket:architect");
+  assert.equal(amended.systemMessage, `picket · order amended: work/${id}/order.md`);
+});
+
+test("an analyst's REPORT WRITTEN shows the user the path from the Report line", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const s = openItem(root, { lane: "research", title: "Mapped" });
+  const out = routeWritten(root, s.id, `## Report: ${s.id} · outline\n\nThe flow.\n\nTop findings: R-001 x [VERIFIED]\nReport: work/${s.id}/research.md\n\nREPORT WRITTEN`, "picket:analyst");
+  assert.equal(out.systemMessage, `picket · research written: work/${s.id}/research.md`);
+});
+
+test("no message reaches the user for a developer verdict or a block without a path line", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  const bare = routeWritten(root, id, `## Order: ${id}\n\nTwo phases.\n\nARTIFACT WRITTEN`, "picket:architect");
+  assert.equal("systemMessage" in bare, false);
+  assert.equal("systemMessage" in routePhaseDone(root, id, 1, false), false);
+});

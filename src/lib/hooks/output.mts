@@ -3,7 +3,7 @@ import type { HookEvent } from "../hooks.mts";
 type PermissionDecision = "allow" | "ask" | "deny";
 
 export type PermissionOutput = { hookSpecificOutput: { hookEventName: "PreToolUse"; permissionDecision: PermissionDecision; permissionDecisionReason: string } };
-export type ContextOutput = { hookSpecificOutput: { hookEventName: HookEvent; additionalContext: string } };
+export type ContextOutput = { hookSpecificOutput: { hookEventName: HookEvent; additionalContext: string }; systemMessage?: string };
 export type BounceOutput = { decision: "block"; reason: string };
 export type HookOutput = PermissionOutput | ContextOutput | BounceOutput;
 
@@ -27,8 +27,9 @@ export function fallThrough(): null {
   return null;
 }
 
-export function context(event: HookEvent, text: string): ContextOutput {
-  return { hookSpecificOutput: { hookEventName: event, additionalContext: text } };
+export function context(event: HookEvent, text: string, notice?: string | null): ContextOutput {
+  const output: ContextOutput = { hookSpecificOutput: { hookEventName: event, additionalContext: text } };
+  return notice ? { ...output, systemMessage: notice } : output;
 }
 
 export function bounce(reason: string): BounceOutput {

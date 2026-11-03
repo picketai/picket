@@ -72,8 +72,8 @@ test("BLOCK_FIELDS lists the labels kernel code reads from each block kind", () 
   assert.deepEqual(BLOCK_FIELDS, {
     phase: ["Files", "Tests", "Lint", "Verified", "Red", "Root cause", "Decisions", "Comments", "Waivers", "Commit"],
     review: ["Classes"],
-    artifact: [],
-    report: [],
+    artifact: ["Artifact"],
+    report: ["Report"],
     expedited: ["Decisions", "Waivers"],
   });
 });

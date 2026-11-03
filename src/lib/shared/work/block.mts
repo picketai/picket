@@ -44,8 +44,8 @@ export function readHeading(text: string | null | undefined): BlockHeading | nul
 export const BLOCK_FIELDS = {
   phase: ["Files", "Tests", "Lint", "Verified", "Red", "Root cause", "Decisions", "Comments", "Waivers", "Commit"],
   review: ["Classes"],
-  artifact: [],
-  report: [],
+  artifact: ["Artifact"],
+  report: ["Report"],
   expedited: ["Decisions", "Waivers"],
 } as const satisfies Readonly<Record<BlockKind, readonly string[]>>;
 
