@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { STRATEGIC_REVIEW } from "../../../shared/work/artifact.mts";
 import { reportProblems } from "./report.mts";
 
 type Draft = { front?: string; summary?: string; findings?: string[] };
@@ -69,4 +72,26 @@ test("an unfilled placeholder and an HTML comment are reported (T-2.5)", () => {
   assert.deepEqual(reportProblems(report({ summary: "[REPLACE]" })), ["unfilled [REPLACE] placeholder left in the file"]);
   assert.deepEqual(reportProblems(report({ summary: "[REPLACED] is a word, not a placeholder [VERIFIED]." })), []);
   assert.deepEqual(reportProblems(report({ summary: "<!-- required -->\nAnswer [VERIFIED]." })), ["template comment left in the file"]);
+});
+
+const TEMPLATE = readFileSync(resolve("src/skills/documenting/templates/report.md"), "utf8").replace(/\r\n/g, "\n");
+const FINDING_EXAMPLE = /^- \*\*R-\d{3}\*\*.*$/gm;
+
+function filledTemplate(): string {
+  return TEMPLATE.split("\n")
+    .filter((line) => !line.startsWith("<!--"))
+    .join("\n")
+    .replace(/^confidence: \[REPLACE[^\]]*\]$/m, "confidence: high")
+    .replace(/\[REPLACE(?::[^\]]*)?\]/g, "filled");
+}
+
+test("the report template, filled the way it says, passes lint.schema", () => {
+  assert.ok((filledTemplate().match(FINDING_EXAMPLE) ?? []).length >= 2, "the template keeps its example finding lines");
+  assert.deepEqual(reportProblems(filledTemplate()), []);
+});
+
+test("each template finding line with the strategic flag at its end, where the template puts it, passes lint.schema", () => {
+  for (const line of filledTemplate().match(FINDING_EXAMPLE) ?? []) {
+    assert.deepEqual(reportProblems(filledTemplate().replace(line, `${line} ${STRATEGIC_REVIEW}`)), [], line);
+  }
 });

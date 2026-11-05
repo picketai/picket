@@ -1,0 +1,1 @@
+Add a round-trip test for the report template and lint.schema: every example finding line in src/skills/documenting/templates/report.md that lint.schema parses (confidence markers, the [STRATEGIC REVIEW NEEDED] flag) goes through lint.schema and passes, so a template line that places the flag where lint.schema refuses it fails the test. Test only; no product code changes.
