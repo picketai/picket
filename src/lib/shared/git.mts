@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { gitRead, gitRun, type GitRunOptions } from "../util/git.mts";
+import { GitFailed, gitRead, gitRun, type GitRunOptions } from "../util/git.mts";
 import { BOOKKEEPING_PREFIXES } from "./paths.mts";
 
 const FILE_BUFFER = 64 * 1024 * 1024;
@@ -211,24 +211,53 @@ function buildTemporaryIndex(top: string, env: NodeJS.ProcessEnv, index: string,
   if (deleted.length) gitStrict(top, ["update-index", "--force-remove", "-z", "--stdin"], { env: indexEnv, input: nulInput(deleted) });
 }
 
+type CommitIndex = { root: string; top: string; env: NodeJS.ProcessEnv; index: string; before: string | null };
+
+function indexChanges(top: string, indexEnv: NodeJS.ProcessEnv, before: string | null): string[] {
+  const args = before ? ["diff", "--cached", "--name-only", "--no-renames", "-z", before] : ["ls-files", "-z"];
+  return nulList(gitStrict(top, args, { env: indexEnv }));
+}
+
+function stageCommit({ root, top, env, index, before }: CommitIndex, owned: string[], add: readonly string[]): string[] {
+  buildTemporaryIndex(top, env, index, before, owned);
+  const indexEnv = withIndex(env, index);
+  for (const path of add) gitStrict(root, ["add", "-A", "--", path], { env: indexEnv });
+  return indexChanges(top, indexEnv, before);
+}
+
+function underAny(path: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => (prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix));
+}
+
+function syncSharedIndex(top: string, env: NodeJS.ProcessEnv, sha: string | null, committed: string[], add: readonly string[]): string[] {
+  try {
+    gitStrict(top, ["reset", "-q", "--pathspec-from-file=-", "--pathspec-file-nul"], { env, input: nulInput(committed) });
+    return [];
+  } catch (err) {
+    if (!(err instanceof GitFailed)) throw err;
+    const paths = [...add, ...committed.filter((path) => !underAny(path, add))];
+    return [`index not updated after ${sha}: ${err.lastLine}; run git reset -q -- ${paths.join(" ")}`];
+  }
+}
+
 export function commitOwned(root: string, message: string, { add = [], owns, env }: CommitOptions): CommitResult {
-  for (const p of add) gitRead(root, ["--literal-pathspecs", "add", "-A", "--", p]);
   const top = gitRead(root, ["rev-parse", "--show-toplevel"]);
   const staged = top ? stagedPathsNoRenames(top) : [];
-  const committed = staged.filter((path) => owns(path));
+  const owned = staged.filter((path) => owns(path));
   const left_staged = staged.filter((path) => !owns(path));
-  if (!top || !committed.length) return { sha: null, committed, left_staged, warnings: [] };
+  if (!top || (!owned.length && !add.length)) return { sha: null, committed: owned, left_staged, warnings: [] };
 
   const index = resolve(root, gitRead(root, ["rev-parse", "--git-path", "picket-commit.index"]) ?? "");
   const before = revParse(top, "HEAD");
+  let committed: string[];
   try {
-    buildTemporaryIndex(top, env, index, before, committed);
+    committed = stageCommit({ root, top, env, index, before }, owned, add);
+    if (!committed.length) return { sha: null, committed, left_staged, warnings: [] };
     gitStrict(top, ["commit", "-q", "-m", message], { env: withIndex(env, index) });
   } finally {
     rmSync(index, { force: true });
   }
   const sha = head(top);
-  const warnings = revParse(top, `${sha}^`) === before ? [] : [`HEAD moved during the commit; check ${sha}`];
-  gitStrict(top, ["reset", "-q", "--pathspec-from-file=-", "--pathspec-file-nul"], { env, input: nulInput(committed) });
-  return { sha, committed, left_staged, warnings };
+  const moved = revParse(top, `${sha}^`) === before ? [] : [`HEAD moved during the commit; check ${sha}`];
+  return { sha, committed, left_staged, warnings: [...moved, ...syncSharedIndex(top, env, sha, committed, add)] };
 }

@@ -187,6 +187,48 @@ test("commitsBetween lists the full shas after the base oldest first, and none f
   assert.deepEqual(commitsBetween(root, "no-such-rev"), []);
 });
 
+function workFolderRepo(t: TestContext): string {
+  const root = gitRepo(t);
+  writeIn(root, "work/x/state.yaml", "status: open\n");
+  writeIn(root, "src/a.js", "a\n");
+  gitIn(root, "add", "--", "src/a.js");
+  return root;
+}
+
+const commitWorkFolder = (root: string) => withIdentity(() => commitOwned(root, "feat: a", { add: ["work/x/"], owns: ownsSrc, env: process.env }));
+
+test("under a held index lock the commit still takes the work folder and warns that the shared index was not updated", (t) => {
+  const root = workFolderRepo(t);
+  const lock = join(root, ".git", "index.lock");
+  writeFileSync(lock, "");
+  const r = commitWorkFolder(root);
+  assert.equal(r.sha, head(root));
+  assert.deepEqual(committedNames(root), ["src/a.js", "work/x/state.yaml"]);
+  assert.equal(r.warnings.length, 1, r.warnings.join(" | "));
+  assert.ok(r.warnings[0].startsWith(`index not updated after ${r.sha}: `), r.warnings[0]);
+  assert.ok(r.warnings[0].endsWith("; run git reset -q -- work/x/ src/a.js"), r.warnings[0]);
+  assert.equal(existsSync(lock), true);
+});
+
+test("without a lock the commit takes the work folder, warns nothing and leaves the tree clean", (t) => {
+  const root = workFolderRepo(t);
+  const r = commitWorkFolder(root);
+  assert.deepEqual(committedNames(root), ["src/a.js", "work/x/state.yaml"]);
+  assert.deepEqual(r.warnings, []);
+  assert.equal(gitOut(root, "status", "--porcelain"), "");
+});
+
+test("a changed work folder alone is committed, and an unchanged one with nothing owned staged commits nothing", (t) => {
+  const root = gitRepo(t);
+  writeIn(root, "work/x/state.yaml", "status: open\n");
+  const first = commitWorkFolder(root);
+  assert.equal(first.sha, head(root));
+  assert.deepEqual(committedNames(root), ["work/x/state.yaml"]);
+  const before = head(root);
+  assert.deepEqual(commitWorkFolder(root), { sha: null, committed: [], left_staged: [], warnings: [] });
+  assert.equal(head(root), before);
+});
+
 test("a failed commit leaves HEAD and the real index as they were and removes the temporary index (T-1.6)", (t) => {
   const root = gitRepo(t);
   const hook = join(root, ".git", "hooks", "commit-msg");

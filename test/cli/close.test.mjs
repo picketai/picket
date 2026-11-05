@@ -276,7 +276,7 @@ test("a second close commits nothing, and an abandoned item is refused", (t) => 
   assert.match(refused.json.error, /abandoned/);
 });
 
-test("a refused commit leaves the item done and staged, and the next close commits it (T-1.6)", (t) => {
+test("a refused commit leaves the item done and the shared index as it was, and the next close commits it (T-1.6)", (t) => {
   const { root, id, git } = repoWithOpenItem(t);
   const hook = join(root, ".git", "hooks", "commit-msg");
   writeFileSync(hook, "#!/bin/sh\nexit 1\n");
@@ -288,8 +288,7 @@ test("a refused commit leaves the item done and staged, and the next close commi
   assert.equal(failed.code, 2, failed.stdout);
   assert.match(failed.json.error, /git commit failed/);
   assert.match(stateText(root, id), /status: done/);
-  const staged = git("diff", "--cached", "--name-only").split("\n");
-  assert.ok(staged.includes(`work/${id}/state.yaml`) && staged.includes("README.md"), staged.join(", "));
+  assert.equal(git("diff", "--cached", "--name-only"), "README.md");
   assert.equal(git("rev-parse", "HEAD"), before);
   assert.equal(existsSync(join(root, ".git", "picket-commit.index")), false);
   git("reset", "-q", "--", "README.md");

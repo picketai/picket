@@ -218,6 +218,18 @@ test("a run-grant approval on PHASE DONE commits through the same phase predicat
   assert.ok(r.applied.includes("left staged, not phase 2's: src/a.js"), r.applied.join(" | "));
 });
 
+test("an approval under a held index lock commits the approval marker and records the accept row", (t) => {
+  const { root, id, git } = repoWithPhasedOrder(t);
+  stage(root, git, { "src/a.js": "a\n" });
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  writeFileSync(join(root, ".git", "index.lock"), "");
+  const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  const headSha = git("rev-parse", "--short", "HEAD");
+  assert.equal(git("log", "-1", "--format=%h", "--", `work/${id}/phases/1.approved`), headSha);
+  assert.ok(r.applied.some((line) => line.startsWith("index not updated after")), r.applied.join(" | "));
+  assert.ok(acceptRows(root).some((row) => row.phase === 1 && row.commit === headSha), JSON.stringify(acceptRows(root)));
+});
+
 test("a refused phase commit keeps HEAD, keeps every staged path staged and leaves no temporary index (T-1.6)", (t) => {
   const { root, id, git } = repoWithPhasedOrder(t);
   const hook = join(root, ".git", "hooks", "commit-msg");
