@@ -9,6 +9,8 @@ import { liveDrift, type Drift } from "../../shared/sources/drift.mts";
 import type { Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { itemWaivers } from "../../shared/work/approvals.mts";
+import { phasePaths } from "../../shared/work/artifact.mts";
+import { blockFiles, fixesFiles } from "../../shared/work/block.mts";
 import { workFile, workId, workRel, type WorkId } from "../../shared/work/files.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
 import { readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
@@ -49,11 +51,17 @@ function defaultScope(root: string, snap: WorkSnapshot): ChecklistScope {
   return Object.hasOwn(SCOPE_OF_ACTION, action) ? SCOPE_OF_ACTION[action] : "phase";
 }
 
+function ownedPaths(root: string, snap: WorkSnapshot): string[] | null {
+  if (!snap.phases.length) return null;
+  const id = snap.state.id;
+  return snap.phases.flatMap((phase) => [...phasePaths(phase), ...blockFiles(root, id, phase.n), ...fixesFiles(root, id, phase.n)]);
+}
+
 export function itemSummary(root: string, id: WorkId, { base, env, platform, scope }: ItemOptions): ItemSummary {
   const snap = readSnapshot(root, id);
   const from = base ?? snap.state.base ?? "HEAD";
   const config = itemConfig(root, env);
-  const changes = changesOfItem(root, snap.state, from);
+  const changes = changesOfItem(root, snap.state, from, ownedPaths(root, snap));
   const summary = summarize(root, changes, config);
   const chosen = scope ?? defaultScope(root, snap);
   return {

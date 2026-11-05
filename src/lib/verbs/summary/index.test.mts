@@ -10,6 +10,7 @@ import { markWaived } from "../../shared/review-summary.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { appendWaiver } from "../../shared/work/approvals.mts";
 import { setMarker } from "../../shared/work/markers.mts";
+import { saveBlock } from "../../shared/work/block.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { mutate } from "../mutate/index.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
@@ -311,6 +312,61 @@ test("a waiver in plan shape marks the silenced move at the worktree path waived
   assert.equal(markWaived(atWorktree, waiver("src/Orders/a.test.cs"), "linux", planPath)[0].waived, true);
   assert.equal(markWaived(atPlan, waiver(`${worktree}/a.test.cs`), "linux", planPath)[0].waived, true);
   assert.equal(markWaived(atWorktree, waiver("src/Orders/a.test.cs"), "linux")[0].waived, false, "without the mapper the shapes differ");
+});
+
+const A_PLAN = "---\nlane: order\nphases:\n  - n: 1\n    files: [a.ts]\n---\n# O\n\n## Phase 1: A\n\nt\n";
+const phaseBlock = (files: string) => `## Phase 1 of x: A\n\nDone.\n\nFiles: ${files}\nCommit: feat(a): a\n\nPHASE DONE`;
+
+function itemAmongOthers(t: TestContext) {
+  const root = gitRepo(t, { host: true, branch: "trunk", files: { "README.md": "base\n" }, message: "base" });
+  const base = gitOut(root, "rev-parse", "HEAD");
+  const id = open(root, "order", "Owned");
+  writeFileSync(join(root, "work", id, "order.md"), A_PLAN);
+  writeIn(root, "b.ts", "b1\nb2\nb3\nb4\nb5\n");
+  writeIn(root, "test/b.test.ts", 'it.only("b", () => {});\n');
+  gitIn(root, "add", "--", "b.ts", "test/b.test.ts");
+  gitIn(root, "commit", "-q", "-m", "feat(b): another item");
+  writeIn(root, "a.ts", "a1\na2\n");
+  gitIn(root, "add", "--", "a.ts", `work/${id}`);
+  gitIn(root, "commit", "-q", "-m", "feat(a): phase 1");
+  return { root, id, options: { ...ITEM, base } };
+}
+
+const stageFile = (root: string, rel: string, text: string) => {
+  writeIn(root, rel, text);
+  gitIn(root, "add", "--", rel);
+};
+
+test("an item with phases lists only the files of its own commits and counts only their lines (T-3.1)", (t) => {
+  const { root, id, options } = itemAmongOthers(t);
+  const summary = itemSummary(root, id, options);
+  assert.deepEqual(summary.changed_files, ["a.ts"]);
+  assert.deepEqual([summary.lines_added, summary.lines_removed], [2, 0]);
+});
+
+test("a staged path joins the summary only when a phase plan or block names it (T-3.2)", (t) => {
+  const { root, id, options } = itemAmongOthers(t);
+  saveBlock(root, id, 1, phaseBlock("a.ts, d.ts"));
+  stageFile(root, "c.ts", "c\n");
+  stageFile(root, "a.ts", "a1\na2\na3\n");
+  stageFile(root, "d.ts", "d\n");
+  const summary = itemSummary(root, id, options);
+  assert.deepEqual(summary.changed_files, ["a.ts", "d.ts"]);
+  assert.deepEqual([summary.lines_added, summary.lines_removed], [4, 0]);
+});
+
+test("a staged path named only on a fixes entry joins the summary (T-3.3)", (t) => {
+  const { root, id, options } = itemAmongOthers(t);
+  saveBlock(root, id, 1, phaseBlock("a.ts"));
+  setMarker(root, id, 1, "approved", new Date());
+  saveBlock(root, id, 1, phaseBlock("e.ts"));
+  stageFile(root, "e.ts", "e\n");
+  assert.deepEqual(itemSummary(root, id, options).changed_files, ["a.ts", "e.ts"]);
+});
+
+test("a focus another item committed is not in this item's silenced list (T-3.4)", (t) => {
+  const { root, id, options } = itemAmongOthers(t);
+  assert.deepEqual(itemSummary(root, id, options).silenced, []);
 });
 
 test("the review summary carries the saved mutation (T-6.5)", (t) => {

@@ -10,6 +10,7 @@ import { nestedRepos, readLayout, type ItemLayout } from "./repos.mts";
 import { securityPathOf } from "./security-paths.mts";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
 import type { Approval } from "./work/approvals.mts";
+import { workRel, type WorkId } from "./work/files.mts";
 import type { WorkState } from "./work/state.mts";
 
 export type Size = "small" | "medium" | "large";
@@ -58,7 +59,8 @@ function workingText(dir: string, path: string): string {
 }
 
 function silencedIn({ dir, base, head, files, prefix }: SilencedInput, bar: QualityBar): Move[] {
-  const deleted = git.deletedSince(dir, base, head).filter((path) => !git.isNonProduct(path));
+  const listed = new Set(files);
+  const deleted = git.deletedSince(dir, base, head).filter((path) => !git.isNonProduct(path) && listed.has(path));
   const gone = new Set(deleted);
   const after = (path: string) => (head ? git.fileAt(dir, head, path) : workingText(dir, path));
   const edited: Move[] = files
@@ -161,16 +163,37 @@ function nestedChanges(root: string, layout: ItemLayout, branch: string | null):
   });
 }
 
-export function changesOfItem(root: string, state: WorkState, base: string): ChangeSet {
+type RootChanges = { files: string[]; added: number; removed: number; before: string };
+
+function sumStats(stats: readonly { added: number; removed: number }[]): { added: number; removed: number } {
+  return stats.reduce((sum, s) => ({ added: sum.added + s.added, removed: sum.removed + s.removed }), { added: 0, removed: 0 });
+}
+
+function rootSinceBase(root: string, base: string, isProduct: (path: string) => boolean): RootChanges {
+  return { files: git.changedSince(root, base).filter(isProduct), ...git.diffStat(root, base, null), before: base };
+}
+
+function rootOwned(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean): RootChanges {
+  const commits = git.commitsTouching(root, base, workRel(id)).map((sha) => ({ sha, files: git.filesInCommit(root, sha).filter(isProduct) }));
+  const isOwned = git.listedPathMatcher(root, [...owned]);
+  const dirty = git.dirtyPaths(root).filter((path) => isProduct(path) && isOwned(path));
+  const stats = [...commits.map(({ sha, files }) => git.diffStat(root, `${sha}^`, sha, files)), git.diffStat(root, "HEAD", null, dirty)];
+  const files = [...new Set([...commits.flatMap((c) => c.files), ...dirty])].sort();
+  return { files, ...sumStats(stats), before: commits.length ? `${commits[0].sha}^` : "HEAD" };
+}
+
+export function changesOfItem(root: string, state: WorkState, base: string, owned: readonly string[] | null = null): ChangeSet {
   const layout = readLayout(root, state.id);
   const nested = nestedChanges(root, layout, state.branch ?? null);
   // The root sees a nested repo as one untracked directory entry; its files are counted below instead.
   const nestedEntries = new Set(nested.flatMap((r) => [r.path, `${r.path}/`]));
-  const rootChanged = git.changedSince(root, base).filter((f) => !git.isNonProduct(f) && !nestedEntries.has(f));
+  const isProduct = (path: string) => !git.isNonProduct(path) && !nestedEntries.has(path);
+  const rootChanges = owned === null ? rootSinceBase(root, base, isProduct) : rootOwned(root, state.id, base, owned, isProduct);
+  const rootChanged = rootChanges.files;
   const files = [...rootChanged, ...nested.flatMap((r) => r.changed)].sort();
-  const { added, removed } = nested.reduce((sum, r) => ({ added: sum.added + r.added, removed: sum.removed + r.removed }), git.diffStat(root, base, null));
+  const { added, removed } = sumStats([rootChanges, ...nested]);
   const silencedInputs: SilencedInput[] = [
-    { dir: root, base, head: null, files: rootChanged, prefix: "" },
+    { dir: root, base: rootChanges.before, head: null, files: rootChanged, prefix: "" },
     ...nested.filter((r) => !r.skipped).map((r) => ({ dir: r.worktree as string, base: r.base as string, head: null, files: r.changed.map((f) => f.slice(r.prefix.length)), prefix: r.prefix })),
   ];
   return { base, head: null, files, planFiles: files.map((f) => planPathOf(layout, f)), added, removed, silencedInputs, repos: nested };

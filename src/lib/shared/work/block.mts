@@ -107,9 +107,18 @@ export function latestSavedBlock(root: string, id: WorkId, n: number): string | 
   return latest === null ? null : normalisedBlock(latest);
 }
 
-export function blockFiles(root: string, id: WorkId, n: number): string[] {
-  const files = blockField(parseBlock(readBlock(root, id, n) ?? ""), "Files") ?? "";
+function filesOf(block: string): string[] {
+  const files = blockField(parseBlock(block), "Files") ?? "";
   return files.split(PATH_SEPARATORS).filter((token) => PATH_TOKEN.test(token));
+}
+
+export function blockFiles(root: string, id: WorkId, n: number): string[] {
+  return filesOf(readBlock(root, id, n) ?? "");
+}
+
+export function fixesFiles(root: string, id: WorkId, n: number): string[] {
+  const entries = readText(fixesPath(root, id, n))?.split(FIXES_ENTRY) ?? [];
+  return entries.flatMap(filesOf);
 }
 
 function labelLine(line: string): LabelLine | null {

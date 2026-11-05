@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { commitOwned, dirtyPaths, head, isRepo, lastCommitOf, productLinesAdded, workingState } from "./git.mts";
+import { commitOwned, commitsTouching, diffStat, dirtyPaths, head, isRepo, lastCommitOf, productLinesAdded, workingState } from "./git.mts";
 import { commitIn, gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import { withProject } from "#test/project.mts";
 
@@ -151,6 +151,27 @@ test("lastCommitOf names the last commit that touched a path, and null for a pat
   commitIn(root, "two\n", "later");
   assert.equal(lastCommitOf(root, "work/x/phases/1.approved"), phaseOne);
   assert.equal(lastCommitOf(root, "work/x/phases/2.approved"), null);
+});
+
+test("diffStat over an empty path list is zero while the tree has changes (T-3.5)", (t) => {
+  const root = modifiedRepo(t, "src/a.txt");
+  assert.deepEqual(diffStat(root, "HEAD", null), { added: 1, removed: 1 });
+  assert.deepEqual(diffStat(root, "HEAD", null, []), { added: 0, removed: 0 });
+});
+
+test("commitsTouching lists only the commits that touch the folder, oldest first (T-3.5)", (t) => {
+  const root = gitRepo(t);
+  const base = gitOut(root, "rev-parse", "HEAD");
+  const commitPath = (rel: string, message: string) => {
+    writeIn(root, rel, `${message}\n`);
+    gitIn(root, "add", "-A");
+    gitIn(root, "commit", "-q", "-m", message);
+    return gitOut(root, "rev-parse", "HEAD");
+  };
+  const first = commitPath("work/x/state.yaml", "first");
+  commitPath("src/other.ts", "other");
+  const second = commitPath("work/x/phases/1.approved", "second");
+  assert.deepEqual(commitsTouching(root, base, "work/x/"), [first, second]);
 });
 
 test("a failed commit leaves HEAD and the real index as they were and removes the temporary index (T-1.6)", (t) => {

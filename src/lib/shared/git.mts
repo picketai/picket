@@ -114,10 +114,17 @@ export function rangeFiles(root: string, base: string, head: string): string[] {
   return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 }
 
-export function diffStat(root: string, base: string, head: string | null): { added: number; removed: number } {
+export function commitsTouching(root: string, base: string, path: string): string[] {
+  const out = gitRead(root, ["log", "--reverse", "--format=%H", `${base}..HEAD`, "--", path]) ?? "";
+  return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+}
+
+export function diffStat(root: string, base: string, head: string | null, paths?: readonly string[]): { added: number; removed: number } {
+  if (paths?.length === 0) return { added: 0, removed: 0 };
   let added = 0;
   let removed = 0;
-  for (const line of (gitRead(root, ["diff", "--numstat", base, ...(head ? [head] : [])]) ?? "").split(/\r?\n/)) {
+  const limit = paths ? ["--", ...paths] : [];
+  for (const line of (gitRead(root, ["--literal-pathspecs", "diff", "--numstat", base, ...(head ? [head] : []), ...limit]) ?? "").split(/\r?\n/)) {
     const m = line.match(/^(\d+)\t(\d+)\t/);
     if (m) {
       added += Number(m[1]);

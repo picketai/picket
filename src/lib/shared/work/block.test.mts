@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { BLOCK_FIELDS, blockField, blockFiles, COMMENT_SEPARATOR, commentProposal, detectBlock, parseBlock, proposals, proposedCommit, readBlock, readHeading, saveBlock, WAIVER_SEPARATOR, waiverProposal } from "./block.mts";
+import { BLOCK_FIELDS, blockField, blockFiles, COMMENT_SEPARATOR, commentProposal, detectBlock, fixesFiles, parseBlock, proposals, proposedCommit, readBlock, readHeading, saveBlock, WAIVER_SEPARATOR, waiverProposal } from "./block.mts";
 import { setMarker } from "./markers.mts";
 import { checkCommitMessage } from "../commit-message.mts";
 import { openItem, withProject } from "#test/project.mts";
@@ -211,6 +211,18 @@ test("waiverProposal reads a line waiver and a deleted-test waiver, and null for
   assert.deepEqual(waiverProposal('src/a.test.ts:12 "it.skip(x)" because flaky upstream'), { path: "src/a.test.ts", text: "it.skip(x)", deleted: false });
   assert.deepEqual(waiverProposal("src/b.test.ts deleted because moved to c.test.ts"), { path: "src/b.test.ts", text: null, deleted: true });
   assert.equal(waiverProposal('src/a.ts:4 "skip"'), null);
+});
+
+test("fixesFiles returns the Files paths of every N.fixes.md entry in order (T-3.3)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "order", title: "Fixes" });
+  const entry = (files: string) => `## Phase 2 of x: Two\n\nFix.\n\nFiles: ${files}\n\nPHASE DONE`;
+  saveBlock(root, id, 2, entry("src/original.ts"));
+  setMarker(root, id, 2, "approved", new Date());
+  saveBlock(root, id, 2, entry("src/a.ts, src/b.ts"));
+  saveBlock(root, id, 2, entry("src/c.ts"));
+  assert.deepEqual(fixesFiles(root, id, 2), ["src/a.ts", "src/b.ts", "src/c.ts"]);
+  assert.deepEqual(fixesFiles(root, id, 1), []);
 });
 
 test("saveBlock keeps an approved phase's block and appends a later block to N.fixes.md", (t) => {
