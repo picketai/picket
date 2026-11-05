@@ -93,17 +93,19 @@ Four kernel gaps cost gates and re-runs. Gap 1 is caused by gap 2: `parseBlock` 
 **Decision:** The route hook drops a developer block whose text, normalised as `saveBlock` normalises it, equals the newest saved block for its phase (`latestSavedBlock`: the last entry of `N.fixes.md`, else `N.block.md`) while the newest developer row is `PHASE DONE` for that phase. It appends no row, saves nothing and returns no context. A block that differs in any line still routes, so a fix after a review or a rejection keeps its row.
 **Instead of:** collapsing repeated rows when the verdict log is read: every reader (`next`, `close`, the band, the cost report) would need the same rule, and `N.fixes.md` would still gain the copy.
 
-### D-004: An item's summary covers its own commits and the paths its phases own
-**Decision:** For an item with phases, `changesOfItem` lists the product files of the commits in `<base>..HEAD` that touch `work/<id>/` (every phase commit adds that folder) plus the dirty paths (staged, unstaged or untracked) that the item owns: every phase's plan paths, the files on each phase's block `Files:` line, and those on each `N.fixes.md` entry. Line counts sum each own commit's numstat over its product files and the owned dirty paths' diff against HEAD. The silenced scan uses the parent of the oldest own commit as its before-image (HEAD when there is none) and only the item's files. An item with no phases (fast lane, no record yet) keeps today's base diff. Nested repositories keep their recorded-base diff.
-**Instead of:** the ledger's `accept` rows: `.picket/state/` is ignored by git and local to one machine, so the same item would summarise differently elsewhere.
+### D-004 (r2): An item's summary covers its own commits and the paths its phases own
+**Decision:** For an item with phases, `changesOfItem` lists the product files of the item's own commits plus the dirty paths (staged, unstaged or untracked) that the item owns: every phase's plan paths, the files on each phase's block `Files:` line, and those on each `N.fixes.md` entry. The own commits come from two sources: the commits in `<base>..HEAD` that touch `work/<id>/`, and the ledger's `accept` rows for the id whose commit resolves (`revParse`) to a commit in `<base>..HEAD`. Their union counts once. A phase commit can miss the folder: the approval of phase 1 here left `work/<id>/` out of d9d312a, and the folder landed in 595f05f, while the ledger row names d9d312a for phase 1. That add can no longer fail silently either: `commitOwned` runs each `add` path through `gitRun`, and a failure becomes a `warnings` line (`git add <path> failed: <last stderr line>`). The commit still runs, and `commitPhase` already prints its warnings. Line counts sum each own commit's numstat over its product files and the owned dirty paths' diff against HEAD. The silenced scan uses the parent of the oldest own commit as its before-image (HEAD when there is none) and only the item's files. An item with no phases (fast lane, no record yet) keeps today's base diff. Nested repositories keep their recorded-base diff.
+**Instead of:** a `Picket-Work: <id>` trailer on every phase commit, found with `git log --grep`: it changes the commit message shape, which this item leaves out of scope.
 **Risks:**
 - **RISK-004** Another item's commit between two of this item's commits that edits a shared file leaks into the silenced before-image diff. Mitigation: accepted; `changed_files` and the line counts stay exact, and the reviewer grades only the changed files.
+- **RISK-005** The ledger lives in `.picket/state/`, which git ignores, so on another machine a phase commit that missed `work/<id>/` drops out of the summary. Mitigation: the add failure now prints a warning at the approval, where the lead can commit the folder by path.
 
 ## Scope
 **In:**
 - Block label parsing in `block.mts` and its use by `guard.block`
 - The run grant hand-off in `send.mts` and `next-view.mts`, the `idle` marker, and the route hook's idle and repeat handling
 - The item summary's `changed_files`, line counts and silenced inputs for the root repository
+- `commitOwned` reporting a failed `add` as a warning
 **Out:**
 - The commit message shape and `commit-message.mts`
 - The Markdown mod
@@ -188,3 +190,4 @@ Four kernel gaps cost gates and re-runs. Gap 1 is caused by gap 2: `parseBlock` 
 - **OQ-001** Is Claude Code's continuation of a subagent after `SubagentStop` additional context a behaviour Picket may rely on? Owner: product owner. Fallback: phase 2 ships on the observed behaviour (developer transcript `agent-anbaa-developer-456fb486df1cea5f.jsonl`, 2026-11-03 15:53:57, continued into phase 3 with no lead message).
 
 ## Revision log
+- 2026-11-05: D-004 (r2): own commits also come from ledger accept rows, and a failed add warns; d9d312a missed work/<id>/

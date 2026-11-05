@@ -1,0 +1,6 @@
+Consolidate how Picket builds commit messages: one commit-message function that every Picket commit goes through (phase commits in the main repo and in each nested checkout, the work record commit, the close commit, and the fast lane's picket close --message).
+1. One shape: Conventional Commits `type(scope): subject`, subject one line at most 72 characters, optional indented body. Normalise only what is safe: strip wrapping backticks or quotes, `**` around the label, the `(staged…)` tail, a trailing period.
+2. guard.block bounces a developer PHASE DONE whose Commit: line does not fit the shape after normalising, naming the allowed types (feat, fix, refactor, perf, test, docs, build, ci, chore, style) and the 72-character limit. The silent fallback to "<phase title>, phase n of <id>" goes away.
+3. The gate packet shows the exact message the approval will commit, per repo.
+4. No Picket-related values in any commit: no trailer, no work item id, no Picket name. The work record commit in the main repo reuses the code commit's subject; in a single repo code and record stay one commit.
+5. The close commit becomes `chore: close <item title>` instead of `chore: close <id>`. picket close --message (fast lane) is checked by the same function.

@@ -1,0 +1,8 @@
+id: 20261105-kernel-reads-blocks-sends-and-diffs
+lane: fast
+title: "Kernel reads blocks, sends and diffs"
+status: abandoned
+created: 2026-11-05T08:39:16.817Z
+updated: 2026-11-05T08:39:26.866Z
+session: 13e4b056-abbf-4738-98a3-a9bcb06d5cc4
+base: 7891e268d25619364d926df3e6ad021e4f792085
