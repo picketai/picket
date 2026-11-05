@@ -11,4 +11,6 @@ List every staged file explicitly on the developer block's `Files:` line, never 
 
 The same holds for moves: name both halves of a rename (old path and new path). On 2026-10-23 (item 07a phase 1) only the new halves were listed, and 14 old-path deletions stayed staged for the lead to commit (2b23af5).
 
-**How to apply:** Before emitting a block, compare `git diff --cached --name-status` with the Files line; any path not in the phase's frontmatter `files`, including the old side of each `R` line, must be named.
+On 2026-11-03 (PR-ticket item) a test outside the touch set listed in a bulleted `**Files:**` section, and later on a `Files:` line of a re-emitted block, still stayed staged both times: the block the hook saves is the first emission, and bold or bulleted forms are not parsed. The guard also wants plain `Red:` and `Root cause:` lines.
+
+**How to apply:** Write the block's fields as plain `Field: value` lines (no bold, no bullets) in the first emission. Before emitting a block, compare `git diff --cached --name-status` with the Files line; any path not in the phase's frontmatter `files`, including the old side of each `R` line, must be named.

@@ -81,3 +81,5 @@ The `## Entry` part of a shell: what the agent reads first and which fields of t
 - **Versioning: SemVer from 1.0.0-alpha.1** (2026-10-02).
 - **The Claude side ships as a plugin, per SDR 00001** (2026-10-04): `picket init` writes only what a plugin cannot (the CLAUDE.md block, settings, `.picket/config.json`); skills and agents are always `picket:<name>`; rules reach the lead and each agent by hook injection; each hook is one Node process under 200 ms cold; nothing writes under the plugin root, which updates replace.
 - **Local install is one command, `picket init`** (2026-10-08): it registers the `picketai` marketplace and installs `picket@picketai` with project scope.
+- **Session list merges into picket-status** (2026-11-02): a pane opened by `/picket-session`; it never opens or resumes a session. `artifacts/strategy/decisions/00002-session-list-merges-picket-status.md`
+- **Closed is not done** (2026-11-02): a PR, its merge and the worktree follow `picket close`; only the developer marks a session done.

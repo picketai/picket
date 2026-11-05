@@ -11,4 +11,9 @@
 - [Lane open line pinned](lane-open-line-pinned.md) — lane-check.test.mjs matches each lane's `picket open` line; update it with the step
 - [Reply is lead-only](reply-is-lead-only.md) — guard.bash denies `picket reply` to agents; drive next/packet, unit-test the reply
 - [Temp short names](temp-short-names.md) — tmpdir is 8.3 short form, git prints long form; realpath both before relative
+- [Block heading names the id](block-heading-names-the-id.md) — "## Phase N of <work id>:", never a phase count; Red/Root cause have fixed forms
+- [Mod tests see no hook state](mod-test-module-state.md) — a test's import of a hook module is a separate copy; pin via engine calls
+- [Base red via archive](base-red-via-archive.md) — git archive the base into scratch to prove a test fails there; orders can grow mid-run
+- [Edit drops a boundary space](edit-drops-boundary-space.md) — old/new_string ending in a space can glue `a,b`; include the next word
+- [Guard false positives](guard-false-positives.md) — `**Label:**` lines in literals read as comments; `git config` denied in scratch repos
 - [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag

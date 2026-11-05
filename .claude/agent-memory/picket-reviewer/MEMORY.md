@@ -11,3 +11,6 @@
 - [left.jsonl is not proof of cleanup](left-jsonl-is-not-proof-of-cleanup.md) — ls every out-of-repo path a phase block admits to writing
 - [Probe guards from node -e](probe-guards-from-node-e.md) — #test/ imports resolve from -e at repo root; no probe file in src
 - [Probe numeric caps to the consumer](probe-numeric-caps-to-consumer.md) — NaN, 0, negative through the guard and on to the CLI arg; ask what multiplies the cap
+- [Atom shape on new fields](atom-shape-on-new-fields.md) — engine keeps old atom values across reload; a new object field with no shape reads undefined
+- [picket verify runs npm test](picket-verify-runs-npm-test.md) — never loop verify over phases in a review; grep the must_haves by hand
+- [Recompute summary totals by numstat](recompute-summary-totals-by-numstat.md) — git show --numstat minus work/.claude/.picket; no picket summary write
