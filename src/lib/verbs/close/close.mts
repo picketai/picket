@@ -2,7 +2,7 @@ import { Refused } from "../../shared/action.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
-import { recordAccept } from "../../shared/ledger.mts";
+import { appendLedger, readLedger, recordAccept } from "../../shared/ledger.mts";
 import { decisionCounts, deferredCriteria, phasePaths, strategicReviewIds, type DecisionCounts, type Deferral } from "../../shared/work/artifact.mts";
 import { blockFiles } from "../../shared/work/block.mts";
 import { workRel, type WorkId } from "../../shared/work/files.mts";
@@ -129,6 +129,24 @@ export function repeatedClasses(root: string): Repeat[] {
     .sort((a, b) => a.class.localeCompare(b.class));
 }
 
+const repeatKey = ({ class: cls, items }: { class: string; items: readonly string[] }): string => `${cls}:${[...items].sort().join(",")}`;
+
+function reportedAtOtherCloses(root: string, id: WorkId): Set<string> {
+  const rows = readLedger(root).rows.flatMap((row) => (row.event === "repeat" && row.work_id !== id ? [row] : []));
+  return new Set(rows.map(repeatKey));
+}
+
+function newRepeats(root: string, id: WorkId): Repeat[] {
+  const reported = reportedAtOtherCloses(root, id);
+  return repeatedClasses(root).filter((repeat) => !reported.has(repeatKey(repeat)));
+}
+
+function recordRepeats(root: string, id: WorkId, repeats: Repeat[], now: Date): void {
+  try {
+    for (const { class: cls, items } of repeats) appendLedger(root, { event: "repeat", session: null, agent: null, work_id: id, class: cls, items }, now);
+  } catch {}
+}
+
 function publishedPaths(snap: WorkSnapshot): string[] {
   return [...new Set(snap.verdicts.flatMap((row) => (typeof row.published === "string" ? [row.published] : [])))];
 }
@@ -187,7 +205,8 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
   const commitMessage = checkedCloseMessage(message, snap.state);
-  const repeats = repeatedClasses(root);
+  const repeats = newRepeats(root, id);
+  recordRepeats(root, id, repeats, now);
   const worktrees = recordedWorktrees(snap);
   if (!isRepo(root)) {
     const state = markDone(root, snap.state, now);

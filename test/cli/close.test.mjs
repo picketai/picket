@@ -189,6 +189,22 @@ test("close returns a repeat for a class two CHANGES REQUIRED reviews named, acr
   assert.match(human, /^Follow-up: Fix the Sl1 mistake class /m);
 });
 
+test("a repeat is reported at one close per set of items, again on re-closing that item, and again once a new item adds the class", (t) => {
+  const { root, id } = repoWithOpenItem(t);
+  const first = openItem(root, { lane: "order", title: "First review" }).id;
+  const second = openItem(root, { lane: "order", title: "Second review" }).id;
+  verdict(root, first, changesRequired(["Rf2"]));
+  verdict(root, second, changesRequired(["Rf2"]));
+  assert.deepEqual(picket(root, "close", id).json.repeats, [{ class: "Rf2", items: [first, second] }]);
+  assert.deepEqual(picket(root, "close", id).json.repeats, [{ class: "Rf2", items: [first, second] }]);
+  const later = openItem(root, { lane: "fast", title: "Later fix" }).id;
+  assert.deepEqual(picket(root, "close", later).json.repeats, []);
+  const third = openItem(root, { lane: "order", title: "Third review" }).id;
+  verdict(root, third, changesRequired(["Rf2"]));
+  const last = openItem(root, { lane: "fast", title: "Last fix" }).id;
+  assert.deepEqual(picket(root, "close", last).json.repeats, [{ class: "Rf2", items: [first, second, third] }]);
+});
+
 test("close returns no repeats when no class was named twice (T-9.4)", (t) => {
   const { root, id } = repoWithOpenItem(t);
   verdict(root, id, changesRequired(["Ts4"]));

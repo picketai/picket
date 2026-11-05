@@ -25,7 +25,8 @@ export type TurnRow = Common & {
 export type AcceptRow = Common & { event: "accept"; phase: number | null; commit: string; lines_added: number };
 export type DenialRow = Common & { event: "block" | "bounce"; hook: string; reason: string };
 export type EscalationRow = Common & { event: "escalation"; outcome: "ask" | "ran" | "denied"; why: string | null; key: string; command: string; reason: string | null };
-export type LedgerRow = TurnRow | AcceptRow | DenialRow | EscalationRow;
+export type RepeatRow = Common & { event: "repeat"; class: string; items: string[] };
+export type LedgerRow = TurnRow | AcceptRow | DenialRow | EscalationRow | RepeatRow;
 
 type Unstamped<T> = T extends LedgerRow ? Omit<T, "v" | "ts"> : never;
 export type NewRow = Unstamped<LedgerRow>;

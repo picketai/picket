@@ -1,0 +1,1 @@
+picket close prints the same Repeats and Follow-up lines for a mistake class on every later close, even after the class has been dealt with (Rf2 shows on every close since 20261105). Report a repeated class at the close where its set of items is new, and not again until a review in another item adds the class.
