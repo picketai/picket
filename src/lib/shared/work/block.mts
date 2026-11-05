@@ -62,11 +62,18 @@ export function blockField(block: Block, label: BlockField<"phase">): string | u
 }
 
 const PATH_TOKEN = /^[\w.@\-\/\\]*\.[A-Za-z0-9]+$/;
-const FIELD_LABEL = String.raw`Root cause|[A-Z][a-z]+`;
-const BOLD_COMMIT = String.raw`\*\*(?<bold>Commit):\*\*`;
-const FIELD_START = new RegExp(`^(?:${BOLD_COMMIT}|(?:${FIELD_LABEL}):)\\s`);
-const FIELD_LINE = new RegExp(`^(?:${BOLD_COMMIT}|(?<label>${FIELD_LABEL}):)\\s*(?<value>.*)$`);
+const PATH_SEPARATORS = /[\s,():;`]+/;
+const KNOWN_LABEL = [...new Set(Object.values(BLOCK_FIELDS).flat())].join("|");
+const PLAIN_LABEL = String.raw`Root cause|[A-Z][a-z]+`;
+const LIST_MARKER = String.raw`(?:[-*]|\d+\.)\s+`;
+const BOLD_LABEL = String.raw`\*\*(?<bold>${KNOWN_LABEL})(?::\*\*|\*\*:)`;
+const LISTED_LABEL = `(?:${LIST_MARKER})?(?:${BOLD_LABEL}|(?<listed>${KNOWN_LABEL}):)`;
+const LABEL_LINE = new RegExp(`^(?:${LISTED_LABEL}|(?<plain>${PLAIN_LABEL}):)(?<value>\\s.*)?$`);
+const LIST_ITEM = new RegExp(`^\\s*${LIST_MARKER}(?<text>\\S.*)$`);
 const INDENTED = /^\s+\S/;
+const VALUE_JOIN = "; ";
+
+type LabelLine = { label: string; value: string };
 
 export function blockPath(root: string, id: WorkId, n: number): string {
   return phaseMarker(root, id, n, "block.md");
@@ -91,7 +98,24 @@ export function readBlock(root: string, id: WorkId, n: number): string | null {
 
 export function blockFiles(root: string, id: WorkId, n: number): string[] {
   const files = blockField(parseBlock(readBlock(root, id, n) ?? ""), "Files") ?? "";
-  return files.split(/[\s,():]+/).filter((token) => PATH_TOKEN.test(token));
+  return files.split(PATH_SEPARATORS).filter((token) => PATH_TOKEN.test(token));
+}
+
+function labelLine(line: string): LabelLine | null {
+  const groups = line.match(LABEL_LINE)?.groups;
+  if (!groups) return null;
+  return { label: groups.bold ?? groups.listed ?? groups.plain, value: (groups.value ?? "").trim() };
+}
+
+function listItemsAfter(lines: string[], from: number): string[] {
+  const items: string[] = [];
+  for (const line of lines.slice(from)) {
+    if (!line.trim()) continue;
+    const text = labelLine(line) ? undefined : line.match(LIST_ITEM)?.groups?.text;
+    if (text === undefined) break;
+    items.push(text.trim());
+  }
+  return items;
 }
 
 function indentedBody(lines: string[], from: number): string {
@@ -118,14 +142,18 @@ export function parseBlock(text: string | null | undefined): Block {
   }
   while (i < lines.length && !lines[i].trim()) i++;
   const para: string[] = [];
-  while (i < lines.length && lines[i].trim() && !FIELD_START.test(lines[i])) para.push(lines[i].trim()), i++;
+  while (i < lines.length && lines[i].trim() && !labelLine(lines[i])) para.push(lines[i].trim()), i++;
   out.headline = para.join(" ");
   for (; i < lines.length; i++) {
-    const groups = lines[i].match(FIELD_LINE)?.groups;
-    if (!groups) continue;
-    const label = groups.bold ?? groups.label;
-    out.fields[label.toLowerCase()] = groups.value.trim();
-    if (label === COMMIT) out.commitBody = indentedBody(lines, i + 1);
+    const field = labelLine(lines[i]);
+    if (!field) continue;
+    const key = field.label.toLowerCase();
+    if (field.label === COMMIT) {
+      out.fields[key] = field.value;
+      out.commitBody = indentedBody(lines, i + 1);
+    } else {
+      out.fields[key] = [field.value, ...listItemsAfter(lines, i + 1)].filter(Boolean).join(VALUE_JOIN);
+    }
   }
   const last = lines.filter((l) => l.trim()).at(-1)?.trim() ?? "";
   if (isBlockVerdict(last)) out.verdict = last;

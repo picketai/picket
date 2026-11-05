@@ -169,6 +169,18 @@ test("a staged file only the block's full Files: line names is committed with th
   assert.equal(git("diff", "--cached", "--name-only"), "");
 });
 
+test("a staged path on a bold Files: label's bulleted list is committed with the phase (T-1.4)", (t) => {
+  const { root, id, git } = repoWithPhasedOrder(t);
+  stage(root, git, { "src/a.js": "a\n", "test/b.test.js": "t\n" });
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  const files = ["**Files:**", "- src/a.js", "- test/b.test.js (new)"].join("\n");
+  saveBlock(root, id, 1, `## Phase 1 of x: A\n\nDone.\n\n${files}\n\nCommit: feat(x): a\n\nPHASE DONE`);
+  route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  const committed = lines(git("show", "--name-only", "--format=", "HEAD"));
+  assert.ok(committed.includes("test/b.test.js"), committed.join(", "));
+  assert.equal(git("diff", "--cached", "--name-only"), "");
+});
+
 test("a staged dot-file the block lists is committed with the phase (B11, T-3.3)", (t) => {
   const { root, id, git } = repoWithPhasedOrder(t);
   stage(root, git, { "src/a.js": "a\n", ".gitattributes": "* text=auto\n" });

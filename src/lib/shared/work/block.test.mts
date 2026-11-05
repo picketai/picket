@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { BLOCK_FIELDS, blockField, COMMENT_SEPARATOR, commentProposal, detectBlock, parseBlock, proposals, proposedCommit, readBlock, readHeading, saveBlock, WAIVER_SEPARATOR, waiverProposal } from "./block.mts";
+import { BLOCK_FIELDS, blockField, blockFiles, COMMENT_SEPARATOR, commentProposal, detectBlock, parseBlock, proposals, proposedCommit, readBlock, readHeading, saveBlock, WAIVER_SEPARATOR, waiverProposal } from "./block.mts";
 import { setMarker } from "./markers.mts";
 import { checkCommitMessage } from "../commit-message.mts";
 import { openItem, withProject } from "#test/project.mts";
@@ -66,8 +66,101 @@ test("parseBlock reads a bold **Commit:** label as the Commit field (T-1.3)", ()
   assert.deepEqual(checkCommitMessage(proposedCommit(block) ?? ""), { message: "feat(x): y" });
 });
 
-test("parseBlock reads a bold label only for Commit", () => {
-  assert.equal(blockField(parseBlock(commitBlock("**Tests:** 4 passed")), "Tests"), undefined);
+const TICKET_FILES = [
+  "src/lib/verbs/pullrequest/tickets.mts",
+  "src/lib/verbs/pullrequest/tickets.test.mts",
+  "src/lib/verbs/pullrequest/prepare.mts",
+  "src/lib/verbs/pullrequest/remote.test.mts",
+  "src/lib/shared/paths.mts",
+  "src/lib/shared/paths.test.mts",
+  "src/lib/hooks/guard/scope/index.mts",
+  "src/lib/hooks/guard/scope/index.test.mts",
+];
+
+const VERIFIED = [
+  "T-1.1 to T-1.4: the tests in `tickets.test.mts` pass. One extra test pins the branch rule: `SHOP-9.fix` gives a key and `SHOP-9x` gives none.",
+  "T-1.5: `remote.test.mts` creates `.picket/state/pr-7/OLD-1.md`, then asserts it is gone after prepare and that `prep.tickets` is `[]`.",
+  "T-1.6: in the `guard/scope/index.test.mts` test, the ticket file returns `null` and the four other paths return `deny`.",
+  "T-1.7: I built a scratch folder with a bare server publishing `refs/pull/7/merge` and a clone whose remote is named after the Azure DevOps URL, then ran `picket pullrequest prepare https://tfs.corp.local/tfs/DefaultCollection/Shop/_git/Orders/pullrequest/7 --repo <clone> --human` with no PAT. It exited 0 and printed `  tickets: none found` after the meta line, and the planted `.picket/state/pr-7/OLD-1.md` was removed.",
+  "T-1.8: `picket check` gives `CHECK OK` (npm test passed).",
+  "`picket verify 20261103-pr-reviews-read-the-linked-ticket 1` returns ok, with every file, grep, test and drive check passing.",
+];
+
+const DECISIONS = [
+  "`paths.test.mts` pins the exact export list of `paths.mts`, so I added `prTicketRel` and `isPrTicketRel` to that list. I also added a test that `prTicketRel(\"pr-412\", \"SHOP-123\")` gives `.picket/state/pr-412/SHOP-123.md`, that `isPrTicketRel` accepts it, and that it rejects a look-alike prefix.",
+  "A description key must not run into more letters or digits (`/browse/SHOP-123?x=1` counts). The title rule allows leading whitespace before the optional bracket.",
+  "I built the drive's git fixture with plumbing commands (`commit-tree`, and a `fetch` into the bare repo). `guard.bash` denies `push`, `reset`, `checkout` and `merge`.",
+  "`src/mods/status/hooks/pane-actions.test.ts` was already staged before this phase and is not part of it. Leave it out of the phase commit.",
+];
+
+const bold = (label: string, value = "") => `**${label}:**${value ? ` ${value}` : ""}`;
+const listed = (texts: string[]) => texts.map((text) => `- ${text}`);
+const isNew = (path: string) => path.includes("/tickets.");
+
+const BOLD_LIST_BLOCK = [
+  "## Phase 1 of 20261103-pr-reviews-read-the-linked-ticket: Prepare lists ticket keys and their paths",
+  "",
+  "`picket pullrequest prepare` now lists the ticket keys it finds and the path for each ticket file. Before it lists them, it clears that PR's ticket folder. `guard.scope` lets a model write only a key-named `.md` file one level inside `.picket/state/pr-<digits>/`.",
+  "",
+  bold("Red", "n/a: new feature, not a bug fix or refactor"),
+  "",
+  bold("Root cause", "none"),
+  "",
+  bold("Files"),
+  ...listed(TICKET_FILES.map((path) => (isNew(path) ? `${path} (new)` : path))),
+  "",
+  bold("Verified"),
+  ...listed(VERIFIED),
+  "",
+  bold("Decisions"),
+  ...listed(DECISIONS),
+  "",
+  bold("Comments", "none"),
+  "",
+  bold("Waivers", "none"),
+  "",
+  bold("Commit", "feat(pullrequest): prepare lists linked ticket keys and their paths"),
+  "",
+  "PHASE DONE",
+  "",
+].join("\n");
+
+test("parseBlock reads every bold field of a block whose labels carry bulleted lists (T-1.1)", (t) => {
+  const block = parseBlock(BOLD_LIST_BLOCK);
+  assert.equal(blockField(block, "Red"), "n/a: new feature, not a bug fix or refactor");
+  assert.equal(blockField(block, "Root cause"), "none");
+  assert.equal(blockField(block, "Files"), TICKET_FILES.map((path) => (isNew(path) ? `${path} (new)` : path)).join("; "));
+  assert.equal(blockField(block, "Verified"), VERIFIED.join("; "));
+  assert.equal(blockField(block, "Decisions"), DECISIONS.join("; "));
+  assert.equal(blockField(block, "Comments"), "none");
+  assert.equal(blockField(block, "Waivers"), "none");
+  assert.equal(blockField(block, "Commit"), "feat(pullrequest): prepare lists linked ticket keys and their paths");
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "order", title: "Bold" });
+  saveBlock(root, id, 1, BOLD_LIST_BLOCK);
+  assert.deepEqual(blockFiles(root, id, 1), TICKET_FILES);
+});
+
+test("every phase label reads the same value in its plain, bold and bulleted forms (T-1.2)", () => {
+  const forms = (label: string) => [`${label}: x`, bold(label, "x"), `**${label}**: x`, `- ${label}: x`, `- ${bold(label, "x")}`];
+  for (const label of BLOCK_FIELDS.phase) {
+    for (const line of forms(label)) {
+      const block = parseBlock(`## Phase 1 of 20261105-x: One\n\nDone.\n\n${line}\n\nPHASE DONE\n`);
+      assert.equal(blockField(block, label), "x", line);
+    }
+  }
+});
+
+test("a list item under Verified: that looks like a label stays part of the Verified value (T-1.2)", () => {
+  const block = parseBlock("## Phase 1 of 20261105-x: One\n\nDone.\n\nVerified:\n- T-1.4: x\n\n- T-1.5: y\nCommit: feat(x): y\n\nPHASE DONE\n");
+  assert.equal(blockField(block, "Verified"), "T-1.4: x; T-1.5: y");
+  assert.equal(blockField(block, "Commit"), "feat(x): y");
+});
+
+test("a bulleted line with an unknown label is a list item, never a field", () => {
+  const block = parseBlock("## Phase 1 of 20261105-x: One\n\nDone.\n\nDecisions: kept a\n- Note: kept b\n\nPHASE DONE\n");
+  assert.equal(blockField(block, "Decisions"), "kept a; Note: kept b");
+  assert.equal(block.fields.note, undefined);
 });
 
 test("readHeading gives null for text without a block heading (T-2.1)", () => {

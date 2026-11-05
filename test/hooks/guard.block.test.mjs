@@ -43,6 +43,15 @@ test("guard.block checks the Red and Root cause lines of a PHASE DONE developer 
   assert.equal(blockVerdict(root, phase("Red: pinned: test/name.test.ts", "Root cause: none")), null);
 });
 
+test("guard.block reads bold Red, Root cause and Commit labels of a PHASE DONE block (T-1.5)", (t) => {
+  const { root, id } = hookProject(t);
+  const boldPhase = (red) => [`## Phase 1 of ${id}: A`, "", "Done.", "", `**Red:** ${red}`, "**Root cause:** none", "**Commit:** docs(a): one line", "", "PHASE DONE"].join("\n");
+  assert.equal(blockVerdict(root, boldPhase("n/a: docs only")), null);
+  const out = blockVerdict(root, boldPhase("maybe"));
+  assert.equal(out?.decision, "block");
+  assert.match(out.reason, /"Red: maybe" is none of/);
+});
+
 test("guard.block rejects a PHASE DONE block that folds Files: into +n more and passes the full list (T-1.1)", (t) => {
   const { root, id } = hookProject(t);
   const phase = (files) => [`## Phase 1 of ${id}: A`, "", "Done.", "", `Files: ${files}`, "Red: n/a: docs only", "Root cause: none", COMMIT, "", "PHASE DONE"].join("\n");

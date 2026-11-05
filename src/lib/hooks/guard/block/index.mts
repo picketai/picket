@@ -1,7 +1,7 @@
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict, VERDICTS } from "../../../shared/verdicts.mjs";
 import { blockCommitProblem } from "../../../shared/commit-message.mts";
-import { readHeading, type BlockField } from "../../../shared/work/block.mts";
+import { blockField, parseBlock, readHeading, type Block, type BlockField } from "../../../shared/work/block.mts";
 import type { HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { bounce, type BounceOutput } from "../../output.mts";
 
@@ -25,30 +25,29 @@ function turnText(event: PayloadOf<StopEvent>): string {
   }
 }
 
-function fieldValue(lines: string[], label: BlockField<"phase">): string | null {
-  const line = lines.find((l) => l.startsWith(`${label}:`));
-  return line === undefined ? null : line.slice(label.length + 1).trim();
+function fieldValue(block: Block, label: BlockField<"phase">): string | null {
+  return blockField(block, label) ?? null;
 }
 
-function filesProblems(lines: string[]): string[] {
-  const files = fieldValue(lines, "Files");
+function filesProblems(block: Block): string[] {
+  const files = fieldValue(block, "Files");
   if (files === null || !FOLDED_FILES.test(files)) return [];
   return [`"Files: ${files.slice(0, 60)}" folds paths into "+<n> more"; list every staged path on Files:, since the packet shortens it for display`];
 }
 
-function proofProblems(lines: string[]): string[] {
+function proofProblems(block: Block): string[] {
   const problems: string[] = [];
-  const red = fieldValue(lines, "Red");
+  const red = fieldValue(block, "Red");
   if (red === null) problems.push('the block has no "Red:" line (Red: <test> failed: <first failure line> | pinned: <test> | n/a: <reason>)');
   else if (!RED_FORMS.test(red)) problems.push(`"Red: ${red.slice(0, 60)}" is none of <test> failed: <first failure line>, pinned: <test>, n/a: <reason>`);
-  const cause = fieldValue(lines, "Root cause");
+  const cause = fieldValue(block, "Root cause");
   if (cause === null) problems.push('the block has no "Root cause:" line (Root cause: <X> because <Y> | none)');
   else if (cause !== "none" && !CAUSE_FORM.test(cause)) problems.push(`"Root cause: ${cause.slice(0, 60)}" is neither none nor <X> because <Y>`);
-  return [...problems, ...blockedProblems(lines)];
+  return [...problems, ...blockedProblems(block)];
 }
 
-function blockedProblems(lines: string[]): string[] {
-  const verified = fieldValue(lines, "Verified");
+function blockedProblems(block: Block): string[] {
+  const verified = fieldValue(block, "Verified");
   if (verified === null || !verified.startsWith("blocked") || BLOCKED_FORM.test(verified)) return [];
   return [`"Verified: ${verified.slice(0, 60)}" names no blocked kind; write blocked: <${BLOCKED_KINDS.join(" | ")}>: <what>. A request that needs another shape or route is not a block: send the one that reaches the changed code`];
 }
@@ -61,9 +60,9 @@ function blockProblems(block: string, isDeveloperBlock: boolean): string[] {
   const counted = nonEmpty.filter((l) => !FINDING_LINE.test(l.trim())).length;
   if (counted > BUDGET) problems.push(`the block is ${counted} non-empty lines; the budget is ${BUDGET}. Move detail into the artifact and keep the block to its fields`);
   if (token === "PHASE DONE" && isDeveloperBlock) {
-    const lines = nonEmpty.map((l) => l.trim());
+    const parsed = parseBlock(block);
     const commit = blockCommitProblem(block);
-    problems.push(...filesProblems(lines), ...proofProblems(lines), ...(commit === null ? [] : [commit]));
+    problems.push(...filesProblems(parsed), ...proofProblems(parsed), ...(commit === null ? [] : [commit]));
   }
   return problems;
 }
