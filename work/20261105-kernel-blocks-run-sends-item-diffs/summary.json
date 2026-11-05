@@ -1,0 +1,73 @@
+{
+  "work_id": "20261105-kernel-blocks-run-sends-item-diffs",
+  "base": "fb187ccf1bb0783ff8e40212944e4029083501e0",
+  "request": "work/20261105-kernel-blocks-run-sends-item-diffs/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/lib/shared/git.mts",
+    "src/lib/shared/git.test.mts",
+    "src/lib/shared/review-summary.mts",
+    "src/lib/verbs/route/index.test.mts",
+    "src/lib/verbs/summary/index.test.mts",
+    "test/cli/close.test.mjs"
+  ],
+  "lines_added": 184,
+  "lines_removed": 12,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-05T13:55:39.111Z",
+    "base": "fb187ccf1bb0783ff8e40212944e4029083501e0",
+    "mutant": {
+      "path": "src/lib/shared/git.mts",
+      "line": 229,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "survived",
+    "rebuild": "passed",
+    "ms": 190101
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

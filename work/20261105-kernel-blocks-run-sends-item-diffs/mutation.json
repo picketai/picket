@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-05T13:55:39.111Z",
+  "base": "fb187ccf1bb0783ff8e40212944e4029083501e0",
+  "mutant": {
+    "path": "src/lib/shared/git.mts",
+    "line": 229,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "survived",
+  "rebuild": "passed",
+  "ms": 190101
+}

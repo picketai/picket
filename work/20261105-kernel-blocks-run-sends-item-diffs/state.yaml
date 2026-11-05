@@ -1,9 +1,9 @@
 id: 20261105-kernel-blocks-run-sends-item-diffs
 lane: design
 title: "Kernel blocks, run sends, item diffs"
-status: open
+status: done
 created: 2026-11-05T12:41:32.006Z
-updated: 2026-11-05T13:43:42.642Z
+updated: 2026-11-05T13:59:06.945Z
 session: 13e4b056-abbf-4738-98a3-a9bcb06d5cc4
 base: fb187ccf1bb0783ff8e40212944e4029083501e0
 run_through: 2
