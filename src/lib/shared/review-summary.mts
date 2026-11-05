@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { planPathOf } from "./checkouts.mts";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
 import * as git from "./git.mts";
+import { readLedger, type AcceptRow } from "./ledger.mts";
 import { nestedRepos, readLayout, type ItemLayout } from "./repos.mts";
 import { securityPathOf } from "./security-paths.mts";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
@@ -173,8 +174,20 @@ function rootSinceBase(root: string, base: string, isProduct: (path: string) => 
   return { files: git.changedSince(root, base).filter(isProduct), ...git.diffStat(root, base, null), before: base };
 }
 
+function acceptedCommits(root: string, id: WorkId): string[] {
+  return readLedger(root)
+    .rows.filter((row): row is AcceptRow => row.event === "accept" && row.work_id === id)
+    .map((row) => git.revParse(root, row.commit))
+    .filter((sha): sha is string => sha !== null);
+}
+
+function ownCommits(root: string, id: WorkId, base: string): string[] {
+  const own = new Set([...git.commitsTouching(root, base, workRel(id)), ...acceptedCommits(root, id)]);
+  return git.commitsBetween(root, base).filter((sha) => own.has(sha));
+}
+
 function rootOwned(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean): RootChanges {
-  const commits = git.commitsTouching(root, base, workRel(id)).map((sha) => ({ sha, files: git.filesInCommit(root, sha).filter(isProduct) }));
+  const commits = ownCommits(root, id, base).map((sha) => ({ sha, files: git.filesInCommit(root, sha).filter(isProduct) }));
   const isOwned = git.listedPathMatcher(root, [...owned]);
   const dirty = git.dirtyPaths(root).filter((path) => isProduct(path) && isOwned(path));
   const stats = [...commits.map(({ sha, files }) => git.diffStat(root, `${sha}^`, sha, files)), git.diffStat(root, "HEAD", null, dirty)];

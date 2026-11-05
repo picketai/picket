@@ -7,6 +7,7 @@ import { branchingManifestPath } from "../../shared/paths.mts";
 import { nestedRepos, readBases } from "../../shared/repos.mts";
 import { planPathOf } from "../../shared/checkouts.mts";
 import { markWaived } from "../../shared/review-summary.mts";
+import { recordAccept } from "../../shared/ledger.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { appendWaiver } from "../../shared/work/approvals.mts";
 import { setMarker } from "../../shared/work/markers.mts";
@@ -367,6 +368,64 @@ test("a staged path named only on a fixes entry joins the summary (T-3.3)", (t) 
 test("a focus another item committed is not in this item's silenced list (T-3.4)", (t) => {
   const { root, id, options } = itemAmongOthers(t);
   assert.deepEqual(itemSummary(root, id, options).silenced, []);
+});
+
+const ACCEPTED_AT = new Date("2026-11-05T12:00:00.000Z");
+const planOwning = (file: string) => `---\nlane: order\nphases:\n  - n: 1\n    files: [${file}]\n---\n# O\n\n## Phase 1: A\n\nt\n`;
+
+function itemOwning(t: TestContext, file: string) {
+  const root = gitRepo(t, { host: true, branch: "trunk", files: { "README.md": "base\n" }, message: "base" });
+  const base = gitOut(root, "rev-parse", "HEAD");
+  const id = open(root, "order", "Ledger");
+  writeFileSync(join(root, "work", id, "order.md"), planOwning(file));
+  return { root, id, base, options: { ...ITEM, base } };
+}
+
+function commitPaths(root: string, files: Record<string, string>, message: string): string {
+  for (const [rel, text] of Object.entries(files)) writeIn(root, rel, text);
+  gitIn(root, "add", "-A", "--", ...Object.keys(files));
+  gitIn(root, "commit", "-q", "-m", message);
+  return gitOut(root, "rev-parse", "HEAD");
+}
+
+function commitWorkFolder(root: string, id: WorkId) {
+  gitIn(root, "add", "-A", "--", `work/${id}`);
+  gitIn(root, "commit", "-q", "-m", "chore: work folder");
+}
+
+test("a phase commit without the work folder joins the summary through its ledger accept row (T-1.1)", (t) => {
+  const { root, id, options } = itemOwning(t, "a.ts");
+  const phase = commitPaths(root, { "a.ts": "a1\na2\na3\n" }, "feat(a): phase 1");
+  recordAccept(root, id, phase.slice(0, 7), 1, ACCEPTED_AT);
+  commitWorkFolder(root, id);
+  const summary = itemSummary(root, id, options);
+  assert.deepEqual([summary.changed_files, summary.lines_added, summary.lines_removed], [["a.ts"], 3, 0]);
+});
+
+test("an accept row naming the base, or naming another item's commit, adds nothing to the summary (T-1.2)", (t) => {
+  const { root, id, base, options } = itemOwning(t, "a.ts");
+  recordAccept(root, id, base, null, ACCEPTED_AT);
+  const foreign = commitPaths(root, { "b.ts": "b1\nb2\n" }, "feat(b): another item");
+  recordAccept(root, "20261105-other", foreign, 1, ACCEPTED_AT);
+  commitPaths(root, { "a.ts": "a1\n", [`work/${id}/order.md`]: planOwning("a.ts") }, "feat(a): phase 1");
+  const summary = itemSummary(root, id, options);
+  assert.deepEqual([summary.changed_files, summary.lines_added, summary.lines_removed], [["a.ts"], 1, 0]);
+});
+
+test("a commit found through both the work folder and an accept row is counted once (T-1.3)", (t) => {
+  const { root, id, options } = itemOwning(t, "a.ts");
+  gitIn(root, "add", "-A", "--", `work/${id}`);
+  const phase = commitPaths(root, { "a.ts": "a1\na2\n" }, "feat(a): phase 1");
+  recordAccept(root, id, phase, 1, ACCEPTED_AT);
+  const summary = itemSummary(root, id, options);
+  assert.deepEqual([summary.changed_files, summary.lines_added, summary.lines_removed], [["a.ts"], 2, 0]);
+});
+
+test("a focus in a commit found only through its accept row is listed in silenced (T-1.4)", (t) => {
+  const { root, id, options } = itemOwning(t, "test/a.test.ts");
+  const phase = commitPaths(root, { "test/a.test.ts": `${focus}\n` }, "test(a): phase 1");
+  recordAccept(root, id, phase, 1, ACCEPTED_AT);
+  assert.deepEqual(itemSummary(root, id, options).silenced, [{ path: "test/a.test.ts", kind: "focused-test", text: focus, waived: false }]);
 });
 
 test("the review summary carries the saved mutation (T-6.5)", (t) => {

@@ -119,6 +119,11 @@ export function commitsTouching(root: string, base: string, path: string): strin
   return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
 }
 
+export function commitsBetween(root: string, base: string): string[] {
+  const out = gitRead(root, ["rev-list", "--reverse", `${base}..HEAD`]) ?? "";
+  return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+}
+
 export function diffStat(root: string, base: string, head: string | null, paths?: readonly string[]): { added: number; removed: number } {
   if (paths?.length === 0) return { added: 0, removed: 0 };
   let added = 0;

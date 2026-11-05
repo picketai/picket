@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { commitOwned, commitsTouching, diffStat, dirtyPaths, head, isRepo, lastCommitOf, productLinesAdded, workingState } from "./git.mts";
+import { commitsBetween } from "./git.mts";
 import { commitIn, gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import { withProject } from "#test/project.mts";
 
@@ -172,6 +173,18 @@ test("commitsTouching lists only the commits that touch the folder, oldest first
   commitPath("src/other.ts", "other");
   const second = commitPath("work/x/phases/1.approved", "second");
   assert.deepEqual(commitsTouching(root, base, "work/x/"), [first, second]);
+});
+
+test("commitsBetween lists the full shas after the base oldest first, and none for a base that does not resolve", (t) => {
+  const root = gitRepo(t);
+  const base = gitOut(root, "rev-parse", "HEAD");
+  commitIn(root, "first\n", "first");
+  const first = gitOut(root, "rev-parse", "HEAD");
+  commitIn(root, "second\n", "second");
+  const second = gitOut(root, "rev-parse", "HEAD");
+  assert.match(first, /^[0-9a-f]{40}$/);
+  assert.deepEqual(commitsBetween(root, base), [first, second]);
+  assert.deepEqual(commitsBetween(root, "no-such-rev"), []);
 });
 
 test("a failed commit leaves HEAD and the real index as they were and removes the temporary index (T-1.6)", (t) => {
