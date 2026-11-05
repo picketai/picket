@@ -72,6 +72,7 @@ const LABEL_LINE = new RegExp(`^(?:${LISTED_LABEL}|(?<plain>${PLAIN_LABEL}):)(?<
 const LIST_ITEM = new RegExp(`^\\s*${LIST_MARKER}(?<text>\\S.*)$`);
 const INDENTED = /^\s+\S/;
 const VALUE_JOIN = "; ";
+const FIXES_ENTRY = /^(?=## Phase )/m;
 
 type LabelLine = { label: string; value: string };
 
@@ -83,10 +84,14 @@ function fixesPath(root: string, id: WorkId, n: number): string {
   return join(dirname(blockPath(root, id, n)), `${n}.fixes.md`);
 }
 
+export function normalisedBlock(text: string): string {
+  return text.replace(/\r\n/g, "\n").trim() + "\n";
+}
+
 export function saveBlock(root: string, id: WorkId, n: number, text: string): void {
   const path = blockPath(root, id, n);
   mkdirSync(dirname(path), { recursive: true });
-  const block = text.replace(/\r\n/g, "\n").trim() + "\n";
+  const block = normalisedBlock(text);
   if (!hasMarker(root, id, n, "approved")) return writeFileSync(path, block);
   const fixes = fixesPath(root, id, n);
   appendFileSync(fixes, existsSync(fixes) ? "\n" + block : block);
@@ -94,6 +99,12 @@ export function saveBlock(root: string, id: WorkId, n: number, text: string): vo
 
 export function readBlock(root: string, id: WorkId, n: number): string | null {
   return readText(blockPath(root, id, n));
+}
+
+export function latestSavedBlock(root: string, id: WorkId, n: number): string | null {
+  const fixes = readText(fixesPath(root, id, n))?.split(FIXES_ENTRY).at(-1);
+  const latest = fixes?.trim() ? fixes : readBlock(root, id, n);
+  return latest === null ? null : normalisedBlock(latest);
 }
 
 export function blockFiles(root: string, id: WorkId, n: number): string[] {

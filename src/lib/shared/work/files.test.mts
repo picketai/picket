@@ -34,5 +34,5 @@ test("the closed lists hold the work item files and phase markers", () => {
   assert.equal(WORK_FILES.length, 16);
   assert.equal(new Set(WORK_FILES).size, 16);
   assert.ok(WORK_FILES.includes("summary.json") && WORK_FILES.includes("preflight.txt") && WORK_FILES.includes("replies.jsonl"));
-  assert.deepEqual([...MARKERS], ["done", "approved", "reviewed", "block.md"]);
+  assert.deepEqual([...MARKERS], ["done", "approved", "reviewed", "idle", "block.md"]);
 });

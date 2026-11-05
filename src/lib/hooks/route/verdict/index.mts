@@ -6,9 +6,12 @@ import { agentTranscript, type HookData } from "../../../shared/transcript/agent
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
 import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
-import { BLOCK_HEADINGS, detectBlock, readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
+import { BLOCK_HEADINGS, detectBlock, latestSavedBlock, normalisedBlock, readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
+import { setMarker } from "../../../shared/work/markers.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
+import { runHandOff } from "../../../shared/work/send.mts";
+import { readSnapshot } from "../../../shared/work/snapshot.mts";
 import { readVerdicts } from "../../../shared/work/verdict-log.mts";
 import { route } from "../../../verbs/route/index.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
@@ -21,6 +24,7 @@ type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hin
 
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
+const DEVELOPER_TYPE = "picket:developer";
 const WRITTEN: Partial<Record<string, string>> = { "ARTIFACT WRITTEN": "written", AMENDED: "amended", "REPORT WRITTEN": "written" };
 const ARTIFACT: BlockField<"artifact"> = "Artifact";
 const REPORT: BlockField<"report"> = "Report";
@@ -73,6 +77,13 @@ function saveReviewerBlock(info: BlockInfo | null, text: string, root: string): 
 function repeatsLastRow(root: string, id: string, verdict: string, phase: number | undefined): boolean {
   const last = readVerdicts(root, workId(id)).rows.at(-1);
   return last?.verdict === verdict && (phase === undefined || last.phase === phase);
+}
+
+function repeatsSavedBlock(root: string, info: BlockInfo | null, id: string, phase: number | undefined, text: string): boolean {
+  if (info?.agent !== "developer" || phase === undefined) return false;
+  const lastDeveloperRow = readVerdicts(root, workId(id)).rows.filter((row) => row.agent === "developer").at(-1);
+  if (lastDeveloperRow?.verdict !== "PHASE DONE" || lastDeveloperRow.phase !== phase) return false;
+  return latestSavedBlock(root, workId(id), phase) === normalisedBlock(text);
 }
 
 function isBouncedForCommit(info: BlockInfo | null, verdict: string, text: string): boolean {
@@ -129,6 +140,7 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
   const continued = Boolean(event.stop_hook_active);
   if (info?.scope === "pr") return continued ? null : { text: keepPullRequestReview(id, verdict, text, ctx.root), notice: null };
   const phase = info?.phase ?? hints.phase ?? undefined;
+  if (repeatsSavedBlock(ctx.root, info, id, phase, text)) return null;
   if (!continued && isBouncedForCommit(info, verdict, text)) return null;
   if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) {
     saveDeveloperBlock(info, id, phase, text, ctx.root);
@@ -146,9 +158,28 @@ export function writtenNotice(info: BlockInfo | null, verdict: string, text: str
   return path ? `picket · ${basename(path, ".md")} ${done}: ${path}` : null;
 }
 
+function isContinuedDeveloperStop(event: PayloadOf<StopEvent>): boolean {
+  return event.hook_event_name === "SubagentStop" && event.agent_type === DEVELOPER_TYPE && Boolean(event.stop_hook_active);
+}
+
+function markIdleHandOff(event: PayloadOf<StopEvent>, ctx: HookContext): void {
+  if (!isContinuedDeveloperStop(event)) return;
+  const workIdHint = latestHints(agentTranscript(event)).work_id;
+  if (!workIdHint) return;
+  const id = workId(workIdHint);
+  const phase = runHandOff(readSnapshot(ctx.root, id), event.session_id ?? null);
+  if (phase !== null) setMarker(ctx.root, id, phase, "idle", ctx.now());
+}
+
+function routeOrMarkIdle(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | null {
+  const routed = routeTurn(event, ctx);
+  if (routed === null) markIdleHandOff(event, ctx);
+  return routed;
+}
+
 function outcome(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | null {
   try {
-    return routeTurn(event, ctx);
+    return routeOrMarkIdle(event, ctx);
   } catch (err) {
     if (event.stop_hook_active) return null;
     return { text: `picket: verdict not applied (${(err as Error).message}). Run \`picket next <id>\` yourself.`, notice: null };

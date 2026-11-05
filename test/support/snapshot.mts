@@ -24,7 +24,7 @@ export type SnapshotInput = Partial<Omit<WorkState, "id">> & {
 const NO_LAYOUT: ItemLayout = { nested: [], worktrees: null, repos: [] };
 
 function phaseStatus(partial: PhaseInput): PhaseStatus {
-  return { title: `Phase ${partial.n}`, entry: null, touchSet: [], irreversible: false, done: false, approved: false, reviewed: false, ...partial };
+  return { title: `Phase ${partial.n}`, entry: null, touchSet: [], irreversible: false, done: false, approved: false, reviewed: false, idle: false, ...partial };
 }
 
 function defaultArtifact(state: WorkState): SnapshotArtifact | null {

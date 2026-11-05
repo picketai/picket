@@ -25,7 +25,7 @@ export const WORK_FILES = [
 
 export type WorkFile = (typeof WORK_FILES)[number];
 
-export const MARKERS = ["done", "approved", "reviewed", "block.md"] as const;
+export const MARKERS = ["done", "approved", "reviewed", "idle", "block.md"] as const;
 
 export type Marker = (typeof MARKERS)[number];
 

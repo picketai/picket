@@ -6,12 +6,12 @@ import type { PhaseView as WirePhaseView, StateView as WireStateView } from "../
 import { parseArtifact, type ArtifactPhase } from "./artifact.mts";
 import { readBrief, type Brief } from "./brief.mts";
 import { workFile, type WorkFile, type WorkId } from "./files.mts";
-import { hasMarker } from "./markers.mts";
+import { hasMarker, type PhaseMark } from "./markers.mts";
 import { readReplies, type ReplyRow } from "./replies.mts";
 import { ARTIFACT_BY_LANE, readState, type WorkState } from "./state.mts";
 import { readVerdicts, type VerdictRow } from "./verdict-log.mts";
 
-export type PhaseStatus = ArtifactPhase & { done: boolean; approved: boolean; reviewed: boolean };
+export type PhaseStatus = ArtifactPhase & { done: boolean; approved: boolean; reviewed: boolean; idle: boolean };
 export type SnapshotArtifact = { path: string; expected: WorkFile; body: string };
 
 export type WorkSnapshot = {
@@ -45,7 +45,8 @@ function readArtifactFile(root: string, id: WorkId, expected: WorkFile | null): 
 }
 
 function withMarkers(root: string, id: WorkId, phase: ArtifactPhase): PhaseStatus {
-  return { ...phase, done: hasMarker(root, id, phase.n, "done"), approved: hasMarker(root, id, phase.n, "approved"), reviewed: hasMarker(root, id, phase.n, "reviewed") };
+  const marked = (mark: PhaseMark) => hasMarker(root, id, phase.n, mark);
+  return { ...phase, done: marked("done"), approved: marked("approved"), reviewed: marked("reviewed"), idle: marked("idle") };
 }
 
 function skippedWarning(file: WorkFile, skipped: number): string[] {

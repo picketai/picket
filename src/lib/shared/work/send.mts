@@ -7,7 +7,7 @@ import { workRel, type WorkFile } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
 import { freshReplies } from "./replies.mts";
 import { reviewRel } from "./reviews.mts";
-import { phaseOf, type WorkSnapshot } from "./snapshot.mts";
+import { currentPhase, phaseOf, type WorkSnapshot } from "./snapshot.mts";
 import { ARTIFACT_BY_LANE } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
 
@@ -105,7 +105,28 @@ function worktreesLines({ state, layout, phases }: WorkSnapshot): string[] {
   return touchedRepos(layout, phases.flatMap(phasePaths)).length ? [`worktrees: picket worktree ${state.id}`] : [];
 }
 
+function lastIndexOf(rows: readonly VerdictRow[], matches: (row: VerdictRow) => boolean): number {
+  for (let i = rows.length - 1; i >= 0; i--) if (matches(rows[i])) return i;
+  return -1;
+}
+
+function developerHandedOn(snap: WorkSnapshot, from: number, session: string): boolean {
+  const at = lastIndexOf(snap.verdicts, developer(snap).owns);
+  const row = snap.verdicts[at];
+  if (row?.verdict !== "PHASE DONE" || row.phase !== from || row.session !== session) return false;
+  return !snap.verdicts.slice(at + 1).some((later) => later.agent === "user");
+}
+
+export function runHandOff(snap: WorkSnapshot, session: string | null): number | null {
+  const current = currentPhase(snap);
+  const through = snap.state.run_through;
+  if (session === null || !current || current.done || current.idle || through === undefined || through < current.n) return null;
+  if (!phaseOf(snap, current.n - 1)?.approved) return null;
+  return developerHandedOn(snap, current.n - 1, session) ? current.n : null;
+}
+
 function implementSends(snap: WorkSnapshot, phase: number, session: string | null): SendView[] {
+  if (runHandOff(snap, session) === phase) return [];
   const through = snap.state.run_through;
   const implementer = send(snap, developer(snap), session, (tool) => [
     workLine(snap),

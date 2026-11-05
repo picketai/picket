@@ -98,6 +98,34 @@ test("a run grant that reaches the phase is named in the developer's message", (
   assert.equal(developer.message.split("\n").at(-1), "run through 3");
 });
 
+const handedOffPhase3 = (changes: { idle?: boolean; after?: object[] } = {}): SnapshotInput => ({
+  phases: [{ n: 1, done: true, approved: true }, { n: 2, done: true, approved: true }, { n: 3, idle: changes.idle ?? false }],
+  run_through: 3,
+  verdicts: [
+    { ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: null, session: S },
+    ...(changes.after ?? []),
+    { ts: "2026-11-03T15:56:00.000Z", agent: "architect", verdict: "AMENDED", phase: null, scope: null, through: null, session: S },
+  ],
+});
+
+test("a phase the run grant handed to the live developer gets no send (T-2.1)", () => {
+  assert.deepEqual(sends(handedOffPhase3(), implement(3)), []);
+});
+
+test("the hand-off ends with a user row, another session or an idle marker, and the send returns (T-2.2)", () => {
+  const userRow = { ts: "2026-11-03T15:54:30.000Z", agent: "user", verdict: "approved", phase: 2, scope: null, through: 3 };
+  const cases: [string, SnapshotInput, string][] = [
+    ["user row", handedOffPhase3({ after: [userRow] }), S],
+    ["other session", handedOffPhase3(), "other"],
+    ["idle", handedOffPhase3({ idle: true }), S],
+  ];
+  for (const [label, input, session] of cases) {
+    const out = sends(input, implement(3), session);
+    assert.deepEqual(out.map((s) => s.to), [named("developer")], label);
+    assert.equal(out[0].message.split("\n").at(-1), "run through 3", label);
+  }
+});
+
 test("a design item's first phase also spawns the cross-check until any cross-check row exists", () => {
   const phases = [{ n: 1 }, { n: 2 }];
   const both = sends({ lane: "design", phases }, implement(1));

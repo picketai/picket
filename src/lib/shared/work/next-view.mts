@@ -3,7 +3,7 @@ import { securityPaths } from "../config.mjs";
 import { workFile, type WorkId } from "./files.mts";
 import type { Gate } from "./gate.mts";
 import { nextStep, type NextAction, type NextStep } from "./next-step.mts";
-import { NO_FILES, sendsFor, type HasFile } from "./send.mts";
+import { NO_FILES, runHandOff, sendsFor, type HasFile } from "./send.mts";
 import { readSnapshot, stateView, type StateView, type WorkSnapshot } from "./snapshot.mts";
 import { currentItem, isSessionId, lastActivity, type Lane, type Status } from "./state.mts";
 import type { LatestView as WireLatestView, NextView as WireNextView } from "../views.mts";
@@ -19,6 +19,13 @@ export type NextView = WireNextView & {
 
 export type LatestView = WireLatestView & ({ id: null } | Omit<NextView, "send">);
 
+const HAND_OFF_NOTE = "; the developer took it from the run grant, so there is no send: wait for its block";
+
+function detailOf(snap: WorkSnapshot, step: NextStep, session: string | null): string {
+  const handedOff = step.action === "implement_phase" && runHandOff(snap, session) === step.phase;
+  return handedOff ? step.detail + HAND_OFF_NOTE : step.detail;
+}
+
 export function nextView(snap: WorkSnapshot, step: NextStep, session: string | null = null, hasFile: HasFile = NO_FILES): NextView {
   const { id, lane, status } = snap.state;
   const view: NextView = {
@@ -30,7 +37,7 @@ export function nextView(snap: WorkSnapshot, step: NextStep, session: string | n
     own_gate: "own_gate" in step ? (step.own_gate ?? null) : null,
     action: step.action,
     actor: step.actor,
-    detail: step.detail,
+    detail: detailOf(snap, step, session),
     send: sendsFor(snap, step, session, hasFile),
   };
   return snap.warnings.length ? { ...view, warnings: snap.warnings } : view;

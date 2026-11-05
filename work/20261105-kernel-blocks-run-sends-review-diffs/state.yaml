@@ -1,0 +1,9 @@
+id: 20261105-kernel-blocks-run-sends-review-diffs
+lane: order
+title: "Kernel blocks, run sends, review diffs"
+status: open
+created: 2026-11-05T08:39:47.178Z
+updated: 2026-11-05T11:17:53.665Z
+session: 13e4b056-abbf-4738-98a3-a9bcb06d5cc4
+base: 7891e268d25619364d926df3e6ad021e4f792085
+run_through: 3

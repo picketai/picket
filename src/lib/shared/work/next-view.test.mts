@@ -2,7 +2,8 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { latest, readNext } from "./next-view.mts";
+import { latest, nextOf, readNext } from "./next-view.mts";
+import { snapshotOf } from "#test/snapshot.mts";
 import { readState, writeState, type WorkState } from "./state.mts";
 import { setMarker, type PhaseMark } from "./markers.mts";
 import { appendVerdict, type VerdictEntry, type VerdictRow } from "./verdict-log.mts";
@@ -80,6 +81,20 @@ test("readNext carries the send list: the architect's inputs from disk, a contin
   assert.equal(readNext(r, s.id).send[0].tool, "Agent");
   mark(s.id, 1, "done", r);
   assert.deepEqual(next(s.id, r).send, []);
+});
+
+test("a phase the run grant handed to the live developer shows the hand-off detail and no send (T-2.3)", () => {
+  const snap = snapshotOf({
+    phases: [{ n: 1, done: true, approved: true }, { n: 2, done: true, approved: true }, { n: 3, title: "C" }],
+    run_through: 3,
+    verdicts: [
+      { ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: null, session: "S" },
+      { ts: "2026-11-03T15:56:00.000Z", agent: "architect", verdict: "AMENDED", phase: null, scope: null, through: null, session: "S" },
+    ],
+  });
+  const view = nextOf(snap, [], "S");
+  assert.deepEqual([view.action, view.phase, view.send], ["implement_phase", 3, []]);
+  assert.equal(view.detail, "phase 3 of 3: C; the developer took it from the run grant, so there is no send: wait for its block");
 });
 
 test("blocked items ask the user; fast and research have their own shapes", (t) => {

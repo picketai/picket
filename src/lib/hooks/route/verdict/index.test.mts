@@ -6,6 +6,7 @@ import { reviewClasses, routeVerdict as verdictHandler } from "./index.mts";
 import { statePath, stateRel } from "../../../shared/paths.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { readState, writeState } from "../../../shared/work/state.mts";
+import { route } from "../../../verbs/route/index.mts";
 import { hookContext } from "#test/context.mts";
 import { gitAt } from "#test/git.mts";
 import { assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
@@ -255,6 +256,52 @@ test("a block re-emitted after a bounce replaces the saved block and adds no sec
   assert.equal(routePhaseDone(root, id, 1, true, "feat(pricing): rate field"), null);
   assert.match(readFileSync(join(root, "work", id, "phases", "1.block.md"), "utf8"), /^Commit: feat\(pricing\): rate field$/m);
   assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1]]);
+});
+
+function threePhaseOrder(root: string): string {
+  const s = openItem(root, { lane: "order", title: "Granted" });
+  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n\n## Phase 3: C\n\nt\n");
+  return s.id;
+}
+
+const phaseFile = (root: string, id: string, name: string) => join(root, "work", id, "phases", name);
+
+function handedOffPhase3(root: string): string {
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  route({ id: workId(id), verdict: "approved", agent: "user", phase: 1, through: 3, session: "s1" }, hookContext(root));
+  routePhaseDone(root, id, 2, false);
+  return id;
+}
+
+test("a continued developer stop that routes nothing while the run grant hands it phase 3 marks 3.idle (T-2.4)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = handedOffPhase3(root);
+  const rows = verdictRows(root, id).length;
+  assert.equal(routePhaseDone(root, id, 2, true), null);
+  assert.equal(existsSync(phaseFile(root, id, "3.idle")), true);
+  assert.equal(verdictRows(root, id).length, rows);
+});
+
+test("a continued developer stop while phase 1 awaits the user writes no idle marker (T-2.4)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  assert.equal(routePhaseDone(root, id, 1, true), null);
+  assert.deepEqual(readdirSync(join(root, "work", id, "phases")).filter((name) => name.endsWith(".idle")), []);
+});
+
+test("a new turn re-emitting the saved phase block routes nothing; a changed headline routes (T-2.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 3, false);
+  const rows = verdictRows(root, id).length;
+  assert.equal(routePhaseDone(root, id, 3, false), null);
+  assert.equal(verdictRows(root, id).length, rows);
+  assert.equal(existsSync(phaseFile(root, id, "3.fixes.md")), false);
+  const changed = phaseBlock(id, 3, "feat: p").replace("P works.", "P works, and C too.");
+  assert.match(routeDeveloperTurn(root, id, 3, false, changed).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.equal(verdictRows(root, id).length, rows + 1);
 });
 
 test("a continued turn returns no context for a pull request review or a routing error", (t) => {
