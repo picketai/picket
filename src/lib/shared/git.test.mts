@@ -219,6 +219,18 @@ test("under a held index lock the reset hint names an added file once and keeps 
   assert.ok(r.warnings[0].endsWith("; run git reset -q -- work/x/ docs/r.md src/a.js"), r.warnings[0]);
 });
 
+test("in a project below the git top level the reset hint names each path once, from the top level", (t) => {
+  const top = gitRepo(t);
+  const root = join(top, "proj");
+  writeIn(root, "work/x/state.yaml", "status: open\n");
+  writeIn(root, "src/a.js", "a\n");
+  gitIn(top, "add", "--", "proj/src/a.js");
+  writeFileSync(join(top, ".git", "index.lock"), "");
+  const r = withIdentity(() => commitOwned(root, "feat: a", { add: ["work/x/"], owns: (path) => path.startsWith("proj/src/"), env: process.env }));
+  assert.deepEqual(committedNames(top), ["proj/src/a.js", "proj/work/x/state.yaml"]);
+  assert.ok(r.warnings[0].endsWith(`; run git -C "${gitOut(top, "rev-parse", "--show-toplevel")}" reset -q -- proj/work/x/ proj/src/a.js`), r.warnings[0]);
+});
+
 test("without a lock the commit takes the work folder, warns nothing and leaves the tree clean", (t) => {
   const root = workFolderRepo(t);
   const r = commitWorkFolder(root);

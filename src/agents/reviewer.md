@@ -68,7 +68,7 @@ Save facts about this repository, this machine and its tools that a later review
 
 Requirements: PASS (<n>) | FAIL: S-2 <why> | N/A (no request saved)   (cumulative only)
 | ID | Requirement | Source | Result | Evidence |                  (cumulative only)
-Alignment: PASS | FAIL: T-2.1 <why> | UNCLEAR: T-2.3 <why>
+Alignment: PASS | FAIL: T-2.1 <why> | UNCLEAR: T-2.3 <why>; for pr: PASS (P-1; SHOP-123 AC-1) | title only (<why>)
 Decisions: HONOURED | DRIFT: D-002 <why>
 Regression: none | <n> unrequested behaviour changes                 (cumulative only)
 Sources: none | <ref>, … | moved: <ref> (<sha8> to <sha8>)           (cumulative only)

@@ -229,14 +229,20 @@ function underAny(path: string, prefixes: readonly string[]): boolean {
   return prefixes.some((prefix) => (prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix));
 }
 
-function syncSharedIndex(top: string, env: NodeJS.ProcessEnv, sha: string | null, committed: string[], add: readonly string[]): string[] {
+function resetHint(top: string, prefix: string, paths: string[]): string {
+  const git = prefix ? `git -C "${top}"` : "git";
+  return `${git} reset -q -- ${paths.join(" ")}`;
+}
+
+function syncSharedIndex(top: string, prefix: string, env: NodeJS.ProcessEnv, sha: string | null, committed: string[], add: readonly string[]): string[] {
   try {
     gitStrict(top, ["reset", "-q", "--pathspec-from-file=-", "--pathspec-file-nul"], { env, input: nulInput(committed) });
     return [];
   } catch (err) {
     if (!(err instanceof GitFailed)) throw err;
-    const paths = [...add, ...committed.filter((path) => !underAny(path, add))];
-    return [`index not updated after ${sha}: ${err.lastLine}; run git reset -q -- ${paths.join(" ")}`];
+    const added = add.map((path) => prefix + path);
+    const paths = [...added, ...committed.filter((path) => !underAny(path, added))];
+    return [`index not updated after ${sha}: ${err.lastLine}; run ${resetHint(top, prefix, paths)}`];
   }
 }
 
@@ -259,5 +265,5 @@ export function commitOwned(root: string, message: string, { add = [], owns, env
   }
   const sha = head(top);
   const moved = revParse(top, `${sha}^`) === before ? [] : [`HEAD moved during the commit; check ${sha}`];
-  return { sha, committed, left_staged, warnings: [...moved, ...syncSharedIndex(top, env, sha, committed, add)] };
+  return { sha, committed, left_staged, warnings: [...moved, ...syncSharedIndex(top, repoPrefix(root), env, sha, committed, add)] };
 }
