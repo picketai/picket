@@ -147,15 +147,27 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
     return null;
   }
   const routed = applyVerdict({ event, info, hints, id, verdict, phase, text, ctx });
-  return { text: routed, notice: writtenNotice(info, verdict, text) };
+  const written = writtenFile(info, verdict, text);
+  return { text: written ? `${routed}\n${printPathLine(written.path)}` : routed, notice: written && writtenNotice(written) };
 }
 
-export function writtenNotice(info: BlockInfo | null, verdict: string, text: string): string | null {
+type WrittenFile = { path: string; done: string };
+
+function writtenFile(info: BlockInfo | null, verdict: string, text: string): WrittenFile | null {
   const done = WRITTEN[verdict];
   const label = info ? PATH_FIELD[info.agent] : undefined;
   if (!done || !label) return null;
   const path = text.match(new RegExp(`^${label}:\\s*(\\S+)`, "m"))?.[1];
-  return path ? `picket · ${basename(path, ".md")} ${done}: ${path}` : null;
+  return path ? { path, done } : null;
+}
+
+function writtenNotice({ path, done }: WrittenFile): string {
+  return `picket · ${basename(path, ".md")} ${done}: ${path}`;
+}
+
+function printPathLine(path: string): string {
+  const name = basename(path, ".md");
+  return `Print "${name.charAt(0).toUpperCase()}${name.slice(1)}: ${path}" on its own line in your reply so the user can open it.`;
 }
 
 function isContinuedDeveloperStop(event: PayloadOf<StopEvent>): boolean {

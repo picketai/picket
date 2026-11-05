@@ -345,3 +345,17 @@ test("no message reaches the user for a developer verdict or a block without a p
   assert.equal("systemMessage" in bare, false);
   assert.equal("systemMessage" in routePhaseDone(root, id, 1, false), false);
 });
+
+const PRINT_PATH = /Print ".*" on its own line/;
+
+test("a written path asks the lead to print it on its own line, where the Markdown mod makes it a link", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  const written = routeWritten(root, id, `## Order: ${id}\n\nTwo phases.\n\nArtifact: work/${id}/order.md\nDecisions: D-001 x\n\nARTIFACT WRITTEN`, "picket:architect");
+  assert.ok(written.hookSpecificOutput.additionalContext.endsWith(`\nPrint "Order: work/${id}/order.md" on its own line in your reply so the user can open it.`), written.hookSpecificOutput.additionalContext);
+  const s = openItem(root, { lane: "research", title: "Mapped" });
+  const report = routeWritten(root, s.id, `## Report: ${s.id} · outline\n\nThe flow.\n\nReport: work/${s.id}/research.md\n\nREPORT WRITTEN`, "picket:analyst");
+  assert.ok(report.hookSpecificOutput.additionalContext.endsWith(`\nPrint "Research: work/${s.id}/research.md" on its own line in your reply so the user can open it.`), report.hookSpecificOutput.additionalContext);
+  const bare = routeWritten(root, id, `## Order: ${id}\n\nTwo phases.\n\nARTIFACT WRITTEN`, "picket:architect");
+  assert.doesNotMatch(bare.hookSpecificOutput.additionalContext, PRINT_PATH);
+});
