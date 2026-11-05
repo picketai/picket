@@ -163,6 +163,14 @@ test("a bulleted line with an unknown label is a list item, never a field", () =
   assert.equal(block.fields.note, undefined);
 });
 
+test("a bulleted label under a plain field stays in that field and opens no field of its own", () => {
+  const block = parseBlock("## Phase 1 of 20261105-x: One\n\nDone.\n\nRed: n/a: new feature\nVerified:\n- **Red:** the probe failed first\n- **Tests:** 32 of 32 pass\nFiles: a.ts\n\nPHASE DONE\n");
+  assert.equal(blockField(block, "Red"), "n/a: new feature");
+  assert.equal(blockField(block, "Tests"), undefined);
+  assert.equal(blockField(block, "Verified"), "**Red:** the probe failed first; **Tests:** 32 of 32 pass");
+  assert.equal(blockField(block, "Files"), "a.ts");
+});
+
 test("readHeading gives null for text without a block heading (T-2.1)", () => {
   assert.equal(readHeading("Done.\n\n## Notes\n\nnothing"), null);
   assert.equal(readHeading(""), null);
@@ -200,6 +208,11 @@ test("proposals split a Comments or Waivers line into items, and none or an empt
   assert.deepEqual(proposals('src/a.ts:4 "skip" because flaky; src/b.test.ts deleted because moved', WAIVER_SEPARATOR), ['src/a.ts:4 "skip" because flaky', "src/b.test.ts deleted because moved"]);
   assert.deepEqual(proposals("none", COMMENT_SEPARATOR), []);
   assert.deepEqual(proposals(undefined, WAIVER_SEPARATOR), []);
+});
+
+test("proposals read none with a trailing period as nothing", () => {
+  assert.deepEqual(proposals("none.", COMMENT_SEPARATOR), []);
+  assert.deepEqual(proposals("None.", WAIVER_SEPARATOR), []);
 });
 
 test("commentProposal reads path, line and text, and null for any other shape", () => {

@@ -74,7 +74,8 @@ const INDENTED = /^\s+\S/;
 const VALUE_JOIN = "; ";
 const FIXES_ENTRY = /^(?=## Phase )/m;
 
-type LabelLine = { label: string; value: string };
+type LabelLine = { label: string; value: string; isListed: boolean };
+type ListItems = { items: string[]; last: number };
 
 export function blockPath(root: string, id: WorkId, n: number): string {
   return phaseMarker(root, id, n, "block.md");
@@ -124,18 +125,21 @@ export function fixesFiles(root: string, id: WorkId, n: number): string[] {
 function labelLine(line: string): LabelLine | null {
   const groups = line.match(LABEL_LINE)?.groups;
   if (!groups) return null;
-  return { label: groups.bold ?? groups.listed ?? groups.plain, value: (groups.value ?? "").trim() };
+  return { label: groups.bold ?? groups.listed ?? groups.plain, value: (groups.value ?? "").trim(), isListed: LIST_ITEM.test(line) };
 }
 
-function listItemsAfter(lines: string[], from: number): string[] {
+function listItemsAfter(lines: string[], from: number, field: LabelLine): ListItems {
   const items: string[] = [];
-  for (const line of lines.slice(from)) {
-    if (!line.trim()) continue;
-    const text = labelLine(line) ? undefined : line.match(LIST_ITEM)?.groups?.text;
+  let last = from - 1;
+  for (let i = from; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const opensField = field.isListed && labelLine(lines[i]) !== null;
+    const text = opensField ? undefined : lines[i].match(LIST_ITEM)?.groups?.text;
     if (text === undefined) break;
     items.push(text.trim());
+    last = i;
   }
-  return items;
+  return { items, last };
 }
 
 function indentedBody(lines: string[], from: number): string {
@@ -172,7 +176,9 @@ export function parseBlock(text: string | null | undefined): Block {
       out.fields[key] = field.value;
       out.commitBody = indentedBody(lines, i + 1);
     } else {
-      out.fields[key] = [field.value, ...listItemsAfter(lines, i + 1)].filter(Boolean).join(VALUE_JOIN);
+      const { items, last } = listItemsAfter(lines, i + 1, field);
+      out.fields[key] = [field.value, ...items].filter(Boolean).join(VALUE_JOIN);
+      i = last;
     }
   }
   const last = lines.filter((l) => l.trim()).at(-1)?.trim() ?? "";
@@ -192,7 +198,7 @@ const WAIVER_DELETED_PROPOSAL = /^(?<path>\S+)\s+deleted\s+because\s+\S/;
 
 export function proposals(value: string | null | undefined, separator: RegExp): string[] {
   const v = String(value ?? "").trim();
-  if (!v || /^none$/i.test(v)) return [];
+  if (!v || /^none\.?$/i.test(v)) return [];
   return v.split(separator).map((s) => s.trim()).filter(Boolean);
 }
 

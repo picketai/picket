@@ -210,6 +210,15 @@ test("under a held index lock the commit still takes the work folder and warns t
   assert.equal(existsSync(lock), true);
 });
 
+test("under a held index lock the reset hint names an added file once and keeps every other committed path", (t) => {
+  const root = workFolderRepo(t);
+  writeIn(root, "docs/r.md", "report\n");
+  writeFileSync(join(root, ".git", "index.lock"), "");
+  const r = withIdentity(() => commitOwned(root, "feat: a", { add: ["work/x/", "docs/r.md"], owns: ownsSrc, env: process.env }));
+  assert.deepEqual(committedNames(root), ["docs/r.md", "src/a.js", "work/x/state.yaml"]);
+  assert.ok(r.warnings[0].endsWith("; run git reset -q -- work/x/ docs/r.md src/a.js"), r.warnings[0]);
+});
+
 test("without a lock the commit takes the work folder, warns nothing and leaves the tree clean", (t) => {
   const root = workFolderRepo(t);
   const r = commitWorkFolder(root);
