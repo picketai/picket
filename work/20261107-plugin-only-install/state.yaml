@@ -1,7 +1,7 @@
 id: 20261107-plugin-only-install
 lane: design
 title: Plugin-only install without global npm
-status: open
+status: done
 created: 2026-11-07T21:57:25.698Z
-updated: 2026-11-08T09:12:37.247Z
+updated: 2026-11-08T09:51:55.733Z
 session: 8e35c265-744b-41d7-aead-9435ce4d8b0a

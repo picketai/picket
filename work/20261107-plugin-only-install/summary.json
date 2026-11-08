@@ -18,14 +18,25 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-08T09:13:24.561Z",
+    "base": "HEAD",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 19492
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
