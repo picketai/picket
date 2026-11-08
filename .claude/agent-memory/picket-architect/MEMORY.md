@@ -2,7 +2,7 @@
 - [Claude CLI plugin facts](claude-cli-plugin-facts.md) — one hooks module per plugin, zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key, strict validate fails on agents subfolders, UserPromptSubmit contract from the binary, plugin bin PATH scope, CLAUDE_PLUGIN_DATA, renames, npm source, module path base
 - [Bash heredoc backslashes](bash-heredoc-backslashes.md): doubled backslashes collapse in node heredocs, backtick-heavy appends fail, Write and Edit decode backslash-u escapes; grep records afterwards
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
-- [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch seconds, Windows shell, blank on nonzero exit; new verbs touch guard verb sets
+- [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch s, CLAUDE_PROJECT_DIR set for the status line (2.1.319), binary slicing without dd; new verbs touch guard verb sets
 - [npm pack facts](npm-pack-facts.md) — `!**/*.test.*` in files excludes tests (npm 10.4 probe); npm packs the working copy, so CRLF and exec bit leak
 - [State folder facts](state-folder-facts.md) — .picket/state is gitignored, so git-status criteria are vacuous; statusline spawn tests write into the repo without a temp root
 - [Session identity facts](session-identity-facts.md) — CLAUDE_CODE_SESSION_ID in Bash, $.session.id() in mods; commit --only takes worktree content
@@ -16,7 +16,7 @@
 - [Fake Node version](fake-node-version.md): process.versions.node is configurable, so an --import preload fakes an old Node; write the preload with Write, not Bash
 - [Mod engine API facts](mod-engine-api-facts.md): engine types path, command.run queues, immediate commands, session registry, worktree -C, test fs paths resolve against plugin root, probe plugin
 - [Mod theme tokens](mod-theme-tokens.md): tokens the mods already render; role tokens unverified, binary grep refused
-- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1); dist rebuilt mid-run breaks parallel runs; Linux host: ugrep, git now on PATH, picket check runs npm test
+- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1), Linux Node 26 runs .mts probes; CLAUDE.md budget 2560 in test; dist rebuilt mid-run breaks parallel runs; Linux host: ugrep, git now on PATH, picket check runs npm test
 - [Skill base directory facts](skill-base-directory-facts.md): the lead sees a skill's base directory line, a subagent's preloaded skill does not; path forms follow the reader
 - [Generated tracked files](generated-tracked-files.md): npm test builds before product tests, so staleness of build-written tracked files is checked against the git index
 - [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home and obeys CLAUDE_PROJECT_DIR first; lead-only verb list pinned in a guard test

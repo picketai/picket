@@ -15,4 +15,6 @@ Seen 2026-11-08 on the Linux host (/mnt/work path): `grep` resolves to ugrep, wh
 
 By 2026-11-08 later, `/usr/bin/git` is on the agent PATH. `picket check <id>` runs the whole `npm test`, build included, so it rewrites dist under other agents.
 
+On the Linux host, `node --version` is v26.13.0 (2026-11-08), and it runs a scratchpad `.mts` probe that imports `src/lib/shared/admission/lane.mts` and its siblings directly, with no build. The CLAUDE.md budget is 2560 bytes in `test/timing/budgets.test.mjs`, although `.claude/rules/harness-authoring.md` still says 2048.
+
 Until 43ee39c (2026-11-08) `npm test` failed on the Linux host in its `mods` step only: 25 status pane and band tests, because the status fixtures use `D:/` roots, which are relative on Linux (see [[mod-engine-api-facts]]). Since 43ee39c the whole `npm test` passes there, so a criterion that `npm test` passes can be met again.
