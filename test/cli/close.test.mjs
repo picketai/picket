@@ -93,6 +93,18 @@ test("close commits the closing state with the untracked review marker under cho
   assert.deepEqual(r.json.committed.sort(), files.filter(Boolean).sort());
 });
 
+test("close writes the audit line to audit.txt, commits it, and prints it after the lane line (T-2.3, T-2.4)", (t) => {
+  const { root, id } = repoWithOpenItem(t);
+  const r = picket(root, "close", id);
+  assert.equal(r.code, 0, r.stdout);
+  const audit = readFileSync(join(root, "work", id, "audit.txt"), "utf8");
+  assert.equal(audit, `${r.json.closing.audit}\n`);
+  assert.match(audit, /^fast · phases 0 · tokens none · bounces 0 · blocks 0 · wall -\n$/);
+  assert.ok(r.json.committed.includes(`work/${id}/audit.txt`), r.json.committed.join(", "));
+  const human = picket(root, "close", id, "--human");
+  assert.equal(human.stdout.split("\n")[2], `Audit: ${audit.trimEnd()}`);
+});
+
 test("leave records a command for the user, close lists it, and a closed item refuses another", (t) => {
   const { root, id, git } = repoWithOpenItem(t);
   const left = picket(root, "leave", id, "--command", "git worktree remove .worktrees/x", "--why", "cleanup");
@@ -349,7 +361,7 @@ test("close --human prints the commit and warns about a dirty path outside work/
   writeFileSync(join(root, "README.md"), "changed\n");
   const r = picket(root, "close", id, "--human");
   assert.equal(r.code, 0, r.stdout);
-  const [heading, commit, warning] = r.stdout.split("\n");
+  const [heading, commit, , warning] = r.stdout.split("\n");
   assert.equal(heading, `## Expedited closed: ${id}`);
   assert.equal(commit, `Commit: ${git("rev-parse", "--short", "HEAD")} chore: close csv export`);
   assert.match(warning, /^WARNING: uncommitted changes: README\.md/);
@@ -391,7 +403,7 @@ test("a design close lists each deferred criterion of its record, after the Phas
   assert.deepEqual(picket(root, "close", id).json.closing.deferred, [{ id: "T-1.3", owner: "QA", gate: "before go-live" }]);
   const human = picket(root, "close", id, "--human");
   assert.equal(human.code, 0, human.stdout);
-  assert.equal(human.stdout.split("\n")[2], "Deferred: T-1.3 QA, before go-live");
+  assert.equal(human.stdout.split("\n")[3], "Deferred: T-1.3 QA, before go-live");
 });
 
 test("a fast close carries no deferred criteria and prints no Deferred line", (t) => {

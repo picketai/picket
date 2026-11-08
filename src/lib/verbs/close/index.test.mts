@@ -11,7 +11,8 @@ import { verb } from "./index.mts";
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
-const NO_FACTS: Closing = { phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [] };
+const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0 · wall -";
+const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -66,13 +67,13 @@ test("close reads the message and the touched paths", () => {
 });
 
 test("a fast close names its commit, or that nothing was committed", () => {
-  assert.equal(closingBlock(closed("fast", {}, { commit: "abc1234", message: "fix: a" })), `## Expedited closed: ${ID}\nCommit: abc1234 fix: a`);
-  assert.equal(closingBlock(closed("fast")), `## Expedited closed: ${ID}\nCommit: nothing to commit`);
+  assert.equal(closingBlock(closed("fast", {}, { commit: "abc1234", message: "fix: a" })), `## Expedited closed: ${ID}\nCommit: abc1234 fix: a\nAudit: ${AUDIT}`);
+  assert.equal(closingBlock(closed("fast")), `## Expedited closed: ${ID}\nCommit: nothing to commit\nAudit: ${AUDIT}`);
 });
 
 test("an order close gives the phases, the commit range and the cumulative verdict", () => {
   const block = closingBlock(closed("order", { phases: 2, commits: { first: "aaa1111", last: "bbb2222" }, review: "APPROVED" }));
-  assert.equal(block, `## Order closed: ${ID}\nPhases: 2 · commits aaa1111..bbb2222 · review: APPROVED`);
+  assert.equal(block, `## Order closed: ${ID}\nPhases: 2 · commits aaa1111..bbb2222 · review: APPROVED\nAudit: ${AUDIT}`);
 });
 
 test("a design close counts its decisions and the amended ones", () => {
@@ -83,8 +84,8 @@ test("a design close counts its decisions and the amended ones", () => {
 
 test("a research close names the report, its findings and the ones for architect review", () => {
   const flagged = closingBlock(closed("research", { report: { findings: 2, architect_review: ["R-002"], strategic_review: [] } }));
-  assert.equal(flagged, `## Research closed: ${ID}\nReport: work/${ID}/research.md · findings: 2 · architect review: R-002`);
-  assert.match(closingBlock(closed("research", { report: { findings: 0, architect_review: [], strategic_review: [] } })), /architect review: no$/);
+  assert.equal(flagged, `## Research closed: ${ID}\nReport: work/${ID}/research.md · findings: 2 · architect review: R-002\nAudit: ${AUDIT}`);
+  assert.match(closingBlock(closed("research", { report: { findings: 0, architect_review: [], strategic_review: [] } })), /architect review: no$/m);
 });
 
 test("ids flagged for strategic review close the research Report line and the design Phases line", () => {
@@ -99,10 +100,18 @@ test("Questions shows only when the cumulative review asked some", () => {
   assert.doesNotMatch(closingBlock(closed("order", { phases: 1 })), /^Questions:/m);
 });
 
+test("the Audit line follows the lane line in every lane (T-2.4)", () => {
+  const audit = "design · phases 2 · tokens developer 3.5k · bounces 1 · blocks 0 · wall 1h30m";
+  for (const lane of ["fast", "order", "design", "research"] as const) {
+    const report = lane === "research" ? { findings: 0, architect_review: [], strategic_review: [] } : null;
+    assert.equal(closingBlock(closed(lane, { audit, report })).split("\n")[2], `Audit: ${audit}`, lane);
+  }
+});
+
 test("each deferred criterion gets a Deferred line right after Questions", () => {
   const deferred = [{ id: "T-5.4", owner: "QA", gate: "before go-live" }];
   const lines = closingBlock(closed("design", { phases: 5, decisions: { count: 2, amended: 0 }, questions: "S-4 header row", deferred })).split("\n");
-  assert.deepEqual(lines.slice(2), ["Questions: S-4 header row", "Deferred: T-5.4 QA, before go-live"]);
+  assert.deepEqual(lines.slice(3), ["Questions: S-4 header row", "Deferred: T-5.4 QA, before go-live"]);
 });
 
 test("a close with no deferred criteria prints no Deferred line", () => {
@@ -117,7 +126,7 @@ test("each repeat gets a Repeats line and a Follow-up line, after what is left a
   ];
   const left = [{ ts: "t", command: "git worktree remove .worktrees/x", why: "cleanup" }];
   const lines = closingBlock(closed("fast", {}, { repeats, left, left_staged: ["README.md"], warnings: ["HEAD moved"], dirty: ["src/a.ts"] })).split("\n");
-  assert.deepEqual(lines.slice(2), [
+  assert.deepEqual(lines.slice(3), [
     "Repeats: Sl1 (20261020-a, 20261021-b)",
     "Repeats: Ts4 (20261022-c)",
     "Left for you: git worktree remove .worktrees/x (cleanup)",
