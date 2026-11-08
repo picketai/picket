@@ -412,3 +412,12 @@ test("a code finding beside the record finding, or no amendment line, leaves the
   assert.equal(Object.hasOwn(withCode, "plan_only"), false);
   assert.equal(Object.hasOwn(routedCumulative(t, recordFinding, null), "plan_only"), false);
 });
+
+const REVIEWING_SKILL = new URL("../../../../skills/reviewing/SKILL.md", import.meta.url);
+
+test("the reviewing skill's plan-wording finding example routes as plan-only (T-3.2)", (t) => {
+  const example = readFileSync(REVIEWING_SKILL, "utf8").match(/^- \[\w+\] work\/<id>\/order\.md:.*$/m)?.[0];
+  assert.ok(example, "the skill holds a finding example citing work/<id>/order.md");
+  const row = routedCumulative(t, (id) => `Findings: 1 minor\n${example.replaceAll("<id>", id)}`, "AMENDMENT NEEDED: T-1.2 the criterion names the wrong file");
+  assert.equal(row.plan_only, true);
+});

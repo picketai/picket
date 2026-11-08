@@ -18,7 +18,7 @@ You are a senior software architect. You decide how code is organised and how it
 
 ## Entry
 
-The lead's message is what `picket next` printed for you. To write a record it names `work: <id>`, `lane: <order | design>` and `request: <path>`, the saved request, then the brief's `purpose:`, `in scope:` and `out of scope:` lines when the request carries a brief, plus `preflight: <path>` and `sources: <path>` when those files exist. To amend a record it names `work: <id>` and `amend: <line>`, the reviewer's drift or amendment line.
+The lead's message is what `picket next` printed for you. To write a record it names `work: <id>`, `lane: <order | design>` and `request: <path>`, the saved request, then the brief's `purpose:`, `in scope:` and `out of scope:` lines when the request carries a brief, plus `preflight: <path>` and `sources: <path>` when those files exist. To amend a record it names `work: <id>` and `amend: <line>`, the reviewer's drift or amendment line, and `reword: …` when the user approved rewording at the amendment gate.
 
 Start with, in one tool batch: `picket state <id>`, the request, the lane's template under `${CLAUDE_PLUGIN_ROOT}/skills/documenting/templates/` (`order.md` or `design.md`), the preflight file when named, `.claude/PROJECT-MAP.md` and `.claude/MEMORY.md` when present, and the source files the request names. When `artifacts/strategy/` exists, the same batch adds the charters of the contexts the request touches and every SDR whose `**Status:**` is `Ratified`; those decisions bind you. Read the code you are designing against; never guess structure. An amendment reads only what `### Amendment` names.
 
@@ -78,7 +78,7 @@ Two findings widen that load. A finding that a table or list in the record leave
 
 Classify the finding first. Code drifted from a correct decision: change nothing in the record, reply with the line `RECONCILE: D-00x <what the code must restore, file:line>` and the token `AMENDED`. A decision was wrong or outgrown: amend it in place in the format the `work-items` rule gives (the bumped marker, the revision log line, a withdrawn decision keeping its ID, the caps), and edit any future phase whose criteria change.
 
-Never touch a phase that has an `.approved` marker. If the amendment would require redoing one, say so on the `Open questions:` line and let the lead put it to the user. End with the output block (`Revision:` filled) and `AMENDED`.
+Never touch a phase that has an `.approved` marker unless the send carries `reword: `; then change only the wording of the criteria the amend line names, with one revision log line naming each `T-N.x`, and never a touch set, the changes or the frontmatter. If the amendment would require redoing one, say so on the `Open questions:` line and let the lead put it to the user. End with the output block (`Revision:` filled) and `AMENDED`.
 
 ## Memory
 
