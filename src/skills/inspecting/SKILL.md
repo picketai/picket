@@ -34,7 +34,7 @@ The ledger is `.picket/state/ledger.jsonl`, written by the hooks; this skill onl
 ```
 ▶ <id> · <lane> · <status> · phases <approved>/<total>
 Next: <action> by <actor><, phase n>
-Spent: $<cost> · <turns> turns · cache <ratio> · <tok/line> tokens per accepted line
+Spent: <tokens> tokens · <turns> turns · cache <ratio> · <tok/line> tokens per accepted line
 Verdicts: <last three, oldest first>
 Escalations: <asked> asked · <ran> ran · <not_run> not run · <denied> denied
   <outcome> <command> · "<reason>"   (one line per `escalations.recent` row, only when any exist)

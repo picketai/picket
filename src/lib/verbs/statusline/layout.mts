@@ -142,10 +142,6 @@ function cacheGroup(facts: Facts, glyph: Glyphs): Piece[] {
   ];
 }
 
-function costGroup(facts: Facts): Piece[] {
-  return facts.cost === null ? [] : [{ text: `$${facts.cost.toFixed(2)}`, color: "text" }];
-}
-
 function knownColumns(columns: number | undefined): columns is number {
   return Number.isInteger(columns) && (columns as number) > 0;
 }
@@ -174,9 +170,8 @@ export function layout(facts: Facts, { columns, icons = "plain" }: { columns: nu
   const sevenDay = limitGroup("7d", glyph.sevenDay, facts.limits.seven_day, facts.now, glyph);
   const context = contextGroup(facts, glyph);
   const cache = cacheGroup(facts, glyph);
-  const cost = costGroup(facts);
-  const wide: Line[] = [place, { left: model, right: joinGroups([fiveHour, sevenDay, context, cache, cost]) }];
-  const narrow: Line[] = [place, { left: model, right: joinGroups([fiveHour, sevenDay]) }, { left: context, right: joinGroups([cache, cost]) }];
+  const wide: Line[] = [place, { left: model, right: joinGroups([fiveHour, sevenDay, context, cache]) }];
+  const narrow: Line[] = [place, { left: model, right: joinGroups([fiveHour, sevenDay]) }, { left: context, right: cache }];
   const fitsWide = knownColumns(columns) && wide.every((line) => lineWidth(line) <= layoutWidth(columns));
   const width = layoutWidth(columns);
   return (fitsWide ? wide : narrow).filter((line) => line.left.length > 0 || line.right.length > 0).map((line) => placed(line, width));

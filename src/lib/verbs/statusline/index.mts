@@ -1,8 +1,6 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { action, done } from "../../shared/action.mts";
-import { PICKET_DIR, sessionCostPath, workspaceRoot } from "../../shared/paths.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import type { Args } from "../../util/args.mts";
 import { factsOf, workspaceDir, type StatuslineInput } from "./facts.mts";
@@ -21,21 +19,10 @@ export function renderStatusline(input: StatuslineInput, { now, columns, icons =
   return paint(layout(facts, { columns, icons }));
 }
 
-export function recordSessionCost(root: string, input: StatuslineInput, now: Date): void {
-  try {
-    const cost = input.cost?.total_cost_usd;
-    const file = sessionCostPath(root, input.session_id);
-    if (file === null || !Number.isFinite(cost) || !existsSync(join(root, PICKET_DIR))) return;
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, JSON.stringify({ session: input.session_id, cost_usd: cost, ts: now.toISOString() }));
-  } catch {}
-}
-
-export const statusline = action<StatuslineInput, Statusline>(async (input, { now, env, home, root }) => {
+export const statusline = action<StatuslineInput, Statusline>(async (input, { now, env, home }) => {
   const at = now().getTime();
   const probe = liveProbe({ cacheDir: join(tmpdir(), PROBE_CACHE), now: at });
   const line = renderStatusline(input, { now: at, columns: Number(env.COLUMNS), icons: iconsMode(home), probe });
-  recordSessionCost(workspaceRoot(input.workspace?.project_dir ?? workspaceDir(input), root), input, now());
   return done({ line });
 });
 

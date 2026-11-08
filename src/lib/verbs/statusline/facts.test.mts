@@ -51,7 +51,7 @@ function bareRows(input: StatuslineInput, columns: number | undefined): string[]
 
 test("missing facts drop their field or group instead of printing placeholders (T-1.6)", () => {
   assert.deepEqual(bareRows({}, undefined), ["  PICKETAI >_", "  default · none"]);
-  const sparse = bareRows({ model: { id: "claude-opus-5-5" }, cost: { total_cost_usd: 1.5 } } as StatuslineInput, 150).join("\n");
+  const sparse = bareRows({ model: { id: "claude-opus-5-5" } }, 150).join("\n");
   for (const absent of ["5h", "7d", "cache", "/"]) assert.ok(!sparse.includes(absent), absent);
   assert.ok(sparse.includes("Opus 5.5 · default · none"), sparse);
   for (const input of [{}, normal(), busy(), hot()]) {

@@ -1,0 +1,9 @@
+{"ts":"2026-11-07T22:15:58.504Z","agent":"architect","verdict":"ARTIFACT WRITTEN","phase":1,"scope":null,"through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-07T22:19:01.858Z","agent":"architect","verdict":"AMENDED","phase":1,"scope":null,"through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-07T22:19:29.409Z","agent":"architect","verdict":"AMENDED","phase":1,"scope":null,"through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-07T22:20:04.927Z","agent":"reviewer","verdict":"DRIFT DETECTED","phase":1,"scope":"crosscheck","through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a","amend":"AMENDMENT NEEDED: D-003 contradicts SDR-00002 D-003 (ratified)."}
+{"ts":"2026-11-07T22:20:48.523Z","agent":"developer","verdict":"PHASE STALLED","phase":1,"scope":null,"through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-07T22:21:41.563Z","agent":"architect","verdict":"AMENDED","phase":1,"scope":null,"through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-07T22:22:13.624Z","agent":"reviewer","verdict":"ALIGNED","phase":1,"scope":"crosscheck","through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-08T08:17:25.727Z","agent":"developer","verdict":"PHASE DONE","phase":1,"scope":null,"through":null,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}
+{"ts":"2026-11-08T08:17:42.090Z","agent":"user","verdict":"approved","phase":1,"scope":null,"through":7,"session":"8e35c265-744b-41d7-aead-9435ce4d8b0a"}

@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { emitLedger as ledgerHandler } from "./index.mts";
-import { sessionCostPath, statePath, STATE_FILES } from "../../../shared/paths.mts";
+import { statePath, STATE_FILES } from "../../../shared/paths.mts";
 import { hookContext } from "#test/context.mts";
 import { assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
 import { withProject } from "#test/project.mts";
@@ -23,13 +23,11 @@ test("emitLedger called directly appends one v2 row to the ledger (T-6.3)", (t) 
   assert.equal(rows[0].session, "s1");
 });
 
-test("emitLedger stores the session's cost snapshot as session_cost_usd and writes no cost_usd (T-1.3)", (t) => {
+test("emitLedger writes a turn row with no cost field of any kind", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const tp = transcript(root, [user("hello"), assistant("Done.")]);
-  mkdirSync(statePath(root, STATE_FILES.sessions), { recursive: true });
-  writeFileSync(sessionCostPath(root, "s1") ?? "", JSON.stringify({ session: "s1", cost_usd: 2.5, ts: "2026-10-18T07:00:00Z" }));
-  for (const session_id of ["s1", "s2"]) emitLedger({ hook_event_name: "Stop", session_id, transcript_path: tp, cwd: root }, hookContext(root));
-  const rows = ledger(root);
-  assert.deepEqual(rows.map((r) => r.session_cost_usd), [2.5, null]);
-  for (const key of ["cost_usd", "lines_added", "bounces", "blocks"]) assert.ok(rows.every((r) => !(key in r)), key);
+  emitLedger({ hook_event_name: "Stop", session_id: "s1", transcript_path: tp, cwd: root }, hookContext(root));
+  const [row] = ledger(root);
+  assert.equal(row.event, "stop");
+  for (const key of ["session_cost_usd", "cost_usd", "lines_added", "bounces", "blocks"]) assert.equal(key in row, false, key);
 });

@@ -7,7 +7,7 @@ export const VERB_NAMES = {
   check: { summary: "run the project's test and lint commands and log them", readOnly: false },
   close: { summary: "mark a work item done and commit what it owns", readOnly: false },
   comment: { summary: "record the user's approval of one code comment", readOnly: false, leadOnly: true },
-  cost: { summary: "sum the ledger: turns, spend, cache, stops, bounces, escalations", readOnly: true },
+  cost: { summary: "sum the ledger: turns, tokens, cache, stops, bounces, escalations", readOnly: true },
   drive: { summary: "start the app or run a command, exercise it, stop it and log the evidence", readOnly: false },
   extension: {
     summary: "manage the project's extensions",

@@ -60,7 +60,7 @@ picket comment <id> --path <p> --text "<comment>"
 
 ## picket cost
 
-Sum the ledger: turns, spend, cache, stops, bounces, escalations.
+Sum the ledger: turns, tokens, cache, stops, bounces, escalations.
 
 ```sh
 picket cost [--session <id>] [--work <id>]

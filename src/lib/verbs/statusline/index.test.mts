@@ -1,14 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { recordSessionCost, renderStatusline, verb } from "./index.mts";
+import { readFileSync } from "node:fs";
+import { renderStatusline, verb } from "./index.mts";
 import type { StatuslineInput } from "./facts.mts";
 import type { WorkingState } from "../../shared/git.mts";
 import { displayWidth } from "../../util/text-width.mts";
 import { rgb } from "../../shared/styling/palette.mts";
 import { parseArgs } from "../../util/args.mts";
-import { withProject } from "#test/project.mts";
 
 const NOW = Date.UTC(2026, 9, 17, 12, 0, 0);
 const MINUTE = 60_000;
@@ -67,7 +65,7 @@ function rows(input: StatuslineInput, columns: number | undefined, options?: Pai
   return painted(input, columns, options).replace(ESCAPE, "").split("\n");
 }
 
-const WIDE_RIGHT = "5h 42% (2h14m)   7d 71% (3d06h)    62k/200k 31%    cache 48k ◷ 52m   $4.12";
+const WIDE_RIGHT = "5h 42% (2h14m)   7d 71% (3d06h)    62k/200k 31%    cache 48k ◷ 52m";
 
 test("mutate needs an id, and statusline reads its input from standard input", () => {
   const parse = (stdin: string) => verb.parse(parseArgs([], () => stdin));
@@ -85,13 +83,13 @@ test("the normal state at 150 columns prints two rows ending at column 148 (T-1.
   for (const row of printed) assert.equal(displayWidth(row), 148, row);
 });
 
-test("the wide layout needs 112 cells: 114 columns prints 2 rows, 113 and 80 print 3 (T-1.2)", () => {
-  assert.equal(rows(normal(), 114).length, 2);
-  assert.equal(rows(normal(), 113).length, 3);
+test("the wide layout needs 104 cells: 106 columns prints 2 rows, 105 and 80 print 3 (T-1.2)", () => {
+  assert.equal(rows(normal(), 106).length, 2);
+  assert.equal(rows(normal(), 105).length, 3);
   const narrow = rows(normal(), 80);
   assert.equal(narrow.length, 3);
   assert.ok(narrow[1].endsWith("5h 42% (2h14m)   7d 71% (3d06h)"), narrow[1]);
-  assert.match(narrow[2], /^   62k\/200k 31%  +cache 48k ◷ 52m   \$4\.12$/);
+  assert.match(narrow[2], /^   62k\/200k 31%  +cache 48k ◷ 52m$/);
 });
 
 test("columns that are not a positive integer print the narrow layout at 78 columns (T-1.2)", () => {
@@ -157,12 +155,6 @@ test("the context bar fills its share of characters with the context colour (T-1
   const hotOut = painted(hot(), 150);
   assert.ok(hotOut.includes("\x1b[1;38;2;13;10;8;48;2;229;72;77m"));
   assert.ok(hotOut.includes("\x1b[1;38;2;229;72;77mcold\x1b[0m"));
-});
-
-test("recordSessionCost swallows a write error", (t) => {
-  const root = withProject(t);
-  writeFileSync(join(root, ".picket", "state"), "a file where the state folder should be");
-  assert.doesNotThrow(() => recordSessionCost(root, fixture(), new Date()));
 });
 
 test("rgb splits a palette hex into its channels", () => {
