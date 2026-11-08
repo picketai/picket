@@ -1,0 +1,37 @@
+{
+  "work_id": "20261107-plugin-only-install",
+  "base": "HEAD",
+  "request": "work/20261107-plugin-only-install/request.md",
+  "size": "small",
+  "changed_files": [],
+  "lines_added": 0,
+  "lines_removed": 0,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 7,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    }
+  ]
+}

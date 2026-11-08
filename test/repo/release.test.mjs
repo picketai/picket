@@ -71,9 +71,16 @@ test("the release workflow tests on Node 24, checks the build on Node 22, tests 
   assert.match(jobs.mods, /run: npm ci\n[\s\S]*run: npm install -g @anthropic-ai\/claude-code\n[\s\S]*run: node scripts\/test\.mjs build mods\n/);
   assert.match(jobs.publish, /needs: \[test, build-on-22, mods\]\n/);
   assert.doesNotMatch(jobs.publish, /npm test/);
+  assert.match(jobs.publish, /run: npm ci\n/);
   const uses = Object.values(jobs).join("").match(/uses: \S+/g);
   assert.ok(uses.length >= 9, uses.join(", "));
   assert.deepEqual(uses.filter((line) => !/@[0-9a-f]{40}$/.test(line)), []);
+});
+
+test("both publish steps publish ./dist under the chosen dist-tag, and only ./dist (T-5.5)", () => {
+  const { publish } = workflowJobs();
+  const runs = publish.match(/run: npm publish.*\n/g);
+  assert.deepEqual(runs, ['run: npm publish ./dist --access public --tag "$DIST_TAG"\n', 'run: npm publish ./dist --dry-run --access public --tag "$DIST_TAG"\n']);
 });
 
 test("checkTag accepts only the v-prefixed package version", () => {

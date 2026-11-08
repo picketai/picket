@@ -1,6 +1,7 @@
 {
   "name": "@picketai/picket",
   "version": "1.0.0-alpha.5",
+  "private": true,
   "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel.",
   "homepage": "https://github.com/picketai/picket#readme",
   "bugs": {
@@ -13,16 +14,6 @@
   "license": "MIT",
   "author": "Vlad Apetre",
   "type": "module",
-  "bin": {
-    "picket": "dist/bin/picket.mjs"
-  },
-  "files": [
-    "dist/",
-    ".claude-plugin/marketplace.json",
-    "LICENSE",
-    "README.md",
-    "!**/*.test.*"
-  ],
   "imports": {
     "#test/*": "./test/support/*"
   },
@@ -42,13 +33,10 @@
     "docs": "node scripts/docs.mjs",
     "typecheck": "tsc -p .",
     "prepare": "npm run build",
-    "prepack": "npm run build",
     "test": "npm run typecheck && node scripts/test.mjs",
     "test:unit": "node --test \"src/**/*.test.mts\"",
     "version": "node .github/scripts/release.mjs sync-version && git add src/.claude-plugin/plugin.json",
-    "test:status": "claude plugin validate --strict dist/mods/status && claude plugin test dist/mods/status",
-    "test:markdown": "claude plugin validate --strict dist/mods/markdown && claude plugin test dist/mods/markdown",
-    "test:session": "claude plugin validate --strict dist/mods/session && claude plugin test dist/mods/session",
+    "test:mods": "claude plugin validate --strict dist && claude plugin test dist",
     "bench:test": "node --test \"bench/test/*.test.mjs\"",
     "bench:integration": "node --test \"bench/integration/*.test.mjs\"",
     "bench:dry": "node bench/run.mjs --dry --harness plugin",

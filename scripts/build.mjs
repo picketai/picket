@@ -233,6 +233,24 @@ export function buildMods(mods = MODS) {
   writeMarketplace();
 }
 
+const PACKAGE = join(REPO, "package.json");
+export const DIST_PACKAGE = join(DIST, "package.json");
+const PACKAGE_FIELDS = ["name", "version", "description", "license", "author", "repository", "homepage", "bugs", "type", "engines"];
+const PACKAGE_COPIES = ["LICENSE", "README.md"];
+const EXCLUDE_TESTS = "!**/*.test.*";
+
+export function distPackage(pkg, entries) {
+  const fields = Object.fromEntries(PACKAGE_FIELDS.filter((field) => field in pkg).map((field) => [field, pkg[field]]));
+  const files = entries.filter((entry) => entry !== basename(DIST_PACKAGE)).sort();
+  return { ...fields, bin: { picket: "bin/picket.mjs" }, files: [...files, EXCLUDE_TESTS] };
+}
+
+function writePackage() {
+  for (const file of PACKAGE_COPIES) copyFileSync(join(REPO, file), join(DIST, file));
+  const pkg = JSON.parse(readFileSync(PACKAGE, "utf8"));
+  writeFileSync(DIST_PACKAGE, jsonText(distPackage(pkg, readdirSync(DIST))));
+}
+
 export async function buildAll() {
   const files = sourceFiles();
   const problems = [...missingHooks(), ...outputCollisions(files)];
@@ -243,6 +261,7 @@ export async function buildAll() {
   await build(moduleOptions(files.filter(isBuiltModule)));
   await Promise.all([...Object.keys(HOOKS).map((name) => build(entryOptions(name))), build(statuslineOptions())]);
   buildMods();
+  writePackage();
   await writeReferencePages();
 }
 

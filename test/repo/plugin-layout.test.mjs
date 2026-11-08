@@ -158,25 +158,25 @@ test(".claude/settings.json denies Edit and Write under the generated dist/", ()
   assert.ok(deny.includes("Write(dist/**)"), "Write(dist/**)");
 });
 
-test("the npm package ships the plugin and its marketplace at the plugin's version, with no runtime dependencies", () => {
+test("the root package is private, at the plugin's version, with no bin, files or runtime dependencies (T-5.3)", () => {
   const pkg = readJson(PACKAGE);
+  assert.equal(pkg.private, true);
   assert.equal(pkg.version, readJson(join(SRC, ".claude-plugin", "plugin.json")).version);
-  assert.equal(pkg.bin.picket, "dist/bin/picket.mjs");
-  assert.ok(pkg.files.includes("dist/"), "files ships dist/");
-  assert.equal(pkg.files.includes("src/"), false, "files leaves the source out");
-  assert.ok(pkg.files.includes(".claude-plugin/marketplace.json"), "files ships the marketplace init looks for beside dist/");
-  assert.equal("dependencies" in pkg, false);
+  for (const key of ["bin", "files", "dependencies"]) assert.equal(key in pkg, false, key);
   assert.deepEqual(pkg.engines, { node: ">=22" });
   assert.deepEqual(pkg.devEngines, { runtime: { name: "node", version: ">=24", onFail: "error" } });
-  assert.equal(pkg.files.at(-1), "!**/*.test.*", "files ends by excluding test files from every shipped folder");
 });
 
-test("the npm package ships each mod only as built under dist/hooks/mods/", () => {
-  const pkg = readJson(PACKAGE);
-  for (const name of Object.keys(MODS)) {
-    assert.deepEqual(pkg.files.filter((entry) => entry.startsWith(`${name}/`)), [], `files names no ${name}/ folder`);
-    assert.equal(existsSync(resolve("dist", "hooks", "mods", name, "hooks", "index.tsx")), true, `${name} handlers`);
-  }
+test("the root package tests the mods as one plugin and names no dist/mods/ folder (T-5.3)", () => {
+  const text = readFileSync(PACKAGE, "utf8");
+  const { scripts } = JSON.parse(text);
+  assert.equal(scripts["test:mods"], "claude plugin validate --strict dist && claude plugin test dist");
+  for (const name of ["test:status", "test:markdown", "test:session"]) assert.equal(name in scripts, false, name);
+  assert.doesNotMatch(text, /dist\/mods\//);
+});
+
+test("each mod is built under dist/hooks/mods/", () => {
+  for (const name of Object.keys(MODS)) assert.equal(existsSync(resolve("dist", "hooks", "mods", name, "hooks", "index.tsx")), true, `${name} handlers`);
 });
 
 test("the picket launcher is tracked as executable", () => {
