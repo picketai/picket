@@ -12,6 +12,8 @@ import { nestedRepos, readLayout, type ItemLayout } from "./repos.mts";
 import { securityPathOf } from "./security-paths.mts";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
 import type { Approval } from "./work/approvals.mts";
+import { phasePaths, type ArtifactPhase } from "./work/artifact.mts";
+import { blockFiles, fixesFiles } from "./work/block.mts";
 import { workRel, type WorkId } from "./work/files.mts";
 import type { WorkState } from "./work/state.mts";
 
@@ -199,13 +201,37 @@ function ownCommits(root: string, id: WorkId, base: string): string[] {
   return git.commitsBetween(root, base).filter((sha) => own.has(sha));
 }
 
-function rootOwned(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean): RootChanges {
+type OwnedCommit = { sha: string; files: string[] };
+type OwnedParts = { commits: OwnedCommit[]; dirty: string[] };
+export type OwnedRootChange = { files: string[]; before: string };
+
+const productPath = (path: string) => !git.isNonProduct(path);
+
+export function itemOwnedPaths(root: string, id: WorkId, phases: readonly ArtifactPhase[]): string[] | null {
+  if (!phases.length) return null;
+  return phases.flatMap((phase) => [...phasePaths(phase), ...blockFiles(root, id, phase.n), ...fixesFiles(root, id, phase.n)]);
+}
+
+function ownedParts(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean): OwnedParts {
   const commits = ownCommits(root, id, base).map((sha) => ({ sha, files: git.filesInCommit(root, sha).filter(isProduct) }));
   const isOwned = git.listedPathMatcher(root, [...owned]);
   const dirty = git.dirtyPaths(root).filter((path) => isProduct(path) && isOwned(path));
-  const stats = [...commits.map(({ sha, files }) => git.diffStat(root, `${sha}^`, sha, files)), git.diffStat(root, "HEAD", null, dirty)];
+  return { commits, dirty };
+}
+
+function changeOf({ commits, dirty }: OwnedParts): OwnedRootChange {
   const files = [...new Set([...commits.flatMap((c) => c.files), ...dirty])].sort();
-  return { files, ...sumStats(stats), before: commits.length ? `${commits[0].sha}^` : "HEAD" };
+  return { files, before: commits.length ? `${commits[0].sha}^` : "HEAD" };
+}
+
+export function ownedRootChange(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean = productPath): OwnedRootChange {
+  return changeOf(ownedParts(root, id, base, owned, isProduct));
+}
+
+function rootOwned(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean): RootChanges {
+  const parts = ownedParts(root, id, base, owned, isProduct);
+  const stats = [...parts.commits.map(({ sha, files }) => git.diffStat(root, `${sha}^`, sha, files)), git.diffStat(root, "HEAD", null, parts.dirty)];
+  return { ...changeOf(parts), ...sumStats(stats) };
 }
 
 export function changesOfItem(root: string, state: WorkState, base: string, owned: readonly string[] | null = null): ChangeSet {

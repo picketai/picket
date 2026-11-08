@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { action, done, failed, Refused } from "../../shared/action.mts";
 import { locate, readPlan } from "../../shared/checkouts.mts";
 import { runStep, type StepStatus } from "../../shared/checks.mts";
+import { revParse } from "../../shared/git.mts";
 import { readLayout } from "../../shared/repos.mts";
-import { itemBase } from "../../shared/review-summary.mts";
+import { itemBase, itemOwnedPaths, ownedRootChange } from "../../shared/review-summary.mts";
 import { detectTooling, type Tooling } from "../../shared/tooling.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
-import { phasePaths } from "../../shared/work/artifact.mts";
+import { phasePaths, type ArtifactPhase } from "../../shared/work/artifact.mts";
 import { workFile, workId, type WorkId } from "../../shared/work/files.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 import { pickMutantIn, restoreLeftover, withMutant, type Checkout, type Mutant } from "./mutant.mts";
@@ -63,10 +64,17 @@ function candidateCheckouts(root: string, id: WorkId): Checkout[] {
     .map((path) => locate(layout, path))
     .flatMap(({ dir, repo }) => {
       const base = layout.repos.find((r) => r.path === repo)?.base;
-      return repo !== null && base ? [{ dir, base }] : [];
+      return repo !== null && base ? [{ dir, base, files: null }] : [];
     });
   const byDir = [...new Map(nested.map((checkout) => [checkout.dir, checkout])).values()];
-  return [{ dir: "", base: rootBase(root, id, state.base) }, ...byDir.sort((a, b) => a.dir.localeCompare(b.dir))];
+  return [rootCheckout(root, id, rootBase(root, id, state.base), phases), ...byDir.sort((a, b) => a.dir.localeCompare(b.dir))];
+}
+
+function rootCheckout(root: string, id: WorkId, base: string, phases: readonly ArtifactPhase[]): Checkout {
+  const owned = itemOwnedPaths(root, id, phases);
+  if (owned === null) return { dir: "", base, files: null };
+  const { files, before } = ownedRootChange(root, id, base, owned);
+  return { dir: "", base: revParse(root, before) ?? before, files };
 }
 
 function rootBase(root: string, id: WorkId, recorded: string | undefined): string {

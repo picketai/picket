@@ -140,6 +140,56 @@ test("a restore record left by an interrupted run is applied before the next pic
   assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), CHANGED);
 });
 
+const planOf = (file: string) => `---\nlane: order\nphases:\n  - n: 1\n    files: [${file}]\n---\n# O\n\n## Phase 1: Own\n`;
+
+function sharedBase(t: TestContext) {
+  const root = gitRepo(t, { host: true, branch: "trunk", message: "base", files: { "src/same.js": SOURCE, "src/a.js": SOURCE } });
+  writeConfig(root, { version: 1, commands: { test: "node -e 0" } });
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "config");
+  const a = openItem(root, { lane: "order", title: "Item A" }).id;
+  const b = openItem(root, { lane: "order", title: "Item B" }).id;
+  writeArtifact(root, a, "order.md", planOf("src/same.js"));
+  writeArtifact(root, b, "order.md", planOf("src/a.js"));
+  return { root, a, b };
+}
+
+function commitItem(root: string, id: WorkId, path: string, text: string) {
+  writeIn(root, path, text);
+  gitIn(root, "add", "--", path, `work/${id}`);
+  gitIn(root, "commit", "-q", "-m", `feat: ${id}`);
+}
+
+test("two items on one base: mutate plants only in the item's own commit and saves the parent of its first commit as base (T-1.1)", (t) => {
+  const { root, a, b } = sharedBase(t);
+  commitItem(root, b, "src/a.js", CHANGED);
+  const parent = gitOut(root, "rev-parse", "HEAD");
+  commitItem(root, a, "src/same.js", CHANGED);
+  const result = mutate(root, a, OPTIONS);
+  assert.deepEqual([result.mutant?.path, result.base], ["src/same.js", parent]);
+  assert.equal(JSON.parse(readFileSync(join(root, "work", a, "mutation.json"), "utf8")).base, parent);
+});
+
+test("an operator only another item added is no candidate, and that item's file is untouched (T-1.2)", (t) => {
+  const { root, a, b } = sharedBase(t);
+  commitItem(root, b, "src/a.js", CHANGED);
+  commitItem(root, a, "src/same.js", NO_OPERATOR);
+  const before = readFileSync(join(root, "src", "a.js"));
+  const result = mutate(root, a, OPTIONS);
+  assert.deepEqual([result.outcome, result.mutant], ["no candidate", null]);
+  assert.deepEqual(readFileSync(join(root, "src", "a.js")), before);
+});
+
+test("an uncommitted change in the item's plan paths is a candidate; one outside its plan and commits is not (T-1.3)", (t) => {
+  const owned = sharedBase(t);
+  writeIn(owned.root, "src/same.js", CHANGED);
+  assert.equal(mutate(owned.root, owned.a, OPTIONS).mutant?.path, "src/same.js");
+  const foreign = sharedBase(t);
+  writeIn(foreign.root, "src/other.js", CHANGED);
+  const result = mutate(foreign.root, foreign.a, OPTIONS);
+  assert.deepEqual([result.outcome, result.mutant], ["no candidate", null]);
+});
+
 function forgetBase(root: string, id: WorkId) {
   const { base: _recorded, ...state } = readState(root, id);
   writeState(root, state, new Date());
