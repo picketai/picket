@@ -15,7 +15,6 @@ export const MODS_PAGE = "mods.md";
 
 const USAGE_LINE = "picket <verb> [args] [--pretty | --human]";
 const LEAD_LINE = "Only the lead runs it; the Bash guard denies it to agents.";
-const MOD_MARKETPLACE = "picketai";
 
 const SHARED_FLAGS = [
   ["--root <path>", "run against the project at that path instead of the current one"],
@@ -115,20 +114,15 @@ export function hooksPage(hooks) {
   ]);
 }
 
-function installedBy(install) {
-  return install === "default" ? "by `picket init`" : "on request";
-}
+const MODS_INTRO = "The mods ship inside the `picket` plugin and load with it. A mod with an off switch turns off when `.picket/config.json` sets that key to `false`, from the next session.";
 
-function installCommand(plugin) {
-  return `claude plugin install ${plugin}@${MOD_MARKETPLACE} --scope project`;
+function switchCell(key) {
+  return key === null ? "none" : `${code(key)}: false`;
 }
 
 export function modsPage(mods) {
-  const entries = Object.entries(mods);
-  const optIn = entries.filter(([, { install }]) => install === "opt-in");
-  const rows = entries.map(([name, { plugin, summary, install }]) => `| ${name} | ${code(plugin)} | ${installedBy(install)} | ${cell(summary)} |`);
-  const installs = optIn.length === 0 ? [] : [["Install an opt-in mod from the project root:", "", ...fenced(optIn.map(([, { plugin }]) => installCommand(plugin)))]];
-  return page([["# Mods", "", generatedLine("`src/lib/mods.mts`")], ["| Mod | Plugin | Installed | Does |", "|---|---|---|---|", ...rows], ...installs]);
+  const rows = Object.entries(mods).map(([name, { summary, switch: key }]) => `| ${name} | ${switchCell(key)} | ${cell(summary)} |`);
+  return page([["# Mods", "", generatedLine("`src/lib/mods.mts`")], [MODS_INTRO], ["| Mod | Off switch | Does |", "|---|---|---|", ...rows]]);
 }
 
 function commandEntry(command, usage) {

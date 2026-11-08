@@ -137,16 +137,12 @@ test("the import scan reads static, side-effect and dynamic imports and skips co
   assert.deepEqual(importSpecifiers(text).sort(), ["../../src/hooks/a.mjs", "./b.mjs", "./c.mjs"]);
 });
 
-test("the root marketplace picketai serves picket from dist/, then each mod from dist/mods/ in list order", () => {
+test("the root marketplace picketai serves only picket, from dist/, and carries no renames (T-4.6)", () => {
   const marketplace = readJson(MARKETPLACE);
   assert.equal(marketplace.name, "picketai");
   assert.ok(marketplace.owner?.name);
-  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [
-    { name: "picket", source: "./dist" },
-    { name: "picket-status", source: "./dist/mods/status" },
-    { name: "picket-markdown", source: "./dist/mods/markdown" },
-    { name: "picket-session", source: "./dist/mods/session" },
-  ]);
+  assert.deepEqual(marketplace.plugins.map(({ name, source }) => ({ name, source })), [{ name: "picket", source: "./dist" }]);
+  assert.equal("renames" in marketplace, false);
 });
 
 test("no forwarder is tracked under .claude/ and no allow rule names .claude/bin/ or .claude/skills/", () => {
@@ -175,11 +171,11 @@ test("the npm package ships the plugin and its marketplace at the plugin's versi
   assert.equal(pkg.files.at(-1), "!**/*.test.*", "files ends by excluding test files from every shipped folder");
 });
 
-test("the npm package ships each mod only as built under dist/mods/, at the package version", () => {
+test("the npm package ships each mod only as built under dist/hooks/mods/", () => {
   const pkg = readJson(PACKAGE);
   for (const name of Object.keys(MODS)) {
     assert.deepEqual(pkg.files.filter((entry) => entry.startsWith(`${name}/`)), [], `files names no ${name}/ folder`);
-    assert.equal(readJson(resolve("dist", "mods", name, ".claude-plugin", "plugin.json")).version, pkg.version, `${name} manifest version`);
+    assert.equal(existsSync(resolve("dist", "hooks", "mods", name, "hooks", "index.tsx")), true, `${name} handlers`);
   }
 });
 

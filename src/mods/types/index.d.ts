@@ -1,4 +1,6 @@
-export type Piece = { text: string; color?: string; bold?: boolean; dim?: boolean; press?: 'work' | 'markdown' }
+export type Next<E, R> = (event: E) => Promise<R>
+
+export type Piece ={ text: string; color?: string; bold?: boolean; dim?: boolean; press?: 'work' | 'markdown' }
 
 export type Line = { left: Piece[]; right: Piece[] }
 
@@ -89,9 +91,17 @@ export type PaneView = {
 
 export type FoldableGroup = SessionGroup | 'done'
 
+export type DocWork = { id: string; lane: string; status: string; approved: number; done: number; total: number }
+
+export type ViewedDoc = { path: string; text: string; mtimeMs?: number; error?: string; before?: string; work?: DocWork }
+
+export type BrowseMode = 'files' | 'outline'
+
+export type DocPaneView = { path: string; treeTop: number; maxOffset: number; maxTreeOffset: number; listRows: number }
+
 declare module 'claude-code' {
   interface PluginState {
-    'picket-status': {
+    'picket': {
       now: number
       work: Work | null
       agents: AgentRow[]
@@ -102,6 +112,15 @@ declare module 'claude-code' {
       transcriptIds: string[]
       hasMarkdown: boolean
       currentId: string | null
+      doc: ViewedDoc | null
+      files: string[]
+      expanded: Record<string, boolean>
+      offsets: Record<string, number>
+      treeOffset: number
+      mode: BrowseMode
+      changed: Record<string, boolean>
+      history: string[]
+      hscroll: Record<string, number>
     }
   }
 }

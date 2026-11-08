@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
-import type { SessionEntry } from '../types'
+import type { SessionEntry } from '../../types'
 import { cleanupOf, groupSessions } from './work-pane'
 
 const entry = (id: string, mtimeMs = 0, isCurrent = false): SessionEntry => ({ id, title: `title ${id}`, mtimeMs, size: 0, isLive: false, isCurrent })

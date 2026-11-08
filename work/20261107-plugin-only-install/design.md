@@ -66,8 +66,21 @@ phases:
     drive: true
     security: false
   - n: 4
-    files: [scripts/build.mjs, scripts/watch.mjs, scripts/test.mjs, scripts/docs.mjs, src/lib/mods.mts, src/lib/shared/mod-switch.mts, src/lib/shared/mod-switch.test.mts, src/lib/shared/config.mjs, src/lib/shared/config.schema.json, test/kernel/config.test.mjs, src/.claude-plugin/plugin.json, src/mods/types/index.d.ts, src/mods/status/hooks/index.tsx, src/mods/status/hooks/pane-actions.ts, src/mods/markdown/hooks/index.tsx, src/mods/markdown/hooks/index.test.tsx, src/mods/markdown/hooks/data.ts, src/lib/verbs/init/init.mjs, src/lib/verbs/uninstall/uninstall.mts, .claude-plugin/marketplace.json, docs/reference/mods.md, test/repo/mods.test.mjs, test/repo/mod-contracts.test.mjs, test/repo/plugin-layout.test.mjs]
+    files: [scripts/build.mjs, scripts/watch.mjs, scripts/test.mjs, scripts/docs.mjs, src/lib/mods.mts, src/lib/shared/mod-switch.mts, src/lib/shared/mod-switch.test.mts, src/lib/shared/config.mjs, src/lib/shared/config.schema.json, test/kernel/config.test.mjs, src/.claude-plugin/plugin.json, src/mods/types/index.d.ts, src/mods/index.tsx, src/mods/status/hooks/index.tsx, src/mods/status/hooks/index.test.tsx, src/mods/status/hooks/pane-actions.ts, src/mods/markdown/hooks/index.tsx, src/mods/markdown/hooks/index.test.tsx, src/mods/markdown/hooks/picket-markdown.test.tsx, src/mods/markdown/hooks/data.ts, src/lib/verbs/init/init.mjs, src/lib/verbs/uninstall/uninstall.mts, .claude-plugin/marketplace.json, docs/reference/mods.md, test/repo/mods.test.mjs, test/repo/mod-contracts.test.mjs, test/repo/plugin-layout.test.mjs]
     greps:
+      - path: src/mods/index.tsx
+        pattern: 'export const register\b'
+      - path: src/mods/status/hooks/index.tsx
+        pattern: 'export const register\b'
+        absent: true
+      - path: src/mods/markdown/hooks/index.tsx
+        pattern: 'export const register\b'
+        absent: true
+      - path: scripts/build.mjs
+        pattern: '\./mods/index\.tsx'
+      - path: scripts/build.mjs
+        pattern: '\./mods/status/hooks/index\.tsx'
+        absent: true
       - path: src/lib/shared/mod-switch.mts
         pattern: 'export function modEnabled\b'
       - path: src/lib/shared/config.mjs
@@ -95,6 +108,11 @@ phases:
     greps:
       - path: package.json
         pattern: '"private": true'
+      - path: package.json
+        pattern: '"test:mods"'
+      - path: package.json
+        pattern: '\bdist/mods/'
+        absent: true
       - path: .github/workflows/release.yml
         pattern: 'npm publish \./dist\b'
     tests: true
@@ -123,8 +141,17 @@ phases:
     drive: true
     security: false
   - n: 7
-    files: [docs/how-to.md, README.md, CHANGELOG.md]
+    files: [docs/how-to.md, README.md, CONTRIBUTING.md, CHANGELOG.md]
     greps:
+      - path: README.md
+        pattern: '\bone plugin per mod\b'
+        absent: true
+      - path: CONTRIBUTING.md
+        pattern: '\bthe three mods\b'
+        absent: true
+      - path: CONTRIBUTING.md
+        pattern: 'picket-status@picketai'
+        absent: true
       - path: README.md
         pattern: 'npx @picketai/picket@alpha init'
       - path: README.md
@@ -146,7 +173,7 @@ phases:
 
 ## Problem
 
-Picket reaches a machine today as a global npm package plus four plugins (picket, picket-status, picket-markdown, the retired picket-session) served by a directory marketplace inside that npm folder, so `init` commits the folder's absolute path to `extraKnownMarketplaces` (`src/lib/verbs/init/init.mjs:149`, `marketplaceRoot()`), and every machine keeps a second copy on PATH. The status line is `picket statusline`, which needs a global `picket`: Claude Code 2.1.319 adds plugin `bin/` folders only to the Bash and PowerShell tool shells ("Shell: leaving plugin bin/ dirs off PATH", `powerShellPluginBinPaths` in the binary), and the verb writes a cost file the ledger hook reads (`src/lib/verbs/statusline/index.mts:24`, `src/lib/hooks/emit/ledger/index.mts:38`). SDR-00001 binds the shape: the plugin carries the whole core, `init` writes only what a plugin cannot, nothing writes under the plugin root, and `picket@picketai` is permanent once installed (its RISK-003). SDR-00002 binds the status mod's band, work pane and command names. The request (`work/20261107-plugin-only-install/request.md`, section 1) folds picket-status and picket-markdown into `picket@picketai` with a config off switch, which departs from SDR-00002 D-003 (`M↓` hidden when picket-markdown is not installed) and D-004 (the mods as separately named plugins); a design record cannot amend a ratified SDR, so D-002 and D-003 wait on a superseding SDR (OQ-007). Kernel verbs, lanes, agents, work-item state, the `npm run claude` flow and the bench stay as they are.
+Picket reaches a machine today as a global npm package plus four plugins (picket, picket-status, picket-markdown, the retired picket-session) served by a directory marketplace inside that npm folder, so `init` commits the folder's absolute path to `extraKnownMarketplaces` (`src/lib/verbs/init/init.mjs:149`, `marketplaceRoot()`), and every machine keeps a second copy on PATH. The status line is `picket statusline`, which needs a global `picket`: Claude Code 2.1.319 adds plugin `bin/` folders only to the Bash and PowerShell tool shells ("Shell: leaving plugin bin/ dirs off PATH", `powerShellPluginBinPaths` in the binary), and the verb writes a cost file the ledger hook reads (`src/lib/verbs/statusline/index.mts:24`, `src/lib/hooks/emit/ledger/index.mts:38`). SDR-00001 binds the shape: the plugin carries the whole core, `init` writes only what a plugin cannot, nothing writes under the plugin root, and `picket@picketai` is permanent once installed (its RISK-003). SDR-00002 binds the status mod's band, work pane and command names. The request (`work/20261107-plugin-only-install/request.md`, section 1) folds picket-status and picket-markdown into `picket@picketai` with a config off switch, which departs from SDR-00002 D-003 (`M↓` hidden when picket-markdown is not installed) and D-004 (the mods as separately named plugins); the product owner ruled on 2026-11-08 that the request, section 1, stands in for the superseding SDR (OQ-007), so D-002 and D-003 proceed with no SDR written first. Kernel verbs, lanes, agents, work-item state, the `npm run claude` flow and the bench stay as they are.
 
 ## Decisions
 
@@ -157,15 +184,16 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 - **RISK-001** A file the plugin needs at run time is left out of the tarball (the hidden `.claude-plugin/` folder, the status line bundle). Mitigation: a repo test packs `dist/` with `npm pack --dry-run --json` and names each required path; the release dry run prints the list.
 - **RISK-002** `npm version` and `sync-version` keep writing the root and `src/.claude-plugin/plugin.json` only. Mitigation: the build copies the version from the root into `dist/package.json`, and a test compares the three.
 
-### D-002 (r3): The status and Markdown mods become modules of the picket plugin [STRATEGIC REVIEW NEEDED]
-**Decision:** Infrastructural decision. The build writes one `dist/hooks/hooks.json` holding Picket's command hooks and `"modules"` naming the two mod entries. The built mods move from `dist/mods/<name>/` to `dist/hooks/mods/<name>/`, keeping their `hooks/` and `shared/` folders, so module paths stay below the folder of `hooks.json`; the existing mod manifests list `./index.tsx` beside their `hooks.json`, so a module path resolves from that folder, and the binary refuses one that leaves the plugin directory ("The module path leaves the plugin directory"). The two contract files merge into one self-contained `src/mods/types/index.d.ts`, built to `dist/hooks/mods/types/index.d.ts` and named by `"types"` in `src/.claude-plugin/plugin.json`; it declares `PluginState['picket']` with both mods' keys (they do not overlap) and renames the Markdown `PaneView` to `DocPaneView`. Every `atom({ plugin: ... })` names `picket`. The picket-session stub and its folder are deleted. Shipping the mods inside `picket@picketai` is the user's decision in the request, section 1; it departs from SDR-00002 D-004's separately named plugins (the command names `/picket-session` and `/picket-markdown` stay), so a superseding SDR records it (OQ-007). `src/lib/mods.mts` keeps one entry per mod (summary, whether it has an off switch) and a `RETIRED_PLUGINS` list of the three old plugin names, which `init` and `uninstall` read; no marketplace carries renames for them.
+### D-002 (r5): The status and Markdown mods are composed into the one hooks module of the picket plugin
+**Decision:** Infrastructural decision. The build writes one `dist/hooks/hooks.json` holding Picket's command hooks and `"modules": ["./mods/index.tsx"]`, one entry: Claude Code 2.1.319 refuses a second ("hooks.json `modules` names one hooks module per plugin; a second entry is refused", `work/20261107-plugin-only-install/phases/4.block.md`). The built mods move from `dist/mods/<name>/` to `dist/hooks/mods/<name>/`, keeping their `hooks/` and `shared/` folders, so module paths stay below the folder of `hooks.json`; the existing mod manifests list `./index.tsx` beside their `hooks.json`, so a module path resolves from that folder, and the binary refuses one that leaves the plugin directory ("The module path leaves the plugin directory"). The one module is a new `src/mods/index.tsx`, built to `dist/hooks/mods/index.tsx`, and it alone exports `register`. Each mod's `hooks/index.tsx` exports its handlers as named functions with the engine's handler signature (`$, e, next`) and registers nothing. The composing module calls `on` once per event and matcher pair: a matched handler keeps its mod's matcher (`command.run` per command, `ui.render` and `ui.scroll` per component and pane id), and an event handled without a matcher is registered once, since the validator refuses a repeat ("on(\"session.start\") is registered twice without a matcher"). Today only `session.start` is unmatched in both mods; its one handler runs the status handler with a `next` that runs the Markdown handler with the real `next`, so each mod keeps its pass-through behaviour. Calling both mods' old `register` through a deduplicating `on` wrapper was rejected: it would copy the engine's duplicate rule into our code and hide which mod owns a handler. The two contract files merge into one self-contained `src/mods/types/index.d.ts`, built to `dist/hooks/mods/types/index.d.ts` and named by `"types"` in `src/.claude-plugin/plugin.json`; it declares `PluginState['picket']` with both mods' keys (they do not overlap) and renames the Markdown `PaneView` to `DocPaneView`. Every `atom({ plugin: ... })` names `picket`. The picket-session stub and its folder are deleted. Shipping the mods inside `picket@picketai` is the user's decision in the request, section 1; it departs from SDR-00002 D-004's separately named plugins (the command names `/picket-session` and `/picket-markdown` stay), and the product owner ruled on 2026-11-08 that the request stands in for the superseding SDR (OQ-007, resolved). `src/lib/mods.mts` keeps one entry per mod (summary, whether it has an off switch) and a `RETIRED_PLUGINS` list of the three old plugin names, which `init` and `uninstall` read; no marketplace carries renames for them.
 **Instead of:** keep the mods as separate plugins served from the same npm package: each would need its own marketplace entry and npm source, and a user would still install and update three plugins.
 **Risks:**
 - **RISK-003** `$.store` and `$.state` are kept per plugin, so the work pane's Done list (`DONE_KEY` in `src/mods/status/hooks/pane-actions.ts:98`) starts empty after the move. Mitigation: the CHANGELOG says so and tells users to mark those sessions done again; no migration is attempted.
 - **RISK-004** The engine's `$.process.run` may not see plugin `bin/` on PATH, so with no global copy the band's `picket list` call returns nothing. Mitigation: OQ-001 and a deferred live check before release.
+- **RISK-013** The validator may also refuse a matched and an unmatched handler for one event (status's `tool.call` for `Bash` beside Markdown's unmatched `tool.call`); the developer's probe did not try it. Mitigation: T-4.3's validate run shows it; if refused, the composing module registers one unmatched `tool.call` and runs the status handler only for an event its `{ tool: 'Bash' }` matcher would select.
 
-### D-003 (r2): The Markdown pane has an off switch in `.picket/config.json` [STRATEGIC REVIEW NEEDED]
-**Decision:** Infrastructural decision. `mods.markdown: false` in `.picket/config.json` turns the pane off; absent or `true` keeps it. One function, `modEnabled(config, name)` in a new `src/lib/shared/mod-switch.mts`, decides it; `config.mjs` uses it to check the key (`mods` joins `KNOWN_KEYS`, a non-boolean value warns), and the build copies it into the mods through `MOD_LIB_SHARED`, so the rule is unit-tested under Node. The Markdown module reads the file with `$.fs.read` under `$.session.root()` at `session.start`; when switched off it registers no command, starts no clock and passes every event through. The status band already hides `M↓` when no `picket-markdown` command is listed (`src/mods/status/hooks/index.tsx:198`), so it needs no change. The switch is the user's decision in the request, section 1. Ratified SDR-00002 D-003 still says `M↓` is hidden when picket-markdown is not installed; this record does not amend it, and the visibility rule "hidden when `mods.markdown` is false" takes effect through the superseding SDR of OQ-007.
+### D-003 (r3): The Markdown pane has an off switch in `.picket/config.json`
+**Decision:** Infrastructural decision. `mods.markdown: false` in `.picket/config.json` turns the pane off; absent or `true` keeps it. One function, `modEnabled(config, name)` in a new `src/lib/shared/mod-switch.mts`, decides it; `config.mjs` uses it to check the key (`mods` joins `KNOWN_KEYS`, a non-boolean value warns), and the build copies it into the mods through `MOD_LIB_SHARED`, so the rule is unit-tested under Node. The Markdown module reads the file with `$.fs.read` under `$.session.root()` at `session.start`; when switched off it registers no command, starts no clock and passes every event through. The status band already hides `M↓` when no `picket-markdown` command is listed (`src/mods/status/hooks/index.tsx:198`), so it needs no change. The switch is the user's decision in the request, section 1. Ratified SDR-00002 D-003 says `M↓` is hidden when picket-markdown is not installed; the product owner ruled on 2026-11-08 that the request stands in for the superseding SDR (OQ-007, resolved), so the visibility rule "hidden when `mods.markdown` is false" applies from phase 4.
 **Instead of:** let the user disable the Markdown plugin: after D-002 there is no separate plugin, and Claude Code enables or disables a plugin whole.
 **Risks:**
 - **RISK-005** The switch is read once per session. Mitigation: the how-to says a change applies from the next session.
@@ -206,7 +234,7 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 
 **In:**
 - `dist/package.json`, the release from `dist/`, the root package made private.
-- The status and Markdown mods as modules of the picket plugin, one contract, the `mods.markdown` switch, the session stub deleted.
+- The status and Markdown mods composed into the one hooks module of the picket plugin, one contract, the `mods.markdown` switch, the session stub deleted.
 - The inline settings marketplace with an npm source, written by `init`; the root marketplace kept for development only; `init` retiring the old plugins, warning about a shadowing copy, `--statusline`; `uninstall` to match.
 - The self-contained status line bundle and its SessionStart copy hook.
 - Cost off the status line and the ledger; `picket cost` in tokens; the `close` audit line.
@@ -324,10 +352,12 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 - `test/kernel/config.test.mjs`: warnings for mods
 - `src/.claude-plugin/plugin.json`: types path
 - `src/mods/types/index.d.ts`: new merged contract
+- `src/mods/index.tsx`: new, the one composing module
 - `src/mods/status/types/`: deleted, merged into the contract
 - `src/mods/markdown/types/`: deleted, merged into the contract
 - `src/mods/session/`: deleted, retired stub
-- `src/mods/status/hooks/index.tsx`: atom plugin, type path
+- `src/mods/status/hooks/index.tsx`: exported handlers, atom plugin
+- `src/mods/status/hooks/index.test.tsx`: runs under the composed module
 - `src/mods/status/hooks/band.ts`: type import path
 - `src/mods/status/hooks/detail.ts`: type import path
 - `src/mods/status/hooks/pane.tsx`: type import path
@@ -337,8 +367,9 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 - `src/mods/status/hooks/band.test.ts`: type import path
 - `src/mods/status/hooks/detail.test.ts`: type import path
 - `src/mods/status/hooks/work-pane.test.ts`: type import path
-- `src/mods/markdown/hooks/index.tsx`: off switch at session start
+- `src/mods/markdown/hooks/index.tsx`: exported handlers, off switch
 - `src/mods/markdown/hooks/index.test.tsx`: off-state module test
+- `src/mods/markdown/hooks/picket-markdown.test.tsx`: mounts name plugin picket
 - `src/mods/markdown/hooks/data.ts`: atom plugin, type path
 - `src/mods/markdown/hooks/actions.ts`: type import path
 - `src/mods/markdown/hooks/view.tsx`: type import path
@@ -355,34 +386,34 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 - `test/timing/budgets.test.mjs`: walks dist/hooks [INFERRED]
 - `test/repo/markdown-paths.test.mjs`: cited dist paths [INFERRED]
 
-**Changes:** Delete `src/mods/session/`, `src/mods/status/types/` and `src/mods/markdown/types/`; list them on the block so the route commits the deletions. The merged contract holds every exported type of both old files, `DocPaneView` for Markdown's `PaneView`, and one `PluginState['picket']` with the union of both key sets, with no import. Mods import it as `'../../types'`. `MODS` becomes `{ status: { summary, switch: null }, markdown: { summary, switch: "mods.markdown" } }`; `RETIRED_PLUGINS = ["picket-status", "picket-markdown", "picket-session"]`. `buildMods` copies each mod's `hooks/` and shared files to `dist/hooks/mods/<name>/`, the contract to `dist/hooks/mods/types/index.d.ts`, writes no mod manifest, and `hooksJson` adds `modules: ["./mods/status/hooks/index.tsx", "./mods/markdown/hooks/index.tsx"]`. `MOD_LIB_SHARED` gains `mod-switch.mts`; `modEnabled(config: unknown, name: string): boolean` is false only for `config.mods[name] === false`. `config.mjs` adds `mods` to `KNOWN_KEYS` and warns on a non-object, an unknown mod name or a non-boolean. The Markdown module reads `<session root>/.picket/config.json` with `$.fs.read` at `session.start`, parses it in a try, and when `modEnabled` is false sets a module flag that makes every handler call `next(e)` only. `marketplaceJson` writes only the `picket` entry from `./dist`, for developing Picket (D-004). `scripts/test.mjs` runs `claude plugin validate --strict dist`, then `claude plugin test dist`.
+**Changes:** Delete `src/mods/session/`, `src/mods/status/types/` and `src/mods/markdown/types/`; list them on the block so the route commits the deletions. The merged contract holds every exported type of both old files, `DocPaneView` for Markdown's `PaneView`, and one `PluginState['picket']` with the union of both key sets, with no import. Mods import it as `'../../types'`. `MODS` becomes `{ status: { summary, switch: null }, markdown: { summary, switch: "mods.markdown" } }`; `RETIRED_PLUGINS = ["picket-status", "picket-markdown", "picket-session"]`. `buildMods` copies each mod's `hooks/` and shared files to `dist/hooks/mods/<name>/`, `src/mods/index.tsx` to `dist/hooks/mods/index.tsx`, the contract to `dist/hooks/mods/types/index.d.ts`, writes no mod manifest, and `hooksJson` adds `modules: ["./mods/index.tsx"]`. Each mod's `hooks/index.tsx` drops `export const register` and exports its handlers by name; `src/mods/index.tsx` imports them from `'./status/hooks/index'` and `'./markdown/hooks/index'` and registers them as D-002 says. The mod tests run against the plugin's one module, so a test that counts registered commands or mounted views sees both mods; mounts name plugin `picket`. `MOD_LIB_SHARED` gains `mod-switch.mts`; `modEnabled(config: unknown, name: string): boolean` is false only for `config.mods[name] === false`. `config.mjs` adds `mods` to `KNOWN_KEYS` and warns on a non-object, an unknown mod name or a non-boolean. The Markdown module reads `<session root>/.picket/config.json` with `$.fs.read` at `session.start`, parses it in a try, and when `modEnabled` is false sets a module flag that makes every handler call `next(e)` only. `marketplaceJson` writes only the `picket` entry from `./dist`, for developing Picket (D-004). `scripts/test.mjs` runs `claude plugin validate --strict dist`, then `claude plugin test dist`.
 
 **Done when:**
-- **T-4.1** After `npm run build`, `dist/hooks/hooks.json` holds the command hook groups of `EXPECTED_GROUPS` and `"modules"` with the two entry paths; each resolves, from the folder of `hooks.json`, to a file whose text matches `^export const register\b`.
+- **T-4.1** After `npm run build`, `dist/hooks/hooks.json` holds the command hook groups of `EXPECTED_GROUPS` and `"modules"` equal to `["./mods/index.tsx"]`, which resolves from the folder of `hooks.json` to a file whose text matches `^export const register\b` and holds exactly one `on(` call for `session.start`; neither `dist/hooks/mods/status/hooks/index.tsx` nor `dist/hooks/mods/markdown/hooks/index.tsx` matches `^export const register\b`.
 - **T-4.2** `dist/mods/` does not exist, no `plugin.json` exists under `dist/hooks/mods/`, and `dist/.claude-plugin/plugin.json` names in `"types"` an existing file that declares `'picket'` in `PluginState` and holds no `import`.
-- **T-4.3** Drive: `claude plugin validate --strict dist` prints `Validation passed`.
+- **T-4.3** Drive: after `npm run build`, `claude plugin validate --strict dist` prints `Validation passed`, and its output contains neither `a second entry is refused` nor `registered twice without a matcher`.
 - **T-4.4** `modEnabled` is true for no config, a config without `mods`, and `mods.markdown: true`, and false for `mods.markdown: false`; the config check warns for `"mods": {"markdown": "no"}` and for `"mods": {"other": false}`, and not for `"mods": {"markdown": false}`.
 - **T-4.5** The leak scan finds every import in a built mod to be the engine's module or a file under `dist/hooks/mods/`, and still reports its planted leaks.
 - **T-4.6** `.claude-plugin/marketplace.json` lists only `picket` with source `./dist` and has no `renames` key; `docs/reference/mods.md` has rows for status and markdown, names `mods.markdown`, and has no `picket-session`; `npm test` passes with both files staged.
 - **T-4.7** [DEFERRED: QA, the release QA pass] In a live session of an install with no global copy, the band shows the open item and its next step, and with `"mods": {"markdown": false}` the band shows no `M↓` and `/picket-markdown` is not offered.
-- **T-4.8** `src/mods/markdown/hooks/index.test.tsx`, run by the mods step (`claude plugin test dist`, see OQ-006), mocks `fs.read` of `.picket/config.json` with `{"mods": {"markdown": false}}` and asserts that `session.start` registers no `picket-markdown` command and schedules no clock, and that an `AssistantMessage` render returns what `next` returns unchanged; with the config file absent it asserts the command is registered.
+- **T-4.8** `src/mods/markdown/hooks/index.test.tsx`, run by the mods step (`claude plugin test dist`, see OQ-006), mocks `fs.read` of `.picket/config.json` with `{"mods": {"markdown": false}}` and asserts that `session.start` registers no `picket-markdown` command and schedules no clock, and that an `AssistantMessage` render returns what `next` returns unchanged; with the config file absent it asserts that both `picket-markdown` and `picket-session` are registered.
 
 ## Phase 5: One package, published from dist
 
 **Touch set:**
 - `scripts/build.mjs`: dist/package.json, LICENSE, README
-- `package.json`: private, no bin, no files
+- `package.json`: private, no bin, no files, test:mods
 - `.github/workflows/release.yml`: publish ./dist
 - `test/repo/package.test.mjs`: packs dist
 - `test/repo/plugin-layout.test.mjs`: package assertions
 - `test/repo/release.test.mjs`: workflow pins
 
-**Changes:** The build writes `dist/package.json` from the root `package.json` (D-001's fields; `version` copied; no `scripts`, `devDependencies`, `devEngines` or `imports`) and copies `LICENSE` and `README.md` into `dist/`. The root `.claude-plugin/marketplace.json` is no longer shipped (D-004 r2). The root `package.json` gains `"private": true` and drops `bin` and `files`. Both publish steps of `release.yml` publish `./dist` with `--access public --tag "$DIST_TAG"`; the publish job still runs `npm ci`, which builds.
+**Changes:** The build writes `dist/package.json` from the root `package.json` (D-001's fields; `version` copied; no `scripts`, `devDependencies`, `devEngines` or `imports`) and copies `LICENSE` and `README.md` into `dist/`. The root `.claude-plugin/marketplace.json` is no longer shipped (D-004 r2). The root `package.json` gains `"private": true` and drops `bin` and `files`. Its `test:status`, `test:markdown` and `test:session` scripts, which still name `dist/mods/`, give way to one `"test:mods": "claude plugin validate --strict dist && claude plugin test dist"`, the same two commands as the mods step, since the mods are now one plugin. Both publish steps of `release.yml` publish `./dist` with `--access public --tag "$DIST_TAG"`; the publish job still runs `npm ci`, which builds.
 
 **Done when:**
 - **T-5.1** After `npm run build`, `dist/package.json` has name `@picketai/picket`, the version of the root `package.json` and of `src/.claude-plugin/plugin.json`, `bin.picket` equal to `bin/picket.mjs`, `engines.node` `>=22`, and no `scripts` or `dependencies` key.
-- **T-5.2** `npm pack --dry-run --json --ignore-scripts` run in `dist/` lists `package.json`, `.claude-plugin/plugin.json`, `bin/picket`, `bin/picket.cmd`, `bin/picket.mjs`, `hooks/hooks.json`, `hooks/mods/status/hooks/index.tsx`, `hooks/mods/markdown/hooks/index.tsx`, `hooks/mods/types/index.d.ts`, `statusline.mjs`, `LICENSE` and `README.md`, and no path ending in `.mts` or containing `.test.`.
-- **T-5.3** The root `package.json` has `"private": true` and no `bin` or `files` key.
+- **T-5.2** `npm pack --dry-run --json --ignore-scripts` run in `dist/` lists `package.json`, `.claude-plugin/plugin.json`, `bin/picket`, `bin/picket.cmd`, `bin/picket.mjs`, `hooks/hooks.json`, `hooks/mods/index.tsx`, `hooks/mods/status/hooks/index.tsx`, `hooks/mods/markdown/hooks/index.tsx`, `hooks/mods/types/index.d.ts`, `statusline.mjs`, `LICENSE` and `README.md`, and no path ending in `.mts` or containing `.test.`.
+- **T-5.3** The root `package.json` has `"private": true`, no `bin` or `files` key, no `test:status`, `test:markdown` or `test:session` script, no text `dist/mods/`, and `scripts.test:mods` equal to `claude plugin validate --strict dist && claude plugin test dist`.
 - **T-5.4** The T-5.2 file list holds no `marketplace.json` at any depth.
 - **T-5.5** `release.test.mjs` asserts that the publish and dry-run steps run `npm publish` on `./dist` with `--tag "$DIST_TAG"`, after the test, build-on-22 and mods jobs.
 - **T-5.6** Drive: `npm pack ./dist --pack-destination <scratch folder>`, then `npx --yes --package <tarball> picket help` prints the verb list.
@@ -426,17 +457,18 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 
 **Touch set:**
 - `docs/how-to.md`: install, update, remove, troubleshooting
-- `README.md`: install line
+- `README.md`: install line, layout lines for mods
+- `CONTRIBUTING.md`: mods folder, mods step, init paragraph
 - `CHANGELOG.md`: alpha.6 migration notes
 - `docs/reference/cli.md`: generated, read only
 - `docs/reference/mods.md`: generated, read only
 - `test/repo/markdown-paths.test.mjs`: cited paths must exist, read only
 - `test/repo/dashes.test.mjs`: dash rule for docs, read only
 
-**Changes:** `docs/how-to.md`: install with `npx @picketai/picket@alpha init`; check the install (`/plugin`, `picket list` in a session); a teammate who clones is prompted for the committed marketplace and plugin; update with `/plugin update`; uninstall with `npx @picketai/picket@alpha uninstall`; troubleshooting for `picket: command not found` (plugin not enabled, session not restarted) and for a global copy shadowing the plugin; the optional status line (`init --statusline`, the data folder path, `CLAUDE_CONFIG_DIR`); the Markdown pane switch (`"mods": {"markdown": false}`, next session); status and cost become status and tokens. `README.md` replaces the `npm install -g` sentence with the `npx` line. `CHANGELOG.md` under `1.0.0-alpha.6`, "Changed, act on these": re-run `npx @picketai/picket@alpha init`; run `npm uninstall -g @picketai/picket`; picket-status and picket-markdown are now part of picket and the work pane's Done list starts empty; the status line is opt-in; `picket cost` reports tokens, not dollars; the `close` audit line.
+**Changes:** `docs/how-to.md`: install with `npx @picketai/picket@alpha init`; check the install (`/plugin`, `picket list` in a session); a teammate who clones is prompted for the committed marketplace and plugin; update with `/plugin update`; uninstall with `npx @picketai/picket@alpha uninstall`; troubleshooting for `picket: command not found` (plugin not enabled, session not restarted) and for a global copy shadowing the plugin; the optional status line (`init --statusline`, the data folder path, `CLAUDE_CONFIG_DIR`); the Markdown pane switch (`"mods": {"markdown": false}`, next session); status and cost become status and tokens. `README.md` replaces the `npm install -g` sentence with the `npx` line, and its layout block stops describing three mod plugins: `src/mods/` holds the status and Markdown mods and the composing module, `dist/hooks/mods/` the built mods inside the picket plugin (D-002), and the root `.claude-plugin/` holds only `picket` from `dist/`, for development (D-004). `CONTRIBUTING.md`: `src/mods/` holds the two mods composed into one hooks module, not three mods; the `mods` test step runs `claude plugin validate --strict dist` and `claude plugin test dist` once; the init paragraph matches D-008 (settings marketplace, only `picket@picketai` installed, retired plugins uninstalled, status line only with `--statusline`). `CHANGELOG.md` under `1.0.0-alpha.6`, "Changed, act on these": re-run `npx @picketai/picket@alpha init`; run `npm uninstall -g @picketai/picket`; picket-status and picket-markdown are now part of picket and the work pane's Done list starts empty; the status line is opt-in; `picket cost` reports tokens, not dollars; the `close` audit line.
 
 **Done when:**
-- **T-7.1** `README.md` contains `npx @picketai/picket@alpha init` and no `npm install -g @picketai/picket`.
+- **T-7.1** `README.md` contains `npx @picketai/picket@alpha init` and none of `npm install -g @picketai/picket`, `one plugin per mod` and `the three mods`; `CONTRIBUTING.md` contains none of `the three mods`, `each mod's`, `picket-status@picketai` and `picket-markdown@picketai`.
 - **T-7.2** `docs/how-to.md` contains `npx @picketai/picket@alpha init`, `/plugin update`, `init --statusline`, `mods.markdown`, `npm uninstall -g @picketai/picket` and `command not found`.
 - **T-7.3** `CHANGELOG.md`'s `1.0.0-alpha.6` section names re-running init through `npx`, `npm uninstall -g @picketai/picket`, the empty Done list, the opt-in status line and tokens in `picket cost`.
 - **T-7.4** `npm test` passes, including the markdown path, dash and docs tests.
@@ -449,7 +481,7 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 - **OQ-004** Do `claude plugin install` and the teammate install prompt both work with a settings-declared marketplace whose plugin has an npm source? Owner: operations (first alpha publish, T-5.7 and T-5.8). Fallback: D-004 r1, a GitHub marketplace whose repository-root catalog holds the npm entry, through a further amendment.
 - **OQ-005** The data folder name `picket-picketai` is inferred from `~/.claude/plugins/data/picket-inline`, the folder of this checkout's `--plugin-dir` plugin; is it the same for an npm-sourced install, and how should `CLAUDE_CONFIG_DIR` users point the status line? Owner: QA (release QA pass, T-3.6). Fallback: the path lives only in `INSTALL.settings.statusLine`, and the how-to tells `CLAUDE_CONFIG_DIR` users to edit it.
 - **OQ-006** Does `claude plugin test dist` find the mod tests under `dist/hooks/mods/`, given it can also refuse with the rollout switch off? Owner: QA (release QA pass). Fallback: `scripts/test.mjs` keeps `validate --strict dist` as the gate and prints that `plugin test` found or ran nothing; T-4.8 then runs by hand with `claude plugin test` on the built Markdown mod folder, and the block records the result.
-- **OQ-007** A superseding SDR, `artifacts/strategy/decisions/00003-mods-fold-into-picket-plugin.md`, should record the user's decision in the request, section 1: the mods ship inside `picket@picketai` (superseding SDR-00002 D-004's plugin naming) and `M↓` is hidden when `mods.markdown` is false (superseding D-003's visibility wording). The architect writes only this record, so the SDR goes through `picket:consulting`. Owner: the product owner. Fallback: phases 1 to 3 do not depend on it; phase 4 starts only once the SDR is ratified or the product owner rules that the request stands in for it.
+- **OQ-007** [resolved 2026-11-08] Should a superseding SDR record the user's decision in the request, section 1: the mods ship inside `picket@picketai` (superseding SDR-00002 D-004's plugin naming) and `M↓` is hidden when `mods.markdown` is false (superseding D-003's visibility wording)? Owner: the product owner. Ruling: the request, section 1, stands in for the superseding SDR 00003; phase 4 folds the mods into the picket plugin as D-002 and D-003 describe, with no SDR written first, and does not wait on it.
 
 ## Revision log
 - 2026-11-08: D-004 (r2): inline settings marketplace with an npm source replaces the GitHub catalog; root marketplace.json stays for development only; user ruling.
@@ -457,3 +489,6 @@ Picket reaches a machine today as a global npm package plus four plugins (picket
 - 2026-11-08: D-002 (r2): RETIRED_PLUGINS feeds only init and uninstall; marketplace renames dropped with the GitHub catalog.
 - 2026-11-08: D-002 (r3): mods inside picket@picketai cited as the user's decision; departs from SDR-00002 D-004, flagged for a superseding SDR (OQ-007).
 - 2026-11-08: D-003 (r2): no longer claims to replace SDR-00002 D-003; visibility rule waits on the superseding SDR; T-4.8 tests the off state.
+- 2026-11-08: D-002 (r4): product owner ruled the request stands in for SDR 00003; OQ-007 resolved, strategic flag dropped, phase 4 no longer waits.
+- 2026-11-08: D-003 (r3): visibility rule "hidden when mods.markdown is false" applies from phase 4 on the same ruling; strategic flag dropped.
+- 2026-11-08: D-002 (r5): one composing module `./mods/index.tsx` registers both mods; 2.1.319 refuses two modules entries and a repeated unmatched event; T-4.1, T-4.3, T-4.8 follow.

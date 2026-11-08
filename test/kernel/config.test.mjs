@@ -94,7 +94,7 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", (t) => {
 
 test("no config file is the defaults with no error and no warning", (t) => {
   withConfig(t,undefined, (root) => {
-    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, error: null, warnings: [] });
+    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, error: null, warnings: [] });
   });
 });
 
@@ -145,4 +145,28 @@ test("a quality bar loads with no warning; a bad field warns and is dropped (T-1
   });
   withConfig(t,{ version: 1, quality: 85 }, (root) => assert.deepEqual(loadConfig(root, {}).quality, {}));
   assert.deepEqual(Object.keys(SCHEMA.properties.quality.properties).sort(), ["coverage_min", "max_warnings"]);
+});
+
+test("a mods switch loads with no warning; a wrong value or an unknown mod warns and is dropped (T-4.4)", (t) => {
+  withConfig(t, { version: 1, mods: { markdown: false } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.mods, { markdown: false });
+    assert.deepEqual(config.warnings, []);
+  });
+  withConfig(t, { version: 1, mods: { markdown: "no" } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.mods, {});
+    assert.deepEqual(config.warnings, ["mods.markdown must be true or false; the mod stays on"]);
+  });
+  withConfig(t, { version: 1, mods: { other: false } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.mods, {});
+    assert.deepEqual(config.warnings, ['unknown key "mods.other"']);
+  });
+  withConfig(t, { version: 1, mods: false }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.mods, {});
+    assert.deepEqual(config.warnings, ["mods must be an object; every mod stays on"]);
+  });
+  assert.deepEqual(Object.keys(SCHEMA.properties.mods.properties), ["markdown"]);
 });

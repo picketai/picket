@@ -12,18 +12,19 @@ export const DIST = join(REPO, "dist");
 export const HOOK_LIST = join(SRC, "lib", "hooks.mts");
 export const MOD_LIST = join(SRC, "lib", "mods.mts");
 export const MODS_SRC = join(SRC, "mods");
-export const DIST_MODS = join(DIST, "mods");
+export const DIST_MODS = join(DIST, "hooks", "mods");
 export const MARKETPLACE = join(REPO, ".claude-plugin", "marketplace.json");
-const PACKAGE = join(REPO, "package.json");
-const MOD_FOLDERS = ["hooks", "types"];
+const PLUGIN_MANIFEST = join(SRC, ".claude-plugin", "plugin.json");
+const MOD_FOLDERS = ["hooks"];
+const MOD_CONTRACT = join(MODS_SRC, "types", "index.d.ts");
+export const DIST_MOD_CONTRACT = join(DIST_MODS, "types", "index.d.ts");
+const MOD_COMPOSER = join(MODS_SRC, "index.tsx");
 const LIB_SHARED = join(SRC, "lib", "shared");
 const MODS_SHARED = join(MODS_SRC, "shared");
-export const MOD_LIB_SHARED = [join(LIB_SHARED, "format.mts"), join(LIB_SHARED, "views.mts"), join(LIB_SHARED, "styling", "palette.mts"), join(LIB_SHARED, "work", "action-text.mts")];
+export const MOD_LIB_SHARED = [join(LIB_SHARED, "format.mts"), join(LIB_SHARED, "views.mts"), join(LIB_SHARED, "styling", "palette.mts"), join(LIB_SHARED, "work", "action-text.mts"), join(LIB_SHARED, "mod-switch.mts")];
 const MOD_CODE = /\.(mts|ts|tsx)$/;
 const MOD_SHARED_IMPORT = /(["'])\.\.\/\.\.\/shared\/([^"']+)\1/g;
 const LIB_SHARED_IMPORT = /(["'])\.\.\/\.\.\/\.\.\/lib\/shared\/([^"']+)\.mts\1/g;
-const MOD_ENTRY = "./index.tsx";
-const MOD_TYPES = "./types/index.d.ts";
 const HOOK_FOLDERS = join(SRC, "lib", "hooks");
 const VENDOR_DIR = join(SRC, "lib", "util", "vendor");
 const TEST_FILE = /\.test\.[^.]+$/;
@@ -106,6 +107,8 @@ function groupFor(groups, matcher) {
   return group;
 }
 
+export const MOD_MODULE = "./mods/index.tsx";
+
 export function hooksJson(hooks) {
   const events = {};
   for (const [name, { on }] of Object.entries(hooks)) {
@@ -114,7 +117,7 @@ export function hooksJson(hooks) {
       groupFor(events[event], matcher).hooks.push({ type: "command", command: "node", args: [`${PLUGIN_HOOK_PREFIX}${name}.mjs`] });
     }
   }
-  return { hooks: events };
+  return { hooks: events, modules: [MOD_MODULE] };
 }
 
 export function writeHooksJson(hooks = HOOKS) {
@@ -184,30 +187,13 @@ function jsonText(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-function writeJson(path, value) {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, jsonText(value));
+export function marketplaceJson(current, manifest) {
+  return jsonText({ ...current, plugins: [{ name: manifest.name, source: "./dist", description: manifest.description }] });
 }
 
-export function modManifest(name, pkg, mods = MODS) {
-  const { plugin, description } = mods[name];
-  return { name: plugin, version: pkg.version, description, author: { name: pkg.author }, types: MOD_TYPES };
-}
-
-export function modHooksJson() {
-  return { modules: [MOD_ENTRY] };
-}
-
-export function marketplaceJson(current, mods = MODS) {
-  const modPlugins = new Set(Object.values(mods).map(({ plugin }) => plugin));
-  const others = current.plugins.filter(({ name }) => !modPlugins.has(name));
-  const modEntries = Object.entries(mods).map(([name, { plugin, description }]) => ({ name: plugin, source: `./dist/mods/${name}`, description }));
-  return jsonText({ ...current, plugins: [...others, ...modEntries] });
-}
-
-function writeMarketplace(mods) {
+function writeMarketplace() {
   const current = readFileSync(MARKETPLACE, "utf8");
-  const wanted = marketplaceJson(JSON.parse(current), mods);
+  const wanted = marketplaceJson(JSON.parse(current), JSON.parse(readFileSync(PLUGIN_MANIFEST, "utf8")));
   if (wanted !== current.replaceAll("\r\n", "\n")) writeFileSync(MARKETPLACE, wanted);
 }
 
@@ -240,14 +226,11 @@ function copyModFiles(name) {
 }
 
 export function buildMods(mods = MODS) {
-  const pkg = JSON.parse(readFileSync(PACKAGE, "utf8"));
   rmSync(DIST_MODS, { recursive: true, force: true });
-  for (const name of Object.keys(mods)) {
-    copyModFiles(name);
-    writeJson(join(DIST_MODS, name, ".claude-plugin", "plugin.json"), modManifest(name, pkg, mods));
-    writeJson(join(DIST_MODS, name, "hooks", "hooks.json"), modHooksJson());
-  }
-  writeMarketplace(mods);
+  for (const name of Object.keys(mods)) copyModFiles(name);
+  copyModFile(MOD_CONTRACT, DIST_MOD_CONTRACT);
+  copyModFile(MOD_COMPOSER, join(DIST_MODS, "index.tsx"));
+  writeMarketplace();
 }
 
 export async function buildAll() {

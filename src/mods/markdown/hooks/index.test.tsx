@@ -36,9 +36,26 @@ const isStateCall = (argv: readonly string[]) => argv.includes('state')
 
 const modelled = (hostPath: string) => hostPath.replace(/\\/g, '/').replace(/^.*?(?=[A-Za-z]:\/)/, '')
 
-const world = (on: On) => {
-  const timer = mock.clock(on, { now: NOW })
+const CONFIG = 'D:/repo/.picket/config.json'
+const SWITCHED_OFF = JSON.stringify({ mods: { markdown: false } })
+
+type ClockEvery = Parameters<Parameters<On>[1]>
+
+const recordingIntervals = (on: On, intervals: number[]): On =>
+  ((event: string, ...rest: unknown[]) => {
+    const answer = rest.at(-1) as (...args: ClockEvery) => unknown
+    if (event !== 'clock.every') return (on as (...args: unknown[]) => unknown)(event, ...rest)
+    return (on as (...args: unknown[]) => unknown)(event, ...rest.slice(0, -1), (...args: ClockEvery) => {
+      intervals.push((args[1] as { ms: number }).ms)
+      return answer(...args)
+    })
+  }) as On
+
+const world = (on: On, config?: string) => {
+  const intervals: number[] = []
+  const timer = mock.clock(recordingIntervals(on, intervals), { now: NOW })
   const modified: Record<string, number> = { [DESIGN]: 1, [STATE_YAML]: 1, [GUIDE]: 1 }
+  const texts: Record<string, string> = config === undefined ? TEXTS : { ...TEXTS, [CONFIG]: config }
   const runs: (readonly string[])[] = []
   const registered: { name: string; immediate?: true }[] = []
   const opened: string[] = []
@@ -46,7 +63,13 @@ const world = (on: On) => {
   let panes: UiPane[] = []
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.cwd', () => ({ value: REPO }))
+  on('session.root', () => ({ value: REPO }))
+  on('session.id', () => ({ value: undefined }))
   on('session.messages', () => ({ value: [] }))
+  on('agent.list', () => ({ value: [] }))
+  on('env.get', () => ({ value: undefined }))
+  on('store.get', () => ({ value: undefined }))
+  on('command.list', () => ({ value: registered.map(({ name }) => ({ name, description: '', source: 'plugin' as const })) }))
   on('command.register', ($, e) => {
     registered.push({ name: e.name, immediate: e.immediate })
     return { value: undefined }
@@ -71,7 +94,7 @@ const world = (on: On) => {
     return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file', size: 10, mtimeMs, isLink: false } }
   })
   on('fs.read', ($, e) => {
-    const text = TEXTS[modelled(e.path)]
+    const text = texts[modelled(e.path)]
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   on('fs.list', () => ({ value: [{ name: '1.done', kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false }] }))
@@ -79,12 +102,12 @@ const world = (on: On) => {
     runs.push(e.argv)
     return isStateCall(e.argv) ? exited(0, JSON.stringify(STATE)) : exited(0, '')
   })
-  return { timer, modified, runs, registered, opened, closed }
+  return { timer, intervals, modified, runs, registered, opened, closed }
 }
 
 const pane = ($: Engine) =>
   $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'picket-markdown',
@@ -170,11 +193,37 @@ test('/picket-markdown on a work item document shows the status picket state ans
   expect(runs.filter(isStateCall)).toEqual([['picket', 'state', 'w2']])
 })
 
-test('the mod registers only /picket-markdown, and it runs mid-turn (T-2.3)', async ($, on) => {
-  const { registered } = world(on)
+test('with no config file the plugin registers /picket-markdown and /picket-session, both mid-turn (T-2.3, T-4.8)', async ($, on) => {
+  const { registered, intervals } = world(on)
   await $.session.start(START)
 
-  expect(registered).toEqual([{ name: 'picket-markdown', immediate: true }])
+  expect(registered).toEqual([
+    { name: 'picket-markdown', immediate: true },
+    { name: 'picket-session', immediate: true },
+  ])
+  expect(intervals).toContain(POLL_MS)
+})
+
+test('mods.markdown false registers no /picket-markdown and starts no Markdown poll at session start (T-4.8)', async ($, on) => {
+  const { registered, intervals } = world(on, SWITCHED_OFF)
+  await $.session.start(START)
+
+  expect(registered).toEqual([{ name: 'picket-session', immediate: true }])
+  expect(intervals).not.toContain(POLL_MS)
+})
+
+test('mods.markdown false leaves a reply with a Markdown path to the engine unchanged (T-4.8)', async ($, on) => {
+  world(on, SWITCHED_OFF)
+  await $.session.start(START)
+  const reply = await $.ui.mount({
+    plugin: 'picket',
+    surface: 'terminal',
+    component: 'AssistantMessage',
+    props: { text: 'Read guide.md first.', isFirstOfReply: true },
+  })
+
+  expect(await reply.find({ type: 'Text', text: 'engine' })).toBeDefined()
+  expect(await reply.find({ key: 'reply' })).toBeUndefined()
 })
 
 test('/picket-markdown with no argument and no document opens the empty pane naming the command (T-2.2)', async ($, on) => {
@@ -192,7 +241,7 @@ test('a rendered reply adds its linked file to the pane list with no session.app
   modified[guide] = 1
   await $.session.start(START)
   await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AssistantMessage',
     props: { text: 'Read guide.md first.', isFirstOfReply: true },

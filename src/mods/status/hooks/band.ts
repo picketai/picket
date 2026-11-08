@@ -1,7 +1,7 @@
 import { elapsed, minutes } from '../../../lib/shared/format.mts'
 import { ACTION_TEXT, isNextAction, type Voice } from '../../../lib/shared/work/action-text.mts'
 import { TONES } from '../../shared/theme'
-import type { AgentRow, BandEntry, Line, Piece, Work } from '../types'
+import type { AgentRow, BandEntry, Line, Piece, Work } from '../../types'
 
 const GAP = 2
 const INDENT: Piece = { text: '  ' }

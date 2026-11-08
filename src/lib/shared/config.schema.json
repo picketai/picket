@@ -85,6 +85,15 @@
       },
       "additionalProperties": false,
       "default": {}
+    },
+    "mods": {
+      "description": "Off switches for the mods that have one. Set markdown to false to turn the Markdown pane off from the next session; absent or true keeps it.",
+      "type": "object",
+      "properties": {
+        "markdown": { "type": "boolean" }
+      },
+      "additionalProperties": false,
+      "default": {}
     }
   },
   "additionalProperties": false

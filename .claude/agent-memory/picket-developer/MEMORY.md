@@ -17,3 +17,5 @@
 - [Edit drops a boundary space](edit-drops-boundary-space.md) — old/new_string ending in a space can glue `a,b`; include the next word
 - [Guard false positives](guard-false-positives.md) — `**Label:**` lines in literals read as comments; `git config` denied in scratch repos
 - [Edit unescapes —](edit-tool-unescapes-u2014.md) — typed dash escapes can land as literal dashes; check bytes, use `\u{2014}` + u flag
+- [Mods step fails on 2.1.319](mods-step-fails-on-2-1-319.md) — 25 status pane tests fail at HEAD too; verify tests red regardless of kernel phase
+- [One hooks module per plugin](one-hooks-module-per-plugin.md) — 2.1.319 refuses two `modules` entries and a repeated unmatched session.start

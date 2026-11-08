@@ -3,7 +3,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { StateView } from '../../../lib/shared/views.mts'
 import { runPicket } from '../../shared/kernel'
-import type { BrowseMode, DocWork, PaneView, ViewedDoc } from '../types'
+import type { BrowseMode, DocPaneView, DocWork, ViewedDoc } from '../../types'
 import { candidatePaths, isMarkdownPath, linkPaths, resolvePath } from './links'
 import { relative } from './tree'
 
@@ -11,15 +11,15 @@ export const PANE = 'picket-markdown'
 const MAX_FILES = 500
 const WORK_ARTIFACTS = ['order.md', 'design.md', 'research.md']
 
-const doc = atom({ plugin: 'picket-markdown', key: 'doc' } as const, null)
-const files = atom({ plugin: 'picket-markdown', key: 'files' } as const, [])
-const expanded = atom({ plugin: 'picket-markdown', key: 'expanded' } as const, {})
-const offsets = atom({ plugin: 'picket-markdown', key: 'offsets' } as const, {})
-const treeOffset = atom({ plugin: 'picket-markdown', key: 'treeOffset' } as const, 0)
-const mode = atom({ plugin: 'picket-markdown', key: 'mode' } as const, 'files')
-const changed = atom({ plugin: 'picket-markdown', key: 'changed' } as const, {})
-const history = atom({ plugin: 'picket-markdown', key: 'history' } as const, [])
-const hscroll = atom({ plugin: 'picket-markdown', key: 'hscroll' } as const, {})
+const doc = atom({ plugin: 'picket', key: 'doc' } as const, null)
+const files = atom({ plugin: 'picket', key: 'files' } as const, [])
+const expanded = atom({ plugin: 'picket', key: 'expanded' } as const, {})
+const offsets = atom({ plugin: 'picket', key: 'offsets' } as const, {})
+const treeOffset = atom({ plugin: 'picket', key: 'treeOffset' } as const, 0)
+const mode = atom({ plugin: 'picket', key: 'mode' } as const, 'files')
+const changed = atom({ plugin: 'picket', key: 'changed' } as const, {})
+const history = atom({ plugin: 'picket', key: 'history' } as const, [])
+const hscroll = atom({ plugin: 'picket', key: 'hscroll' } as const, {})
 
 type Change<T> = (current: T) => T
 
@@ -91,13 +91,13 @@ export function updateHscroll($: EngineInterface, change: Change<Record<string, 
   return update($, hscroll, change)
 }
 
-let lastView: PaneView | undefined
+let lastView: DocPaneView | undefined
 
-export function paneView(): PaneView | undefined {
+export function paneView(): DocPaneView | undefined {
   return lastView
 }
 
-export function rememberPaneView(view: PaneView) {
+export function rememberPaneView(view: DocPaneView) {
   lastView = view
 }
 

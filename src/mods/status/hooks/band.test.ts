@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { TONES } from '../../shared/theme'
-import type { AgentRow, BandEntry, Piece, Work } from '../types'
+import type { AgentRow, BandEntry, Piece, Work } from '../../types'
 import { agentsLine, entryPieces, rows, stepText, widthOf, workLine } from './band'
 
 const NOW = Date.parse('2026-10-16T10:00:00Z')

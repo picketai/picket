@@ -69,13 +69,14 @@ test("hooksJson groups hooks by event and matcher in order of first appearance",
       ],
       Stop: [{ hooks: [entry("a.one")] }],
     },
+    modules: ["./mods/index.tsx"],
   });
 });
 
-test("every file the built hooks.json registers exists in dist/hooks/, and dist/hooks/ holds nothing else (T-5.1)", () => {
+test("every file the built hooks.json registers exists in dist/hooks/, and dist/hooks/ holds nothing else but the mods folder (T-5.1)", () => {
   const registered = registeredFiles(readJson(BUILT).hooks);
   assert.deepEqual(registered.filter((file) => !existsSync(join(DIST, "hooks", file))), []);
-  assert.deepEqual(readdirSync(join(DIST, "hooks")).sort(), ["hooks.json", ...registered].sort());
+  assert.deepEqual(readdirSync(join(DIST, "hooks")).sort(), ["hooks.json", "mods", ...registered].sort());
 });
 
 test("every HOOKS name has its folder and every hook folder has a HOOKS entry (T-5.2)", () => {

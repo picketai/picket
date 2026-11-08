@@ -2,15 +2,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { MODS } from "../../mods.mts";
-import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, MARKETPLACE, readTemplate } from "../../shared/install.mts";
 import { HOST_DIR, hostPath, pluginRoot } from "../../shared/paths.mts";
 import { programRunner } from "../../util/process.mts";
 
 const { claudeMd, config, gitignore, settings: SETTINGS } = INSTALL;
-const MOD_PLUGINS = Object.entries(MODS)
-  .filter(([, { install }]) => install === "default")
-  .map(([name, { plugin }]) => ({ name, id: pluginId(plugin) }));
 const ADD_MARKETPLACE = "plugin marketplace add";
 const INSTALL_PLUGIN = "plugin install";
 
@@ -162,14 +158,13 @@ function installCommands(market) {
   return [
     { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE]) },
     { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), INSTALL.plugin, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[INSTALL.plugin]) },
-    ...MOD_PLUGINS.map(({ name, id }) => ({ name, args: [...INSTALL_PLUGIN.split(" "), id, "--scope", "project"], done: (s) => id in (s.enabledPlugins ?? {}) })),
   ];
 }
 
 const INSTALL_STEP_NAMES = installCommands(null).map(({ name }) => name);
 
 function byHand(market) {
-  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${INSTALL.plugin}`, ...MOD_PLUGINS.map(({ id }) => `${INSTALL_PLUGIN} ${id}`)];
+  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${INSTALL.plugin}`];
   return `run by hand: ${commands.map((command) => `claude ${command} --scope project`).join(", then ")}`;
 }
 

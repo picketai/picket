@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
-import { MODS } from "../../mods.mts";
+import { RETIRED_PLUGINS } from "../../mods.mts";
 import { extensionsDir } from "../../shared/extensions.mjs";
 import { claudeBlockSpan, INSTALL, isPicketStatusLine, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
 import { configPath, hostPath, PICKET_DIR, stateDir, workRoot } from "../../shared/paths.mts";
@@ -75,7 +75,7 @@ function record(value: unknown): Settings {
 
 function pluginIdsIn(settings: Settings): string[] {
   const enabled = record(settings.enabledPlugins);
-  const ids = [...Object.values(MODS).map(({ plugin }) => pluginId(plugin)), INSTALL.plugin];
+  const ids = [...RETIRED_PLUGINS.map(pluginId), INSTALL.plugin];
   return ids.filter((id) => id in enabled);
 }
 

@@ -1,6 +1,6 @@
 import type { EngineInterface } from 'claude-code'
 
-import type { SessionEntry } from '../types'
+import type { SessionEntry } from '../../types'
 import { projectSlug, TITLE_RECORD, titleOf } from './sessions'
 
 const MAX_TRANSCRIPT_BYTES = 4 * 1024 * 1024

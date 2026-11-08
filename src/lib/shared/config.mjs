@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { configPath, configRel, hostRel } from "./paths.mts";
 import { destructiveCommand, destructiveRefusal } from "./destructive.mts";
 import { isSourceName } from "./sources/source.mts";
+import { MOD_SWITCHES } from "./mod-switch.mts";
 
 /** Paths whose change always means the heavy lane. Extend per project with `security_paths`. */
 export const DEFAULT_SECURITY_PATHS = ["src/auth/", "src/crypto/", "src/security/", "Authentication/", "Authorization/"];
@@ -11,7 +12,7 @@ export const CONFIG_FILE = configRel();
 
 export const CONFIG_VERSION = 1;
 
-export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality"]);
+export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods"]);
 
 export const DEFAULT_LANES = Object.freeze({
   fast: Object.freeze({ max_files: 3 }),
@@ -29,6 +30,7 @@ export const CONFIG_DEFAULTS = Object.freeze({
   commands: {},
   extensions: [],
   quality: {},
+  mods: {},
 });
 
 export const QUALITY_FIELDS = Object.freeze({
@@ -155,6 +157,21 @@ function checkQuality(value, warn) {
   return bar;
 }
 
+function checkMods(value, warn) {
+  if (value === undefined) return {};
+  if (!isPlainObject(value)) {
+    warn("mods must be an object; every mod stays on");
+    return {};
+  }
+  const switches = {};
+  for (const [name, on] of Object.entries(value)) {
+    if (!MOD_SWITCHES.includes(name)) warn(`unknown key "mods.${name}"`);
+    else if (typeof on !== "boolean") warn(`mods.${name} must be true or false; the mod stays on`);
+    else switches[name] = on;
+  }
+  return switches;
+}
+
 function commandProblem(name, command) {
   if (!COMMAND_NAMES.includes(name)) return `unknown key "commands.${name}"`;
   if (typeof command !== "string" || !command.trim()) return `commands.${name} must be a non-empty string; detection stands`;
@@ -176,7 +193,8 @@ export function loadConfig(root, env = process.env) {
   const commands = checkCommands(raw.commands, warn);
   const extensions = checkExtensions(raw.extensions, warn);
   const quality = checkQuality(raw.quality, warn);
-  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, error, warnings };
+  const mods = checkMods(raw.mods, warn);
+  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, error, warnings };
 }
 
 function resolveSource(name, decl, env) {

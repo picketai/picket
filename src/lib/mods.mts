@@ -1,28 +1,16 @@
-export const MOD_INSTALLS = ["default", "opt-in"] as const;
-
-export type ModInstall = (typeof MOD_INSTALLS)[number];
-
-export type ModEntry = { plugin: string; summary: string; description: string; install: ModInstall };
+export type ModEntry = { summary: string; switch: string | null };
 
 export const MODS = {
   status: {
-    plugin: "picket-status",
     summary: "a band above the prompt with the open work item, its next action and its running agents, and a work pane (/picket-session) listing this project's sessions by what they need",
-    description: "The open work item and its agents, above the prompt, and this project's sessions grouped by their work items in a work pane",
-    install: "default",
+    switch: null,
   },
   markdown: {
-    plugin: "picket-markdown",
     summary: "a read-only pane beside the transcript for a Markdown path clicked in a reply",
-    description: "Click a markdown file path in a reply to read it, read-only, in a pane beside the transcript",
-    install: "default",
-  },
-  session: {
-    plugin: "picket-session",
-    summary: "retired: the session list is now the work pane of picket-status; uninstall it",
-    description: "Retired: the session list is now the work pane of picket-status (/picket-session). Uninstall this plugin",
-    install: "opt-in",
+    switch: "mods.markdown",
   },
 } as const satisfies Record<string, ModEntry>;
 
 export type ModName = keyof typeof MODS;
+
+export const RETIRED_PLUGINS = ["picket-status", "picket-markdown", "picket-session"] as const;

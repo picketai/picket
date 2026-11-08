@@ -1,7 +1,7 @@
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { ACTION_TEXT, isNextAction } from '../../../lib/shared/work/action-text.mts'
 import { TONES } from '../../shared/theme'
-import type { GroupedSession, Piece } from '../types'
+import type { GroupedSession, Piece } from '../../types'
 import { SESSION_GROUPS } from './work-pane'
 
 const GAP: Piece = { text: '  ' }

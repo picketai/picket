@@ -2,7 +2,7 @@ import type { EngineInterface, RenderInput, UiPressArgument } from 'claude-code'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { PANE_PADDING, SURFACES, TONES } from '../../shared/theme'
-import type { Cleanup, CleanupWorktree, FoldableGroup, GroupedSession, PaneTab, PaneView, Piece, SessionEntry } from '../types'
+import type { Cleanup, CleanupWorktree, FoldableGroup, GroupedSession, PaneTab, PaneView, Piece, SessionEntry } from '../../types'
 import { detailPieces } from './detail'
 import {
   askDelete,

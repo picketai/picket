@@ -1,6 +1,6 @@
 import type { EngineInterface, PressedLink, UiPressArgument } from 'claude-code'
 
-import type { BrowseMode, ViewedDoc } from '../types'
+import type { BrowseMode, ViewedDoc } from '../../types'
 import {
   clamp,
   closedFolders,

@@ -93,12 +93,12 @@ test("an .mjs source is built with its typed imports renamed (T-1.3)", () => {
   assert.match(config, /from "\.\/paths\.mjs"/);
 });
 
-test("no path in dist/ outside dist/mods/ is a test file or a test fixture (T-1.3)", () => {
-  assert.deepEqual(distFiles().map(distRel).filter((path) => path.includes(".test.") && !path.startsWith("mods/")), []);
+test("no path in dist/ outside dist/hooks/mods/ is a test file or a test fixture (T-1.3)", () => {
+  assert.deepEqual(distFiles().map(distRel).filter((path) => path.includes(".test.") && !path.startsWith("hooks/mods/")), []);
 });
 
 test("the kernel build neither compiles nor copies a file under src/mods/; buildMods copies those", () => {
-  const modFiles = [join(SRC, "mods", "status", "hooks", "index.tsx"), join(SRC, "mods", "status", "hooks", "band.ts"), join(SRC, "mods", "status", "types", "index.d.ts"), join(SRC, "mods", "x", "a.mts")];
+  const modFiles = [join(SRC, "mods", "status", "hooks", "index.tsx"), join(SRC, "mods", "status", "hooks", "band.ts"), join(SRC, "mods", "types", "index.d.ts"), join(SRC, "mods", "index.tsx"), join(SRC, "mods", "x", "a.mts")];
   assert.deepEqual(modFiles.filter((file) => isBuiltModule(file) || isCopied(file)), []);
 });
 

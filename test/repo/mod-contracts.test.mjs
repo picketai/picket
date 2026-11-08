@@ -7,7 +7,7 @@ import { join, resolve } from "node:path";
 
 const TSC = resolve("node_modules/typescript/bin/tsc");
 const FIXTURE = resolve("test/repo/mod-contracts");
-const STATUS_CONTRACT = resolve("src/mods/status/types/index.d.ts");
+const CONTRACT = resolve("src/mods/types/index.d.ts");
 const VIEWS = resolve("src/lib/shared/views.mts");
 const CHECK_ERROR = /check\.mts\(\d+,\d+\): error TS\d+:/;
 
@@ -30,16 +30,17 @@ function plantedProject(t, contractText) {
 }
 
 function contract() {
-  return readFileSync(STATUS_CONTRACT, "utf8");
+  return readFileSync(CONTRACT, "utf8");
 }
 
-test("the status contract holds no import and declares its band and work pane state", () => {
+test("the merged contract holds no import and declares the band, work pane and Markdown pane state under picket", () => {
   const text = contract();
   assert.doesNotMatch(text, /\bimport\b/);
   assert.match(
     text,
-    /'picket-status': \{\s+now: number\s+work: Work \| null\s+agents: AgentRow\[\]\s+rows: ListRow\[\]\s+sessions: SessionEntry\[\]\s+done: string\[\]\s+paneView: PaneView\s+transcriptIds: string\[\]\s+hasMarkdown: boolean\s+currentId: string \| null\s+\}/,
+    /'picket': \{\s+now: number\s+work: Work \| null\s+agents: AgentRow\[\]\s+rows: ListRow\[\]\s+sessions: SessionEntry\[\]\s+done: string\[\]\s+paneView: PaneView\s+transcriptIds: string\[\]\s+hasMarkdown: boolean\s+currentId: string \| null\s+doc: ViewedDoc \| null\s+files: string\[\]\s+expanded: Record<string, boolean>\s+offsets: Record<string, number>\s+treeOffset: number\s+mode: BrowseMode\s+changed: Record<string, boolean>\s+history: string\[\]\s+hscroll: Record<string, number>\s+\}/,
   );
+  assert.match(text, /^export type DocPaneView = /m);
 });
 
 test("a planted contract whose ListRow drops branch fails the check", (t) => {

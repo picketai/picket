@@ -19,6 +19,7 @@ const world = (on: On, roster: AgentInfo[] = []) => {
   on('session.root', () => ({ value: 'D:/repo' }))
   on('fs.list', () => ({ value: [] }))
   on('store.get', () => ({ value: undefined }))
+  on('session.messages', () => ({ value: [] }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
@@ -28,7 +29,7 @@ const world = (on: On, roster: AgentInfo[] = []) => {
 
 const band = ($: Engine, hasSurvey = false) =>
   $.ui.mount({
-    plugin: 'picket-status',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AbovePrompt',
     props: {
@@ -302,6 +303,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     return { value: undefined }
   })
   on('session.root', () => ({ value: 'D:/repo' }))
+  on('session.messages', () => ({ value: [] }))
   on('session.id', () => ({ value: S_CURRENT }))
   on('env.get', ($, e) => ({ value: e.name === 'CLAUDE_CONFIG_DIR' ? CONFIG : undefined }))
   on('fs.list', ($, e) => {
@@ -369,7 +371,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
 
 const workPane = ($: Engine) =>
   $.ui.mount({
-    plugin: 'picket-status',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'work',
@@ -403,7 +405,7 @@ test('/picket-session opens the work pane, closes it the second time, and runs m
 
   await $.command.run({ command: 'picket-session', args: '' })
   expect(w.closed).toEqual(['work'])
-  expect(w.registered).toEqual([{ name: 'picket-session', immediate: true }])
+  expect(w.registered).toContainEqual({ name: 'picket-session', immediate: true })
 })
 
 test('the work pane groups sessions under NEEDS YOU, WORKING and a folded NO WORK ITEM, and a header press folds or unfolds its group (T-4.3, T-2.6)', async ($, on) => {
@@ -531,7 +533,7 @@ test('a session draws its detail row under its title', async ($, on) => {
 
 const paneOfRows = ($: Engine, bodyRows: number) =>
   $.ui.mount({
-    plugin: 'picket-status',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'work',

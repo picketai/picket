@@ -13,7 +13,9 @@ const SHIPPED = [
   "dist/hooks/hooks.json",
   "dist/.claude-plugin/plugin.json",
   ".claude-plugin/marketplace.json",
-  ...Object.keys(MODS).flatMap((name) => [".claude-plugin/plugin.json", "hooks/hooks.json", "hooks/index.tsx"].map((file) => `dist/mods/${name}/${file}`)),
+  "dist/hooks/mods/index.tsx",
+  "dist/hooks/mods/types/index.d.ts",
+  ...Object.keys(MODS).map((name) => `dist/hooks/mods/${name}/hooks/index.tsx`),
 ];
 
 function withoutScripts(pkg) {
@@ -34,7 +36,7 @@ function packedFiles(t) {
   return pack.files.map((file) => file.path.replaceAll("\\", "/"));
 }
 
-test("the npm tarball ships the built plugin, its marketplace and the mod manifests, and no source or test file", (t) => {
+test("the npm tarball ships the built plugin, its marketplace and the composed mods, and no source or test file", (t) => {
   const files = packedFiles(t);
   assert.deepEqual(SHIPPED.filter((path) => !files.includes(path)), [], "missing from the tarball");
   assert.deepEqual(files.filter((path) => path.startsWith("src/") || path.endsWith(".mts") || /\.test\./.test(path)), [], "source or test files in the tarball");

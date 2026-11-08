@@ -1,7 +1,7 @@
 import type { EngineInterface, RenderInput } from 'claude-code'
 
 import { PANE_PADDING, SURFACES, TONES } from '../../shared/theme'
-import type { BrowseMode, ViewedDoc } from '../types'
+import type { BrowseMode, ViewedDoc } from '../../types'
 import { ask, chooseMode, copy, goBack, openInEditor, openPressed, scrollTable, scrollTo, showOrToast, toggleFolder } from './actions'
 import {
   clamp,

@@ -38,7 +38,7 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
   const root = initRepo(t);
   const r = runInit(t, root);
   assert.equal(r.code, 0, r.stderr);
-  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped", status: "skipped", markdown: "skipped" });
+  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped" });
   assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
   assert.deepEqual(JSON.parse(read(root, ".picket", "config.json")), { version: 1 });
   assert.ok(read(root, ".gitignore").split("\n").includes(".picket/state/"));
@@ -51,7 +51,7 @@ test("a second init reports every step unchanged and leaves the files byte-ident
   const before = files.map((p) => read(root, p));
   const r = runInit(t, root);
   assert.equal(r.code, 0, r.stderr);
-  assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "skipped", plugin: "skipped", status: "skipped", markdown: "skipped" });
+  assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "skipped", plugin: "skipped" });
   assert.deepEqual(files.map((p) => read(root, p)), before);
 });
 
@@ -208,7 +208,7 @@ test("a settings file that is not JSON fails its step, stays as is, and the othe
   writeSettings(root, "{ not json");
   const r = runInit(t, root);
   assert.equal(r.code, 2);
-  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "skipped", plugin: "skipped", status: "skipped", markdown: "skipped" });
+  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "skipped", plugin: "skipped" });
   assert.equal(read(root, ".claude", "settings.json"), "{ not json");
 });
 
