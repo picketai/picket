@@ -213,6 +213,12 @@ test('a spawned agent leaves the band when idle and works again from a message',
   expect(await shows($, ' (5s)')).toBe(true)
 })
 
+const FIXTURE_DRIVE = 'D:/'
+const fixturePath = (enginePath: string): string => {
+  const path = enginePath.replace(/\\/g, '/')
+  return path.slice(Math.max(path.lastIndexOf(FIXTURE_DRIVE), 0))
+}
+
 const CONFIG = 'D:/home/.claude'
 const PROJECT = `${CONFIG}/projects/D--repo`
 const S_CURRENT = '11111111-1111-4111-8111-111111111111'
@@ -291,7 +297,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     return { text: '' }
   })
   on('fs.stat', ($, e) => {
-    const [id, file] = e.path.replace(/\\/g, '/').split('/').slice(-2) as [string, 'state.yaml' | 'verdicts.jsonl']
+    const [id, file] = fixturePath(e.path).split('/').slice(-2) as [string, 'state.yaml' | 'verdicts.jsonl']
     const mtimeMs = w.work[id]?.[file]
     return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file' as const, size: 10, mtimeMs, isLink: false } }
   })
@@ -307,7 +313,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
   on('session.id', () => ({ value: S_CURRENT }))
   on('env.get', ($, e) => ({ value: e.name === 'CLAUDE_CONFIG_DIR' ? CONFIG : undefined }))
   on('fs.list', ($, e) => {
-    const path = e.path.replace(/\\/g, '/')
+    const path = fixturePath(e.path)
     if (path === PROJECT) {
       return {
         value: transcripts.map((id, at) => ({
@@ -324,14 +330,14 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     return { value: [] }
   })
   on('fs.read', ($, e) => {
-    const path = e.path.replace(/\\/g, '/')
+    const path = fixturePath(e.path)
     w.reads.push(path)
     if (path === `${CONFIG}/sessions/4444.json`) return { value: JSON.stringify({ sessionId: S_LIVE, cwd: 'D:/repo' }) }
     const id = path.slice(PROJECT.length + 1, -'.jsonl'.length)
     return { value: w.written[path] ?? `{"type":"ai-title","aiTitle":"${TITLES[id] ?? id}"}\n` }
   })
   on('fs.write', ($, e) => {
-    w.written[e.path.replace(/\\/g, '/')] = e.text
+    w.written[fixturePath(e.path)] = e.text
     return { value: undefined }
   })
   on('store.get', ($, e) => ({ value: w.stored[e.key] }))
