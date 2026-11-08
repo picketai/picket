@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { withProject } from "#test/project.mts";
 import type { ProgramRunner } from "../../util/process.mts";
 import type { Prompt } from "../../util/prompt.mts";
+import { INSTALL } from "../../shared/install.mts";
 import { init } from "../init/init.mjs";
 import { planUninstall, runUninstall, type UninstallInput, type UninstallReport } from "./uninstall.mts";
 
@@ -177,6 +178,16 @@ test("the user's own rules, env key and status line survive, and deny is untouch
   const after = JSON.parse(read(root, ".claude/settings.json"));
   assert.deepEqual(after, own);
   assert.deepEqual(after.permissions.deny, deny);
+});
+
+test("uninstall removes a statusLine that is the legacy or the current Picket command and keeps any other (T-3.5)", async (t) => {
+  const kept = { type: "command", command: "other" };
+  for (const statusLine of [{ type: "command", command: "picket statusline" }, INSTALL.settings.statusLine, kept]) {
+    const { root } = project(t, { ".claude/settings.json": JSON.stringify({ permissions: { allow: ["Bash(npm test)"] }, statusLine }) });
+    await uninstall(root);
+    const after = JSON.parse(read(root, ".claude/settings.json"));
+    assert.deepEqual(after.statusLine, statusLine === kept ? kept : undefined, statusLine.command);
+  }
 });
 
 test("a dry run calls nothing and changes no file; no terminal without --yes changes nothing (T-5.4)", async (t) => {

@@ -266,7 +266,7 @@ picket state <id>
 
 ## picket statusline
 
-Print the Claude Code status line.
+Print the Claude Code status line from its JSON on stdin; the plugin also ships it as statusline.mjs.
 
 ```sh
 picket statusline

@@ -1,9 +1,8 @@
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
-import { isDeepStrictEqual } from "node:util";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { MODS } from "../../mods.mts";
 import { extensionsDir } from "../../shared/extensions.mjs";
-import { claudeBlockSpan, INSTALL, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { claudeBlockSpan, INSTALL, isPicketStatusLine, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
 import { configPath, hostPath, PICKET_DIR, stateDir, workRoot } from "../../shared/paths.mts";
 import type { ProgramRunner } from "../../util/process.mts";
 import type { Prompt } from "../../util/prompt.mts";
@@ -129,7 +128,7 @@ function picketEntries(settings: Settings): string[] {
   const env = record(settings.env);
   const listed = (key: "allow" | "ask") => SETTINGS[key].filter((rule) => Array.isArray(permissions[key]) && (permissions[key] as unknown[]).includes(rule)).map((rule) => `permissions.${key} "${rule}"`);
   const envKeys = Object.entries(SETTINGS.env).filter(([key, value]) => env[key] === value).map(([key]) => `env.${key}`);
-  const statusLine = isDeepStrictEqual(settings.statusLine, SETTINGS.statusLine) ? ["statusLine"] : [];
+  const statusLine = isPicketStatusLine(settings.statusLine) ? ["statusLine"] : [];
   return [...listed("allow"), ...listed("ask"), ...envKeys, ...statusLine];
 }
 
@@ -150,7 +149,7 @@ export function withoutPicket(settings: Settings): Settings {
     const env = Object.fromEntries(Object.entries(record(settings.env)).filter(([key, value]) => (SETTINGS.env as Record<string, string>)[key] !== value));
     setOrDrop(next, "env", env);
   }
-  if (isDeepStrictEqual(settings.statusLine, SETTINGS.statusLine)) delete next.statusLine;
+  if (isPicketStatusLine(settings.statusLine)) delete next.statusLine;
   return next;
 }
 

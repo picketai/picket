@@ -46,7 +46,7 @@ export const VERB_NAMES = {
     },
   },
   state: { summary: "print a work item's derived state", readOnly: true },
-  statusline: { summary: "print the Claude Code status line", readOnly: false },
+  statusline: { summary: "print the Claude Code status line from its JSON on stdin; the plugin also ships it as statusline.mjs", readOnly: false },
   style: {
     summary: "give Claude Code and the terminal the PicketAI look, or take it away",
     subverbs: {

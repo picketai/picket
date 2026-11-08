@@ -219,7 +219,7 @@ test("style apply --dry-run --only statusline prints the plan and writes nothing
   const { home, env } = tempHome(t);
   const result = style(["apply", "--dry-run", "--only", "statusline"], env);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /planned\s+statusline: set statusLine to "picket statusline"/);
+  assert.match(result.stdout, /planned\s+statusline: set statusLine to `node "\$HOME\/\.claude\/plugins\/data\/picket-picketai\/statusline\.mjs"`/);
   assert.deepEqual(readdirSync(home), []);
 });
 

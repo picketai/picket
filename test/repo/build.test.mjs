@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { BANNER, DIST, SRC, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../../scripts/build.mjs";
+import { BANNER, DIST, SRC, STATUSLINE_BUNDLE, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../../scripts/build.mjs";
 
 const SHEBANG = "#!/usr/bin/env node";
 const RELATIVE_IMPORT = /(\bfrom\s+|\bimport\s*\(?\s*)["']\.\.?\//;
@@ -49,6 +49,16 @@ test("each hook in dist/hooks/ is one bundle with no relative import", () => {
   assert.ok(hooks.length > 0, "dist/hooks holds no hook");
   const importing = hooks.filter((name) => RELATIVE_IMPORT.test(readFileSync(join(DIST, "hooks", name), "utf8")));
   assert.deepEqual(importing, []);
+});
+
+const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)["']([^"']+)["']/gm;
+
+test("dist/statusline.mjs starts with the banner and imports only node: modules (T-3.1)", () => {
+  const text = readFileSync(STATUSLINE_BUNDLE, "utf8");
+  assert.equal(bannerLine(text), BANNER);
+  const specifiers = [...text.matchAll(SPECIFIER)].map((match) => match[1]);
+  assert.ok(specifiers.length > 0, "no import found");
+  assert.deepEqual(specifiers.filter((specifier) => !specifier.startsWith("node:")), []);
 });
 
 test("dist/ holds no TypeScript source and no declaration output", () => {

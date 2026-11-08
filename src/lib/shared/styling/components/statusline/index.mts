@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { INSTALL } from "../../../install.mts";
+import { INSTALL, isPicketStatusLine } from "../../../install.mts";
 import { HOST_DIR } from "../../../paths.mts";
 import type { Change, Component } from "../../change.mts";
 import type { Host } from "../../host.mts";
@@ -43,11 +43,11 @@ function plan(host: Host): Change[] {
   const path = settingsPath(host);
   const current = readSettings(path).statusLine;
   if (isDeepStrictEqual(current, STATUS_LINE)) return [];
-  const replacing = current !== undefined;
+  const replacing = current !== undefined && !isPicketStatusLine(current);
   return [
     {
       id: NAME,
-      summary: `set statusLine to "${STATUS_LINE.command}" in ${path}`,
+      summary: `set statusLine to \`${STATUS_LINE.command}\` in ${path}`,
       ...(replacing ? { question: `Replace your status line "${describe(current)}" with Picket's?` } : {}),
       restart: null,
       apply(_host, { backup }) {
@@ -65,7 +65,7 @@ function unapply(item: ManifestItem): Unapplied {
   const path = item.path as string;
   const previous = item.previous ?? {};
   const settings = readSettings(path);
-  if (!isDeepStrictEqual(settings.statusLine, STATUS_LINE)) {
+  if (!isPicketStatusLine(settings.statusLine)) {
     return { result: "kept", detail: "statusLine was changed after setup", manual: `check statusLine in ${path}` };
   }
   const restored = { ...settings };

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { claudeBlockSpan, INSTALL, isHomeFolder, pluginId, readTemplate } from "./install.mts";
+import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, pluginId, readTemplate } from "./install.mts";
 
 const TEMPLATE = "# Picket\n\nFour lanes.\n\n## Every request\n\n1. Admit.\n\n## Rules\n\nProse.\n";
 
@@ -24,6 +24,17 @@ test("isHomeFolder ignores case and a trailing separator on win32 only", () => {
   assert.equal(isHomeFolder("C:\\Users\\Ana\\project", "C:\\Users\\Ana", "win32"), false);
   assert.equal(isHomeFolder("/home/Ana", "/home/ana", "linux"), false);
   assert.equal(isHomeFolder("/home/ana/", "/home/ana", "linux"), true);
+});
+
+test("the status line runs the copied bundle from the plugin data folder under $HOME", () => {
+  assert.deepEqual(INSTALL.settings.statusLine, { type: "command", command: 'node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"' });
+});
+
+test("isPicketStatusLine is true for the current and the legacy value and false for any other (T-3.5)", () => {
+  assert.equal(isPicketStatusLine({ ...INSTALL.settings.statusLine }), true);
+  assert.equal(isPicketStatusLine({ type: "command", command: "picket statusline" }), true);
+  assert.deepEqual(LEGACY_STATUS_LINE, { type: "command", command: "picket statusline" });
+  for (const other of [{ type: "command", command: "other" }, undefined, null, "picket statusline"]) assert.equal(isPicketStatusLine(other), false, JSON.stringify(other));
 });
 
 test("plugin ids name the picketai marketplace", () => {

@@ -10,7 +10,7 @@ const BUILT = join(DIST, "hooks", "hooks.json");
 const HOOK_FOLDERS = resolve("src/lib/hooks");
 
 const EXPECTED_GROUPS = [
-  ["SessionStart", undefined, ["inject.state", "inject.rules", "inject.extensions"]],
+  ["SessionStart", undefined, ["inject.state", "inject.rules", "inject.extensions", "emit.statusline"]],
   ["SubagentStart", undefined, ["inject.rules", "inject.extensions"]],
   ["UserPromptSubmit", undefined, ["inject.consulting"]],
   ["PreToolUse", "Write|Edit", ["guard.scope", "guard.comments", "guard.silenced"]],

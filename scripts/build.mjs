@@ -72,6 +72,26 @@ export function entryOptions(name) {
   return { ...OUTPUT_OPTIONS, bundle: true, outfile: join(DIST_HOOKS, `${name}.mjs`), stdin: { contents: entryCode(name), resolveDir: SRC, sourcefile: `${name}.entry.mjs`, loader: "js" } };
 }
 
+export const STATUSLINE_BUNDLE = join(DIST, "statusline.mjs");
+
+function statuslineCode() {
+  return [
+    `import { readFileSync } from "node:fs";`,
+    `import { edgeContext } from "${srcImport(join(SRC, "lib", "shared", "context.mts"))}";`,
+    `import { parseArgs } from "${srcImport(join(SRC, "lib", "util", "args.mts"))}";`,
+    `import { verb } from "${srcImport(join(SRC, "lib", "verbs", "statusline", "index.mts"))}";`,
+    "try {",
+    `  const outcome = await verb.run(verb.parse(parseArgs([], () => readFileSync(0, "utf8"))), edgeContext(process.cwd()));`,
+    `  if (outcome.status === "done") process.stdout.write(\`\${verb.render(outcome.value)}\\n\`);`,
+    "} catch {}",
+    "process.exitCode = 0;",
+  ].join("\n");
+}
+
+export function statuslineOptions() {
+  return { ...OUTPUT_OPTIONS, bundle: true, outfile: STATUSLINE_BUNDLE, stdin: { contents: statuslineCode(), resolveDir: SRC, sourcefile: "statusline.entry.mjs", loader: "js" } };
+}
+
 export function missingHooks(hooks = HOOKS) {
   return Object.keys(hooks)
     .filter((name) => !existsSync(hookFolder(name)))
@@ -238,7 +258,7 @@ export async function buildAll() {
   for (const file of files.filter(isCopied)) copySource(file);
   writeHooksJson();
   await build(moduleOptions(files.filter(isBuiltModule)));
-  await Promise.all(Object.keys(HOOKS).map((name) => build(entryOptions(name))));
+  await Promise.all([...Object.keys(HOOKS).map((name) => build(entryOptions(name))), build(statuslineOptions())]);
   buildMods();
   await writeReferencePages();
 }

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join, posix, win32 } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { configRel, HOST_DIR, hostRel, pluginRoot, stateRel } from "./paths.mts";
 
 export type BlockSpan = { start: number; end: number };
@@ -19,10 +20,16 @@ export const INSTALL = {
     env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
     allow: ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE}/**)`],
     ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
-    statusLine: { type: "command", command: "picket statusline" },
+    statusLine: { type: "command", command: `node "$HOME/${HOST_DIR}/plugins/data/picket-picketai/statusline.mjs"` },
   },
   plugin: pluginId("picket"),
 } as const;
+
+export const LEGACY_STATUS_LINE = { type: "command", command: "picket statusline" } as const;
+
+export function isPicketStatusLine(value: unknown): boolean {
+  return isDeepStrictEqual(value, INSTALL.settings.statusLine) || isDeepStrictEqual(value, LEGACY_STATUS_LINE);
+}
 
 const HEADING = /^#{1,6} /;
 const { claudeMd } = INSTALL;

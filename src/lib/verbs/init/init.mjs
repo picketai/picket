@@ -2,9 +2,8 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { isDeepStrictEqual } from "node:util";
 import { MODS } from "../../mods.mts";
-import { claudeBlockSpan, INSTALL, isHomeFolder, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
 import { HOST_DIR, hostPath, pluginRoot } from "../../shared/paths.mts";
 import { programRunner } from "../../util/process.mts";
 
@@ -121,7 +120,7 @@ function statusLineHolder(root, home) {
   const candidates = [hostPath(root, "settings.json"), hostPath(root, "settings.local.json"), join(home, HOST_DIR, "settings.json")];
   for (const path of candidates) {
     const statusLine = statusLineOf(path);
-    if (statusLine !== undefined) return { path, ours: path === candidates[0] && isDeepStrictEqual(statusLine, SETTINGS.statusLine) };
+    if (statusLine !== undefined) return { path, ours: path === candidates[0] && isPicketStatusLine(statusLine) };
   }
   return null;
 }
