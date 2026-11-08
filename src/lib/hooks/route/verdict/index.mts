@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { blockCommitProblem } from "../../../shared/commit-message.mts";
+import { citesOnlyRecord, parseFindings } from "../../../shared/findings.mts";
 import { stateDir, statePath, stateRel } from "../../../shared/paths.mts";
 import { agentTranscript, type HookData } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
@@ -109,6 +110,11 @@ function amendmentText(text: string, agent: string, verdict: string, scope: stri
   return crosscheckDrift ? (text.match(DRIFT_DECISIONS_LINE)?.[0] ?? null) : null;
 }
 
+function isPlanOnly(info: BlockInfo | null, verdict: string, amend: string | undefined, text: string): boolean {
+  if (info?.agent !== "reviewer" || info.scope !== "cumulative" || verdict !== "CHANGES REQUIRED") return false;
+  return amend !== undefined && citesOnlyRecord(parseFindings(text), workId(info.id));
+}
+
 function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Routing): string {
   const scope = info?.scope === "phase" ? undefined : (info?.scope ?? (hints.scope && !hints.scope.startsWith("phase") ? hints.scope : undefined));
   const agent = info?.agent ?? (["approved", "rejected"].includes(verdict) ? "user" : (event.agent_type ?? "lead"));
@@ -118,7 +124,8 @@ function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Rou
   saveReviewerBlock(info, text, ctx.root);
   const classes = info?.agent === "reviewer" ? reviewClasses(text) : [];
   const reviewerAmend = info?.agent === "reviewer" ? (amend ?? undefined) : undefined;
-  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: reviewerAmend, session: event.session_id, classes }, ctx);
+  const planOnly = isPlanOnly(info, verdict, reviewerAmend, text);
+  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: reviewerAmend, planOnly, session: event.session_id, classes }, ctx);
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }

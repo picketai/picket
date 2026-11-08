@@ -185,6 +185,32 @@ test("d at a design stall reopens the item and sends the architect the old block
   assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: PHASE STALLED: the port moved`]]);
 });
 
+const PLAN_AMEND = "AMENDMENT NEEDED: T-2.7 the criterion names the wrong file";
+
+function planOnlyRejection(t: TestContext) {
+  const made = item(t, { phases: 2 });
+  for (const n of [1, 2]) {
+    setMarker(made.root, made.id, n, "done", new Date());
+    setMarker(made.root, made.id, n, "approved", new Date());
+  }
+  appendVerdict(made.root, made.id, { agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 2, scope: "cumulative", through: null, amend: PLAN_AMEND, plan_only: true }, new Date("2026-10-29T10:00:00.000Z"));
+  return made;
+}
+
+test("a at the amendment gate sends the architect the amend line with the reword grant and records the choice (T-2.3)", async (t) => {
+  const { root, id } = planOnlyRejection(t);
+  const result = await applied(root, id, "a");
+  assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: ${PLAN_AMEND}\nreword: approved by the user at the amendment gate`]]);
+  assert.deepEqual([replyRows(root, id).at(-1).action, replyRows(root, id).at(-1).choice], ["approve_amendment", "amend"]);
+});
+
+test("f at the amendment gate sends the developer to fix the cumulative findings and records the choice", async (t) => {
+  const { root, id } = planOnlyRejection(t);
+  const result = await applied(root, id, "fix");
+  assert.deepEqual(result.send.map((s) => [s.to, s.message.split("\n").slice(0, 2)]), [[`${instanceTag(id)}-developer`, [`work: ${id}`, `review: work/${id}/reviews/cumulative.md`]]]);
+  assert.equal(replyRows(root, id).at(-1).choice, "fix");
+});
+
 test("a reply that matches nothing lists the options; a reply away from a gate names the action", async (t) => {
   const { root, id } = item(t);
   assert.match(await refused(root, id, "a"), /is at implement_phase, not a gate/);

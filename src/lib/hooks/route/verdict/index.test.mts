@@ -386,3 +386,29 @@ test("a written path asks the lead to print it on its own line, where the Markdo
   const bare = routeWritten(root, id, `## Order: ${id}\n\nTwo phases.\n\nARTIFACT WRITTEN`, "picket:architect");
   assert.doesNotMatch(bare.hookSpecificOutput.additionalContext, PRINT_PATH);
 });
+
+function cumulativeBlock(id: string, findings: string, amend: string | null): string {
+  const lines = [`## Review: ${id} · cumulative`, "", "One criterion's wording does not match what the code does.", "", "Requirements: PASS (3)", "Alignment: FAIL: T-2.7 the wording names the wrong file", "Decisions: HONOURED", "Regression: none", "Sources: none", "Questions: none", findings, "Classes: none", ...(amend ? ["", amend] : []), "", "CHANGES REQUIRED"];
+  return lines.join("\n");
+}
+
+const PLAN_AMEND = "AMENDMENT NEEDED: T-2.7 the criterion names src/b.mts, the phase changed src/a.mts";
+const recordFinding = (id: string) => `Findings: 1 minor\n- [Minor] work/${id}/order.md:219: T-2.7 names src/b.mts. The reviewer cannot match it. Name src/a.mts.`;
+
+function routedCumulative(t: TestContext, findings: (id: string) => string, amend: string | null) {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routeReview(root, id, cumulativeBlock(id, findings(id), amend));
+  return verdictRows(root, id).at(-1);
+}
+
+test("a cumulative rejection whose findings cite only the record, with an amendment line, is plan-only (T-2.1)", (t) => {
+  assert.equal(routedCumulative(t, recordFinding, PLAN_AMEND).plan_only, true);
+  assert.equal(routedCumulative(t, () => "Findings: clean", PLAN_AMEND).plan_only, true);
+});
+
+test("a code finding beside the record finding, or no amendment line, leaves the rejection without plan_only (T-2.1)", (t) => {
+  const withCode = routedCumulative(t, (id) => `${recordFinding(id)}\n- [Minor] src/a.mts:3: The guard is inverted. Empty input passes. Negate it.`, PLAN_AMEND);
+  assert.equal(Object.hasOwn(withCode, "plan_only"), false);
+  assert.equal(Object.hasOwn(routedCumulative(t, recordFinding, null), "plan_only"), false);
+});

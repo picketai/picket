@@ -13,11 +13,13 @@ export type Matched =
   | { kind: "abandon" }
   | { kind: "publish" }
   | { kind: "worktrees"; name: string; from?: string }
-  | { kind: "no_worktrees" };
+  | { kind: "no_worktrees" }
+  | { kind: "amend_record" }
+  | { kind: "fix_code" };
 
 type Form = { pattern: RegExp; letter: string | null; match: (m: RegExpMatchArray, step: NextStep, proposals: Proposals) => Matched | null };
 
-export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "resolve_block", "resolve_rejections", "create_worktrees"];
+export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "resolve_block", "resolve_rejections", "create_worktrees", "approve_amendment"];
 
 const OPTION_LETTER = /^\[(\w)\]/;
 const RUN_LIMIT = /^\[r\] run through (\d+)/;
@@ -95,10 +97,16 @@ const WORKTREE_FORMS: readonly Form[] = [
   { pattern: /^(\S+)(?:\s+from\s+(\S+))?$/i, letter: null, match: namedBranch },
 ];
 
+const AMENDMENT_FORMS: readonly Form[] = [
+  { pattern: /^(?:a|approve|ok|yes)$/i, letter: "a", match: () => ({ kind: "amend_record" }) },
+  { pattern: /^(?:f|fix)$/i, letter: "f", match: () => ({ kind: "fix_code" }) },
+];
+
 function formsFor(step: NextStep, lane: Lane): readonly Form[] {
   if (lane === "research") return step.action === "approve_phase" ? RESEARCH_FORMS : [];
   if (step.action === "approve_phase") return APPROVE_FORMS;
   if (step.action === "create_worktrees") return WORKTREE_FORMS;
+  if (step.action === "approve_amendment") return AMENDMENT_FORMS;
   return step.action === "resolve_block" || step.action === "resolve_rejections" ? BLOCK_FORMS : [];
 }
 

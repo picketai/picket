@@ -18,6 +18,7 @@ export type RouteInput = {
   through?: number;
   reason?: string;
   amend?: string;
+  planOnly?: boolean;
   session?: string | null;
   classes?: string[];
   publish?: boolean;

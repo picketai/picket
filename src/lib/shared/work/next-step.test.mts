@@ -86,9 +86,9 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with fix_findings, amend, review_crosscheck and create_worktrees, fourteen in all (T-6.6)", () => {
-  assert.equal(NEXT_ACTIONS.length, 14);
-  assert.deepEqual(NEXT_ACTIONS.slice(-4), ["fix_findings", "amend", "review_crosscheck", "create_worktrees"]);
+test("the actions end with fix_findings, amend, review_crosscheck, create_worktrees and approve_amendment, fifteen in all (T-6.6)", () => {
+  assert.equal(NEXT_ACTIONS.length, 15);
+  assert.deepEqual(NEXT_ACTIONS.slice(-5), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment"]);
 });
 
 const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };
@@ -354,4 +354,47 @@ test("nextView prints today's keys in order and adds warnings only when the snap
   assert.deepEqual(view, { id: "20261023-probe", lane: "order", status: "open", phase: 1, options: [], own_gate: null, action: "implement_phase", actor: "developer", detail: "phase 1 of 1: Phase 1", send });
   const warned = snapshotOf({ phases: [{ n: 1 }], warnings: ["verdicts.jsonl: 1 unreadable line skipped"] });
   assert.deepEqual(nextView(warned, nextStep(warned, SECURITY_PATHS)).warnings, ["verdicts.jsonl: 1 unreadable line skipped"]);
+});
+
+const PLAN_AMEND = "AMENDMENT NEEDED: T-2.7 the criterion names the wrong file";
+const PLAN_ONLY = { ts: "2026-10-23T10:00:00.000Z", agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 2, scope: "cumulative", through: null, amend: PLAN_AMEND, plan_only: true as const };
+const APPROVED_PHASES = numbered(2, { done: true, approved: true });
+
+function gateReply(reply: "a" | "f") {
+  return { ts: "2026-10-23T11:00:00.000Z", action: "approve_amendment", phase: null, reply, choice: reply === "a" ? "amend" : "fix" } as const;
+}
+
+function laterRow(agent: string, verdict: string) {
+  return { ts: "2026-10-23T12:00:00.000Z", agent, verdict, phase: 2, scope: null, through: null };
+}
+
+test("a plan-only cumulative rejection with no reply stops at approve_amendment, naming the amend line and the saved review (T-2.2)", () => {
+  assert.deepEqual(step({ phases: APPROVED_PHASES, verdicts: [row("approved"), PLAN_ONLY] }), {
+    action: "approve_amendment",
+    actor: "user",
+    detail: `the cumulative review found only plan wording: ${PLAN_AMEND}; review: work/20261023-probe/reviews/cumulative.md`,
+    options: ["[a] amend order.md, approved phases included", "[f] fix the code instead"],
+  });
+  assert.equal(step({ lane: "design", phases: APPROVED_PHASES, verdicts: [PLAN_ONLY] }).options[0], "[a] amend design.md, approved phases included");
+});
+
+test("after a, the architect amends with a reword grant until AMENDED, then the cumulative review runs with only the summary first (T-2.4)", () => {
+  const replied = { phases: APPROVED_PHASES, replies: [gateReply("a")] };
+  assert.deepEqual(step({ ...replied, verdicts: [PLAN_ONLY] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+  const amended = snapshotOf({ ...replied, verdicts: [PLAN_ONLY, laterRow("architect", "AMENDED")] });
+  const next = nextStep(amended, SECURITY_PATHS);
+  assert.deepEqual([next.action, next.actor], ["review_cumulative", "reviewer"]);
+  assert.deepEqual(nextView(amended, next, null).send.map((s) => s.first), [["picket summary 20261023-probe --save"]]);
+});
+
+test("after f, the developer fixes the findings until PHASE DONE, then the cumulative review runs, never an amend (T-2.5)", () => {
+  const replied = { phases: APPROVED_PHASES, replies: [gateReply("f")] };
+  const fixing = step({ ...replied, verdicts: [PLAN_ONLY] });
+  assert.deepEqual([fixing.action, fixing.actor, fixing.review], ["fix_findings", "developer", "cumulative"]);
+  assert.equal(step({ ...replied, verdicts: [PLAN_ONLY, laterRow("developer", "PHASE DONE")] }).action, "review_cumulative");
+});
+
+test("a gate reply older than the plan-only rejection does not answer it", () => {
+  const older = { ...gateReply("a"), ts: "2026-10-23T09:00:00.000Z" };
+  assert.equal(step({ phases: APPROVED_PHASES, verdicts: [PLAN_ONLY], replies: [older] }).action, "approve_amendment");
 });
