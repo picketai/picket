@@ -97,6 +97,23 @@ test("r <m> grants a run up to the last phase; past it, or with no [r] offered, 
   await refused(last.root, last.id, "r 3");
 });
 
+test("a bare r approves the phase and grants a run through the last phase offered (T-2.1)", async (t) => {
+  const { root, id } = item(t);
+  phaseDone(root, id, 1);
+  await applied(root, id, "r");
+  const last = lastVerdict(root, id);
+  assert.deepEqual([last.verdict, last.phase, last.through], ["approved", 1, 3]);
+  assert.equal(readState(root, id).run_through, 3);
+  assert.ok(existsSync(join(root, "work", id, "phases", "1.approved")));
+});
+
+test("a bare r on the last phase, where no run is offered, matches no option (T-2.2)", async (t) => {
+  const { root, id } = item(t, { phases: 1 });
+  phaseDone(root, id, 1);
+  assert.match(await refused(root, id, "r"), /matches no option at approve_phase/);
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), false);
+});
+
 test("x <why> rejects with the reason and sends it to the developer verbatim", async (t) => {
   const { root, id } = item(t);
   phaseDone(root, id, 1);

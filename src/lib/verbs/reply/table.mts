@@ -52,6 +52,11 @@ function runThrough(m: RegExpMatchArray, step: NextStep): Matched | null {
   return limit !== null && through > phase && through <= limit ? { kind: "approve", through } : null;
 }
 
+function runToLimit(step: NextStep): Matched | null {
+  const through = runLimit(step);
+  return through === null ? null : { kind: "approve", through };
+}
+
 function numbered(kind: "keep" | "waive", count: number, m: RegExpMatchArray): Matched | null {
   const n = Number(m[1]);
   return n >= 1 && n <= count ? { kind, n } : null;
@@ -60,6 +65,7 @@ function numbered(kind: "keep" | "waive", count: number, m: RegExpMatchArray): M
 const APPROVE_FORMS: readonly Form[] = [
   { pattern: /^(?:a|approved|ok|yes)$/i, letter: "a", match: () => ({ kind: "approve" }) },
   { pattern: /^(?:i|confirm)$/i, letter: "i", match: () => ({ kind: "approve" }) },
+  { pattern: /^r$/i, letter: "r", match: (_m, step) => runToLimit(step) },
   { pattern: /^(?:r|approved through|run to)\s+(\d+)$/i, letter: "r", match: (m, step) => runThrough(m, step) },
   { pattern: /^(?:x:?|reject:)\s+(\S.*)$/i, letter: "x", match: (m) => ({ kind: "reject", why: m[1].trim() }) },
   { pattern: /^(?:k|keep)\s+(\d+)$/i, letter: null, match: (m, _step, { comments }) => numbered("keep", comments.length, m) },

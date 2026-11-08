@@ -143,6 +143,14 @@ test("guard.bash sinks test logs into the new state folder only (T-4.4)", (t) =>
   assert.equal(bashDecision(root, `npm test > ${LEGACY.stateDir}/x.log`), null);
 });
 
+test("guard.bash allows git config reads with a scope flag, a short flag or a subcommand word (T-2.3)", (t) => {
+  const { root } = hookProject(t);
+  for (const command of ["git config --global --get credential.helper", "git config --global --list", "git config -l", "git config get user.name", "git config list", "git config --get-all user.name"]) {
+    assert.equal(bashDecision(root, command), "allow", command);
+  }
+  assert.equal(bashDecision(root, "git config --global user.name x"), "deny");
+});
+
 test("guard.bash lets git switch -c through to the prompt and keeps git checkout -b denied", (t) => {
   const { root } = hookProject(t);
   assert.equal(bashDecision(root, "git -C src/Api/.worktrees/feat-a switch -c feat-b feat-a"), null);

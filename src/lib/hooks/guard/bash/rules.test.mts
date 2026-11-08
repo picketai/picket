@@ -50,6 +50,15 @@ test("read-only forms stay allowed and only print-only sed scripts pass the one 
   for (const command of ["sed -n 's/a/b/w out' a.txt", "sed -i 1p a.txt", "sed -n 1p -i a.txt"]) assert.equal(decision(command, { root, tool: "Bash" }), null, command);
 });
 
+const GIT_CONFIG_READS = ["git config --global --get credential.helper", "git config --global --list", "git config -l", "git config get user.name", "git config list", "git config --get-all user.name", "git config --get user.name", "git config --list"];
+const GIT_CONFIG_WRITES = ["git config user.name x", "git config --global user.name x", "git config --unset user.name", "git config --global --replace-all user.name x", "git config --get user.name --unset user.name", "git config set user.name x"];
+
+test("git config read forms are allowed whatever the scope flag, and write forms are denied (T-2.4)", (t) => {
+  const root = project(t);
+  for (const command of GIT_CONFIG_READS) assert.equal(decision(command, { root, tool: "Bash" }), "allow", command);
+  for (const command of GIT_CONFIG_WRITES) assert.equal(decision(command, { root, tool: "Bash" }), "deny", command);
+});
+
 test("every mixed-case root in the rule table is the canonical name of a PowerShell command group (T-6.4)", () => {
   const canonical = new Set(CANONICAL_GROUPS.map(([name]) => name));
   const mixed = Object.keys(ROOTS).filter((root) => /[A-Z]/.test(root));
