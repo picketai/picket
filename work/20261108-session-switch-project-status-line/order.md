@@ -216,7 +216,7 @@ A project cannot turn off the status mod's work pane: since SDR-00003 the mods s
 - **T-2.4** Without `--statusline`, `init` leaves a data folder value in place with no note and still removes the legacy value with `removed the legacy statusLine "picket statusline"` (`index.test.mts`).
 - **T-2.5** `uninstall` removes each of the three values from `.claude/settings.json` and keeps `{ type: "command", command: "local-line" }` (`uninstall.test.mts`).
 - **T-2.6** `style apply` still writes `node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"`: `src/lib/shared/styling/components/theme/index.test.mts`, untouched from the base, passes.
-- **T-2.7** After `npm run build`, with temp folders P (holding `.picket/config.json` as `{"version":1}`) and D, running `node dist/hooks/emit.statusline.mjs` with `CLAUDE_PROJECT_DIR=P` and `CLAUDE_PLUGIN_DATA=D`, fed a SessionStart payload, creates `P/.picket/state/statusline.mjs` and `D/statusline.mjs`. Then `CLAUDE_PROJECT_DIR=P bash -c 'node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"' < src/lib/verbs/statusline/statusline-input.test.json` exits 0 and prints one non-empty line.
+- **T-2.7** After `npm run build`, with temp folders P (holding `.picket/config.json` as `{"version":1}`) and D, running `node dist/hooks/emit.statusline.mjs` with `CLAUDE_PROJECT_DIR=P` and `CLAUDE_PLUGIN_DATA=D`, fed a SessionStart payload, creates `P/.picket/state/statusline.mjs` and `D/statusline.mjs`. Then `CLAUDE_PROJECT_DIR=P bash -c 'node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"' < src/lib/verbs/statusline/statusline-input.test.json` exits 0 and prints at least one non-empty line.
 - **T-2.8** [DEFERRED: QA, the alpha.6 release QA pass] In a live Claude Code 2.1.319 session started at a project root after `init --statusline`, the status line draws from `.picket/state/statusline.mjs`, and keeps drawing after the Bash tool runs `cd` into a subfolder.
 
 ## Open questions
@@ -225,3 +225,4 @@ A project cannot turn off the status mod's work pane: since SDR-00003 the mods s
 - **OQ-002** `claude plugin test` can refuse in a subagent shell with "hooks modules are turned off in this process". Owner: lead. Fallback: the developer records the refusal on the block, `validate --strict` still runs, and the lead runs `npm run test:mods` in the main session before the phase 1 gate.
 
 ## Revision log
+- 2026-11-08: T-2.7: "prints one non-empty line" now "at least one"; the bundle prints 3 rows; user's go-ahead for approved phase 2
