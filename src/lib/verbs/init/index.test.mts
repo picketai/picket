@@ -4,7 +4,7 @@ import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fixedContext } from "#test/context.mts";
 import { withProject } from "#test/project.mts";
-import { INSTALL, LEGACY_STATUS_LINE } from "../../shared/install.mts";
+import { DATA_FOLDER_STATUS_LINE, INSTALL, LEGACY_STATUS_LINE } from "../../shared/install.mts";
 import { parseArgs } from "../../util/args.mts";
 import type { ProgramRunner } from "../../util/process.mts";
 import { initProject, verb } from "./index.mts";
@@ -118,6 +118,30 @@ test("with --statusline init writes the bundle command, replaces the legacy one,
   const kept = run(local.root, local.home, { install: false, statusline: true });
   assert.equal("statusLine" in settingsOf(local.root), false);
   assert.equal(step(kept, "settings")?.detail, `statusLine already set in ${join(local.root, ".claude", "settings.local.json")}`);
+});
+
+test("with --statusline init replaces a data folder value with the project copy, and a rerun reports settings unchanged (T-2.3)", (t) => {
+  const { root, home } = project(t, { statusLine: DATA_FOLDER_STATUS_LINE });
+  const replaced = run(root, home, { install: false, statusline: true });
+  assert.deepEqual(settingsOf(root).statusLine, { type: "command", command: 'node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"' });
+  assert.equal(step(replaced, "settings")?.result, "updated");
+  assert.equal(step(replaced, "settings")?.detail, "replaced the data folder statusLine with the project copy");
+
+  const rerun = run(root, home, { install: false, statusline: true });
+  assert.equal(step(rerun, "settings")?.result, "unchanged");
+  assert.equal(step(rerun, "settings")?.detail, undefined);
+});
+
+test("without --statusline init leaves a data folder value with no note and still removes the legacy value (T-2.4)", (t) => {
+  const data = project(t, { statusLine: DATA_FOLDER_STATUS_LINE });
+  const kept = run(data.root, data.home, { install: false });
+  assert.deepEqual(settingsOf(data.root).statusLine, DATA_FOLDER_STATUS_LINE);
+  assert.equal(step(kept, "settings")?.detail, undefined);
+
+  const legacy = project(t, { statusLine: LEGACY_STATUS_LINE });
+  const removed = run(legacy.root, legacy.home, { install: false });
+  assert.equal("statusLine" in settingsOf(legacy.root), false);
+  assert.equal(step(removed, "settings")?.detail, 'removed the legacy statusLine "picket statusline"');
 });
 
 function globalPicket(t: TestContext): string {

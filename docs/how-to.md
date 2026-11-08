@@ -83,9 +83,11 @@ Picket's status line is optional. To add it, run init with the flag:
 npx @picketai/picket@alpha init --statusline
 ```
 
-It sets the project `statusLine` to `node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"`, unless your project, local or user settings already set one; then it leaves yours and names the file that holds it. The plugin copies `statusline.mjs` into its data folder, `~/.claude/plugins/data/picket-picketai/`, at the start of every session, so the line can be blank in the very first session after the install and draws from the next refresh. When you run Claude Code with `CLAUDE_CONFIG_DIR`, the data folder is under that folder instead of `~/.claude`: edit the path in your `statusLine` to match.
+It sets the project `statusLine` to `node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"`, unless your project, local or user settings already set one; then it leaves yours and names the file that holds it. Claude Code sets `CLAUDE_PROJECT_DIR` to the folder the session started in, so the line keeps working after a `cd`, and the value holds no path of your own, so it is safe to commit. The plugin copies `statusline.mjs` into the project's git-ignored `.picket/state/` at the start of every session, so the line can be blank in the very first session after the install and draws from the next refresh.
 
-Without `--statusline`, `init` writes no status line, and removes the old `picket statusline` value from earlier versions, with a note saying so.
+If an earlier alpha.6 `init --statusline` wrote `node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"` into the project settings, running `init --statusline` again replaces it with the project copy and says so. That old value keeps working, because the plugin still keeps a copy in its data folder too.
+
+Without `--statusline`, `init` writes no status line, leaves that data folder value in place, and removes the old `picket statusline` value from earlier versions, with a note saying so.
 
 ### The Markdown pane
 

@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { RETIRED_PLUGINS } from "../../mods.mts";
-import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
 import { HOST_DIR, hostPath } from "../../shared/paths.mts";
 import { programRunner } from "../../util/process.mts";
 import { shadowingPicket, shadowWarning } from "./shadow.mts";
@@ -99,6 +99,10 @@ function statusLineChange(merged, { holder, statusline }) {
     return `${statusline ? "replaced" : "removed"} the legacy statusLine "${LEGACY_STATUS_LINE.command}"`;
   }
   if (!statusline) return null;
+  if (isDeepStrictEqual(merged.statusLine, DATA_FOLDER_STATUS_LINE)) {
+    merged.statusLine = SETTINGS.statusLine;
+    return "replaced the data folder statusLine with the project copy";
+  }
   if (holder === null) {
     merged.statusLine = SETTINGS.statusLine;
     return null;

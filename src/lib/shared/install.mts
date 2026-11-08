@@ -7,6 +7,8 @@ export type BlockSpan = { start: number; end: number };
 
 export const MARKETPLACE = "picketai";
 
+export const STATUSLINE_FILE = "statusline.mjs";
+
 export function pluginId(plugin: string): string {
   return `${plugin}@${MARKETPLACE}`;
 }
@@ -20,7 +22,7 @@ export const INSTALL = {
     env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
     allow: ["Bash(picket *)", "PowerShell(picket *)", `Read(~/${HOST_DIR}/plugins/cache/${MARKETPLACE}/**)`],
     ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
-    statusLine: { type: "command", command: `node "$HOME/${HOST_DIR}/plugins/data/picket-picketai/statusline.mjs"` },
+    statusLine: { type: "command", command: `node "\${CLAUDE_PROJECT_DIR}/${stateRel(STATUSLINE_FILE)}"` },
   },
   plugin: pluginId("picket"),
   marketplace: {
@@ -33,10 +35,14 @@ export const INSTALL = {
   },
 } as const;
 
+export const DATA_FOLDER_STATUS_LINE = { type: "command", command: `node "$HOME/${HOST_DIR}/plugins/data/picket-picketai/${STATUSLINE_FILE}"` } as const;
+
 export const LEGACY_STATUS_LINE = { type: "command", command: "picket statusline" } as const;
 
+const PICKET_STATUS_LINES: readonly unknown[] = [INSTALL.settings.statusLine, DATA_FOLDER_STATUS_LINE, LEGACY_STATUS_LINE];
+
 export function isPicketStatusLine(value: unknown): boolean {
-  return isDeepStrictEqual(value, INSTALL.settings.statusLine) || isDeepStrictEqual(value, LEGACY_STATUS_LINE);
+  return PICKET_STATUS_LINES.some((statusLine) => isDeepStrictEqual(value, statusLine));
 }
 
 const HEADING = /^#{1,6} /;

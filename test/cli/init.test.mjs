@@ -123,7 +123,8 @@ const INIT_SETTINGS = {
   },
 };
 
-const STATUS_LINE = { type: "command", command: 'node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"' };
+const STATUS_LINE = { type: "command", command: 'node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"' };
+const DATA_FOLDER_STATUS_LINE = { type: "command", command: 'node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"' };
 
 function writeSettings(root, text, file = "settings.json") {
   mkdirSync(join(root, ".claude"), { recursive: true });
@@ -157,6 +158,18 @@ test("init --statusline writes the bundle command, and a rerun reports settings 
   const second = runInit(t, root, { args: ["--statusline"] });
   assert.equal(results(second.json).settings, "unchanged");
   assert.equal(results(second.json).marketplace, "unchanged");
+});
+
+test("init --statusline over a data folder value writes the project copy value with a note, and a rerun is unchanged (T-2.3)", (t) => {
+  const root = initRepo(t);
+  writeSettings(root, JSON.stringify({ statusLine: DATA_FOLDER_STATUS_LINE }));
+  const first = runInit(t, root, { args: ["--statusline"] });
+  assert.equal(first.code, 0, first.stderr);
+  const text = read(root, ".claude", "settings.json");
+  assert.deepEqual(JSON.parse(text).statusLine, STATUS_LINE);
+  assert.equal(settingsDetail(first.json), "replaced the data folder statusLine with the project copy");
+  assert.equal(text.includes(root), false);
+  assert.equal(results(runInit(t, root, { args: ["--statusline"] }).json).settings, "unchanged");
 });
 
 test("init without --statusline removes the legacy picket statusline and says so (T-6.3)", (t) => {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { withProject } from "#test/project.mts";
 import type { ProgramRunner } from "../../util/process.mts";
 import type { Prompt } from "../../util/prompt.mts";
-import { INSTALL } from "../../shared/install.mts";
+import { DATA_FOLDER_STATUS_LINE, INSTALL } from "../../shared/install.mts";
 import { init } from "../init/init.mjs";
 import { planUninstall, runUninstall, type UninstallInput, type UninstallReport } from "./uninstall.mts";
 
@@ -208,9 +208,9 @@ test("the user's own rules, env key and status line survive, and deny is untouch
   assert.deepEqual(after.permissions.deny, deny);
 });
 
-test("uninstall removes a statusLine that is the legacy or the current Picket command and keeps any other (T-3.5)", async (t) => {
-  const kept = { type: "command", command: "other" };
-  for (const statusLine of [{ type: "command", command: "picket statusline" }, INSTALL.settings.statusLine, kept]) {
+test("uninstall removes the legacy, the data folder and the init statusLine and keeps any other (T-2.5)", async (t) => {
+  const kept = { type: "command", command: "local-line" };
+  for (const statusLine of [{ type: "command", command: "picket statusline" }, DATA_FOLDER_STATUS_LINE, INSTALL.settings.statusLine, kept]) {
     const { root } = project(t, { ".claude/settings.json": JSON.stringify({ permissions: { allow: ["Bash(npm test)"] }, statusLine }) });
     await uninstall(root);
     const after = JSON.parse(read(root, ".claude/settings.json"));

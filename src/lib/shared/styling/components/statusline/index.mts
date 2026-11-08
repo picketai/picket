@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { INSTALL, isPicketStatusLine } from "../../../install.mts";
+import { DATA_FOLDER_STATUS_LINE, isPicketStatusLine } from "../../../install.mts";
 import { HOST_DIR } from "../../../paths.mts";
 import type { Change, Component } from "../../change.mts";
 import type { Host } from "../../host.mts";
@@ -9,7 +9,7 @@ import { writeTracked, type ManifestItem, type Unapplied } from "../../manifest.
 
 type Settings = Record<string, unknown> & { statusLine?: unknown };
 
-const STATUS_LINE = INSTALL.settings.statusLine;
+const STATUS_LINE = DATA_FOLDER_STATUS_LINE;
 const NAME = "statusline";
 
 function settingsPath(host: Host): string {

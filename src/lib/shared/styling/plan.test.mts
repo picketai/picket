@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { exited, fakeExec, homeFiles, textsOf, withFakeHost, writeHomeFile, type FakeHost } from "#test/styling-host.mts";
-import { INSTALL } from "../install.mts";
+import { DATA_FOLDER_STATUS_LINE } from "../install.mts";
 import { component as statusline } from "./components/statusline/index.mts";
 import { terminalComponent } from "./components/terminal/index.mts";
 import { component as theme } from "./components/theme/index.mts";
@@ -16,7 +16,7 @@ const KONSOLERC = ".config/konsolerc";
 const THEME_COPY = ".claude/themes/picketai.json";
 const CUSTOM = '{"model":"x","statusLine":{"type":"command","command":"my-line"}}';
 const STATUSLINE_ONLY = ["statusline"];
-const STATUS_LINE = INSTALL.settings.statusLine;
+const STATUS_LINE = DATA_FOLDER_STATUS_LINE;
 
 function setupStatusline(host: FakeHost, options: ApplyOptions) {
   return applyStyle(host, { only: STATUSLINE_ONLY, ...options });
