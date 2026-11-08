@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { admit, verb } from "./index.mts";
-import { NO_LANE } from "../../shared/admission/lane.mts";
+import { NO_LANE, PENDING } from "../../shared/admission/lane.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { withProject, writeConfig } from "#test/project.mts";
 
@@ -31,24 +31,49 @@ test("admit takes the text, a file, or standard input for -, and splits --touche
 test("a configured fast cap of one file keeps a two-file request out of the fast lane (T-5.3)", (t) => {
   const root = repo(t);
   const request = "fix the typo in `src/config.ts` and `src/http/server.ts`";
-  assert.equal(admit(root, request).lane, "fast");
+  assert.equal(admit(root, request, ["src/config.ts", "src/http/server.ts"]).lane, "fast");
   writeConfig(root, { version: 1, lanes: { fast: { max_files: 1 } } });
   const capped = admit(root, request);
   assert.equal(capped.lane, "order");
   assert.ok(capped.reasons.some((r) => /more than the fast cap of 1/.test(r)));
 });
 
-test("the six fast-lane requests land in fast", (t) => {
+test("the six fast-lane requests answer pending alone and fast with their touch set", (t) => {
   const root = repo(t);
-  const prompts = [
-    "GET /invoices?page=1&size=2 skips the two newest invoices. Fix the offset in the list handler and add a unit test.",
-    "loadConfig() throws when data/config.json has no server block. Fix the loader and cover the empty-object case with a unit test.",
-    "`applyStuff` in src/domain/pricing.ts computes the subtotal and discount. Rename it to something that describes what it returns.",
-    "When the port is taken the service exits silently. In src/http/server.ts log the error to stderr before exiting.",
-    "Change the default page size from 20 to 25 in the code default and data/config.json.",
-    "An invoice at 7% tax shows 1.39; it should be 1.40. The helper in src/domain/money.ts truncates. Make it round half up.",
+  const prompts: [string, string[]][] = [
+    ["GET /invoices?page=1&size=2 skips the two newest invoices. Fix the offset in the list handler and add a unit test.", ["src/http/handlers.ts"]],
+    ["loadConfig() throws when data/config.json has no server block. Fix the loader and cover the empty-object case with a unit test.", ["src/config.ts"]],
+    ["`applyStuff` in src/domain/pricing.ts computes the subtotal and discount. Rename it to something that describes what it returns.", ["src/domain/pricing.ts"]],
+    ["When the port is taken the service exits silently. In src/http/server.ts log the error to stderr before exiting.", ["src/http/server.ts"]],
+    ["Change the default page size from 20 to 25 in the code default and data/config.json.", ["src/config.ts", "data/config.json"]],
+    ["An invoice at 7% tax shows 1.39; it should be 1.40. The helper in src/domain/money.ts truncates. Make it round half up.", ["src/domain/money.ts"]],
   ];
-  for (const p of prompts) assert.equal(admit(root, p).lane, "fast", p);
+  for (const [p, touched] of prompts) {
+    assert.equal(admit(root, p).lane, PENDING, p);
+    assert.equal(admit(root, p, touched).lane, "fast", p);
+  }
+});
+
+const TOUCH_SET_NEEDED = "picket admit --request <file> --touched <paths>";
+
+test("a small change naming one file answers pending without a touch set and fast with it (T-1.1)", (t) => {
+  const root = repo(t);
+  const request = "Fix the typo in `src/config.ts`.";
+  const pending = admit(root, request);
+  assert.equal(pending.lane, PENDING);
+  assert.ok(pending.reasons[pending.reasons.length - 1].includes(TOUCH_SET_NEEDED), pending.reasons.join("; "));
+  assert.equal(admit(root, request, ["src/config.ts"]).lane, "fast");
+});
+
+test("three named files at the cap answer pending alone and a four-file touch set answers order (T-1.2)", (t) => {
+  const root = repo(t);
+  const request = "fix the typo in `src/config.ts`, `src/http/server.ts` and `src/domain/money.ts` ";
+  assert.equal(admit(root, request).lane, PENDING);
+  assert.equal(admit(root, request, ["src/config.ts", "src/http/server.ts", "src/domain/money.ts", "src/http/handlers.ts"]).lane, "order");
+});
+
+test("a forced fast lane answers fast with no touch set (T-1.3)", (t) => {
+  assert.equal(admit(repo(t), "lane: fast. Fix the typo.").lane, "fast");
 });
 
 test("new surfaces land in order, security and migrations in design, questions in research", (t) => {
@@ -74,7 +99,7 @@ test("a declared research work item that adds a surface still lands in order (T-
 });
 
 test("a heading rename that mentions a verdict token lands in fast without the security signal (T-2.3)", (t) => {
-  const r = admit(repo(t), "Rename the research lane's closing block heading in `.claude/skills/researching/SKILL.md` from '## Report: <id>' to '## Research closed: <id>', so the lead's closing block no longer matches the analyst contract heading that guard.block treats as a hand-back needing a verdict token.");
+  const r = admit(repo(t), "Rename the research lane's closing block heading in `.claude/skills/researching/SKILL.md` from '## Report: <id>' to '## Research closed: <id>', so the lead's closing block no longer matches the analyst contract heading that guard.block treats as a hand-back needing a verdict token.", [".claude/skills/researching/SKILL.md"]);
   assert.equal(r.lane, "fast");
   assert.equal(r.signals.security, false);
 });
@@ -107,7 +132,7 @@ test("a credential context word keeps a token phrase flagged (T-1.1, T-1.2)", (t
 
 test("a verdict token rename stays in fast without the security signal (T-1.3)", (t) => {
   const p = "Rename the verdict token heading in the skill";
-  const r = admit(repo(t), p);
+  const r = admit(repo(t), p, [".claude/skills/researching/SKILL.md"]);
   assert.equal(r.lane, "fast", p);
   assert.equal(r.signals.security, false, p);
 });
@@ -134,7 +159,7 @@ test("removing keys, lines, entries, settings or hooks is a small change", (t) =
   const root = repo(t);
   for (const p of ["Remove the broken hooks", "Delete three keys from the JSON file", "Fix or remove the broken hooks"]) {
     const r = admit(root, p);
-    assert.equal(r.lane, "fast", p);
+    assert.equal(r.lane, PENDING, p);
     assert.equal(r.signals.small_change, true, p);
   }
 });
@@ -147,7 +172,7 @@ test("removing a module stays in order and deleting records stays in design", (t
 });
 
 test("a request naming .claude/settings.json without backticks lands in fast", (t) => {
-  const r = admit(repo(t), "Drop the stale keys from .claude/settings.json");
+  const r = admit(repo(t), "Drop the stale keys from .claude/settings.json", [".claude/settings.json"]);
   assert.equal(r.lane, "fast");
   assert.ok(r.signals.mentioned_paths.includes(".claude/settings.json"));
 });
@@ -248,11 +273,11 @@ for (const request of [
 
 test("a fix verb, a security path with a fix verb and a forced lane keep today's routing (T-2.2)", (t) => {
   const root = repo(t);
-  assert.equal(admit(root, "Fix the bug where the CSV export crashes on an empty list").lane, "fast");
-  assert.equal(admit(root, "Find why the CSV export crashes on an empty list and fix it").lane, "fast");
+  assert.equal(admit(root, "Fix the bug where the CSV export crashes on an empty list").lane, PENDING);
+  assert.equal(admit(root, "Find why the CSV export crashes on an empty list and fix it").lane, PENDING);
   assert.equal(admit(root, "Fix the crash in `src/auth/login.ts` when the password is empty").lane, "design");
   assert.equal(admit(root, "lane: order. Debug why the export crashes").lane, "order");
-  assert.equal(admit(root, "When the port is taken the service exits silently, which is hard to diagnose. Log the error in `src/http/server.ts`.").lane, "fast");
+  assert.equal(admit(root, "When the port is taken the service exits silently, which is hard to diagnose. Log the error in `src/http/server.ts`.", ["src/http/server.ts"]).lane, "fast");
   assert.equal(admit(root, "How does pricing pick the tier discount?").lane, "research");
 });
 
@@ -285,8 +310,8 @@ test("adding a skill, hook or verb is new surface and leaves the fast lane (T-3.
 
 test("naming a surface without adding one keeps its lane, and diagnosis requests still answer none (T-3.2)", (t) => {
   const root = repo(t);
-  assert.equal(admit(root, "Fix the typo in the hook table of `src/hooks/README.md`").lane, "fast");
-  assert.equal(admit(root, "Rename the `--deleted` flag of the waive verb in one file").lane, "fast");
+  assert.equal(admit(root, "Fix the typo in the hook table of `src/hooks/README.md`", ["src/hooks/README.md"]).lane, "fast");
+  assert.equal(admit(root, "Rename the `--deleted` flag of the waive verb in one file").lane, PENDING);
   assert.equal(admit(root, "how is a new hook registered?").lane, "research");
   assert.equal(admit(root, "How does a new skill get added? Write a report, no code changes.").lane, "research");
   for (const request of ["Debug why GET /invoices returns 500 after the page size change", "debug the flaky invoice test", "Why does loadConfig throw on an empty file?"]) {

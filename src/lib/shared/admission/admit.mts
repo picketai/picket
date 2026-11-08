@@ -2,12 +2,13 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../config.mjs";
 import type { Lane } from "../work/state.mts";
-import { laneOf, NO_LANE, type Admission, type LaneCaps } from "./lane.mts";
+import { laneOf, NO_LANE, PENDING, type Admission, type LaneCaps } from "./lane.mts";
 import { mentionedPaths, signalsOf } from "./signals.mts";
 
 type AdmitConfig = { security_paths: string[]; lanes: LaneCaps };
+type ChangeLane = Exclude<Lane, "research"> | typeof PENDING;
 
-const CHANGE_LANE_RANK: Readonly<Record<Exclude<Lane, "research">, number>> = { fast: 0, order: 1, design: 2 };
+const CHANGE_LANE_RANK: Readonly<Record<ChangeLane, number>> = { [PENDING]: 0, fast: 0, order: 1, design: 2 };
 
 export function overridesAdmission(asked: Lane, admitted: Admission["lane"]): boolean {
   if (admitted === NO_LANE) return true;
