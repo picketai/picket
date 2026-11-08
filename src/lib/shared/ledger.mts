@@ -52,6 +52,12 @@ export function turnTokens(row: TurnRow): number {
   return USAGE_KEYS.reduce((sum, key) => sum + (row.usage?.[key] ?? 0), 0);
 }
 
+export const TURN_EVENTS: ReadonlySet<LedgerRow["event"]> = new Set(["stop", "subagent_stop", "gate"]);
+
+export function isTurn(row: LedgerRow): row is TurnRow {
+  return TURN_EVENTS.has(row.event);
+}
+
 function isCurrent(row: unknown): row is LedgerRow {
   return (row as { v?: unknown } | null)?.v === VERSION;
 }

@@ -1,7 +1,7 @@
 import { action, done } from "../../shared/action.mts";
 import { notRunAsks } from "../../shared/escalation.mts";
 import { compactTokens } from "../../shared/format.mts";
-import { readLedger, turnTokens, USAGE_KEYS, type EscalationRow, type LedgerRow, type TurnRow, type Usage } from "../../shared/ledger.mts";
+import { isTurn, readLedger, turnTokens, USAGE_KEYS, type EscalationRow, type LedgerRow, type TurnRow, type Usage } from "../../shared/ledger.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { str, type Args } from "../../util/args.mts";
 
@@ -30,13 +30,8 @@ export type CostSummary = {
 };
 
 const PERCENT = 100;
-const TURN_EVENTS = new Set(["stop", "subagent_stop", "gate"]);
 const RECENT_ESCALATIONS = 5;
 const NO_PHASE = "none";
-
-function isTurn(row: LedgerRow): row is TurnRow {
-  return TURN_EVENTS.has(row.event);
-}
 
 function sumUsage(rows: TurnRow[]): Usage {
   const u: Usage = { input_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, output_tokens: 0 };

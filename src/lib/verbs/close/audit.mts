@@ -1,14 +1,9 @@
 import { compactTokens, minutes } from "../../shared/format.mts";
-import { turnTokens, type LedgerRow, type TurnRow } from "../../shared/ledger.mts";
+import { isTurn, turnTokens, type LedgerRow, type TurnRow } from "../../shared/ledger.mts";
 import type { WorkState } from "../../shared/work/state.mts";
 
 const SEPARATOR = " · ";
-const TURN_EVENTS: ReadonlySet<LedgerRow["event"]> = new Set(["stop", "subagent_stop", "gate"]);
 const UNKNOWN_AGENT = "unknown";
-
-function isTurn(row: LedgerRow): row is TurnRow {
-  return TURN_EVENTS.has(row.event);
-}
 
 function tokensPart(turns: TurnRow[]): string {
   if (!turns.length) return "tokens none";

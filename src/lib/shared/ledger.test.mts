@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { appendLedger, readLedger, turnTokens, type NewRow, type TurnRow } from "./ledger.mts";
+import { appendLedger, isTurn, readLedger, turnTokens, type LedgerRow, type NewRow, type TurnRow } from "./ledger.mts";
 import { statePath, STATE_FILES } from "./paths.mts";
 import { withProject } from "#test/project.mts";
 
@@ -61,6 +61,34 @@ test("a turn row appended and read back keeps v 2 and its usage and carries no s
 test("turnTokens sums the four usage fields and is 0 without usage", () => {
   assert.equal(turnTokens({ v: 2, ts: NOW.toISOString(), ...TURN }), 1111);
   assert.equal(turnTokens({ v: 2, ts: NOW.toISOString(), ...TURN, usage: null }), 0);
+});
+
+test("isTurn holds for stop, subagent_stop and gate rows and for no other event", () => {
+  const stamp = { v: 2, ts: NOW.toISOString() } as const;
+  const common = { ...stamp, session: "s1", agent: "developer", work_id: "w1" } as const;
+  const rows: LedgerRow[] = [
+    { ...stamp, ...TURN, event: "stop" },
+    { ...stamp, ...TURN, event: "subagent_stop" },
+    { ...stamp, ...TURN, event: "gate" },
+    { ...stamp, ...ACCEPT },
+    { ...common, event: "block", hook: "guard.scope", reason: "r" },
+    { ...common, event: "bounce", hook: "route", reason: "r" },
+    { ...common, event: "escalation", outcome: "ask", why: null, key: "k", command: "git push", reason: null },
+    { ...common, event: "repeat", class: "reread", items: ["a"] },
+  ];
+  assert.deepEqual(
+    rows.map((row) => [row.event, isTurn(row)]),
+    [
+      ["stop", true],
+      ["subagent_stop", true],
+      ["gate", true],
+      ["accept", false],
+      ["block", false],
+      ["bounce", false],
+      ["escalation", false],
+      ["repeat", false],
+    ],
+  );
 });
 
 test("readLedger of a project without a ledger is empty", (t) => {
