@@ -66,9 +66,14 @@ function lastIndexWhere(verdicts: readonly VerdictRow[], matches: (row: VerdictR
   return -1;
 }
 
-function pendingAmend({ verdicts }: WorkSnapshot): string | null {
+function declinedAmendment({ replies }: WorkSnapshot, row: VerdictRow): boolean {
+  return row.plan_only === true && replies.some((r) => r.action === "approve_amendment" && r.choice === "fix" && isAfter(r, row));
+}
+
+function pendingAmend(snap: WorkSnapshot): string | null {
+  const { verdicts } = snap;
   const at = lastIndexWhere(verdicts, (v) => Boolean(v.amend));
-  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED")) return null;
+  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED") || declinedAmendment(snap, verdicts[at])) return null;
   return verdicts[at].amend ?? null;
 }
 

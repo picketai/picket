@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-08T12:29:36.206Z",
+  "base": "aa9c0b2449ac8b492e78905499ed8b37d06aadb6",
+  "mutant": {
+    "path": "src/lib/hooks/route/verdict/index.mts",
+    "line": 114,
+    "from": "!==",
+    "to": "==="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 18448
+}

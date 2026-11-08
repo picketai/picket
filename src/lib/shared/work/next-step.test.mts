@@ -394,6 +394,12 @@ test("after f, the developer fixes the findings until PHASE DONE, then the cumul
   assert.equal(step({ ...replied, verdicts: [PLAN_ONLY, laterRow("developer", "PHASE DONE")] }).action, "review_cumulative");
 });
 
+test("after f and a PHASE DONE, a plain cumulative rejection goes to the developer, never to the declined amendment (T-2.5)", () => {
+  const plain = { ...laterRow("reviewer", "CHANGES REQUIRED"), ts: "2026-10-23T13:00:00.000Z", scope: "cumulative" };
+  const next = step({ phases: APPROVED_PHASES, replies: [gateReply("f")], verdicts: [PLAN_ONLY, laterRow("developer", "PHASE DONE"), plain] });
+  assert.deepEqual([next.action, next.actor, next.review], ["fix_findings", "developer", "cumulative"]);
+});
+
 test("a gate reply older than the plan-only rejection does not answer it", () => {
   const older = { ...gateReply("a"), ts: "2026-10-23T09:00:00.000Z" };
   assert.equal(step({ phases: APPROVED_PHASES, verdicts: [PLAN_ONLY], replies: [older] }).action, "approve_amendment");

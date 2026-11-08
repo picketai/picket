@@ -47,6 +47,8 @@ phases:
       - src/lib/verbs/reply/table.mts
       - src/lib/verbs/reply/index.mts
       - src/lib/verbs/reply/index.test.mts
+      - src/lib/verbs/packet/packet.mjs
+      - src/lib/verbs/packet/index.test.mts
     greps:
       - path: src/lib/shared/findings.mts
         pattern: 'export function parseFindings\b'
@@ -65,6 +67,8 @@ phases:
         pattern: '"approve_amendment"'
       - path: src/lib/shared/work/send.mts
         pattern: 'reword: approved by the user at the amendment gate'
+      - path: src/lib/verbs/packet/packet.mjs
+        pattern: '"approve_amendment"'
     tests: true
     drive: true
   - n: 3
@@ -110,8 +114,8 @@ phases:
 **Risks:**
 - **RISK-003** A reviewer cites the record for a defect the code must fix. Mitigation: the gate (D-003) prints the review path and offers `[f]`, which sends the developer.
 
-### D-003: A plan-only rejection gets its own gate, `approve_amendment`
-**Decision:** A new next action `approve_amendment` (actor `user`) owns every state of a plan-only rejection, placed in `allApprovedStep` after `rejectionsStep` and before `amendStep`. With no reply since the row: the gate, detail `the cumulative review found only plan wording: <amend line>; review: work/<id>/reviews/cumulative.md`, options `[a] amend <record>, approved phases included` and `[f] fix the code instead`. After `a`: `amend` by the architect with a reword grant (D-004) until an `AMENDED` row follows the reply, then `review_cumulative`. After `f`: `fix_findings` by the developer until a `PHASE DONE` follows, then `review_cumulative`, with no amend step. `picket reply` stores the choice as `choice: "amend" | "fix"` on the reply row, since `next-step` may not import the reply table. The packet's default branch renders the gate unchanged.
+### D-003 (r2): A plan-only rejection gets its own gate, `approve_amendment`
+**Decision:** A new next action `approve_amendment` (actor `user`) owns every state of a plan-only rejection, placed in `allApprovedStep` after `rejectionsStep` and before `amendStep`. With no reply since the row: the gate, detail `the cumulative review found only plan wording: <amend line>; review: work/<id>/reviews/cumulative.md`, options `[a] amend <record>, approved phases included` and `[f] fix the code instead`. After `a`: `amend` by the architect with a reword grant (D-004) until an `AMENDED` row follows the reply, then `review_cumulative`. After `f`: `fix_findings` by the developer until a `PHASE DONE` follows, then `review_cumulative`, with no amend step. A plan-only row answered with `f` is settled: `pendingAmend` skips its amend line, so a later plain cumulative `CHANGES REQUIRED` gives `fix_findings`, never the declined amendment. `picket reply` stores the choice as `choice: "amend" | "fix"` on the reply row, since `next-step` may not import the reply table. `picket packet` gives this gate its own branch that prints the detail in full, wrapped to the width and never cut, so the amend line and the review path RISK-003 relies on both show.
 **Instead of:** sending the amendment straight to the architect with no gate: the request asks for a user gate, and a reworded approved criterion is the user's call.
 **Risks:**
 - **RISK-004** The third cumulative rejection hits the stall gate first. Mitigation: intended; `rejectionsStep` stays first, as for every other rejection.
@@ -172,6 +176,8 @@ phases:
 - `src/lib/verbs/reply/table.mts`: gate action and `a`/`f` forms
 - `src/lib/verbs/reply/index.mts`: records the choice
 - `src/lib/verbs/reply/index.test.mts`: reply sends
+- `src/lib/verbs/packet/packet.mjs`: full detail at the gate
+- `src/lib/verbs/packet/index.test.mts`: packet shows the review path
 
 **Changes:**
 - `src/lib/shared/findings.mts` holds `Severity`, `Finding`, the `FINDING` regex, `parseFindings`, and `citesOnlyRecord(findings, id)` as D-002 defines.
@@ -179,16 +185,18 @@ phases:
 - `NEXT_ACTIONS` and `ACTION_TEXT` gain `approve_amendment` (user voice `you approve a plan amendment`, observer `waits for approval of a plan amendment`). The `amend` variant of `NextStep` gains optional `reword: true`; `planAmendStep` follows D-003.
 - `GATE_ACTIONS` gains `approve_amendment`; forms `a|approve|ok|yes` give `{ kind: "amend_record" }` and `f|fix` give `{ kind: "fix_code" }`. `applyReply` writes `choice` on the reply row and returns the next send.
 - The `amend` case in `sendsFor` appends `reword: approved by the user at the amendment gate` when `step.reword`.
+- `pendingAmend` in `src/lib/shared/work/next-step.mts` ignores the amend line of a `plan_only` row whose gate reply chose `fix`.
+- `packet.mjs` gets an `approve_amendment` branch: heading as the default branch, then the detail wrapped over as many lines as it needs, never through `cut`.
 
 **Done when:**
 - **T-2.1** Routed through `routeVerdict`, a cumulative block in the reviewer shell's output shape ending `CHANGES REQUIRED`, with `AMENDMENT NEEDED: T-2.7 <reason>` and only `- [Minor] work/<id>/order.md:219: …` findings (and the same block with `Findings: clean`), writes a row with `plan_only: true`; one added `src/a.mts:3` finding, or no amendment line, writes no `plan_only` key.
 - **T-2.2** After a `plan_only` row with no reply, `nextStep` returns `approve_amendment`, actor `user`, a detail holding the amend line and `work/<id>/reviews/cumulative.md`, and options `[a] amend order.md, approved phases included` and `[f] fix the code instead`.
 - **T-2.3** `picket reply <id> a` at that gate returns one send, to `<tag>-architect`, whose message is the three lines `work: <id>`, `amend: AMENDMENT NEEDED: T-2.7 <reason>`, `reword: approved by the user at the amendment gate`.
 - **T-2.4** After an architect `AMENDED` row following that reply, `nextStep` returns `review_cumulative`, and its send's `first:` list is `picket summary <id> --save` alone, with no developer step between.
-- **T-2.5** After `picket reply <id> f`, `nextStep` returns `fix_findings` for the developer; after a following `PHASE DONE` it returns `review_cumulative`, never `amend`.
-- **T-2.6** The existing `next-step.test.mts` tests for cumulative rejections (lines 60 to 145 and 217 at `aa9c0b2`) pass, and `git diff -U0 aa9c0b2 -- src/lib/shared/work/next-step.test.mts` removes no line.
+- **T-2.5** After `picket reply <id> f`, `nextStep` returns `fix_findings` for the developer; after a following `PHASE DONE` it returns `review_cumulative`, never `amend`; a later plain cumulative `CHANGES REQUIRED` (no `plan_only`) after that `PHASE DONE` gives `fix_findings`, never `amend` (a next-step test).
+- **T-2.6** The existing `next-step.test.mts` tests for cumulative rejections (lines 60 to 145 and 217 at `aa9c0b2`) pass; `git diff -U0 aa9c0b2 -- src/lib/shared/work/next-step.test.mts` removes only lines 89 to 91, the T-6.6 test's name, count and last-actions lines, which the new action changes.
 - **T-2.7** `src/lib/verbs/pullrequest/threads.test.mts` and `post.test.mts` pass unedited, importing `parseFindings` from `./threads.mts`.
-- **T-2.8** Drive: a scratch item with a `plan_only` cumulative row in a temp project; the built `picket packet <id>` prints `▶ approve amendment by user · <id>`, the detail and both options, and `picket reply <id> a` prints the architect send of T-2.3.
+- **T-2.8** Drive: a scratch item with a `plan_only` cumulative row in a temp project; the built `picket packet <id>` prints `▶ approve amendment by user · <id>`, the whole detail with no `…` (an amend line over 100 characters and `work/<id>/reviews/cumulative.md` both visible), and both options; a `src/lib/verbs/packet/index.test.mts` test asserts the same, and `picket reply <id> a` prints the architect send of T-2.3.
 
 ## Phase 3: The architect and reviewer contracts carry the step
 **Touch set:**
@@ -214,3 +222,4 @@ phases:
 none
 
 ## Revision log
+- 2026-11-08: D-003 (r2): packet prints the gate detail uncut; an `f` answer settles the amend line; T-2.6 allows the T-6.6 count edit; review found both

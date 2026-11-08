@@ -1,0 +1,92 @@
+{
+  "work_id": "20261108-mutate-scope-plan-only-review-findings",
+  "base": "aa9c0b2449ac8b492e78905499ed8b37d06aadb6",
+  "request": "work/20261108-mutate-scope-plan-only-review-findings/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/agents/architect.md",
+    "src/lib/hooks/route/verdict/index.mts",
+    "src/lib/hooks/route/verdict/index.test.mts",
+    "src/lib/shared/findings.mts",
+    "src/lib/shared/review-summary.mts",
+    "src/lib/shared/route/plan.mts",
+    "src/lib/shared/route/route.mts",
+    "src/lib/shared/work/action-text.mts",
+    "src/lib/shared/work/next-step.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/replies.mts",
+    "src/lib/shared/work/send.mts",
+    "src/lib/shared/work/send.test.mts",
+    "src/lib/shared/work/verdict-log.mts",
+    "src/lib/verbs/mutate/index.mts",
+    "src/lib/verbs/mutate/index.test.mts",
+    "src/lib/verbs/mutate/mutant.mts",
+    "src/lib/verbs/packet/index.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/pullrequest/threads.mts",
+    "src/lib/verbs/reply/index.mts",
+    "src/lib/verbs/reply/index.test.mts",
+    "src/lib/verbs/reply/table.mts",
+    "src/lib/verbs/summary/index.mts",
+    "src/skills/designing/SKILL.md",
+    "src/skills/ordering/SKILL.md",
+    "src/skills/resuming/SKILL.md",
+    "src/skills/reviewing/SKILL.md",
+    "test/repo/agents.test.mjs"
+  ],
+  "lines_added": 390,
+  "lines_removed": 67,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-08T12:29:36.206Z",
+    "base": "aa9c0b2449ac8b492e78905499ed8b37d06aadb6",
+    "mutant": {
+      "path": "src/lib/hooks/route/verdict/index.mts",
+      "line": 114,
+      "from": "!==",
+      "to": "==="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 18448
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
