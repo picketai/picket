@@ -4,7 +4,7 @@ export type Piece ={ text: string; color?: string; bold?: boolean; dim?: boolean
 
 export type Line = { left: Piece[]; right: Piece[] }
 
-export type BandEntry = { needYou: number; sessions: number; hasMarkdown: boolean }
+export type BandEntry = { needYou: number; sessions: number | null; hasMarkdown: boolean }
 
 export type Work = {
   id: string

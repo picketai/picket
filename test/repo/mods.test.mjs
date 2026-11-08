@@ -68,9 +68,8 @@ test("the build writes no mod manifest and leaves no dist/mods/; the core manife
 });
 
 test("each mod with an off switch names a key the config check knows", () => {
-  const switched = Object.entries(MODS).filter(([, { switch: key }]) => key !== null);
-  assert.deepEqual(switched.map(([, { switch: key }]) => key), MOD_SWITCHES.map((name) => `mods.${name}`));
-  assert.deepEqual(switched.map(([name]) => name), MOD_SWITCHES);
+  const keys = Object.values(MODS).flatMap(({ switch: modSwitch }) => (modSwitch === null ? [] : [modSwitch.key]));
+  assert.deepEqual(keys, MOD_SWITCHES.map((name) => `mods.${name}`));
 });
 
 test("the committed marketplace is the one the build writes (T-4.6)", () => {

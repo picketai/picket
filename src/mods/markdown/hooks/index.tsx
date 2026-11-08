@@ -2,6 +2,7 @@ import type { EngineInterface, RenderInput } from 'claude-code'
 
 import { modEnabled } from '../../../lib/shared/mod-switch.mts'
 import { resetLaunchers } from '../../shared/kernel'
+import { readProjectConfig } from '../../shared/project-config'
 import type { Next } from '../../types'
 import { noteFileTool, refresh, scrollPane, show, toggle, type Toggled } from './actions'
 import { addFiles, forgetWork, link, PANE, remember, rememberMessages, textOf, toolPath } from './data'
@@ -12,20 +13,10 @@ const POLL_MS = 2000
 const FILE_TOOLS = ['Read', 'Write', 'Edit']
 const COMMAND = 'picket-markdown'
 const MOD_NAME = 'markdown'
-const CONFIG_FILE = '.picket/config.json'
 
 type AppendedMessage = { agentId?: string; message: { role: string; content: unknown } }
 
 let isOff = false
-
-async function isSwitchedOn($: EngineInterface): Promise<boolean> {
-  try {
-    const text = await $.fs.read(`${await $.session.root()}/${CONFIG_FILE}`)
-    return modEnabled(JSON.parse(text), MOD_NAME)
-  } catch {
-    return true
-  }
-}
 
 function toggleReply(toggled: Toggled): string {
   if (toggled.kind === 'closed') return 'Markdown pane closed.'
@@ -35,7 +26,7 @@ function toggleReply(toggled: Toggled): string {
 export const DOC_PANE = PANE
 
 export async function startMarkdown<E, R>($: EngineInterface, e: E, next: Next<E, R>): Promise<R> {
-  isOff = !(await isSwitchedOn($))
+  isOff = !modEnabled(await readProjectConfig($), MOD_NAME)
   if (isOff) return next(e)
   resetLaunchers()
   forgetWork()

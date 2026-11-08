@@ -1,0 +1,8 @@
+Two changes to the plugin-only install:
+1. Add a `mods.session` switch to .picket/config.json, like `mods.markdown`. `"mods": { "session": false }` turns off the status mod's work pane only: no `/picket-session` command, no `☰ <n>` band button, no session scanning. The band and its agents line stay. Absent or true keeps the pane. Document it next to the markdown switch (docs/how-to.md, docs/reference/mods.md, CHANGELOG alpha.6).
+2. Move the status line copy into the project: the SessionStart hook copies the self-contained statusline.mjs to `.picket/state/statusline.mjs` (git-ignored), and `init --statusline` writes a statusLine command that runs that copy. First verify on Claude Code 2.1.319 how the status line command is started: its working folder when the session starts in a subfolder, and whether CLAUDE_PROJECT_DIR is set for it. Use an absolute project path only if one is available that way; if none is, keep the plugin data folder copy and record why. `init` and `uninstall` keep recognising the current data folder value and the legacy `picket statusline` value as Picket's.
+
+## Brief
+purpose: Let a project turn off the work pane with mods.session, and run the status line from a project copy when Claude Code allows an absolute project path.
+in scope: mods.session switch for the status mod's work pane (command, band button, session scanning); the SessionStart copy of statusline.mjs into .picket/state and the init --statusline value, after verifying how Claude Code 2.1.319 starts the status line; init and uninstall recognising old values; docs and changelog.
+out of scope: Turning off the whole status mod; the band's agents line; plugin cache and data folder locations; other mods.

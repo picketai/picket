@@ -114,14 +114,16 @@ export function hooksPage(hooks) {
   ]);
 }
 
-const MODS_INTRO = "The mods ship inside the `picket` plugin and load with it. A mod with an off switch turns off when `.picket/config.json` sets that key to `false`, from the next session.";
+const MODS_INTRO = "The mods ship inside the `picket` plugin and load with it. When `.picket/config.json` sets an off switch to `false`, it turns off its mod, or only the part its row names, from the next session.";
 
-function switchCell(key) {
-  return key === null ? "none" : `${code(key)}: false`;
+function switchCell(modSwitch) {
+  if (modSwitch === null) return "none";
+  const off = `${code(modSwitch.key)}: false`;
+  return modSwitch.part === null ? off : `${off} turns off ${modSwitch.part} only`;
 }
 
 export function modsPage(mods) {
-  const rows = Object.entries(mods).map(([name, { summary, switch: key }]) => `| ${name} | ${switchCell(key)} | ${cell(summary)} |`);
+  const rows = Object.entries(mods).map(([name, { summary, switch: modSwitch }]) => `| ${name} | ${switchCell(modSwitch)} | ${cell(summary)} |`);
   return page([["# Mods", "", generatedLine("`src/lib/mods.mts`")], [MODS_INTRO], ["| Mod | Off switch | Does |", "|---|---|---|", ...rows]]);
 }
 

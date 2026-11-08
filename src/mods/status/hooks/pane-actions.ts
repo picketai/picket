@@ -106,22 +106,28 @@ export async function refreshPane($: EngineInterface) {
   await loadDone($)
 }
 
-export async function refreshBand($: EngineInterface, markdown: boolean) {
-  const [ids, current] = await Promise.all([listTranscriptIds($), $.session.id().catch(() => null)])
+export type BandParts = { hasMarkdown: boolean; hasWorkPane: boolean }
+
+async function bandTranscriptIds($: EngineInterface, parts: BandParts): Promise<string[]> {
+  return parts.hasWorkPane ? listTranscriptIds($) : []
+}
+
+export async function refreshBand($: EngineInterface, parts: BandParts) {
+  const [ids, current] = await Promise.all([bandTranscriptIds($, parts), $.session.id().catch(() => null)])
   await update($, transcriptIds, () => ids)
-  await update($, hasMarkdown, () => markdown)
+  await update($, hasMarkdown, () => parts.hasMarkdown)
   await update($, currentId, () => current || null)
   await refreshRows($, { force: false })
 }
 
-export async function startBand($: EngineInterface, markdown: boolean) {
-  await loadDone($)
-  await refreshBand($, markdown)
+export async function startBand($: EngineInterface, parts: BandParts) {
+  if (parts.hasWorkPane) await loadDone($)
+  await refreshBand($, parts)
 }
 
-export async function readBandEntry($: EngineInterface): Promise<BandEntry> {
+export async function readBandEntry($: EngineInterface, hasWorkPane: boolean): Promise<BandEntry> {
   const [listed, ids, closed, markdown, current] = await Promise.all([read($, rows), read($, transcriptIds), read($, done), read($, hasMarkdown), read($, currentId)])
-  return { needYou: needYouCount(listed, current), sessions: activeSessionCount(ids, closed), hasMarkdown: markdown }
+  return { needYou: needYouCount(listed, current), sessions: hasWorkPane ? activeSessionCount(ids, closed) : null, hasMarkdown: markdown }
 }
 
 export async function isPaneOpen($: EngineInterface): Promise<boolean> {

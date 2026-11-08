@@ -73,7 +73,7 @@ const agentPieces = (row: AgentRow, state: Exclude<AgentState, 'idle'>, now: num
 export const entryPieces = ({ needYou, sessions, hasMarkdown }: BandEntry): Piece[] => {
   const parts: Piece[][] = [
     needYou > 0 ? [{ text: `◀ ${needYou} need you`, color: TONES.warning, bold: true }] : [],
-    [{ text: `☰ ${sessions}`, color: TONES.control, press: 'work' }],
+    sessions === null ? [] : [{ text: `☰ ${sessions}`, color: TONES.control, press: 'work' }],
     hasMarkdown ? [{ text: 'M↓', color: TONES.control, press: 'markdown' }] : [],
   ]
   return joined(

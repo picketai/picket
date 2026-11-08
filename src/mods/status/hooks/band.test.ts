@@ -178,6 +178,17 @@ describe('band entry (T-6.1)', () => {
     expect(text(entryPieces({ ...entry, needYou: 0, hasMarkdown: false }))).toBe('☰ 12')
   })
 
+  test('with the work pane off the entry draws no ☰ and keeps ◀ and M↓ (T-1.2)', async () => {
+    const entry: BandEntry = { needYou: 2, sessions: null, hasMarkdown: true }
+    expect(entryPieces(entry)).toEqual([
+      { text: '◀ 2 need you', color: TONES.warning, bold: true },
+      { text: ' · ', color: TONES.rule },
+      { text: 'M↓', color: TONES.control, press: 'markdown' },
+    ])
+    expect(text(entryPieces({ ...entry, needYou: 0 }))).toBe('M↓')
+    expect(entryPieces({ ...entry, needYou: 0, hasMarkdown: false })).toEqual([])
+  })
+
   test('no session needing you draws no ◀, and no markdown command draws no M↓', async () => {
     expect(text(agentsLine([], null, NOW, { ...ENTRY, hasMarkdown: false }).right)).toBe('☰ 3')
     expect(text(agentsLine([], null, NOW, ENTRY).right).includes('◀')).toBe(false)

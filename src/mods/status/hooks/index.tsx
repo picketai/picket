@@ -2,14 +2,19 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, RenderInput } from 'claude-code'
 
 import { roleOf } from '../../../lib/shared/format.mts'
+import { modEnabled } from '../../../lib/shared/mod-switch.mts'
 import { resetLaunchers, runPicket } from '../../shared/kernel'
+import { readProjectConfig } from '../../shared/project-config'
 import type { AgentRow, Next, Piece, Work } from '../../types'
 import { agentsLine, isEnded, isWorking, rows, workLine } from './band'
 import { renderPane, paneLimit } from './pane'
-import { isPaneOpen, PANE, readBandEntry, refreshBand, refreshPane, scrollPane, startBand, togglePane } from './pane-actions'
+import { isPaneOpen, PANE, readBandEntry, refreshBand, refreshPane, scrollPane, startBand, togglePane, type BandParts } from './pane-actions'
 
 const PANE_REFRESH_MS = 15_000
 const MARKDOWN_COMMAND = 'picket-markdown'
+const WORK_PANE_SWITCH = 'session'
+
+let hasWorkPane = true
 
 const time = atom({ plugin: 'picket', key: 'now' } as const, 0)
 
@@ -73,11 +78,12 @@ const SESSION_COMMAND = 'picket-session'
 
 export async function startStatus<E, R>($: EngineInterface, e: E, next: Next<E, R>): Promise<R> {
   const started = await next(e)
+  hasWorkPane = modEnabled(await readProjectConfig($), WORK_PANE_SWITCH)
   const now = await $.clock.now()
   await update($, time, () => now)
   resetLaunchers()
   await refreshWork($)
-  await startBand($, await hasMarkdownCommand($))
+  await startBand($, await bandParts($))
   $.clock.every(30_000, async () => {
     const tick = await $.clock.now()
     await update($, time, () => tick)
@@ -92,11 +98,15 @@ export async function startStatus<E, R>($: EngineInterface, e: E, next: Next<E, 
       await update($, time, () => tick)
     }
   })
+  if (hasWorkPane) await startWorkPane($)
+  return started
+}
+
+async function startWorkPane($: EngineInterface) {
   await $.command.register({ name: SESSION_COMMAND, description: 'Show or hide the work pane', immediate: true })
   $.clock.every(PANE_REFRESH_MS, async () => {
     if (await isPaneOpen($)) await refreshPane($)
   })
-  return started
 }
 
 export async function runSessionCommand($: EngineInterface) {
@@ -151,7 +161,7 @@ export async function renderBand<R>($: EngineInterface, e: RenderInput<'AbovePro
   if (e.props.hasSurvey) {
     return next(e)
   }
-  const [now, latest, roster, entry] = await Promise.all([read($, time), read($, work), read($, agents), readBandEntry($)])
+  const [now, latest, roster, entry] = await Promise.all([read($, time), read($, work), read($, agents), readBandEntry($, hasWorkPane)])
   const lines = [workLine(latest, now), agentsLine(roster, latest, now, entry)].filter(line => line !== null)
   const ui = $.ui.resolve(e)
   const drawn = lines.flatMap(line => rows(line, e.props.bodyColumns))
@@ -215,6 +225,10 @@ async function openMarkdown($: EngineInterface) {
   }
 }
 
+async function bandParts($: EngineInterface): Promise<BandParts> {
+  return { hasMarkdown: await hasMarkdownCommand($), hasWorkPane }
+}
+
 async function tickBand($: EngineInterface) {
-  await refreshBand($, await hasMarkdownCommand($))
+  await refreshBand($, await bandParts($))
 }

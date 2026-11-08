@@ -97,6 +97,16 @@ The Markdown pane is on by default. To turn it off, set its switch, `mods.markdo
 
 From the next session, `/picket-markdown` is not offered, reply paths are not turned into links, and the band shows no `M↓`. Remove the key, or set it to `true`, to turn the pane back on.
 
+### The work pane
+
+The work pane is on by default. To turn it off, set its switch, `mods.session`, to `false` in `.picket/config.json`:
+
+```json
+{ "version": 1, "mods": { "session": false } }
+```
+
+From the next session, `/picket-session` is not offered, the band shows no `☰ <n>`, and the status mod stops reading the Claude Code session and transcript folders. The rest of the status mod stays: the band with the open work item, its agents, `◀ <n> need you` and `M↓`. The `◀ <n> need you` count stays as plain text, with no pane to open from it. Remove the key, or set it to `true`, to turn the pane back on.
+
 Optionally, choose Picket's response style with `/config`, under Output style: `picket:custom`. It keeps replies short, answer first, with no filler.
 
 ## The daily loop

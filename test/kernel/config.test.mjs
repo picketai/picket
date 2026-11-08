@@ -168,5 +168,18 @@ test("a mods switch loads with no warning; a wrong value or an unknown mod warns
     assert.deepEqual(config.mods, {});
     assert.deepEqual(config.warnings, ["mods must be an object; every mod stays on"]);
   });
-  assert.deepEqual(Object.keys(SCHEMA.properties.mods.properties), ["markdown"]);
+  assert.deepEqual(Object.keys(SCHEMA.properties.mods.properties), ["session", "markdown"]);
+});
+
+test("the session switch loads with no warning, and a value that is not a boolean warns and is dropped (T-1.5)", (t) => {
+  withConfig(t, { version: 1, mods: { session: false } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.mods, { session: false });
+    assert.deepEqual(config.warnings, []);
+  });
+  withConfig(t, { version: 1, mods: { session: "no" } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.mods, {});
+    assert.deepEqual(config.warnings, ["mods.session must be true or false; the mod stays on"]);
+  });
 });

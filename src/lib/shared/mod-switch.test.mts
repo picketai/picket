@@ -19,6 +19,12 @@ test("a switch for one mod leaves another mod on", () => {
   assert.equal(modEnabled({ mods: { markdown: false } }, "status"), true);
 });
 
+test("the session switch turns off session alone and leaves markdown on (T-1.5)", () => {
+  const config = { mods: { session: false } };
+  assert.equal(modEnabled(config, "session"), false);
+  assert.equal(modEnabled(config, "markdown"), true);
+});
+
 test("a mods value that is not an object leaves every mod on", () => {
   assert.equal(modEnabled({ mods: false }, "markdown"), true);
   assert.equal(modEnabled({ mods: ["markdown"] }, "markdown"), true);
