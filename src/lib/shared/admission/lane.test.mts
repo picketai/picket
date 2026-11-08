@@ -17,6 +17,7 @@ const SMALL_CHANGE = {
   new_surface: false,
   design_question: false,
   small_change: true,
+  numbered_items: 0,
   diagnosis: false,
 };
 const CAPS = { fast: { max_files: 3 } };

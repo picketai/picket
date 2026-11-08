@@ -4,6 +4,7 @@ import type { Signals } from "./signals.mts";
 export const NO_LANE = "none";
 export const PENDING = "pending";
 const DIAGNOSIS_SKILL = "debugging";
+const MAX_FAST_NUMBERED_ITEMS = 2;
 const TOUCH_SET_NEEDED = "fast needs a touch set: find the files the change edits and re-run picket admit --request <file> --touched <paths>";
 
 export type LaneCaps = { fast: { max_files: number } };
@@ -34,6 +35,7 @@ function orderReasons(signals: Signals, fileCount: number, maxFastFiles: number)
   if (signals.new_surface) reasons.push("adds a new surface (endpoint, module, or handler)");
   if (signals.design_question) reasons.push("carries a design question");
   if (fileCount > maxFastFiles) reasons.push(`touches ${fileCount} files, more than the fast cap of ${maxFastFiles}`);
+  if (signals.numbered_items > MAX_FAST_NUMBERED_ITEMS) reasons.push(`lists ${signals.numbered_items} numbered items, more than the fast cap of ${MAX_FAST_NUMBERED_ITEMS}`);
   if (!reasons.length) reasons.push("no small-change word and no file named; order is the default");
   return reasons;
 }
@@ -60,7 +62,13 @@ export function laneOf(signals: Signals, caps: LaneCaps): Admission {
 
   const maxFastFiles = caps.fast.max_files;
   const fileCount = Math.max(signals.mentioned_paths.length, signals.touched);
-  const fastOk = !signals.new_surface && !signals.new_dependency && !signals.design_question && fileCount <= maxFastFiles && (signals.small_change || fileCount > 0);
+  const fastOk =
+    !signals.new_surface &&
+    !signals.new_dependency &&
+    !signals.design_question &&
+    fileCount <= maxFastFiles &&
+    signals.numbered_items <= MAX_FAST_NUMBERED_ITEMS &&
+    (signals.small_change || fileCount > 0);
   if (fastOk) return smallChangeResult(signals, fileCount);
 
   return { lane: "order", reasons: orderReasons(signals, fileCount, maxFastFiles), signals };

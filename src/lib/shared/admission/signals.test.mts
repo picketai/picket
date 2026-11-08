@@ -46,6 +46,15 @@ test("a dotted identifier such as lint.schema is not migration work", () => {
   assert.equal(signalsOf("Run alter table on orders.", [], [], []).migration, true);
 });
 
+test("numbered_items counts the lines that open with a number, a dot or bracket and a space (T-2.1)", () => {
+  const count = (text: string) => signalsOf(text, [], [], []).numbered_items;
+  assert.equal(count("Fix these:\n1. a\n2. b\n3. c"), 3);
+  assert.equal(count("1) a\n 2) b\n3) c"), 3);
+  assert.equal(count("2.1.319 is the version\n1. x"), 1);
+  assert.equal(count("Bump vitest from 1.5 to 1.6"), 0);
+  assert.equal(count("Fix 3. the typo"), 0);
+});
+
 test("a request that opens with a change verb is not research because it mentions a report", () => {
   assert.equal(signalsOf("Implement the lint over artifacts/reports and the report template.", [], [], []).research, false);
   assert.equal(signalsOf("Update the report schema check to cap findings at 50.", [], [], []).research, false);

@@ -76,6 +76,20 @@ test("a forced fast lane answers fast with no touch set (T-1.3)", (t) => {
   assert.equal(admit(repo(t), "lane: fast. Fix the typo.").lane, "fast");
 });
 
+test("three numbered items leave the fast lane and name the count; two stay fast (T-2.2)", (t) => {
+  const root = repo(t);
+  const three = admit(root, "Fix these typos in `src/config.ts`:\n1. a\n2. b\n3. c", ["src/config.ts"]);
+  assert.equal(three.lane, "order");
+  assert.ok(three.reasons.some((r) => r.includes("3 numbered items")), three.reasons.join("; "));
+  assert.equal(admit(root, "Fix these typos in `src/config.ts`:\n1. a\n2. b", ["src/config.ts"]).lane, "fast");
+});
+
+test("three numbered items keep a research or design answer (T-2.3)", (t) => {
+  const root = repo(t);
+  assert.equal(admit(root, "How does pricing pick the tier?\n1. x\n2. y\n3. z").lane, "research");
+  assert.equal(admit(root, "Fix these typos:\n1. a\n2. b\n3. c", ["src/auth/login.ts"]).lane, "design");
+});
+
 test("new surfaces land in order, security and migrations in design, questions in research", (t) => {
   const root = repo(t);
   assert.equal(admit(root, "Add an endpoint GET /invoices/:id/summary that returns the totals. Add unit tests.").lane, "order");
