@@ -290,7 +290,7 @@ test("uninstall --dry-run lists the groups and changes nothing; --yes removes Pi
   assert.deepEqual(listing(), before);
   const removed = runCli(root, ["uninstall", "--root", root, "--yes"], { env });
   assert.equal(removed.status, 0, removed.stderr);
-  assert.match(removed.stdout, /Picket is removed from this project\.\n.*\n\s+picket style remove --all.*\n\s+npm uninstall -g @picketai\/picket/);
+  assert.match(removed.stdout, /Picket is removed from this project\.\n.*\n\s+npx @picketai\/picket@alpha style remove --all.*\n\s+npm uninstall -g @picketai\/picket/);
   assert.equal(readFileSync(join(root, "CLAUDE.md"), "utf8"), "# My project\n");
   assert.deepEqual(JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8")), { permissions: { allow: ["Bash(npm test)"] } });
   assert.deepEqual(readdirSync(root).sort(), [".claude", "CLAUDE.md", "work"]);

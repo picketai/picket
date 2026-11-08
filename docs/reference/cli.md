@@ -99,7 +99,7 @@ picket extension list
 Set up Picket in a project.
 
 ```sh
-picket init [--root <dir>] [--no-install]
+picket init [--root <dir>] [--no-install] [--statusline]
 ```
 
 ## picket leave

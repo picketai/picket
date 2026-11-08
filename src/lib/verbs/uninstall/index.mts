@@ -10,8 +10,8 @@ import { runUninstall, type UninstallDeps, type UninstallInput, type UninstallRe
 const CLOSING = [
   "Picket is removed from this project.",
   "Also on this machine, if you want them gone:",
-  "  picket style remove --all          the theme, font and terminal scheme",
-  "  npm uninstall -g @picketai/picket  the picket command",
+  "  npx @picketai/picket@alpha style remove --all  the theme, font and terminal scheme",
+  "  npm uninstall -g @picketai/picket              a global picket left from an earlier install",
 ];
 
 function refuseHome({ root, home, platform }: Context): void {

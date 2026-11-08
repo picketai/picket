@@ -23,6 +23,14 @@ export const INSTALL = {
     statusLine: { type: "command", command: `node "$HOME/${HOST_DIR}/plugins/data/picket-picketai/statusline.mjs"` },
   },
   plugin: pluginId("picket"),
+  marketplace: {
+    source: {
+      source: "settings",
+      name: MARKETPLACE,
+      owner: { name: "Vlad Apetre" },
+      plugins: [{ name: "picket", source: { source: "npm", package: "@picketai/picket", version: "alpha" } }],
+    },
+  },
 } as const;
 
 export const LEGACY_STATUS_LINE = { type: "command", command: "picket statusline" } as const;

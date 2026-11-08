@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { RETIRED_PLUGINS } from "../../mods.mts";
 import { extensionsDir } from "../../shared/extensions.mjs";
 import { claudeBlockSpan, INSTALL, isPicketStatusLine, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
@@ -79,13 +80,13 @@ function pluginIdsIn(settings: Settings): string[] {
   return ids.filter((id) => id in enabled);
 }
 
-function hasMarketplace(settings: Settings): boolean {
-  return MARKETPLACE in record(settings.extraKnownMarketplaces);
+function holdsOlderMarketplace(settings: Settings): boolean {
+  return MARKETPLACE in record(settings.extraKnownMarketplaces) && !holdsInitMarketplace(settings);
 }
 
 function pluginCommands(settings: Settings): string[][] {
   const uninstalls = pluginIdsIn(settings).map((id) => ["plugin", "uninstall", id, "--scope", "project"]);
-  return hasMarketplace(settings) ? [...uninstalls, ["plugin", "marketplace", "remove", MARKETPLACE, "--scope", "project"]] : uninstalls;
+  return holdsOlderMarketplace(settings) ? [...uninstalls, ["plugin", "marketplace", "remove", MARKETPLACE, "--scope", "project"]] : uninstalls;
 }
 
 function shown(args: string[]): string {
@@ -129,7 +130,12 @@ function picketEntries(settings: Settings): string[] {
   const listed = (key: "allow" | "ask") => SETTINGS[key].filter((rule) => Array.isArray(permissions[key]) && (permissions[key] as unknown[]).includes(rule)).map((rule) => `permissions.${key} "${rule}"`);
   const envKeys = Object.entries(SETTINGS.env).filter(([key, value]) => env[key] === value).map(([key]) => `env.${key}`);
   const statusLine = isPicketStatusLine(settings.statusLine) ? ["statusLine"] : [];
-  return [...listed("allow"), ...listed("ask"), ...envKeys, ...statusLine];
+  const marketplace = holdsInitMarketplace(settings) ? [`extraKnownMarketplaces.${MARKETPLACE}`] : [];
+  return [...listed("allow"), ...listed("ask"), ...envKeys, ...statusLine, ...marketplace];
+}
+
+function holdsInitMarketplace(settings: Settings): boolean {
+  return isDeepStrictEqual(record(settings.extraKnownMarketplaces)[MARKETPLACE], INSTALL.marketplace);
 }
 
 function setOrDrop(target: Settings, key: string, value: unknown[] | Settings | undefined): void {
@@ -150,6 +156,10 @@ export function withoutPicket(settings: Settings): Settings {
     setOrDrop(next, "env", env);
   }
   if (isPicketStatusLine(settings.statusLine)) delete next.statusLine;
+  if (holdsInitMarketplace(settings)) {
+    const { [MARKETPLACE]: _init, ...others } = record(settings.extraKnownMarketplaces);
+    setOrDrop(next, "extraKnownMarketplaces", others);
+  }
   return next;
 }
 

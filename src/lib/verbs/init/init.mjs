@@ -1,14 +1,16 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, MARKETPLACE, readTemplate } from "../../shared/install.mts";
-import { HOST_DIR, hostPath, pluginRoot } from "../../shared/paths.mts";
+import { isDeepStrictEqual } from "node:util";
+import { RETIRED_PLUGINS } from "../../mods.mts";
+import { claudeBlockSpan, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { HOST_DIR, hostPath } from "../../shared/paths.mts";
 import { programRunner } from "../../util/process.mts";
+import { shadowingPicket, shadowWarning } from "./shadow.mts";
 
 const { claudeMd, config, gitignore, settings: SETTINGS } = INSTALL;
-const ADD_MARKETPLACE = "plugin marketplace add";
-const INSTALL_PLUGIN = "plugin install";
+const INSTALL_ARGS = ["plugin", "install", INSTALL.plugin, "--scope", "project"];
 
 export class InitRefused extends Error {}
 
@@ -90,7 +92,21 @@ function union(existing, wanted) {
   return list;
 }
 
-export function mergeSettings(settings, { statusLineAt = null } = {}) {
+function statusLineChange(merged, { holder, statusline }) {
+  if (isDeepStrictEqual(merged.statusLine, LEGACY_STATUS_LINE)) {
+    if (statusline) merged.statusLine = SETTINGS.statusLine;
+    else delete merged.statusLine;
+    return `${statusline ? "replaced" : "removed"} the legacy statusLine "${LEGACY_STATUS_LINE.command}"`;
+  }
+  if (!statusline) return null;
+  if (holder === null) {
+    merged.statusLine = SETTINGS.statusLine;
+    return null;
+  }
+  return holder.ours ? null : `statusLine already set in ${holder.path}`;
+}
+
+export function mergeSettings(settings, { holder = null, statusline = false } = {}) {
   const merged = structuredClone(settings);
   const permissions = { ...(merged.permissions ?? {}) };
   const denied = Array.isArray(permissions.deny) ? permissions.deny : [];
@@ -99,8 +115,8 @@ export function mergeSettings(settings, { statusLineAt = null } = {}) {
   permissions.allow = union(permissions.allow, SETTINGS.allow.filter((rule) => !blocked.includes(rule)));
   permissions.ask = union(permissions.ask, SETTINGS.ask);
   merged.permissions = permissions;
-  if (!("statusLine" in merged) && statusLineAt === null) merged.statusLine = SETTINGS.statusLine;
-  return { merged, blocked };
+  const statusNote = statusLineChange(merged, { holder, statusline });
+  return { merged, blocked, statusNote };
 }
 
 function statusLineOf(path) {
@@ -121,29 +137,41 @@ function statusLineHolder(root, home) {
   return null;
 }
 
-function settingsStep(root, { home }) {
+function parsedSettings(existing) {
+  try {
+    return { settings: existing === null ? {} : JSON.parse(existing), error: null };
+  } catch (err) {
+    return { settings: null, error: `not valid JSON, left as is: ${err.message}` };
+  }
+}
+
+function writeSettings(path, existing, settings) {
+  return writeIfChanged(path, existing, `${JSON.stringify(settings, null, 2)}\n`);
+}
+
+function settingsStep(root, { home, statusline }) {
   const path = hostPath(root, "settings.json");
   const existing = readOrNull(path);
-  let settings;
-  try {
-    settings = existing === null ? {} : JSON.parse(existing);
-  } catch (err) {
-    return { name: "settings", path, result: "failed", detail: `not valid JSON, left as is: ${err.message}` };
-  }
-  const holder = statusLineHolder(root, home);
-  const { merged, blocked } = mergeSettings(settings, { statusLineAt: holder?.path ?? null });
-  const notes = [
-    blocked.length ? `WARNING: permissions.deny holds ${blocked.join(", ")}, so init did not allow it` : null,
-    holder && !holder.ours ? `statusLine already set in ${holder.path}` : null,
-  ].filter(Boolean);
+  const { settings, error } = parsedSettings(existing);
+  if (error) return { name: "settings", path, result: "failed", detail: error };
+  const { merged, blocked, statusNote } = mergeSettings(settings, { holder: statusLineHolder(root, home), statusline });
+  const notes = [blocked.length ? `WARNING: permissions.deny holds ${blocked.join(", ")}, so init did not allow it` : null, statusNote].filter(Boolean);
   const changed = existing === null || JSON.stringify(merged) !== JSON.stringify(settings);
-  const result = changed ? writeIfChanged(path, existing, `${JSON.stringify(merged, null, 2)}\n`) : "unchanged";
+  const result = changed ? writeSettings(path, existing, merged) : "unchanged";
   return { name: "settings", path, result, ...(notes.length ? { detail: notes.join("; ") } : {}) };
 }
 
-export function marketplaceRoot() {
-  const candidate = dirname(pluginRoot());
-  return existsSync(join(candidate, `${HOST_DIR}-plugin`, "marketplace.json")) ? candidate : null;
+function marketplaceStep(root) {
+  const path = hostPath(root, "settings.json");
+  const existing = readOrNull(path);
+  const { settings, error } = parsedSettings(existing);
+  if (error) return { name: "marketplace", path, result: "failed", detail: error };
+  const known = settings.extraKnownMarketplaces ?? {};
+  const current = known[MARKETPLACE];
+  if (isDeepStrictEqual(current, INSTALL.marketplace)) return { name: "marketplace", path, result: "unchanged" };
+  writeSettings(path, existing, { ...settings, extraKnownMarketplaces: { ...known, [MARKETPLACE]: INSTALL.marketplace } });
+  if (current === undefined) return { name: "marketplace", path, result: "created" };
+  return { name: "marketplace", path, result: "updated", detail: `replaced the old source ${JSON.stringify(current?.source ?? current)}` };
 }
 
 function projectSettings(root) {
@@ -154,38 +182,54 @@ function projectSettings(root) {
   }
 }
 
-function installCommands(market) {
-  return [
-    { name: "marketplace", args: [...ADD_MARKETPLACE.split(" "), market, "--scope", "project"], done: (s) => Boolean(s.extraKnownMarketplaces?.[MARKETPLACE]) },
-    { name: "plugin", args: [...INSTALL_PLUGIN.split(" "), INSTALL.plugin, "--scope", "project"], done: (s) => Boolean(s.enabledPlugins?.[INSTALL.plugin]) },
-  ];
-}
-
-const INSTALL_STEP_NAMES = installCommands(null).map(({ name }) => name);
-
-function byHand(market) {
-  const commands = [`${ADD_MARKETPLACE} "${market}"`, `${INSTALL_PLUGIN} ${INSTALL.plugin}`];
-  return `run by hand: ${commands.map((command) => `claude ${command} --scope project`).join(", then ")}`;
-}
-
 function lastLine(err) {
   const text = String(err.stderr || err.stdout || err.message || err).trim();
   return text.split(/\r?\n/).filter(Boolean).at(-1) ?? "failed";
 }
 
-function installSteps(root, { install, exec, market }) {
+function claudeStep(root, exec, { name, args, result }) {
   const path = hostPath(root, "settings.json");
-  if (!install) return INSTALL_STEP_NAMES.map((name) => ({ name, path, result: "skipped" }));
-  return installCommands(market).map(({ name, args, done }) => {
-    if (done(projectSettings(root))) return { name, path, result: "unchanged" };
-    if (!market) return { name, path, result: "failed", detail: "no marketplace beside the plugin" };
-    try {
-      exec("claude", args, { cwd: root });
-      return { name, path, result: "created" };
-    } catch (err) {
-      return { name, path, result: "failed", detail: `${lastLine(err)}; ${byHand(market)}` };
-    }
+  try {
+    exec("claude", args, { cwd: root });
+    return { name, path, result };
+  } catch (err) {
+    return { name, path, result: "failed", detail: `${lastLine(err)}; run by hand: claude ${args.join(" ")}` };
+  }
+}
+
+function retiredIds(root) {
+  const enabled = projectSettings(root).enabledPlugins ?? {};
+  return RETIRED_PLUGINS.map(pluginId).filter((id) => id in enabled);
+}
+
+function retireSteps(root, { install, exec }) {
+  return retiredIds(root).map((id) => {
+    const name = `retire ${id}`;
+    if (!install) return { name, path: hostPath(root, "settings.json"), result: "skipped" };
+    return claudeStep(root, exec, { name, args: ["plugin", "uninstall", id, "--scope", "project"], result: "removed" });
   });
+}
+
+function pluginStep(root, { install, exec }) {
+  const path = hostPath(root, "settings.json");
+  if (!install) return { name: "plugin", path, result: "skipped" };
+  if (projectSettings(root).enabledPlugins?.[INSTALL.plugin]) return { name: "plugin", path, result: "unchanged" };
+  return claudeStep(root, exec, { name: "plugin", args: INSTALL_ARGS, result: "created" });
+}
+
+function isFile(path) {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function initWarnings({ env, home, platform }) {
+  if (env.PICKET_CHECKOUT) return [];
+  const pathEnv = env.PATH ?? env.Path ?? "";
+  const shadow = shadowingPicket({ pathEnv, platform, home, configDir: env.CLAUDE_CONFIG_DIR || null, realpath: realpathSync, isFile });
+  return shadow === null ? [] : [shadowWarning(shadow)];
 }
 
 const STEPS = [
@@ -195,19 +239,25 @@ const STEPS = [
   ["settings", settingsStep],
 ];
 
-export function init(root, { install = true, exec = programRunner(process.platform), market = marketplaceRoot(), home = homedir() } = {}) {
-  const steps = STEPS.map(([name, step]) => {
-    try {
-      return step(root, { home });
-    } catch (err) {
-      return { name, path: null, result: "failed", detail: err.message };
-    }
-  });
-  return { root, steps: [...steps, ...installSteps(root, { install, exec, market })] };
+function safely(name, step) {
+  try {
+    return step();
+  } catch (err) {
+    return { name, path: null, result: "failed", detail: err.message };
+  }
+}
+
+export function init(root, { install = true, exec = programRunner(process.platform), home = homedir(), env = process.env, platform = process.platform, statusline = false } = {}) {
+  const fileSteps = STEPS.map(([name, step]) => safely(name, () => step(root, { home, statusline })));
+  const retired = retireSteps(root, { install, exec });
+  const marketplace = safely("marketplace", () => marketplaceStep(root));
+  const plugin = safely("plugin", () => pluginStep(root, { install, exec }));
+  return { root, steps: [...fileSteps, ...retired, marketplace, plugin], warnings: initWarnings({ env, home, platform }) };
 }
 
 export function renderInit(report) {
   const lines = [`root: ${report.root}`];
   for (const s of report.steps) lines.push(`${s.name}: ${s.result}${s.path ? ` ${s.path}` : ""}${s.detail ? ` · ${s.detail}` : ""}`);
+  for (const warning of report.warnings ?? []) lines.push(`WARNING: ${warning}`);
   return lines.join("\n");
 }

@@ -33,8 +33,8 @@ test("the render ends with the machine-level steps once every group but work/ is
   assert.deepEqual(removed.split("\n").slice(-4), [
     "Picket is removed from this project.",
     "Also on this machine, if you want them gone:",
-    "  picket style remove --all          the theme, font and terminal scheme",
-    "  npm uninstall -g @picketai/picket  the picket command",
+    "  npx @picketai/picket@alpha style remove --all  the theme, font and terminal scheme",
+    "  npm uninstall -g @picketai/picket              a global picket left from an earlier install",
   ]);
   const planned = renderUninstall({ root: "/p", changes: [{ id: "settings", summary: "s", result: "planned", detail: "remove env.X" }], manual: [] });
   assert.equal(planned.split("\n").at(-1), "planned   settings: s · remove env.X");

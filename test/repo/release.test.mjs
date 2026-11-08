@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { checkTag, distTag, syncPluginVersion } from "../../.github/scripts/release.mjs";
+import { INSTALL } from "../../src/lib/shared/install.mts";
 import { withProject } from "#test/project.mts";
 
 const SCRIPT = resolve(".github/scripts/release.mjs");
@@ -81,6 +82,15 @@ test("both publish steps publish ./dist under the chosen dist-tag, and only ./di
   const { publish } = workflowJobs();
   const runs = publish.match(/run: npm publish.*\n/g);
   assert.deepEqual(runs, ['run: npm publish ./dist --access public --tag "$DIST_TAG"\n', 'run: npm publish ./dist --dry-run --access public --tag "$DIST_TAG"\n']);
+});
+
+test("init's settings marketplace names this package and the dist-tag its version publishes under (T-6.1)", () => {
+  const pkg = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
+  const [plugin] = INSTALL.marketplace.source.plugins;
+  assert.equal(INSTALL.marketplace.source.source, "settings");
+  assert.equal(INSTALL.marketplace.source.name, "picketai");
+  assert.deepEqual(plugin.source, { source: "npm", package: pkg.name, version: distTag(pkg.version) });
+  assert.equal(plugin.source.package, "@picketai/picket");
 });
 
 test("checkTag accepts only the v-prefixed package version", () => {
