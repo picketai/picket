@@ -6,6 +6,7 @@ audience: stakeholder
 sources:
   - "work/20261107-plugin-only-install/request.md"
   - "work/20261107-plugin-only-install/design.md"
+  - "work/20261108-session-switch-project-status-line/order.md"
   - "artifacts/strategy/decisions/00002-session-list-merges-picket-status.md"
 confidence: high
 ---
@@ -14,7 +15,7 @@ confidence: high
 
 **Status:** Ratified
 **Affected contexts:** Picket mods (no charter yet)
-**Supersedes:** SDR-00002 D-003 (the `M↓` visibility wording) and SDR-00002 D-004 (the mods as separately named plugins). The rest of SDR-00002 stands.
+**Supersedes:** SDR-00002 D-003 (the `M↓` visibility wording and "always ends with `☰`") and SDR-00002 D-004 (the mods as separately named plugins). The rest of SDR-00002 stands.
 
 ## Context
 
@@ -31,6 +32,10 @@ The mods are part of `picket@picketai`, not plugins named after themselves. The 
 ### D-002 The Markdown pane is switched off in config
 
 `M↓` on the band is hidden when `mods.markdown` is false in `.picket/config.json`, in place of "hidden when picket-markdown is not installed". The switch is read at the start of each session; when it is off, the Markdown module registers no command, starts no clock and passes every event through.
+
+### D-003 The work pane is switched off in config
+
+`☰ <sessions>` on the band is hidden when `mods.session` is false in `.picket/config.json`, in place of "the agents line always ends with `☰`". The band itself stays, with its agents line, `◀ <n> need you` and `M↓`. When the switch is off, the status mod registers no `/picket-session`, runs no pane refresh and scans no session or transcript folder. The product owner decided this on 2026-11-08 (`work/20261108-session-switch-project-status-line/request.md`).
 
 ## Subdomain and investment implications
 
@@ -65,4 +70,4 @@ Ruled out because the Markdown pane is optional for many users, and without a pl
 
 ## Tactical follow-up
 
-None. `work/20261107-plugin-only-install` (phase 4) built both decisions and closed on 2026-11-08.
+None. `work/20261107-plugin-only-install` (phase 4) built D-001 and D-002, and `work/20261108-session-switch-project-status-line` (phase 1) built D-003; both closed on 2026-11-08.
