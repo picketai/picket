@@ -1,0 +1,67 @@
+{
+  "work_id": "20261108-share-turn-check-fix-changelog",
+  "base": "a6d2315388453e9820c417efe33d3f2ca6db6496",
+  "request": "work/20261108-share-turn-check-fix-changelog/request.md",
+  "size": "medium",
+  "changed_files": [
+    "CHANGELOG.md",
+    "src/lib/shared/ledger.mts",
+    "src/lib/shared/ledger.test.mts",
+    "src/lib/verbs/close/audit.mts",
+    "src/lib/verbs/cost/index.mts"
+  ],
+  "lines_added": 38,
+  "lines_removed": 15,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 1,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-08T09:50:01.964Z",
+    "base": "a6d2315388453e9820c417efe33d3f2ca6db6496",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 18789
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
