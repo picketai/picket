@@ -130,6 +130,22 @@ test("route.verdict records a continued reviewer's checkpoint on the phase of it
   assert.equal(rows.at(-1).scope, "checkpoint");
 });
 
+test("route.verdict treats a phase-headed review sent as a checkpoint as the checkpoint review (T-1.4)", (t) => {
+  const { root, id } = designProject(t, 7);
+  for (const n of [1, 2, 3, 4]) {
+    mark(id, n, "done", root);
+    mark(id, n, "approved", root);
+  }
+  const block = `## Review: ${id} · phase 4\n\nOne finding blocks the checkpoint.\n\nAlignment: PASS\nFindings: 0 critical, 1 major, 0 minor\n\nCHANGES REQUIRED`;
+  const tp = transcript(root, [user(`work: ${id}\nscope: checkpoint\nphase: 4`), assistant([{ type: "text", text: block }])]);
+  const out = run({ hook_event_name: "SubagentStop", session_id: "s10", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "picket:reviewer" }, root);
+  const rows = readFileSync(join(root, "work", id, "verdicts.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  assert.deepEqual([rows.at(-1).verdict, rows.at(-1).scope, rows.at(-1).phase], ["CHANGES REQUIRED", "checkpoint", 4]);
+  assert.equal(existsSync(join(root, "work", id, "reviews", "checkpoint.md")), true);
+  assert.equal(existsSync(join(root, "work", id, "reviews", "phase-4.md")), false);
+  assert.match(out.hookSpecificOutput.additionalContext, /Next: fix_findings/);
+});
+
 test("route.verdict applies PHASE DONE from a picket:developer whose block has no phase heading", (t) => {
   const { root, id } = hookProject(t);
   const tp = transcript(root, [user(`work: ${id}\nphase: 1`), assistant([{ type: "text", text: "Done.\n\nPHASE DONE" }])]);

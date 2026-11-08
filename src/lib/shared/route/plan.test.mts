@@ -110,11 +110,25 @@ test("ARTIFACT WRITTEN and ALIGNED change nothing", () => {
 const DRIFT_BLOCKED = { lane: "design", status: "blocked", blocked_reason: "AMENDMENT NEEDED: D-002 x" } as const;
 const amendedRows = (count: number) => Array.from({ length: count }, () => ({ agent: "architect", verdict: "AMENDED" }));
 
-test("AMENDED reopens a blocked item on the first and second rounds and leaves the third blocked", () => {
-  const reopen = [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (amended)" }];
-  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED }), {}), reopen);
-  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: amendedRows(1) }), {}), reopen);
-  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: amendedRows(2) }), {}), []);
+const REOPEN = [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (amended)" }];
+const row = (agent: string, verdict: string) => ({ agent, verdict });
+const DRIFT = row("reviewer", "DRIFT DETECTED");
+
+test("AMENDED reopens a blocked item on the first and second answers to a drift and leaves the third blocked", () => {
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED }), {}), REOPEN);
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: [DRIFT] }), {}), REOPEN);
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: [DRIFT, ...amendedRows(1)] }), {}), REOPEN);
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts: [DRIFT, ...amendedRows(2)] }), {}), []);
+});
+
+test("AMENDED after amendments made before the drift reopens the item (T-1.3)", () => {
+  const verdicts = [row("architect", "ARTIFACT WRITTEN"), ...amendedRows(2), DRIFT];
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts }), {}), REOPEN);
+});
+
+test("AMENDED on the plugin-only replay keeps the item blocked for the developer's stall (T-1.2)", () => {
+  const verdicts = [row("architect", "ARTIFACT WRITTEN"), ...amendedRows(2), DRIFT, row("developer", "PHASE STALLED")];
+  assert.deepEqual(plan("AMENDED", snapshotOf({ ...DRIFT_BLOCKED, verdicts }), {}), [{ kind: "note", line: "status stays blocked: the developer's stall waits for the user" }]);
 });
 
 test("AMENDED leaves an open item as it is", () => {

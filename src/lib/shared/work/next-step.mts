@@ -4,6 +4,7 @@ import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
 import { freshReplies } from "./replies.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
+import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "./stall.mts";
 import { ARTIFACT_BY_LANE, type Lane } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
 
@@ -28,7 +29,6 @@ export type NextStep =
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
 const MIDPOINT_MIN_PHASES = 6;
-const STALL_REPEATS = 3;
 const ISO_DAY = "YYYY-MM-DD".length;
 const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
@@ -105,19 +105,24 @@ function allApprovedStep(snap: WorkSnapshot): NextStep {
   return rejectionsStep(snap) ?? amendStep(snap) ?? findingsStep(snap) ?? { action: "review_cumulative", actor: "reviewer", phase: snap.phases.length, detail: "all phases approved; one cumulative review remains" };
 }
 
-function countOf(verdicts: readonly VerdictRow[], verdict: string): number {
-  return verdicts.filter((v) => v.verdict === verdict).length;
+function isRepeatStall(verdicts: readonly VerdictRow[]): boolean {
+  const drifts = verdicts.filter((v) => v.verdict === "DRIFT DETECTED").length;
+  return drifts >= STALL_REPEATS || amendmentsAnsweringBlocks(verdicts).length >= STALL_REPEATS;
 }
 
-function isStalled(snap: WorkSnapshot): boolean {
-  if (!PHASED.includes(snap.state.lane)) return false;
-  const { verdicts } = snap;
-  return verdicts.at(-1)?.verdict === "PHASE STALLED" || countOf(verdicts, "DRIFT DETECTED") >= STALL_REPEATS || countOf(verdicts, "AMENDED") >= STALL_REPEATS;
+function isStalled({ verdicts }: WorkSnapshot): boolean {
+  return newestBlockRow(verdicts)?.verdict === "PHASE STALLED" || isRepeatStall(verdicts);
+}
+
+function resolveBlockStep(snap: WorkSnapshot, phased: boolean): NextStep {
+  const options = phased && isStalled(snap) ? STALL_OPTIONS : BLOCK_OPTIONS;
+  return { action: "resolve_block", actor: "user", detail: snap.state.blocked_reason ?? "", options };
 }
 
 function blockStep(snap: WorkSnapshot): NextStep {
-  const amend = PHASED.includes(snap.state.lane) && !isStalled(snap) ? amendStep(snap) : null;
-  return amend ?? { action: "resolve_block", actor: "user", detail: snap.state.blocked_reason ?? "", options: isStalled(snap) ? STALL_OPTIONS : BLOCK_OPTIONS };
+  const phased = PHASED.includes(snap.state.lane);
+  const answer = phased && !isRepeatStall(snap.verdicts) ? (amendStep(snap) ?? recheckStep(snap)) : null;
+  return answer ?? resolveBlockStep(snap, phased);
 }
 
 function isMidpoint(snap: WorkSnapshot, current: PhaseStatus): boolean {

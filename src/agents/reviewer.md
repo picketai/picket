@@ -62,7 +62,7 @@ Save facts about this repository, this machine and its tools that a later review
 ## Output
 
 ```
-## Review: <id> · <crosscheck | phase n | cumulative | pr>
+## Review: <id> · <crosscheck | phase n | checkpoint | cumulative | pr>
 
 <one sentence: the verdict and the single reason for it>
 

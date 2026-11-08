@@ -12,7 +12,7 @@ import { setMarker } from "../../../shared/work/markers.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
 import { runHandOff } from "../../../shared/work/send.mts";
 import { readSnapshot } from "../../../shared/work/snapshot.mts";
-import { readVerdicts } from "../../../shared/work/verdict-log.mts";
+import { readVerdicts, type VerdictRow } from "../../../shared/work/verdict-log.mts";
 import { route } from "../../../verbs/route/index.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
@@ -40,6 +40,11 @@ function blockInfo(text: string): BlockInfo | null {
   const agent = heading ? AGENT_OF[heading.kind] : undefined;
   if (!heading || !agent || (heading.kind === "review" && heading.scope === null)) return null;
   return { agent, id: heading.id, phase: heading.phase, scope: heading.scope, index: heading.index };
+}
+
+function withSentScope(info: BlockInfo | null, hints: Hints): BlockInfo | null {
+  const sentCheckpoint = info?.agent === "reviewer" && info.scope === "phase" && hints.scope === "checkpoint";
+  return sentCheckpoint ? { ...info, scope: "checkpoint", phase: info.phase ?? hints.phase } : info;
 }
 
 function keepPullRequestReview(id: string, verdict: string, text: string, root: string): string {
@@ -79,10 +84,17 @@ function repeatsLastRow(root: string, id: string, verdict: string, phase: number
   return last?.verdict === verdict && (phase === undefined || last.phase === phase);
 }
 
+function isRejection(row: VerdictRow): boolean {
+  return (row.agent === "user" && row.verdict === "rejected") || (row.agent === "reviewer" && row.verdict === "CHANGES REQUIRED");
+}
+
 function repeatsSavedBlock(root: string, info: BlockInfo | null, id: string, phase: number | undefined, text: string): boolean {
   if (info?.agent !== "developer" || phase === undefined) return false;
-  const lastDeveloperRow = readVerdicts(root, workId(id)).rows.filter((row) => row.agent === "developer").at(-1);
+  const rows = readVerdicts(root, workId(id)).rows;
+  const lastDeveloperAt = rows.map((row) => row.agent).lastIndexOf("developer");
+  const lastDeveloperRow = rows[lastDeveloperAt];
   if (lastDeveloperRow?.verdict !== "PHASE DONE" || lastDeveloperRow.phase !== phase) return false;
+  if (rows.slice(lastDeveloperAt + 1).some(isRejection)) return false;
   return latestSavedBlock(root, workId(id), phase) === normalisedBlock(text);
 }
 
@@ -133,8 +145,8 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
   const text = newestBlock(turnText(event));
   const verdict = findVerdict(blockLines(text).last);
   if (!verdict) return null;
-  const info = blockInfo(text);
   const hints = latestHints(agentTranscript(event));
+  const info = withSentScope(blockInfo(text), hints);
   const id = info?.id ?? hints.work_id;
   if (!id) return null;
   const continued = Boolean(event.stop_hook_active);

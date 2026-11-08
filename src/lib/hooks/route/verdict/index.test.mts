@@ -304,6 +304,33 @@ test("a new turn re-emitting the saved phase block routes nothing; a changed hea
   assert.equal(verdictRows(root, id).length, rows + 1);
 });
 
+test("the identical phase block in a new turn after a reviewer CHANGES REQUIRED routes a second PHASE DONE (T-1.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  routeReview(root, id, reviewBlock(id, "phase 1", "One finding.", "CHANGES REQUIRED"));
+  assert.match(routePhaseDone(root, id, 1, false).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["CHANGES REQUIRED", 1], ["PHASE DONE", 1]]);
+});
+
+test("the identical phase block in a new turn after a user rejection routes a second PHASE DONE (T-1.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  route({ id: workId(id), verdict: "rejected", agent: "user", phase: 1, reason: "rename the field", session: "s1" }, hookContext(root));
+  assert.match(routePhaseDone(root, id, 1, false).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["rejected", 1], ["PHASE DONE", 1]]);
+});
+
+test("a reviewer APPROVED after the phase block leaves an identical block in a new turn unrouted", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  routeReview(root, id, reviewBlock(id, "phase 1", "Clean.", "APPROVED"));
+  assert.equal(routePhaseDone(root, id, 1, false), null);
+  assert.deepEqual(verdictRows(root, id).map((r) => r.verdict), ["PHASE DONE", "APPROVED"]);
+});
+
 test("a continued turn returns no context for a pull request review or a routing error", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const pr = "## Review: pr-412 · pr\n\nApproved.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";

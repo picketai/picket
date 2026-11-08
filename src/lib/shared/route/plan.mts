@@ -4,6 +4,7 @@ import { workRel, type WorkId } from "../work/files.mts";
 import type { Gate } from "../work/gate.mts";
 import type { PhaseMark } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
+import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "../work/stall.mts";
 import type { WorkState } from "../work/state.mts";
 
 export type Effect = "phase_done" | "phase_approved" | "phase_reviewed" | "rejection" | "drift" | "stall" | "crosscheck_ok" | "artifact" | "amended";
@@ -91,12 +92,11 @@ const blocked: Plan = (_snap, { reason, verdict, phase }) => {
 
 const unchanged: Plan = () => [];
 
-const STALLING_AMENDMENTS = 3;
-
 const amended: Plan = (snap) => {
   if (snap.state.status !== "blocked") return [];
-  const earlier = snap.verdicts.filter((row) => row.verdict === "AMENDED").length;
-  if (earlier + 1 >= STALLING_AMENDMENTS) return [];
+  if (newestBlockRow(snap.verdicts)?.verdict === "PHASE STALLED") return [{ kind: "note", line: "status stays blocked: the developer's stall waits for the user" }];
+  const answering = amendmentsAnsweringBlocks([...snap.verdicts, { verdict: "AMENDED" }]).length;
+  if (answering >= STALL_REPEATS) return [];
   return [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (amended)" }];
 };
 
