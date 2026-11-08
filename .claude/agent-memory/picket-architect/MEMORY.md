@@ -1,5 +1,5 @@
 - [Transcript facts](transcript-facts.md) — continuation message shape, transcript location, bounce entry is a turn boundary, SubagentStop context continues the agent, hook timing caveat
-- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key, strict validate fails on agents subfolders, UserPromptSubmit contract from the binary
+- [Claude CLI plugin facts](claude-cli-plugin-facts.md) — one hooks module per plugin, zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key, strict validate fails on agents subfolders, UserPromptSubmit contract from the binary, plugin bin PATH scope, CLAUDE_PLUGIN_DATA, renames, npm source, module path base
 - [Bash heredoc backslashes](bash-heredoc-backslashes.md): doubled backslashes collapse in node heredocs, backtick-heavy appends fail, Write and Edit decode backslash-u escapes; grep records afterwards
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
 - [Status line contract](statusline-contract.md) — prompt_cache documented, resets_at epoch seconds, Windows shell, blank on nonzero exit; new verbs touch guard verb sets
@@ -14,9 +14,9 @@
 - [esbuild inlines .mjs](esbuild-bundle-inlines-mjs.md): bundle true with a .mts-only onResolve filter inlines relative .mjs imports; filter every relative path
 - [Hook path couplings](hook-path-couplings.md): budget skip, extensions guard regex and KERNEL_DIRS go vacuous or throw when hooks move; renamed bundles fail the live session open; a new event pins EXPECTED_GROUPS and the event list
 - [Fake Node version](fake-node-version.md): process.versions.node is configurable, so an --import preload fakes an old Node; write the preload with Write, not Bash
-- [Mod engine API facts](mod-engine-api-facts.md): engine types path, command.run queues until idle, immediate commands, session registry, nested worktree removal needs -C
+- [Mod engine API facts](mod-engine-api-facts.md): engine types path, command.run queues, immediate commands, session registry, worktree -C, test fs paths resolve against plugin root, probe plugin
 - [Mod theme tokens](mod-theme-tokens.md): tokens the mods already render; role tokens unverified, binary grep refused
-- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 here (nvm 20.11.1, 24.22.1); a parallel run fails when dist/ is rebuilt meanwhile; scratch-copy import probe
+- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1); dist rebuilt mid-run breaks parallel runs; Linux host: ugrep, git now on PATH, picket check runs npm test
 - [Skill base directory facts](skill-base-directory-facts.md): the lead sees a skill's base directory line, a subagent's preloaded skill does not; path forms follow the reader
 - [Generated tracked files](generated-tracked-files.md): npm test builds before product tests, so staleness of build-written tracked files is checked against the git index
 - [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home and obeys CLAUDE_PROJECT_DIR first; lead-only verb list pinned in a guard test
