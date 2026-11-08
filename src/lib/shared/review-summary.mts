@@ -5,6 +5,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { planPathOf } from "./checkouts.mts";
 import { loadExtensions, REVIEW_SIZES } from "./extensions.mjs";
+import { gitRead } from "../util/git.mts";
 import * as git from "./git.mts";
 import { readLedger, type AcceptRow } from "./ledger.mts";
 import { nestedRepos, readLayout, type ItemLayout } from "./repos.mts";
@@ -179,6 +180,18 @@ function acceptedCommits(root: string, id: WorkId): string[] {
     .rows.filter((row): row is AcceptRow => row.event === "accept" && row.work_id === id)
     .map((row) => git.revParse(root, row.commit))
     .filter((sha): sha is string => sha !== null);
+}
+
+function revList(root: string, args: readonly string[]): string[] {
+  const out = gitRead(root, ["rev-list", ...args]) ?? "";
+  return out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+}
+
+export function itemBase(root: string, id: WorkId): string | null {
+  const own = new Set([...revList(root, ["HEAD", "--", workRel(id)]), ...acceptedCommits(root, id)]);
+  if (!own.size) return null;
+  const oldest = revList(root, ["--reverse", "HEAD"]).find((sha) => own.has(sha));
+  return oldest ? git.revParse(root, `${oldest}^`) : null;
 }
 
 function ownCommits(root: string, id: WorkId, base: string): string[] {

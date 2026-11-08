@@ -237,7 +237,7 @@ test("summary reports moved: true with both hashes after the worktree file is ed
   const root = tempProject(t);
   const id = openPlain(root);
   cli(root, ["source", "add", id, "docs/a.md"], main);
-  const summary = () => JSON.parse(cli(root, ["summary", id], main).out).sources;
+  const summary = () => JSON.parse(cli(root, ["summary", id, "--base", "HEAD"], main).out).sources;
   const [still] = summary();
   assert.deepEqual([still.ref, still.moved, still.live_sha256 === still.snapshot_sha256], ["docs/a.md", false, true]);
   writeFileSync(join(main, "docs", "a.md"), "# A, revised\n");
@@ -255,7 +255,7 @@ test("a removed linked worktree reports live_sha256 null, moved true and a reaso
   const added = JSON.parse(cli(root, ["source", "add", id, "docs/only-feat.md"], main).out);
   assert.equal(added.ref.branch, "feat-x");
   gitAt(main)("worktree", "remove", "--force", feat);
-  const [ref] = JSON.parse(cli(root, ["summary", id], main).out).sources;
+  const [ref] = JSON.parse(cli(root, ["summary", id, "--base", "HEAD"], main).out).sources;
   assert.deepEqual([ref.live_sha256, ref.moved], [null, true]);
   assert.match(ref.reason, /worktree .* no longer exists/);
 });
