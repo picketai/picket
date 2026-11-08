@@ -13,4 +13,6 @@ A Stop or SubagentStop bounce writes a `type: "user"` entry with text `Stop hook
 
 A `SubagentStop` hook's `additionalContext` continues the subagent for another response (seen 2026-11-03: under a run grant the developer went from phase 2 to phase 3 with no lead message). The context is not a `type: "user"` entry, so the continued turn's text still holds the earlier blocks; the lead's SendMessage to a busy agent is queued and delivered after its turn ends. Design relying on this: work/20261105-kernel-blocks-run-sends-review-diffs D-002, OQ-001.
 
+A teammate's SendMessage to the lead can arrive before that teammate's SubagentStop hook routes its verdict: on 2026-11-07 the reviewer's drift message reached the lead at 22:20:00.173, the lead ran `picket next` at 22:20:04.045, and the drift row landed at 22:20:04.927, so next printed implement_phase. Before blaming `nextStep` for a stale action, compare the lead's tool timestamp with the row's `ts` (work/20261108-kernel-and-template-gaps-order OQ-001).
+
 Hook timing baselines: spike check 9 (56 ms for inject.state) ran in an empty bench fixture, not in the framework repo; compare cold starts against bare `node -e 0` in the same run and in the same cwd.
