@@ -6,6 +6,9 @@ import { mutate, renderMutation, verb } from "./index.mts";
 import { STATE_FILES, statePath } from "../../shared/paths.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { writeLayout } from "../../shared/repos.mts";
+import { readState, writeState } from "../../shared/work/state.mts";
+import { Refused } from "../../shared/action.mts";
+import type { WorkId } from "../../shared/work/files.mts";
 import { gitIn, gitOut, gitRepo, umbrella, writeIn } from "#test/git.mts";
 import { openItem, writeArtifact, writeConfig } from "#test/project.mts";
 
@@ -134,5 +137,30 @@ test("a restore record left by an interrupted run is applied before the next pic
   assert.equal(result.restored, "src/same.js");
   assert.equal(result.mutant?.from, "===", "the pick saw the restored file, not the leftover mutant");
   assert.match(renderMutation(result), /^restored src\/same\.js from an interrupted run\nmutant src\/same\.js:2 === -> !==: survived$/);
+  assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), CHANGED);
+});
+
+function forgetBase(root: string, id: WorkId) {
+  const { base: _recorded, ...state } = readState(root, id);
+  writeState(root, state, new Date());
+}
+
+test("with no recorded base, mutate plants in the item's own committed change", (t) => {
+  const { root, id } = repo(t, { testCommand: "node probe.cjs" });
+  const before = gitOut(root, "rev-parse", "HEAD");
+  forgetBase(root, id);
+  writeIn(root, "src/same.js", CHANGED);
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "feat(same): phase 1");
+  const result = mutate(root, id, OPTIONS);
+  assert.deepEqual([result.base, result.outcome, result.mutant?.path], [before, "killed", "src/same.js"]);
+});
+
+test("with no recorded base and no commit of the item, mutate refuses and saves nothing", (t) => {
+  const { root, id } = repo(t);
+  forgetBase(root, id);
+  writeIn(root, "src/same.js", CHANGED);
+  assert.throws(() => mutate(root, id, OPTIONS), (error) => error instanceof Refused && error.message === `no base recorded for ${id} and no commit of it found`);
+  assert.equal(existsSync(join(root, "work", id, "mutation.json")), false);
   assert.equal(readFileSync(join(root, "src", "same.js"), "utf8"), CHANGED);
 });

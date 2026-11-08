@@ -1,9 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { action, done, failed } from "../../shared/action.mts";
+import { action, done, failed, Refused } from "../../shared/action.mts";
 import { locate, readPlan } from "../../shared/checkouts.mts";
 import { runStep, type StepStatus } from "../../shared/checks.mts";
 import { readLayout } from "../../shared/repos.mts";
+import { itemBase } from "../../shared/review-summary.mts";
 import { detectTooling, type Tooling } from "../../shared/tooling.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { phasePaths } from "../../shared/work/artifact.mts";
@@ -65,7 +66,13 @@ function candidateCheckouts(root: string, id: WorkId): Checkout[] {
       return repo !== null && base ? [{ dir, base }] : [];
     });
   const byDir = [...new Map(nested.map((checkout) => [checkout.dir, checkout])).values()];
-  return [{ dir: "", base: state.base ?? "HEAD" }, ...byDir.sort((a, b) => a.dir.localeCompare(b.dir))];
+  return [{ dir: "", base: rootBase(root, id, state.base) }, ...byDir.sort((a, b) => a.dir.localeCompare(b.dir))];
+}
+
+function rootBase(root: string, id: WorkId, recorded: string | undefined): string {
+  const found = recorded ?? itemBase(root, id);
+  if (!found) throw new Refused(`no base recorded for ${id} and no commit of it found`);
+  return found;
 }
 
 export function mutate(root: string, id: WorkId, { env, now }: MutateOptions): MutationResult {
