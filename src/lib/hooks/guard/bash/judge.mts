@@ -1,7 +1,7 @@
 import { carriesMarker, leadingAssignments, withoutMarker } from "../../../shared/escalation.mts";
 import { maskEnvValues } from "../../../shared/drive-log.mts";
 import { judgeEscalation, logEscalation, markerReason } from "./escalation.mts";
-import { codeWriteDenial, codeWriteIn, codeWriteInside, codeWriteTarget, deletesInsideWrapper, isSpawnedAgent, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, wrappedVerbCheck } from "./payloads.mts";
+import { codeWriteDenial, codeWritesIn, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
 import { decide, fallThrough, isSanctionedLogSink, LOG_SINK_DIR, type Classification, type Dialect, type GuardContext, type Judgement, type Reading, type Refusal, type Segment } from "./rules.mts";
 import { redirectSource, sourceCheck, sourceDenial } from "./sources.mts";
 
@@ -36,7 +36,7 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
   const classifications: Classification[] = [];
   const cwdsSeen: (string | null)[] = [cwd];
   let effCwd: string | null = cwd;
-  let codeWrite: string | null = null;
+  const codeWrites: CodeWrite[] = [];
   const agent = ctx.escalation.agent;
   const mentionsKernel = KERNEL_MENTION.test(command);
   for (const seg of segments) {
@@ -44,7 +44,7 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
     if (refusal) return refuse(refusal);
     const leadOnly = leadOnlyRefusal(seg, agent) ?? leadOnlyInside(leadingAssignments(seg).command, agent, mentionsKernel);
     if (leadOnly) return refuse(leadOnly);
-    codeWrite ??= codeWriteIn(seg, [effCwd], root) ?? codeWriteInside(leadingAssignments(seg).command, [effCwd], root);
+    codeWrites.push(...codeWritesIn(seg, [effCwd], root, reading.heredocs), ...codeWritesInside(leadingAssignments(seg).command, [effCwd], root, reading.heredocs));
     const judged = dialect.classify({ seg, hit, cwd: effCwd, startCwd: cwd }, reading, ctx);
     if (typeof judged !== "string") return judged;
     classifications.push(deletesInsideWrapper(leadingAssignments(seg).command) ? "deny" : judged);
@@ -60,10 +60,11 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
 
   const redirectHit = roots.length && reading.sawWriteRedirect ? redirectSource(reading.redirectTargets, cwdsSeen, roots, platform) : null;
   if (redirectHit) return refuse({ why: "source", reason: sourceDenial(redirectHit, "a write redirect") });
-  codeWrite ??= reading.redirectTargets.map((t) => codeWriteTarget(t, cwdsSeen, root)).find(Boolean) ?? null;
-  if (codeWrite && isSpawnedAgent(agent)) {
+  codeWrites.push(...redirectCodeWrites(reading.redirectTargets, cwdsSeen, root));
+  const codeWrite = deniedCodeWrite(codeWrites, agent);
+  if (codeWrite) {
     if (isEscalating(segments, ctx)) return judgeEscalation(command, segments, ["deny"], { ...reading, sawWriteRedirect: false }, ctx);
-    return refuse(codeWriteDenial(codeWrite, dialect.hints.escalate));
+    return refuse(codeWriteDenial(codeWrite.rel, dialect.hints.escalate));
   }
   if (isEscalating(segments, ctx)) return judgeEscalation(command, segments, classifications, reading, ctx);
   if (classifications.includes("deny")) return decide("deny", dialect.hints.denial(command));

@@ -29,7 +29,7 @@ export type GuardContext = {
 };
 
 export type ReadingFlags = { hiddenExecution: boolean; sawWriteRedirect: boolean; sawBackground: boolean };
-export type Reading<S> = ReadingFlags & { command: string; segments: Segment[]; redirectTargets: (string | null)[]; state: S };
+export type Reading<S> = ReadingFlags & { command: string; segments: Segment[]; redirectTargets: (string | null)[]; heredocs: readonly string[]; state: S };
 export type SegmentPlace = { seg: Segment; hit: string | null; cwd: string | null; startCwd: string };
 
 export type Dialect<S> = {

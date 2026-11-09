@@ -8,6 +8,7 @@ import type { SourceRoot } from "../../../shared/sources/protection.mts";
 import { parseArgs } from "../../../util/args.mts";
 import { parse, type ParseEntry } from "../../../util/vendor/shell-quote-parse.mjs";
 import { hasHiddenExecution, isOpaqueWord, markVariable, MAX_SUBSTITUTION_DEPTH, nodePath, shellText, splitIntoSegments, textClassifier } from "./bash.mts";
+import { inPlaceTargets } from "./in-place.mts";
 import { isLeadOnly, wrappedCommands } from "./kernel.mts";
 import { classifySegment, type Refusal, type Segment, type Token } from "./rules.mts";
 import { redirectSource, segmentSource, sourceAllowed, sourceDenial } from "./sources.mts";
@@ -16,8 +17,10 @@ type PayloadDialect = "sh" | "ps";
 type TextPayload = { text: string; dialect: PayloadDialect };
 type TailPayload = { tail: Segment; readsInput?: boolean };
 type Payload = TextPayload | TailPayload;
-type ParsedPayload = { segments: Segment[]; redirectTargets: (string | null)[] };
+type ParsedPayload = { segments: Segment[]; redirectTargets: (string | null)[]; heredocs: readonly string[] };
+type WriteTarget = { target: string; inPlace: boolean };
 export type WrappedCheck = Refusal | { fallThrough: string } | null;
+export type CodeWrite = { rel: string; inPlace: boolean };
 
 export const KERNEL_MENTION = /(?:^|[\s;&|(`'"=\\/])picket(?:\.mjs|\.cmd)?(?=$|[\s;&|)`'"])/i;
 
@@ -121,13 +124,13 @@ function metaPayload(seg: Segment): Payload | null {
 function payloadParse(text: string, dialect: PayloadDialect): ParsedPayload | null {
   if (dialect === "ps") {
     const reading = readPowerShell(text);
-    return reading && !reading.hiddenExecution ? { segments: reading.segments, redirectTargets: reading.redirectTargets } : null;
+    return reading && !reading.hiddenExecution ? { segments: reading.segments, redirectTargets: reading.redirectTargets, heredocs: [] } : null;
   }
   const shell = shellText(text);
   if (!shell || hasHiddenExecution(shell.command)) return null;
   try {
     const { segments, redirectTargets } = splitIntoSegments(parse(shell.command, markVariable));
-    return { segments, redirectTargets };
+    return { segments, redirectTargets, heredocs: shell.heredocs };
   } catch {
     return null;
   }
@@ -225,41 +228,55 @@ function powerShellWriterFiles(words: string[]): string[] {
   return [];
 }
 
-function segmentWriteTargets(seg: Segment): string[] {
+function writeTargets(targets: string[], inPlace: boolean): WriteTarget[] {
+  return targets.map((target) => ({ target, inPlace }));
+}
+
+function segmentWriteTargets(seg: Segment, heredocs: readonly string[]): WriteTarget[] {
   const words = seg.filter((t): t is string => typeof t === "string");
   const root = normalizeRoot(words[0] ?? "").toLowerCase();
-  if (root === "tee") return words.slice(1).filter((w) => !w.startsWith("-"));
-  if (root === "sed") return sedInPlaceFiles(words);
-  if (POWERSHELL_WRITERS.has(root)) return powerShellWriterFiles(words);
-  return [];
+  if (root === "tee") return writeTargets(words.slice(1).filter((w) => !w.startsWith("-")), false);
+  if (root === "sed") return writeTargets(sedInPlaceFiles(words), true);
+  if (POWERSHELL_WRITERS.has(root)) return writeTargets(powerShellWriterFiles(words), false);
+  return writeTargets(inPlaceTargets(seg, heredocs), true);
 }
 
-export function codeWriteIn(seg: Segment, cwds: (string | null)[], root: string): string | null {
-  return segmentWriteTargets(seg).map((t) => codeWriteTarget(t, cwds, root)).find(Boolean) ?? null;
+function codeWritesTo(targets: readonly WriteTarget[], cwds: (string | null)[], root: string): CodeWrite[] {
+  return targets.flatMap(({ target, inPlace }) => {
+    const rel = codeWriteTarget(target, cwds, root);
+    return rel ? [{ rel, inPlace }] : [];
+  });
 }
 
-function codeWriteInTail(tail: Segment, cwds: (string | null)[], root: string, depth: number): string | null {
-  for (let i = 0; i < tail.length; i++) {
+export function redirectCodeWrites(targets: readonly (string | null)[], cwds: (string | null)[], root: string): CodeWrite[] {
+  return codeWritesTo(writeTargets(targets.filter((t): t is string => typeof t === "string"), false), cwds, root);
+}
+
+export function codeWritesIn(seg: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[]): CodeWrite[] {
+  return codeWritesTo(segmentWriteTargets(seg, heredocs), cwds, root);
+}
+
+function codeWritesInTail(tail: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[], depth: number): CodeWrite[] {
+  return tail.flatMap((_, i) => {
     const rest = tail.slice(i);
-    if (typeof rest[0] !== "string") continue;
-    const hit = codeWriteIn(rest, cwds, root) ?? (metaPayload(rest) ? codeWriteInside(rest, cwds, root, depth + 1) : null);
-    if (hit) return hit;
-  }
-  return null;
+    if (typeof rest[0] !== "string") return [];
+    return [...codeWritesIn(rest, cwds, root, heredocs), ...(metaPayload(rest) ? codeWritesInside(rest, cwds, root, heredocs, depth + 1) : [])];
+  });
 }
 
-export function codeWriteInside(seg: Segment, cwds: (string | null)[], root: string, depth = 0): string | null {
-  if (depth > MAX_SUBSTITUTION_DEPTH) return null;
+export function codeWritesInside(seg: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[], depth = 0): CodeWrite[] {
+  if (depth > MAX_SUBSTITUTION_DEPTH) return [];
   const payload = metaPayload(seg);
-  if (!payload) return null;
-  if ("tail" in payload) return codeWriteInTail(payload.tail, cwds, root, depth);
+  if (!payload) return [];
+  if ("tail" in payload) return codeWritesInTail(payload.tail, cwds, root, heredocs, depth);
   const parsed = payloadParse(payload.text, payload.dialect);
-  if (!parsed) return null;
-  for (const inner of parsed.segments) {
-    const hit = codeWriteIn(inner, cwds, root) ?? codeWriteInside(inner, cwds, root, depth + 1);
-    if (hit) return hit;
-  }
-  return parsed.redirectTargets.map((t) => codeWriteTarget(t, cwds, root)).find(Boolean) ?? null;
+  if (!parsed) return [];
+  const inner = parsed.segments.flatMap((s) => [...codeWritesIn(s, cwds, root, parsed.heredocs), ...codeWritesInside(s, cwds, root, parsed.heredocs, depth + 1)]);
+  return [...inner, ...redirectCodeWrites(parsed.redirectTargets, cwds, root)];
+}
+
+export function deniedCodeWrite(writes: readonly CodeWrite[], agent: string | null): CodeWrite | null {
+  return writes.find((write) => write.inPlace) ?? (isSpawnedAgent(agent) ? writes[0] : undefined) ?? null;
 }
 
 export function codeWriteDenial(rel: string, hint: string): Refusal {

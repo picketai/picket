@@ -21,7 +21,7 @@ export const powerShellDialect: Dialect<null> = {
     const reading = readPowerShell(command);
     if (!reading) return fallThrough("powershell-unreadable");
     if (!reading.segments.length) return fallThrough("no-segments");
-    return { ...reading, command, state: null };
+    return { ...reading, command, heredocs: [], state: null };
   },
   classify: ({ seg, hit, cwd }, _reading, ctx) => {
     if (hit) return "safe";

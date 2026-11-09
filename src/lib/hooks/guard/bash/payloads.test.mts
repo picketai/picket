@@ -133,7 +133,10 @@ test("an unreadable payload that mentions picket is denied for an agent; ordinar
   assert.equal(decide("command -v picket", "picket:developer"), null, "a lookup of the picket command is not a call");
 });
 
-test("a spawned agent's shell write to a code or test file is denied, naming the path and the Write tool; the lead's is unchanged (T-2.4)", (t) => {
+const CODE_WRITE_DENIAL = (path: string) => `guard.bash: ${path} is code; a shell write skips guard.comments and guard.silenced. Write it with the Edit or Write tool.`;
+const IN_PLACE_EDITS = new Set(["sed -i 's/a/b/' src/a.cs", "sed -i.bak -e 's/a/b/' src/b.cs", 'sh -c "sed -i s/a/b/ src/a.ts"']);
+
+test("a spawned agent's shell write to a code or test file is denied, naming the path and the Write tool; the lead is denied only an in-place edit (T-2.4)", (t) => {
   const root = project(t);
   const outcome = (command: string, agent: string | undefined, tool = "Bash") => guardOutput(command, { root, tool, agent });
   for (const [command, path, tool] of [
@@ -158,9 +161,66 @@ test("a spawned agent's shell write to a code or test file is denied, naming the
   ]) {
     const out = outcome(command, "picket:developer", tool);
     assert.equal(out?.permissionDecision, "deny", command);
-    assert.ok(out?.permissionDecisionReason.startsWith(`guard.bash: ${path} is code; a shell write skips guard.comments and guard.silenced. Write it with the Edit or Write tool.`), out?.permissionDecisionReason);
-    assert.equal(outcome(command, undefined, tool), null, `lead: ${command}`);
+    assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+    const lead = outcome(command, undefined, tool);
+    if (IN_PLACE_EDITS.has(command)) assert.ok(lead?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), `lead: ${command}`);
+    else assert.equal(lead, null, `lead: ${command}`);
   }
+});
+
+const BENCH_SKIP_EDIT = `sed -i 's/^describe("JsonInvoiceRepository"/describe.skip("JsonInvoiceRepository"/; s/^describe("MemoryInvoiceRepository"/describe.skip("MemoryInvoiceRepository"/' test/repository.test.ts && git diff --stat && picket check --human`;
+const PYTHON_HEREDOC_EDIT = [
+  "python3 - <<'EOF'",
+  "p='src/mods/status/hooks/index.test.tsx'",
+  "s=open(p,encoding='utf-8').read()",
+  "open(p,'w',encoding='utf-8').write(s.replace('a','b'))",
+  "EOF",
+].join("\n");
+
+test("an in-place shell edit of a code file is denied to the lead and to an agent, naming the path (T-3.1, T-3.2, T-3.3)", (t) => {
+  const root = project(t);
+  const cases: [string, string, (string | undefined)[]][] = [
+    [BENCH_SKIP_EDIT, "test/repository.test.ts", [undefined, "picket:developer"]],
+    [PYTHON_HEREDOC_EDIT, "src/mods/status/hooks/index.test.tsx", [undefined, "picket:developer"]],
+    ["perl -pi -e 's/a/b/' src/a.ts", "src/a.ts", [undefined]],
+    [`node -e "require('fs').writeFileSync('src/a.mts', 'x')"`, "src/a.mts", [undefined]],
+    [`python3 -c "open('src/a.py', 'w').write('x')"`, "src/a.py", [undefined]],
+    ['sh -c "sed -i s/a/b/ src/a.ts"', "src/a.ts", [undefined]],
+  ];
+  for (const [command, path, agents] of cases) {
+    for (const agent of agents) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+    }
+  }
+});
+
+test("a redirect, tee or PowerShell writer to a code file stays denied to an agent only (T-3.4)", (t) => {
+  const root = project(t);
+  for (const [command, tool] of [["echo x >> src/a.ts"], ["printf x | tee -a src/a.py"], ["cat > test/kernel/x.test.mjs <<'EOF'\nx\nEOF"], ["Set-Content src/a.ts x", "PowerShell"]]) {
+    assert.equal(guardOutput(command, { root, tool: tool ?? "Bash", agent: undefined }), null, `lead: ${command}`);
+    assert.equal(decision(command, { root, tool: tool ?? "Bash", agent: "picket:developer" }), "deny", `developer: ${command}`);
+  }
+});
+
+test("reads, test runs and writes of state or notes are not in-place code-write denials (T-3.5)", (t) => {
+  const root = project(t);
+  const notes = "python3 - <<'EOF'\np='.claude/agent-memory/picket-developer/notes.md'\nopen(p,'w').write(open(p).read())\nEOF";
+  for (const command of [`python3 -c "import json,sys; print(json.load(sys.stdin))"`, "node --test test/cli/close.test.mjs", notes, `node -e "require('fs').writeFileSync('.picket/state/scratch/a.mjs', 'x')"`, "sed -n '1,5p' src/a.ts"]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const reason = guardOutput(command, { root, tool: "Bash", agent })?.permissionDecisionReason ?? "";
+      assert.doesNotMatch(reason, /is code; a shell write/, `${agent ?? "lead"}: ${command}`);
+    }
+  }
+});
+
+test("the lead's escalated sed -i gets the decision an agent's escalated sed -i gets (T-3.6)", (t) => {
+  const root = project(t);
+  const command = `PICKET_ESCALATE="the user asked" sed -i 's/a/b/' src/a.ts`;
+  const developer = guardOutput(command, { root, tool: "Bash", agent: "picket:developer" });
+  assert.equal(developer, null);
+  assert.deepEqual(guardOutput(command, { root, tool: "Bash", agent: undefined }), developer);
 });
 
 test("a delete wrapped in cmd or a PowerShell host is denied from the Bash tool with the destructive denial of rm", (t) => {

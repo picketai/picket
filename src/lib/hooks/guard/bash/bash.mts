@@ -21,7 +21,7 @@ import {
 export type Split = { segments: Segment[]; sawWriteRedirect: boolean; sawBackground: boolean; redirectTargets: (string | null)[] };
 export type SubstitutionState = { bodies: string[]; bodyCtx: GuardContext; taintedNames: Set<string>; carriesOutput: (token: Token) => boolean };
 
-type ShellText = { command: string; expanded: string };
+type ShellText = { command: string; expanded: string; heredocs: string[] };
 type PendingHeredoc = { delimiter: string; stripTabs: boolean; expands: boolean };
 type Substituted = { command: string; bodies: string[]; denial?: Judgement };
 
@@ -73,6 +73,7 @@ function readHeredocBody(raw: string, start: number, { delimiter, stripTabs }: P
 export function shellText(raw: string): ShellText | null {
   let command = "";
   let expanded = "";
+  const heredocs: string[] = [];
   const pending: PendingHeredoc[] = [];
   let i = 0;
   while (i < raw.length) {
@@ -106,6 +107,7 @@ export function shellText(raw: string): ShellText | null {
         const read = readHeredocBody(raw, i, heredoc);
         if (!read) return null;
         if (heredoc.expands) expanded += read.body;
+        heredocs.push(read.body);
         i = read.next;
       }
     } else {
@@ -113,7 +115,7 @@ export function shellText(raw: string): ShellText | null {
       i++;
     }
   }
-  return pending.length ? null : { command, expanded };
+  return pending.length ? null : { command, expanded, heredocs };
 }
 
 function opensSingleQuote(command: string, i: number): boolean {
@@ -261,8 +263,16 @@ function withSubstitutedOutput(seg: Segment, plain: Classification, carriesOutpu
   return plain === "safe" && ruleOf(normalizeRoot(seg[0]))?.inert === true ? "safe" : "unknown";
 }
 
+function isOp(token: ParseEntry | undefined, op: string): boolean {
+  return typeof token === "object" && "op" in token && token.op === op;
+}
+
 function isClobberPipe(token: ParseEntry | undefined): boolean {
-  return typeof token === "object" && "op" in token && token.op === "|";
+  return isOp(token, "|");
+}
+
+function opensHeredoc(tokens: ParseEntry[], i: number): boolean {
+  return isOp(tokens[i], "<") && isOp(tokens[i + 1], "<") && typeof tokens[i + 2] === "string";
 }
 
 function redirectTarget(next: ParseEntry | undefined, split: Split): number {
@@ -289,6 +299,10 @@ export function splitIntoSegments(tokens: ParseEntry[]): Split {
       continue;
     }
     if (tok.op === "(" || tok.op === ")") continue;
+    if (opensHeredoc(tokens, i)) {
+      i += 2;
+      continue;
+    }
     if (tok.op === ">&") {
       const next = tokens[i + 1];
       if ((typeof next === "string" && /^\d+$/.test(next)) || next === DISCARD_TARGET) i++;
@@ -368,7 +382,7 @@ function readBash(command: string, ctx: GuardContext): Reading<SubstitutionState
   const split = splitIntoSegments(tokens);
   if (!split.segments.length) return fallThrough("no-segments");
   const taintedNames = new Set([LAST_ARGUMENT, ...inheritedTaint]);
-  return { ...split, command, hiddenExecution, state: { bodies: substituted.bodies, bodyCtx, taintedNames, carriesOutput: outputCarrier(taintedNames) } };
+  return { ...split, command, heredocs: text.heredocs, hiddenExecution, state: { bodies: substituted.bodies, bodyCtx, taintedNames, carriesOutput: outputCarrier(taintedNames) } };
 }
 
 export const bashDialect: Dialect<SubstitutionState> = {
