@@ -1,0 +1,9 @@
+id: 20261109-order-free-repeats-no-audit-wall-time
+lane: order
+title: "Order-free repeats, no audit wall time"
+status: open
+created: 2026-11-09T12:51:23.395Z
+updated: 2026-11-09T13:02:07.850Z
+session: e9bcd41a-c78b-4202-960e-a3835d811df4
+base: 28ba81079a6477781a4412d24b58ddfbf220bee6
+run_through: 2

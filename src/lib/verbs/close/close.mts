@@ -132,16 +132,8 @@ export function repeatedClasses(root: string): Repeat[] {
     .sort((a, b) => a.class.localeCompare(b.class));
 }
 
-const repeatKey = ({ class: cls, items }: { class: string; items: readonly string[] }): string => `${cls}:${[...items].sort().join(",")}`;
-
-function reportedAtOtherCloses(root: string, id: WorkId): Set<string> {
-  const rows = readLedger(root).rows.flatMap((row) => (row.event === "repeat" && row.work_id !== id ? [row] : []));
-  return new Set(rows.map(repeatKey));
-}
-
-function newRepeats(root: string, id: WorkId): Repeat[] {
-  const reported = reportedAtOtherCloses(root, id);
-  return repeatedClasses(root).filter((repeat) => !reported.has(repeatKey(repeat)));
+function ownRepeats(root: string, id: WorkId): Repeat[] {
+  return repeatedClasses(root).filter(({ items }) => items.includes(id));
 }
 
 function recordRepeats(root: string, id: WorkId, repeats: Repeat[], now: Date): void {
@@ -214,7 +206,7 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   refuseUnlessClosable(root, snap);
   const audit = auditLine(snap.state, snap.phases.length, readLedger(root).rows);
   const commitMessage = checkedCloseMessage(message, snap.state);
-  const repeats = newRepeats(root, id);
+  const repeats = ownRepeats(root, id);
   recordRepeats(root, id, repeats, now);
   const worktrees = recordedWorktrees(snap);
   if (!isRepo(root)) {

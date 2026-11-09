@@ -7,6 +7,7 @@ import { appendVerdict } from "../../src/lib/shared/work/verdict-log.mts";
 import { setMarker } from "../../src/lib/shared/work/markers.mts";
 import { readState, writeState } from "../../src/lib/shared/work/state.mts";
 import { writeLayout } from "../../src/lib/shared/repos.mts";
+import { appendLedger } from "../../src/lib/shared/ledger.mts";
 import { runCli } from "#test/cli.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -184,37 +185,77 @@ test("close --human names the branch and every recorded worktree on the remove l
 
 const changesRequired = (classes) => ({ agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 1, classes });
 
-test("close returns a repeat for a class two CHANGES REQUIRED reviews named, across items or within one (T-9.4)", (t) => {
+test("close returns the repeats of the closing item's own reviews, across items or within it (T-9.4, T-1.3, T-1.6)", (t) => {
   const { root, id } = repoWithOpenItem(t);
   const other = openItem(root, { lane: "order", title: "Older item" }).id;
   verdict(root, other, changesRequired(["Ts4", "Cm1"]));
-  verdict(root, other, changesRequired(["Sl1"]));
-  verdict(root, other, changesRequired(["Sl1"]));
+  verdict(root, other, changesRequired(["Cm1"]));
+  verdict(root, id, changesRequired(["Sl1"]));
+  verdict(root, id, changesRequired(["Sl1"]));
   verdict(root, id, changesRequired(["Ts4"]));
   verdict(root, id, { agent: "reviewer", verdict: "APPROVED", phase: 1, classes: ["Cm1"] });
   const closed = picket(root, "close", id);
   assert.equal(closed.code, 0, closed.stdout);
   const byClass = Object.fromEntries(closed.json.repeats.map((r) => [r.class, r.items.sort()]));
-  assert.deepEqual(byClass, { Sl1: [other], Ts4: [id, other].sort() });
+  assert.deepEqual(byClass, { Sl1: [id], Ts4: [id, other].sort() });
   const human = picket(root, "close", id, "--human").stdout;
   assert.match(human, /^Repeats: Sl1 \(/m);
   assert.match(human, /^Follow-up: Fix the Sl1 mistake class /m);
 });
 
-test("a repeat is reported at one close per set of items, again on re-closing that item, and again once a new item adds the class", (t) => {
-  const { root, id } = repoWithOpenItem(t);
-  const first = openItem(root, { lane: "order", title: "First review" }).id;
-  const second = openItem(root, { lane: "order", title: "Second review" }).id;
-  verdict(root, first, changesRequired(["Rf2"]));
-  verdict(root, second, changesRequired(["Rf2"]));
-  assert.deepEqual(picket(root, "close", id).json.repeats, [{ class: "Rf2", items: [first, second] }]);
-  assert.deepEqual(picket(root, "close", id).json.repeats, [{ class: "Rf2", items: [first, second] }]);
-  const later = openItem(root, { lane: "fast", title: "Later fix" }).id;
-  assert.deepEqual(picket(root, "close", later).json.repeats, []);
-  const third = openItem(root, { lane: "order", title: "Third review" }).id;
+function projectSharingRf2(t) {
+  const { root, id: alpha, git } = repoWithOpenItem(t, "fast", "Alpha");
+  const beta = openItem(root, { lane: "fast", title: "Beta" }).id;
+  verdict(root, alpha, changesRequired(["Rf2"]));
+  verdict(root, beta, changesRequired(["Rf2"]));
+  return { root, alpha, beta, git };
+}
+
+function repeatRows(root) {
+  const path = join(root, ".picket", "state", "ledger.jsonl");
+  return readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.event === "repeat");
+}
+
+test("two items sharing a class each report it, whichever closes first (T-1.1)", (t) => {
+  const forward = projectSharingRf2(t);
+  const shared = [{ class: "Rf2", items: [forward.alpha, forward.beta] }];
+  assert.deepEqual(picket(forward.root, "close", forward.alpha).json.repeats, shared);
+  assert.deepEqual(picket(forward.root, "close", forward.beta).json.repeats, shared);
+
+  const backward = projectSharingRf2(t);
+  const sharedBack = [{ class: "Rf2", items: [backward.alpha, backward.beta] }];
+  assert.deepEqual(picket(backward.root, "close", backward.beta).json.repeats, sharedBack);
+  assert.deepEqual(picket(backward.root, "close", backward.alpha).json.repeats, sharedBack);
+});
+
+test("an item without reviews reports no repeat, and a third item naming the class joins it (T-1.2)", (t) => {
+  const { root, alpha, beta } = projectSharingRf2(t);
+  const quiet = openItem(root, { lane: "fast", title: "Delta quiet" }).id;
+  assert.deepEqual(picket(root, "close", quiet).json.repeats, []);
+  const third = openItem(root, { lane: "fast", title: "Gamma" }).id;
   verdict(root, third, changesRequired(["Rf2"]));
-  const last = openItem(root, { lane: "fast", title: "Last fix" }).id;
-  assert.deepEqual(picket(root, "close", last).json.repeats, [{ class: "Rf2", items: [first, second, third] }]);
+  assert.deepEqual(picket(root, "close", third).json.repeats, [{ class: "Rf2", items: [alpha, beta, third] }]);
+});
+
+test("a repeat row another close wrote does not hide the repeat, and a re-close reports it again (T-1.4)", (t) => {
+  const { root, alpha, beta } = projectSharingRf2(t);
+  appendLedger(root, { event: "repeat", session: null, agent: null, work_id: beta, class: "Rf2", items: [alpha, beta] }, new Date());
+  const shared = [{ class: "Rf2", items: [alpha, beta] }];
+  assert.deepEqual(picket(root, "close", alpha).json.repeats, shared);
+  assert.deepEqual(picket(root, "close", alpha).json.repeats, shared);
+});
+
+test("each returned repeat appends one ledger row under the closing item's id (T-1.5)", (t) => {
+  const { root, alpha, beta } = projectSharingRf2(t);
+  verdict(root, alpha, changesRequired(["Ts4"]));
+  verdict(root, beta, changesRequired(["Ts4"]));
+  const closed = picket(root, "close", alpha);
+  assert.equal(closed.code, 0, closed.stdout);
+  const rows = repeatRows(root).map(({ event, work_id, class: cls, items }) => ({ event, work_id, class: cls, items }));
+  assert.deepEqual(rows, [
+    { event: "repeat", work_id: alpha, class: "Rf2", items: [alpha, beta] },
+    { event: "repeat", work_id: alpha, class: "Ts4", items: [alpha, beta] },
+  ]);
 });
 
 test("close returns no repeats when no class was named twice (T-9.4)", (t) => {
