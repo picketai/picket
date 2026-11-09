@@ -1,4 +1,4 @@
-import { appendFileSync, closeSync, fstatSync, mkdirSync, openSync, readFileSync, readSync } from "node:fs";
+import { appendFileSync, closeSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 export type JsonlRead<T> = { rows: T[]; skipped: number };
@@ -64,6 +64,13 @@ function lastByteOf(path: string): number | null {
 function endsMidLine(path: string): boolean {
   const last = lastByteOf(path);
   return last !== null && last !== NEWLINE;
+}
+
+export function rewriteJsonl(path: string, rows: readonly object[]): void {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.${process.pid}.tmp`;
+  writeFileSync(temporary, rows.map((row) => `${JSON.stringify(row)}\n`).join(""));
+  renameSync(temporary, path);
 }
 
 export function appendJsonl(path: string, row: object): void {

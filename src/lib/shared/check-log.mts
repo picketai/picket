@@ -1,4 +1,4 @@
-import { appendJsonl, readJsonl } from "../util/io.mts";
+import { readJsonl, rewriteJsonl } from "../util/io.mts";
 import type { StepName, StepStatus } from "./checks.mts";
 import { statePath, STATE_FILES } from "./paths.mts";
 
@@ -11,15 +11,12 @@ export type CheckRow = {
   phase: number | null;
   checkout: string;
   ok: boolean;
+  product_changed: boolean;
   steps: CheckStep[];
 };
 
 function checkLogPath(root: string): string {
   return statePath(root, STATE_FILES.checkLog);
-}
-
-export function appendCheckRow(root: string, row: CheckRow): void {
-  appendJsonl(checkLogPath(root), row);
 }
 
 function isCheckRow(value: unknown): value is CheckRow {
@@ -28,7 +25,41 @@ function isCheckRow(value: unknown): value is CheckRow {
   return typeof row.work_id === "string" && Array.isArray(row.steps);
 }
 
+function checkRows(root: string): CheckRow[] {
+  return readJsonl<unknown>(checkLogPath(root)).rows.filter(isCheckRow);
+}
+
+function isRedBeforeChange(row: CheckRow): boolean {
+  return !row.ok && row.product_changed === false;
+}
+
+function keyOf(row: CheckRow): string {
+  return JSON.stringify([row.work_id, row.phase]);
+}
+
+function keptRows(rows: CheckRow[]): CheckRow[] {
+  const newest = new Map<string, CheckRow>();
+  const newestRed = new Map<string, CheckRow>();
+  for (const row of rows) {
+    newest.set(keyOf(row), row);
+    if (isRedBeforeChange(row)) newestRed.set(keyOf(row), row);
+  }
+  const kept = new Set([...newest.values(), ...newestRed.values()]);
+  return rows.filter((row) => kept.has(row));
+}
+
+export function appendCheckRow(root: string, row: CheckRow): void {
+  rewriteJsonl(checkLogPath(root), keptRows([...checkRows(root), row]));
+}
+
+function rowsOf(root: string, id: string, phase: number | null): CheckRow[] {
+  return checkRows(root).filter((row) => row.work_id === id && row.phase === phase);
+}
+
 export function latestCheck(root: string, id: string, phase: number | null): CheckRow | null {
-  const rows = readJsonl<unknown>(checkLogPath(root)).rows.filter(isCheckRow);
-  return rows.reverse().find((row) => row.work_id === id && row.phase === phase) ?? null;
+  return rowsOf(root, id, phase).at(-1) ?? null;
+}
+
+export function redBeforeChange(root: string, id: string, phase: number | null): CheckRow | null {
+  return rowsOf(root, id, phase).filter(isRedBeforeChange).at(-1) ?? null;
 }

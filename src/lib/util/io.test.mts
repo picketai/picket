@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appendJsonl, readJson, readJsonl, readText } from "./io.mts";
+import { appendJsonl, readJson, readJsonl, readText, rewriteJsonl } from "./io.mts";
 import { withProject } from "#test/project.mts";
 
 function errorCode(err: unknown): string | undefined {
@@ -46,4 +46,13 @@ test("appendJsonl creates a missing folder and appends one line per row (T-1.4)"
   appendJsonl(path, { n: 1 });
   appendJsonl(path, { n: 2 });
   assert.equal(readFileSync(path, "utf8"), '{"n":1}\n{"n":2}\n');
+});
+
+test("rewriteJsonl replaces the file with one line per row and leaves no temporary file", (t) => {
+  const dir = withProject(t, { picket: false });
+  const path = join(dir, "a", "log.jsonl");
+  appendJsonl(path, { n: 1 });
+  rewriteJsonl(path, [{ n: 2 }, { n: 3 }]);
+  assert.equal(readFileSync(path, "utf8"), '{"n":2}\n{"n":3}\n');
+  assert.deepEqual(readdirSync(join(dir, "a")), ["log.jsonl"]);
 });

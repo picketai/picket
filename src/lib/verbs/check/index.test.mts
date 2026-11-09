@@ -85,9 +85,21 @@ test("check with a current item at phase 2 appends one row with the item, phase,
   const id = itemAtPhase2(root);
   const report = await checkAt(root);
   assert.deepEqual(checkRows(root), [
-    { ts: NOW.toISOString(), session: "s1", work_id: id, phase: 2, checkout: "", ok: true, steps: report.steps.map(({ name, status }) => ({ name, status })) },
+    { ts: NOW.toISOString(), session: "s1", work_id: id, phase: 2, checkout: "", ok: true, product_changed: false, steps: report.steps.map(({ name, status }) => ({ name, status })) },
   ]);
   assert.deepEqual(report.steps.map(({ name, status }) => [name, status]), [["test", "passed"], ["lint", "none detected"]]);
+});
+
+test("check logs product_changed true for a dirty product file and false for only a test and a work item file (T-6.5)", async (t) => {
+  const root = gitRepo(t, { host: true, files: { "package.json": writesMarker("ran.txt") } });
+  const id = itemAtPhase2(root);
+  writeIn(root, "test/a.test.ts", "x\n");
+  writeIn(root, `work/${id}/order.md`, "changed\n");
+  await checkAt(root);
+  assert.equal(checkRows(root).at(-1).product_changed, false);
+  writeIn(root, "src/a.ts", "x\n");
+  await checkAt(root);
+  assert.equal(checkRows(root).at(-1).product_changed, true);
 });
 
 test("check with no open item appends no row and reports as before (T-4.2)", async (t) => {

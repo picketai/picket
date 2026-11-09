@@ -2,6 +2,9 @@ import { join } from "node:path";
 import { action, done, failed, refuse } from "../../shared/action.mts";
 import { appendCheckRow } from "../../shared/check-log.mts";
 import { workingCheckout } from "../../shared/checkouts.mts";
+import { extOf, LANGS } from "../../shared/comments.mjs";
+import { dirtyPaths, isNonProduct } from "../../shared/git.mts";
+import { isTestPath } from "../../shared/silenced.mjs";
 import { runStep, type StepName, type StepOptions, type StepResult } from "../../shared/checks.mts";
 import type { Context } from "../../shared/context.mts";
 import { destructiveCommand, destructiveRefusal } from "../../shared/destructive.mts";
@@ -46,10 +49,19 @@ function logPrefix(checkout: string): string {
   return checkout ? `check-${checkout.replaceAll("/", "-")}` : "check";
 }
 
+function isProductCode(path: string): boolean {
+  return Object.hasOwn(LANGS, extOf(path)) && !isTestPath(path) && !isNonProduct(path);
+}
+
+function productChanged(dir: string): boolean {
+  return dirtyPaths(dir).some(isProductCode);
+}
+
 function logCheck({ root, session, now }: Context, { ok, steps, checkout }: CheckReport): void {
   const { work_id, phase } = driveTarget(root, { session });
   if (work_id === null) return;
-  appendCheckRow(root, { ts: now().toISOString(), session, work_id, phase, checkout, ok, steps: steps.map(({ name, status }) => ({ name, status })) });
+  const product_changed = productChanged(join(root, checkout));
+  appendCheckRow(root, { ts: now().toISOString(), session, work_id, phase, checkout, ok, product_changed, steps: steps.map(({ name, status }) => ({ name, status })) });
 }
 
 export const runChecks = action<CheckInput, CheckReport>(async (input, context) => {
