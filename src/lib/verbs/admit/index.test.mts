@@ -109,6 +109,25 @@ test("new surfaces land in order, security and migrations in design, questions i
   assert.equal(admit(root, "Map the life of a POST /invoices request from the socket to the JSON file. Write it as a report. No code changes.").lane, "research");
 });
 
+const MIGRATION_REASON = "schema or data migration work";
+
+test("schema inside a work item id, a path or the phrase JSON schema leaves the design lane; a table schema keeps it (T-1.1)", (t) => {
+  const root = repo(t);
+  const cases: [string, string][] = [
+    ["Fix the typo in the title of work item 20261109-fix-budget-schema-session-admit-findings.", PENDING],
+    ["Remove the stale cost_usd field from bench/schema/ledger-v2.schema.json; the ledger no longer writes it.", "order"],
+    ["Remove the stale cost_usd field from the ledger JSON schema; the ledger no longer writes it.", "order"],
+  ];
+  for (const [request, lane] of cases) {
+    const r = admit(root, request);
+    assert.equal(r.lane, lane, request);
+    assert.ok(!r.reasons.includes(MIGRATION_REASON), request);
+  }
+  const table = admit(root, "Change the schema of the orders table.");
+  assert.equal(table.lane, "design");
+  assert.ok(table.reasons.includes(MIGRATION_REASON), table.reasons.join("; "));
+});
+
 const SPIKE_REQUEST = "Picket plugin spike: a research work item whose throwaway code lives only under `spike/`. Question: can a Claude Code plugin carry Picket? Check that a version bump arrives with one update command.";
 
 test("a request that calls itself a research work item lands in research despite a bump (T-2.1)", (t) => {

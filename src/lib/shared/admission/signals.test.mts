@@ -46,6 +46,14 @@ test("a dotted identifier such as lint.schema is not migration work", () => {
   assert.equal(signalsOf("Run alter table on orders.", [], [], []).migration, true);
 });
 
+test("schema inside a work item id, a path or the phrase JSON schema is not migration work (T-1.2)", () => {
+  const migration = (text: string) => signalsOf(text, [], [], []).migration;
+  assert.equal(migration("Fix the typo in the title of work item 20261109-fix-budget-schema-session-admit-findings."), false);
+  assert.equal(migration("Remove the stale cost_usd field from bench/schema/ledger-v2.schema.json; the ledger no longer writes it."), false);
+  assert.equal(migration("Remove the stale cost_usd field from the ledger JSON schema; the ledger no longer writes it."), false);
+  assert.equal(migration("Migrate the invoices file to one invoice per line."), true);
+});
+
 test("numbered_items counts the lines that open with a number, a dot or bracket and a space (T-2.1)", () => {
   const count = (text: string) => signalsOf(text, [], [], []).numbered_items;
   assert.equal(count("Fix these:\n1. a\n2. b\n3. c"), 3);

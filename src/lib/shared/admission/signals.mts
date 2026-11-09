@@ -22,7 +22,9 @@ export type Signals = {
 
 const RESEARCH = /\b(how (does|is|are)|explain|understand|map (the|a)|report|no code changes|write (a|the) report|where (is|does)|why (does|is))\b/i;
 const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|credential|tokens?|secret|crypto|encrypt|permission|security path)\b/i;
-const MIGRATION = /\b(migrat(e|ion)|(?<!\.)schema(?!\.\w)|alter table|data file|rewrite the file|backfill)\b/i;
+const MIGRATION = /\b(migrat(e|ion)|schema|alter table|data file|rewrite the file|backfill)\b/i;
+const IDENTIFIER = /\w+(?:[-./]\w+)+/g;
+const JSON_SCHEMA = /\bjson[- ]schemas?\b/gi;
 const IRREVERSIBLE = /\b(irreversible|delete (all|the) (data|records)|drop (table|column)|force[- ]push|purge)\b/i;
 const NEW_DEPENDENCY = /\b(add|install|introduce) (a |the |an )?(new )?(dependency|package|library|framework)\b|\bnpm install\b|\bnuget\b/i;
 const CROSS_CONTEXT = /\b(other (service|repo|repository|context)|second repo|both repos|contract change|breaking change|public api)\b/i;
@@ -73,6 +75,10 @@ function touchesSecurity(pathHits: string[], text: string, securityPaths: readon
   return pathHits.length > 0 || securityPaths.some((s) => text.includes(s)) || SECURITY.test(withoutNonCredentialTokens(text));
 }
 
+function isMigration(text: string): boolean {
+  return MIGRATION.test(text.replace(IDENTIFIER, " ").replace(JSON_SCHEMA, " "));
+}
+
 function isDiagnosis(text: string, signals: Pick<Signals, "declared_research" | "small_change" | "new_surface">): boolean {
   if (signals.declared_research || signals.small_change || signals.new_surface) return false;
   if (NO_CODE_CHANGES.test(text) || CHANGE_VERB.test(text)) return false;
@@ -90,7 +96,7 @@ export function signalsOf(text: string, mentioned: string[], touched: string[], 
     research: (declaredResearch || (RESEARCH.test(text) && !SMALL_CHANGE.test(text) && !OPENS_WITH_CHANGE.test(text))) && !NEW_SURFACE.test(text),
     security: touchesSecurity(pathHits, text, securityPaths),
     security_path_hits: pathHits,
-    migration: MIGRATION.test(text),
+    migration: isMigration(text),
     irreversible: IRREVERSIBLE.test(text),
     new_dependency: NEW_DEPENDENCY.test(text),
     cross_context: CROSS_CONTEXT.test(text),

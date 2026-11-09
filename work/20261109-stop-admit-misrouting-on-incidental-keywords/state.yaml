@@ -1,0 +1,9 @@
+id: 20261109-stop-admit-misrouting-on-incidental-keywords
+lane: design
+title: Stop admit misrouting on incidental keywords
+status: open
+created: 2026-11-09T10:52:09.251Z
+updated: 2026-11-09T11:02:39.158Z
+session: e9bcd41a-c78b-4202-960e-a3835d811df4
+base: 203be6b458eec1b5fd7a7c0189654efcbd62e2dd
+run_through: 2
