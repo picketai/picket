@@ -261,7 +261,8 @@ test("parseBlock reads a two-word label, and the packet shows red always and cau
   const { lines } = packet(id, root);
   const verified = lines.findIndex((l) => l.startsWith("  verified"));
   assert.equal(lines[verified + 1], "  red       test/fee.test.ts failed: expected 1.05, got 1.04");
-  assert.equal(lines[verified + 2], "  cause     totals were off because the rate was read in percent");
+  assert.equal(lines[verified + 2], `  ${"".padEnd(10)}${UNLOGGED_RED}`);
+  assert.equal(lines[verified + 3], "  cause     totals were off because the rate was read in percent");
 
   const twoWordHeadline = parseBlock(BLOCK.replace(/^The nightly stock sync.*$/m, "Guard added: it denies skips."));
   assert.equal(twoWordHeadline.headline, "Guard added: it denies skips.", "only Root cause is a two-word label");
@@ -331,6 +332,57 @@ test("the block's own Tests: and Lint: win over a logged check, and a check of a
   const unlogged = packet(otherId, other).text;
   assert.match(unlogged, /^  tests {5}not reported$/m);
   assert.match(unlogged, /^  lint {6}not reported$/m);
+});
+
+const UNLOGGED_RED = "(no failing picket check before the code changed)";
+const FEE_RED = "test/fee.test.ts failed: expected 1.05, got 1.04";
+const redRow = (id, product_changed) => ({ ...loggedCheck(id, 1, [{ name: "test", status: "failed" }]), ok: false, product_changed });
+
+function redField(root, id) {
+  const { lines } = packet(id, root);
+  const at = lines.findIndex((l) => l.startsWith("  red"));
+  if (at === -1) return null;
+  const note = lines[at + 1] === `  ${"".padEnd(10)}${UNLOGGED_RED}` ? ` ${UNLOGGED_RED}` : "";
+  return `${lines[at].slice(12)}${note}`;
+}
+
+test("a reported red with no logged red before the change carries the note (T-7.1)", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  saveBlock(root, id, 1, withProof(FEE_RED, "none"));
+  assert.equal(redField(root, id), `${FEE_RED} ${UNLOGGED_RED}`);
+  assert.ok(packet(id, root).lines.every((l) => l.length <= WIDTH));
+});
+
+test("a logged red before the code changed leaves the block text alone; a red after a change does not count (T-7.2)", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  saveBlock(root, id, 1, withProof(FEE_RED, "none"));
+  appendCheckRow(root, redRow(id, true));
+  assert.equal(redField(root, id), `${FEE_RED} ${UNLOGGED_RED}`);
+  appendCheckRow(root, redRow(id, false));
+  assert.equal(redField(root, id), FEE_RED);
+});
+
+test("a pinned or n/a red prints the block text only, with or without logged rows (T-7.3)", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  for (const red of ["pinned: test/name.test.ts", "n/a: new endpoint"]) {
+    saveBlock(root, id, 1, withProof(red, "none"));
+    assert.equal(redField(root, id), red);
+  }
+  appendCheckRow(root, redRow(id, true));
+  for (const red of ["pinned: test/name.test.ts", "n/a: new endpoint"]) {
+    saveBlock(root, id, 1, withProof(red, "none"));
+    assert.equal(redField(root, id), red);
+  }
+});
+
+test("a block with no Red: line prints no red field (T-7.4)", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  saveBlock(root, id, 1, BLOCK);
+  assert.equal(redField(root, id), null);
 });
 
 test("a research packet points at work/<id>/research.md", (t) => {

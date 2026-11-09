@@ -1,7 +1,7 @@
 import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
-import { latestCheck } from "../../shared/check-log.mts";
+import { latestCheck, redBeforeChange } from "../../shared/check-log.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
 import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, readBlock, WAIVER_SEPARATOR } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
@@ -121,6 +121,18 @@ function commitLines(root, snap, phase, width) {
   return [`  ${"commit".padEnd(LABEL)}${first}`, ...rest.map((line) => indent + line)];
 }
 
+const UNLOGGED_RED = "(no failing picket check before the code changed)";
+
+function reportsFailure(red) {
+  return red.includes("failed") && !/^(pinned|n\/a):/i.test(red);
+}
+
+function redLines(red, logRed, width) {
+  const lines = [field("red", red, width)];
+  if (reportsFailure(red) && logRed === null) lines.push(`  ${"".padEnd(LABEL)}${cut(UNLOGGED_RED, width - 2 - LABEL)}`);
+  return lines;
+}
+
 function reportedCheck(block, label, logged, step) {
   const own = blockField(block, label) ?? null;
   if (own !== null) return own;
@@ -147,7 +159,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(field("lint", reportedCheck(b, "Lint", logged, "lint"), width));
     lines.push(field("verified", blockField(b, "Verified") ?? "not reported", width));
     const red = blockField(b, "Red");
-    if (red) lines.push(field("red", red, width));
+    if (red) lines.push(...redLines(red, redBeforeChange(root, id, n.phase), width));
     const cause = blockField(b, "Root cause");
     if (cause && !/^none$/i.test(cause)) lines.push(field("cause", cause, width));
     const files = blockField(b, "Files");
