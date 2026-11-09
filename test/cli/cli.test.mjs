@@ -48,7 +48,8 @@ test("the CLI walks a work item end to end and speaks JSON", (t) => {
   mkdirSync(join(root, "src"));
   writeFileSync(join(root, "src", "a.ts"), "");
 
-  assert.equal(run(root, ["admit", "--text", "Fix the typo in `src/a.ts`."]).lane, "pending");
+  assert.equal(run(root, ["admit", "--text", "Fix the typo in `src/a.ts`."]).lane, "fast");
+  assert.equal(run(root, ["admit", "--text", "Fix the typo in the fee helper."]).lane, "pending");
   assert.equal(run(root, ["admit", "--text", "Fix the typo in `src/a.ts`.", "--touched", "src/a.ts"]).lane, "fast");
 
   const created = run(root, ["open","--lane", "order", "--title", "Summary endpoint"]);

@@ -33,11 +33,41 @@ test("a small change with no touch set answers pending and asks for the touched 
   });
 });
 
-test("a small change with one touched file answers fast", () => {
+test("a small change with one touched file answers fast with only the small change reason (T-3.2)", () => {
   const signals = { ...SMALL_CHANGE, touched: 1 };
   assert.deepEqual(laneOf(signals, CAPS), {
     lane: "fast",
     reasons: ["small change: 1 file(s) named, no new surface, no new dependency, no design question"],
+    signals,
+  });
+});
+
+test("a named file with one touched file still answers fast with only the small change reason (T-3.2)", () => {
+  const signals = { ...SMALL_CHANGE, mentioned_paths: ["src/config.ts"], touched: 1 };
+  assert.deepEqual(laneOf(signals, CAPS), {
+    lane: "fast",
+    reasons: ["small change: 1 file(s) named, no new surface, no new dependency, no design question"],
+    signals,
+  });
+});
+
+test("a small change naming one existing file and no touch set answers fast with the request's touch set (T-3.1)", () => {
+  const signals = { ...SMALL_CHANGE, mentioned_paths: ["src/config.ts"] };
+  assert.deepEqual(laneOf(signals, CAPS), {
+    lane: "fast",
+    reasons: ["small change: 1 file(s) named, no new surface, no new dependency, no design question", "touch set from the request: src/config.ts"],
+    signals,
+  });
+});
+
+test("three named files at the cap list all three in their given order (T-3.1)", () => {
+  const signals = { ...SMALL_CHANGE, mentioned_paths: ["data/config.json", "src/config.ts", "src/http/server.ts"] };
+  assert.deepEqual(laneOf(signals, CAPS), {
+    lane: "fast",
+    reasons: [
+      "small change: 3 file(s) named, no new surface, no new dependency, no design question",
+      "touch set from the request: data/config.json, src/config.ts, src/http/server.ts",
+    ],
     signals,
   });
 });

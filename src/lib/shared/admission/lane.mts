@@ -6,6 +6,7 @@ export const PENDING = "pending";
 const DIAGNOSIS_SKILL = "debugging";
 const MAX_FAST_NUMBERED_ITEMS = 2;
 const TOUCH_SET_NEEDED = "fast needs a touch set: find the files the change edits and re-run picket admit --request <file> --touched <paths>";
+const TOUCH_SET_FROM_REQUEST = "touch set from the request: ";
 
 export type LaneCaps = { fast: { max_files: number } };
 export type Admission = { lane: Lane | typeof NO_LANE | typeof PENDING; skill?: typeof DIAGNOSIS_SKILL; reasons: string[]; signals: Signals };
@@ -42,8 +43,9 @@ function orderReasons(signals: Signals, fileCount: number, maxFastFiles: number)
 
 function smallChangeResult(signals: Signals, fileCount: number): Admission {
   const small = `small change: ${fileCount || "no"} file(s) named, no new surface, no new dependency, no design question`;
-  if (signals.touched === 0) return { lane: PENDING, reasons: [small, TOUCH_SET_NEEDED], signals };
-  return { lane: "fast", reasons: [small], signals };
+  if (signals.touched > 0) return { lane: "fast", reasons: [small], signals };
+  if (signals.mentioned_paths.length === 0) return { lane: PENDING, reasons: [small, TOUCH_SET_NEEDED], signals };
+  return { lane: "fast", reasons: [small, `${TOUCH_SET_FROM_REQUEST}${signals.mentioned_paths.join(", ")}`], signals };
 }
 
 export function laneOf(signals: Signals, caps: LaneCaps): Admission {

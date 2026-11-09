@@ -38,7 +38,7 @@ test("a configured fast cap of one file keeps a two-file request out of the fast
   assert.ok(capped.reasons.some((r) => /more than the fast cap of 1/.test(r)));
 });
 
-test("the six fast-lane requests answer pending alone and fast with their touch set", (t) => {
+test("of the six fast-lane requests the one naming no file answers pending alone, the rest fast alone, and all fast with their touch set (T-3.3)", (t) => {
   const root = repo(t);
   const prompts: [string, string[]][] = [
     ["GET /invoices?page=1&size=2 skips the two newest invoices. Fix the offset in the list handler and add a unit test.", ["src/http/handlers.ts"]],
@@ -48,27 +48,28 @@ test("the six fast-lane requests answer pending alone and fast with their touch 
     ["Change the default page size from 20 to 25 in the code default and data/config.json.", ["src/config.ts", "data/config.json"]],
     ["An invoice at 7% tax shows 1.39; it should be 1.40. The helper in src/domain/money.ts truncates. Make it round half up.", ["src/domain/money.ts"]],
   ];
-  for (const [p, touched] of prompts) {
-    assert.equal(admit(root, p).lane, PENDING, p);
-    assert.equal(admit(root, p, touched).lane, "fast", p);
-  }
+  const alone = prompts.map(([p]) => admit(root, p).lane);
+  assert.deepEqual(alone, [PENDING, "fast", "fast", "fast", "fast", "fast"]);
+  for (const [p, touched] of prompts) assert.equal(admit(root, p, touched).lane, "fast", p);
 });
 
-const TOUCH_SET_NEEDED = "picket admit --request <file> --touched <paths>";
-
-test("a small change naming one file answers pending without a touch set and fast with it (T-1.1)", (t) => {
+test("a small change naming one existing file answers fast with and without a touch set (T-3.3)", (t) => {
   const root = repo(t);
   const request = "Fix the typo in `src/config.ts`.";
-  const pending = admit(root, request);
-  assert.equal(pending.lane, PENDING);
-  assert.ok(pending.reasons[pending.reasons.length - 1].includes(TOUCH_SET_NEEDED), pending.reasons.join("; "));
+  const alone = admit(root, request);
+  assert.equal(alone.lane, "fast");
+  assert.equal(alone.reasons.at(-1), "touch set from the request: src/config.ts");
   assert.equal(admit(root, request, ["src/config.ts"]).lane, "fast");
 });
 
-test("three named files at the cap answer pending alone and a four-file touch set answers order (T-1.2)", (t) => {
+test("a small change naming only a missing file still answers pending (T-3.3)", (t) => {
+  assert.equal(admit(repo(t), "Fix the typo in `src/missing.ts`.").lane, PENDING);
+});
+
+test("three named files at the cap answer fast alone and a four-file touch set answers order (T-3.3)", (t) => {
   const root = repo(t);
   const request = "fix the typo in `src/config.ts`, `src/http/server.ts` and `src/domain/money.ts` ";
-  assert.equal(admit(root, request).lane, PENDING);
+  assert.equal(admit(root, request).lane, "fast");
   assert.equal(admit(root, request, ["src/config.ts", "src/http/server.ts", "src/domain/money.ts", "src/http/handlers.ts"]).lane, "order");
 });
 
@@ -82,6 +83,14 @@ test("three numbered items leave the fast lane and name the count; two stay fast
   assert.equal(three.lane, "order");
   assert.ok(three.reasons.some((r) => r.includes("3 numbered items")), three.reasons.join("; "));
   assert.equal(admit(root, "Fix these typos in `src/config.ts`:\n1. a\n2. b", ["src/config.ts"]).lane, "fast");
+});
+
+test("with no touch set, three numbered items on a named file answer order and two answer fast (T-3.4)", (t) => {
+  const root = repo(t);
+  const three = admit(root, "Fix these typos in `src/config.ts`:\n1. a\n2. b\n3. c");
+  assert.equal(three.lane, "order");
+  assert.ok(three.reasons.some((r) => r.includes("3 numbered items")), three.reasons.join("; "));
+  assert.equal(admit(root, "Fix these typos in `src/config.ts`:\n1. a\n2. b").lane, "fast");
 });
 
 test("three numbered items keep a research or design answer (T-2.3)", (t) => {

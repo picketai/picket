@@ -26,7 +26,7 @@ test("the labelled set holds at least 100 distinct, complete entries, 20 per lan
   assert.ok(LABELLED.length >= MIN_ENTRIES, `${LABELLED.length} entries`);
   for (const entry of LABELLED) {
     assert.ok(isFilled(entry.request) && isFilled(entry.why), JSON.stringify(entry));
-    assert.ok([...LANES, NO_LANE].includes(entry.lane), JSON.stringify(entry));
+    assert.ok([...LANES, NO_LANE, PENDING].includes(entry.lane), JSON.stringify(entry));
     assert.equal(entry.lane === NO_LANE, isFilled(entry.skill), `a ${NO_LANE} entry and only it names a skill: ${JSON.stringify(entry)}`);
   }
   for (const lane of LANES) {
@@ -39,12 +39,21 @@ test("the labelled set holds at least 100 distinct, complete entries, 20 per lan
 
 function answer(result: { lane: string; skill?: string }): string {
   if (result.lane === NO_LANE) return `${NO_LANE}:${result.skill}`;
-  return result.lane === PENDING ? "fast" : result.lane;
+  return result.lane;
 }
 
+const inFixture = (path: string) => existsSync(join(FIXTURE, path));
+const admitted = (request: string) => laneOf(signalsOf(request, mentionedPaths(request, inFixture), [], DEFAULT_SECURITY_PATHS), { fast: { max_files: 3 } });
+
+test("every pending label answers pending, and every fast label naming a fixture file answers fast", () => {
+  const pending = LABELLED.filter((entry) => entry.lane === PENDING);
+  const namedFast = LABELLED.filter((entry) => entry.lane === "fast" && mentionedPaths(entry.request, inFixture).length > 0);
+  assert.ok(pending.length > 0 && namedFast.length > 0, `${pending.length} pending, ${namedFast.length} fast naming a fixture file`);
+  const wrong = [...pending, ...namedFast].filter((entry) => admitted(entry.request).lane !== entry.lane).map((entry) => `${entry.lane}: ${entry.request}`);
+  assert.deepEqual(wrong, []);
+});
+
 test("admit agrees with the labels on at least the minimum share", () => {
-  const exists = (path: string) => existsSync(join(FIXTURE, path));
-  const admitted = (request: string) => laneOf(signalsOf(request, mentionedPaths(request, exists), [], DEFAULT_SECURITY_PATHS), { fast: { max_files: 3 } });
   const misses = LABELLED.map((entry) => ({ entry, got: answer(admitted(entry.request)) })).filter(({ entry, got }) => got !== answer(entry));
   const share = (LABELLED.length - misses.length) / LABELLED.length;
   const listed = misses.map(({ entry, got }) => `${answer(entry)} -> ${got}: ${entry.request.slice(0, SHOWN_REQUEST)}`).join("\n");
