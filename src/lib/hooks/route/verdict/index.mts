@@ -22,6 +22,7 @@ import { context, type ContextOutput } from "../../output.mts";
 type StopEvent = "Stop" | "SubagentStop";
 type BlockInfo = { agent: string; id: string; phase: number | null; scope: ReviewScope | null; index: number };
 type Outcome = { text: string; notice: string | null };
+type Parties = { agent: string; scope: string | undefined };
 type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hints; id: string; verdict: string; phase: number | undefined; text: string; ctx: HookContext };
 
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
@@ -115,9 +116,24 @@ function isPlanOnly(info: BlockInfo | null, verdict: string, amend: string | und
   return amend !== undefined && citesOnlyRecord(parseFindings(text), workId(info.id));
 }
 
-function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Routing): string {
+function partiesOf(event: PayloadOf<StopEvent>, info: BlockInfo | null, hints: Hints, verdict: string): Parties {
   const scope = info?.scope === "phase" ? undefined : (info?.scope ?? (hints.scope && !hints.scope.startsWith("phase") ? hints.scope : undefined));
   const agent = info?.agent ?? (["approved", "rejected"].includes(verdict) ? "user" : (event.agent_type ?? "lead"));
+  return { agent, scope };
+}
+
+export function repeatsPhaseVerdict(rows: VerdictRow[], incoming: Parties & { verdict: string; phase: number | undefined }): boolean {
+  if (incoming.phase === undefined || WRITTEN[incoming.verdict] !== undefined) return false;
+  const last = rows.at(-1);
+  return last?.agent === incoming.agent && last.verdict === incoming.verdict && last.phase === incoming.phase && (last.scope ?? undefined) === incoming.scope;
+}
+
+function alreadyRecorded(id: string, verdict: string, phase: number): string {
+  return `picket: ${verdict} for ${id} phase ${phase} is already recorded; the newer block is saved. Run \`picket next ${id}\`.`;
+}
+
+function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Routing): string {
+  const { agent, scope } = partiesOf(event, info, hints, verdict);
   const amend = amendmentText(text, agent, verdict, scope);
   const unsaved = unsavedBlockNote(info, verdict);
   saveDeveloperBlock(info, id, phase, text, ctx.root);
@@ -152,6 +168,10 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
   const phase = info?.phase ?? hints.phase ?? undefined;
   if (repeatsSavedBlock(ctx.root, info, id, phase, text)) return null;
   if (!continued && isBouncedForCommit(info, verdict, text)) return null;
+  if (phase !== undefined && repeatsPhaseVerdict(readVerdicts(ctx.root, workId(id)).rows, { ...partiesOf(event, info, hints, verdict), verdict, phase })) {
+    saveDeveloperBlock(info, id, phase, text, ctx.root);
+    return continued ? null : { text: alreadyRecorded(id, verdict, phase), notice: null };
+  }
   if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) {
     saveDeveloperBlock(info, id, phase, text, ctx.root);
     return null;

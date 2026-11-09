@@ -186,6 +186,9 @@ test("an in-place shell edit of a code file is denied to the lead and to an agen
     [`node -e "require('fs').writeFileSync('src/a.mts', 'x')"`, "src/a.mts", [undefined]],
     [`python3 -c "open('src/a.py', 'w').write('x')"`, "src/a.py", [undefined]],
     ['sh -c "sed -i s/a/b/ src/a.ts"', "src/a.ts", [undefined]],
+    [`node --eval="require('fs').writeFileSync('src/a.ts','x')"`, "src/a.ts", [undefined]],
+    [`node -pe "require('fs').writeFileSync('src/a.ts','x')"`, "src/a.ts", [undefined]],
+    [`python3 -Bc "open('src/a.py','w').write('x')"`, "src/a.py", [undefined]],
   ];
   for (const [command, path, agents] of cases) {
     for (const agent of agents) {

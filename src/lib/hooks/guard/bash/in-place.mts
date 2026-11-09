@@ -5,7 +5,9 @@ const INTERPRETERS = new Set(["python", "python3", "node", "perl", "ruby", "bun"
 const IN_PLACE_EDITORS = new Set(["perl", "ruby"]);
 const IN_PLACE_CLUSTER = /^-[aclnpsTtuUwWX0-9]*i/;
 const EDITOR_PROGRAM_CLUSTER = /^-[A-Za-z]*[eE]$/;
-const PROGRAM_FLAGS = new Set(["-c", "-e", "-E", "--eval", "-p"]);
+const PROGRAM_CLUSTER = /^-[A-Za-z]*[cepE]$/;
+const PROGRAM_LONG_FLAGS = new Set(["--eval", "--print"]);
+const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
 const WRITE_CALL = /\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1/;
 const QUOTED_LITERAL = /(['"])([^'"\s]+)\1/g;
 const STDIN_OPERAND = "-";
@@ -15,11 +17,14 @@ function wordsOf(seg: Segment): string[] {
 }
 
 function takesProgram(root: string, word: string): boolean {
-  return IN_PLACE_EDITORS.has(root) ? EDITOR_PROGRAM_CLUSTER.test(word) : PROGRAM_FLAGS.has(word);
+  if (IN_PLACE_EDITORS.has(root)) return EDITOR_PROGRAM_CLUSTER.test(word);
+  return PROGRAM_CLUSTER.test(word) || PROGRAM_LONG_FLAGS.has(word);
 }
 
 function inlineProgram(root: string, args: string[]): string | null {
   if (root === "deno" && args[0] === "eval") return args[1] ?? null;
+  const attached = args.map((word) => ATTACHED_PROGRAM.exec(word)?.[1]).find((program) => program !== undefined);
+  if (attached !== undefined) return attached;
   const at = args.findIndex((word) => takesProgram(root, word));
   return at === -1 ? null : (args[at + 1] ?? null);
 }

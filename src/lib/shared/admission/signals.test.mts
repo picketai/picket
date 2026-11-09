@@ -132,6 +132,16 @@ test("beside a verdict token, a token without a credential qualifier is a verdic
   assert.equal(securityOf("Name the verdict token in the docs and validate the bearer token in the middleware."), true);
 });
 
+test("a token beside a verdict token and a credential word in the same sentence is still a credential", () => {
+  assert.equal(signalsOf("Rename the verdict token constant, and store the token in a cookie after login.", [], [], ["src/auth/"]).security, true);
+  assert.equal(securityOf("Rename the verdict token constant. Store the token in a cookie after login."), true);
+});
+
+test("a quoted span that holds a security word is kept", () => {
+  assert.equal(securityOf('Fix "the login password check" in the form.'), true);
+  assert.equal(securityOf("Fix the bug in `password reset` flow."), true);
+});
+
 test("a bare token is still a credential", () => {
   assert.equal(securityOf("Expire the token after 15 minutes of inactivity."), true);
 });

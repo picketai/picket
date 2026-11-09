@@ -76,23 +76,24 @@ function pathHitsOf(paths: string[], securityPaths: readonly string[]): string[]
   return [...new Set(hits)].sort();
 }
 
+function isQuotedProse(span: string): boolean {
+  return WHITESPACE.test(span) && !SECURITY.test(span);
+}
+
 function withoutQuotedProse(text: string): string {
-  return text.replace(QUOTED, (span) => (WHITESPACE.test(span) ? " " : span));
+  return text.replace(QUOTED, (span) => (isQuotedProse(span) ? " " : span));
 }
 
-function withoutVerdictTokens(text: string): string {
-  if (!VERDICT_TOKEN.test(text)) return text;
-  return text.replace(VERDICT_TOKENS, " ").replace(UNQUALIFIED_TOKENS, " ");
-}
-
-function withoutNonCredentialPhrases(sentence: string): string {
-  return CREDENTIAL_CONTEXT.test(sentence) ? sentence : sentence.replace(NOT_A_CREDENTIAL, " ");
+function credentialTokenIn(sentence: string, namesVerdictToken: boolean): boolean {
+  const rest = sentence.replace(VERDICT_TOKENS, " ");
+  if (CREDENTIAL_CONTEXT.test(rest)) return TOKEN.test(rest);
+  const unqualified = namesVerdictToken ? rest.replace(UNQUALIFIED_TOKENS, " ") : rest;
+  return TOKEN.test(unqualified.replace(NOT_A_CREDENTIAL, " "));
 }
 
 function namesCredentialToken(text: string): boolean {
-  return withoutVerdictTokens(text)
-    .split(SENTENCE_BREAK)
-    .some((sentence) => TOKEN.test(withoutNonCredentialPhrases(sentence)));
+  const namesVerdictToken = VERDICT_TOKEN.test(text);
+  return text.split(SENTENCE_BREAK).some((sentence) => credentialTokenIn(sentence, namesVerdictToken));
 }
 
 function touchesSecurity(pathHits: string[], text: string, securityPaths: readonly string[]): boolean {

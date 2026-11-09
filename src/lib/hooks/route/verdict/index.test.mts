@@ -2,7 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { reviewClasses, routeVerdict as verdictHandler } from "./index.mts";
+import { repeatsPhaseVerdict, reviewClasses, routeVerdict as verdictHandler } from "./index.mts";
 import { statePath, stateRel } from "../../../shared/paths.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { recordDigest } from "../../../shared/work/amendment.mts";
@@ -305,7 +305,7 @@ test("a continued developer stop while phase 1 awaits the user writes no idle ma
   assert.deepEqual(readdirSync(join(root, "work", id, "phases")).filter((name) => name.endsWith(".idle")), []);
 });
 
-test("a new turn re-emitting the saved phase block routes nothing; a changed headline routes (T-2.5)", (t) => {
+test("a new turn re-emitting the saved phase block routes nothing (T-2.5)", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const id = threePhaseOrder(root);
   routePhaseDone(root, id, 3, false);
@@ -313,9 +313,65 @@ test("a new turn re-emitting the saved phase block routes nothing; a changed hea
   assert.equal(routePhaseDone(root, id, 3, false), null);
   assert.equal(verdictRows(root, id).length, rows);
   assert.equal(existsSync(phaseFile(root, id, "3.fixes.md")), false);
-  const changed = phaseBlock(id, 3, "feat: p").replace("P works.", "P works, and C too.");
-  assert.match(routeDeveloperTurn(root, id, 3, false, changed).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
-  assert.equal(verdictRows(root, id).length, rows + 1);
+});
+
+test("a re-sent PHASE DONE with a changed block adds no row, saves the newer block and says it is recorded (T-5.1)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  const newer = phaseBlock(id, 1, "feat: p").replace("Tests: passed", "Tests: passed (12 of 12)");
+  const out = routeDeveloperTurn(root, id, 1, false, newer);
+  assert.equal(out.hookSpecificOutput.additionalContext, `picket: PHASE DONE for ${id} phase 1 is already recorded; the newer block is saved. Run \`picket next ${id}\`.`);
+  assert.equal(verdictRows(root, id).length, 1);
+  assert.match(readFileSync(blockPath(root, id), "utf8"), /^Tests: passed \(12 of 12\)$/m);
+});
+
+test("a reviewer APPROVED sent twice with no row between leaves one row (T-5.2)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  const approved = reviewBlock(id, "phase 1", "Clean.", "APPROVED");
+  routeReview(root, id, approved);
+  routeReview(root, id, approved.replace("Clean.", "Clean, rechecked."));
+  assert.deepEqual(verdictRows(root, id).map((r) => r.verdict), ["PHASE DONE", "APPROVED"]);
+});
+
+test("a PHASE DONE after a user rejection of the same phase adds a row (T-5.3)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  route({ id: workId(id), verdict: "rejected", agent: "user", phase: 1, reason: "rename the field", session: "s1" }, hookContext(root));
+  const fixed = phaseBlock(id, 1, "feat: p").replace("P works.", "P works, field renamed.");
+  assert.match(routeDeveloperTurn(root, id, 1, false, fixed).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["rejected", 1], ["PHASE DONE", 1]]);
+});
+
+test("a PHASE DONE for phase 2 after one for phase 1 adds a row (T-5.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  routePhaseDone(root, id, 2, false);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["PHASE DONE", 2]]);
+});
+
+test("a second AMENDED right after an AMENDED row, on a stop that was not continued, adds a row (T-5.4)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  const amend = (text: string) => routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: transcript(root, [user(`work: ${id}\nphase: 1`), assistant(`## Amendment: ${id}\n\n${text}\n\nAMENDED`)]), cwd: root, agent_type: "picket:architect" }, hookContext(root));
+  amend("D-002 revised.");
+  amend("D-003 revised.");
+  assert.deepEqual(verdictRows(root, id).map((r) => r.verdict), ["AMENDED", "AMENDED"]);
+});
+
+test("repeatsPhaseVerdict needs a phase, the same agent, verdict, phase and scope, and no written verdict", () => {
+  const row = { ts: "t", agent: "developer", verdict: "PHASE DONE", phase: 1, scope: null, through: null };
+  const incoming = { agent: "developer", verdict: "PHASE DONE", phase: 1, scope: undefined };
+  assert.equal(repeatsPhaseVerdict([row], incoming), true);
+  assert.equal(repeatsPhaseVerdict([row], { ...incoming, phase: undefined }), false);
+  assert.equal(repeatsPhaseVerdict([row], { ...incoming, agent: "reviewer" }), false);
+  assert.equal(repeatsPhaseVerdict([row], { ...incoming, scope: "checkpoint" }), false);
+  assert.equal(repeatsPhaseVerdict([{ ...row, verdict: "AMENDED" }], { ...incoming, verdict: "AMENDED" }), false);
+  assert.equal(repeatsPhaseVerdict([], incoming), false);
 });
 
 test("the identical phase block in a new turn after a reviewer CHANGES REQUIRED routes a second PHASE DONE (T-1.5)", (t) => {
