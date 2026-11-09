@@ -21,7 +21,7 @@ export type Signals = {
 };
 
 const RESEARCH = /\b(how (does|is|are)|explain|understand|map (the|a)|report|no code changes|write (a|the) report|where (is|does)|why (does|is))\b/i;
-const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|credential|tokens?|secret|crypto|encrypt|permission|security path)\b/i;
+const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|credential|secret|crypto|encrypt|permission|security path)\b/i;
 const MIGRATION = /\b(migrat(e|ion)|schema|alter table|data file|rewrite the file|backfill)\b/i;
 const IDENTIFIER = /\w+(?:[-./]\w+)+/g;
 const JSON_SCHEMA = /\bjson[- ]schemas?\b/gi;
@@ -41,7 +41,13 @@ const REVIEW_WHETHER = /\b(see|check|review|verify|find out)\s+(if|whether)\b/i;
 const OPENS_WITH_CHANGE = /^\s*(fix|add|change|implement|remove|refactor|update|replace|delete|patch|correct|resolve|adjust|modify|edit|rename|convert|move)\b/i;
 const NO_CODE_CHANGES = /\bno code changes?\b|\bproduct code untouched\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
-const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
+const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|cookies?|login|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
+const TOKEN = /\btokens?\b/i;
+const VERDICT_TOKEN = /\bverdict tokens?\b/i;
+const VERDICT_TOKENS = /\bverdict tokens?\b/gi;
+const UNQUALIFIED_TOKENS = /(?<!\b(?:refresh|access|bearer|session|api|auth|jwt|oauth|csrf|reset|id)[ -])\btokens?\b/gi;
+const SENTENCE_BREAK = /[.!?;](?=\s)|\r?\n/;
+const WHITESPACE = /\s/;
 const FORCED_LANE = /\blane:\s*(fast|order|design|research)\b/i;
 const QUOTED = /`[^`]*`|"[^"\n]*"|“[^”\n]*”|(?<!\w)'[^'\n]*'(?!\w)/g;
 const PATH_MENTION = /`([A-Za-z0-9_./-]+\.[A-Za-z0-9]+)`|\b((?:src|test|tests|data|scripts|lib|app)\/[A-Za-z0-9_./-]+)\b|(?<![\w/.-])(\.[A-Za-z0-9_-]+\/[A-Za-z0-9_./-]*[A-Za-z0-9_-])/g;
@@ -70,13 +76,27 @@ function pathHitsOf(paths: string[], securityPaths: readonly string[]): string[]
   return [...new Set(hits)].sort();
 }
 
-function withoutNonCredentialTokens(text: string): string {
-  if (CREDENTIAL_CONTEXT.test(text)) return text;
-  return text.replace(NOT_A_CREDENTIAL, " ");
+function withoutQuotedProse(text: string): string {
+  return text.replace(QUOTED, (span) => (WHITESPACE.test(span) ? " " : span));
+}
+
+function withoutVerdictTokens(text: string): string {
+  if (!VERDICT_TOKEN.test(text)) return text;
+  return text.replace(VERDICT_TOKENS, " ").replace(UNQUALIFIED_TOKENS, " ");
+}
+
+function withoutNonCredentialPhrases(sentence: string): string {
+  return CREDENTIAL_CONTEXT.test(sentence) ? sentence : sentence.replace(NOT_A_CREDENTIAL, " ");
+}
+
+function namesCredentialToken(text: string): boolean {
+  return withoutVerdictTokens(text)
+    .split(SENTENCE_BREAK)
+    .some((sentence) => TOKEN.test(withoutNonCredentialPhrases(sentence)));
 }
 
 function touchesSecurity(pathHits: string[], text: string, securityPaths: readonly string[]): boolean {
-  return pathHits.length > 0 || securityPaths.some((s) => text.includes(s)) || SECURITY.test(withoutNonCredentialTokens(text));
+  return pathHits.length > 0 || securityPaths.some((s) => text.includes(s)) || SECURITY.test(text) || namesCredentialToken(text);
 }
 
 function asksOnlyToReview(text: string): boolean {
@@ -103,16 +123,17 @@ function isDiagnosis(text: string, signals: Pick<Signals, "declared_research" | 
 export function signalsOf(text: string, mentioned: string[], touched: string[], securityPaths: readonly string[]): Signals {
   const declaredResearch = DECLARED_RESEARCH.test(text);
   const pathHits = pathHitsOf([...mentioned, ...touched], securityPaths);
+  const unquoted = withoutQuotedProse(text);
   const signals = {
     forced: forcedLane(text) ?? null,
     mentioned_paths: mentioned,
     touched: touched.length,
     declared_research: declaredResearch,
     research: isResearch(text, declaredResearch),
-    security: touchesSecurity(pathHits, text, securityPaths),
+    security: touchesSecurity(pathHits, unquoted, securityPaths),
     security_path_hits: pathHits,
-    migration: isMigration(text),
-    irreversible: IRREVERSIBLE.test(text),
+    migration: isMigration(unquoted),
+    irreversible: IRREVERSIBLE.test(unquoted),
     new_dependency: NEW_DEPENDENCY.test(text),
     cross_context: CROSS_CONTEXT.test(text),
     new_surface: NEW_SURFACE.test(text),

@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { laneOf } from "./lane.mts";
 import { forcedLane, mentionedPaths, signalsOf } from "./signals.mts";
+import { DEFAULT_SECURITY_PATHS } from "../config.mjs";
 import { withProject } from "#test/project.mts";
 
 function existsIn(t: TestContext): (path: string) => boolean {
@@ -102,4 +103,40 @@ test("a request that opens with a change verb is not research because it mention
   assert.equal(signalsOf("Update the report schema check to cap findings at 50.", [], [], []).research, false);
   assert.equal(signalsOf("Write a report on how pricing picks the tier.", [], [], []).research, true);
   assert.equal(signalsOf("How does the report get its findings count?", [], [], []).research, true);
+});
+
+const securityOf = (request: string) => signalsOf(request, [], [], DEFAULT_SECURITY_PATHS).security;
+
+test("a verdict token beside a session word in the same sentence is not a credential (T-4.1)", () => {
+  assert.equal(securityOf("Fix the verdict token check in route.verdict so a session that stops without one is bounced."), false);
+});
+
+test("a token beside a credential word, and a one-word quoted identifier, still raise security (T-4.2)", () => {
+  for (const request of [
+    "Store the token in a cookie after login.",
+    "Store the session token in an httpOnly cookie.",
+    "Rotate the access token the server uses to call the tax service every hour.",
+    "Rename `password` to `passwordHash` in src/config.ts.",
+  ]) {
+    assert.equal(securityOf(request), true, request);
+  }
+});
+
+test("a token count is not a credential when only another sentence holds a credential word", () => {
+  assert.equal(securityOf("Show the token count per agent. The session page is unchanged."), false);
+  assert.equal(securityOf("Cap the access token count at five."), true);
+});
+
+test("beside a verdict token, a token without a credential qualifier is a verdict token", () => {
+  assert.equal(securityOf("Name the verdict token and check that the token sits alone on the last line."), false);
+  assert.equal(securityOf("Name the verdict token in the docs and validate the bearer token in the middleware."), true);
+});
+
+test("a bare token is still a credential", () => {
+  assert.equal(securityOf("Expire the token after 15 minutes of inactivity."), true);
+});
+
+test("quoted prose is not migration work, while an unquoted irreversible step still is (T-4.3)", () => {
+  assert.equal(signalsOf('Document the example "run the migration and backfill the schema" in the admit tests.', [], [], []).migration, false);
+  assert.equal(signalsOf("See if we can drop table legacy_users safely.", [], [], []).irreversible, true);
 });

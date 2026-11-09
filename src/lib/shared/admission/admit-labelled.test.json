@@ -143,5 +143,8 @@
   { "request": "Check if the CSV export still sorts newest first, and update the test.", "lane": "order", "why": "the check also asks to update a test; no small-change word and no file named, so order is the default" },
   { "request": "Check whether the CSV export works and create a test for it.", "lane": "order", "why": "the check also asks to create a test; no small-change word and no file named, so order is the default" },
   { "request": "See if we can drop table legacy_users safely.", "lane": "design", "why": "a review of an irreversible step keeps the heavy lane" },
-  { "request": "Verify whether the migration backfill ran on all rows.", "lane": "design", "why": "a review of migration work keeps the heavy lane" }
+  { "request": "Verify whether the migration backfill ran on all rows.", "lane": "design", "why": "a review of migration work keeps the heavy lane" },
+  { "request": "Rename the verdict token constant in `src/http/handlers.ts`; the login session flow is unchanged.", "lane": "fast", "why": "a verdict token is not a credential; the login words sit in another sentence" },
+  { "request": "Fix the typo in the error text \"run the migration first\" in `src/http/handlers.ts`.", "lane": "fast", "why": "the migration words are quoted text being fixed, not migration work" },
+  { "request": "Fix the typo in the hint \"never drop table invoices by hand\" in `src/http/handlers.ts`.", "lane": "fast", "why": "the drop table words are quoted text being fixed, not an irreversible step" }
 ]
