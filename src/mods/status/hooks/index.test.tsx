@@ -818,7 +818,7 @@ test('a session running in a project worktree is live and refuses a rename; one 
   expect(w.written[`${PROJECT}/${S_AWAY}.jsonl`]).toContain(JSON.stringify({ type: 'agent-name', agentName: 'Away reviewed', sessionId: S_AWAY }))
 })
 
-const isUnlink =(argv: readonly string[]) => argv[0] === 'node' && String(argv[2]).includes('unlinkSync')
+const isUnlink = (argv: readonly string[]) => argv[0] === 'node' && String(argv[2]).includes('unlinkSync')
 
 const unlinked = (w: PaneWorld) => w.runs.filter(isUnlink).map(argv => String(argv.at(-1)).replace(/\\/g, '/'))
 

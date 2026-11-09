@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-09T10:14:10.932Z",
+  "base": "18bcd25ee623c509c76f8378a14a4f43469ae5ea",
+  "mutant": {
+    "path": "src/lib/shared/admission/lane.mts",
+    "line": 46,
+    "from": ">",
+    "to": "<="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 20956
+}

@@ -4,3 +4,9 @@
 {"ts":"2026-11-09T10:08:04.582Z","agent":"user","verdict":"approved","phase":1,"scope":null,"through":3,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
 {"ts":"2026-11-09T10:11:33.386Z","agent":"developer","verdict":"PHASE DONE","phase":2,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
 {"ts":"2026-11-09T10:13:37.832Z","agent":"developer","verdict":"PHASE DONE","phase":3,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
+{"ts":"2026-11-09T10:16:14.757Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":null,"scope":"cumulative","through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4","amend":"AMENDMENT NEEDED: T-2.4 assumes the cleanup list leaves out live sessions, and it does not; reword it to the rename refusal that the code and its test already cover."}
+{"ts":"2026-11-09T10:16:38.462Z","agent":"architect","verdict":"AMENDED","phase":null,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
+{"ts":"2026-11-09T10:17:35.613Z","agent":"developer","verdict":"PHASE DONE","phase":3,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
+{"ts":"2026-11-09T10:18:30.657Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":null,"scope":"cumulative","through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4","amend":"AMENDMENT NEEDED: T-2.4: the AMENDED verdict left design.md unchanged; reword T-2.4 to the rename refusal that the code and its test already cover, and add a revision log line.","plan_only":true}
+{"ts":"2026-11-09T10:20:32.341Z","agent":"architect","verdict":"AMENDED","phase":null,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
+{"ts":"2026-11-09T10:21:10.479Z","agent":"reviewer","verdict":"APPROVED","phase":null,"scope":"cumulative","through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
