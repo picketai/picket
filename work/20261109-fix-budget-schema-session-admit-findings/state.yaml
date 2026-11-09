@@ -1,0 +1,9 @@
+id: 20261109-fix-budget-schema-session-admit-findings
+lane: design
+title: "Fix budget, schema, session, admit findings"
+status: open
+created: 2026-11-09T09:36:42.124Z
+updated: 2026-11-09T10:08:04.582Z
+session: e9bcd41a-c78b-4202-960e-a3835d811df4
+base: 18bcd25ee623c509c76f8378a14a4f43469ae5ea
+run_through: 3

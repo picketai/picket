@@ -35,7 +35,6 @@
         "output_tokens": { "type": "integer" }
       }
     },
-    "cost_usd": { "type": ["number", "null"] },
     "lines_added": { "type": ["integer", "null"], "description": "set on approved phases only; denominator of tokens per accepted line" }
   }
 }
