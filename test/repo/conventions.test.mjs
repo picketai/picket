@@ -2,7 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, posix, relative, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 import { codeLines, isKernelSource } from "#test/kernel-sources.mts";
+import { maskStrings } from "../../src/lib/shared/comments.mjs";
 
 const SOURCE_ROOT = "src";
 const LIB_PREFIX = "src/lib/";
@@ -279,4 +281,40 @@ test("the verb-name scan reports a name that is not one lowercase word (scan 4)"
 test("every verb and subverb name is one lowercase word (scan 4)", async () => {
   const { VERB_NAMES } = await import("../../dist/lib/verbs.mjs");
   assert.deepEqual(verbNameViolations(VERB_NAMES), []);
+});
+
+const SPACING_ROOTS = ["src", "test", "scripts", "bench"];
+const CODE_FILE = /\.(mts|mjs|ts|tsx|js|cjs|cts|jsx)$/;
+const GLUED_ASSIGNMENT = /[\w)\]] =[^=>\s]/;
+const LINE_COMMENT = "//";
+
+function withoutLineComment(masked) {
+  const at = masked.indexOf(LINE_COMMENT);
+  return at === -1 ? masked : masked.slice(0, at);
+}
+
+function gluedAssignments(text) {
+  return text
+    .split(/\r?\n/)
+    .map((line, index) => ({ line, number: index + 1 }))
+    .filter(({ line }) => GLUED_ASSIGNMENT.test(withoutLineComment(maskStrings(line))));
+}
+
+function trackedCodeFiles() {
+  return execFileSync("git", ["ls-files", "-z", ...SPACING_ROOTS], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+    .split("\0")
+    .filter((path) => CODE_FILE.test(path) && existsSync(path));
+}
+
+const GLUED_SAMPLES = ["const isUnlink =(argv: readonly string[]) => argv[0] === 'node'", 'const REVIEWING_SKILL =new URL("../../SKILL.md", import.meta.url);', "export type Piece ={ text: string }"];
+const SPACED_SAMPLES = ["a === b", "const f = (x) => x", 'const s = "a =b";', "const x =", "if (a <= b) n += 1;", "const r = /a =b/;", "// a =b"];
+
+test("the spacing scan reports an = glued to its right-hand side and nothing else (T-8.1)", () => {
+  for (const sample of GLUED_SAMPLES) assert.deepEqual(gluedAssignments(sample).map(({ line }) => line), [sample], sample);
+  for (const sample of SPACED_SAMPLES) assert.deepEqual(gluedAssignments(sample), [], sample);
+});
+
+test("no tracked code file glues an = to its right-hand side (T-8.2)", () => {
+  const glued = trackedCodeFiles().flatMap((path) => gluedAssignments(readFileSync(path, "utf8")).map(({ number }) => `${path}:${number}`));
+  assert.deepEqual(glued, []);
 });

@@ -115,7 +115,7 @@ test("no nested repo, no nested path, a recorded branch, or worktrees: none goes
   assert.equal(step({ ...plain, layout: { ...ORDERS_LAYOUT, worktrees: "none" } }).action, "implement_phase");
 });
 
-const AMEND_LINE ="AMENDMENT NEEDED: D-002 the port moved";
+const AMEND_LINE = "AMENDMENT NEEDED: D-002 the port moved";
 
 function amending(verdict: string, scope: string | null = null) {
   return { ...row(verdict, scope), amend: AMEND_LINE };

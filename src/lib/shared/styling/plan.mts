@@ -7,7 +7,7 @@ import { backupFile, emptyManifest, keepCopy, ManifestError, manifestItem, readM
 export type StyleChange = { id: string; summary: string; result: string; detail?: string };
 export type StyleReport = { changes: StyleChange[]; restart: string[]; manual: string[] };
 export type ManifestRead = { manifest: Manifest | null } | { failure: StyleChange };
-export type ApplyOptions ={ only?: readonly string[] | null; dryRun?: boolean; yes?: boolean; components?: readonly Component[] };
+export type ApplyOptions = { only?: readonly string[] | null; dryRun?: boolean; yes?: boolean; components?: readonly Component[] };
 
 type Applicable = Change & { apply: NonNullable<Change["apply"]> };
 type Entry = { component: Component; change: Applicable };

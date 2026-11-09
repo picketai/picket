@@ -1,6 +1,6 @@
 import { parseBlock, proposedCommit } from "./work/block.mts";
 
-export const COMMIT_TYPES =["feat", "fix", "refactor", "perf", "test", "docs", "build", "ci", "chore", "style"] as const;
+export const COMMIT_TYPES = ["feat", "fix", "refactor", "perf", "test", "docs", "build", "ci", "chore", "style"] as const;
 
 export const SUBJECT_LIMIT = 72;
 

@@ -1,6 +1,6 @@
 export type Next<E, R> = (event: E) => Promise<R>
 
-export type Piece ={ text: string; color?: string; bold?: boolean; dim?: boolean; press?: 'work' | 'markdown' }
+export type Piece = { text: string; color?: string; bold?: boolean; dim?: boolean; press?: 'work' | 'markdown' }
 
 export type Line = { left: Piece[]; right: Piece[] }
 

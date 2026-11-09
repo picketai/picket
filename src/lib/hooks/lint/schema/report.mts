@@ -13,7 +13,7 @@ const LEADING_TAGS = /^\s*(?:\[[^\]]*\](?=\s|$)\s*)*/;
 const TAG = /\[[^\]]*\]/g;
 const FINDING_ID = /\b(R-\d{3})\b/g;
 const PLACEHOLDER = /\[REPLACE[:\]]/;
-const SUMMARY =/^## Summary[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m;
+const SUMMARY = /^## Summary[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m;
 
 export function leftoverProblems(text: string): string[] {
   const problems: string[] = [];
