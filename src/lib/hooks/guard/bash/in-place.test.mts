@@ -39,6 +39,12 @@ test("a heredoc is the program of an interpreter that names no script file", () 
   assert.deepEqual(inPlaceTargets(["node", "--test", "test/cli/close.test.mjs"], [body]), []);
 });
 
+test("a - operand after a flag value reads the heredoc, and a here-string with a write call is the program", () => {
+  const body = "open('src/a.py','w').write('x')\n";
+  assert.ok(inPlaceTargets(["python3", "-X", "utf8", "-"], [body]).includes("src/a.py"));
+  assert.ok(inPlaceTargets(["python3", "open('src/a.py','w').write('x')"], []).includes("src/a.py"));
+});
+
 test("a command that is not an interpreter yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["cat", "-"], ["open('src/a.py','w').write('x')"]), []);
 });

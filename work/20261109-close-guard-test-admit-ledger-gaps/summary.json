@@ -14,14 +14,30 @@
     "src/lib/hooks/guard/bash/payloads.test.mts",
     "src/lib/hooks/guard/bash/powershell.mts",
     "src/lib/hooks/guard/bash/rules.mts",
+    "src/lib/hooks/lint/schema/report.mts",
+    "src/lib/hooks/route/verdict/index.mts",
+    "src/lib/hooks/route/verdict/index.test.mts",
     "src/lib/shared/admission/admit-labelled.test.json",
     "src/lib/shared/admission/signals.mts",
     "src/lib/shared/admission/signals.test.mts",
+    "src/lib/shared/check-log.mts",
+    "src/lib/shared/check-log.test.mts",
+    "src/lib/shared/commit-message.mts",
+    "src/lib/shared/styling/plan.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/util/io.mts",
+    "src/lib/util/io.test.mts",
+    "src/lib/verbs/check/index.mts",
+    "src/lib/verbs/check/index.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/mods/types/index.d.ts",
+    "test/kernel/packet.test.mjs",
     "test/repo/build.test.mjs",
+    "test/repo/conventions.test.mjs",
     "test/repo/markdown-paths.test.mjs"
   ],
-  "lines_added": 446,
-  "lines_removed": 72,
+  "lines_added": 808,
+  "lines_removed": 108,
   "frameworks": [
     "typescript"
   ],
@@ -34,14 +50,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-09T18:46:49.666Z",
+    "base": "81f08bbb512e4f3306cf402cc32a64377d431d77",
+    "mutant": {
+      "path": "scripts/build.mjs",
+      "line": 274,
+      "from": "true",
+      "to": "false"
+    },
+    "command": "npm test",
+    "outcome": "survived",
+    "rebuild": "passed",
+    "ms": 38294
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

@@ -62,6 +62,20 @@ test("swapInto replaces nested files and drops nested folders the staging folder
   });
 });
 
+test("swapInto replaces a folder with a staged file of the same name, and a file with a staged folder", () => {
+  withFolders(({ staging, target }) => {
+    folderHolding(target, "keep.txt");
+    folderHolding(join(target, "x"), "inside.txt");
+    writeFileSync(join(target, "y"), "old file");
+    folderHolding(staging, "keep.txt");
+    writeFileSync(join(staging, "x"), "new file");
+    folderHolding(join(staging, "y"), "inside.txt");
+    swapInto(staging, target);
+    assert.equal(readFileSync(join(target, "x"), "utf8"), "new file");
+    assert.deepEqual(readdirSync(join(target, "y")), ["inside.txt"]);
+  });
+});
+
 test("swapInto moves the staging folder into place when no target exists yet", () => {
   withFolders(({ staging, target }) => {
     folderHolding(staging, "new.txt");

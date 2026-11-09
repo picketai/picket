@@ -20,3 +20,6 @@
 {"ts":"2026-11-09T18:42:06.515Z","agent":"developer","verdict":"PHASE DONE","phase":6,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
 {"ts":"2026-11-09T18:44:18.902Z","agent":"developer","verdict":"PHASE DONE","phase":7,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
 {"ts":"2026-11-09T18:45:55.274Z","agent":"developer","verdict":"PHASE DONE","phase":8,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
+{"ts":"2026-11-09T18:52:34.739Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":null,"scope":"cumulative","through":null,"classes":["Se4","Mu1"],"session":"e9bcd41a-c78b-4202-960e-a3835d811df4","amend":"AMENDMENT NEEDED: D-004 add the exception that keeps a quoted span holding a security word or a credential token; also fix the Phase 2 Changes text (D-002 r2) and the T-7.1 line layout.","record":"5d0d487b9acbf56ecdb7cd19d75b3c5759b86df664222cb1da2c19259491d39f"}
+{"ts":"2026-11-09T19:05:50.715Z","agent":"developer","verdict":"PHASE DONE","phase":8,"scope":null,"through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}
+{"ts":"2026-11-09T19:06:56.042Z","agent":"reviewer","verdict":"APPROVED","phase":null,"scope":"cumulative","through":null,"session":"e9bcd41a-c78b-4202-960e-a3835d811df4"}

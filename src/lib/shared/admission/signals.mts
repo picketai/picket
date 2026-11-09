@@ -77,7 +77,7 @@ function pathHitsOf(paths: string[], securityPaths: readonly string[]): string[]
 }
 
 function isQuotedProse(span: string): boolean {
-  return WHITESPACE.test(span) && !SECURITY.test(span);
+  return WHITESPACE.test(span) && !SECURITY.test(span) && !namesCredentialToken(span);
 }
 
 function withoutQuotedProse(text: string): string {

@@ -29,15 +29,15 @@ function inlineProgram(root: string, args: string[]): string | null {
   return at === -1 ? null : (args[at + 1] ?? null);
 }
 
-function namesScriptFile(args: string[]): boolean {
-  const operand = args.find((word) => word === STDIN_OPERAND || !word.startsWith("-"));
-  return operand !== undefined && operand !== STDIN_OPERAND;
+function readsStdin(args: string[]): boolean {
+  return args.includes(STDIN_OPERAND) || args.every((word) => word.startsWith("-"));
 }
 
-function programText(root: string, args: string[], heredocs: readonly string[]): string | null {
+function programText(root: string, args: string[], heredocs: readonly string[]): string {
   const inline = inlineProgram(root, args);
   if (inline !== null) return inline;
-  return namesScriptFile(args) ? null : heredocs.join("\n");
+  const hereStrings = args.filter((word) => WRITE_CALL.test(word));
+  return [...(readsStdin(args) ? heredocs : []), ...hereStrings].join("\n");
 }
 
 function programWrites(program: string): string[] {
@@ -62,7 +62,6 @@ export function inPlaceTargets(seg: Segment, heredocs: readonly string[]): strin
   const [first, ...args] = wordsOf(seg);
   const root = normalizeRoot(first ?? "").toLowerCase();
   if (!INTERPRETERS.has(root)) return [];
-  const program = programText(root, args, heredocs);
   const editedFiles = IN_PLACE_EDITORS.has(root) ? inPlaceFileOperands(args) : [];
-  return [...editedFiles, ...(program === null ? [] : programWrites(program))];
+  return [...editedFiles, ...programWrites(programText(root, args, heredocs))];
 }

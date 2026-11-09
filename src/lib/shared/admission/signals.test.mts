@@ -142,6 +142,16 @@ test("a quoted span that holds a security word is kept", () => {
   assert.equal(securityOf("Fix the bug in `password reset` flow."), true);
 });
 
+test("a quoted span about a credential token is kept", () => {
+  for (const request of [
+    'Implement "the session token expires after 15 minutes" from the ticket in the login flow.',
+    'Make the API match the spec: "every request carries a bearer token in the header".',
+    'Follow the rule "rotate the refresh token on every login".',
+  ]) {
+    assert.equal(securityOf(request), true, request);
+  }
+});
+
 test("a bare token is still a credential", () => {
   assert.equal(securityOf("Expire the token after 15 minutes of inactivity."), true);
 });
