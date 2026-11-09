@@ -1,5 +1,6 @@
 import { build } from "esbuild";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOOKS } from "../src/lib/hooks.mts";
@@ -8,7 +9,8 @@ import { writeReferencePages } from "./docs.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const SRC = join(REPO, "src");
-export const DIST = join(REPO, "dist");
+const OUT_VARIABLE = "PICKET_BUILD_OUT";
+export const DIST = process.env[OUT_VARIABLE] ? resolve(process.env[OUT_VARIABLE]) : join(REPO, "dist");
 export const HOOK_LIST = join(SRC, "lib", "hooks.mts");
 export const MOD_LIST = join(SRC, "lib", "mods.mts");
 export const MODS_SRC = join(SRC, "mods");
@@ -265,9 +267,51 @@ export async function buildAll() {
   await writeReferencePages();
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+function replaceFile(source, dest) {
+  try {
+    renameSync(source, dest);
+  } catch {
+    rmSync(dest, { recursive: true, force: true });
+    renameSync(source, dest);
+  }
+}
+
+function moveEntries(from, to) {
+  if (existsSync(to) && !statSync(to).isDirectory()) rmSync(to, { force: true });
+  mkdirSync(to, { recursive: true });
+  const moved = new Set();
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    moved.add(entry.name);
+    if (entry.isDirectory()) moveEntries(join(from, entry.name), join(to, entry.name));
+    else replaceFile(join(from, entry.name), join(to, entry.name));
+  }
+  for (const name of readdirSync(to)) if (!moved.has(name)) rmSync(join(to, name), { recursive: true, force: true });
+}
+
+export function swapInto(staging, target) {
+  moveEntries(staging, target);
+  rmSync(staging, { recursive: true, force: true });
+}
+
+function buildIntoStaging() {
+  const staging = join(REPO, "tmp", `dist-${process.pid}`);
+  rmSync(staging, { recursive: true, force: true });
+  mkdirSync(dirname(staging), { recursive: true });
+  const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], { env: { ...process.env, [OUT_VARIABLE]: staging }, stdio: "inherit" });
+  if (child.status === 0) return swapInto(staging, DIST);
+  rmSync(staging, { recursive: true, force: true });
+  if (child.error) console.error(`npm run build: ${child.error.message}`);
+  process.exitCode = 1;
+}
+
+function buildHere() {
   buildAll().catch((err) => {
     console.error(`npm run build: ${err.message}`);
     process.exitCode = 1;
   });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  if (process.env[OUT_VARIABLE]) buildHere();
+  else buildIntoStaging();
 }

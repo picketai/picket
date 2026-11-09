@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { BANNER, DIST, SRC, STATUSLINE_BUNDLE, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../../scripts/build.mjs";
+import { BANNER, DIST, SRC, STATUSLINE_BUNDLE, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, swapInto, withBanner } from "../../scripts/build.mjs";
 
 const SHEBANG = "#!/usr/bin/env node";
 const RELATIVE_IMPORT = /(\bfrom\s+|\bimport\s*\(?\s*)["']\.\.?\//;
@@ -22,6 +23,53 @@ function bannerLine(text) {
   const lines = text.split(/\r?\n/);
   return lines[0].startsWith("#!") ? lines[1] : lines[0];
 }
+
+function withFolders(body) {
+  const root = mkdtempSync(join(tmpdir(), "picket-swap-"));
+  try {
+    body({ staging: join(root, "staging"), target: join(root, "target") });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function folderHolding(path, file) {
+  mkdirSync(path);
+  writeFileSync(join(path, file), file);
+}
+
+test("swapInto replaces the target with the staging folder and removes the old copy", () => {
+  withFolders(({ staging, target }) => {
+    folderHolding(target, "old.txt");
+    folderHolding(staging, "new.txt");
+    swapInto(staging, target);
+    assert.deepEqual(readdirSync(target), ["new.txt"]);
+    assert.equal(existsSync(staging), false);
+    assert.equal(existsSync(`${staging}-old`), false);
+  });
+});
+
+test("swapInto replaces nested files and drops nested folders the staging folder lacks", () => {
+  withFolders(({ staging, target }) => {
+    mkdirSync(join(target, "keep", "stale"), { recursive: true });
+    writeFileSync(join(target, "keep", "stale", "gone.txt"), "old");
+    writeFileSync(join(target, "keep", "a.txt"), "old");
+    mkdirSync(join(staging, "keep"), { recursive: true });
+    writeFileSync(join(staging, "keep", "a.txt"), "new");
+    swapInto(staging, target);
+    assert.deepEqual(readdirSync(join(target, "keep")), ["a.txt"]);
+    assert.equal(readFileSync(join(target, "keep", "a.txt"), "utf8"), "new");
+  });
+});
+
+test("swapInto moves the staging folder into place when no target exists yet", () => {
+  withFolders(({ staging, target }) => {
+    folderHolding(staging, "new.txt");
+    swapInto(staging, target);
+    assert.deepEqual(readdirSync(target), ["new.txt"]);
+    assert.equal(existsSync(staging), false);
+  });
+});
 
 test("withBanner puts the banner first, or right after a shebang line", () => {
   assert.equal(withBanner("export const a = 1;\n"), `${BANNER}\nexport const a = 1;\n`);
