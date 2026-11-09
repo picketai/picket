@@ -1,0 +1,71 @@
+{
+  "work_id": "20261109-stop-admit-misrouting-on-incidental-keywords",
+  "base": "203be6b458eec1b5fd7a7c0189654efcbd62e2dd",
+  "request": "work/20261109-stop-admit-misrouting-on-incidental-keywords/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/lib/shared/admission/admit-labelled.test.json",
+    "src/lib/shared/admission/signals.mts",
+    "src/lib/shared/admission/signals.test.mts",
+    "src/lib/verbs/admit/index.test.mts"
+  ],
+  "lines_added": 91,
+  "lines_removed": 6,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-09T11:06:07.806Z",
+    "base": "203be6b458eec1b5fd7a7c0189654efcbd62e2dd",
+    "mutant": {
+      "path": "src/lib/shared/admission/signals.mts",
+      "line": 83,
+      "from": "&&",
+      "to": "||"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 20994
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
