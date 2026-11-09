@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { appendCheckRow, latestCheck, redBeforeChange, type CheckRow } from "./check-log.mts";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendCheckRow, dropItemChecks, latestCheck, redBeforeChange, type CheckRow } from "./check-log.mts";
 import { stateDir, statePath, STATE_FILES } from "./paths.mts";
 import { withProject } from "#test/project.mts";
 
@@ -71,6 +71,21 @@ test("latestCheck returns the newest row of the asked item and phase and ignores
   appendCheckRow(root, row({ ts: "2026-11-09T10:04:00.000Z", work_id: "20261109-b" }));
   assert.deepEqual(latestCheck(root, "20261109-a", 2), newest);
   assert.equal(latestCheck(root, "20261109-a", 1), null);
+});
+
+test("dropItemChecks removes every row of the closed item and keeps other items' rows", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const { otherItem } = compactedLog(root);
+  dropItemChecks(root, "20261109-a");
+  assert.deepEqual(loggedRows(root), [otherItem]);
+  assert.equal(latestCheck(root, "20261109-a", 2), null);
+  assert.equal(redBeforeChange(root, "20261109-a", 2), null);
+});
+
+test("dropItemChecks creates no log when there is none", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  dropItemChecks(root, "20261109-a");
+  assert.equal(existsSync(statePath(root, STATE_FILES.checkLog)), false);
 });
 
 test("latestCheck is null for a missing log and skips malformed lines (T-4.3)", (t) => {

@@ -52,6 +52,12 @@ export function appendCheckRow(root: string, row: CheckRow): void {
   rewriteJsonl(checkLogPath(root), keptRows([...checkRows(root), row]));
 }
 
+export function dropItemChecks(root: string, id: string): void {
+  const rows = checkRows(root);
+  const kept = rows.filter((row) => row.work_id !== id);
+  if (kept.length < rows.length) rewriteJsonl(checkLogPath(root), kept);
+}
+
 function rowsOf(root: string, id: string, phase: number | null): CheckRow[] {
   return checkRows(root).filter((row) => row.work_id === id && row.phase === phase);
 }

@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { Refused } from "../../shared/action.mts";
+import { dropItemChecks } from "../../shared/check-log.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
@@ -209,6 +210,7 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const repeats = ownRepeats(root, id);
   recordRepeats(root, id, repeats, now);
   const worktrees = recordedWorktrees(snap);
+  dropItemChecks(root, id);
   if (!isRepo(root)) {
     const state = markDone(root, snap.state, now);
     writeAudit(root, id, audit);
