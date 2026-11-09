@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { BANNER, DIST, SRC, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../../scripts/build.mjs";
+import { BANNER, DIST, SRC, STATUSLINE_BUNDLE, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, withBanner } from "../../scripts/build.mjs";
 
 const SHEBANG = "#!/usr/bin/env node";
 const RELATIVE_IMPORT = /(\bfrom\s+|\bimport\s*\(?\s*)["']\.\.?\//;
@@ -51,6 +51,16 @@ test("each hook in dist/hooks/ is one bundle with no relative import", () => {
   assert.deepEqual(importing, []);
 });
 
+const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)["']([^"']+)["']/gm;
+
+test("dist/statusline.mjs starts with the banner and imports only node: modules (T-3.1)", () => {
+  const text = readFileSync(STATUSLINE_BUNDLE, "utf8");
+  assert.equal(bannerLine(text), BANNER);
+  const specifiers = [...text.matchAll(SPECIFIER)].map((match) => match[1]);
+  assert.ok(specifiers.length > 0, "no import found");
+  assert.deepEqual(specifiers.filter((specifier) => !specifier.startsWith("node:")), []);
+});
+
 test("dist/ holds no TypeScript source and no declaration output", () => {
   assert.deepEqual(distFiles().map(distRel).filter((path) => /\.(mts|d\.mjs)$/.test(path)), []);
 });
@@ -83,12 +93,12 @@ test("an .mjs source is built with its typed imports renamed (T-1.3)", () => {
   assert.match(config, /from "\.\/paths\.mjs"/);
 });
 
-test("no path in dist/ outside dist/mods/ is a test file or a test fixture (T-1.3)", () => {
-  assert.deepEqual(distFiles().map(distRel).filter((path) => path.includes(".test.") && !path.startsWith("mods/")), []);
+test("no path in dist/ outside dist/hooks/mods/ is a test file or a test fixture (T-1.3)", () => {
+  assert.deepEqual(distFiles().map(distRel).filter((path) => path.includes(".test.") && !path.startsWith("hooks/mods/")), []);
 });
 
 test("the kernel build neither compiles nor copies a file under src/mods/; buildMods copies those", () => {
-  const modFiles = [join(SRC, "mods", "status", "hooks", "index.tsx"), join(SRC, "mods", "status", "hooks", "band.ts"), join(SRC, "mods", "status", "types", "index.d.ts"), join(SRC, "mods", "x", "a.mts")];
+  const modFiles = [join(SRC, "mods", "status", "hooks", "index.tsx"), join(SRC, "mods", "status", "hooks", "band.ts"), join(SRC, "mods", "types", "index.d.ts"), join(SRC, "mods", "index.tsx"), join(SRC, "mods", "x", "a.mts")];
   assert.deepEqual(modFiles.filter((file) => isBuiltModule(file) || isCopied(file)), []);
 });
 

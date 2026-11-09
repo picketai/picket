@@ -60,6 +60,7 @@ export function closingBlock(v: CloseResult): string {
   const lines = [
     `## ${HEADING[v.lane]} closed: ${v.id}`,
     laneLine(v),
+    `Audit: ${v.closing.audit}`,
     v.closing.questions && `Questions: ${v.closing.questions}`,
     ...v.closing.deferred.map(({ id, owner, gate }) => `Deferred: ${id} ${owner}, ${gate}`),
     ...v.repeats.map((r) => `Repeats: ${r.class} (${r.items.join(", ")})`),

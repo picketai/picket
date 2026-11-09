@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-08T10:58:37.874Z",
+  "base": "de39bd7087e8de98fc698e864fe5f216f2a6a436",
+  "mutant": {
+    "path": "src/lib/hooks/guard/bash/rules.mts",
+    "line": 199,
+    "from": "||",
+    "to": "&&"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 23483
+}

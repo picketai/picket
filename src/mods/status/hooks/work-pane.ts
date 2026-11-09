@@ -1,5 +1,5 @@
 import type { ListRowView } from '../../../lib/shared/views.mts'
-import type { Cleanup, GroupedSession, SessionEntry, SessionGroup } from '../types'
+import type { Cleanup, GroupedSession, SessionEntry, SessionGroup } from '../../types'
 
 export const CLEANUP_AGE_DAYS = 14
 

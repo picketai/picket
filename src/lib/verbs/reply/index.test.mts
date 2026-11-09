@@ -97,6 +97,23 @@ test("r <m> grants a run up to the last phase; past it, or with no [r] offered, 
   await refused(last.root, last.id, "r 3");
 });
 
+test("a bare r approves the phase and grants a run through the last phase offered (T-2.1)", async (t) => {
+  const { root, id } = item(t);
+  phaseDone(root, id, 1);
+  await applied(root, id, "r");
+  const last = lastVerdict(root, id);
+  assert.deepEqual([last.verdict, last.phase, last.through], ["approved", 1, 3]);
+  assert.equal(readState(root, id).run_through, 3);
+  assert.ok(existsSync(join(root, "work", id, "phases", "1.approved")));
+});
+
+test("a bare r on the last phase, where no run is offered, matches no option (T-2.2)", async (t) => {
+  const { root, id } = item(t, { phases: 1 });
+  phaseDone(root, id, 1);
+  assert.match(await refused(root, id, "r"), /matches no option at approve_phase/);
+  assert.equal(existsSync(join(root, "work", id, "phases", "1.approved")), false);
+});
+
 test("x <why> rejects with the reason and sends it to the developer verbatim", async (t) => {
   const { root, id } = item(t);
   phaseDone(root, id, 1);
@@ -166,6 +183,32 @@ test("d at a design stall reopens the item and sends the architect the old block
   const result = await applied(root, id, "redesign");
   assert.equal(readState(root, id).status, "open");
   assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: PHASE STALLED: the port moved`]]);
+});
+
+const PLAN_AMEND = "AMENDMENT NEEDED: T-2.7 the criterion names the wrong file";
+
+function planOnlyRejection(t: TestContext) {
+  const made = item(t, { phases: 2 });
+  for (const n of [1, 2]) {
+    setMarker(made.root, made.id, n, "done", new Date());
+    setMarker(made.root, made.id, n, "approved", new Date());
+  }
+  appendVerdict(made.root, made.id, { agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 2, scope: "cumulative", through: null, amend: PLAN_AMEND, plan_only: true }, new Date("2026-10-29T10:00:00.000Z"));
+  return made;
+}
+
+test("a at the amendment gate sends the architect the amend line with the reword grant and records the choice (T-2.3)", async (t) => {
+  const { root, id } = planOnlyRejection(t);
+  const result = await applied(root, id, "a");
+  assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: ${PLAN_AMEND}\nreword: approved by the user at the amendment gate`]]);
+  assert.deepEqual([replyRows(root, id).at(-1).action, replyRows(root, id).at(-1).choice], ["approve_amendment", "amend"]);
+});
+
+test("f at the amendment gate sends the developer to fix the cumulative findings and records the choice", async (t) => {
+  const { root, id } = planOnlyRejection(t);
+  const result = await applied(root, id, "fix");
+  assert.deepEqual(result.send.map((s) => [s.to, s.message.split("\n").slice(0, 2)]), [[`${instanceTag(id)}-developer`, [`work: ${id}`, `review: work/${id}/reviews/cumulative.md`]]]);
+  assert.equal(replyRows(root, id).at(-1).choice, "fix");
 });
 
 test("a reply that matches nothing lists the options; a reply away from a gate names the action", async (t) => {

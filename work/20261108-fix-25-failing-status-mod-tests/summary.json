@@ -1,0 +1,50 @@
+{
+  "work_id": "20261108-fix-25-failing-status-mod-tests",
+  "base": "8583b016a1792c6526b0186be2cde9635a240caa",
+  "request": "work/20261108-fix-25-failing-status-mod-tests/request.md",
+  "size": "small",
+  "changed_files": [
+    "src/mods/status/hooks/index.test.tsx"
+  ],
+  "lines_added": 10,
+  "lines_removed": 4,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 1,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-08T10:02:41.765Z",
+    "base": "8583b016a1792c6526b0186be2cde9635a240caa",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "no candidate",
+    "rebuild": null,
+    "ms": 18001
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    }
+  ]
+}

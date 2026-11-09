@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { NO_LANE, laneOf } from "./lane.mts";
+import { NO_LANE, PENDING, laneOf } from "./lane.mts";
 import { mentionedPaths, signalsOf } from "./signals.mts";
 import { DEFAULT_SECURITY_PATHS } from "../config.mjs";
 import { LANES } from "../work/state.mts";
@@ -38,7 +38,8 @@ test("the labelled set holds at least 100 distinct, complete entries, 20 per lan
 });
 
 function answer(result: { lane: string; skill?: string }): string {
-  return result.lane === NO_LANE ? `${NO_LANE}:${result.skill}` : result.lane;
+  if (result.lane === NO_LANE) return `${NO_LANE}:${result.skill}`;
+  return result.lane === PENDING ? "fast" : result.lane;
 }
 
 test("admit agrees with the labels on at least the minimum share", () => {

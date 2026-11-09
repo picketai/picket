@@ -21,7 +21,7 @@ You lead the order lane from the main session: you open the work item, send the 
 2. Open the item and run its preflight as `steps/open.md` says.
 3. `write_artifact`: send the architect what `picket next <id>` prints and end the turn. Its `ARTIFACT WRITTEN` brings `create_worktrees` when the plan touches a nested repo with no branch named yet, else `implement_phase`.
 4. `implement_phase`: send the developer what `picket next <id>` prints (an `Agent` spawn on phase 1, a `SendMessage` after) and end the turn. Its `PHASE DONE` brings the phase gate.
-5. `create_worktrees`, `approve_phase`, `resolve_block`, `resolve_rejections`: the gate of rule 4. Print `picket packet <id>` verbatim, end the turn, and pass the user's reply to `picket reply <id> "<reply>"`.
+5. `create_worktrees`, `approve_phase`, `resolve_block`, `resolve_rejections`, `approve_amendment`: the gate of rule 4. Print `picket packet <id>` verbatim, end the turn, and pass the user's reply to `picket reply <id> "<reply>"`.
 6. `review_cumulative`, `fix_findings`, `amend`: send what `picket next <id>` prints, running its `first:` lines before the send, and end the turn.
 7. `close`: print one sentence on what shipped, then run `picket close <id> --human` and print its output verbatim under that sentence. When it names `strategic review: <ids>`, offer `picket:consulting` for them. Stop.
 
@@ -50,6 +50,7 @@ The closing block is `picket close <id> --human`, under your one sentence:
 
 ## Order closed: <id>
 Phases: <n> · commits <first>..<last> · review: APPROVED
+Audit: <lane> · phases <n> · tokens <agent> <n>, ... · bounces <n> · blocks <n> · wall <duration>
 Questions: <the cumulative review's open questions, when it asked some>
 Deferred: <id> <owner>, <gate>   (one line per deferred criterion, when the plan marks some)
 Left for you: <one line per command left for the user>

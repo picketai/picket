@@ -14,7 +14,9 @@ test("a plugin install is what picket init writes: the shipped block, config, wo
     for (const path of ["CLAUDE.md", ".picket/config.json", "work"]) assert.ok(existsSync(join(repo, path)), path);
     const block = readFileSync(resolve("src/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
     assert.ok(readFileSync(join(repo, "CLAUDE.md"), "utf8").replace(/\r\n/g, "\n").startsWith(block));
-    const { statusLine, ...settings } = JSON.parse(readFileSync(join(repo, ".claude", "settings.json"), "utf8"));
+    const { statusLine, extraKnownMarketplaces, ...settings } = JSON.parse(readFileSync(join(repo, ".claude", "settings.json"), "utf8"));
+    assert.equal(statusLine, undefined);
+    assert.equal(extraKnownMarketplaces.picketai.source.source, "settings");
     assert.equal("hooks" in settings, false);
     assert.deepEqual(settings, {
       env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },

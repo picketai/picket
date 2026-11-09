@@ -3,9 +3,9 @@ import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { flag, str, type Args } from "../../util/args.mts";
 import { init, initRoot, InitRefused, renderInit } from "./init.mjs";
 
-export type InitInput = { root: string | null; install: boolean };
+export type InitInput = { root: string | null; install: boolean; statusline: boolean };
 export type InitStep = { result: string } & Record<string, unknown>;
-export type InitReport = { steps: InitStep[] } & Record<string, unknown>;
+export type InitReport = { steps: InitStep[]; warnings: string[] } & Record<string, unknown>;
 
 type InitRoot = (options: { root: string | undefined }) => string;
 
@@ -20,17 +20,17 @@ function chosenRoot(root: string | null): string {
   }
 }
 
-export const initProject = action<InitInput, InitReport>(async ({ root, install }, { home }) => {
-  const report = init(chosenRoot(root), { install, home }) as InitReport;
+export const initProject = action<InitInput, InitReport>(async ({ root, install, statusline }, { home, env, platform }) => {
+  const report = init(chosenRoot(root), { install, home, env, platform, statusline }) as InitReport;
   return report.steps.some((step) => step.result === "failed") ? failed(report) : done(report);
 });
 
 function parseInit(args: Args): InitInput {
-  return { root: str(args, "root") ?? null, install: !flag(args, "no-install") };
+  return { root: str(args, "root") ?? null, install: !flag(args, "no-install"), statusline: flag(args, "statusline") };
 }
 
 export const verb: VerbSpec<InitInput, InitReport> = {
-  usage: "init [--root <dir>] [--no-install]",
+  usage: "init [--root <dir>] [--no-install] [--statusline]",
   output: "json",
   parse: parseInit,
   run: initProject,

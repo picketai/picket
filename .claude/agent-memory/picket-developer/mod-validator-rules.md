@@ -10,7 +10,7 @@ Found while splitting the mods in item 07a (2026-10-23, Claude Code 2.1.308). `v
 - `read`/`update` take an atom declared in the same file. Keep atoms in one data module and export `readX`/`updateX` wrappers.
 - `$` never goes into an object, spread or binding. Pass it as its own first argument.
 - Across an import, `$` can only be passed into a `function` declaration. An exported const arrow that takes `$` fails, so `export async function` is needed.
-- A mod's types file (`src/mods/status/types/index.d.ts` and its siblings) has no imports and must itself declare every `PluginState` key the hooks use.
+- The mods' types file (`src/mods/types/index.d.ts`, one for both mods since 2026-11-08) has no imports and must itself declare every `PluginState` key the hooks use.
 - In tests, `$.process.run` called straight from a test body is not mocked. Unit-test helpers with a fake `$` object.
 - `find({ text })` can match an outer Text whose text starts with the string. Assert on its children.
 - Every engine call a hook makes needs an `on(...)` answer of `{ value }`, `command.register` and `ui.close` included.

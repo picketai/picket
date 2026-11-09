@@ -1,6 +1,6 @@
 ---
 name: statusline-contract
-description: Claude Code status line facts verified from the docs page on 2026-10-17 (prompt_cache is documented, resets_at is epoch seconds, Windows shell, blank on nonzero exit) plus the guard verb-set fact a new CLI verb needs
+description: Claude Code status line facts from the docs page (2026-10-17) and the 2.1.319 binary (CLAUDE_PROJECT_DIR set, launch-folder root, PowerShell rewrite, how to slice the binary), plus the guard verb-set fact a new CLI verb needs
 metadata:
   type: reference
 ---
@@ -16,3 +16,5 @@ From https://code.claude.com/docs/en/statusline.md, fetched 2026-10-17 (Claude C
 Repo fact: the guard reads verb classes from `VERB_NAMES` in `src/lib/verbs.mts` through `kernelClass` and `isLeadOnly` in `src/lib/hooks/guard/bash/kernel.mts`; a new verb's `readOnly` flag decides whether the guard allows it, and the verb-class test in `src/lib/hooks/guard/bash/kernel.test.mts` names today's read verbs explicitly.
 
 Related: [[transcript-facts]], [[claude-cli-plugin-facts]]
+
+Read from the 2.1.319 binary on Linux (2026-11-08, item 20261108-session-switch-project-status-line): `executeStatusLineCommand` runs the status line through the command hook runner, so the child gets `CLAUDE_PROJECT_DIR` = the session's `projectRoot`; a new session sets `projectRoot`, `originalCwd` and `cwd` to the launch folder, and project settings load from `<launch folder>/.claude/settings.json` (no walk-up; local settings may resolve to the git root). The working folder is the session's current folder (follows `cd`). Under PowerShell the runner rewrites `${CLAUDE_PROJECT_DIR}` to `${env:CLAUDE_PROJECT_DIR}`; bare `$CLAUDE_PROJECT_DIR` warns. To read the binary: `grep -a -b -o -F <literal>` is fast (regex with `.{300}` takes minutes); the guard denies `dd`, so print a byte range with a small node script using `readSync` at an offset.

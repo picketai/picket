@@ -1,27 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { checkTag, distTag, syncPluginVersion } from "../../.github/scripts/release.mjs";
+import { INSTALL } from "../../src/lib/shared/install.mts";
 import { withProject } from "#test/project.mts";
 
 const SCRIPT = resolve(".github/scripts/release.mjs");
 const MANIFEST = '{\n  "name": "picket",\n  "version": "1.0.0-alpha.1",\n  "author": { "name": "Vlad Apetre" },\n  "skills": ["./skills/a"]\n}\n';
-const BUILT_MOD_MANIFEST = '{\n  "name": "picket-status",\n  "version": "1.0.0-alpha.1",\n  "types": "./types/index.d.ts"\n}\n';
-const BUILT_MOD = "dist/mods/status";
-
-function manifestPath(root, plugin) {
-  return join(root, plugin, ".claude-plugin", "plugin.json");
+function manifestPath(root) {
+  return join(root, "src", ".claude-plugin", "plugin.json");
 }
 
 function project(t, manifest, version) {
   const root = withProject(t, { picket: false });
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "@picketai/picket", version }));
-  for (const [plugin, text] of [["src", manifest], [BUILT_MOD, BUILT_MOD_MANIFEST]]) {
-    mkdirSync(join(root, plugin, ".claude-plugin"), { recursive: true });
-    writeFileSync(manifestPath(root, plugin), text);
-  }
+  mkdirSync(dirname(manifestPath(root)), { recursive: true });
+  writeFileSync(manifestPath(root), manifest);
   return root;
 }
 
@@ -76,9 +72,25 @@ test("the release workflow tests on Node 24, checks the build on Node 22, tests 
   assert.match(jobs.mods, /run: npm ci\n[\s\S]*run: npm install -g @anthropic-ai\/claude-code\n[\s\S]*run: node scripts\/test\.mjs build mods\n/);
   assert.match(jobs.publish, /needs: \[test, build-on-22, mods\]\n/);
   assert.doesNotMatch(jobs.publish, /npm test/);
+  assert.match(jobs.publish, /run: npm ci\n/);
   const uses = Object.values(jobs).join("").match(/uses: \S+/g);
   assert.ok(uses.length >= 9, uses.join(", "));
   assert.deepEqual(uses.filter((line) => !/@[0-9a-f]{40}$/.test(line)), []);
+});
+
+test("both publish steps publish ./dist under the chosen dist-tag, and only ./dist (T-5.5)", () => {
+  const { publish } = workflowJobs();
+  const runs = publish.match(/run: npm publish.*\n/g);
+  assert.deepEqual(runs, ['run: npm publish ./dist --access public --tag "$DIST_TAG"\n', 'run: npm publish ./dist --dry-run --access public --tag "$DIST_TAG"\n']);
+});
+
+test("init's settings marketplace names this package and the dist-tag its version publishes under (T-6.1)", () => {
+  const pkg = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
+  const [plugin] = INSTALL.marketplace.source.plugins;
+  assert.equal(INSTALL.marketplace.source.source, "settings");
+  assert.equal(INSTALL.marketplace.source.name, "picketai");
+  assert.deepEqual(plugin.source, { source: "npm", package: pkg.name, version: distTag(pkg.version) });
+  assert.equal(plugin.source.package, "@picketai/picket");
 });
 
 test("checkTag accepts only the v-prefixed package version", () => {
@@ -87,13 +99,12 @@ test("checkTag accepts only the v-prefixed package version", () => {
   assert.throws(() => checkTag("v1.0.0-alpha.9", "1.0.0-alpha.1"), /v1\.0\.0-alpha\.9 does not match package\.json version 1\.0\.0-alpha\.1/);
 });
 
-test("sync-version rewrites only the core manifest from package.json, never a built mod manifest, and fails in one stderr line", (t) => {
+test("sync-version rewrites the core manifest from package.json, and fails in one stderr line", (t) => {
   const ok = project(t, MANIFEST, "9.9.9");
   const twice = project(t, '{ "version": "1", "nested": { "version": "2" } }', "1.0.0-alpha.2");
   const r = syncVersionCli(ok);
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(readFileSync(manifestPath(ok, "src"), "utf8"), MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
-  assert.equal(readFileSync(manifestPath(ok, BUILT_MOD), "utf8"), BUILT_MOD_MANIFEST);
+  assert.equal(readFileSync(manifestPath(ok), "utf8"), MANIFEST.replace("1.0.0-alpha.1", "9.9.9"));
   const bad = syncVersionCli(twice);
   assert.equal(bad.status, 1);
   assert.equal(bad.stderr.trim().split("\n").length, 1, bad.stderr);

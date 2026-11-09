@@ -10,6 +10,7 @@ const FIXTURE = resolve("bench", "fixture");
 const NEW_TASKS = ["fast-15-skip-under-pressure", "none-16-max-page-size", "order-17-legacy-id", "fast-18-router-refactor"];
 
 const load = (id) => JSON.parse(readFileSync(join(TASKS, `${id}.json`), "utf8"));
+const finalLane = (lane) => (lane === "pending" ? "fast" : lane);
 
 test("every task file names its id, lane, budget, stops and checks, and its id leads with its lane", () => {
   for (const file of readdirSync(TASKS).filter((f) => f.endsWith(".json"))) {
@@ -23,7 +24,7 @@ test("every task file names its id, lane, budget, stops and checks, and its id l
 test("every task's lane is the one admit picks for its prompt, except none", () => {
   const ids = readdirSync(TASKS).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
   assert.ok(ids.length >= 18, `${ids.length} tasks`);
-  const misses = ids.map(load).filter((task) => task.lane !== "none").map((task) => ({ task, got: admit(FIXTURE, task.prompt).lane })).filter(({ task, got }) => got !== task.lane);
+  const misses = ids.map(load).filter((task) => task.lane !== "none").map((task) => ({ task, got: finalLane(admit(FIXTURE, task.prompt).lane) })).filter(({ task, got }) => got !== task.lane);
   assert.deepEqual(misses.map(({ task, got }) => `${task.id}: labelled ${task.lane}, admit ${got}`), []);
   assert.equal(admit(FIXTURE, "Put the parsing in its own module under src/http/").lane, "order", "placing code in its own module is new surface");
 });

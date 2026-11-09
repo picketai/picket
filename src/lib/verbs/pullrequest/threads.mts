@@ -1,25 +1,12 @@
-export type Severity = "Critical" | "Major" | "Minor" | "Nit";
-export type Finding = { severity: Severity; path: string; line: number | null; end_line: number | null; text: string };
+import { parseFindings, type Finding } from "../../shared/findings.mts";
+
+export { parseFindings, type Finding, type Severity } from "../../shared/findings.mts";
 export type ThreadContext = { filePath: string; rightFileStart: { line: number; offset: number }; rightFileEnd: { line: number; offset: number } };
 export type Thread = { comments: { parentCommentId: number; content: string; commentType: number }[]; status: number; threadContext?: ThreadContext };
 
-const FINDING = /^- \[(Critical|Major|Minor|Nit)\]\s+`?([^\s:\u2014`]+)`?(?::(\d+)(?:-(\d+))?)?(?::\s+|\s+\u2014\s+)(.*)$/;
 const ACTIVE = 1;
 const FIXED = 2;
 const TEXT_COMMENT = 1;
-
-function lineNumber(text: string | undefined): number | null {
-  return text ? Number(text) : null;
-}
-
-export function parseFindings(text: string): Finding[] {
-  const out: Finding[] = [];
-  for (const line of String(text).split(/\r?\n/)) {
-    const m = line.match(FINDING);
-    if (m) out.push({ severity: m[1] as Severity, path: m[2], line: lineNumber(m[3]), end_line: lineNumber(m[4]) ?? lineNumber(m[3]), text: m[5].trim() });
-  }
-  return out;
-}
 
 function comment(content: string): Thread["comments"][number] {
   return { parentCommentId: 0, content, commentType: TEXT_COMMENT };

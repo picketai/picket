@@ -2,8 +2,10 @@ import { ticketKey, touchedRepos } from "../checkouts.mts";
 import { documentRel, documentSlug } from "../document-path.mts";
 import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
-import { freshReplies } from "./replies.mts";
+import { freshReplies, type AmendmentChoice } from "./replies.mts";
+import { reviewRel } from "./reviews.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
+import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "./stall.mts";
 import { ARTIFACT_BY_LANE, type Lane } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
 
@@ -13,7 +15,7 @@ export type FindingsReview = "checkpoint" | "cumulative";
 
 export type NextStep =
   | { action: "none"; actor: null; detail: string }
-  | { action: "resolve_block" | "resolve_rejections"; actor: "user"; detail: string; options: string[] }
+  | { action: "resolve_block" | "resolve_rejections" | "approve_amendment"; actor: "user"; detail: string; options: string[] }
   | { action: "resolve_sources"; actor: "user"; detail: string; options: string[] }
   | { action: "write_artifact"; actor: "architect" | "analyst"; detail: string }
   | { action: "implement_phase"; actor: "developer"; phase: number; detail: string }
@@ -21,14 +23,13 @@ export type NextStep =
   | { action: "review_checkpoint" | "review_cumulative"; actor: "reviewer"; phase: number; detail: string }
   | { action: "close"; actor: "lead"; detail: string }
   | { action: "fix_findings"; actor: "developer"; phase: number; review: FindingsReview; detail: string }
-  | { action: "amend"; actor: "architect"; detail: string }
+  | { action: "amend"; actor: "architect"; detail: string; reword?: true }
   | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
   | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] };
 
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
 const MIDPOINT_MIN_PHASES = 6;
-const STALL_REPEATS = 3;
 const ISO_DAY = "YYYY-MM-DD".length;
 const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
@@ -65,9 +66,14 @@ function lastIndexWhere(verdicts: readonly VerdictRow[], matches: (row: VerdictR
   return -1;
 }
 
-function pendingAmend({ verdicts }: WorkSnapshot): string | null {
+function declinedAmendment({ replies }: WorkSnapshot, row: VerdictRow): boolean {
+  return row.plan_only === true && replies.some((r) => r.action === "approve_amendment" && r.choice === "fix" && isAfter(r, row));
+}
+
+function pendingAmend(snap: WorkSnapshot): string | null {
+  const { verdicts } = snap;
   const at = lastIndexWhere(verdicts, (v) => Boolean(v.amend));
-  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED")) return null;
+  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED") || declinedAmendment(snap, verdicts[at])) return null;
   return verdicts[at].amend ?? null;
 }
 
@@ -100,24 +106,62 @@ function findingsStep(snap: WorkSnapshot): NextStep | null {
   return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "cumulative", detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" };
 }
 
+function cumulativeReviewStep(snap: WorkSnapshot, detail: string): NextStep {
+  return { action: "review_cumulative", actor: "reviewer", phase: snap.phases.length, detail };
+}
+
+function isAfter(later: { ts: string }, earlier: { ts: string }): boolean {
+  return Date.parse(later.ts) > Date.parse(earlier.ts);
+}
+
+function amendmentGate(snap: WorkSnapshot, amend: string): NextStep {
+  const { id, lane } = snap.state;
+  const detail = `the cumulative review found only plan wording: ${amend}; review: ${reviewRel(id, "cumulative", null)}`;
+  return { action: "approve_amendment", actor: "user", detail, options: [`[a] amend ${ARTIFACT_BY_LANE[lane]}, approved phases included`, "[f] fix the code instead"] };
+}
+
+function answeredAmendment(snap: WorkSnapshot, choice: AmendmentChoice, amend: string, after: readonly VerdictRow[]): NextStep {
+  if (choice === "amend") {
+    if (after.some((v) => v.verdict === "AMENDED")) return cumulativeReviewStep(snap, "the plan wording was amended; the cumulative review runs again");
+    return { action: "amend", actor: "architect", detail: amend, reword: true };
+  }
+  if (after.some((v) => v.verdict === "PHASE DONE")) return cumulativeReviewStep(snap, "the code was fixed instead of the plan; the cumulative review runs again");
+  return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "cumulative", detail: "the user chose to fix the code instead of the plan wording; fix the cumulative review's findings" };
+}
+
+function planAmendStep(snap: WorkSnapshot): NextStep | null {
+  const at = lastIndexWhere(snap.verdicts, (v) => v.agent === "reviewer" && v.scope === "cumulative");
+  const review = snap.verdicts[at];
+  if (review?.plan_only !== true || !review.amend) return null;
+  const answer = snap.replies.filter((r) => r.action === "approve_amendment" && r.choice !== undefined && isAfter(r, review)).at(-1);
+  if (!answer?.choice) return amendmentGate(snap, review.amend);
+  const after = snap.verdicts.slice(at + 1).filter((v) => isAfter(v, answer));
+  return answeredAmendment(snap, answer.choice, review.amend, after);
+}
+
 function allApprovedStep(snap: WorkSnapshot): NextStep {
   if (isCumulativelyReviewed(snap)) return { action: "close", actor: "lead", detail: "cumulative review passed; close and print the closing block" };
-  return rejectionsStep(snap) ?? amendStep(snap) ?? findingsStep(snap) ?? { action: "review_cumulative", actor: "reviewer", phase: snap.phases.length, detail: "all phases approved; one cumulative review remains" };
+  return rejectionsStep(snap) ?? planAmendStep(snap) ?? amendStep(snap) ?? findingsStep(snap) ?? cumulativeReviewStep(snap, "all phases approved; one cumulative review remains");
 }
 
-function countOf(verdicts: readonly VerdictRow[], verdict: string): number {
-  return verdicts.filter((v) => v.verdict === verdict).length;
+function isRepeatStall(verdicts: readonly VerdictRow[]): boolean {
+  const drifts = verdicts.filter((v) => v.verdict === "DRIFT DETECTED").length;
+  return drifts >= STALL_REPEATS || amendmentsAnsweringBlocks(verdicts).length >= STALL_REPEATS;
 }
 
-function isStalled(snap: WorkSnapshot): boolean {
-  if (!PHASED.includes(snap.state.lane)) return false;
-  const { verdicts } = snap;
-  return verdicts.at(-1)?.verdict === "PHASE STALLED" || countOf(verdicts, "DRIFT DETECTED") >= STALL_REPEATS || countOf(verdicts, "AMENDED") >= STALL_REPEATS;
+function isStalled({ verdicts }: WorkSnapshot): boolean {
+  return newestBlockRow(verdicts)?.verdict === "PHASE STALLED" || isRepeatStall(verdicts);
+}
+
+function resolveBlockStep(snap: WorkSnapshot, phased: boolean): NextStep {
+  const options = phased && isStalled(snap) ? STALL_OPTIONS : BLOCK_OPTIONS;
+  return { action: "resolve_block", actor: "user", detail: snap.state.blocked_reason ?? "", options };
 }
 
 function blockStep(snap: WorkSnapshot): NextStep {
-  const amend = PHASED.includes(snap.state.lane) && !isStalled(snap) ? amendStep(snap) : null;
-  return amend ?? { action: "resolve_block", actor: "user", detail: snap.state.blocked_reason ?? "", options: isStalled(snap) ? STALL_OPTIONS : BLOCK_OPTIONS };
+  const phased = PHASED.includes(snap.state.lane);
+  const answer = phased && !isRepeatStall(snap.verdicts) ? (amendStep(snap) ?? recheckStep(snap)) : null;
+  return answer ?? resolveBlockStep(snap, phased);
 }
 
 function isMidpoint(snap: WorkSnapshot, current: PhaseStatus): boolean {

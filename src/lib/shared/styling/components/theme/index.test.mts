@@ -168,7 +168,7 @@ test("revert after a user edit removes only theme, and theme plus status line re
     assert.deepEqual(Object.values(results(report)), ["applied", "applied", "applied"]);
     const settings = json(host, SETTINGS);
     assert.equal(settings.theme, "custom:picketai");
-    assert.equal(settings.statusLine.command, "picket statusline");
+    assert.equal(settings.statusLine.command, 'node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"');
     await revert(host);
     assert.equal(bytes(host, SETTINGS).toString("utf8"), original);
     assert.equal(bytes(host, GLOBAL).toString("utf8"), global);

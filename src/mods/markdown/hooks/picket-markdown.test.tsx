@@ -66,7 +66,7 @@ test('clicking a report path in a reply opens it in the pane, and its links navi
   })
 
   const reply = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AssistantMessage',
     props: { text: 'The report is at artifacts/reports/latency.md.', isFirstOfReply: true },
@@ -76,7 +76,7 @@ test('clicking a report path in a reply opens it in the pane, and its links navi
   await reply.press({ key: 'reply', link: { href: toHref(REPORT) } })
 
   const pane = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'picket-markdown',
@@ -183,7 +183,7 @@ test('a reply with no existing markdown path is left to the engine', async ($, o
   })
   on('fs.stat', () => ({ deny: 'ENOENT' }))
   const reply = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AssistantMessage',
     props: { text: 'Nothing at missing.md.', isFirstOfReply: true },
@@ -219,7 +219,7 @@ test('outline jumps to a heading and the divider shows the position', async ($, 
   on('fs.read', ($, e) => (modelled(e.path) === GUIDE ? { value: GUIDE_TEXT } : { deny: 'ENOENT' }))
 
   const reply = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AssistantMessage',
     props: { text: 'See guide.md for the steps.', isFirstOfReply: true },
@@ -227,7 +227,7 @@ test('outline jumps to a heading and the divider shows the position', async ($, 
   await reply.press({ key: 'reply', link: { href: toHref(GUIDE) } })
 
   const pane = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'picket-markdown',
@@ -328,7 +328,7 @@ test('work status, back, ask about a section, open in editor and wide table scro
   })
 
   const reply = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AssistantMessage',
     props: { text: 'The order is work/w1/order.md.', isFirstOfReply: true },
@@ -336,7 +336,7 @@ test('work status, back, ask about a section, open in editor and wide table scro
   await reply.press({ key: 'reply', link: { href: toHref(W_ORDER) } })
 
   const pane = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'picket-markdown',
@@ -391,15 +391,16 @@ test('a picket state that fails is asked again on the next poll, with no file ch
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   on('fs.list', () => ({ value: [] }))
-  on('process.run', () => {
-    const exitCode = answers.shift() ?? 0
+  on('store.get', () => ({ value: undefined }))
+  on('process.run', ($, e) => {
+    const exitCode = e.argv.includes('state') ? (answers.shift() ?? 0) : 1
     return { value: { exitCode, stdout: JSON.stringify(W1_STATE), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
 
   await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
   await $.command.run({ command: 'picket-markdown', args: 'work/w1/order.md' })
   const pane = await $.ui.mount({
-    plugin: 'picket-markdown',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'picket-markdown',

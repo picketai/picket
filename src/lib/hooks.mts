@@ -17,6 +17,10 @@ export const HOOKS = {
     summary: "each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension",
     on: [{ event: "SessionStart" }, { event: "SubagentStart" }],
   },
+  "emit.statusline": {
+    summary: "copies the plugin's self-contained `statusline.mjs` into the project's `.picket/state/` when the project holds a Picket config, and into `CLAUDE_PLUGIN_DATA`, each when its copy is missing or differs, so each `statusLine` command keeps one path across plugin updates",
+    on: [{ event: "SessionStart" }],
+  },
   "inject.consulting": {
     summary: "one line suggesting `picket:consulting` when a user prompt reads as a direction or stress-test question; silent on gate replies, short prompts and prompts naming a `picket:` skill",
     on: [{ event: "UserPromptSubmit" }],

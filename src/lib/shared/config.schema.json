@@ -85,6 +85,16 @@
       },
       "additionalProperties": false,
       "default": {}
+    },
+    "mods": {
+      "description": "Off switches for the mods that have one, read from the next session. Set session to false to turn off the status mod's work pane, or markdown to false to turn off the Markdown pane; absent or true keeps it.",
+      "type": "object",
+      "properties": {
+        "session": { "type": "boolean" },
+        "markdown": { "type": "boolean" }
+      },
+      "additionalProperties": false,
+      "default": {}
     }
   },
   "additionalProperties": false

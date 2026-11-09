@@ -1,0 +1,1 @@
+Fix the mutate HEAD fallback too: src/lib/verbs/mutate/index.mts:68 falls back to HEAD when an item has no recorded base; find the base from the item's own commits as picket summary does, or report that none was found.

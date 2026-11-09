@@ -1,10 +1,10 @@
 # Picket
 
-Picket is a software-development workflow for Claude Code: four lanes, four agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag (`npm install -g @picketai/picket@alpha`).
+Picket is a software-development workflow for Claude Code: four lanes, four agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag. Set up a project from its root with `npx @picketai/picket@alpha init`; nothing is installed globally.
 
 To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md). The reference pages in `docs/reference/` cover [the agents](docs/reference/agents.md), [the skills](docs/reference/skills.md), [the commands](docs/reference/cli.md), [the hooks](docs/reference/hooks.md) and [the mods](docs/reference/mods.md). What changed in each release is in the [changelog](CHANGELOG.md).
 
-Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it ships to `dist/`. In this repository, start every session with `npm run claude`: it builds, then runs `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH`, so `picket` is the checkout's kernel, not the installed one.
+Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it ships to `dist/`. In this repository, start every session with `npm run claude`: it builds, then runs `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH`, so `picket` is the checkout's kernel, not the plugin's.
 
 Code decides what code can decide. Lane admission, the next action, phase verification, verdict routing and cost all come from `picket <verb>`; the model fills in what remains. State is the filesystem: one directory per work item under `work/<id>/`, read fresh on every call, never remembered.
 
@@ -26,20 +26,21 @@ src/                       the hand-written source of the picket plugin
   agents/                  picket:analyst, architect, developer, reviewer
   bin/                     the picket command
   lib/                     the kernel: verbs, hooks and the code they share
-  mods/                    picket-status, picket-markdown and the retired picket-session stub
+  mods/                    the status and Markdown mods and index.tsx, the one hooks module that composes them
   output-styles/           picket:custom, the response rules
   rules/                   the rules injected into the lead and every agent
   skills/                  the lane skills and the command skills
   templates/               the CLAUDE.md block picket init writes
   themes/                  the PicketAI Claude Code theme
 dist/                      written by npm run build and ignored by git: the same folders as src/ built, plus
-                           hooks/ (one bundled file per hook) and mods/ (one plugin per mod)
+                           hooks/ (one bundled file per hook, and mods/ with the built mods inside the
+                           plugin), statusline.mjs and package.json, the npm package that is published
 scripts/                   the build, the watcher, the test runner and the reference page generator
 docs/                      the how-to and the reference pages
 test/                      tests of the built product and of the repository; unit tests sit beside src/ code
 bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)
 .claude/                   this repository's own Claude Code settings and rules, never installed
-.claude-plugin/            the root marketplace picketai: picket and the three mods from dist/
+.claude-plugin/            the root marketplace picketai, for developing Picket: only picket, from dist/
 .github/                   CI and the release workflow
 .picket/config.json        project settings: security paths, sources, lane caps, commands
 artifacts/                 decision records and reports

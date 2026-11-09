@@ -119,6 +119,10 @@ const WORKTREE_DIR = ".worktrees";
 const DELETE_ROOTS = new Set(["rm", "rmdir", "Remove-Item", "ri"]);
 const GIT_GLOBALS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"]);
 const GIT_OUTPUT_FLAG = /^--output(=|$)/;
+const GIT_CONFIG_READ_FLAGS = new Set(["--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"]);
+const GIT_CONFIG_WRITE_FLAGS = new Set(["--unset", "--unset-all", "--add", "--replace-all", "--rename-section", "--remove-section", "--edit", "-e"]);
+const GIT_CONFIG_READ_WORDS = new Set(["get", "list"]);
+const GIT_CONFIG_WRITE_WORDS = new Set(["set", "unset", "rename-section", "remove-section", "edit"]);
 const SED_QUIET_FLAGS = ["-n", "--quiet", "--silent"];
 const SED_ADDRESS = String.raw`(\d+|\$|\/[^/]*\/)`;
 const SED_PRINT = new RegExp(`^(${SED_ADDRESS}(,${SED_ADDRESS})?)?[p=]$`);
@@ -190,9 +194,11 @@ function checkGitBranch(tokens: Token[]): Classification {
 }
 
 function checkGitConfig(tokens: Token[]): Classification {
-  const hasWriteFlag = tokens.some((t) => t === "--global" || t === "--unset" || t === "--add");
-  const looksReadOnly = tokens.some((t) => t === "--get" || t === "--list");
-  return looksReadOnly && !hasWriteFlag ? "safe" : "deny";
+  const [, , first] = tokens;
+  const flags = strings(tokens.slice(2));
+  const reads = flags.some((t) => GIT_CONFIG_READ_FLAGS.has(t)) || (typeof first === "string" && GIT_CONFIG_READ_WORDS.has(first));
+  const writes = flags.some((t) => GIT_CONFIG_WRITE_FLAGS.has(t)) || (typeof first === "string" && GIT_CONFIG_WRITE_WORDS.has(first));
+  return reads && !writes ? "safe" : "deny";
 }
 
 function checkGit(rawTokens: Segment): Classification {

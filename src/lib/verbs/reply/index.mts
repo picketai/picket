@@ -10,7 +10,7 @@ import { blockField, COMMENT_SEPARATOR, commentProposal, parseBlock, proposals, 
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { nextStep, type NextStep } from "../../shared/work/next-step.mts";
 import { readNext, type NextView } from "../../shared/work/next-view.mts";
-import { appendReply } from "../../shared/work/replies.mts";
+import { appendReply, type AmendmentChoice } from "../../shared/work/replies.mts";
 import { messageTo, renderNextStep } from "../../shared/work/send.mts";
 import { readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 import { isSessionId, writeState, type Status, type WorkState } from "../../shared/work/state.mts";
@@ -20,7 +20,7 @@ import { GATE_ACTIONS, matchReply, PUBLISH_REPLY, type Matched, type Proposals }
 export type ReplyInput = { id: WorkId; reply: string };
 export type ReplyResult = { id: WorkId; reply: string; applied: string[]; next: NextView; send: SendView[] };
 
-type Effect = { applied: string[]; send: SendView | null; fresh: boolean };
+type Effect = { applied: string[]; send: SendView | null; fresh: boolean; choice?: AmendmentChoice };
 type Gate = { snap: WorkSnapshot; step: NextStep; phase: number | null; session: string | null; ctx: Context };
 
 const FRESH_DEVELOPER = "[c] continue with a fresh developer";
@@ -99,6 +99,10 @@ function applyMatched(gate: Gate, matched: Matched, found: Proposals): Effect {
     case "no_worktrees":
       recordNone(gate.ctx.root, gate.snap.state.id);
       return effect(["worktrees: none, the item works in the main checkouts"]);
+    case "amend_record":
+      return { ...effect(["plan amendment approved: the architect rewords the record, approved phases included"]), choice: "amend" };
+    case "fix_code":
+      return { ...effect(["plan amendment declined: the developer fixes the code"]), choice: "fix" };
   }
 }
 
@@ -131,7 +135,7 @@ export const applyReply = action<ReplyInput, ReplyResult>(async ({ id, reply }, 
   if (!matched) return unmatched(reply, step, snap.state);
   const session = isSessionId(ctx.session) ? ctx.session : null;
   const result = applyMatched({ snap, step, phase, session, ctx }, matched, found);
-  appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}) }, ctx.now());
+  appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}), ...(result.choice ? { choice: result.choice } : {}) }, ctx.now());
   const next = readNext(ctx.root, id, session);
   return done({ id, reply: reply.trim(), applied: result.applied, next, send: result.send ? [result.send] : next.send });
 });

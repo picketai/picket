@@ -36,12 +36,19 @@ test("a blocked item asks the user to continue or abandon", () => {
   assert.deepEqual(step({ status: "blocked", blocked_reason: "PHASE STALLED on phase 1" }), { action: "resolve_block", actor: "user", detail: "PHASE STALLED on phase 1", options: BLOCK_OPTIONS });
 });
 
-test("a blocked order or design item whose last row is PHASE STALLED, or that drifted or was amended three times, gets the stall options", () => {
+test("a blocked order or design item whose newest block row is PHASE STALLED, or that drifted or answered a block three times, gets the stall options", () => {
   for (const lane of ["order", "design"] as const) {
     assert.deepEqual(step({ lane, status: "blocked", verdicts: [row("PHASE DONE"), row("PHASE STALLED")] }).options, STALL_OPTIONS);
+    assert.deepEqual(step({ lane, status: "blocked", verdicts: [row("PHASE STALLED"), row("ALIGNED", "crosscheck")] }).options, STALL_OPTIONS);
     assert.deepEqual(step({ lane, status: "blocked", verdicts: times(3, "DRIFT DETECTED") }).options, STALL_OPTIONS);
-    assert.deepEqual(step({ lane, status: "blocked", verdicts: [...times(3, "AMENDED"), row("PHASE DONE")] }).options, STALL_OPTIONS);
+    assert.deepEqual(step({ lane, status: "blocked", verdicts: [row("DRIFT DETECTED"), ...times(3, "AMENDED"), row("PHASE DONE")] }).options, STALL_OPTIONS);
   }
+});
+
+test("amendments made before any block do not count toward the stall", () => {
+  const next = step({ lane: "order", status: "blocked", verdicts: [...times(3, "AMENDED"), row("DRIFT DETECTED")] });
+  assert.equal(next.action, "resolve_block");
+  assert.deepEqual(next.options, BLOCK_OPTIONS);
 });
 
 test("one drift, or a blocked fast or research item, gets only continue or abandon", () => {
@@ -79,9 +86,9 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with fix_findings, amend, review_crosscheck and create_worktrees, fourteen in all (T-6.6)", () => {
-  assert.equal(NEXT_ACTIONS.length, 14);
-  assert.deepEqual(NEXT_ACTIONS.slice(-4), ["fix_findings", "amend", "review_crosscheck", "create_worktrees"]);
+test("the actions end with fix_findings, amend, review_crosscheck, create_worktrees and approve_amendment, fifteen in all (T-6.6)", () => {
+  assert.equal(NEXT_ACTIONS.length, 15);
+  assert.deepEqual(NEXT_ACTIONS.slice(-5), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment"]);
 });
 
 const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };
@@ -135,12 +142,38 @@ test("a pending amendment goes to the architect, open or blocked after one drift
   assert.deepEqual(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative")] }), amend);
 });
 
-test("after AMENDED, an open cumulative rejection is fixed and a block goes back to the user", () => {
+test("after AMENDED, an open cumulative rejection is fixed and a drift-blocked design item is cross-checked again", () => {
   const amended = { ...row("AMENDED"), agent: "architect" };
   const approved = numbered(2, { done: true, approved: true });
   assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative"), amended] }).action, "fix_findings");
   const blocked = step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck"), amended] });
-  assert.equal(blocked.action, "resolve_block");
+  assert.equal(blocked.action, "review_crosscheck");
+});
+
+const PLUGIN_DRIFT_LINE = "AMENDMENT NEEDED: D-003 contradicts SDR-00002 D-003 (ratified).";
+const PLUGIN_RECORD = ["## Decisions", "", "### D-001 (r2): One", "### D-003 (r2): Three", "", "## Revision log", "", "- 2026-11-07: D-001 (r2): before the cross-check", "- 2026-11-07: D-003 (r2): answers the drift", ""].join("\n");
+const PLUGIN_ROWS = [
+  { ts: "2026-11-07T22:15:58.504Z", agent: "architect", verdict: "ARTIFACT WRITTEN", phase: 1, scope: null },
+  { ts: "2026-11-07T22:19:01.858Z", agent: "architect", verdict: "AMENDED", phase: 1, scope: null },
+  { ts: "2026-11-07T22:19:29.409Z", agent: "architect", verdict: "AMENDED", phase: 1, scope: null },
+  { ts: "2026-11-07T22:20:04.927Z", agent: "reviewer", verdict: "DRIFT DETECTED", phase: 1, scope: "crosscheck", amend: PLUGIN_DRIFT_LINE },
+  { ts: "2026-11-07T22:20:48.523Z", agent: "developer", verdict: "PHASE STALLED", phase: 1, scope: null },
+  { ts: "2026-11-07T22:21:41.563Z", agent: "architect", verdict: "AMENDED", phase: 1, scope: null },
+  { ts: "2026-11-07T22:22:13.624Z", agent: "reviewer", verdict: "ALIGNED", phase: 1, scope: "crosscheck" },
+];
+
+function pluginReplay(rowCount: number): SnapshotInput {
+  const artifact = { path: "/probe/work/20261023-probe/design.md", expected: "design.md" as const, body: PLUGIN_RECORD };
+  return { lane: "design", status: "blocked", blocked_reason: PLUGIN_DRIFT_LINE, phases: numbered(4), artifact, verdicts: PLUGIN_ROWS.slice(0, rowCount) };
+}
+
+test("the plugin-only replay serves the drift's amendment before the developer's stall (T-1.1)", () => {
+  assert.deepEqual(step(pluginReplay(5)), { action: "amend", actor: "architect", detail: PLUGIN_DRIFT_LINE });
+});
+
+test("the plugin-only replay re-checks after the amendment, then offers the stall options once aligned (T-1.2)", () => {
+  assert.deepEqual(step(pluginReplay(6)), { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta: ["D-001", "D-003"] });
+  assert.deepEqual(step(pluginReplay(7)), { action: "resolve_block", actor: "user", detail: PLUGIN_DRIFT_LINE, options: STALL_OPTIONS });
 });
 
 const AMENDED_RECORD = ["## Decisions", "", "### D-001 (r2): One", "### D-003 (r2): Three", "", "## Revision log", "", "- 2026-10-28: D-001 (r2): earlier", "- 2026-10-29: D-003 (r2): after the drift", ""].join("\n");
@@ -321,4 +354,53 @@ test("nextView prints today's keys in order and adds warnings only when the snap
   assert.deepEqual(view, { id: "20261023-probe", lane: "order", status: "open", phase: 1, options: [], own_gate: null, action: "implement_phase", actor: "developer", detail: "phase 1 of 1: Phase 1", send });
   const warned = snapshotOf({ phases: [{ n: 1 }], warnings: ["verdicts.jsonl: 1 unreadable line skipped"] });
   assert.deepEqual(nextView(warned, nextStep(warned, SECURITY_PATHS)).warnings, ["verdicts.jsonl: 1 unreadable line skipped"]);
+});
+
+const PLAN_AMEND = "AMENDMENT NEEDED: T-2.7 the criterion names the wrong file";
+const PLAN_ONLY = { ts: "2026-10-23T10:00:00.000Z", agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 2, scope: "cumulative", through: null, amend: PLAN_AMEND, plan_only: true as const };
+const APPROVED_PHASES = numbered(2, { done: true, approved: true });
+
+function gateReply(reply: "a" | "f") {
+  return { ts: "2026-10-23T11:00:00.000Z", action: "approve_amendment", phase: null, reply, choice: reply === "a" ? "amend" : "fix" } as const;
+}
+
+function laterRow(agent: string, verdict: string) {
+  return { ts: "2026-10-23T12:00:00.000Z", agent, verdict, phase: 2, scope: null, through: null };
+}
+
+test("a plan-only cumulative rejection with no reply stops at approve_amendment, naming the amend line and the saved review (T-2.2)", () => {
+  assert.deepEqual(step({ phases: APPROVED_PHASES, verdicts: [row("approved"), PLAN_ONLY] }), {
+    action: "approve_amendment",
+    actor: "user",
+    detail: `the cumulative review found only plan wording: ${PLAN_AMEND}; review: work/20261023-probe/reviews/cumulative.md`,
+    options: ["[a] amend order.md, approved phases included", "[f] fix the code instead"],
+  });
+  assert.equal(step({ lane: "design", phases: APPROVED_PHASES, verdicts: [PLAN_ONLY] }).options[0], "[a] amend design.md, approved phases included");
+});
+
+test("after a, the architect amends with a reword grant until AMENDED, then the cumulative review runs with only the summary first (T-2.4)", () => {
+  const replied = { phases: APPROVED_PHASES, replies: [gateReply("a")] };
+  assert.deepEqual(step({ ...replied, verdicts: [PLAN_ONLY] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+  const amended = snapshotOf({ ...replied, verdicts: [PLAN_ONLY, laterRow("architect", "AMENDED")] });
+  const next = nextStep(amended, SECURITY_PATHS);
+  assert.deepEqual([next.action, next.actor], ["review_cumulative", "reviewer"]);
+  assert.deepEqual(nextView(amended, next, null).send.map((s) => s.first), [["picket summary 20261023-probe --save"]]);
+});
+
+test("after f, the developer fixes the findings until PHASE DONE, then the cumulative review runs, never an amend (T-2.5)", () => {
+  const replied = { phases: APPROVED_PHASES, replies: [gateReply("f")] };
+  const fixing = step({ ...replied, verdicts: [PLAN_ONLY] });
+  assert.deepEqual([fixing.action, fixing.actor, fixing.review], ["fix_findings", "developer", "cumulative"]);
+  assert.equal(step({ ...replied, verdicts: [PLAN_ONLY, laterRow("developer", "PHASE DONE")] }).action, "review_cumulative");
+});
+
+test("after f and a PHASE DONE, a plain cumulative rejection goes to the developer, never to the declined amendment (T-2.5)", () => {
+  const plain = { ...laterRow("reviewer", "CHANGES REQUIRED"), ts: "2026-10-23T13:00:00.000Z", scope: "cumulative" };
+  const next = step({ phases: APPROVED_PHASES, replies: [gateReply("f")], verdicts: [PLAN_ONLY, laterRow("developer", "PHASE DONE"), plain] });
+  assert.deepEqual([next.action, next.actor, next.review], ["fix_findings", "developer", "cumulative"]);
+});
+
+test("a gate reply older than the plan-only rejection does not answer it", () => {
+  const older = { ...gateReply("a"), ts: "2026-10-23T09:00:00.000Z" };
+  assert.equal(step({ phases: APPROVED_PHASES, verdicts: [PLAN_ONLY], replies: [older] }).action, "approve_amendment");
 });

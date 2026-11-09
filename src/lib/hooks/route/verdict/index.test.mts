@@ -304,6 +304,33 @@ test("a new turn re-emitting the saved phase block routes nothing; a changed hea
   assert.equal(verdictRows(root, id).length, rows + 1);
 });
 
+test("the identical phase block in a new turn after a reviewer CHANGES REQUIRED routes a second PHASE DONE (T-1.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  routeReview(root, id, reviewBlock(id, "phase 1", "One finding.", "CHANGES REQUIRED"));
+  assert.match(routePhaseDone(root, id, 1, false).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["CHANGES REQUIRED", 1], ["PHASE DONE", 1]]);
+});
+
+test("the identical phase block in a new turn after a user rejection routes a second PHASE DONE (T-1.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  route({ id: workId(id), verdict: "rejected", agent: "user", phase: 1, reason: "rename the field", session: "s1" }, hookContext(root));
+  assert.match(routePhaseDone(root, id, 1, false).hookSpecificOutput.additionalContext, /PHASE DONE applied/);
+  assert.deepEqual(verdictRows(root, id).map((r) => [r.verdict, r.phase]), [["PHASE DONE", 1], ["rejected", 1], ["PHASE DONE", 1]]);
+});
+
+test("a reviewer APPROVED after the phase block leaves an identical block in a new turn unrouted", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = threePhaseOrder(root);
+  routePhaseDone(root, id, 1, false);
+  routeReview(root, id, reviewBlock(id, "phase 1", "Clean.", "APPROVED"));
+  assert.equal(routePhaseDone(root, id, 1, false), null);
+  assert.deepEqual(verdictRows(root, id).map((r) => r.verdict), ["PHASE DONE", "APPROVED"]);
+});
+
 test("a continued turn returns no context for a pull request review or a routing error", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const pr = "## Review: pr-412 · pr\n\nApproved.\n\nAlignment: PASS\nFindings: clean\n\nAPPROVED";
@@ -358,4 +385,39 @@ test("a written path asks the lead to print it on its own line, where the Markdo
   assert.ok(report.hookSpecificOutput.additionalContext.endsWith(`\nPrint "Research: work/${s.id}/research.md" on its own line in your reply so the user can open it.`), report.hookSpecificOutput.additionalContext);
   const bare = routeWritten(root, id, `## Order: ${id}\n\nTwo phases.\n\nARTIFACT WRITTEN`, "picket:architect");
   assert.doesNotMatch(bare.hookSpecificOutput.additionalContext, PRINT_PATH);
+});
+
+function cumulativeBlock(id: string, findings: string, amend: string | null): string {
+  const lines = [`## Review: ${id} · cumulative`, "", "One criterion's wording does not match what the code does.", "", "Requirements: PASS (3)", "Alignment: FAIL: T-2.7 the wording names the wrong file", "Decisions: HONOURED", "Regression: none", "Sources: none", "Questions: none", findings, "Classes: none", ...(amend ? ["", amend] : []), "", "CHANGES REQUIRED"];
+  return lines.join("\n");
+}
+
+const PLAN_AMEND = "AMENDMENT NEEDED: T-2.7 the criterion names src/b.mts, the phase changed src/a.mts";
+const recordFinding = (id: string) => `Findings: 1 minor\n- [Minor] work/${id}/order.md:219: T-2.7 names src/b.mts. The reviewer cannot match it. Name src/a.mts.`;
+
+function routedCumulative(t: TestContext, findings: (id: string) => string, amend: string | null) {
+  const root = withProject(t, { host: true, picket: false });
+  const id = twoPhaseOrder(root);
+  routeReview(root, id, cumulativeBlock(id, findings(id), amend));
+  return verdictRows(root, id).at(-1);
+}
+
+test("a cumulative rejection whose findings cite only the record, with an amendment line, is plan-only (T-2.1)", (t) => {
+  assert.equal(routedCumulative(t, recordFinding, PLAN_AMEND).plan_only, true);
+  assert.equal(routedCumulative(t, () => "Findings: clean", PLAN_AMEND).plan_only, true);
+});
+
+test("a code finding beside the record finding, or no amendment line, leaves the rejection without plan_only (T-2.1)", (t) => {
+  const withCode = routedCumulative(t, (id) => `${recordFinding(id)}\n- [Minor] src/a.mts:3: The guard is inverted. Empty input passes. Negate it.`, PLAN_AMEND);
+  assert.equal(Object.hasOwn(withCode, "plan_only"), false);
+  assert.equal(Object.hasOwn(routedCumulative(t, recordFinding, null), "plan_only"), false);
+});
+
+const REVIEWING_SKILL = new URL("../../../../skills/reviewing/SKILL.md", import.meta.url);
+
+test("the reviewing skill's plan-wording finding example routes as plan-only (T-3.2)", (t) => {
+  const example = readFileSync(REVIEWING_SKILL, "utf8").match(/^- \[\w+\] work\/<id>\/order\.md:.*$/m)?.[0];
+  assert.ok(example, "the skill holds a finding example citing work/<id>/order.md");
+  const row = routedCumulative(t, (id) => `Findings: 1 minor\n${example.replaceAll("<id>", id)}`, "AMENDMENT NEEDED: T-1.2 the criterion names the wrong file");
+  assert.equal(row.plan_only, true);
 });

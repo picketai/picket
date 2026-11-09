@@ -2,7 +2,7 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { TONES } from '../../shared/theme'
-import type { GroupedSession, Piece } from '../types'
+import type { GroupedSession, Piece } from '../../types'
 import { detailPieces } from './detail'
 
 const item = (fields: Partial<ListRowView>): ListRowView => ({

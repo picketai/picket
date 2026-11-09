@@ -61,11 +61,11 @@ function fileMutant(root: string, base: string, path: string, lang: Lang): Mutan
   return null;
 }
 
-export function pickMutant(root: string, base: string): Mutant | null {
-  const files = changedSince(root, base)
+export function pickMutant(root: string, base: string, files: readonly string[] | null = null): Mutant | null {
+  const candidates = (files ?? changedSince(root, base))
     .filter((path) => isCandidateFile(root, path))
     .sort();
-  for (const path of files) {
+  for (const path of candidates) {
     const lang = codeLang(path);
     const mutant = lang && fileMutant(root, base, path, lang);
     if (mutant) return mutant;
@@ -73,12 +73,12 @@ export function pickMutant(root: string, base: string): Mutant | null {
   return null;
 }
 
-export type Checkout = { dir: string; base: string };
+export type Checkout = { dir: string; base: string; files: readonly string[] | null };
 export type PlacedMutant = { dir: string; base: string; mutant: Mutant };
 
 export function pickMutantIn(root: string, checkouts: readonly Checkout[]): PlacedMutant | null {
-  for (const { dir, base } of checkouts) {
-    const mutant = pickMutant(join(root, dir), base);
+  for (const { dir, base, files } of checkouts) {
+    const mutant = pickMutant(join(root, dir), base, files);
     if (mutant) return { dir, base, mutant: { ...mutant, path: posix.join(dir, mutant.path) } };
   }
   return null;

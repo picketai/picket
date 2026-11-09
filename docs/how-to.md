@@ -6,19 +6,15 @@ This guide is for a developer installing the alpha in their own project. It cove
 
 ## What you get
 
-Picket has three parts that install together.
+Picket is one Claude Code plugin, `picket@picketai`, published as the npm package `@picketai/picket`. Nothing is installed globally.
 
 The **plugin** carries four agents (analyst, architect, developer, reviewer), the skills that drive them, the hooks that guard every tool call, and the response style. Everything it adds is named `picket:<name>`, for example `picket:ordering` or `picket:developer`. [The agents](reference/agents.md) reference says what each agent does and when it runs, and [the skills](reference/skills.md) reference does the same for each skill.
 
-The **`picket` command** is the kernel. It decides everything that code can decide: which lane a request takes, what the next step is, whether a phase is verified, and how a verdict changes state. The agents call it; you can call it too.
+The **`picket` command** is the kernel, and it ships inside the plugin. It decides everything that code can decide: which lane a request takes, what the next step is, whether a phase is verified, and how a verdict changes state. The agents call it, and so can you, from the Bash or PowerShell tool of a session where the plugin is enabled. Outside a session, run a verb through npx, for example `npx @picketai/picket@alpha list`.
 
-**`picket init`** writes the few things a plugin cannot carry: a block in your `CLAUDE.md`, permission rules and the status line in `.claude/settings.json`, and the settings file `.picket/config.json`.
+The plugin also carries two mods. The **status** mod shows the open work item and its agents above the prompt, and its work pane (`/picket-session`) lists this project's sessions. The **Markdown** mod opens a Markdown path you click in a reply in a read-only pane beside the transcript (`/picket-markdown`).
 
-`init` also installs two mods, small plugins from the same marketplace. **picket-status** shows the open work item and its agents above the prompt. **picket-markdown** opens a Markdown path you click in a reply in a read-only pane beside the transcript. The old **picket-session** sidebar is retired; if you installed it, uninstall it:
-
-```sh
-claude plugin uninstall picket-session@picketai --scope project
-```
+**`picket init`** writes the few things a plugin cannot carry: a block in your `CLAUDE.md`, permission rules and the marketplace entry in `.claude/settings.json`, and the settings file `.picket/config.json`.
 
 ## Before you start
 
@@ -33,34 +29,26 @@ Picket has no runtime dependencies; the package is plain Node.
 
 ## Install
 
-Install the command once per machine:
-
-```sh
-npm install -g @picketai/picket@alpha
-picket --version
-```
-
-`picket --version` prints the installed version, which shows the command is on your `PATH`; `picket --help` lists its verbs. The alpha is published under the `alpha` tag, so the plain `npm install -g @picketai/picket` does not find it yet.
-
-Then set up each project you want to use it in, from that project's root:
+Set up each project you want to use Picket in, from that project's root:
 
 ```sh
 cd ~/code/bookshop
-picket init
+npx @picketai/picket@alpha init
 ```
 
-`init` finds the repository root on its own (pass `--root <path>` to choose another folder) and refuses to run in your home folder. It does eight things:
+npx fetches the package for this one run; nothing stays on your `PATH`. The alpha is published under the `alpha` tag, so leave the `@alpha` on. `init` finds the repository root on its own (pass `--root <path>` to choose another folder) and refuses to run in your home folder. It does these things:
 
 1. Adds the Picket block to `CLAUDE.md`, or creates the file. Your own text stays; put project notes under `## Project facts`, which `init` never touches.
 2. Creates `.picket/config.json` with `{ "version": 1 }`.
 3. Adds `.picket/state/` to `.gitignore`. That folder holds logs and runtime state that never belong in git.
-4. Updates `.claude/settings.json`. It allows `Bash(picket *)` and `PowerShell(picket *)` so the kernel runs without a prompt, and read access to the plugin cache; if your `permissions.deny` already blocks one of them, `init` leaves it out and says so. It adds the ask rules `PowerShell(picket drive *)` and `PowerShell(picket check *)`, because those two run your code. It sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"1"`. It sets `statusLine` to `picket statusline`, unless your project, local or user settings already set a status line.
-5. Registers the marketplace `picketai` (the folder of the npm package) with project scope.
-6. Installs the plugin `picket@picketai` with project scope.
-7. Installs the mod `picket-status@picketai` with project scope.
-8. Installs the mod `picket-markdown@picketai` with project scope.
+4. Updates `.claude/settings.json`. It allows `Bash(picket *)` and `PowerShell(picket *)` so the kernel runs without a prompt, and read access to the plugin cache; if your `permissions.deny` already blocks one of them, `init` leaves it out and says so. It adds the ask rules `PowerShell(picket drive *)` and `PowerShell(picket check *)`, because those two run your code. It sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"1"`. It writes a status line only when you ask for one; see [The status line](#the-status-line).
+5. Uninstalls the retired plugins picket-status, picket-markdown and picket-session when the project still enables them. Their features are now part of `picket@picketai`.
+6. Writes the marketplace `picketai` into `.claude/settings.json` as `extraKnownMarketplaces.picketai`: a marketplace declared in the settings file itself, whose one plugin, `picket`, comes from the npm package `@picketai/picket` under the `alpha` tag. An older entry for `picketai` (a folder path or a GitHub source) is replaced, and `init` names the old source.
+7. Installs the plugin `picket@picketai` with project scope.
 
-Running `init` again is safe: it changes only what is missing. To write the files but skip the four `claude` commands, use `picket init --no-install`; it then reports each of the four install steps as `skipped`. When an install command fails, `init` reports it as `failed` and prints the commands to run by hand.
+Running `init` again is safe: it changes only what is missing. To write the files and the marketplace entry but skip the `claude` commands, add `--no-install`; it then reports those steps as `skipped`. When an install command fails, `init` reports it as `failed` and prints the command to run by hand: `claude plugin install picket@picketai --scope project`.
+
+When a `picket` from an earlier global npm install comes before the plugin's on your `PATH`, `init` prints a `WARNING:` line with its path and the command that removes it, `npm uninstall -g @picketai/picket`. The warning never fails `init`.
 
 Commit what `init` wrote, so everyone who clones the project gets the same setup:
 
@@ -69,21 +57,57 @@ git add CLAUDE.md .gitignore .claude/settings.json .picket/config.json
 git commit -m "chore: set up Picket"
 ```
 
-A teammate who clones the project needs only the global install (`npm install -g @picketai/picket@alpha`) and one `picket init`.
+A teammate who clones the project and opens it in Claude Code is asked to install `picket@picketai` from the committed marketplace; accepting is all the setup they need.
 
 ### Check the install
 
-Start Claude Code in the project and ask for the status:
+Start Claude Code in the project:
 
 ```sh
 claude
 ```
 
+Run `/plugin` and check that `picket@picketai` is listed and enabled. Then ask for the status:
+
 ```
 /picket:inspecting
 ```
 
-It lists the work items (none yet) and the session's cost. If the command is unknown, the plugin is not enabled; see [Troubleshooting](#troubleshooting).
+It lists the work items (none yet). Asking Claude to run `picket list` shows the same from the kernel. If the command is unknown, the plugin is not enabled; see [Troubleshooting](#troubleshooting).
+
+### The status line
+
+Picket's status line is optional. To add it, run init with the flag:
+
+```sh
+npx @picketai/picket@alpha init --statusline
+```
+
+It sets the project `statusLine` to `node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"`, unless your project, local or user settings already set one; then it leaves yours and names the file that holds it. Claude Code sets `CLAUDE_PROJECT_DIR` to the folder the session started in, so the line keeps working after a `cd`, and the value holds no path of your own, so it is safe to commit. The plugin copies `statusline.mjs` into the project's git-ignored `.picket/state/` at the start of every session, so the line can be blank in the very first session after the install and draws from the next refresh.
+
+If an earlier alpha.6 `init --statusline` wrote `node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"` into the project settings, running `init --statusline` again replaces it with the project copy and says so. That old value keeps working, because the plugin still keeps a copy in its data folder too.
+
+Without `--statusline`, `init` writes no status line, leaves that data folder value in place, and removes the old `picket statusline` value from earlier versions, with a note saying so.
+
+### The Markdown pane
+
+The Markdown pane is on by default. To turn it off, set its switch, `mods.markdown`, to `false` in `.picket/config.json`:
+
+```json
+{ "version": 1, "mods": { "markdown": false } }
+```
+
+From the next session, `/picket-markdown` is not offered, reply paths are not turned into links, and the band shows no `M↓`. Remove the key, or set it to `true`, to turn the pane back on.
+
+### The work pane
+
+The work pane is on by default. To turn it off, set its switch, `mods.session`, to `false` in `.picket/config.json`:
+
+```json
+{ "version": 1, "mods": { "session": false } }
+```
+
+From the next session, `/picket-session` is not offered, the band shows no `☰ <n>`, and the status mod stops reading the Claude Code session and transcript folders. The rest of the status mod stays: the band with the open work item, its agents, `◀ <n> need you` and `M↓`. The `◀ <n> need you` count stays as plain text, with no pane to open from it. Remove the key, or set it to `true`, to turn the pane back on.
 
 Optionally, choose Picket's response style with `/config`, under Output style: `picket:custom`. It keeps replies short, answer first, with no filler.
 
@@ -207,13 +231,13 @@ Everything about a work item lives in `work/<id>/`, so nothing is lost when you 
 
 With no id it lists the open work items, and resumes the only one if there is just one. With an id (`/picket:resuming 20261010-csv-export`) it reads the item's state and continues exactly where it stopped, with new agents.
 
-### Status and cost
+### Status and tokens
 
 ```
 /picket:inspecting
 ```
 
-shows every work item with its lane, phase and next step, and the session's spend, cache hit ratio and stops. From a terminal, `picket list` and `picket cost` show the same numbers.
+shows every work item with its lane, phase and next step, and the tokens spent, cache hit ratio and stops. `picket list` and `picket cost` show the same numbers; `picket cost` reports tokens per agent, per work item and per phase, not dollars. When a work item closes, its closing block carries an `Audit:` line (lane, phases, tokens per agent, bounces, blocks and wall time), also saved as `work/<id>/audit.txt`.
 
 ## What lands in your repository
 
@@ -287,8 +311,10 @@ This creates the manifest `.picket/extensions/<name>/extension.json`, here with 
 
 `picket style apply` gives Claude Code and your terminal the PicketAI look. It installs four things: the PicketAI Claude Code theme, the JetBrainsMono Nerd Font Mono font (a pinned release, checked against its SHA-256), a PicketAI colour scheme and font in your terminal (Windows Terminal, Terminal.app, GNOME Terminal, Ptyxis or Konsole; other terminals get the colours to set by hand), and Picket's status line in `~/.claude/settings.json`.
 
+Run it in your own terminal through npx, since `picket` is on the `PATH` of Claude Code's tools only:
+
 ```sh
-picket style apply
+npx @picketai/picket@alpha style apply
 ```
 
 Flags:
@@ -326,34 +352,32 @@ To turn Picket's notification off, for example when you already have your own No
 
 ## Updating
 
+In a Claude Code session in the project, run `/plugin update` and choose `picket@picketai`, or from a terminal:
+
 ```sh
-npm update -g @picketai/picket
-claude plugin marketplace update picketai
 claude plugin update picket@picketai --scope project
-claude plugin update picket-status@picketai --scope project
-claude plugin update picket-markdown@picketai --scope project
 ```
 
-If you installed picket-session, uninstall it instead of updating it: `claude plugin uninstall picket-session@picketai --scope project`. Its session list is now the work pane of picket-status.
+Restart Claude Code to load the new version. Run `npx @picketai/picket@alpha init` in each project afterwards: it is safe to repeat and adds any setting a new version needs.
 
-Restart Claude Code to load the new version. Run `picket init` in each project afterwards: it is safe to repeat and adds any setting a new version needs.
+Coming from 1.0.0-alpha.5 or earlier, where Picket was a global npm install: run `npx @picketai/picket@alpha init` once in each project, which retires the old mod plugins and points the marketplace at the npm package, then remove the global copy with `npm uninstall -g @picketai/picket`.
 
 Release 1.0.0-alpha.4 renamed six verbs and removed one. An old name still answers with its new one: run the old verb `new` and `picket` prints `picket: "new" is now "open"`. The full list is in the [changelog](../CHANGELOG.md).
 
 ## Removing Picket from a project
 
-Run `picket uninstall` yourself, in a terminal, from the project root. Agents are never allowed to run it.
+Run `uninstall` yourself, in a terminal, from the project root. Agents are never allowed to run it.
 
 ```sh
 cd ~/code/bookshop
-picket uninstall --dry-run
-picket uninstall
+npx @picketai/picket@alpha uninstall --dry-run
+npx @picketai/picket@alpha uninstall
 ```
 
-It removes what `picket init` added, in groups:
+It removes what `init` added, in groups:
 
-1. The Picket plugin, the mods and the `picketai` marketplace, from the project scope.
-2. Picket's entries in `.claude/settings.json`: its permission and ask rules, its `env` key and its status line. Your own entries stay.
+1. The Picket plugin and any retired mod plugin still enabled, from the project scope.
+2. Picket's entries in `.claude/settings.json`: its permission and ask rules, its `env` key, its status line and the `picketai` marketplace entry. Your own entries stay.
 3. The Picket block in `CLAUDE.md`. Your own text stays.
 4. The `.picket/state/` line in `.gitignore`.
 5. `.picket/config.json`, and your extensions in `.picket/extensions/<name>/` when you choose them.
@@ -367,17 +391,19 @@ When `.picket` or `.claude` is a link to a folder outside the project, `uninstal
 Two things live on your machine rather than in the project, so `uninstall` does not remove them. After a full removal (every group removed, `work/` kept or not), its text output names the commands for them:
 
 ```sh
-picket style remove --all
+npx @picketai/picket@alpha style remove --all
 npm uninstall -g @picketai/picket
 ```
 
-The first removes the styling of `picket style apply`, the second the `picket` command. A copy of the plugin stays in `~/.claude/plugins/cache/picketai/`, marked orphaned, until Claude Code cleans it up.
+The first removes the styling of `picket style apply`. The second removes a global `picket` left from an earlier install; skip it when you never installed one. A copy of the plugin stays in `~/.claude/plugins/cache/picketai/`, marked orphaned, until Claude Code cleans it up.
 
 ## Troubleshooting
 
-**`/picket:inspecting` is an unknown command.** The plugin is not enabled for this project. Run `claude plugin list` and look for `picket@picketai`. If it is missing, run `picket init` again in the project root and restart Claude Code.
+**`/picket:inspecting` is an unknown command.** The plugin is not enabled for this project. Run `/plugin` (or `claude plugin list`) and look for `picket@picketai`. If it is missing, run `npx @picketai/picket@alpha init` again in the project root and restart Claude Code.
 
-**`picket: command not found`.** The global npm folder is not on your `PATH`. `npm prefix -g` prints it; add its `bin` folder (on Windows, the folder itself) to `PATH` and open a new terminal.
+**`picket: command not found` in a session.** The `picket` command comes with the plugin, on the `PATH` of Claude Code's Bash and PowerShell tools only. Check with `/plugin` that `picket@picketai` is enabled for the project, then restart the session, because a plugin installed during a session reaches the tools only after a restart. In your own terminal there is no `picket`: run a verb as `npx @picketai/picket@alpha <verb>`.
+
+**A different `picket` runs.** A global copy from an earlier install comes first on your `PATH`, so a session runs that old version instead of the plugin's. `init` warns about it. Remove it with `npm uninstall -g @picketai/picket` and restart Claude Code.
 
 **A hook denied a tool call.** That is a guard working, and the message says which one and why. The common ones:
 
@@ -390,7 +416,7 @@ The first removes the styling of `picket style apply`, the second the `picket` c
 | `guard.scope: ... is kernel-owned` | a direct edit of a work item's state | nothing; state changes only through `picket` |
 | `guard.scope: read ... before editing it` | the file changed since the agent last read it | nothing; the agent re-reads and retries |
 
-**Many permission prompts.** Check that `.claude/settings.json` holds `Bash(picket *)`; run `picket init` again if it does not. Commands that run your code (`picket drive`, `picket check`) still ask under PowerShell on purpose.
+**Many permission prompts.** Check that `.claude/settings.json` holds `Bash(picket *)`; run `npx @picketai/picket@alpha init` again if it does not. Commands that run your code (`picket drive`, `picket check`) still ask under PowerShell on purpose.
 
 **The wrong lane.** Say so in the request: add a line `lane: fast` (or `order`, `design`, `research`) and the kernel honours it. A change under a security path still takes the design lane.
 
@@ -406,7 +432,7 @@ The first removes the styling of `picket style apply`, the second the `picket` c
 | `k <n>` | keep proposed comment n |
 | `w <n>` | waive proposed silenced check n |
 | `/picket:resuming [<id>]` | continue an open work item |
-| `/picket:inspecting` | status and cost |
+| `/picket:inspecting` | status and tokens |
 | `/picket:reviewing <pull request URL>` | review a pull request on GitHub or Azure DevOps |
 | `/picket:consulting` | think a strategic question through before any change |
 | `/picket:ticketing` | draft or update Jira tickets |
@@ -414,7 +440,7 @@ The first removes the styling of `picket style apply`, the second the `picket` c
 | `/picket:debugging` | find a bug's root cause and leave one failing test for the fix |
 | `picket next <id> --human` | the next step of a work item, from a terminal |
 | `picket list` | every work item with its lane, status and next step |
-| `picket cost` | what the sessions have cost |
+| `picket cost` | the tokens spent, per agent, work item and phase |
 | `picket style apply` | give Claude Code and your terminal the PicketAI look |
 | `picket style remove` | remove the styling items you choose |
 | `picket uninstall` | remove Picket from the project |

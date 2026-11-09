@@ -68,6 +68,18 @@ test("open refuses a lighter lane than admit's and a research lane on either sid
   }
 });
 
+const SMALL_FIX = "Fix the typo in the fee helper.";
+
+test("open refuses research for a pending answer with admit's reason as the remedy, and opens it as fast", async (t) => {
+  const refused = await opened(t, "research", SMALL_FIX);
+  assert.ok(refused.outcome.status === "refused");
+  assert.equal(refused.outcome.details.admitted, "pending");
+  assert.match(refused.outcome.message, /follow admit's reason/);
+  assert.doesNotMatch(refused.outcome.message, /--lane pending/);
+  const fast = await opened(t, "fast", SMALL_FIX);
+  assert.ok(fast.outcome.status === "done");
+});
+
 test("open takes a heavier lane than admit's, and a lane without a request text, with no check", async (t) => {
   for (const [lane, text] of [
     ["design", ENDPOINT],

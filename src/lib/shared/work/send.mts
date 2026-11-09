@@ -17,6 +17,7 @@ type Instance = { to: string; type: AgentType; owns: (row: VerdictRow) => boolea
 type Role = { type: AgentType; owns: (row: VerdictRow) => boolean };
 
 const FRESH_REVIEW = "You are reviewing a change you did not write. You have no context beyond what is below.";
+const REWORD_LINE = "reword: approved by the user at the amendment gate";
 const TAG_LENGTH = 4;
 const FIRST_LETTER = "a".charCodeAt(0);
 
@@ -201,7 +202,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "fix_findings":
       return [findingsSend(snap, step, session)];
     case "amend":
-      return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`])];
+      return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`, ...(step.reword ? [REWORD_LINE] : [])])];
     case "review_crosscheck":
       return [recheckSend(snap, step.delta, session)];
     default:

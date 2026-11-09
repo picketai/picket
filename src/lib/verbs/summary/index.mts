@@ -1,16 +1,14 @@
 import { existsSync, writeFileSync } from "node:fs";
-import { action, done } from "../../shared/action.mts";
+import { action, done, Refused } from "../../shared/action.mts";
 import { planPathOf } from "../../shared/checkouts.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
 import { readMutation } from "../../shared/mutation.mjs";
 import { CHECKLIST_SCOPES, isChecklistScope, reviewChecklists, type Checklist, type ChecklistScope } from "../../shared/review-checklists.mts";
-import { changesOfItem, changesOfRange, markWaived, renderSummary, summarize, type RepoChange, type Summary, type SummaryConfig } from "../../shared/review-summary.mts";
+import { changesOfItem, changesOfRange, itemBase, itemOwnedPaths, markWaived, renderSummary, summarize, type RepoChange, type Summary, type SummaryConfig } from "../../shared/review-summary.mts";
 import { liveDrift, type Drift } from "../../shared/sources/drift.mts";
 import type { Source } from "../../shared/sources/source.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { itemWaivers } from "../../shared/work/approvals.mts";
-import { phasePaths } from "../../shared/work/artifact.mts";
-import { blockFiles, fixesFiles } from "../../shared/work/block.mts";
 import { workFile, workId, workRel, type WorkId } from "../../shared/work/files.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
 import { readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
@@ -51,17 +49,18 @@ function defaultScope(root: string, snap: WorkSnapshot): ChecklistScope {
   return Object.hasOwn(SCOPE_OF_ACTION, action) ? SCOPE_OF_ACTION[action] : "phase";
 }
 
-function ownedPaths(root: string, snap: WorkSnapshot): string[] | null {
-  if (!snap.phases.length) return null;
+function baseOf(root: string, snap: WorkSnapshot, base: string | undefined): string {
   const id = snap.state.id;
-  return snap.phases.flatMap((phase) => [...phasePaths(phase), ...blockFiles(root, id, phase.n), ...fixesFiles(root, id, phase.n)]);
+  const found = base ?? snap.state.base ?? itemBase(root, id);
+  if (!found) throw new Refused(`no base recorded for ${id} and no commit of it found; pass --base <ref>`);
+  return found;
 }
 
 export function itemSummary(root: string, id: WorkId, { base, env, platform, scope }: ItemOptions): ItemSummary {
   const snap = readSnapshot(root, id);
-  const from = base ?? snap.state.base ?? "HEAD";
+  const from = baseOf(root, snap, base);
   const config = itemConfig(root, env);
-  const changes = changesOfItem(root, snap.state, from, ownedPaths(root, snap));
+  const changes = changesOfItem(root, snap.state, from, itemOwnedPaths(root, id, snap.phases));
   const summary = summarize(root, changes, config);
   const chosen = scope ?? defaultScope(root, snap);
   return {

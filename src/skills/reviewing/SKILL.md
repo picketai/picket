@@ -61,6 +61,12 @@ Verdict rule. `APPROVED` is blocked by any Critical, any alignment row at FAIL, 
 
 A criterion the code misses on the good side (a line-count bound beaten) still fails literally, so no `APPROVED`. Never ask for padded code: grade the row FAIL, name the `D-###` that states the bound, report `Decisions: DRIFT` and `AMENDMENT NEEDED: D-00x`, and say the fix is the amendment, with no code change. Group the other literal misses (an over-broad grep, "same passing count" after added tests) into that amendment as UNCLEAR. In a cumulative review, read each phase block's `Decisions:` line for misses the developer reported ("under T-x.y", "not padded", "also lists"). A plan grep that hits content the plan mandates (a fixture corpus, an import whose path matches) is judged by intent; a hit on a name the developer chose freely is FAIL.
 
+In a cumulative review whose every defect is plan wording, write `AMENDMENT NEEDED: T-x.y <reason>` (or `D-00x`) and cite the record in each finding line, so the kernel gates an amendment instead of a developer fix:
+
+```
+- [Minor] work/<id>/order.md:219: <what>. <why>. <the new wording>.
+```
+
 In scope `pr` the code never followed Picket's comment rule. When a person's comment justifies a construct that T3, N2, A1, E1, Co1, Na2 or Uc2 flags, report a Minor recommendation to replace the comment with the check or the decision; Uc2 takes its recorded decision from the pull request description.
 
 ## Output

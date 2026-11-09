@@ -67,6 +67,6 @@ Replies:
 
 | Reply | Then |
 |---|---|
-| `f`, `fix it` | run `picket admit --request - --human` with the `Hand-off:` text verbatim, and invoke the one skill it names, in the same turn |
+| `f`, `fix it` | run `picket admit --request - --touched <the files the fix edits> --human` with the `Hand-off:` text verbatim, and invoke the one skill it names, in the same turn |
 | `k`, `keep digging` | back to the step the open hypothesis needs, then a fresh block |
 | `x`, `stop` | ask once whether to keep or delete the red test, do that, and stop |

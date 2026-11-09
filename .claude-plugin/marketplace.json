@@ -1,6 +1,6 @@
 {
   "name": "picketai",
-  "description": "The Picket plugin marketplace, served from the installed @picketai/picket package or a checkout of picketai/picket.",
+  "description": "The Picket plugin marketplace for developing Picket: serves picket from the dist/ of a checkout.",
   "owner": {
     "name": "Vlad Apetre"
   },
@@ -9,21 +9,6 @@
       "name": "picket",
       "source": "./dist",
       "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel."
-    },
-    {
-      "name": "picket-status",
-      "source": "./dist/mods/status",
-      "description": "The open work item and its agents, above the prompt, and this project's sessions grouped by their work items in a work pane"
-    },
-    {
-      "name": "picket-markdown",
-      "source": "./dist/mods/markdown",
-      "description": "Click a markdown file path in a reply to read it, read-only, in a pane beside the transcript"
-    },
-    {
-      "name": "picket-session",
-      "source": "./dist/mods/session",
-      "description": "Retired: the session list is now the work pane of picket-status (/picket-session). Uninstall this plugin"
     }
   ]
 }

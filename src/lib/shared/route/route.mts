@@ -34,11 +34,12 @@ function publishedTo(changes: Change[]): { published?: string } {
   return change?.kind === "publish" ? { published: change.to } : {};
 }
 
-function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend }: PlannedVerdict, changes: Change[]): VerdictEntry {
+function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, planOnly }: PlannedVerdict, changes: Change[]): VerdictEntry {
   const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
   const sessioned = isSessionId(session) ? { session } : {};
   const amending = amend ? { amend } : {};
-  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...publishedTo(changes) };
+  const planned = planOnly === true ? { plan_only: true as const } : {};
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...planned, ...publishedTo(changes) };
 }
 
 function refuseMisplacedPublish({ publish, verdict }: RouteInput, { effect }: VerdictSpec, snap: WorkSnapshot): void {

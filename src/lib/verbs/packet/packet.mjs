@@ -31,6 +31,20 @@ function firstSentence(s, n) {
   return brk > n / 2 ? head.slice(0, brk) + "…" : cut(sentence, n);
 }
 
+function wrap(s, n) {
+  const lines = [];
+  for (const word of String(s ?? "").replace(/\s+/g, " ").trim().split(" ")) {
+    const last = lines.at(-1);
+    if (last !== undefined && last.length + 1 + word.length <= n) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  return lines;
+}
+
+function actionHeading(n, id) {
+  return `▶ ${n.action.replace(/_/g, " ")}${n.actor ? ` by ${n.actor}` : ""}${n.phase ? ` · phase ${n.phase}` : ""} · ${id}`;
+}
+
 function field(label, value, width = WIDTH) {
   return `  ${label.padEnd(LABEL)}${cut(value, width - 2 - LABEL)}`;
 }
@@ -176,8 +190,11 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(`▶ blocked · ${id}`);
     lines.push(`  ${cut(s.blocked_reason ?? n.detail, width - 2)}`);
     if (b.headline) lines.push("", field("developer", firstSentence(b.headline, width - 2 - LABEL), width));
+  } else if (n.action === "approve_amendment") {
+    lines.push(actionHeading(n, id));
+    lines.push(...wrap(n.detail, width - 2).map((line) => `  ${line}`));
   } else {
-    lines.push(`▶ ${n.action.replace(/_/g, " ")}${n.actor ? ` by ${n.actor}` : ""}${n.phase ? ` · phase ${n.phase}` : ""} · ${id}`);
+    lines.push(actionHeading(n, id));
     lines.push(`  ${cut(n.detail, width - 2)}`);
   }
   if (options) lines.push("", options);

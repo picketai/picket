@@ -88,7 +88,6 @@ test("paths exports locations only", () => {
     "projectRoot",
     "repoRelative",
     "rulesDir",
-    "sessionCostPath",
     "stateDir",
     "statePath",
     "stateRel",
@@ -102,11 +101,6 @@ test("prTicketRel names a ticket file that isPrTicketRel accepts", () => {
   assert.equal(paths.prTicketRel("pr-412", "SHOP-123"), ".picket/state/pr-412/SHOP-123.md");
   assert.equal(paths.isPrTicketRel(paths.prTicketRel("pr-412", "SHOP-123")), true);
   assert.equal(paths.isPrTicketRel("xpicket/state/pr-412/SHOP-123.md"), false);
-});
-
-test("sessionCostPath refuses ids that are not a plain file name", () => {
-  for (const id of ["../x", "a/b", "a.b", "", "x".repeat(129), undefined, 42]) assert.equal(paths.sessionCostPath("/r", id as string), null, String(id));
-  assert.ok(paths.sessionCostPath("/r", "abc-DEF_1")?.endsWith(join("sessions", "abc-DEF_1.json")));
 });
 
 test("userConfigPath names the Picket config under the user's home", () => {

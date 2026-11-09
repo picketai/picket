@@ -14,12 +14,14 @@ import { setMarker } from "../../shared/work/markers.mts";
 import { saveBlock } from "../../shared/work/block.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { mutate } from "../mutate/index.mts";
+import { verb as route } from "../route/index.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 import { fixedContext } from "#test/context.mts";
 
 const ITEM = { base: undefined, env: process.env, platform: process.platform };
+const GIT_IDENTITY = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
 function diffed(report: RepoReport) {
   assert.ok("files" in report, JSON.stringify(report));
@@ -426,6 +428,45 @@ test("a focus in a commit found only through its accept row is listed in silence
   const phase = commitPaths(root, { "test/a.test.ts": `${focus}\n` }, "test(a): phase 1");
   recordAccept(root, id, phase, 1, ACCEPTED_AT);
   assert.deepEqual(itemSummary(root, id, options).silenced, [{ path: "test/a.test.ts", kind: "focused-test", text: focus, waived: false }]);
+});
+
+function forgetBase(root: string, id: WorkId) {
+  const { base: _recorded, ...state } = readState(root, id);
+  writeState(root, state, new Date());
+}
+
+test("with no recorded base, the summary diffs from the parent of the phase commit route made (T-3.1)", async (t) => {
+  const { root, id } = itemOwning(t, "a.ts");
+  const before = gitOut(root, "rev-parse", "HEAD");
+  forgetBase(root, id);
+  stageFile(root, "a.ts", "a1\na2\n");
+  saveBlock(root, id, 1, `## Phase 1 of ${id}: A\n\nDone.\n\nFiles: a.ts\nCommit: feat(a): phase 1\n\nPHASE DONE`);
+  setMarker(root, id, 1, "done", new Date());
+  const ctx = fixedContext(root, { env: { ...process.env, ...GIT_IDENTITY }, now: new Date(), cwd: root });
+  const routed = await route.run({ id, verdict: "approved", agent: "user", phase: 1 }, ctx);
+  assert.equal(routed.status, "done", JSON.stringify(routed));
+  assert.equal(gitOut(root, "log", "-1", "--format=%s"), "feat(a): phase 1");
+  const summary = itemSummary(root, id, ITEM);
+  assert.deepEqual([summary.base, summary.changed_files, summary.lines_added], [before, ["a.ts"], 2]);
+});
+
+test("with no recorded base, an oldest commit known only from its accept row gives the base (T-3.2)", (t) => {
+  const { root, id, base } = itemOwning(t, "a.ts");
+  forgetBase(root, id);
+  const phase = commitPaths(root, { "a.ts": "a1\n" }, "feat(a): phase 1");
+  recordAccept(root, id, phase, 1, ACCEPTED_AT);
+  const summary = itemSummary(root, id, ITEM);
+  assert.deepEqual([summary.base, summary.changed_files], [base, ["a.ts"]]);
+});
+
+test("with no recorded base and no commit of the item, the summary refuses and --save writes nothing (T-3.3)", async (t) => {
+  const { root, id } = itemOwning(t, "a.ts");
+  forgetBase(root, id);
+  const result = await verb.run({ id, base: undefined, save: true }, fixedContext(root, { env: process.env }));
+  assert.equal(result.status, "refused", JSON.stringify(result));
+  assert.ok("message" in result);
+  assert.equal(result.message, `no base recorded for ${id} and no commit of it found; pass --base <ref>`);
+  assert.equal(existsSync(join(root, "work", id, "summary.json")), false);
 });
 
 test("the review summary carries the saved mutation (T-6.5)", (t) => {

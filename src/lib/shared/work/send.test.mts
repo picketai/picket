@@ -185,6 +185,14 @@ test("checkpoint, findings and amendment sends carry their lines; user, lead and
   for (const step of silent) assert.deepEqual(sends({ phases }, step), [], step.action);
 });
 
+test("an amend step with a reword grant adds the reword line after the amend line; the amendment gate sends nothing", () => {
+  const phases = [{ n: 1, done: true, approved: true }];
+  assert.deepEqual(sends({ phases }, { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: T-1.2 x", reword: true }), [
+    { tool: "Agent", to: named("architect"), type: "picket:architect", message: `work: ${ID}\namend: AMENDMENT NEEDED: T-1.2 x\nreword: approved by the user at the amendment gate` },
+  ]);
+  assert.deepEqual(sends({ phases }, { action: "approve_amendment", actor: "user", detail: "d", options: [] }), []);
+});
+
 test("a checkpoint fix spawns the developer with the checkpoint review and the phase it fixes (T-1.4)", () => {
   const phases = Array.from({ length: 6 }, (_, i) => (i < 3 ? { n: i + 1, done: true, approved: true } : { n: i + 1 }));
   const fix: NextStep = { action: "fix_findings", actor: "developer", phase: 3, review: "checkpoint", detail: "d" };

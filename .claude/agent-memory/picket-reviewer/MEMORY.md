@@ -14,3 +14,5 @@
 - [Atom shape on new fields](atom-shape-on-new-fields.md) — engine keeps old atom values across reload; a new object field with no shape reads undefined
 - [picket verify runs npm test](picket-verify-runs-npm-test.md) — never loop verify over phases in a review; grep the must_haves by hand
 - [Recompute summary totals by numstat](recompute-summary-totals-by-numstat.md) — git show --numstat minus work/.claude/.picket; no picket summary write
+- [Status plugin tests and markdown-paths](mods-tests-red-on-2-1-319.md) — 25 pane fails fixed at 43ee39c; memory edits can redden markdown-paths
+- [plugin validate fails in subagent](plugin-validate-fails-in-subagent.md) — "No digest" from validate --strict in a subagent shell is not a code signal

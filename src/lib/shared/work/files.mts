@@ -21,6 +21,7 @@ export const WORK_FILES = [
   "summary.json",
   "preflight.txt",
   "replies.jsonl",
+  "audit.txt",
 ] as const;
 
 export type WorkFile = (typeof WORK_FILES)[number];

@@ -48,8 +48,8 @@ test("the CLI walks a work item end to end and speaks JSON", (t) => {
   mkdirSync(join(root, "src"));
   writeFileSync(join(root, "src", "a.ts"), "");
 
-  const adm = run(root, ["admit", "--text", "Fix the typo in `src/a.ts`."]);
-  assert.equal(adm.lane, "fast");
+  assert.equal(run(root, ["admit", "--text", "Fix the typo in `src/a.ts`."]).lane, "pending");
+  assert.equal(run(root, ["admit", "--text", "Fix the typo in `src/a.ts`.", "--touched", "src/a.ts"]).lane, "fast");
 
   const created = run(root, ["open","--lane", "order", "--title", "Summary endpoint"]);
   assert.match(created.id, /^\d{8}-summary-endpoint$/);
@@ -219,7 +219,7 @@ test("style apply --dry-run --only statusline prints the plan and writes nothing
   const { home, env } = tempHome(t);
   const result = style(["apply", "--dry-run", "--only", "statusline"], env);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /planned\s+statusline: set statusLine to "picket statusline"/);
+  assert.match(result.stdout, /planned\s+statusline: set statusLine to `node "\$HOME\/\.claude\/plugins\/data\/picket-picketai\/statusline\.mjs"`/);
   assert.deepEqual(readdirSync(home), []);
 });
 
@@ -290,7 +290,7 @@ test("uninstall --dry-run lists the groups and changes nothing; --yes removes Pi
   assert.deepEqual(listing(), before);
   const removed = runCli(root, ["uninstall", "--root", root, "--yes"], { env });
   assert.equal(removed.status, 0, removed.stderr);
-  assert.match(removed.stdout, /Picket is removed from this project\.\n.*\n\s+picket style remove --all.*\n\s+npm uninstall -g @picketai\/picket/);
+  assert.match(removed.stdout, /Picket is removed from this project\.\n.*\n\s+npx @picketai\/picket@alpha style remove --all.*\n\s+npm uninstall -g @picketai\/picket/);
   assert.equal(readFileSync(join(root, "CLAUDE.md"), "utf8"), "# My project\n");
   assert.deepEqual(JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8")), { permissions: { allow: ["Bash(npm test)"] } });
   assert.deepEqual(readdirSync(root).sort(), [".claude", "CLAUDE.md", "work"]);

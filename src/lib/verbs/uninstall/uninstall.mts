@@ -1,9 +1,9 @@
 import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
-import { isDeepStrictEqual } from "node:util";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
-import { MODS } from "../../mods.mts";
+import { isDeepStrictEqual } from "node:util";
+import { RETIRED_PLUGINS } from "../../mods.mts";
 import { extensionsDir } from "../../shared/extensions.mjs";
-import { claudeBlockSpan, INSTALL, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
+import { claudeBlockSpan, INSTALL, isPicketStatusLine, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
 import { configPath, hostPath, PICKET_DIR, stateDir, workRoot } from "../../shared/paths.mts";
 import type { ProgramRunner } from "../../util/process.mts";
 import type { Prompt } from "../../util/prompt.mts";
@@ -76,17 +76,17 @@ function record(value: unknown): Settings {
 
 function pluginIdsIn(settings: Settings): string[] {
   const enabled = record(settings.enabledPlugins);
-  const ids = [...Object.values(MODS).map(({ plugin }) => pluginId(plugin)), INSTALL.plugin];
+  const ids = [...RETIRED_PLUGINS.map(pluginId), INSTALL.plugin];
   return ids.filter((id) => id in enabled);
 }
 
-function hasMarketplace(settings: Settings): boolean {
-  return MARKETPLACE in record(settings.extraKnownMarketplaces);
+function holdsOlderMarketplace(settings: Settings): boolean {
+  return MARKETPLACE in record(settings.extraKnownMarketplaces) && !holdsInitMarketplace(settings);
 }
 
 function pluginCommands(settings: Settings): string[][] {
   const uninstalls = pluginIdsIn(settings).map((id) => ["plugin", "uninstall", id, "--scope", "project"]);
-  return hasMarketplace(settings) ? [...uninstalls, ["plugin", "marketplace", "remove", MARKETPLACE, "--scope", "project"]] : uninstalls;
+  return holdsOlderMarketplace(settings) ? [...uninstalls, ["plugin", "marketplace", "remove", MARKETPLACE, "--scope", "project"]] : uninstalls;
 }
 
 function shown(args: string[]): string {
@@ -129,8 +129,13 @@ function picketEntries(settings: Settings): string[] {
   const env = record(settings.env);
   const listed = (key: "allow" | "ask") => SETTINGS[key].filter((rule) => Array.isArray(permissions[key]) && (permissions[key] as unknown[]).includes(rule)).map((rule) => `permissions.${key} "${rule}"`);
   const envKeys = Object.entries(SETTINGS.env).filter(([key, value]) => env[key] === value).map(([key]) => `env.${key}`);
-  const statusLine = isDeepStrictEqual(settings.statusLine, SETTINGS.statusLine) ? ["statusLine"] : [];
-  return [...listed("allow"), ...listed("ask"), ...envKeys, ...statusLine];
+  const statusLine = isPicketStatusLine(settings.statusLine) ? ["statusLine"] : [];
+  const marketplace = holdsInitMarketplace(settings) ? [`extraKnownMarketplaces.${MARKETPLACE}`] : [];
+  return [...listed("allow"), ...listed("ask"), ...envKeys, ...statusLine, ...marketplace];
+}
+
+function holdsInitMarketplace(settings: Settings): boolean {
+  return isDeepStrictEqual(record(settings.extraKnownMarketplaces)[MARKETPLACE], INSTALL.marketplace);
 }
 
 function setOrDrop(target: Settings, key: string, value: unknown[] | Settings | undefined): void {
@@ -150,7 +155,11 @@ export function withoutPicket(settings: Settings): Settings {
     const env = Object.fromEntries(Object.entries(record(settings.env)).filter(([key, value]) => (SETTINGS.env as Record<string, string>)[key] !== value));
     setOrDrop(next, "env", env);
   }
-  if (isDeepStrictEqual(settings.statusLine, SETTINGS.statusLine)) delete next.statusLine;
+  if (isPicketStatusLine(settings.statusLine)) delete next.statusLine;
+  if (holdsInitMarketplace(settings)) {
+    const { [MARKETPLACE]: _init, ...others } = record(settings.extraKnownMarketplaces);
+    setOrDrop(next, "extraKnownMarketplaces", others);
+  }
   return next;
 }
 

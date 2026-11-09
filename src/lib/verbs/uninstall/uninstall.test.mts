@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { withProject } from "#test/project.mts";
 import type { ProgramRunner } from "../../util/process.mts";
 import type { Prompt } from "../../util/prompt.mts";
+import { DATA_FOLDER_STATUS_LINE, INSTALL } from "../../shared/install.mts";
 import { init } from "../init/init.mjs";
 import { planUninstall, runUninstall, type UninstallInput, type UninstallReport } from "./uninstall.mts";
 
@@ -151,6 +152,34 @@ test("plugins uninstall the mods before picket@picketai, then the marketplace, e
   assert.ok(runner.calls.every(({ program, cwd }) => program === "claude" && cwd === root));
 });
 
+test("a dry run on picket, the three retired mods and the settings marketplace plans four uninstalls and the marketplace entry's removal (T-6.6)", async (t) => {
+  const settings = { enabledPlugins: Object.fromEntries(["picket@picketai", "picket-status@picketai", "picket-markdown@picketai", "picket-session@picketai"].map((id) => [id, true])), extraKnownMarketplaces: { picketai: INSTALL.marketplace } };
+  const { root } = project(t, { ".claude/settings.json": JSON.stringify(settings) });
+  const runner = recordingRunner();
+  const report = await uninstall(root, { dryRun: true }, runner.exec);
+  assert.deepEqual(runner.calls, []);
+  const detail = (id: string) => report.changes.find((change) => change.id === id)?.detail;
+  assert.equal(
+    detail("plugins"),
+    [
+      "claude plugin uninstall picket-status@picketai --scope project",
+      "claude plugin uninstall picket-markdown@picketai --scope project",
+      "claude plugin uninstall picket-session@picketai --scope project",
+      "claude plugin uninstall picket@picketai --scope project",
+    ].join("; "),
+  );
+  assert.equal(detail("settings"), "remove extraKnownMarketplaces.picketai");
+});
+
+test("uninstall --yes removes the settings marketplace init wrote and keeps another marketplace", async (t) => {
+  const other = { source: { source: "github", repo: "acme/plugins" } };
+  const { root } = project(t, { ".claude/settings.json": JSON.stringify({ extraKnownMarketplaces: { picketai: INSTALL.marketplace, acme: other }, outputStyle: "x" }) });
+  const runner = recordingRunner();
+  await uninstall(root, {}, runner.exec);
+  assert.deepEqual(runner.calls, []);
+  assert.deepEqual(JSON.parse(read(root, ".claude/settings.json")), { extraKnownMarketplaces: { acme: other }, outputStyle: "x" });
+});
+
 test("no plugin listed means no call; a failing call fails plugins with the commands by hand and the rest still run (T-5.2)", async (t) => {
   const none = initialized(t, {});
   const quiet = recordingRunner();
@@ -177,6 +206,16 @@ test("the user's own rules, env key and status line survive, and deny is untouch
   const after = JSON.parse(read(root, ".claude/settings.json"));
   assert.deepEqual(after, own);
   assert.deepEqual(after.permissions.deny, deny);
+});
+
+test("uninstall removes the legacy, the data folder and the init statusLine and keeps any other (T-2.5)", async (t) => {
+  const kept = { type: "command", command: "local-line" };
+  for (const statusLine of [{ type: "command", command: "picket statusline" }, DATA_FOLDER_STATUS_LINE, INSTALL.settings.statusLine, kept]) {
+    const { root } = project(t, { ".claude/settings.json": JSON.stringify({ permissions: { allow: ["Bash(npm test)"] }, statusLine }) });
+    await uninstall(root);
+    const after = JSON.parse(read(root, ".claude/settings.json"));
+    assert.deepEqual(after.statusLine, statusLine === kept ? kept : undefined, statusLine.command);
+  }
 });
 
 test("a dry run calls nothing and changes no file; no terminal without --yes changes nothing (T-5.4)", async (t) => {

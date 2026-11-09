@@ -19,6 +19,7 @@ const world = (on: On, roster: AgentInfo[] = []) => {
   on('session.root', () => ({ value: 'D:/repo' }))
   on('fs.list', () => ({ value: [] }))
   on('store.get', () => ({ value: undefined }))
+  on('session.messages', () => ({ value: [] }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
@@ -28,7 +29,7 @@ const world = (on: On, roster: AgentInfo[] = []) => {
 
 const band = ($: Engine, hasSurvey = false) =>
   $.ui.mount({
-    plugin: 'picket-status',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'AbovePrompt',
     props: {
@@ -212,6 +213,12 @@ test('a spawned agent leaves the band when idle and works again from a message',
   expect(await shows($, ' (5s)')).toBe(true)
 })
 
+const FIXTURE_DRIVE = 'D:/'
+const fixturePath = (enginePath: string): string => {
+  const path = enginePath.replace(/\\/g, '/')
+  return path.slice(Math.max(path.lastIndexOf(FIXTURE_DRIVE), 0))
+}
+
 const CONFIG = 'D:/home/.claude'
 const PROJECT = `${CONFIG}/projects/D--repo`
 const S_CURRENT = '11111111-1111-4111-8111-111111111111'
@@ -264,10 +271,29 @@ type PaneWorld = {
   work: Record<string, { 'state.yaml': number; 'verdicts.jsonl': number }>
   mtimes: Record<string, number>
   sizes: Record<string, number>
+  config: string | undefined
+  roster: AgentInfo[]
+  listed: string[]
+  intervals: number[]
 }
 
+const PROJECT_CONFIG = 'D:/repo/.picket/config.json'
+
+type ClockEvery = Parameters<Parameters<On>[1]>
+
+const recordingIntervals = (on: On, intervals: number[]): On =>
+  ((event: string, ...rest: unknown[]) => {
+    const answer = rest.at(-1) as (...args: ClockEvery) => unknown
+    if (event !== 'clock.every') return (on as (...args: unknown[]) => unknown)(event, ...rest)
+    return (on as (...args: unknown[]) => unknown)(event, ...rest.slice(0, -1), (...args: ClockEvery) => {
+      intervals.push((args[1] as { ms: number }).ms)
+      return answer(...args)
+    })
+  }) as On
+
 const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE], list: unknown[] = LIST) => {
-  const timer = mock.clock(on, { now: NOW })
+  const intervals: number[] = []
+  const timer = mock.clock(recordingIntervals(on, intervals), { now: NOW })
   const w: PaneWorld = {
     stored: {},
     copied: [],
@@ -283,6 +309,10 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     work: {},
     mtimes: {},
     sizes: {},
+    config: undefined,
+    roster: [],
+    listed: [],
+    intervals,
   }
   on('command.list', () => ({ value: w.commands.map(name => ({ name, description: '', source: 'plugin' as const })) }))
   on('command.run', ($, e) => {
@@ -290,22 +320,24 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     return { text: '' }
   })
   on('fs.stat', ($, e) => {
-    const [id, file] = e.path.replace(/\\/g, '/').split('/').slice(-2) as [string, 'state.yaml' | 'verdicts.jsonl']
+    const [id, file] = fixturePath(e.path).split('/').slice(-2) as [string, 'state.yaml' | 'verdicts.jsonl']
     const mtimeMs = w.work[id]?.[file]
     return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file' as const, size: 10, mtimeMs, isLink: false } }
   })
   let panes: { id: string }[] = []
-  on('agent.list', () => ({ value: [] }))
+  on('agent.list', () => ({ value: w.roster }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => {
     w.registered.push({ name: e.name, immediate: e.immediate })
     return { value: undefined }
   })
   on('session.root', () => ({ value: 'D:/repo' }))
+  on('session.messages', () => ({ value: [] }))
   on('session.id', () => ({ value: S_CURRENT }))
   on('env.get', ($, e) => ({ value: e.name === 'CLAUDE_CONFIG_DIR' ? CONFIG : undefined }))
   on('fs.list', ($, e) => {
-    const path = e.path.replace(/\\/g, '/')
+    const path = fixturePath(e.path)
+    w.listed.push(path)
     if (path === PROJECT) {
       return {
         value: transcripts.map((id, at) => ({
@@ -322,14 +354,15 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     return { value: [] }
   })
   on('fs.read', ($, e) => {
-    const path = e.path.replace(/\\/g, '/')
+    const path = fixturePath(e.path)
     w.reads.push(path)
+    if (path === PROJECT_CONFIG) return w.config === undefined ? { deny: 'ENOENT' } : { value: w.config }
     if (path === `${CONFIG}/sessions/4444.json`) return { value: JSON.stringify({ sessionId: S_LIVE, cwd: 'D:/repo' }) }
     const id = path.slice(PROJECT.length + 1, -'.jsonl'.length)
     return { value: w.written[path] ?? `{"type":"ai-title","aiTitle":"${TITLES[id] ?? id}"}\n` }
   })
   on('fs.write', ($, e) => {
-    w.written[e.path.replace(/\\/g, '/')] = e.text
+    w.written[fixturePath(e.path)] = e.text
     return { value: undefined }
   })
   on('store.get', ($, e) => ({ value: w.stored[e.key] }))
@@ -369,7 +402,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
 
 const workPane = ($: Engine) =>
   $.ui.mount({
-    plugin: 'picket-status',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'work',
@@ -403,7 +436,7 @@ test('/picket-session opens the work pane, closes it the second time, and runs m
 
   await $.command.run({ command: 'picket-session', args: '' })
   expect(w.closed).toEqual(['work'])
-  expect(w.registered).toEqual([{ name: 'picket-session', immediate: true }])
+  expect(w.registered).toContainEqual({ name: 'picket-session', immediate: true })
 })
 
 test('the work pane groups sessions under NEEDS YOU, WORKING and a folded NO WORK ITEM, and a header press folds or unfolds its group (T-4.3, T-2.6)', async ($, on) => {
@@ -531,7 +564,7 @@ test('a session draws its detail row under its title', async ($, on) => {
 
 const paneOfRows = ($: Engine, bodyRows: number) =>
   $.ui.mount({
-    plugin: 'picket-status',
+    plugin: 'picket',
     surface: 'terminal',
     component: 'Pane',
     requestId: 'work',
@@ -887,4 +920,60 @@ test('a working agent clock moves with the five second timer', async ($, on) => 
   expect(await shows($, ' (3m12s)')).toBe(true)
   await timer.advance(5_000)
   expect(await shows($, ' (3m17s)')).toBe(true)
+})
+
+const SESSION_OFF = JSON.stringify({ version: 1, mods: { session: false } })
+const SESSION_ON = JSON.stringify({ version: 1, mods: { session: true } })
+const PANE_REFRESH_MS = 15_000
+const TWO_NEED_YOU = [listRow('w-a', 'needs-you', [S_WORKING]), listRow('w-b', 'needs-you', [S_NONE])]
+
+const leavesIn = (node: unknown): string[] => {
+  if (typeof node === 'string') return [node]
+  if (node === null || typeof node !== 'object') return []
+  return ((node as Described).children ?? []).flatMap(leavesIn)
+}
+
+const bandPieces = async ($: Engine) => leavesIn(await (await band($)).find({ type: 'Box' })).filter(text => text.trim() !== '')
+
+test('with mods.session false a session registers no picket-session, schedules no pane clock and lists nothing in the Claude config folder (T-1.1)', async ($, on) => {
+  const { w, timer } = paneWorld(on)
+  w.config = SESSION_OFF
+  await $.session.start(START)
+  for (let tick = 0; tick < 3; tick += 1) await timer.advance(TICK_MS)
+
+  expect(w.registered.map(({ name }) => name)).not.toContain('picket-session')
+  expect(w.intervals).not.toContain(PANE_REFRESH_MS)
+  expect(w.intervals).toContain(TICK_MS)
+  expect(w.listed.filter(path => path.startsWith(CONFIG))).toEqual([])
+  expect(w.listed).toContain('D:/repo/work')
+})
+
+test('with mods.session false the band drops only ☰: the work line, agents, ◀ and M↓ match the switched-on band (T-1.2)', async ($, on) => {
+  const { w } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE], TWO_NEED_YOU)
+  w.roster = [developer()]
+  w.config = SESSION_OFF
+  await $.session.start(START)
+  const switchedOff = await bandPieces($)
+
+  w.config = undefined
+  await $.session.start(START)
+  const switchedOn = await bandPieces($)
+
+  expect(switchedOff.slice(-3).join('')).toBe('◀ 2 need you · M↓')
+  expect(switchedOff.some(text => text.startsWith('☰'))).toBe(false)
+  expect(switchedOn.slice(-5).join('')).toBe('◀ 2 need you · ☰ 3 · M↓')
+  const sessionsAt = switchedOn.indexOf('☰ 3')
+  expect(switchedOff).toEqual([...switchedOn.slice(0, sessionsAt), ...switchedOn.slice(sessionsAt + 2)])
+  expect(switchedOff).toContain('developer ')
+  expect(switchedOff.some(text => text.startsWith('▶ order'))).toBe(true)
+})
+
+test('with mods.session true the session registers picket-session, schedules the pane clock and draws ☰ (T-1.3)', async ($, on) => {
+  const { w } = paneWorld(on)
+  w.config = SESSION_ON
+  await $.session.start(START)
+
+  expect(w.registered).toContainEqual({ name: 'picket-session', immediate: true })
+  expect(w.intervals).toContain(PANE_REFRESH_MS)
+  expect(await shows($, '☰ 3')).toBe(true)
 })

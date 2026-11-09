@@ -15,7 +15,6 @@ export type StatuslineInput = {
   rate_limits?: { five_hour?: RateWindow; seven_day?: RateWindow };
   context_window?: { total_input_tokens?: number; context_window_size?: number; used_percentage?: number; current_usage?: { cache_read_input_tokens?: number } };
   prompt_cache?: PromptCache;
-  cost?: { total_cost_usd?: number };
 };
 
 export type Limit = { percent: number; resetsAt: number | null };
@@ -33,7 +32,6 @@ export type Facts = {
   contextPercent: number;
   cacheRead: number | null;
   cache: CacheFacts | null;
-  cost: number | null;
   now: number;
 };
 
@@ -80,7 +78,6 @@ export function factsOf(input: StatuslineInput, { now, skill, git = null }: { no
     contextPercent: Math.round(context.used_percentage ?? 0),
     cacheRead: context.current_usage?.cache_read_input_tokens ?? null,
     cache: cacheOf(input.prompt_cache),
-    cost: input.cost?.total_cost_usd ?? null,
     now,
   };
 }

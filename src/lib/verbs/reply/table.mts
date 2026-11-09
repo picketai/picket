@@ -13,11 +13,13 @@ export type Matched =
   | { kind: "abandon" }
   | { kind: "publish" }
   | { kind: "worktrees"; name: string; from?: string }
-  | { kind: "no_worktrees" };
+  | { kind: "no_worktrees" }
+  | { kind: "amend_record" }
+  | { kind: "fix_code" };
 
 type Form = { pattern: RegExp; letter: string | null; match: (m: RegExpMatchArray, step: NextStep, proposals: Proposals) => Matched | null };
 
-export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "resolve_block", "resolve_rejections", "create_worktrees"];
+export const GATE_ACTIONS: readonly NextStep["action"][] = ["approve_phase", "resolve_block", "resolve_rejections", "create_worktrees", "approve_amendment"];
 
 const OPTION_LETTER = /^\[(\w)\]/;
 const RUN_LIMIT = /^\[r\] run through (\d+)/;
@@ -52,6 +54,11 @@ function runThrough(m: RegExpMatchArray, step: NextStep): Matched | null {
   return limit !== null && through > phase && through <= limit ? { kind: "approve", through } : null;
 }
 
+function runToLimit(step: NextStep): Matched | null {
+  const through = runLimit(step);
+  return through === null ? null : { kind: "approve", through };
+}
+
 function numbered(kind: "keep" | "waive", count: number, m: RegExpMatchArray): Matched | null {
   const n = Number(m[1]);
   return n >= 1 && n <= count ? { kind, n } : null;
@@ -60,6 +67,7 @@ function numbered(kind: "keep" | "waive", count: number, m: RegExpMatchArray): M
 const APPROVE_FORMS: readonly Form[] = [
   { pattern: /^(?:a|approved|ok|yes)$/i, letter: "a", match: () => ({ kind: "approve" }) },
   { pattern: /^(?:i|confirm)$/i, letter: "i", match: () => ({ kind: "approve" }) },
+  { pattern: /^r$/i, letter: "r", match: (_m, step) => runToLimit(step) },
   { pattern: /^(?:r|approved through|run to)\s+(\d+)$/i, letter: "r", match: (m, step) => runThrough(m, step) },
   { pattern: /^(?:x:?|reject:)\s+(\S.*)$/i, letter: "x", match: (m) => ({ kind: "reject", why: m[1].trim() }) },
   { pattern: /^(?:k|keep)\s+(\d+)$/i, letter: null, match: (m, _step, { comments }) => numbered("keep", comments.length, m) },
@@ -89,10 +97,16 @@ const WORKTREE_FORMS: readonly Form[] = [
   { pattern: /^(\S+)(?:\s+from\s+(\S+))?$/i, letter: null, match: namedBranch },
 ];
 
+const AMENDMENT_FORMS: readonly Form[] = [
+  { pattern: /^(?:a|approve|ok|yes)$/i, letter: "a", match: () => ({ kind: "amend_record" }) },
+  { pattern: /^(?:f|fix)$/i, letter: "f", match: () => ({ kind: "fix_code" }) },
+];
+
 function formsFor(step: NextStep, lane: Lane): readonly Form[] {
   if (lane === "research") return step.action === "approve_phase" ? RESEARCH_FORMS : [];
   if (step.action === "approve_phase") return APPROVE_FORMS;
   if (step.action === "create_worktrees") return WORKTREE_FORMS;
+  if (step.action === "approve_amendment") return AMENDMENT_FORMS;
   return step.action === "resolve_block" || step.action === "resolve_rejections" ? BLOCK_FORMS : [];
 }
 

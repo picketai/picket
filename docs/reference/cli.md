@@ -60,7 +60,7 @@ picket comment <id> --path <p> --text "<comment>"
 
 ## picket cost
 
-Sum the ledger: turns, spend, cache, stops, bounces, escalations.
+Sum the ledger: turns, tokens, cache, stops, bounces, escalations.
 
 ```sh
 picket cost [--session <id>] [--work <id>]
@@ -99,7 +99,7 @@ picket extension list
 Set up Picket in a project.
 
 ```sh
-picket init [--root <dir>] [--no-install]
+picket init [--root <dir>] [--no-install] [--statusline]
 ```
 
 ## picket leave
@@ -266,7 +266,7 @@ picket state <id>
 
 ## picket statusline
 
-Print the Claude Code status line.
+Print the Claude Code status line from its JSON on stdin; the plugin also ships it as statusline.mjs.
 
 ```sh
 picket statusline

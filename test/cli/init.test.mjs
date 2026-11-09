@@ -38,7 +38,7 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
   const root = initRepo(t);
   const r = runInit(t, root);
   assert.equal(r.code, 0, r.stderr);
-  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "skipped", plugin: "skipped", status: "skipped", markdown: "skipped" });
+  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "created", plugin: "skipped" });
   assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
   assert.deepEqual(JSON.parse(read(root, ".picket", "config.json")), { version: 1 });
   assert.ok(read(root, ".gitignore").split("\n").includes(".picket/state/"));
@@ -51,7 +51,7 @@ test("a second init reports every step unchanged and leaves the files byte-ident
   const before = files.map((p) => read(root, p));
   const r = runInit(t, root);
   assert.equal(r.code, 0, r.stderr);
-  assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "skipped", plugin: "skipped", status: "skipped", markdown: "skipped" });
+  assert.deepEqual(results(r.json), { "claude-md": "unchanged", config: "unchanged", gitignore: "unchanged", settings: "unchanged", marketplace: "unchanged", plugin: "skipped" });
   assert.deepEqual(files.map((p) => read(root, p)), before);
 });
 
@@ -111,8 +111,20 @@ const INIT_SETTINGS = {
     allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"],
     ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"],
   },
-  statusLine: { type: "command", command: "picket statusline" },
+  extraKnownMarketplaces: {
+    picketai: {
+      source: {
+        source: "settings",
+        name: "picketai",
+        owner: { name: "Vlad Apetre" },
+        plugins: [{ name: "picket", source: { source: "npm", package: "@picketai/picket", version: "alpha" } }],
+      },
+    },
+  },
 };
+
+const STATUS_LINE = { type: "command", command: 'node "${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs"' };
+const DATA_FOLDER_STATUS_LINE = { type: "command", command: 'node "$HOME/.claude/plugins/data/picket-picketai/statusline.mjs"' };
 
 function writeSettings(root, text, file = "settings.json") {
   mkdirSync(join(root, ".claude"), { recursive: true });
@@ -127,38 +139,70 @@ function settingsDetail(report) {
   return settingsStep(report).detail;
 }
 
-test("init creates .claude/settings.json with the env key, the picket allow and ask rules, then the status line (T-3.1)", (t) => {
+test("init creates .claude/settings.json with the env key, the picket allow and ask rules, then the settings marketplace and no status line (T-3.1)", (t) => {
   const root = initRepo(t);
   assert.equal(runInit(t, root).code, 0);
   const text = read(root, ".claude", "settings.json");
   assert.deepEqual(JSON.parse(text), INIT_SETTINGS);
-  assert.deepEqual(Object.keys(JSON.parse(text)), ["env", "permissions", "statusLine"]);
+  assert.deepEqual(Object.keys(JSON.parse(text)), ["env", "permissions", "extraKnownMarketplaces"]);
   assert.ok(text.endsWith("}\n"));
 });
 
-test("init keeps a project status line of its own and names the file (T-3.3)", (t) => {
+test("init --statusline writes the bundle command, and a rerun reports settings and marketplace unchanged with no absolute path (T-6.3, T-6.7)", (t) => {
+  const root = initRepo(t);
+  const first = runInit(t, root, { args: ["--statusline"] });
+  assert.equal(first.code, 0, first.stderr);
+  const text = read(root, ".claude", "settings.json");
+  assert.deepEqual(JSON.parse(text), { ...INIT_SETTINGS, statusLine: STATUS_LINE });
+  assert.equal(text.includes(root), false);
+  const second = runInit(t, root, { args: ["--statusline"] });
+  assert.equal(results(second.json).settings, "unchanged");
+  assert.equal(results(second.json).marketplace, "unchanged");
+});
+
+test("init --statusline over a data folder value writes the project copy value with a note, and a rerun is unchanged (T-2.3)", (t) => {
+  const root = initRepo(t);
+  writeSettings(root, JSON.stringify({ statusLine: DATA_FOLDER_STATUS_LINE }));
+  const first = runInit(t, root, { args: ["--statusline"] });
+  assert.equal(first.code, 0, first.stderr);
+  const text = read(root, ".claude", "settings.json");
+  assert.deepEqual(JSON.parse(text).statusLine, STATUS_LINE);
+  assert.equal(settingsDetail(first.json), "replaced the data folder statusLine with the project copy");
+  assert.equal(text.includes(root), false);
+  assert.equal(results(runInit(t, root, { args: ["--statusline"] }).json).settings, "unchanged");
+});
+
+test("init without --statusline removes the legacy picket statusline and says so (T-6.3)", (t) => {
+  const root = initRepo(t);
+  writeSettings(root, JSON.stringify({ statusLine: { type: "command", command: "picket statusline" } }));
+  const r = runInit(t, root);
+  assert.equal("statusLine" in JSON.parse(read(root, ".claude", "settings.json")), false);
+  assert.equal(settingsDetail(r.json), 'removed the legacy statusLine "picket statusline"');
+});
+
+test("init --statusline keeps a project status line of its own and names the file (T-3.3)", (t) => {
   const root = initRepo(t);
   const own = { type: "command", command: "my-line" };
   writeSettings(root, JSON.stringify({ statusLine: own }));
-  const r = runInit(t, root);
+  const r = runInit(t, root, { args: ["--statusline"] });
   assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")).statusLine, own);
   assert.equal(settingsDetail(r.json), `statusLine already set in ${settingsStep(r.json).path}`);
 });
 
-test("a status line in the local or the user settings keeps init from writing one, and init names that file (T-3.4)", (t) => {
+test("a status line in the local or the user settings keeps init --statusline from writing one, and init names that file (T-3.4, T-6.3)", (t) => {
   const local = initRepo(t);
   const user = initRepo(t);
   const home = tempDir(t);
   const localText = JSON.stringify({ statusLine: { type: "command", command: "local-line" } });
   writeSettings(local, localText, "settings.local.json");
-  const localRun = runInit(t, local);
+  const localRun = runInit(t, local, { args: ["--statusline"] });
   assert.equal("statusLine" in JSON.parse(read(local, ".claude", "settings.json")), false);
   assert.equal(settingsDetail(localRun.json), `statusLine already set in ${join(dirname(settingsStep(localRun.json).path), "settings.local.json")}`);
   assert.equal(read(local, ".claude", "settings.local.json"), localText);
 
   const userText = JSON.stringify({ statusLine: { type: "command", command: "user-line" } });
   writeSettings(home, userText);
-  const userRun = runInit(t, user, { env: { HOME: home, USERPROFILE: home } });
+  const userRun = runInit(t, user, { env: { HOME: home, USERPROFILE: home }, args: ["--statusline"] });
   assert.equal("statusLine" in JSON.parse(read(user, ".claude", "settings.json")), false);
   assert.equal(settingsDetail(userRun.json), `statusLine already set in ${join(home, ".claude", "settings.json")}`);
   assert.equal(read(home, ".claude", "settings.json"), userText);
@@ -168,10 +212,10 @@ test("a user settings file that is not JSON fails no step and holds no status li
   const root = initRepo(t);
   const home = tempDir(t);
   writeSettings(home, "{ not json");
-  const r = runInit(t, root, { env: { HOME: home, USERPROFILE: home } });
+  const r = runInit(t, root, { env: { HOME: home, USERPROFILE: home }, args: ["--statusline"] });
   assert.equal(r.code, 0, r.stderr);
   assert.equal(r.json.steps.some((s) => s.result === "failed"), false);
-  assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")).statusLine, INIT_SETTINGS.statusLine);
+  assert.deepEqual(JSON.parse(read(root, ".claude", "settings.json")).statusLine, STATUS_LINE);
 });
 
 test("init keeps existing settings in value and order and appends what is missing after them", (t) => {
@@ -180,7 +224,7 @@ test("init keeps existing settings in value and order and appends what is missin
   const r = runInit(t, root);
   assert.equal(results(r.json).settings, "updated");
   const settings = JSON.parse(read(root, ".claude", "settings.json"));
-  assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env", "statusLine"]);
+  assert.deepEqual(Object.keys(settings), ["outputStyle", "permissions", "env", "extraKnownMarketplaces"]);
   assert.equal(settings.outputStyle, "Explanatory");
   assert.deepEqual(settings.permissions.allow, ["Read", "Bash(npm test*)", "Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"]);
   assert.deepEqual(settings.permissions.ask, INIT_SETTINGS.permissions.ask);
@@ -208,7 +252,7 @@ test("a settings file that is not JSON fails its step, stays as is, and the othe
   writeSettings(root, "{ not json");
   const r = runInit(t, root);
   assert.equal(r.code, 2);
-  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "skipped", plugin: "skipped", status: "skipped", markdown: "skipped" });
+  assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "failed", marketplace: "failed", plugin: "skipped" });
   assert.equal(read(root, ".claude", "settings.json"), "{ not json");
 });
 

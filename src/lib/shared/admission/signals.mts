@@ -16,6 +16,7 @@ export type Signals = {
   new_surface: boolean;
   design_question: boolean;
   small_change: boolean;
+  numbered_items: number;
   diagnosis: boolean;
 };
 
@@ -39,6 +40,7 @@ const FORCED_LANE = /\blane:\s*(fast|order|design|research)\b/i;
 const QUOTED = /`[^`]*`|"[^"\n]*"|“[^”\n]*”|(?<!\w)'[^'\n]*'(?!\w)/g;
 const PATH_MENTION = /`([A-Za-z0-9_./-]+\.[A-Za-z0-9]+)`|\b((?:src|test|tests|data|scripts|lib|app)\/[A-Za-z0-9_./-]+)\b|(?<![\w/.-])(\.[A-Za-z0-9_-]+\/[A-Za-z0-9_./-]*[A-Za-z0-9_-])/g;
 const LINE_SUFFIX = /:\d+(:\d+)?$/;
+const NUMBERED_ITEM = /^[ \t]*\d+[.)][ \t]/gm;
 
 export function forcedLane(text: string): Lane | undefined {
   return text.replace(QUOTED, " ").match(FORCED_LANE)?.[1]?.toLowerCase() as Lane | undefined;
@@ -95,6 +97,7 @@ export function signalsOf(text: string, mentioned: string[], touched: string[], 
     new_surface: NEW_SURFACE.test(text),
     design_question: DESIGN_QUESTION.test(text),
     small_change: SMALL_CHANGE.test(text),
+    numbered_items: text.match(NUMBERED_ITEM)?.length ?? 0,
   };
   return { ...signals, diagnosis: isDiagnosis(text, signals) };
 }

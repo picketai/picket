@@ -58,12 +58,23 @@ test("a hook row writes each event once and escapes the pipe in its matcher", ()
   assert.match(page, /\| `guard\.x` \| PostToolUse, PostToolUseFailure \| `a\\\|b` \| denies a\\\|b \|/);
 });
 
-test("an opt-in mod gets its install command and a default mod does not", () => {
-  const page = modsPage({ one: { plugin: "picket-one", summary: "s", description: "d", install: "default" }, two: { plugin: "picket-two", summary: "s", description: "d", install: "opt-in" } });
-  assert.match(page, /\| one \| `picket-one` \| by `picket init` \| s \|/);
-  assert.match(page, /\| two \| `picket-two` \| on request \| s \|/);
-  assert.ok(page.includes("claude plugin install picket-two@picketai --scope project"));
-  assert.ok(!page.includes("picket-one@picketai"));
+test("a mod with an off switch names its key, a part switch names its part, and a mod without one says none (T-4.6)", () => {
+  const page = modsPage({
+    one: { summary: "s", switch: null },
+    two: { summary: "t", switch: { key: "mods.two", part: null } },
+    three: { summary: "u", switch: { key: "mods.pane", part: "the pane" } },
+  });
+  assert.match(page, /\| one \| none \| s \|/);
+  assert.match(page, /\| two \| `mods\.two`: false \| t \|/);
+  assert.match(page, /\| three \| `mods\.pane`: false turns off the pane only \| u \|/);
+  assert.doesNotMatch(page, /claude plugin install/);
+});
+
+test("the mods page lists status with mods.session for the work pane only, markdown with mods.markdown, and no picket-session (T-1.6)", async () => {
+  const { text } = (await referencePages()).find(({ path }) => path.endsWith("/mods.md"));
+  assert.match(text, /^\| status \| `mods\.session`: false turns off the work pane only \|/m);
+  assert.match(text, /^\| markdown \| `mods\.markdown`: false \| a read-only pane beside the transcript for a Markdown path clicked in a reply \|$/m);
+  assert.doesNotMatch(text, /picket-session@|\| session \|/);
 });
 
 test("cli.md has one ## section per verb and one ### section per subverb", async () => {

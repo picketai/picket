@@ -1,12 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { codeLines } from "#test/kernel-sources.mts";
-import { DIST_MODS, MARKETPLACE, MOD_LIB_SHARED, SRC, marketplaceJson, modSharedTarget, rewriteModImports } from "../../scripts/build.mjs";
+import { DIST, DIST_MODS, DIST_MOD_CONTRACT, MARKETPLACE, MOD_LIB_SHARED, MOD_MODULE, SRC, marketplaceJson, modSharedTarget, rewriteModImports } from "../../scripts/build.mjs";
 import { MODS } from "../../src/lib/mods.mts";
+import { MOD_SWITCHES } from "../../src/lib/shared/mod-switch.mts";
 
-const PACKAGE = resolve("package.json");
+const PLUGIN_MANIFEST = resolve("src/.claude-plugin/plugin.json");
+const HOOKS_JSON = join(DIST, "hooks", "hooks.json");
+const REGISTER = /^export const register\b/m;
 const ENGINE_MODULES = ["claude-code", "claude-code/testing"];
 const MOD_CODE = /\.(ts|tsx)$/;
 const RESOLVE_SUFFIXES = ["", ".ts", ".tsx", ".d.ts", "/index.ts", "/index.tsx", "/index.d.ts"];
@@ -46,32 +49,40 @@ function modRoot(name) {
   return join(DIST_MODS, name);
 }
 
-test("the build writes each mod's manifest from the mod list and package.json (T-1.1)", () => {
-  const pkg = readJson(PACKAGE);
-  for (const [name, { plugin, description }] of Object.entries(MODS)) {
-    const manifest = readJson(join(modRoot(name), ".claude-plugin", "plugin.json"));
-    assert.deepEqual(manifest, { name: plugin, version: pkg.version, description, author: { name: pkg.author }, types: "./types/index.d.ts" }, name);
-    assert.ok(manifest.author.name, `${name} author`);
-  }
+test("hooks.json names the one composing module, which alone exports register and starts the session once (T-4.1)", () => {
+  assert.deepEqual(readJson(HOOKS_JSON).modules, [MOD_MODULE]);
+  const composer = readFileSync(resolve(dirname(HOOKS_JSON), MOD_MODULE), "utf8");
+  assert.match(composer, REGISTER);
+  assert.equal(composer.match(/\bon\(\s*'session\.start'/g)?.length, 1);
+  for (const name of Object.keys(MODS)) assert.doesNotMatch(readFileSync(join(modRoot(name), "hooks", "index.tsx"), "utf8"), REGISTER, name);
 });
 
-test("the build writes each mod's hooks.json naming index.tsx, which exports register (T-1.1)", () => {
-  for (const name of Object.keys(MODS)) {
-    assert.deepEqual(readJson(join(modRoot(name), "hooks", "hooks.json")), { modules: ["./index.tsx"] }, name);
-    assert.match(readFileSync(join(modRoot(name), "hooks", "index.tsx"), "utf8"), /^export const register\b/m, name);
-  }
+test("the build writes no mod manifest and leaves no dist/mods/; the core manifest names the merged contract (T-4.2)", () => {
+  assert.equal(existsSync(join(DIST, "mods")), false);
+  assert.deepEqual(filesUnder(DIST_MODS).filter((file) => basename(file) === "plugin.json"), []);
+  const types = readJson(join(DIST, ".claude-plugin", "plugin.json")).types;
+  assert.equal(resolve(DIST, types), DIST_MOD_CONTRACT);
+  const contract = readFileSync(DIST_MOD_CONTRACT, "utf8");
+  assert.match(contract, /interface PluginState \{\s+'picket': \{/);
+  assert.doesNotMatch(contract, /\bimport\b/);
 });
 
-test("the committed marketplace is the one the build writes (T-1.3)", () => {
+test("each mod with an off switch names a key the config check knows", () => {
+  const keys = Object.values(MODS).flatMap(({ switch: modSwitch }) => (modSwitch === null ? [] : [modSwitch.key]));
+  assert.deepEqual(keys, MOD_SWITCHES.map((name) => `mods.${name}`));
+});
+
+test("the committed marketplace is the one the build writes (T-4.6)", () => {
   const committed = readFileSync(MARKETPLACE, "utf8").replaceAll("\r\n", "\n");
-  assert.equal(committed, marketplaceJson(JSON.parse(committed)));
+  assert.equal(committed, marketplaceJson(JSON.parse(committed), readJson(PLUGIN_MANIFEST)));
+  assert.equal("renames" in JSON.parse(committed), false);
 });
 
-test("marketplaceJson keeps the core entry first and every other key, and lists the mods in list order from dist/mods/", () => {
-  const current = { name: "m", owner: { name: "o" }, plugins: [{ name: "picket-status", source: "./status", description: "old" }, { name: "picket", source: "./dist", description: "core" }] };
-  const written = JSON.parse(marketplaceJson(current));
+test("marketplaceJson keeps every other key and lists only picket from ./dist", () => {
+  const current = { name: "m", owner: { name: "o" }, plugins: [{ name: "picket-status", source: "./dist/mods/status", description: "old" }, { name: "picket", source: "./dist", description: "core" }] };
+  const written = JSON.parse(marketplaceJson(current, { name: "picket", description: "the core" }));
   assert.deepEqual(written.owner, { name: "o" });
-  assert.deepEqual(written.plugins.map(({ name, source }) => `${name} ${source}`), ["picket ./dist", ...Object.entries(MODS).map(([name, { plugin }]) => `${plugin} ./dist/mods/${name}`)]);
+  assert.deepEqual(written.plugins, [{ name: "picket", source: "./dist", description: "the core" }]);
 });
 
 test("rewriteModImports turns the two shared forms into the mod's shared/ folder, in either quote style, and leaves the rest", () => {
@@ -117,25 +128,22 @@ test("every built mod holds the shared copies, and no file in it names lib/share
   assert.deepEqual(naming, []);
 });
 
-test("every import in a built mod is the engine's module or a file inside the same mod folder (D-003)", () => {
-  const leaking = Object.keys(MODS).flatMap((name) =>
-    filesUnder(modRoot(name))
-      .filter((file) => MOD_CODE.test(file))
-      .flatMap((file) => leaks(modRoot(name), file, readFileSync(file, "utf8")).map((specifier) => `${file}: ${specifier}`)),
-  );
+test("every import in a built mod is the engine's module or a file under dist/hooks/mods/ (T-4.5)", () => {
+  const leaking = filesUnder(DIST_MODS)
+    .filter((file) => MOD_CODE.test(file))
+    .flatMap((file) => leaks(DIST_MODS, file, readFileSync(file, "utf8")).map((specifier) => `${file}: ${specifier}`));
   assert.deepEqual(leaking, []);
 });
 
 test("the leak scan reports a planted import that leaves the mod folder, a package and a missing file", () => {
-  const root = modRoot("status");
   const planted = [
     "import { compactTokens } from '../../../lib/shared/format.mts'",
     "import React from 'react'",
     "import { gone } from './gone'",
     "import { agentsLine } from './band'",
-    "import type { Work } from '../types'",
+    "import type { Work } from '../../types'",
     "import { mock } from 'claude-code/testing'",
     "// import { x } from '../../elsewhere'",
   ].join("\n");
-  assert.deepEqual(leaks(root, join(root, "hooks", "planted.ts"), planted), ["../../../lib/shared/format.mts", "react", "./gone"]);
+  assert.deepEqual(leaks(DIST_MODS, join(modRoot("status"), "hooks", "planted.ts"), planted), ["../../../lib/shared/format.mts", "react", "./gone"]);
 });

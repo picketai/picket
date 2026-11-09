@@ -1,0 +1,80 @@
+{
+  "work_id": "20261108-admit-needs-a-touch-set",
+  "base": "009de4220a93f5882b9867c677a74e1a4b4522c5",
+  "request": "work/20261108-admit-needs-a-touch-set/request.md",
+  "size": "large",
+  "changed_files": [
+    "CLAUDE.md",
+    "bench/test/tasks.test.mjs",
+    "src/lib/shared/admission/admit-labelled.test.json",
+    "src/lib/shared/admission/admit-labelled.test.mts",
+    "src/lib/shared/admission/admit.mts",
+    "src/lib/shared/admission/admit.test.mts",
+    "src/lib/shared/admission/lane.mts",
+    "src/lib/shared/admission/lane.test.mts",
+    "src/lib/shared/admission/signals.mts",
+    "src/lib/shared/admission/signals.test.mts",
+    "src/lib/verbs/admit/index.test.mts",
+    "src/lib/verbs/open/index.mts",
+    "src/lib/verbs/open/index.test.mts",
+    "src/skills/debugging/SKILL.md",
+    "src/skills/expediting/SKILL.md",
+    "src/templates/claude-block.md",
+    "test/cli/cli.test.mjs"
+  ],
+  "lines_added": 172,
+  "lines_removed": 64,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-08T12:04:05.945Z",
+    "base": "009de4220a93f5882b9867c677a74e1a4b4522c5",
+    "mutant": {
+      "path": "scripts/docs.mjs",
+      "line": 120,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 34157
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

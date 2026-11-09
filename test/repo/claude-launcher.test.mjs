@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { delimiter, join, resolve } from "node:path";
+import { DIST_PACKAGE } from "../../scripts/build.mjs";
 import { checkoutEnv } from "../../scripts/claude.mjs";
 
 const PACKAGE = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
@@ -26,5 +27,6 @@ test("checkoutEnv leaves its input untouched and starts nothing on import", () =
 
 test("npm run claude builds, then runs the launcher, and the published files still leave scripts/ out (T-4.2)", () => {
   assert.equal(PACKAGE.scripts.claude, "npm run build && node scripts/claude.mjs");
-  assert.equal(PACKAGE.files.some((entry) => entry.startsWith("scripts")), false);
+  const published = JSON.parse(readFileSync(DIST_PACKAGE, "utf8"));
+  assert.equal(published.files.some((entry) => entry.startsWith("scripts")), false);
 });

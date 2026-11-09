@@ -6,13 +6,13 @@ Name the product Picket in any text a user reads. "Harness" is the internal word
 
 ## Layout
 
-`src/` is everything hand-written, and `npm run build` turns it into `dist/`. Under it, `src/.claude-plugin/` holds the plugin manifest, `src/agents/`, `src/skills/`, `src/rules/` and `src/output-styles/` the instructions, `src/bin/` the `picket` command, `src/lib/` the kernel, `src/mods/` the three mods, `src/templates/` the `CLAUDE.md` block `picket init` writes, and `src/themes/` the Claude Code theme.
+`src/` is everything hand-written, and `npm run build` turns it into `dist/`. Under it, `src/.claude-plugin/` holds the plugin manifest, `src/agents/`, `src/skills/`, `src/rules/` and `src/output-styles/` the instructions, `src/bin/` the `picket` command, `src/lib/` the kernel, `src/mods/` the status and Markdown mods composed into one hooks module (`src/mods/index.tsx`), `src/templates/` the `CLAUDE.md` block `picket init` writes, and `src/themes/` the Claude Code theme.
 
 Verbs, hooks and mods are each a list plus one folder per entry:
 
 - `src/lib/verbs.mts` lists every verb with its summary; the verb's code is `src/lib/verbs/<verb>/`, and `src/lib/cli/registry.mts` loads it.
 - `src/lib/hooks.mts` lists every hook with its events, matcher and summary; the hook is `src/lib/hooks/<kind>/<name>/`.
-- `src/lib/mods.mts` lists every mod; the mod is `src/mods/<name>/`.
+- `src/lib/mods.mts` lists every mod; the mod is `src/mods/<name>/`, whose `src/mods/<name>/hooks/index.tsx` exports its handlers, and `src/mods/index.tsx` registers them all. The build copies the mods into a `mods` folder under `dist/hooks/`, inside the picket plugin.
 
 The rest of `src/lib/` is `src/lib/cli/` for the command line, `src/lib/shared/` for Picket code two verbs or a hook use, and `src/lib/util/` for code with no Picket knowledge. Imports point one way, `cli` to `verbs` to `shared` to `util`, with hooks beside the verbs; `test/repo/conventions.test.mjs` enforces it.
 
@@ -34,7 +34,7 @@ Tests use `node:test` with `node:assert/strict`. `npm test` type-checks, then ru
 2. `build`: `npm run build`.
 3. `product`: the tests under `test/` and `bench/test/` that run `dist/` or check the repository.
 4. `timing`: the cold-start budgets in `test/timing/`, alone, so no other test loads the machine.
-5. `mods`: each mod's `claude plugin validate --strict` and `claude plugin test`, skipped when `claude` is not on `PATH`.
+5. `mods`: `claude plugin validate --strict dist`, then `claude plugin test dist`, once for the whole plugin, skipped when `claude` is not on `PATH`. `npm run test:mods` runs the same two commands.
 
 `node scripts/test.mjs unit build` runs only the named steps, and `npm run test:unit` runs the unit tests alone. Run `npm test` before proposing a commit.
 
@@ -46,13 +46,13 @@ CI runs `.github/workflows/release.yml` in four jobs. `test` runs `npm test` on 
 
 ## Installing from a checkout
 
-In this repository, `npm run claude` builds, then runs `scripts/claude.mjs`, which starts `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH` and `PICKET_CHECKOUT` set to the checkout. The plugin then loads from the fresh build in `dist/`, and every `picket` command in the session runs this checkout's kernel, not the installed npm package; `command -v picket` shows which one runs. To set up another project, run this there, with the path of this checkout:
+In this repository, `npm run claude` builds, then runs `scripts/claude.mjs`, which starts `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH` and `PICKET_CHECKOUT` set to the checkout. The plugin then loads from the fresh build in `dist/`, and every `picket` command in the session runs this checkout's kernel, not the plugin's; `command -v picket` shows which one runs. To set up another project, run this there, with the path of this checkout:
 
 ```sh
 node <path to this checkout>/dist/bin/picket.mjs init
 ```
 
-It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore`, and in `.claude/settings.json` the permission allow and ask rules, `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and the `picket statusline` status line (unless one is already set). Then it adds the `picketai` marketplace and installs `picket@picketai`, `picket-status@picketai` and `picket-markdown@picketai`, all with project scope. A second run changes nothing; `--no-install` skips the four `claude` commands.
+It writes the Picket block into `CLAUDE.md`, `.picket/config.json`, the `.picket/state/` line in `.gitignore`, and in `.claude/settings.json` the permission allow and ask rules, `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, and with `--statusline` the status line (unless one is already set). It uninstalls the retired mod plugins it finds enabled, writes the `picketai` marketplace into `.claude/settings.json` as an inline settings marketplace whose one plugin comes from the npm package, and installs only `picket@picketai`, with project scope. A second run changes nothing; `--no-install` still writes the marketplace and skips the `claude` commands.
 
 To undo it, run `picket uninstall` in a terminal from that project's root, the same way:
 
@@ -147,11 +147,11 @@ Agents never commit. The developer stages a phase and proposes a message, and th
 
 A release starts on `trunk` with a clean tree. First, in `CHANGELOG.md`, turn the newest heading into the version you release: `## 1.0.0-alpha.4 (not released yet)` becomes `## 1.0.0-alpha.4`. Commit that.
 
-Then run `npm version prerelease --preid alpha`: it bumps the version in `package.json`, copies it into the core plugin manifest `src/.claude-plugin/plugin.json` (through `.github/scripts/release.mjs sync-version`), commits both and tags the commit `v<version>`. The mods carry no manifest in `src/`: the build writes each one into `dist/mods/<name>/` from `package.json` and `src/lib/mods.mts`, so they take the same version. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux on Node 24 and the build on Node 22, checks that the tag matches `package.json` and sits on `trunk`, and publishes under the `alpha` dist-tag. npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
+Then run `npm version prerelease --preid alpha`: it bumps the version in `package.json`, copies it into the core plugin manifest `src/.claude-plugin/plugin.json` (through `.github/scripts/release.mjs sync-version`), commits both and tags the commit `v<version>`. The mods ship inside the picket plugin and carry no manifest of their own, and the build writes a `package.json` into `dist/` with the root version, so the package takes the same version. Then run `git push origin trunk --follow-tags`. The tag push starts `.github/workflows/release.yml`, which runs the tests on Linux on Node 24 and the build on Node 22, checks that the tag matches `package.json` and sits on `trunk`, and publishes `./dist` under the `alpha` dist-tag (the root `package.json` is private and never published). npm never accepts the same version twice, so a published version cannot be replaced, only followed by the next one.
 
 The workflow publishes through npm trusted publishing, so it needs a one-time setup on npmjs.com after the first version was published by hand. Open the package settings of `@picketai/picket` and add a trusted publisher for GitHub Actions with organization `picketai`, repository `picket`, workflow file `release.yml` and no environment.
 
-To check a release before tagging, start the `release` workflow by hand from the Actions tab. It runs the same tests on Linux and ends with `npm publish --dry-run`, which publishes nothing. Read the file list it prints: no path may contain `.test.`.
+To check a release before tagging, start the `release` workflow by hand from the Actions tab. It runs the same tests on Linux and ends with `npm publish ./dist --dry-run`, which publishes nothing. Read the file list it prints: no path may contain `.test.`.
 
 Publish only from the workflow. Its `prepack` script builds `dist/` before the publish packs it. It packs a Linux checkout, where `src/bin/picket` keeps its executable bit and its LF line ends, and the build copies both into `dist/bin/picket`; a pack made on Windows drops the bit.
 

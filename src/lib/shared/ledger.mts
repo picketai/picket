@@ -5,6 +5,8 @@ import type { Lane } from "./work/state.mts";
 
 export type Usage = { input_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number; output_tokens: number };
 
+export const USAGE_KEYS = ["input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens"] as const;
+
 type Common = { v: 2; ts: string; session: string | null; agent: string | null; work_id: string | null };
 
 export type TurnRow = Common & {
@@ -20,7 +22,6 @@ export type TurnRow = Common & {
   rereads: number;
   first_reviewable_ms: number | null;
   usage: Usage | null;
-  session_cost_usd: number | null;
 };
 export type AcceptRow = Common & { event: "accept"; phase: number | null; commit: string; lines_added: number };
 export type DenialRow = Common & { event: "block" | "bounce"; hook: string; reason: string };
@@ -45,6 +46,16 @@ export function recordAccept(root: string, id: string, commit: string, phase: nu
   try {
     appendLedger(root, { event: "accept", session: null, agent: null, work_id: id, phase, commit, lines_added: productLinesAdded(root, commit) }, now);
   } catch {}
+}
+
+export function turnTokens(row: TurnRow): number {
+  return USAGE_KEYS.reduce((sum, key) => sum + (row.usage?.[key] ?? 0), 0);
+}
+
+export const TURN_EVENTS: ReadonlySet<LedgerRow["event"]> = new Set(["stop", "subagent_stop", "gate"]);
+
+export function isTurn(row: LedgerRow): row is TurnRow {
+  return TURN_EVENTS.has(row.event);
 }
 
 function isCurrent(row: unknown): row is LedgerRow {

@@ -1,6 +1,6 @@
 import { action, done, refuse } from "../../shared/action.mts";
 import { admit, overridesAdmission } from "../../shared/admission/admit.mts";
-import { NO_LANE, type Admission } from "../../shared/admission/lane.mts";
+import { NO_LANE, PENDING, type Admission } from "../../shared/admission/lane.mts";
 import { loadConfig } from "../../shared/config.mjs";
 import { configRel, WORK_DIR } from "../../shared/paths.mts";
 import { recordBases } from "../../shared/repos.mts";
@@ -78,7 +78,7 @@ function overriddenAdmission(root: string, lane: string, request: string | null)
 }
 
 function laneRefusal(asked: string, { lane, reasons }: Admission): string {
-  const remedy = lane === NO_LANE ? "follow admit's reason" : `open it with --lane ${lane}`;
+  const remedy = lane === NO_LANE || lane === PENDING ? "follow admit's reason" : `open it with --lane ${lane}`;
   return `open: admit answers ${lane} for this request (${reasons.join("; ")}), not ${asked}; ${remedy}, or add --${USER_LANE} only on the user's word`;
 }
 

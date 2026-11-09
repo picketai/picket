@@ -3,7 +3,7 @@ import type { EngineInterface, UiPressArgument } from 'claude-code'
 
 import type { ListRowView } from '../../../lib/shared/views.mts'
 import { runPicket } from '../../shared/kernel'
-import type { BandEntry, FoldableGroup, PaneTab, PaneView, SessionEntry } from '../types'
+import type { BandEntry, FoldableGroup, PaneTab, PaneView, SessionEntry } from '../../types'
 import { deleteTranscript, isDeletable, listSessions, listTranscriptIds, renameSession } from './session-files'
 import { activeSessionCount, needYouCount, watchedIds, workSignature, type WorkStat } from './watch'
 
@@ -16,19 +16,19 @@ export const DONE_KEY = 'done-sessions'
 
 const VIEW_DEFAULTS: PaneView = { tab: 'active', selectedId: null, renamingId: null, confirm: null, offset: 0, folded: ['none'] }
 
-const rows = atom({ plugin: 'picket-status', key: 'rows' } as const, [] as ListRowView[])
+const rows = atom({ plugin: 'picket', key: 'rows' } as const, [] as ListRowView[])
 
-const sessions = atom({ plugin: 'picket-status', key: 'sessions' } as const, [] as SessionEntry[])
+const sessions = atom({ plugin: 'picket', key: 'sessions' } as const, [] as SessionEntry[])
 
-const done = atom({ plugin: 'picket-status', key: 'done' } as const, [] as string[])
+const done = atom({ plugin: 'picket', key: 'done' } as const, [] as string[])
 
-const paneView = atom({ plugin: 'picket-status', key: 'paneView' } as const, VIEW_DEFAULTS)
+const paneView = atom({ plugin: 'picket', key: 'paneView' } as const, VIEW_DEFAULTS)
 
-const transcriptIds = atom({ plugin: 'picket-status', key: 'transcriptIds' } as const, [] as string[])
+const transcriptIds = atom({ plugin: 'picket', key: 'transcriptIds' } as const, [] as string[])
 
-const hasMarkdown = atom({ plugin: 'picket-status', key: 'hasMarkdown' } as const, false)
+const hasMarkdown = atom({ plugin: 'picket', key: 'hasMarkdown' } as const, false)
 
-const currentId = atom({ plugin: 'picket-status', key: 'currentId' } as const, null as string | null)
+const currentId = atom({ plugin: 'picket', key: 'currentId' } as const, null as string | null)
 
 export function readRows($: EngineInterface) {
   return read($, rows)
@@ -106,22 +106,28 @@ export async function refreshPane($: EngineInterface) {
   await loadDone($)
 }
 
-export async function refreshBand($: EngineInterface, markdown: boolean) {
-  const [ids, current] = await Promise.all([listTranscriptIds($), $.session.id().catch(() => null)])
+export type BandParts = { hasMarkdown: boolean; hasWorkPane: boolean }
+
+async function bandTranscriptIds($: EngineInterface, parts: BandParts): Promise<string[]> {
+  return parts.hasWorkPane ? listTranscriptIds($) : []
+}
+
+export async function refreshBand($: EngineInterface, parts: BandParts) {
+  const [ids, current] = await Promise.all([bandTranscriptIds($, parts), $.session.id().catch(() => null)])
   await update($, transcriptIds, () => ids)
-  await update($, hasMarkdown, () => markdown)
+  await update($, hasMarkdown, () => parts.hasMarkdown)
   await update($, currentId, () => current || null)
   await refreshRows($, { force: false })
 }
 
-export async function startBand($: EngineInterface, markdown: boolean) {
-  await loadDone($)
-  await refreshBand($, markdown)
+export async function startBand($: EngineInterface, parts: BandParts) {
+  if (parts.hasWorkPane) await loadDone($)
+  await refreshBand($, parts)
 }
 
-export async function readBandEntry($: EngineInterface): Promise<BandEntry> {
+export async function readBandEntry($: EngineInterface, hasWorkPane: boolean): Promise<BandEntry> {
   const [listed, ids, closed, markdown, current] = await Promise.all([read($, rows), read($, transcriptIds), read($, done), read($, hasMarkdown), read($, currentId)])
-  return { needYou: needYouCount(listed, current), sessions: activeSessionCount(ids, closed), hasMarkdown: markdown }
+  return { needYou: needYouCount(listed, current), sessions: hasWorkPane ? activeSessionCount(ids, closed) : null, hasMarkdown: markdown }
 }
 
 export async function isPaneOpen($: EngineInterface): Promise<boolean> {
