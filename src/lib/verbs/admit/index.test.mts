@@ -128,6 +128,25 @@ test("schema inside a work item id, a path or the phrase JSON schema leaves the 
   assert.ok(table.reasons.includes(MIGRATION_REASON), table.reasons.join("; "));
 });
 
+const RESEARCH_REASON = "the request asks a question and changes no code";
+const REVIEW_PARAGRAPH = "With all the changes that we've currently done, I want to see if there are things that we need to adjust in our Picket solution. My main concern is consistency, determinism, and performance. I want to see if we messed with any of these in our changes so far.";
+
+test("a review that asks whether something regressed answers research with the question reason (T-2.1)", (t) => {
+  const root = repo(t);
+  for (const request of [REVIEW_PARAGRAPH, "Review the changes since v1.0.0-alpha.5 and tell me if we regressed consistency, determinism or performance. No code changes yet."]) {
+    const r = admit(root, request);
+    assert.equal(r.lane, "research", request);
+    assert.deepEqual(r.reasons, [RESEARCH_REASON], request);
+  }
+});
+
+test("a check-whether request answers research alone, pending with a fix and order with an update (T-2.2)", (t) => {
+  const root = repo(t);
+  assert.equal(admit(root, "Check whether the pagination change regressed the page count.").lane, "research");
+  assert.equal(admit(root, "Check whether the pagination change regressed the page count and fix it.").lane, PENDING);
+  assert.equal(admit(root, "Check if the CSV export still sorts newest first, and update the test.").lane, "order");
+});
+
 const SPIKE_REQUEST = "Picket plugin spike: a research work item whose throwaway code lives only under `spike/`. Question: can a Claude Code plugin carry Picket? Check that a version bump arrives with one update command.";
 
 test("a request that calls itself a research work item lands in research despite a bump (T-2.1)", (t) => {

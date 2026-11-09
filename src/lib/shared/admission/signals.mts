@@ -33,7 +33,11 @@ const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|option
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak|(remov(e|es|ing)|delet(e|es|ing))(\s+[\w'-]+){0,3}\s+(keys?|lines?|entry|entries|settings?|hooks?))\b/i;
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const DIAGNOSIS = /\b(debug(ging)?|diagnos(e|es|is|ing)|root[- ]cause|find (out )?why)\b|\bwhy (does|do|did|is|are)\b[^?!\n]*\b(fail\w*|crash\w*|throw\w*|errors?|flaky|hang\w*|regress\w*|wrong)/i;
-const CHANGE_VERB = /(?:^|[.;:!?,]\s*|\b(?:and|then|to|please|also)\s+)(fix|add|change|log|rename|implement|remove|refactor|update|replace|delete|patch|make|correct|resolve|write|adjust|modify|edit)\b/i;
+const CHANGE_VERBS = "fix|add|change|log|rename|implement|remove|refactor|update|replace|delete|patch|make|correct|resolve|write|adjust|modify|edit";
+const changeVerbAfter = (leads: string) => new RegExp(`(?:^|[.;:!?,]\\s*|\\b(?:${leads})\\s+)(${CHANGE_VERBS})\\b`, "i");
+const CHANGE_VERB = changeVerbAfter("and|then|to|please|also");
+const ASKED_CHANGE = changeVerbAfter("and|then|please|also");
+const REVIEW_WHETHER = /\b(see|check|review|verify|find out)\s+(if|whether)\b/i;
 const OPENS_WITH_CHANGE = /^\s*(fix|add|change|implement|remove|refactor|update|replace|delete|patch|correct|resolve|adjust|modify|edit|rename|convert|move)\b/i;
 const NO_CODE_CHANGES = /\bno code changes?\b|\bproduct code untouched\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
@@ -75,6 +79,17 @@ function touchesSecurity(pathHits: string[], text: string, securityPaths: readon
   return pathHits.length > 0 || securityPaths.some((s) => text.includes(s)) || SECURITY.test(withoutNonCredentialTokens(text));
 }
 
+function asksOnlyToReview(text: string): boolean {
+  return REVIEW_WHETHER.test(text) && !ASKED_CHANGE.test(text);
+}
+
+function isResearch(text: string, declaredResearch: boolean): boolean {
+  if (NEW_SURFACE.test(text)) return false;
+  if (declaredResearch) return true;
+  const asks = RESEARCH.test(text) || asksOnlyToReview(text);
+  return asks && !SMALL_CHANGE.test(text) && !OPENS_WITH_CHANGE.test(text);
+}
+
 function isMigration(text: string): boolean {
   return MIGRATION.test(text.replace(IDENTIFIER, " ").replace(JSON_SCHEMA, " "));
 }
@@ -93,7 +108,7 @@ export function signalsOf(text: string, mentioned: string[], touched: string[], 
     mentioned_paths: mentioned,
     touched: touched.length,
     declared_research: declaredResearch,
-    research: (declaredResearch || (RESEARCH.test(text) && !SMALL_CHANGE.test(text) && !OPENS_WITH_CHANGE.test(text))) && !NEW_SURFACE.test(text),
+    research: isResearch(text, declaredResearch),
     security: touchesSecurity(pathHits, text, securityPaths),
     security_path_hits: pathHits,
     migration: isMigration(text),

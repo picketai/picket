@@ -54,6 +54,16 @@ test("schema inside a work item id, a path or the phrase JSON schema is not migr
   assert.equal(migration("Migrate the invoices file to one invoice per line."), true);
 });
 
+const REVIEW_PARAGRAPH = "With all the changes that we've currently done, I want to see if there are things that we need to adjust in our Picket solution. My main concern is consistency, determinism, and performance. I want to see if we messed with any of these in our changes so far.";
+
+test("a request that only asks to see or check whether something holds is research; one that also asks for a change is not (T-2.3)", () => {
+  const research = (text: string) => signalsOf(text, [], [], []).research;
+  assert.equal(research(REVIEW_PARAGRAPH), true);
+  assert.equal(research("Check whether the pagination change regressed the page count."), true);
+  assert.equal(research("Check whether the pagination change regressed the page count and fix it."), false);
+  assert.equal(research("Check if the CSV export still sorts newest first, and update the test."), false);
+});
+
 test("numbered_items counts the lines that open with a number, a dot or bracket and a space (T-2.1)", () => {
   const count = (text: string) => signalsOf(text, [], [], []).numbered_items;
   assert.equal(count("Fix these:\n1. a\n2. b\n3. c"), 3);
