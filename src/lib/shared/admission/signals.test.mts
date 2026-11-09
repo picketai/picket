@@ -2,6 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { laneOf } from "./lane.mts";
 import { forcedLane, mentionedPaths, signalsOf } from "./signals.mts";
 import { withProject } from "#test/project.mts";
 
@@ -62,6 +63,29 @@ test("a request that only asks to see or check whether something holds is resear
   assert.equal(research("Check whether the pagination change regressed the page count."), true);
   assert.equal(research("Check whether the pagination change regressed the page count and fix it."), false);
   assert.equal(research("Check if the CSV export still sorts newest first, and update the test."), false);
+});
+
+const admittedLane = (text: string) => laneOf(signalsOf(text, [], [], []), { fast: { max_files: 3 } });
+
+test("a check that also asks to create something is an order, not research (T-2.1)", () => {
+  assert.equal(admittedLane("Check whether the CSV export works and create a test for it.").lane, "order");
+});
+
+test("a check whether an irreversible step is safe keeps the design lane (T-2.2)", () => {
+  const admission = admittedLane("See if we can drop table legacy_users safely.");
+  assert.equal(admission.lane, "design");
+  assert.ok(admission.reasons.includes("an irreversible step"), admission.reasons.join("; "));
+});
+
+test("a check whether migration work ran keeps the design lane (T-2.3)", () => {
+  const admission = admittedLane("Verify whether the migration backfill ran on all rows.");
+  assert.equal(admission.lane, "design");
+  assert.ok(admission.reasons.includes("schema or data migration work"), admission.reasons.join("; "));
+});
+
+test("a plain check and an explanation of migration work stay research (T-2.4)", () => {
+  assert.equal(admittedLane("Check whether the CSV export works.").lane, "research");
+  assert.equal(admittedLane("Explain how the migration backfill works.").lane, "research");
 });
 
 test("numbered_items counts the lines that open with a number, a dot or bracket and a space (T-2.1)", () => {

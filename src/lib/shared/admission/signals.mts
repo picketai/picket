@@ -33,7 +33,7 @@ const DESIGN_QUESTION = /\b(design|architecture|which approach|trade-?off|option
 const SMALL_CHANGE = /\b(fix|rename|typo|guard|null check|log (the |an? )?(error|line|message|warning)|default value|config value|change the default|off[- ]by[- ]one|bump|tweak|(remov(e|es|ing)|delet(e|es|ing))(\s+[\w'-]+){0,3}\s+(keys?|lines?|entry|entries|settings?|hooks?))\b/i;
 const DECLARED_RESEARCH = /\b(an?|this) research (work )?item\b/i;
 const DIAGNOSIS = /\b(debug(ging)?|diagnos(e|es|is|ing)|root[- ]cause|find (out )?why)\b|\bwhy (does|do|did|is|are)\b[^?!\n]*\b(fail\w*|crash\w*|throw\w*|errors?|flaky|hang\w*|regress\w*|wrong)/i;
-const CHANGE_VERBS = "fix|add|change|log|rename|implement|remove|refactor|update|replace|delete|patch|make|correct|resolve|write|adjust|modify|edit";
+const CHANGE_VERBS = "fix|add|change|log|rename|implement|remove|refactor|update|replace|delete|patch|make|correct|resolve|write|adjust|modify|edit|create";
 const changeVerbAfter = (leads: string) => new RegExp(`(?:^|[.;:!?,]\\s*|\\b(?:${leads})\\s+)(${CHANGE_VERBS})\\b`, "i");
 const CHANGE_VERB = changeVerbAfter("and|then|to|please|also");
 const ASKED_CHANGE = changeVerbAfter("and|then|please|also");
@@ -80,7 +80,7 @@ function touchesSecurity(pathHits: string[], text: string, securityPaths: readon
 }
 
 function asksOnlyToReview(text: string): boolean {
-  return REVIEW_WHETHER.test(text) && !ASKED_CHANGE.test(text);
+  return REVIEW_WHETHER.test(text) && !ASKED_CHANGE.test(text) && !IRREVERSIBLE.test(text) && !isMigration(text);
 }
 
 function isResearch(text: string, declaredResearch: boolean): boolean {

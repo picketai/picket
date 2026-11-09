@@ -140,5 +140,8 @@
   { "request": "Review the changes since v1.0.0-alpha.5 and tell me if we regressed consistency, determinism or performance. No code changes yet.", "lane": "research", "why": "a review that asks for a finding and says no code changes" },
   { "request": "Check whether the pagination change regressed the page count.", "lane": "research", "why": "asks to check whether something regressed and asks for no change" },
   { "request": "Check whether the pagination change regressed the page count and fix it.", "lane": "pending", "why": "the check also asks for a fix; a small fix naming no existing file asks for the touch set" },
-  { "request": "Check if the CSV export still sorts newest first, and update the test.", "lane": "order", "why": "the check also asks to update a test; no small-change word and no file named, so order is the default" }
+  { "request": "Check if the CSV export still sorts newest first, and update the test.", "lane": "order", "why": "the check also asks to update a test; no small-change word and no file named, so order is the default" },
+  { "request": "Check whether the CSV export works and create a test for it.", "lane": "order", "why": "the check also asks to create a test; no small-change word and no file named, so order is the default" },
+  { "request": "See if we can drop table legacy_users safely.", "lane": "design", "why": "a review of an irreversible step keeps the heavy lane" },
+  { "request": "Verify whether the migration backfill ran on all rows.", "lane": "design", "why": "a review of migration work keeps the heavy lane" }
 ]
