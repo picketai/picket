@@ -1,0 +1,9 @@
+id: 20261109-close-guard-test-admit-ledger-gaps
+lane: design
+title: "Close guard, test, admit, ledger gaps"
+status: open
+created: 2026-11-09T13:11:31.589Z
+updated: 2026-11-09T14:07:14.564Z
+session: e9bcd41a-c78b-4202-960e-a3835d811df4
+base: 81f08bbb512e4f3306cf402cc32a64377d431d77
+run_through: 8

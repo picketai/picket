@@ -1,0 +1,4 @@
+warn artifact: design.md not written yet (next action will ask for it)
+warn tree: 1 uncommitted path(s) outside work/: bench/results/plugin-2026-11-09.json
+warn project_map: absent; the analyst can write one
+warn source:analysis: unreachable: HARNESS_SOURCE_ANALYSIS is not set (set it in the env block of .claude/settings.local.json)

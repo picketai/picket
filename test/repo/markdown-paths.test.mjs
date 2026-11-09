@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(".");
 
-const UNSCANNED_PREFIXES = ["work/", "artifacts/", "bench/results/"];
+const UNSCANNED_PREFIXES = ["work/", "artifacts/", "bench/results/", ".claude/agent-memory/"];
 const PROJECT_MEMORY = ".claude/MEMORY.md";
 const SUPERSEDED = "[superseded";
 const SKILL_EXAMPLES = /^src\/skills\/[^/]+\/examples\//;
@@ -150,8 +150,11 @@ test("spans inside fenced blocks are not cited", () => {
   assert.deepEqual(citedPaths("see `a/b.md`\n```\n`c/d.md`\n```\nand `e/f.md`"), ["a/b.md", "e/f.md"]);
 });
 
-test("records are not scanned: artifacts/ and the superseded lines of the project memory", () => {
+test("records are not scanned: artifacts/, agent memory and the superseded lines of the project memory", () => {
   assert.equal(isScanned("artifacts/strategy/decisions/00001-a.md"), false);
+  assert.equal(isScanned(".claude/agent-memory/picket-architect/MEMORY.md"), false);
+  assert.equal(isScanned(".claude/agent-memory/picket-developer/guard-bash-code-writes.md"), false);
+  assert.equal(isScanned(".claude/MEMORY.md"), true);
   assert.equal(isScanned("src/skills/ordering/SKILL.md"), true);
   assert.equal(isScanned("README.md"), true);
   const memory = "- old `gone/a.md` [superseded 2026-10-10 by B]\n- current `kept/b.md`";
