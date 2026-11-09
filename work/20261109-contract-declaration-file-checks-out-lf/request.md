@@ -1,0 +1,1 @@
+Fix the mod contract test that fails on Windows: test/repo/mod-contracts.test.mjs "a planted contract whose ListRow drops branch fails the check" replaces "  branch: string | null\n", but src/mods/types/index.d.ts has CRLF in a Windows working tree, so the replace matches nothing. Make the contract file check out with LF line endings.

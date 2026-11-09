@@ -1,1 +1,2 @@
 src/bin/picket text eol=lf
+*.d.ts text eol=lf

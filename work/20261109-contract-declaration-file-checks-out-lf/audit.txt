@@ -1,0 +1,1 @@
+fast · phases 0 · tokens lead 2.0M, subagent 2.0M · bounces 0 · blocks 0 · wall 3m
