@@ -1,6 +1,6 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "../../util/args.mts";
 import { writeLayout } from "../../shared/repos.mts";
@@ -78,6 +78,25 @@ test("an item at approve_phase whose session is not live needs you, in its state
     branch: null,
     worktrees: [],
   });
+});
+
+function attentionWithRegistryCwd(t: TestContext, cwdOf: (root: string) => string): Promise<ListRowView[]> {
+  const root = withProject(t, { host: true, picket: false });
+  const config = withProject(t, { picket: false });
+  openItem(root, { lane: "order", title: "Stop sync write", session: SESSION });
+  mkdirSync(join(config, "sessions"));
+  writeFileSync(join(config, "sessions", "101.json"), JSON.stringify({ pid: 101, sessionId: SESSION, cwd: cwdOf(root) }));
+  return verb.run({}, fixedContext(root, { env: { CLAUDE_CONFIG_DIR: config } })).then((outcome) => (outcome.status === "done" ? outcome.value : []));
+}
+
+test("an open item is working when its session runs in the root, by the registry under CLAUDE_CONFIG_DIR (T-2.3)", async (t) => {
+  const [row] = await attentionWithRegistryCwd(t, (root) => root);
+  assert.equal(row?.attention, "working");
+});
+
+test("an open item is open when its session runs in a subfolder of the root (T-2.3)", async (t) => {
+  const [row] = await attentionWithRegistryCwd(t, (root) => join(root, "src"));
+  assert.equal(row?.attention, "open");
 });
 
 test("a recorded worktree is present when its folder exists under the root, and absent when not (T-1.4)", async (t) => {

@@ -47,7 +47,7 @@ function rowOf({ root, secured, live }: ListScope, id: WorkId): ListRowView {
 }
 
 export const list = action<ListInput, ListRowView[]>(async (_input, { root, env, home }) => {
-  const scope: ListScope = { root, secured: securityPaths(root), live: liveSessionIds(hostConfigDir(env, home)) };
+  const scope: ListScope = { root, secured: securityPaths(root), live: liveSessionIds(hostConfigDir(env, home), root) };
   return done(listWork(root).map((id) => rowOf(scope, id)));
 });
 

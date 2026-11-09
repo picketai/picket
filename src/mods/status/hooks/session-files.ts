@@ -1,5 +1,6 @@
 import type { EngineInterface } from 'claude-code'
 
+import { isProjectSession } from '../../../lib/shared/live-session.mts'
 import type { SessionEntry } from '../../types'
 import { projectSlug, TITLE_RECORD, titleOf } from './sessions'
 
@@ -39,7 +40,7 @@ async function liveSessions($: EngineInterface, dir: string, root: string) {
     try {
       const text = await $.fs.read(`${dir}/sessions/${file.name}`)
       const info = JSON.parse(typeof text === 'string' ? text : '{}') as Record<string, unknown>
-      if (typeof info.sessionId === 'string' && info.cwd === root) {
+      if (typeof info.sessionId === 'string' && isProjectSession(info.cwd, root)) {
         live.set(info.sessionId, { name: info.nameSource === 'user' && typeof info.name === 'string' ? info.name : null })
       }
     } catch {

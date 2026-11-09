@@ -225,6 +225,8 @@ const S_CURRENT = '11111111-1111-4111-8111-111111111111'
 const S_WORKING = '22222222-2222-4222-8222-222222222222'
 const S_NONE = '33333333-3333-4333-8333-333333333333'
 const S_LIVE = '44444444-4444-4444-8444-444444444444'
+const S_TREE = '55555555-5555-4555-8555-555555555555'
+const S_AWAY = '66666666-6666-4666-8666-666666666666'
 
 const TITLES: Record<string, string> = {
   [S_CURRENT]: 'Gate the release',
@@ -275,6 +277,7 @@ type PaneWorld = {
   roster: AgentInfo[]
   listed: string[]
   intervals: number[]
+  registry: Record<string, { sessionId: string; cwd: string }>
 }
 
 const PROJECT_CONFIG = 'D:/repo/.picket/config.json'
@@ -313,6 +316,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     roster: [],
     listed: [],
     intervals,
+    registry: { '4444.json': { sessionId: S_LIVE, cwd: 'D:/repo' } },
   }
   on('command.list', () => ({ value: w.commands.map(name => ({ name, description: '', source: 'plugin' as const })) }))
   on('command.run', ($, e) => {
@@ -349,7 +353,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
         })),
       }
     }
-    if (path === `${CONFIG}/sessions`) return { value: [{ name: '4444.json', kind: 'file' as const, size: 10, mtimeMs: NOW, isLink: false }] }
+    if (path === `${CONFIG}/sessions`) return { value: Object.keys(w.registry).map(name => ({ name, kind: 'file' as const, size: 10, mtimeMs: NOW, isLink: false })) }
     if (path === 'D:/repo/work') return { value: Object.keys(w.work).map(name => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false })) }
     return { value: [] }
   })
@@ -357,7 +361,8 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     const path = fixturePath(e.path)
     w.reads.push(path)
     if (path === PROJECT_CONFIG) return w.config === undefined ? { deny: 'ENOENT' } : { value: w.config }
-    if (path === `${CONFIG}/sessions/4444.json`) return { value: JSON.stringify({ sessionId: S_LIVE, cwd: 'D:/repo' }) }
+    const registered = w.registry[path.slice(`${CONFIG}/sessions/`.length)]
+    if (path.startsWith(`${CONFIG}/sessions/`) && registered !== undefined) return { value: JSON.stringify(registered) }
     const id = path.slice(PROJECT.length + 1, -'.jsonl'.length)
     return { value: w.written[path] ?? `{"type":"ai-title","aiTitle":"${TITLES[id] ?? id}"}\n` }
   })
@@ -791,7 +796,29 @@ test('renaming a closed session appends an agent-name record; a live other sessi
   expect(w.written[`${PROJECT}/${S_LIVE}.jsonl`]).toBeUndefined()
 })
 
-const isUnlink = (argv: readonly string[]) => argv[0] === 'node' && String(argv[2]).includes('unlinkSync')
+test('a session running in a project worktree is live and refuses a rename; one running elsewhere is closed and takes it (T-2.4)', async ($, on) => {
+  const { w } = paneWorld(on, [S_CURRENT, S_TREE, S_AWAY])
+  w.registry = {
+    '5555.json': { sessionId: S_TREE, cwd: 'D:/repo/.worktrees/fix-a' },
+    '6666.json': { sessionId: S_AWAY, cwd: 'D:/elsewhere' },
+  }
+  w.mtimes[S_TREE] = OLD_MS
+  w.mtimes[S_AWAY] = OLD_MS
+  await openWorkPane($)
+  const drawn = await workPane($)
+  await drawn.press({ key: 'group-none' })
+
+  await drawn.press({ key: `rename-${S_TREE}` })
+  await drawn.input({ key: `rename-input-${S_TREE}`, text: 'Renamed' })
+  expect(w.toasts).toEqual(['That session is open in another window; rename it there.'])
+  expect(w.written[`${PROJECT}/${S_TREE}.jsonl`]).toBeUndefined()
+
+  await drawn.press({ key: `rename-${S_AWAY}` })
+  await drawn.input({ key: `rename-input-${S_AWAY}`, text: 'Away reviewed' })
+  expect(w.written[`${PROJECT}/${S_AWAY}.jsonl`]).toContain(JSON.stringify({ type: 'agent-name', agentName: 'Away reviewed', sessionId: S_AWAY }))
+})
+
+const isUnlink =(argv: readonly string[]) => argv[0] === 'node' && String(argv[2]).includes('unlinkSync')
 
 const unlinked = (w: PaneWorld) => w.runs.filter(isUnlink).map(argv => String(argv.at(-1)).replace(/\\/g, '/'))
 
