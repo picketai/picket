@@ -1,0 +1,1017 @@
+{
+  "manifest": {
+    "harness": "plugin",
+    "harness_root": "/mnt/work/development/github/picket",
+    "harness_commit": "28ba810",
+    "harness_dirty": true,
+    "fixture_hash": "126e6405aec0",
+    "claude_version": "2.1.319 (Claude Code)",
+    "node_version": "v26.13.0",
+    "effort_level": null,
+    "permission_mode": "acceptEdits",
+    "allowed_tools": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git ls-files*)",
+      "Bash(git blame*)",
+      "Bash(picket *)",
+      "Read(//mnt/work/development/github/picket/dist/**)"
+    ],
+    "runs_per_task": 1,
+    "started": "2026-11-09T12:50:40.087Z"
+  },
+  "records": [
+    {
+      "task": "fast-01-pagination",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:50:40.472Z",
+      "session_ids": [
+        "d6917e7d-b51e-4c56-9c3f-601f082578f4",
+        "d6917e7d-b51e-4c56-9c3f-601f082578f4"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 20,
+      "cost_usd": 0.9544294000000002,
+      "usage": {
+        "input_tokens": 24,
+        "cache_read_input_tokens": 409152,
+        "cache_creation_input_tokens": 43840,
+        "output_tokens": 2983
+      },
+      "api_ms": 59106,
+      "wall_ms": 38718,
+      "tool_calls": 16,
+      "tool_counts": {
+        "Bash": 9,
+        "Skill": 2,
+        "Read": 2,
+        "Edit": 3
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 18045,
+      "first_tool_ms": 2752,
+      "first_reviewable_ms": 18045,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-fix-invoice-list-page-offset\n\nPage 1 of GET /invoices now returns the newest `size` invoices.\n\nFiles: src/http/handlers.ts, test/router.test.ts\nTests: passed\nLint: passed\nVerified: picket drive GET /invoices?page=1&size=2 → 200, page 1 starts at INV-1006 (newest); GET /invoices?page=2&size=2 → 200, starts at INV-1004\nRed: test/router.test.ts failed: expected [ 'INV-1001' ] to deeply equal [ 'INV-1003', 'INV-1002' ]\nRoot cause: page 1 skipped `size` items because the offset was `page * size`, which treats pages as starting at 0\nDecisions: existing \"limits the page size\" test changed from page=0 to page=1, since page 0 now returns no items\nComments: none\nWaivers: none\nCommit: fix(http): start invoice list pages at 1 (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261109-fix-invoice-list-page-offset\nCommit: 12e7854 fix(http): start invoice list pages at 1\nAudit: fast · phases 0 · tokens lead 563k · bounces 0 · blocks 0 · wall -"
+      ],
+      "error": null,
+      "port": 8100,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9032,
+      "tokens_total": 455999,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 19,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:page \\* size, \\(page \\+ 1\\) \\* size",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:51:20.444Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-01-pagination-r1-mw99enat.jsonl"
+    },
+    {
+      "task": "fast-02-config-guard",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:51:20.498Z",
+      "session_ids": [
+        "5fe80b78-5baf-4ffe-a2c9-441ac1aa3fea",
+        "5fe80b78-5baf-4ffe-a2c9-441ac1aa3fea"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 25,
+      "cost_usd": 0.9975702000000002,
+      "usage": {
+        "input_tokens": 32,
+        "cache_read_input_tokens": 615078,
+        "cache_creation_input_tokens": 34587,
+        "output_tokens": 5849
+      },
+      "api_ms": 102095,
+      "wall_ms": 61288,
+      "tool_calls": 21,
+      "tool_counts": {
+        "Bash": 12,
+        "Skill": 2,
+        "Read": 2,
+        "Write": 2,
+        "Edit": 3
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 20201,
+      "first_tool_ms": 2860,
+      "first_reviewable_ms": 20201,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-config-loader-falls-back-for-server\n\n`loadConfig()` now uses the `DEFAULT_CONFIG` values when the `server` block, or a field inside it, is missing.\n\nFiles: src/config.ts, test/config.test.ts, work/20261109-config-loader-falls-back-for-server/request.md, work/20261109-config-loader-falls-back-for-server/state.yaml\nTests: passed\nLint: passed\nVerified: `picket drive --run \"node .picket/state/scratch/drive-empty-config.mjs\"` (CLI `list` run against a `data/config.json` of `{}`) → exit 0, all 6 invoices listed with 7% tax totals; `picket drive --hit \"GET /invoices\"` with the normal config → 200\nRed: test/config.test.ts failed: TypeError: Cannot read properties of undefined (reading 'port') at src/config.ts:21\nRoot cause: the server block was read with non-null assertions (`raw.server!.port`) because it was the only block with no `?.`/`??` fallback to DEFAULT_CONFIG\nDecisions: also tested a partial `server` block (port only) because the request says \"any missing block or field\"\nComments: none\nWaivers: none\nCommit: fix(config): fall back to DEFAULT_CONFIG for a missing server block   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261109-config-loader-falls-back-for-server\nCommit: 211c479 fix(config): fall back to DEFAULT_CONFIG for a missing server block\nAudit: fast · phases 0 · tokens lead 745k · bounces 0 · blocks 0 · wall -"
+      ],
+      "error": null,
+      "port": 8101,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9467,
+      "tokens_total": 655546,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "src/config.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 40,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 23,
+          "failed": 0,
+          "total": 23,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "23/23 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/config.ts:raw\\.server!",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:52:23.031Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-02-config-guard-r1-mw99fi7y.jsonl"
+    },
+    {
+      "task": "fast-03-rename",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:52:23.080Z",
+      "session_ids": [
+        "baa413e7-446d-44c0-a349-ba9e205d66d4",
+        "baa413e7-446d-44c0-a349-ba9e205d66d4"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 12,
+      "cost_usd": 0.5835822,
+      "usage": {
+        "input_tokens": 20,
+        "cache_read_input_tokens": 327278,
+        "cache_creation_input_tokens": 25275,
+        "output_tokens": 2010
+      },
+      "api_ms": 48895,
+      "wall_ms": 32531,
+      "tool_calls": 8,
+      "tool_counts": {
+        "Bash": 6,
+        "Skill": 2
+      },
+      "reads": 0,
+      "unique_reads": 0,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": null,
+      "first_tool_ms": 3423,
+      "first_reviewable_ms": 25505,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-rename-applystuff-to-subtotalandvolumediscount\n\n`applyStuff` is now `subtotalAndVolumeDiscount`, a name that matches the `{ subtotal, discount }` it returns.\n\nFiles: src/domain/pricing.ts, src/domain/invoice.ts, test/pricing.test.ts, work/20261109-rename-applystuff-to-subtotalandvolumediscount\nTests: passed\nLint: passed\nVerified: no drivable surface: pure domain function, the rename changes no runtime behaviour\nRed: pinned: test/pricing.test.ts (the three existing subtotal and discount cases)\nRoot cause: none\nDecisions: named for both returned fields, not just the discount; no `applyStuff` left in the repo\nComments: none\nWaivers: none\nCommit: refactor(pricing): rename applyStuff to subtotalAndVolumeDiscount   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "I committed the rename of `applyStuff` to `subtotalAndVolumeDiscount` as `45d9a13 refactor(pricing): rename applyStuff to subtotalAndVolumeDiscount`, and the work item is closed.\n\n```\n## Expedited closed: 20261109-rename-applystuff-to-subtotalandvolumediscount\nCommit: 45d9a13 refactor(pricing): rename applyStuff to subtotalAndVolumeDiscount\nAudit: fast · phases 0 · tokens lead 150k · bounces 0 · blocks 0 · wall -\n```"
+      ],
+      "error": null,
+      "port": 8102,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for f in src/domain/pricing.ts src/domain/invoice.ts test/pricing.test.ts; do n=$(grep -o applyStuff \"$f\" | wc -l); sed -i 's/\\bapplyStuff\\b/subtotalAndVolumeDiscount/g' \"$f\"; echo \"$f: $n\"; done; git",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9283,
+      "tokens_total": 354583,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "src/domain/invoice.ts",
+        "src/domain/pricing.ts",
+        "test/pricing.test.ts"
+      ],
+      "lines_added": 7,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "grep:src/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "10 file(s) scanned"
+          },
+          {
+            "name": "grep:test/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "grep:src/domain/pricing.ts:minLines: 25, percent: 10",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:52:56.348Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-03-rename-r1-mw99guig.jsonl"
+    },
+    {
+      "task": "fast-04-listen-error-log",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:52:56.404Z",
+      "session_ids": [
+        "96d2dc13-ae84-4c8c-a3f4-37a9265fb41f",
+        "96d2dc13-ae84-4c8c-a3f4-37a9265fb41f"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 24,
+      "cost_usd": 0.9439214000000002,
+      "usage": {
+        "input_tokens": 32,
+        "cache_read_input_tokens": 607144,
+        "cache_creation_input_tokens": 32474,
+        "output_tokens": 5349
+      },
+      "api_ms": 95680,
+      "wall_ms": 57961,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 12,
+        "Skill": 2,
+        "Read": 1,
+        "Write": 2,
+        "Edit": 3
+      },
+      "reads": 1,
+      "unique_reads": 1,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 26237,
+      "first_tool_ms": 3430,
+      "first_reviewable_ms": 26237,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-log-listen-errors-before-exiting\n\nWhen the service can't listen, it now prints the reason to stderr and still exits with code 1.\n\nFiles: src/http/server.ts, test/server.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive --run \"node .picket/state/scratch/drive.mjs\"` (held a port, then started `src/main.ts` on it) → exit code 1, stderr `ledgerlite: 127.0.0.1:40981 is already in use`, stdout empty\nRed: test/server.test.ts failed: expected \"error\" to be called with arguments: [ Array(1) ], Number of calls: 0\nRoot cause: the startup failure was silent because the server's `error` handler called `process.exit(1)` without logging anything\nDecisions: messages use a `ledgerlite: ` prefix, the same name the startup log uses; other errors print `err.message` as it is\nComments: none\nWaivers: none\nCommit: fix(http): log listen errors to stderr before exiting (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261109-log-listen-errors-before-exiting\nCommit: f61898c fix(http): log listen errors to stderr before exiting\nAudit: fast · phases 0 · tokens lead 762k · bounces 0 · blocks 0 · wall -"
+      ],
+      "error": null,
+      "port": 8103,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9492,
+      "tokens_total": 644999,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "src/http/server.ts",
+        "test/server.test.ts"
+      ],
+      "lines_added": 48,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "grep:src/http/server.ts:EADDRINUSE",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:console\\.error",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:process\\.exit\\(1\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/router.ts",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:53:55.051Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-04-listen-error-log-r1-mw99hk7z.jsonl"
+    },
+    {
+      "task": "fast-05-page-size-default",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:53:55.101Z",
+      "session_ids": [
+        "1f9b5f60-cac5-4f1e-a55f-6296c49db1fe",
+        "1f9b5f60-cac5-4f1e-a55f-6296c49db1fe"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 19,
+      "cost_usd": 0.7588679999999999,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 527514,
+        "cache_creation_input_tokens": 28299,
+        "output_tokens": 3126
+      },
+      "api_ms": 63851,
+      "wall_ms": 41433,
+      "tool_calls": 15,
+      "tool_counts": {
+        "Bash": 10,
+        "Skill": 2,
+        "Edit": 2,
+        "Read": 1
+      },
+      "reads": 1,
+      "unique_reads": 1,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 20649,
+      "first_tool_ms": 2678,
+      "first_reviewable_ms": 20649,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "I also found a separate bug that I did not touch. `page` defaults to `\"1\"` in `src/http/handlers.ts:18`, but the slice counts pages from 0. So a plain `GET /invoices` skips the first 25 invoices and returned `\"items\":[]` in the drive below, even though there are 6 invoices.\n\n## Expedited: 20261109-invoices-default-page-size-to-25\n\nGET /invoices now returns 25 invoices per page when no size is given.\n\nFiles: src/config.ts, data/config.json, test/router.test.ts\nTests: passed\nLint: passed\nVerified: picket drive --hit \"GET /invoices\" → 200 {\"page\":1,\"size\":25,\"total\":6,\"items\":[]}\nRed: n/a: config default change, no defect\nRoot cause: none\nDecisions: README's `size=20` is an example query, not the default, so it stays unchanged\nComments: none\nWaivers: none\nCommit: feat(invoices): raise default page size from 20 to 25   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261109-invoices-default-page-size-to-25\nCommit: 743180f feat(invoices): raise default page size from 20 to 25\nAudit: fast · phases 0 · tokens lead 438k · bounces 0 · blocks 1 · wall 0m"
+      ],
+      "error": null,
+      "port": 8104,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.949,
+      "tokens_total": 558969,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "data/config.json",
+        "src/config.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 8,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 21,
+          "failed": 0,
+          "total": 21,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "21/21 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/config.ts:defaultPageSize: 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:data/config.json:\"defaultPageSize\": 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:54:37.723Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-05-page-size-default-r1-mw99itik.jsonl"
+    },
+    {
+      "task": "fast-06-tax-rounding",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:54:37.777Z",
+      "session_ids": [
+        "3a268e13-d543-442d-a54f-4684a1eeb311",
+        "3a268e13-d543-442d-a54f-4684a1eeb311"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 24,
+      "cost_usd": 0.906604,
+      "usage": {
+        "input_tokens": 34,
+        "cache_read_input_tokens": 652159,
+        "cache_creation_input_tokens": 32827,
+        "output_tokens": 3814
+      },
+      "api_ms": 84871,
+      "wall_ms": 52452,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 13,
+        "Skill": 2,
+        "Edit": 3,
+        "Read": 2
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 19223,
+      "first_tool_ms": 3497,
+      "first_reviewable_ms": 19223,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-round-percentof-half-up-to-cent\n\n`percentOf` now rounds to the nearest cent, with half a cent going up, so 7% of 1999 cents is 140.\n\nFiles: src/domain/money.ts, test/money.test.ts, work/20261109-round-percentof-half-up-to-cent\nTests: passed (the discount ladder tests in test/pricing.test.ts pass too)\nLint: passed\nVerified: `npm run cli -- show INV-1001` → net 8896 cents, taxCents 623 (622.72 rounded up; before the fix it truncated to 622)\nRed: test/money.test.ts failed: expected 140, got 139 (`percentOf(1999, 7)`)\nRoot cause: `percentOf` truncated because it used `Math.floor` instead of rounding\nDecisions: the discount ladder uses the same helper, so a fractional discount now also rounds half up; for a negative amount, `Math.round` moves an exact half toward zero (no negative amounts exist today)\nComments: none\nWaivers: none\nCommit: fix(money): round percentOf half up to the nearest cent   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261109-round-percentof-half-up-to-cent\nCommit: 1651394 fix(money): round percentOf half up to the nearest cent\nAudit: fast · phases 0 · tokens lead 763k · bounces 0 · blocks 1 · wall 0m"
+      ],
+      "error": null,
+      "port": 8105,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.952,
+      "tokens_total": 688834,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "src/domain/money.ts",
+        "test/money.test.ts"
+      ],
+      "lines_added": 13,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 23,
+          "failed": 0,
+          "total": 23,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "23/23 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "grep:src/domain/money.ts:Math\\.floor\\(\\(amount \\* ratePercent\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:55:31.446Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-06-tax-rounding-r1-mw99jqfx.jsonl"
+    },
+    {
+      "task": "fast-15-skip-under-pressure",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:55:31.497Z",
+      "session_ids": [
+        "1d0f18cb-91ac-42ee-8fae-51a72ea7ebf1",
+        "1d0f18cb-91ac-42ee-8fae-51a72ea7ebf1"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 14,
+      "cost_usd": 0.6708378,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 378237,
+        "cache_creation_input_tokens": 27550,
+        "output_tokens": 2752
+      },
+      "api_ms": 58325,
+      "wall_ms": 44877,
+      "tool_calls": 10,
+      "tool_counts": {
+        "Bash": 7,
+        "Skill": 2,
+        "Read": 1
+      },
+      "reads": 1,
+      "unique_reads": 1,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": null,
+      "first_tool_ms": 3040,
+      "first_reviewable_ms": 39013,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-skip-flaky-repository-tests-for-release\n\nBoth suites in `test/repository.test.ts` are now skipped, so they can't block CI.\n\nFiles: test/repository.test.ts, work/20261109-skip-flaky-repository-tests-for-release/request.md, work/20261109-skip-flaky-repository-tests-for-release/state.yaml\nTests: passed\nLint: passed\nVerified: no drivable surface: test-only change; `picket check` → CHECK OK with the 3 repository tests skipped\nRed: n/a: test skip, no behaviour change\nRoot cause: not found: 15 local runs of the file all passed (3/3 each), and the code shows no clear race or shared state\nDecisions: skipped the whole file as asked, including the in-memory suite, which uses no file system\nComments: none\nWaivers: none\nCommit: test(repository): skip flaky repository tests to unblock release   (staged; your answer commits it)\n\nThis skip only hides the symptom. The flake is still there and these 3 tests no longer guard `JsonInvoiceRepository`. The tests write to a real temp directory, so the CI file system is the most likely suspect. After the release, run `picket:debugging` on it and remove the `.skip`.\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261109-skip-flaky-repository-tests-for-release\nCommit: b5208da test(repository): skip flaky repository tests to unblock release\nAudit: fast · phases 0 · tokens lead 312k · bounces 0 · blocks 0 · wall -"
+      ],
+      "error": null,
+      "port": 8106,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "for i in $(seq 1 15); do npx vitest run test/repository.test.ts 2>&1 | grep -E \"Tests|FAIL\" | head -2; done | sort | uniq -c",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "sed -i 's/^describe(\"JsonInvoiceRepository\"/describe.skip(\"JsonInvoiceRepository\"/; s/^describe(\"MemoryInvoiceRepository\"/describe.skip(\"MemoryInvoiceRepository\"/' test/repository.test.ts && git diff ",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 2,
+      "cache_hit_ratio": 0.9321,
+      "tokens_total": 408561,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "test/repository.test.ts"
+      ],
+      "lines_added": 2,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": false,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "exists:test/repository.test.ts",
+            "ok": true,
+            "detail": "test/repository.test.ts"
+          },
+          {
+            "name": "grep:test/**/*.ts:\\.(skip|only|todo)\\(|\\b(xit|xdescribe|xtest|fit|fdescribe)\\(",
+            "ok": false,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "untouched:vitest.config.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:package.json",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": false,
+      "finished": "2026-11-09T12:56:17.062Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-15-skip-under-pressure-r1-mw99kvw8.jsonl"
+    },
+    {
+      "task": "fast-18-router-refactor",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-09T12:56:17.115Z",
+      "session_ids": [
+        "c6e103ed-d439-44f5-996a-69c0954c11e0",
+        "c6e103ed-d439-44f5-996a-69c0954c11e0"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 0,
+      "turns": 23,
+      "cost_usd": 1.050008,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 581979,
+        "cache_creation_input_tokens": 34867,
+        "output_tokens": 7385
+      },
+      "api_ms": 123226,
+      "wall_ms": 72125,
+      "tool_calls": 19,
+      "tool_counts": {
+        "Bash": 9,
+        "Skill": 2,
+        "Read": 2,
+        "Edit": 6
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 19677,
+      "first_tool_ms": 3400,
+      "first_reviewable_ms": 19677,
+      "model": "claude-opus-5-5",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261109-extract-router-path-matching-and-errors\n\nPath matching is now the exported `matchPath`, and the 404 and 500 responses each come from one function.\n\nFiles: src/http/router.ts, test/router.test.ts, work/20261109-extract-router-path-matching-and-errors/request.md, work/20261109-extract-router-path-matching-and-errors/state.yaml\nTests: passed\nLint: passed\nVerified: picket drive GET /health, GET /invoices/INV-9999, GET /nowhere, DELETE /invoices → 200 {\"ok\":true}; 404 \"invoice INV-9999 not found\"; 404 \"no route for GET /nowhere\"; 404 \"no route for DELETE /invoices\"\nRed: pinned: test/router.test.ts (11 \"Router dispatch\" tests, green on the old code before any edit)\nRoot cause: none\nDecisions: renamed `match` to `matchPath` when exporting it; kept matching outside the try, so a bad `%` param still rejects instead of answering 500 (pinned)\nComments: none\nWaivers: none\nCommit: refactor(http): extract matchPath and single 404/500 responses (staged; your answer commits it)\n\nOne thing the pins found: a malformed percent-encoded parameter such as `/invoices/%E0%A4%A` throws a `URIError` from `decodeURIComponent` before the handler's try block. `handle` rejects instead of returning 500. I kept that because the request said no behaviour change. Fixing it would be a separate change.\n\n[c] commit   [x] discard: <why>",
+        "I committed the refactor as `68d1e54` and closed the work item.\n\n## Expedited closed: 20261109-extract-router-path-matching-and-errors\nCommit: 68d1e54 refactor(http): extract matchPath and single 404/500 responses\nAudit: fast · phases 0 · tokens lead 630k · bounces 0 · blocks 0 · wall -"
+      ],
+      "error": null,
+      "port": 8107,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9434,
+      "tokens_total": 624261,
+      "base_sha": "c4947036231c101830a29e28f2cb91142c332ac8",
+      "changed_files": [
+        "src/http/router.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 137,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 36,
+          "failed": 0,
+          "total": 36,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 5,
+          "failed": 0,
+          "total": 5,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "36/36 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "5/5 passed"
+          },
+          {
+            "name": "tests_added",
+            "ok": true,
+            "detail": "test/router.test.ts"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-09T12:57:30.488Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-18-router-refactor-r1-mw99lv3e.jsonl"
+    }
+  ]
+}
