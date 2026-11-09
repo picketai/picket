@@ -3,6 +3,7 @@ import { bareAgentName } from "../agent-name.mts";
 import { securityPaths } from "../config.mjs";
 import type { Context } from "../context.mts";
 import { VERDICTS } from "../verdicts.mjs";
+import { recordDigest } from "../work/amendment.mts";
 import type { WorkId } from "../work/files.mts";
 import { ownGate } from "../work/gate.mts";
 import { hasMarker } from "../work/markers.mts";
@@ -20,6 +21,7 @@ export type RouteResult = { id: WorkId; verdict: string; phase: number | null; a
 type VerdictSpec = { agent: string; effect: Effect };
 
 const CLASSED_VERDICT = "CHANGES REQUIRED";
+const AMENDED = "AMENDED";
 const SPECS = VERDICTS as Readonly<Record<string, VerdictSpec>>;
 
 function verdictSpec(verdict: string, agent: string | null): VerdictSpec {
@@ -34,12 +36,18 @@ function publishedTo(changes: Change[]): { published?: string } {
   return change?.kind === "publish" ? { published: change.to } : {};
 }
 
-function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, planOnly }: PlannedVerdict, changes: Change[]): VerdictEntry {
+function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, planOnly, record }: PlannedVerdict, changes: Change[]): VerdictEntry {
   const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
   const sessioned = isSessionId(session) ? { session } : {};
   const amending = amend ? { amend } : {};
   const planned = planOnly === true ? { plan_only: true as const } : {};
-  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...planned, ...publishedTo(changes) };
+  const recorded = record ? { record } : {};
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...planned, ...recorded, ...publishedTo(changes) };
+}
+
+function stampedRecord(amend: string | undefined, verdict: string, snap: WorkSnapshot): { record?: string } {
+  if (!snap.artifact || !(amend || verdict === AMENDED)) return {};
+  return { record: recordDigest(snap.artifact.body) };
 }
 
 function refuseMisplacedPublish({ publish, verdict }: RouteInput, { effect }: VerdictSpec, snap: WorkSnapshot): void {
@@ -68,7 +76,8 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const snap = readSnapshot(ctx.root, input.id);
   refuseMisplacedPublish(input, spec, snap);
   const phase = input.phase ?? currentPhase(snap)?.n ?? null;
-  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend: rowAmend(input, spec), phase, marks: marksOnDisk(ctx.root, input.id, phase) };
+  const amend = rowAmend(input, spec);
+  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...stampedRecord(amend, input.verdict, snap) };
   const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap));
   const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned, changes) });
   return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id, isSessionId(input.session) ? input.session : null) };

@@ -438,6 +438,42 @@ test("after a on a mixed rejection, the architect amends with a reword grant, th
   });
 });
 
+const RECORD = "a".repeat(64);
+const recorded = <T extends object>(row: T, record = RECORD) => ({ ...row, record });
+
+function gateReplyAt(reply: "a" | "f", ts: string) {
+  return { ...gateReply(reply), ts };
+}
+
+test("after a, an AMENDED with the review's record reopens the gate, and a newer reply decides again (T-2.3)", () => {
+  const unchanged = `the architect returned AMENDED but design.md is unchanged: ${PLAN_AMEND}; review: work/20261023-probe/reviews/cumulative.md`;
+  for (const review of [PLAN_ONLY, MIXED]) {
+    const verdicts = [recorded(review), recorded(laterRow("architect", "AMENDED"))];
+    const base = { lane: "design" as const, phases: APPROVED_PHASES, verdicts };
+    assert.deepEqual(step({ ...base, replies: [gateReply("a")] }), {
+      action: "approve_amendment",
+      actor: "user",
+      detail: unchanged,
+      options: ["[a] amend design.md, approved phases included", "[f] fix the code instead"],
+    });
+    const again = [gateReply("a"), gateReplyAt("a", "2026-10-23T12:30:00.000Z")];
+    assert.deepEqual(step({ ...base, replies: again }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+    const fixing = step({ ...base, replies: [gateReply("a"), gateReplyAt("f", "2026-10-23T12:30:00.000Z")] });
+    assert.deepEqual([fixing.action, fixing.actor, fixing.review], ["fix_findings", "developer", "cumulative"]);
+  }
+});
+
+test("after a, an AMENDED with a different record counts: plan-only goes to the review, mixed to the developer (T-2.4)", () => {
+  const changed = (review: object) => step({ lane: "design", phases: APPROVED_PHASES, replies: [gateReply("a")], verdicts: [recorded(review), recorded(laterRow("architect", "AMENDED"), "b".repeat(64))] });
+  assert.equal(changed(PLAN_ONLY).action, "review_cumulative");
+  assert.equal(changed(MIXED).action, "fix_findings");
+});
+
+test("a drift-blocked design item still re-checks after an AMENDED with the drift's record (T-2.4)", () => {
+  const verdicts = [recorded(amending("DRIFT DETECTED", "crosscheck")), recorded({ ...row("AMENDED"), agent: "architect" })];
+  assert.equal(step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts }).action, "review_crosscheck");
+});
+
 test("after f on a mixed rejection, the developer fixes until PHASE DONE, and a later plain rejection goes to the developer, never an amend (T-1.3)", () => {
   const replied = { phases: APPROVED_PHASES, replies: [gateReply("f")] };
   const fixing = step({ ...replied, verdicts: [MIXED] });

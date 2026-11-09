@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { reviewClasses, routeVerdict as verdictHandler } from "./index.mts";
 import { statePath, stateRel } from "../../../shared/paths.mts";
 import { workId } from "../../../shared/work/files.mts";
+import { recordDigest } from "../../../shared/work/amendment.mts";
+import { setMarker } from "../../../shared/work/markers.mts";
+import { appendReply } from "../../../shared/work/replies.mts";
+import { readSnapshot } from "../../../shared/work/snapshot.mts";
 import { readState, writeState } from "../../../shared/work/state.mts";
 import { route } from "../../../verbs/route/index.mts";
 import { hookContext } from "#test/context.mts";
@@ -413,7 +417,40 @@ test("a code finding beside the record finding, or no amendment line, leaves the
   assert.equal(Object.hasOwn(routedCumulative(t, recordFinding, null), "plan_only"), false);
 });
 
-const REVIEWING_SKILL = new URL("../../../../skills/reviewing/SKILL.md", import.meta.url);
+function routeAt(root: string, id: string, block: string, agent: string, now: string) {
+  const tp = transcript(root, [user(`work: ${id}`), assistant(block)]);
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: agent }, hookContext(root, { now }));
+}
+
+function approvedTwoPhaseOrder(root: string): string {
+  const id = twoPhaseOrder(root);
+  for (const n of [1, 2]) for (const mark of ["done", "approved"] as const) setMarker(root, workId(id), n, mark, new Date("2026-10-23T09:00:00.000Z"));
+  return id;
+}
+
+const codeFinding = (id: string) => `${recordFinding(id)}\n- [Minor] src/a.mts:3: The guard is inverted. Empty input passes. Negate it.`;
+const amendGrant = (root: string, id: string, ts: string) => appendReply(root, workId(id), { action: "approve_amendment", phase: null, reply: "a", choice: "amend" }, new Date(ts));
+const AMENDED_BLOCK = (id: string) => `## Amendment: ${id}\n\nT-2.7 reworded.\n\nAMENDED`;
+
+test("an unchanged AMENDED after a gated mixed amendment carries the review's record and reopens the gate; an edited one sends the developer (T-2.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = approvedTwoPhaseOrder(root);
+  routeAt(root, id, cumulativeBlock(id, codeFinding(id), PLAN_AMEND), "picket:reviewer", "2026-10-23T10:00:00.000Z");
+  const review = verdictRows(root, id).at(-1);
+  assert.equal(review.record, recordDigest(readSnapshot(root, workId(id)).artifact?.body ?? ""));
+  amendGrant(root, id, "2026-10-23T10:01:00.000Z");
+  const unchanged = routeAt(root, id, AMENDED_BLOCK(id), "picket:architect", "2026-10-23T10:02:00.000Z").hookSpecificOutput.additionalContext;
+  assert.equal(verdictRows(root, id).at(-1).record, review.record);
+  assert.match(unchanged, /order\.md unchanged since the amendment was asked/);
+  assert.match(unchanged, /Next: approve_amendment by user/);
+  amendGrant(root, id, "2026-10-23T10:03:00.000Z");
+  const orderPath = join(root, "work", id, "order.md");
+  writeFileSync(orderPath, `${readFileSync(orderPath, "utf8")}\n## Revision log\n\n- 2026-10-23: T-2.7 names src/a.mts\n`);
+  const edited = routeAt(root, id, AMENDED_BLOCK(id), "picket:architect", "2026-10-23T10:04:00.000Z").hookSpecificOutput.additionalContext;
+  assert.match(edited, /Next: fix_findings by developer/);
+});
+
+const REVIEWING_SKILL =new URL("../../../../skills/reviewing/SKILL.md", import.meta.url);
 
 test("the reviewing skill's plan-wording finding example routes as plan-only (T-3.2)", (t) => {
   const example = readFileSync(REVIEWING_SKILL, "utf8").match(/^- \[\w+\] work\/<id>\/order\.md:.*$/m)?.[0];

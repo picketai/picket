@@ -135,6 +135,18 @@ test("AMENDED leaves an open item as it is", () => {
   assert.deepEqual(plan("AMENDED", snapshotOf({ lane: "design" }), { phase: 1 }), []);
 });
 
+const RECORD = "a".repeat(64);
+const asking = (record: string) => ({ agent: "reviewer", verdict: "CHANGES REQUIRED", scope: "cumulative", amend: "AMENDMENT NEEDED: T-2.4 x", record });
+
+test("AMENDED on an open item whose newest amend row has the same record notes the artifact is unchanged", () => {
+  assert.deepEqual(plan("AMENDED", snapshotOf({ verdicts: [asking(RECORD)] }), { record: RECORD }), [{ kind: "note", line: "order.md unchanged since the amendment was asked" }]);
+});
+
+test("AMENDED with a different record, or none, adds no unchanged note", () => {
+  assert.deepEqual(plan("AMENDED", snapshotOf({ verdicts: [asking(RECORD)] }), { record: "b".repeat(64) }), []);
+  assert.deepEqual(plan("AMENDED", snapshotOf({ verdicts: [asking(RECORD)] }), {}), []);
+});
+
 test("every effect in VERDICTS has a plan", () => {
   for (const { effect } of Object.values(VERDICT_TABLE)) assert.equal(typeof EFFECTS[effect], "function", effect);
 });

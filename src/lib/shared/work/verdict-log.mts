@@ -1,7 +1,7 @@
 import { appendJsonl, readJsonl, type JsonlRead } from "../../util/io.mts";
 import { workFile, type WorkId } from "./files.mts";
 
-export type VerdictRow = { ts: string; agent: string; verdict: string; phase: number | null; scope: string | null; through: number | null; classes?: string[]; session?: string; amend?: string; plan_only?: true; admitted?: string; published?: string };
+export type VerdictRow = { ts: string; agent: string; verdict: string; phase: number | null; scope: string | null; through: number | null; classes?: string[]; session?: string; amend?: string; plan_only?: true; record?: string; admitted?: string; published?: string };
 export type VerdictEntry = Omit<VerdictRow, "ts">;
 
 export function appendVerdict(root: string, id: WorkId, entry: VerdictEntry, now: Date): void {

@@ -1,5 +1,6 @@
 import { ticketKey, touchedRepos } from "../checkouts.mts";
 import { documentRel, documentSlug } from "../document-path.mts";
+import { isUnchangedAmendment } from "./amendment.mts";
 import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
 import { freshReplies, type AmendmentChoice } from "./replies.mts";
@@ -115,10 +116,21 @@ function gateFinding(review: GatedReview): string {
   return review.plan_only === true ? "the cumulative review found only plan wording" : "the cumulative review found plan wording and code findings";
 }
 
-function amendmentGate(snap: WorkSnapshot, review: GatedReview): NextStep {
+function amendmentGate(snap: WorkSnapshot, review: GatedReview, finding: string): NextStep {
   const { id, lane } = snap.state;
-  const detail = `${gateFinding(review)}: ${review.amend}; review: ${reviewRel(id, "cumulative", null)}`;
+  const detail = `${finding}: ${review.amend}; review: ${reviewRel(id, "cumulative", null)}`;
   return { action: "approve_amendment", actor: "user", detail, options: [`[a] amend ${ARTIFACT_BY_LANE[lane]}, approved phases included`, "[f] fix the code instead"] };
+}
+
+function isCountedAmended(snap: WorkSnapshot, row: VerdictRow): boolean {
+  return row.verdict === "AMENDED" && !isUnchangedAmendment(snap.verdicts.slice(0, snap.verdicts.indexOf(row)), row.record);
+}
+
+function amendAnswerStep(snap: WorkSnapshot, review: GatedReview, after: readonly VerdictRow[]): NextStep {
+  const amendedAt = after.findIndex((v) => isCountedAmended(snap, v));
+  if (amendedAt >= 0) return amendedStep(snap, review, after.slice(amendedAt + 1));
+  if (after.some((v) => v.verdict === "AMENDED")) return amendmentGate(snap, review, `the architect returned AMENDED but ${ARTIFACT_BY_LANE[snap.state.lane]} is unchanged`);
+  return { action: "amend", actor: "architect", detail: review.amend, reword: true };
 }
 
 function cumulativeFixStep(snap: WorkSnapshot, detail: string): NextStep {
@@ -136,11 +148,7 @@ function amendedStep(snap: WorkSnapshot, review: GatedReview, afterAmended: read
 }
 
 function answeredAmendment(snap: WorkSnapshot, choice: AmendmentChoice, review: GatedReview, after: readonly VerdictRow[]): NextStep {
-  if (choice === "amend") {
-    const amendedAt = after.findIndex((v) => v.verdict === "AMENDED");
-    if (amendedAt >= 0) return amendedStep(snap, review, after.slice(amendedAt + 1));
-    return { action: "amend", actor: "architect", detail: review.amend, reword: true };
-  }
+  if (choice === "amend") return amendAnswerStep(snap, review, after);
   if (hasPhaseDone(after)) return cumulativeReviewStep(snap, "the code was fixed instead of the plan; the cumulative review runs again");
   return cumulativeFixStep(snap, "the user chose to fix the code instead of the plan wording; fix the cumulative review's findings");
 }
@@ -154,7 +162,7 @@ function planAmendStep(snap: WorkSnapshot): NextStep | null {
   const review = snap.verdicts[at];
   if (!isGatedReview(review)) return null;
   const answer = snap.replies.filter((r) => r.action === "approve_amendment" && r.choice !== undefined && isAfter(r, review)).at(-1);
-  if (!answer?.choice) return amendmentGate(snap, review);
+  if (!answer?.choice) return amendmentGate(snap, review, gateFinding(review));
   const after = snap.verdicts.slice(at + 1).filter((v) => isAfter(v, answer));
   return answeredAmendment(snap, answer.choice, review, after);
 }

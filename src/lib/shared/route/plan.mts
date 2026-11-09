@@ -5,7 +5,8 @@ import type { Gate } from "../work/gate.mts";
 import type { PhaseMark } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
 import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "../work/stall.mts";
-import type { WorkState } from "../work/state.mts";
+import { ARTIFACT_BY_LANE, type WorkState } from "../work/state.mts";
+import { isUnchangedAmendment } from "../work/amendment.mts";
 
 export type Effect = "phase_done" | "phase_approved" | "phase_reviewed" | "rejection" | "drift" | "stall" | "crosscheck_ok" | "artifact" | "amended";
 
@@ -25,7 +26,7 @@ export type RouteInput = {
 };
 
 export type MarksOnDisk = { done: boolean; approved: boolean };
-export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk };
+export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk; record?: string };
 
 export type Change =
   | { kind: "marker"; phase: number; mark: PhaseMark; line: string | null }
@@ -93,13 +94,20 @@ const blocked: Plan = (_snap, { reason, verdict, phase }) => {
 
 const unchanged: Plan = () => [];
 
-const amended: Plan = (snap) => {
+function reopenChanges(snap: WorkSnapshot): Change[] {
   if (snap.state.status !== "blocked") return [];
   if (newestBlockRow(snap.verdicts)?.verdict === "PHASE STALLED") return [{ kind: "note", line: "status stays blocked: the developer's stall waits for the user" }];
   const answering = amendmentsAnsweringBlocks([...snap.verdicts, { verdict: "AMENDED" }]).length;
   if (answering >= STALL_REPEATS) return [];
   return [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (amended)" }];
-};
+}
+
+function unchangedNote(snap: WorkSnapshot, { record }: PlannedVerdict): Change[] {
+  if (!isUnchangedAmendment(snap.verdicts, record)) return [];
+  return [{ kind: "note", line: `${ARTIFACT_BY_LANE[snap.state.lane]} unchanged since the amendment was asked` }];
+}
+
+const amended: Plan = (snap, planned) => [...unchangedNote(snap, planned), ...reopenChanges(snap)];
 
 export const EFFECTS: Record<Effect, Plan> = {
   phase_done: phaseDone,
