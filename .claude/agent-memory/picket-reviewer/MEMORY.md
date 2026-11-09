@@ -16,3 +16,6 @@
 - [Recompute summary totals by numstat](recompute-summary-totals-by-numstat.md) — git show --numstat minus work/.claude/.picket; no picket summary write
 - [Status plugin tests and markdown-paths](mods-tests-red-on-2-1-319.md) — 25 pane fails fixed at 43ee39c; memory edits can redden markdown-paths
 - [plugin validate fails in subagent](plugin-validate-fails-in-subagent.md) — "No digest" from validate --strict in a subagent shell is not a code signal
+- [AMENDED without an edit](amended-verdict-without-edit.md) — on re-review grep the amended T-N.x, revision log and artifact mtime
+- [Admit corpus before and after](admit-corpus-before-after.md) — git archive base src to scratch, import lane/signals via strip-types, diff lanes
+- [Replay a stop through guard.block](replay-stop-through-guard-block.md) — subagents/*.jsonl head -N, node -e payload, pipe into dist hook

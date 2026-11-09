@@ -1,4 +1,4 @@
-- [Transcript facts](transcript-facts.md) — continuation message shape, transcript location, bounce entry is a turn boundary, SubagentStop context continues the agent, teammate message beats its verdict row, hook timing caveat
+- [Transcript facts](transcript-facts.md) — continuation message shape, transcript location, teammate agent_type is the instance name, bounce entry is a turn boundary, SubagentStop context continues the agent, teammate message beats its verdict row, hook timing caveat
 - [Claude CLI plugin facts](claude-cli-plugin-facts.md) — one hooks module per plugin, zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key, strict validate fails on agents subfolders, UserPromptSubmit contract from the binary, plugin bin PATH scope, CLAUDE_PLUGIN_DATA, renames, npm source, module path base
 - [Bash heredoc backslashes](bash-heredoc-backslashes.md): doubled backslashes collapse in node heredocs, backtick-heavy appends fail, Write and Edit decode backslash-u escapes; grep records afterwards
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
@@ -23,4 +23,6 @@
 - [Route owns directory prefixes](route-owns-directory-prefixes.md): a plan path ending in a slash owns every staged path under it, deletions included
 - [New skill touchpoints](new-skill-touchpoints.md): routing cases, Use when, plugin.json, docs section, EVERY_SKILL, CLAUDE.md template prefix, npm test rebuilds dist; when_to_use unread, Entry fixtures, one touch path per bullet
 - [Next and mod couplings](next-and-mod-couplings.md): mod imports limited to MOD_LIB_SHARED; rejection keeps approve_phase; rows lost the amend line; guard classes per verb; cli.md headings
+- [Verdict hook drive](verdict-hook-drive.md): pipe a SubagentStop payload into dist/hooks/route.verdict.mjs; scratch replay of a closed item; picket reply is lead-only
+- [Admit rule probe](admit-rule-probe.md): size an admit signal change on the corpus and bench prompts with a scratch signals.mts copy; write .mts with Write
 - [Bench runner drive safety](bench-runner-drive-safety.md): run.mjs runs main at import; drives use --dry or --runs 0 with a temp --out; routing idf for vocabulary checks

@@ -9,4 +9,6 @@ A scratch drive of `picket open`/`route` or a built hook from the session scratc
 
 **Why:** on 2026-10-30 a phase drive created `work/chained-item` in the home folder by accident; cleanup had to be recorded with `picket leave`.
 
+A drive root under the repo's `.picket/state/scratch/` is wrong for guard.bash drives: the guard treats every path there as state, so a code-write payload prints nothing and looks like a valid "no deny" before-image. Use the session scratchpad.
+
 **How to apply:** before any scratch drive, `export CLAUDE_PROJECT_DIR="$S"` and `mkdir -p "$S/.picket"`. See [[new-files-pass-check-then-fail]].
