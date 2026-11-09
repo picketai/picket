@@ -100,7 +100,7 @@ test("close writes the audit line to audit.txt, commits it, and prints it after 
   assert.equal(r.code, 0, r.stdout);
   const audit = readFileSync(join(root, "work", id, "audit.txt"), "utf8");
   assert.equal(audit, `${r.json.closing.audit}\n`);
-  assert.match(audit, /^fast · phases 0 · tokens none · bounces 0 · blocks 0 · wall -\n$/);
+  assert.match(audit, /^fast · phases 0 · tokens none · bounces 0 · blocks 0\n$/);
   assert.ok(r.json.committed.includes(`work/${id}/audit.txt`), r.json.committed.join(", "));
   const human = picket(root, "close", id, "--human");
   assert.equal(human.stdout.split("\n")[2], `Audit: ${audit.trimEnd()}`);

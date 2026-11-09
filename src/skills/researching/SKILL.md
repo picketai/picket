@@ -47,4 +47,4 @@ The packet is rendered by code from the report on disk. Print `picket packet <id
 [a] accept   [p] accept and publish to artifacts/reports/<slug>.md   [d] deeper pass   [x] reject: <why>
 ```
 
-The closing block is `picket close <id> --human` under your one sentence: `## Research closed: <id>`, then `Report: work/<id>/research.md · findings: <n> · architect review: <R-ids | no>`, ending ` · strategic review: <R-ids>` when a finding carries that flag, then `Audit: <lane> · phases <n> · tokens <agent> <n>, ... · bounces <n> · blocks <n> · wall <duration>`, and the `Left for you` and `Left staged` lines when there are any.
+The closing block is `picket close <id> --human` under your one sentence: `## Research closed: <id>`, then `Report: work/<id>/research.md · findings: <n> · architect review: <R-ids | no>`, ending ` · strategic review: <R-ids>` when a finding carries that flag, then `Audit: <lane> · phases <n> · tokens <agent> <n>, ... · bounces <n> · blocks <n>`, and the `Left for you` and `Left staged` lines when there are any.

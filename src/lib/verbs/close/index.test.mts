@@ -11,7 +11,7 @@ import { verb } from "./index.mts";
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
-const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0 · wall -";
+const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0";
 const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
@@ -101,7 +101,7 @@ test("Questions shows only when the cumulative review asked some", () => {
 });
 
 test("the Audit line follows the lane line in every lane (T-2.4)", () => {
-  const audit = "design · phases 2 · tokens developer 3.5k · bounces 1 · blocks 0 · wall 1h30m";
+  const audit = "design · phases 2 · tokens developer 3.5k · bounces 1 · blocks 0";
   for (const lane of ["fast", "order", "design", "research"] as const) {
     const report = lane === "research" ? { findings: 0, architect_review: [], strategic_review: [] } : null;
     assert.equal(closingBlock(closed(lane, { audit, report })).split("\n")[2], `Audit: ${audit}`, lane);

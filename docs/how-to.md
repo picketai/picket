@@ -237,7 +237,7 @@ With no id it lists the open work items, and resumes the only one if there is ju
 /picket:inspecting
 ```
 
-shows every work item with its lane, phase and next step, and the tokens spent, cache hit ratio and stops. `picket list` and `picket cost` show the same numbers; `picket cost` reports tokens per agent, per work item and per phase, not dollars. When a work item closes, its closing block carries an `Audit:` line (lane, phases, tokens per agent, bounces, blocks and wall time), also saved as `work/<id>/audit.txt`.
+shows every work item with its lane, phase and next step, and the tokens spent, cache hit ratio and stops. `picket list` and `picket cost` show the same numbers; `picket cost` reports tokens per agent, per work item and per phase, not dollars. When a work item closes, its closing block carries an `Audit:` line (lane, phases, tokens per agent, bounces and blocks), also saved as `work/<id>/audit.txt`.
 
 ## What lands in your repository
 

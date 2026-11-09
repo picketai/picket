@@ -51,7 +51,7 @@ The closing block is `picket close <id> --human`, under your one sentence:
 
 ## Design closed: <id>
 Phases: <n> · decisions: <n> (<k> amended) · commits <first>..<last> · review: APPROVED
-Audit: <lane> · phases <n> · tokens <agent> <n>, ... · bounces <n> · blocks <n> · wall <duration>
+Audit: <lane> · phases <n> · tokens <agent> <n>, ... · bounces <n> · blocks <n>
 Questions: <the cumulative review's open questions, when it asked some>
 Deferred: <id> <owner>, <gate>   (one line per deferred criterion, when the plan marks some)
 Left for you: <one line per command left for the user>
