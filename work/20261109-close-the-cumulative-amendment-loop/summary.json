@@ -1,0 +1,76 @@
+{
+  "work_id": "20261109-close-the-cumulative-amendment-loop",
+  "base": "0bd9df7b83747663afd935efb9dc83e549b5494f",
+  "request": "work/20261109-close-the-cumulative-amendment-loop/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/lib/hooks/route/verdict/index.test.mts",
+    "src/lib/shared/route/plan.mts",
+    "src/lib/shared/route/plan.test.mts",
+    "src/lib/shared/route/route.mts",
+    "src/lib/shared/work/amendment.mts",
+    "src/lib/shared/work/amendment.test.mts",
+    "src/lib/shared/work/next-step.mts",
+    "src/lib/shared/work/next-step.test.mts",
+    "src/lib/shared/work/verdict-log.mts"
+  ],
+  "lines_added": 259,
+  "lines_removed": 39,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-09T10:49:20.296Z",
+    "base": "0bd9df7b83747663afd935efb9dc83e549b5494f",
+    "mutant": {
+      "path": "src/lib/shared/route/route.mts",
+      "line": 49,
+      "from": "||",
+      "to": "&&"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 17263
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

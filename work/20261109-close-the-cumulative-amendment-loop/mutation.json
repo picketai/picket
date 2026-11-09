@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-09T10:49:20.296Z",
+  "base": "0bd9df7b83747663afd935efb9dc83e549b5494f",
+  "mutant": {
+    "path": "src/lib/shared/route/route.mts",
+    "line": 49,
+    "from": "||",
+    "to": "&&"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 17263
+}

@@ -1,9 +1,9 @@
 id: 20261109-close-the-cumulative-amendment-loop
 lane: design
 title: Close the cumulative amendment loop
-status: open
+status: done
 created: 2026-11-09T10:22:34.321Z
-updated: 2026-11-09T10:46:20.321Z
+updated: 2026-11-09T10:51:10.453Z
 session: e9bcd41a-c78b-4202-960e-a3835d811df4
 base: 0bd9df7b83747663afd935efb9dc83e549b5494f
 run_through: 2
