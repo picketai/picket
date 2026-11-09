@@ -137,30 +137,62 @@ test("guard.block does not check Verified: on a fast lane block", (t) => {
   assert.equal(blockVerdict(root, expedited), null);
 });
 
-const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
+const DEVELOPER_MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, its last line PHASE DONE or PHASE STALLED, or reply in one line why you cannot.";
 
 function agentTurn(root, text, fields) {
   const tp = transcript(root, [user("x"), assistant([{ type: "text", text }])]);
   return run({ hook_event_name: "SubagentStop", transcript_path: tp, cwd: root, agent_type: "picket:developer", ...fields }, root);
 }
 
-test("a picket agent's turn that ends without its block is bounced once", (t) => {
+test("a picket agent's turn that ends without its block is bounced once, naming its tokens", (t) => {
   const { root } = hookProject(t);
   const out = agentTurn(root, "I looked at the file.");
   assert.equal(out?.decision, "block");
-  assert.equal(out.reason, MISSING_BLOCK);
+  assert.equal(out.reason, DEVELOPER_MISSING_BLOCK);
 });
 
-test("a turn without a block passes when the hook already bounced, the agent is not picket's, or it is the lead's Stop", (t) => {
+test("a turn without a block passes when the hook already bounced, the agent is not picket's, or it is the lead's Stop (T-1.3)", (t) => {
   const { root } = hookProject(t);
   assert.equal(agentTurn(root, "I looked at the file.", { stop_hook_active: true }), null);
   assert.equal(agentTurn(root, "I looked at the file.", { agent_type: "Explore" }), null);
   assert.equal(agentTurn(root, "I looked at the file.", { hook_event_name: "Stop", agent_type: undefined }), null);
 });
 
-test("a picket agent's turn that ends on a verdict token is not bounced for a missing block", (t) => {
+test("a picket agent's turn that ends on a verdict token is not bounced for a missing block (T-1.3)", (t) => {
   const { root } = hookProject(t);
   assert.equal(agentTurn(root, "Stuck on the port.\n\nPHASE STALLED"), null);
+  assert.equal(agentTurn(root, "Stuck on the port.\n\nPHASE STALLED", { agent_type: "bfoi-developer" }), null);
+});
+
+test("a reviewer sent a crosscheck that ends without a block is bounced naming ALIGNED and DRIFT DETECTED, by plugin type and by instance name (T-1.1)", (t) => {
+  const { root, id } = hookProject(t);
+  const tp = transcript(root, [user(`work: ${id}\nscope: crosscheck`), assistant([{ type: "text", text: "Saved a memory about the record." }])]);
+  for (const agent_type of ["bfoi-reviewer", "picket:reviewer"]) {
+    const out = run({ hook_event_name: "SubagentStop", transcript_path: tp, cwd: root, agent_type }, root);
+    assert.equal(out?.decision, "block", agent_type);
+    assert.match(out.reason, /its last line ALIGNED or DRIFT DETECTED,/, agent_type);
+  }
+});
+
+function sendMessage(body) {
+  return { type: "tool_use", id: "toolu_1", name: "SendMessage", input: { to: "team-lead", message: body } };
+}
+
+test("a final message that adds a sentence after APPROVED is bounced although a SendMessage carried the clean block (T-1.2)", (t) => {
+  const { root, id } = hookProject(t);
+  const block = `## Review: ${id} · cumulative\n\nClean.\n\nFindings: clean\n\nAPPROVED`;
+  const final = `${block}\n\nSaved a memory about the cumulative scope.`;
+  const tp = transcript(root, [user(`work: ${id}\nscope: cumulative`), assistant([sendMessage(block)]), assistant([{ type: "text", text: final }])]);
+  const out = run({ hook_event_name: "SubagentStop", transcript_path: tp, cwd: root, agent_type: "bfoi-cumulative-reviewer", last_assistant_message: final }, root);
+  assert.equal(out?.decision, "block");
+  assert.match(out.reason, /exactly one verdict token \(APPROVED or CHANGES REQUIRED\); it is "Saved a memory/);
+});
+
+test("a reviewer's block ending on its token passes (T-1.3)", (t) => {
+  const { root, id } = hookProject(t);
+  const block = `## Review: ${id} · cumulative\n\nClean.\n\nFindings: clean\n\nAPPROVED`;
+  const tp = transcript(root, [user(`work: ${id}\nscope: cumulative`), assistant([{ type: "text", text: block }])]);
+  assert.equal(run({ hook_event_name: "SubagentStop", transcript_path: tp, cwd: root, agent_type: "bfoi-cumulative-reviewer", last_assistant_message: block }, root), null);
 });
 
 test("a spawned guard.block bounce on the lead's Stop appends one bounce row (T-2.2)", (t) => {

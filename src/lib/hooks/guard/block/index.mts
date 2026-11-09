@@ -1,7 +1,10 @@
-import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
+import { picketRole, type AgentRole } from "../../../shared/agent-name.mts";
+import { agentTranscript } from "../../../shared/transcript/agent.mts";
+import { latestHints } from "../../../shared/transcript/entries.mts";
+import { blockLines, stopText } from "../../../shared/transcript/turn.mts";
 import { findVerdict, VERDICTS } from "../../../shared/verdicts.mjs";
 import { blockCommitProblem } from "../../../shared/commit-message.mts";
-import { blockField, parseBlock, readHeading, type Block, type BlockField } from "../../../shared/work/block.mts";
+import { blockField, parseBlock, readHeading, type Block, type BlockField, type BlockHeading } from "../../../shared/work/block.mts";
 import type { HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { bounce, type BounceOutput } from "../../output.mts";
 
@@ -14,15 +17,45 @@ const CAUSE_FORM = /\S because \S/;
 const FOLDED_FILES = /\+\d+ more/;
 const BLOCKED_KINDS = ["data", "configuration", "environment"] as const;
 const BLOCKED_FORM = new RegExp(`^blocked: (?:${BLOCKED_KINDS.join("|")}): \\S`);
-const PICKET_AGENT = "picket:";
-const MISSING_BLOCK = "guard.block: the turn ended without your block. Finish the task and end with your block, or reply in one line why you cannot.";
+const CROSSCHECK_TOKENS = ["ALIGNED", "DRIFT DETECTED"];
+const ALL_TOKENS = Object.keys(VERDICTS);
 
 function turnText(event: PayloadOf<StopEvent>): string {
   try {
-    return readTurn(event, { includeToolPayloads: true }).text ?? "";
+    return stopText(event) ?? "";
   } catch {
     return "";
   }
+}
+
+function sentScope(event: PayloadOf<StopEvent>): string | null {
+  try {
+    return latestHints(agentTranscript(event)).scope;
+  } catch {
+    return null;
+  }
+}
+
+function isCrosscheck(event: PayloadOf<StopEvent>, heading: BlockHeading | null): boolean {
+  const scope = heading?.kind === "review" && heading.scope !== null ? heading.scope : sentScope(event);
+  return scope === "crosscheck";
+}
+
+function agentRole(event: PayloadOf<StopEvent>): AgentRole | null {
+  return event.hook_event_name === "SubagentStop" ? picketRole(event.agent_type) : null;
+}
+
+function expectedTokens(event: PayloadOf<StopEvent>, heading: BlockHeading | null): string[] {
+  const role = agentRole(event);
+  if (role === null) return ALL_TOKENS;
+  const tokens = ALL_TOKENS.filter((token) => VERDICTS[token as keyof typeof VERDICTS].agent === role);
+  if (role !== "reviewer") return tokens;
+  const crosscheck = isCrosscheck(event, heading);
+  return tokens.filter((token) => CROSSCHECK_TOKENS.includes(token) === crosscheck);
+}
+
+function tokenList(tokens: string[]): string {
+  return tokens.length === 2 ? tokens.join(" or ") : tokens.join(", ");
 }
 
 function fieldValue(block: Block, label: BlockField<"phase">): string | null {
@@ -52,11 +85,11 @@ function blockedProblems(block: Block): string[] {
   return [`"Verified: ${verified.slice(0, 60)}" names no blocked kind; write blocked: <${BLOCKED_KINDS.join(" | ")}>: <what>. A request that needs another shape or route is not a block: send the one that reaches the changed code`];
 }
 
-function blockProblems(block: string, isDeveloperBlock: boolean): string[] {
+function blockProblems(block: string, isDeveloperBlock: boolean, expected: () => string[]): string[] {
   const { nonEmpty, last } = blockLines(block);
   const problems: string[] = [];
-  const token = Object.keys(VERDICTS).find((k) => last.replace(/\s+/g, " ") === k);
-  if (!token) problems.push(`the last line must be exactly one verdict token (${Object.keys(VERDICTS).join(", ")}); it is "${last.slice(0, 60)}"`);
+  const token = ALL_TOKENS.find((k) => last.replace(/\s+/g, " ") === k);
+  if (!token) problems.push(`the last line must be exactly one verdict token (${tokenList(expected())}); it is "${last.slice(0, 60)}"`);
   const counted = nonEmpty.filter((l) => !FINDING_LINE.test(l.trim())).length;
   if (counted > BUDGET) problems.push(`the block is ${counted} non-empty lines; the budget is ${BUDGET}. Move detail into the artifact and keep the block to its fields`);
   if (token === "PHASE DONE" && isDeveloperBlock) {
@@ -67,13 +100,10 @@ function blockProblems(block: string, isDeveloperBlock: boolean): string[] {
   return problems;
 }
 
-function isPicketAgentTurn(event: PayloadOf<StopEvent>): boolean {
-  return event.hook_event_name === "SubagentStop" && typeof event.agent_type === "string" && event.agent_type.startsWith(PICKET_AGENT);
-}
-
 function missingBlock(event: PayloadOf<StopEvent>, text: string): BounceOutput | null {
-  if (!isPicketAgentTurn(event) || findVerdict(blockLines(text).last) !== null) return null;
-  return bounce(MISSING_BLOCK);
+  if (agentRole(event) === null || findVerdict(blockLines(text).last) !== null) return null;
+  const tokens = tokenList(expectedTokens(event, null));
+  return bounce(`guard.block: the turn ended without your block. Finish the task and end with your block, its last line ${tokens}, or reply in one line why you cannot.`);
 }
 
 export function guardBlock(event: PayloadOf<StopEvent>): BounceOutput | null {
@@ -82,7 +112,7 @@ export function guardBlock(event: PayloadOf<StopEvent>): BounceOutput | null {
   const heading = readHeading(text);
   if (heading === null) return missingBlock(event, text);
   if (heading.kind === "expedited") return null;
-  const problems = blockProblems(text.slice(heading.index), heading.kind === "phase");
+  const problems = blockProblems(text.slice(heading.index), heading.kind === "phase", () => expectedTokens(event, heading));
   return problems.length ? bounce(`guard.block: ${problems.join(". ")}. Re-emit the block only.`) : null;
 }
 

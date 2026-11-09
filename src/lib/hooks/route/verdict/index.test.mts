@@ -287,6 +287,16 @@ test("a continued developer stop that routes nothing while the run grant hands i
   assert.equal(verdictRows(root, id).length, rows);
 });
 
+test("a continued stop of a developer teammate named by instance marks 3.idle like picket:developer (T-1.4)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = handedOffPhase3(root);
+  const tp = transcript(root, [user(`work: ${id}\nphase: 2`), assistant(phaseBlock(id, 2, "feat: p"))]);
+  const ctx = hookContext(root, { env: { ...process.env, ...GIT_IDENTITY } });
+  const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "bfoi-developer", stop_hook_active: true }, ctx);
+  assert.equal(out, null);
+  assert.equal(existsSync(phaseFile(root, id, "3.idle")), true);
+});
+
 test("a continued developer stop while phase 1 awaits the user writes no idle marker (T-2.4)", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const id = threePhaseOrder(root);
@@ -450,7 +460,7 @@ test("an unchanged AMENDED after a gated mixed amendment carries the review's re
   assert.match(edited, /Next: fix_findings by developer/);
 });
 
-const REVIEWING_SKILL =new URL("../../../../skills/reviewing/SKILL.md", import.meta.url);
+const REVIEWING_SKILL = new URL("../../../../skills/reviewing/SKILL.md", import.meta.url);
 
 test("the reviewing skill's plan-wording finding example routes as plan-only (T-3.2)", (t) => {
   const example = readFileSync(REVIEWING_SKILL, "utf8").match(/^- \[\w+\] work\/<id>\/order\.md:.*$/m)?.[0];

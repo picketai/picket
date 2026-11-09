@@ -1,13 +1,14 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
+import { picketRole } from "../../../shared/agent-name.mts";
 import { blockCommitProblem } from "../../../shared/commit-message.mts";
 import { citesOnlyRecord, parseFindings } from "../../../shared/findings.mts";
 import { stateDir, statePath, stateRel } from "../../../shared/paths.mts";
-import { agentTranscript, type HookData } from "../../../shared/transcript/agent.mts";
+import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
-import { blockLines, readTurn } from "../../../shared/transcript/turn.mts";
+import { blockLines, stopText } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
-import { BLOCK_HEADINGS, detectBlock, latestSavedBlock, normalisedBlock, readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
+import { BLOCK_HEADINGS, latestSavedBlock, normalisedBlock, readHeading, saveBlock, type BlockField, type BlockKind, type ReviewScope } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { setMarker } from "../../../shared/work/markers.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
@@ -25,7 +26,6 @@ type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hin
 
 const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
-const DEVELOPER_TYPE = "picket:developer";
 const WRITTEN: Partial<Record<string, string>> = { "ARTIFACT WRITTEN": "written", AMENDED: "amended", "REPORT WRITTEN": "written" };
 const ARTIFACT: BlockField<"artifact"> = "Artifact";
 const REPORT: BlockField<"report"> = "Report";
@@ -130,15 +130,6 @@ function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Rou
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }
 
-function payloadBlockText(data: HookData): string | null {
-  const last = data?.last_assistant_message;
-  return typeof last === "string" && detectBlock(last) ? last : null;
-}
-
-function turnText(event: PayloadOf<StopEvent>): string {
-  return payloadBlockText(event) ?? readTurn(event, { includeToolPayloads: true }).text;
-}
-
 function lastHeadingIndex(text: string): number {
   const starts = BLOCK_HEADINGS.flatMap(([, heading]) => [...text.matchAll(new RegExp(heading.source, `${heading.flags}g`))].map((m) => m.index));
   return starts.length ? Math.max(...starts) : 0;
@@ -149,7 +140,7 @@ function newestBlock(text: string): string {
 }
 
 function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | null {
-  const text = newestBlock(turnText(event));
+  const text = newestBlock(stopText(event));
   const verdict = findVerdict(blockLines(text).last);
   if (!verdict) return null;
   const hints = latestHints(agentTranscript(event));
@@ -190,7 +181,7 @@ function printPathLine(path: string): string {
 }
 
 function isContinuedDeveloperStop(event: PayloadOf<StopEvent>): boolean {
-  return event.hook_event_name === "SubagentStop" && event.agent_type === DEVELOPER_TYPE && Boolean(event.stop_hook_active);
+  return event.hook_event_name === "SubagentStop" && picketRole(event.agent_type) === "developer" && Boolean(event.stop_hook_active);
 }
 
 function markIdleHandOff(event: PayloadOf<StopEvent>, ctx: HookContext): void {

@@ -121,6 +121,12 @@ export function readTurn(data: HookData, { includeToolPayloads = isSubagentTurn(
   return { text: candidates.length ? candidates[candidates.length - 1] : "", model };
 }
 
+export function stopText(data: HookData): string {
+  const last = data?.last_assistant_message;
+  if (typeof last === "string" && detectBlock(last)) return last;
+  return readTurn(data, { includeToolPayloads: true }).text;
+}
+
 function addUsage(total: TurnUsage, u: Usage): void {
   total.input += u.input_tokens ?? 0;
   total.output += u.output_tokens ?? 0;
