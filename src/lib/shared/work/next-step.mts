@@ -66,14 +66,9 @@ function lastIndexWhere(verdicts: readonly VerdictRow[], matches: (row: VerdictR
   return -1;
 }
 
-function declinedAmendment({ replies }: WorkSnapshot, row: VerdictRow): boolean {
-  return row.plan_only === true && replies.some((r) => r.action === "approve_amendment" && r.choice === "fix" && isAfter(r, row));
-}
-
-function pendingAmend(snap: WorkSnapshot): string | null {
-  const { verdicts } = snap;
-  const at = lastIndexWhere(verdicts, (v) => Boolean(v.amend));
-  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED") || declinedAmendment(snap, verdicts[at])) return null;
+function pendingAmend({ verdicts }: WorkSnapshot): string | null {
+  const at = lastIndexWhere(verdicts, (v) => Boolean(v.amend) && v.scope !== "cumulative");
+  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED")) return null;
   return verdicts[at].amend ?? null;
 }
 
@@ -114,29 +109,54 @@ function isAfter(later: { ts: string }, earlier: { ts: string }): boolean {
   return Date.parse(later.ts) > Date.parse(earlier.ts);
 }
 
-function amendmentGate(snap: WorkSnapshot, amend: string): NextStep {
+type GatedReview = VerdictRow & { amend: string };
+
+function gateFinding(review: GatedReview): string {
+  return review.plan_only === true ? "the cumulative review found only plan wording" : "the cumulative review found plan wording and code findings";
+}
+
+function amendmentGate(snap: WorkSnapshot, review: GatedReview): NextStep {
   const { id, lane } = snap.state;
-  const detail = `the cumulative review found only plan wording: ${amend}; review: ${reviewRel(id, "cumulative", null)}`;
+  const detail = `${gateFinding(review)}: ${review.amend}; review: ${reviewRel(id, "cumulative", null)}`;
   return { action: "approve_amendment", actor: "user", detail, options: [`[a] amend ${ARTIFACT_BY_LANE[lane]}, approved phases included`, "[f] fix the code instead"] };
 }
 
-function answeredAmendment(snap: WorkSnapshot, choice: AmendmentChoice, amend: string, after: readonly VerdictRow[]): NextStep {
+function cumulativeFixStep(snap: WorkSnapshot, detail: string): NextStep {
+  return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "cumulative", detail };
+}
+
+function hasPhaseDone(rows: readonly VerdictRow[]): boolean {
+  return rows.some((v) => v.verdict === "PHASE DONE");
+}
+
+function amendedStep(snap: WorkSnapshot, review: GatedReview, afterAmended: readonly VerdictRow[]): NextStep {
+  if (review.plan_only === true) return cumulativeReviewStep(snap, "the plan wording was amended; the cumulative review runs again");
+  if (hasPhaseDone(afterAmended)) return cumulativeReviewStep(snap, "the plan wording was amended and the code findings fixed; the cumulative review runs again");
+  return cumulativeFixStep(snap, "the plan wording was amended; fix the cumulative review's code findings");
+}
+
+function answeredAmendment(snap: WorkSnapshot, choice: AmendmentChoice, review: GatedReview, after: readonly VerdictRow[]): NextStep {
   if (choice === "amend") {
-    if (after.some((v) => v.verdict === "AMENDED")) return cumulativeReviewStep(snap, "the plan wording was amended; the cumulative review runs again");
-    return { action: "amend", actor: "architect", detail: amend, reword: true };
+    const amendedAt = after.findIndex((v) => v.verdict === "AMENDED");
+    if (amendedAt >= 0) return amendedStep(snap, review, after.slice(amendedAt + 1));
+    return { action: "amend", actor: "architect", detail: review.amend, reword: true };
   }
-  if (after.some((v) => v.verdict === "PHASE DONE")) return cumulativeReviewStep(snap, "the code was fixed instead of the plan; the cumulative review runs again");
-  return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "cumulative", detail: "the user chose to fix the code instead of the plan wording; fix the cumulative review's findings" };
+  if (hasPhaseDone(after)) return cumulativeReviewStep(snap, "the code was fixed instead of the plan; the cumulative review runs again");
+  return cumulativeFixStep(snap, "the user chose to fix the code instead of the plan wording; fix the cumulative review's findings");
+}
+
+function isGatedReview(row: VerdictRow | undefined): row is GatedReview {
+  return Boolean(row?.amend);
 }
 
 function planAmendStep(snap: WorkSnapshot): NextStep | null {
   const at = lastIndexWhere(snap.verdicts, (v) => v.agent === "reviewer" && v.scope === "cumulative");
   const review = snap.verdicts[at];
-  if (review?.plan_only !== true || !review.amend) return null;
+  if (!isGatedReview(review)) return null;
   const answer = snap.replies.filter((r) => r.action === "approve_amendment" && r.choice !== undefined && isAfter(r, review)).at(-1);
-  if (!answer?.choice) return amendmentGate(snap, review.amend);
+  if (!answer?.choice) return amendmentGate(snap, review);
   const after = snap.verdicts.slice(at + 1).filter((v) => isAfter(v, answer));
-  return answeredAmendment(snap, answer.choice, review.amend, after);
+  return answeredAmendment(snap, answer.choice, review, after);
 }
 
 function allApprovedStep(snap: WorkSnapshot): NextStep {

@@ -1,0 +1,6 @@
+Fix the amendment loop in the kernel's cumulative review routing. When a cumulative review returns CHANGES REQUIRED with a plan-wording finding (AMENDMENT NEEDED) and a code finding together, the plan_only check in src/lib/shared/work/next-step.mts fails, so no approve_amendment gate opens and the architect gets a plain amend with no reword grant. The architect cannot reword an approved phase's criteria without that grant, returns AMENDED with no edit to design.md, and the kernel records the amendment as done. Seen in work item 20261109-fix-budget-schema-session-admit-findings. A mixed review must reach the user's amendment gate, and an AMENDED verdict that leaves the record unchanged must not count as an amendment.
+
+## Brief
+purpose: A cumulative review that mixes a plan-wording finding with a code finding must reach the user's amendment gate, and an AMENDED verdict that leaves the record unchanged must not count as an amendment
+in scope: Cumulative review routing in src/lib/shared/work/next-step.mts and the verdict routing that records AMENDED, with their tests
+out of scope: The admit lane rules, the cleanup tab liveness gap, audit wall time, the cross-check drift flow except where it shares the AMENDED check

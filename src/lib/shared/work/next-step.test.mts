@@ -134,18 +134,18 @@ test("a third cumulative rejection since the last approval still stops with the 
   assert.deepEqual(next.options, STALL_OPTIONS);
 });
 
-test("a pending amendment goes to the architect, open or blocked after one drift", () => {
+test("a pending phase or drift amendment goes to the architect with no reword grant, and a cumulative one stops at approve_amendment", () => {
   const amend = { action: "amend", actor: "architect", detail: AMEND_LINE };
   assert.deepEqual(step({ lane: "design", phases: numbered(2), verdicts: [amending("CHANGES REQUIRED", "phase 1")] }), amend);
   assert.deepEqual(step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck")] }), amend);
   const approved = numbered(2, { done: true, approved: true });
-  assert.deepEqual(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative")] }), amend);
+  assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative")] }).action, "approve_amendment");
 });
 
-test("after AMENDED, an open cumulative rejection is fixed and a drift-blocked design item is cross-checked again", () => {
+test("an ungated AMENDED after a cumulative amendment line still stops at approve_amendment, and a drift-blocked design item is cross-checked again", () => {
   const amended = { ...row("AMENDED"), agent: "architect" };
   const approved = numbered(2, { done: true, approved: true });
-  assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative"), amended] }).action, "fix_findings");
+  assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative"), amended] }).action, "approve_amendment");
   const blocked = step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck"), amended] });
   assert.equal(blocked.action, "review_crosscheck");
 });
@@ -403,4 +403,48 @@ test("after f and a PHASE DONE, a plain cumulative rejection goes to the develop
 test("a gate reply older than the plan-only rejection does not answer it", () => {
   const older = { ...gateReply("a"), ts: "2026-10-23T09:00:00.000Z" };
   assert.equal(step({ phases: APPROVED_PHASES, verdicts: [PLAN_ONLY], replies: [older] }).action, "approve_amendment");
+});
+
+const MIXED = { ts: PLAN_ONLY.ts, agent: "reviewer", verdict: "CHANGES REQUIRED", phase: 2, scope: "cumulative", through: null, amend: PLAN_AMEND };
+
+function latest(agent: string, verdict: string) {
+  return { ...laterRow(agent, verdict), ts: "2026-10-23T13:00:00.000Z" };
+}
+
+test("a mixed cumulative rejection with no reply stops at approve_amendment, naming plan wording and code findings (T-1.1)", () => {
+  assert.deepEqual(step({ phases: APPROVED_PHASES, verdicts: [row("approved"), MIXED] }), {
+    action: "approve_amendment",
+    actor: "user",
+    detail: `the cumulative review found plan wording and code findings: ${PLAN_AMEND}; review: work/20261023-probe/reviews/cumulative.md`,
+    options: ["[a] amend order.md, approved phases included", "[f] fix the code instead"],
+  });
+});
+
+test("after a on a mixed rejection, the architect amends with a reword grant, then the developer fixes the code, then the cumulative review runs (T-1.2)", () => {
+  const replied = { phases: APPROVED_PHASES, replies: [gateReply("a")] };
+  assert.deepEqual(step({ ...replied, verdicts: [MIXED] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+  assert.deepEqual(step({ ...replied, verdicts: [MIXED, laterRow("architect", "AMENDED")] }), {
+    action: "fix_findings",
+    actor: "developer",
+    phase: 2,
+    review: "cumulative",
+    detail: "the plan wording was amended; fix the cumulative review's code findings",
+  });
+  assert.deepEqual(step({ ...replied, verdicts: [MIXED, laterRow("architect", "AMENDED"), latest("developer", "PHASE DONE")] }), {
+    action: "review_cumulative",
+    actor: "reviewer",
+    phase: 2,
+    detail: "the plan wording was amended and the code findings fixed; the cumulative review runs again",
+  });
+});
+
+test("after f on a mixed rejection, the developer fixes until PHASE DONE, and a later plain rejection goes to the developer, never an amend (T-1.3)", () => {
+  const replied = { phases: APPROVED_PHASES, replies: [gateReply("f")] };
+  const fixing = step({ ...replied, verdicts: [MIXED] });
+  assert.deepEqual([fixing.action, fixing.actor, fixing.review], ["fix_findings", "developer", "cumulative"]);
+  const fixed = [MIXED, laterRow("developer", "PHASE DONE")];
+  assert.equal(step({ ...replied, verdicts: fixed }).action, "review_cumulative");
+  const plain = { ...latest("reviewer", "CHANGES REQUIRED"), scope: "cumulative" };
+  const next = step({ ...replied, verdicts: [...fixed, plain] });
+  assert.deepEqual([next.action, next.actor, next.review], ["fix_findings", "developer", "cumulative"]);
 });
