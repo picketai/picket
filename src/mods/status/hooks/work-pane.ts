@@ -54,10 +54,11 @@ export const removeCommand = (repo: string, path: string): string => `git -C ${r
 
 export function cleanupOf(rows: readonly ListRowView[], entries: readonly SessionEntry[], now: number): Cleanup {
   const listed = new Set(rows.flatMap(row => row.sessions))
+  const isStale = (entry: SessionEntry): boolean => now - entry.mtimeMs > CLEANUP_AGE_DAYS * DAY_MS
   return {
     worktrees: rows
       .filter(row => row.attention === 'closed')
       .flatMap(item => item.worktrees.filter(tree => tree.present).map(tree => ({ item, repo: tree.repo, path: tree.path, command: removeCommand(tree.repo, tree.path) }))),
-    sessions: entries.filter(entry => now - entry.mtimeMs > CLEANUP_AGE_DAYS * DAY_MS && !listed.has(entry.id)),
+    sessions: entries.filter(entry => isStale(entry) && !listed.has(entry.id) && !entry.isLive),
   }
 }

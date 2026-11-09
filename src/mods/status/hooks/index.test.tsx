@@ -709,14 +709,14 @@ test('both Cleanup ✓ buttons draw in the success tone', async ($, on) => {
 
 test('Cleanup rows below a short list are counted as more', async ($, on) => {
   const shipped = { ...listRow('w-shipped', 'closed', [S_WORKING]), worktrees: [{ repo: 'svc', path: 'svc/.worktrees/feat', present: true }] }
-  const { w } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE, S_LIVE], [shipped])
+  const { w } = paneWorld(on, [S_CURRENT, S_WORKING, S_NONE, S_AWAY], [shipped])
   w.mtimes[S_NONE] = OLD_MS
-  w.mtimes[S_LIVE] = OLD_MS
+  w.mtimes[S_AWAY] = OLD_MS
   await openWorkPane($)
   const short = await paneOfRows($, 20)
   await short.press({ key: 'tab-cleanup' })
 
-  expect(await short.find({ key: `cleanup-old-${S_LIVE}` })).toBeUndefined()
+  expect(await short.find({ key: `cleanup-old-${S_AWAY}` })).toBeUndefined()
   expect(await short.find({ type: 'Text', text: '↓ 1 more' })).toBeDefined()
 })
 

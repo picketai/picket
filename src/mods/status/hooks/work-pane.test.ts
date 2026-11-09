@@ -105,3 +105,15 @@ describe('cleanup sessions (T-5.2)', () => {
     expect(cleanupOf([row('a', 'closed', ['s1', 's2'])], [entry('s1', NOW - 15 * DAY)], NOW)).toEqual({ worktrees: [], sessions: [] })
   })
 })
+
+describe('cleanup leaves out live sessions (T-3.1)', () => {
+  test('a live session 15 days old that no item lists is not listed', async () => {
+    const live = { ...entry('s1', NOW - 15 * DAY), isLive: true }
+    expect(cleanupOf([], [live], NOW)).toEqual({ worktrees: [], sessions: [] })
+  })
+
+  test('the same session when not live is listed', async () => {
+    const idle = { ...entry('s1', NOW - 15 * DAY), isLive: false }
+    expect(cleanupOf([], [idle], NOW)).toEqual({ worktrees: [], sessions: [idle] })
+  })
+})
