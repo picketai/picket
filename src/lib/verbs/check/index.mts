@@ -1,8 +1,11 @@
 import { join } from "node:path";
 import { action, done, failed, refuse } from "../../shared/action.mts";
+import { appendCheckRow } from "../../shared/check-log.mts";
 import { workingCheckout } from "../../shared/checkouts.mts";
 import { runStep, type StepName, type StepOptions, type StepResult } from "../../shared/checks.mts";
+import type { Context } from "../../shared/context.mts";
 import { destructiveCommand, destructiveRefusal } from "../../shared/destructive.mts";
+import { driveTarget } from "../../shared/drive-log.mts";
 import { detectTooling, type Tooling } from "../../shared/tooling.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { list, seconds, str, type Args } from "../../util/args.mts";
@@ -43,13 +46,21 @@ function logPrefix(checkout: string): string {
   return checkout ? `check-${checkout.replaceAll("/", "-")}` : "check";
 }
 
-export const runChecks = action<CheckInput, CheckReport>(async (input, { root, cwd, env }) => {
+function logCheck({ root, session, now }: Context, { ok, steps, checkout }: CheckReport): void {
+  const { work_id, phase } = driveTarget(root, { session });
+  if (work_id === null) return;
+  appendCheckRow(root, { ts: now().toISOString(), session, work_id, phase, checkout, ok, steps: steps.map(({ name, status }) => ({ name, status })) });
+}
+
+export const runChecks = action<CheckInput, CheckReport>(async (input, context) => {
+  const { root, cwd, env } = context;
   const match = input.only ? destructiveCommand(input.only) : null;
   if (match) return refuse(destructiveRefusal("check", match), { command: input.only });
   const checkout = workingCheckout(root, cwd);
   const dir = join(root, checkout);
   const { tooling, warnings } = detectTooling(dir);
   const report = { ...runUntilRed(root, planOf(input, tooling), { env, timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS, logPrefix: logPrefix(checkout), cwd: dir }), checkout };
+  logCheck(context, report);
   const withWarnings = warnings.length ? { ...report, warnings } : report;
   return report.ok ? done(withWarnings) : failed(withWarnings);
 });

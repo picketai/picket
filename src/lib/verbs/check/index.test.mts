@@ -1,11 +1,14 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { edgeContext } from "../../shared/context.mts";
-import { statePath } from "../../shared/paths.mts";
+import { statePath, STATE_FILES } from "../../shared/paths.mts";
+import { workId } from "../../shared/work/files.mts";
+import { setMarker } from "../../shared/work/markers.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { gitIn, gitRepo, writeIn } from "#test/git.mts";
+import { openItem } from "#test/project.mts";
 import { renderCheck, runChecks, verb, type CheckReport } from "./index.mts";
 
 const writesMarker = (name: string) => JSON.stringify({ scripts: { test: `node -e "require('fs').writeFileSync('${name}', 'x')"` } });
@@ -59,6 +62,42 @@ test("check from a nested checkout with no tooling detects none and never runs t
   const report = await checkFrom(root, join(root, "app"));
   assert.equal(report.steps[0].status, "none detected");
   assert.equal(existsSync(join(root, "root-ran.txt")), false);
+});
+
+const NOW = new Date("2026-11-09T12:00:00.000Z");
+
+async function checkAt(root: string): Promise<CheckReport> {
+  const outcome = await runChecks({ steps: ["test", "lint"], only: undefined, timeoutMs: undefined }, { ...edgeContext(root), cwd: root, session: "s1", now: () => NOW });
+  return (outcome as { value: CheckReport }).value;
+}
+
+function itemAtPhase2(root: string): string {
+  const s = openItem(root, { lane: "order", title: "Logged check", session: "s1" });
+  writeFileSync(join(root, "work", s.id, "order.md"), "---\nlane: order\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n");
+  for (const mark of ["done", "approved"] as const) setMarker(root, workId(s.id), 1, mark, NOW);
+  return s.id;
+}
+
+const checkRows = (root: string) => readFileSync(statePath(root, STATE_FILES.checkLog), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+
+test("check with a current item at phase 2 appends one row with the item, phase, result, checkout and steps (T-4.1)", async (t) => {
+  const root = gitRepo(t, { host: true, files: { "package.json": writesMarker("ran.txt") } });
+  const id = itemAtPhase2(root);
+  const report = await checkAt(root);
+  assert.deepEqual(checkRows(root), [
+    { ts: NOW.toISOString(), session: "s1", work_id: id, phase: 2, checkout: "", ok: true, steps: report.steps.map(({ name, status }) => ({ name, status })) },
+  ]);
+  assert.deepEqual(report.steps.map(({ name, status }) => [name, status]), [["test", "passed"], ["lint", "none detected"]]);
+});
+
+test("check with no open item appends no row and reports as before (T-4.2)", async (t) => {
+  const root = gitRepo(t, { host: true, files: { "package.json": writesMarker("ran.txt") } });
+  const report = await checkAt(root);
+  assert.equal(existsSync(statePath(root, STATE_FILES.checkLog)), false);
+  assert.deepEqual(Object.keys(report).sort(), ["checkout", "ok", "skipped", "steps"]);
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.skipped, []);
+  assert.match(renderCheck(report), /^test: passed · npm test · [\d.]+ s\nlint: none detected\nCHECK OK$/);
 });
 
 test("a nested check logs under the root's state folder with the checkout in its name", async (t) => {

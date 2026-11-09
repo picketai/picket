@@ -13,6 +13,7 @@ const USER_CONFIG_REL = ".picketai/config.json";
 export const STATE_FILES = Object.freeze({
   ledger: "ledger.jsonl",
   driveLog: "drive-log.jsonl",
+  checkLog: "check-log.jsonl",
   guardLog: "guard.log",
   branchingManifest: "branching.yaml",
   mutationRestore: "mutation-restore.json",

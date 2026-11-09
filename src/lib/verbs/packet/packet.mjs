@@ -1,6 +1,7 @@
 import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
+import { latestCheck } from "../../shared/check-log.mts";
 import { nextOf } from "../../shared/work/next-view.mts";
 import { blockField, COMMENT_SEPARATOR, parseBlock, proposals, readBlock, WAIVER_SEPARATOR } from "../../shared/work/block.mts";
 import { loadConfig, securityPaths } from "../../shared/config.mjs";
@@ -120,6 +121,13 @@ function commitLines(root, snap, phase, width) {
   return [`  ${"commit".padEnd(LABEL)}${first}`, ...rest.map((line) => indent + line)];
 }
 
+function reportedCheck(block, label, logged, step) {
+  const own = blockField(block, label) ?? null;
+  if (own !== null) return own;
+  const status = logged?.steps.find((s) => s.name === step)?.status;
+  return status ? `${status} (picket check)` : "not reported";
+}
+
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
@@ -134,8 +142,9 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(`▶ phase ${n.phase}/${total} done · ${id}`);
     lines.push(`  ${firstSentence(b.headline || s.phases.find((p) => p.n === n.phase)?.title || "phase complete", width - 2)}`);
     lines.push("");
-    lines.push(field("tests", blockField(b, "Tests") ?? "not reported", width));
-    lines.push(field("lint", blockField(b, "Lint") ?? "not reported", width));
+    const logged = latestCheck(root, id, n.phase);
+    lines.push(field("tests", reportedCheck(b, "Tests", logged, "test"), width));
+    lines.push(field("lint", reportedCheck(b, "Lint", logged, "lint"), width));
     lines.push(field("verified", blockField(b, "Verified") ?? "not reported", width));
     const red = blockField(b, "Red");
     if (red) lines.push(field("red", red, width));

@@ -6,6 +6,7 @@ import { basename, join } from "node:path";
 import { cut, packet, WIDTH } from "../../dist/lib/verbs/packet/packet.mjs";
 import { blockFiles, parseBlock, saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { setMarker } from "../../dist/lib/shared/work/markers.mjs";
+import { appendCheckRow } from "../../dist/lib/shared/check-log.mjs";
 import { writeLayout } from "../../dist/lib/shared/repos.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 import { gitOut, umbrella } from "#test/git.mts";
@@ -299,6 +300,37 @@ test("a missing block degrades to 'not reported', a blocked item shows the reaso
   const p = packet(id, root);
   assert.match(p.text, /tests {5}not reported/);
   assert.match(p.lines[1], /Stop the write/);
+});
+
+const withoutCheckLines = BLOCK.replace(/^Tests: .*\n/m, "").replace(/^Lint: .*\n/m, "");
+const loggedCheck = (id, phase, steps) => ({ ts: "2026-11-09T12:00:00.000Z", session: "s1", work_id: id, phase, checkout: "", ok: true, steps });
+const PASSED_AND_NO_LINT = [{ name: "test", status: "passed" }, { name: "lint", status: "none detected" }];
+
+test("a block without Tests: and Lint: shows the logged picket check of that phase (T-4.4)", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  saveBlock(root, id, 1, withoutCheckLines);
+  appendCheckRow(root, loggedCheck(id, 1, PASSED_AND_NO_LINT));
+  const { text } = packet(id, root);
+  assert.match(text, /^  tests {5}passed \(picket check\)$/m);
+  assert.match(text, /^  lint {6}none detected \(picket check\)$/m);
+});
+
+test("the block's own Tests: and Lint: win over a logged check, and a check of another phase is not shown (T-4.5)", (t) => {
+  const { root, id } = setup(t);
+  phaseDone(root, id);
+  appendCheckRow(root, loggedCheck(id, 1, [{ name: "test", status: "failed" }]));
+  saveBlock(root, id, 1, BLOCK);
+  const own = packet(id, root).text;
+  assert.match(own, /^  tests {5}passed \(374\/374 Shop\.Inventory\.Tests\)$/m);
+  assert.match(own, /^  lint {6}none detected$/m);
+  const { root: other, id: otherId } = setup(t);
+  phaseDone(other, otherId);
+  saveBlock(other, otherId, 1, withoutCheckLines);
+  appendCheckRow(other, loggedCheck(otherId, 2, PASSED_AND_NO_LINT));
+  const unlogged = packet(otherId, other).text;
+  assert.match(unlogged, /^  tests {5}not reported$/m);
+  assert.match(unlogged, /^  lint {6}not reported$/m);
 });
 
 test("a research packet points at work/<id>/research.md", (t) => {
