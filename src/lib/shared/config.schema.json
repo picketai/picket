@@ -95,6 +95,11 @@
       },
       "additionalProperties": false,
       "default": {}
+    },
+    "picket_version": {
+      "description": "The Picket version whose picket init last refreshed this project. Init writes it; the session start tells the user to run init when the running Picket is newer.",
+      "type": ["string", "null"],
+      "default": null
     }
   },
   "additionalProperties": false

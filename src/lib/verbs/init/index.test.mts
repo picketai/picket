@@ -1,7 +1,7 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { chmodSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fixedContext } from "#test/context.mts";
 import { withProject } from "#test/project.mts";
 import { DATA_FOLDER_STATUS_LINE, INSTALL, LEGACY_STATUS_LINE } from "../../shared/install.mts";
@@ -96,6 +96,41 @@ test("picketai's source with autoUpdate false is left as the team set it (T-1.3)
   const marketplace = step(run(root, home, { install: false }), "marketplace");
   assert.deepEqual(settingsOf(root).extraKnownMarketplaces?.picketai, entry);
   assert.deepEqual(marketplace, { name: "marketplace", path: join(root, ".claude", "settings.json"), result: "unchanged", detail: "autoUpdate is off in this project, left as is" });
+});
+
+function configText(root: string): string {
+  return readFileSync(join(root, ".picket", "config.json"), "utf8");
+}
+
+test("on a project with no config, init creates it with version 1 and the running picket_version (T-2.1)", (t) => {
+  const { root, home } = project(t);
+  const manifest = JSON.parse(readFileSync(resolve("src/.claude-plugin/plugin.json"), "utf8"));
+  const config = step(run(root, home, { install: false }), "config");
+  assert.equal(config?.result, "created");
+  assert.deepEqual(JSON.parse(configText(root)), { version: 1, picket_version: manifest.version });
+});
+
+test("an older recorded version is replaced in place, keeping key order and CRLF endings, and a rerun is unchanged (T-2.2)", (t) => {
+  const { root, home } = project(t);
+  const before = { version: 1, security_paths: ["src/pay/"], sources: { analysis: { env: "X_SRC" } }, picket_version: "0.0.1" };
+  mkdirSync(join(root, ".picket"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), `${JSON.stringify(before, null, 2)}\n`.replaceAll("\n", "\r\n"));
+  const updated = step(run(root, home, { install: false, running: "1.2.3" }), "config");
+  assert.deepEqual({ result: updated?.result, detail: updated?.detail }, { result: "updated", detail: "recorded picket_version from 0.0.1 to 1.2.3" });
+  const text = configText(root);
+  assert.equal(text.replaceAll("\r\n", "").includes("\n"), false);
+  assert.deepEqual(Object.entries(JSON.parse(text)), Object.entries({ ...before, picket_version: "1.2.3" }));
+  assert.equal(step(run(root, home, { install: false, running: "1.2.3" }), "config")?.result, "unchanged");
+});
+
+test("a config that is not valid JSON fails the step and keeps its bytes (T-2.3)", (t) => {
+  const { root, home } = project(t);
+  mkdirSync(join(root, ".picket"), { recursive: true });
+  writeFileSync(join(root, ".picket", "config.json"), "{ not json");
+  const config = step(run(root, home, { install: false }), "config");
+  assert.equal(config?.result, "failed");
+  assert.match(config?.detail ?? "", /^not valid JSON, left as is/);
+  assert.equal(configText(root), "{ not json");
 });
 
 test("--no-install runs no command but still writes the marketplace, and a rerun leaves it unchanged", (t) => {

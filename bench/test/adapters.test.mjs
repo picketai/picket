@@ -22,7 +22,9 @@ test("a plugin install is what picket init writes: the shipped block, config, wo
       env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1" },
       permissions: { allow: ["Bash(picket *)", "PowerShell(picket *)", "Read(~/.claude/plugins/cache/picketai/**)"], ask: ["PowerShell(picket drive *)", "PowerShell(picket check *)"] },
     });
-    assert.deepEqual(JSON.parse(readFileSync(join(repo, ".picket", "config.json"), "utf8")), JSON.parse(readFileSync(resolve(".picket/config.json"), "utf8")));
+    const running = JSON.parse(readFileSync(resolve("src/.claude-plugin/plugin.json"), "utf8")).version;
+    const projectConfig = JSON.parse(readFileSync(resolve(".picket/config.json"), "utf8"));
+    assert.deepEqual(JSON.parse(readFileSync(join(repo, ".picket", "config.json"), "utf8")), { ...projectConfig, picket_version: running });
     for (const path of [".claude/rules", ".claude/skills", "dist"]) assert.equal(existsSync(join(repo, path)), false, path);
   } finally {
     rmSync(repo, { recursive: true, force: true });

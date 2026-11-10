@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { pluginManifestPath, projectRoot } from "../shared/paths.mts";
+import { projectRoot } from "../shared/paths.mts";
+import { picketVersion } from "../shared/picket-version.mts";
 import { describeExit, EXIT, type ExitCode, type Outcome } from "../shared/action.mts";
 import { edgeContext } from "../shared/context.mts";
 import type { VerbSpec } from "../shared/verb-spec.mts";
@@ -71,10 +72,6 @@ async function helpFor(name: string | undefined): Promise<string> {
   return (await Promise.all(commands.map(commandHelp))).join("\n\n");
 }
 
-function installedVersion(): string {
-  return JSON.parse(readFileSync(pluginManifestPath(), "utf8")).version;
-}
-
 function asJson(value: unknown, pretty: boolean): string {
   return pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value);
 }
@@ -112,7 +109,7 @@ async function dispatch(argv: string[]): Promise<number> {
   const args = parseArgs(argv, readStdin);
   const [name, topic] = args.pos;
   if ("version" in args.opt) {
-    console.log(installedVersion());
+    console.log(picketVersion());
     return EXIT.done;
   }
   if ("help" in args.opt || name === undefined || name === "help") {

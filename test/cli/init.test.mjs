@@ -7,6 +7,7 @@ import { gitAt } from "#test/git.mts";
 import { withProject } from "#test/project.mts";
 
 const TEMPLATE = readFileSync(resolve("src/templates/claude-block.md"), "utf8").replace(/\r\n/g, "\n");
+const RUNNING = JSON.parse(readFileSync(resolve("src/.claude-plugin/plugin.json"), "utf8")).version;
 
 function tempDir(t) {
   return withProject(t, { picket: false });
@@ -40,7 +41,7 @@ test("init creates the CLAUDE.md block, the config and the ignore line in a fres
   assert.equal(r.code, 0, r.stderr);
   assert.deepEqual(results(r.json), { "claude-md": "created", config: "created", gitignore: "created", settings: "created", marketplace: "created", plugin: "skipped" });
   assert.equal(read(root, "CLAUDE.md"), `${TEMPLATE}\n## Project facts\n`);
-  assert.deepEqual(JSON.parse(read(root, ".picket", "config.json")), { version: 1 });
+  assert.deepEqual(JSON.parse(read(root, ".picket", "config.json")), { version: 1, picket_version: RUNNING });
   assert.ok(read(root, ".gitignore").split("\n").includes(".picket/state/"));
 });
 
@@ -74,10 +75,10 @@ test("init appends the block to a CLAUDE.md without one, and a rerun keeps it", 
   assert.equal(results(runInit(t, root).json)["claude-md"], "unchanged");
 });
 
-test("init leaves an existing config and an ignore file that already holds the state line", (t) => {
+test("init leaves a config that records the running version and an ignore file that already holds the state line", (t) => {
   const root = initRepo(t);
   mkdirSync(join(root, ".picket"));
-  const config = JSON.stringify({ version: 1, sources: { analysis: { env: "SRC_ANALYSIS" } } }, null, 2) + "\n";
+  const config = JSON.stringify({ version: 1, sources: { analysis: { env: "SRC_ANALYSIS" } }, picket_version: RUNNING }, null, 2) + "\n";
   writeFileSync(join(root, ".picket", "config.json"), config);
   writeFileSync(join(root, ".gitignore"), "node_modules/\n.picket/state/\n");
   const r = runInit(t, root);

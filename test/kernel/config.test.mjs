@@ -94,7 +94,25 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", (t) => {
 
 test("no config file is the defaults with no error and no warning", (t) => {
   withConfig(t,undefined, (root) => {
-    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, error: null, warnings: [] });
+    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, picket_version: null, error: null, warnings: [] });
+  });
+});
+
+test("picket_version loads as the recorded string, null when absent, and null with a warning when not a string (T-2.4)", (t) => {
+  withConfig(t, { version: 1, picket_version: "1.0.0-alpha.5" }, (root) => {
+    const config = loadConfig(root, {});
+    assert.equal(config.picket_version, "1.0.0-alpha.5");
+    assert.deepEqual(config.warnings, []);
+  });
+  withConfig(t, { version: 1 }, (root) => {
+    const config = loadConfig(root, {});
+    assert.equal(config.picket_version, null);
+    assert.deepEqual(config.warnings, []);
+  });
+  withConfig(t, { version: 1, picket_version: 5 }, (root) => {
+    const config = loadConfig(root, {});
+    assert.equal(config.picket_version, null);
+    assert.deepEqual(config.warnings, ["picket_version must be a string; reading it as not recorded"]);
   });
 });
 

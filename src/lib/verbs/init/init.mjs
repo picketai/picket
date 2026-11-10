@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from "node:util";
 import { RETIRED_PLUGINS } from "../../mods.mts";
 import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
 import { HOST_DIR, hostPath } from "../../shared/paths.mts";
+import { picketVersion } from "../../shared/picket-version.mts";
 import { programRunner } from "../../util/process.mts";
 import { shadowingPicket, shadowWarning } from "./shadow.mts";
 
@@ -66,10 +67,26 @@ function claudeMdStep(root) {
   return { name: "claude-md", path, result: writeIfChanged(path, existing, next) };
 }
 
-function configStep(root) {
+function parsedConfig(existing) {
+  try {
+    const parsed = JSON.parse(existing);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return { config: null, error: "top level is not an object, left as is" };
+    return { config: parsed, error: null };
+  } catch (err) {
+    return { config: null, error: `not valid JSON, left as is: ${err.message}` };
+  }
+}
+
+function configStep(root, { running }) {
   const path = join(root, config.file);
-  if (existsSync(path)) return { name: "config", path, result: "unchanged" };
-  return { name: "config", path, result: writeIfChanged(path, null, `${JSON.stringify(config.initial, null, 2)}\n`) };
+  const existing = readOrNull(path);
+  if (existing === null) return { name: "config", path, result: writeIfChanged(path, null, `${JSON.stringify({ ...config.initial, picket_version: running }, null, 2)}\n`) };
+  const { config: current, error } = parsedConfig(existing);
+  if (error) return { name: "config", path, result: "failed", detail: error };
+  if (current.picket_version === running) return { name: "config", path, result: "unchanged" };
+  const next = `${JSON.stringify({ ...current, picket_version: running }, null, 2)}\n`.replaceAll("\n", eolOf(existing));
+  const recorded = typeof current.picket_version === "string" ? `from ${current.picket_version} ` : "";
+  return { name: "config", path, result: writeIfChanged(path, existing, next), detail: `recorded picket_version ${recorded}to ${running}` };
 }
 
 function gitignoreStep(root) {
@@ -254,8 +271,8 @@ function safely(name, step) {
   }
 }
 
-export function init(root, { install = true, exec = programRunner(process.platform), home = homedir(), env = process.env, platform = process.platform, statusline = false } = {}) {
-  const fileSteps = STEPS.map(([name, step]) => safely(name, () => step(root, { home, statusline })));
+export function init(root, { install = true, exec = programRunner(process.platform), home = homedir(), env = process.env, platform = process.platform, statusline = false, running = picketVersion() } = {}) {
+  const fileSteps = STEPS.map(([name, step]) => safely(name, () => step(root, { home, statusline, running })));
   const retired = retireSteps(root, { install, exec });
   const marketplace = safely("marketplace", () => marketplaceStep(root));
   const plugin = safely("plugin", () => pluginStep(root, { install, exec }));

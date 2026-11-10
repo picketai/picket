@@ -12,7 +12,7 @@ export const CONFIG_FILE = configRel();
 
 export const CONFIG_VERSION = 1;
 
-export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods"]);
+export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods", "picket_version"]);
 
 export const DEFAULT_LANES = Object.freeze({
   fast: Object.freeze({ max_files: 3 }),
@@ -31,6 +31,7 @@ export const CONFIG_DEFAULTS = Object.freeze({
   extensions: [],
   quality: {},
   mods: {},
+  picket_version: null,
 });
 
 export const QUALITY_FIELDS = Object.freeze({
@@ -172,6 +173,15 @@ function checkMods(value, warn) {
   return switches;
 }
 
+function checkPicketVersion(value, warn) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    warn("picket_version must be a string; reading it as not recorded");
+    return null;
+  }
+  return value || null;
+}
+
 function commandProblem(name, command) {
   if (!COMMAND_NAMES.includes(name)) return `unknown key "commands.${name}"`;
   if (typeof command !== "string" || !command.trim()) return `commands.${name} must be a non-empty string; detection stands`;
@@ -194,7 +204,8 @@ export function loadConfig(root, env = process.env) {
   const extensions = checkExtensions(raw.extensions, warn);
   const quality = checkQuality(raw.quality, warn);
   const mods = checkMods(raw.mods, warn);
-  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, error, warnings };
+  const picket_version = checkPicketVersion(raw.picket_version, warn);
+  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, picket_version, error, warnings };
 }
 
 function resolveSource(name, decl, env) {
