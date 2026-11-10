@@ -79,7 +79,7 @@ The `## Entry` part of a shell: what the agent reads first and which fields of t
 - **Customization through extensions with a manifest, not an anonymous override folder** (2026-10-04): a manifest gives identity, version and a compatibility check. Project-local only in the alpha; installing from a git URL comes later.
 - **Settings in `.picket/config.json`** (2026-10-04), tracked; runtime state in `.picket/state/`, ignored by git.
 - **Versioning: SemVer from 1.0.0-alpha.1** (2026-10-02).
-- **The Claude side ships as a plugin, per SDR 00001** (2026-10-04): `picket init` writes only what a plugin cannot (the CLAUDE.md block, settings, `.picket/config.json`); skills and agents are always `picket:<name>`; rules reach the lead and each agent by hook injection; each hook is one Node process under 200 ms cold; nothing writes under the plugin root, which updates replace.
-- **Install is `npx @picketai/picket@alpha init`** (2026-11-08): an inline `settings` marketplace with an npm source; no global copy, no GitHub marketplace.
+- **The Claude side ships as a plugin, per SDR 00001** (2026-10-04): `picket init` writes only what a plugin cannot (the CLAUDE.md block, settings, `.picket/config.json`); skills and agents are always `picket:<name>`; rules reach the lead and each agent by hook injection; nothing writes under the plugin root, which updates replace.
+- **Install is `npx @picketai/picket@alpha init`, once per project** (2026-11-08, -10): inline `settings` marketplace, npm source; no global copy, no marketplace repo. Update: marketplace, then `picket init` in session.
 - **Session list merges into picket-status** (2026-11-02): a pane opened by `/picket-session`; it never opens or resumes a session. `artifacts/strategy/decisions/00002-session-list-merges-picket-status.md`
 - **Closed is not done** (2026-11-02): a PR, its merge and the worktree follow `picket close`; only the developer marks a session done.
