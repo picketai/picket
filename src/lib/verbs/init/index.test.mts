@@ -76,6 +76,28 @@ test("an old directory or GitHub entry and the retired mods: three uninstalls, t
   }
 });
 
+test("on settings with no marketplace, init writes picketai's source with autoUpdate true, and a rerun leaves it unchanged (T-1.1)", (t) => {
+  const { root, home } = project(t);
+  assert.equal(step(run(root, home, { install: false }), "marketplace")?.result, "created");
+  assert.deepEqual(settingsOf(root).extraKnownMarketplaces?.picketai, { source: INSTALL.marketplace.source, autoUpdate: true });
+  assert.equal(step(run(root, home, { install: false }), "marketplace")?.result, "unchanged");
+});
+
+test("picketai's source without autoUpdate is updated to autoUpdate true, not reported as a replaced source (T-1.2)", (t) => {
+  const { root, home } = project(t, { extraKnownMarketplaces: { picketai: { source: INSTALL.marketplace.source } } });
+  const marketplace = step(run(root, home, { install: false }), "marketplace");
+  assert.deepEqual(settingsOf(root).extraKnownMarketplaces?.picketai, { source: INSTALL.marketplace.source, autoUpdate: true });
+  assert.deepEqual(marketplace, { name: "marketplace", path: join(root, ".claude", "settings.json"), result: "updated", detail: "turned on autoUpdate" });
+});
+
+test("picketai's source with autoUpdate false is left as the team set it (T-1.3)", (t) => {
+  const entry = { source: INSTALL.marketplace.source, autoUpdate: false };
+  const { root, home } = project(t, { extraKnownMarketplaces: { picketai: entry } });
+  const marketplace = step(run(root, home, { install: false }), "marketplace");
+  assert.deepEqual(settingsOf(root).extraKnownMarketplaces?.picketai, entry);
+  assert.deepEqual(marketplace, { name: "marketplace", path: join(root, ".claude", "settings.json"), result: "unchanged", detail: "autoUpdate is off in this project, left as is" });
+});
+
 test("--no-install runs no command but still writes the marketplace, and a rerun leaves it unchanged", (t) => {
   const { root, home } = project(t, { enabledPlugins: { [RETIRED[0]]: true } });
   const runner = recordingRunner();

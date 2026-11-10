@@ -171,6 +171,21 @@ test("a dry run on picket, the three retired mods and the settings marketplace p
   assert.equal(detail("settings"), "remove extraKnownMarketplaces.picketai");
 });
 
+test("picketai's source counts as init's entry with or without autoUpdate, and another source still gets marketplace remove (T-1.4)", async (t) => {
+  const plan = async (picketai: unknown) => {
+    const { root } = project(t, { ".claude/settings.json": JSON.stringify({ enabledPlugins: { "picket@picketai": true }, extraKnownMarketplaces: { picketai } }) });
+    const report = await uninstall(root, { dryRun: true });
+    return (id: string) => report.changes.find((change) => change.id === id)?.detail ?? "";
+  };
+  for (const entry of [{ source: INSTALL.marketplace.source }, { source: INSTALL.marketplace.source, autoUpdate: true }]) {
+    const detail = await plan(entry);
+    assert.equal(detail("settings"), "remove extraKnownMarketplaces.picketai", JSON.stringify(entry.autoUpdate));
+    assert.doesNotMatch(detail("plugins"), /marketplace remove/, JSON.stringify(entry.autoUpdate));
+  }
+  const older = await plan({ source: { source: "directory", path: "/x" } });
+  assert.match(older("plugins"), /claude plugin marketplace remove picketai --scope project/);
+});
+
 test("uninstall --yes removes the settings marketplace init wrote and keeps another marketplace", async (t) => {
   const other = { source: { source: "github", repo: "acme/plugins" } };
   const { root } = project(t, { ".claude/settings.json": JSON.stringify({ extraKnownMarketplaces: { picketai: INSTALL.marketplace, acme: other }, outputStyle: "x" }) });

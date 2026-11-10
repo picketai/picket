@@ -32,6 +32,7 @@ export const INSTALL = {
       owner: { name: "Vlad Apetre" },
       plugins: [{ name: "picket", source: { source: "npm", package: "@picketai/picket", version: "alpha" } }],
     },
+    autoUpdate: true,
   },
 } as const;
 

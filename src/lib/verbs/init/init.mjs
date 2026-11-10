@@ -173,8 +173,11 @@ function marketplaceStep(root) {
   const known = settings.extraKnownMarketplaces ?? {};
   const current = known[MARKETPLACE];
   if (isDeepStrictEqual(current, INSTALL.marketplace)) return { name: "marketplace", path, result: "unchanged" };
+  const sameSource = isDeepStrictEqual(current?.source, INSTALL.marketplace.source);
+  if (sameSource && current.autoUpdate === false) return { name: "marketplace", path, result: "unchanged", detail: "autoUpdate is off in this project, left as is" };
   writeSettings(path, existing, { ...settings, extraKnownMarketplaces: { ...known, [MARKETPLACE]: INSTALL.marketplace } });
   if (current === undefined) return { name: "marketplace", path, result: "created" };
+  if (sameSource) return { name: "marketplace", path, result: "updated", detail: "turned on autoUpdate" };
   return { name: "marketplace", path, result: "updated", detail: `replaced the old source ${JSON.stringify(current?.source ?? current)}` };
 }
 

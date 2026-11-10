@@ -135,7 +135,8 @@ function picketEntries(settings: Settings): string[] {
 }
 
 function holdsInitMarketplace(settings: Settings): boolean {
-  return isDeepStrictEqual(record(settings.extraKnownMarketplaces)[MARKETPLACE], INSTALL.marketplace);
+  const entry = record(record(settings.extraKnownMarketplaces)[MARKETPLACE]);
+  return isDeepStrictEqual(entry.source, INSTALL.marketplace.source);
 }
 
 function setOrDrop(target: Settings, key: string, value: unknown[] | Settings | undefined): void {
