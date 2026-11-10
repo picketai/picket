@@ -1,6 +1,6 @@
 {
   "name": "@picketai/picket",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "private": true,
   "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel.",
   "homepage": "https://github.com/picketai/picket#readme",
