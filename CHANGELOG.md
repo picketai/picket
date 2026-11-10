@@ -2,7 +2,7 @@
 
 Newest release first; each heading is a version.
 
-## 1.0.0-alpha.6 (not released yet)
+## 1.0.0-alpha.6
 
 ### Changed, act on these
 
