@@ -357,6 +357,8 @@ Claude Code updates Picket in the background. `picket init` turns on `autoUpdate
 1. Run `/reload-plugins`, or start a new session.
 2. When the session start says ``Picket updated to 1.0.0-alpha.6; run `picket init` to refresh this project.``, run `picket init` in the session. It is safe to repeat: it refreshes the `CLAUDE.md` block, adds any setting the new version needs and records the version in `.picket/config.json`. Commit those files so your teammates are not asked again.
 
+When a teammate already ran `picket init` with a newer Picket, the session start says ``This project uses Picket 1.0.0-alpha.6; run `/plugin update picket@picketai`.``: update the plugin, not the project.
+
 To update by hand, run `/plugin update picket@picketai` in the session, or from a terminal:
 
 ```sh

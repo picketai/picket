@@ -53,10 +53,12 @@ function collectParts(root: string): string[] {
   return parts;
 }
 
-function needsInit(root: string, running: string): boolean {
-  if (!existsSync(configPath(root))) return false;
+function versionNotice(root: string, running: string): string | null {
+  if (!existsSync(configPath(root))) return null;
   const recorded: string | null = loadConfig(root).picket_version;
-  return recorded === null || isNewerVersion(running, recorded);
+  if (recorded === null || isNewerVersion(running, recorded)) return `Picket updated to ${running}; run \`picket init\` to refresh this project.`;
+  if (isNewerVersion(recorded, running)) return `This project uses Picket ${recorded}; run \`/plugin update picket@picketai\`.`;
+  return null;
 }
 
 function noticedVersion(root: string): unknown {
@@ -75,9 +77,10 @@ function recordNotice(root: string, running: string): void {
 function updateNotice(root: string): string | null {
   try {
     const running = picketVersion();
-    if (!needsInit(root, running) || noticedVersion(root) === running) return null;
+    const notice = versionNotice(root, running);
+    if (notice === null || noticedVersion(root) === running) return null;
     recordNotice(root, running);
-    return `Picket updated to ${running}; run \`picket init\` to refresh this project.`;
+    return notice;
   } catch {
     return null;
   }

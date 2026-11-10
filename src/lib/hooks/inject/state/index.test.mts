@@ -35,8 +35,19 @@ test("a config with no recorded version gives the notice (T-3.3)", (t) => {
   assert.equal(injectState({}, hookContext(root)).systemMessage, NOTICE);
 });
 
-test("the running version, a newer recorded version, or no config gives no notice and writes no notice file (T-3.4)", (t) => {
-  for (const recorded of [RUNNING, "99.0.0"]) {
+test("a newer recorded version asks once per running version for a plugin update instead of picket init", (t) => {
+  const root = withProject(t, { host: true });
+  writeConfig(root, { version: 1, picket_version: "99.0.0" });
+  const first = injectState({}, hookContext(root));
+  const update = "This project uses Picket 99.0.0; run `/plugin update picket@picketai`.";
+  assert.equal(first.systemMessage, update);
+  assert.ok(first.hookSpecificOutput.additionalContext.startsWith(`# Picket update\n${update}`), first.hookSpecificOutput.additionalContext);
+  assert.deepEqual(JSON.parse(readFileSync(noticeFile(root), "utf8")), { version: RUNNING });
+  assert.equal(injectState({}, hookContext(root))?.systemMessage, undefined);
+});
+
+test("the running version or no config gives no notice and writes no notice file (T-3.4)", (t) => {
+  for (const recorded of [RUNNING]) {
     const root = withProject(t, { host: true });
     writeConfig(root, { version: 1, picket_version: recorded });
     assert.equal(injectState({}, hookContext(root))?.systemMessage, undefined, recorded);
