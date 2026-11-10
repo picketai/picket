@@ -1,15 +1,51 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { injectState as stateHandler } from "./index.mts";
-import { hostPath } from "../../../shared/paths.mts";
+import { hostPath, STATE_FILES, statePath } from "../../../shared/paths.mts";
+import { picketVersion } from "../../../shared/picket-version.mts";
 import { writeState } from "../../../shared/work/state.mts";
 import { hookContext } from "#test/context.mts";
 import { looseHandler } from "#test/hook.mts";
 import { setMarker } from "../../../shared/work/markers.mts";
-import { openItem, withProject, writeArtifact } from "#test/project.mts";
+import { openItem, withProject, writeArtifact, writeConfig } from "#test/project.mts";
 
 const injectState = looseHandler(stateHandler);
+
+const RUNNING = picketVersion();
+const NOTICE = `Picket updated to ${RUNNING}; run \`picket init\` to refresh this project.`;
+
+function noticeFile(root: string): string {
+  return statePath(root, STATE_FILES.updateNotice);
+}
+
+test("an older recorded version gives the notice once per running version, in the message and the context (T-3.2)", (t) => {
+  const root = withProject(t, { host: true });
+  writeConfig(root, { version: 1, picket_version: "0.0.1" });
+  const first = injectState({}, hookContext(root));
+  assert.equal(first.systemMessage, NOTICE);
+  assert.ok(first.hookSpecificOutput.additionalContext.startsWith(`# Picket update\n${NOTICE}`), first.hookSpecificOutput.additionalContext);
+  assert.deepEqual(JSON.parse(readFileSync(noticeFile(root), "utf8")), { version: RUNNING });
+  assert.equal(injectState({}, hookContext(root))?.systemMessage, undefined);
+});
+
+test("a config with no recorded version gives the notice (T-3.3)", (t) => {
+  const root = withProject(t, { host: true });
+  writeConfig(root, { version: 1 });
+  assert.equal(injectState({}, hookContext(root)).systemMessage, NOTICE);
+});
+
+test("the running version, a newer recorded version, or no config gives no notice and writes no notice file (T-3.4)", (t) => {
+  for (const recorded of [RUNNING, "99.0.0"]) {
+    const root = withProject(t, { host: true });
+    writeConfig(root, { version: 1, picket_version: recorded });
+    assert.equal(injectState({}, hookContext(root))?.systemMessage, undefined, recorded);
+    assert.equal(existsSync(noticeFile(root)), false, recorded);
+  }
+  const bare = withProject(t, { host: true, picket: false });
+  assert.equal(injectState({}, hookContext(bare))?.systemMessage, undefined);
+  assert.equal(existsSync(noticeFile(bare)), false);
+});
 
 test("injectState with an empty event lists the open work items (T-6.3)", (t) => {
   const root = withProject(t, { host: true, picket: false });

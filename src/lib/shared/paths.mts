@@ -17,6 +17,7 @@ export const STATE_FILES = Object.freeze({
   guardLog: "guard.log",
   branchingManifest: "branching.yaml",
   mutationRestore: "mutation-restore.json",
+  updateNotice: "update-notice.json",
 });
 
 export const MODEL_WRITABLE_STATE_FILES = Object.freeze([STATE_FILES.branchingManifest]);

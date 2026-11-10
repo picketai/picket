@@ -1,7 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { loadConfig, securityPaths } from "../../../shared/config.mjs";
 import { glossaryBody, injectedGlossary } from "../../../shared/glossary.mts";
-import { hostPath, hostRel } from "../../../shared/paths.mts";
+import { configPath, hostPath, hostRel, STATE_FILES, stateDir, statePath } from "../../../shared/paths.mts";
+import { isNewerVersion, picketVersion } from "../../../shared/picket-version.mts";
 import { ACTION_TEXT, isNextAction } from "../../../shared/work/action-text.mts";
 import { nextOf } from "../../../shared/work/next-view.mts";
 import { readSnapshot, stateView, type WorkSnapshot } from "../../../shared/work/snapshot.mts";
@@ -52,9 +53,40 @@ function collectParts(root: string): string[] {
   return parts;
 }
 
+function needsInit(root: string, running: string): boolean {
+  if (!existsSync(configPath(root))) return false;
+  const recorded: string | null = loadConfig(root).picket_version;
+  return recorded === null || isNewerVersion(running, recorded);
+}
+
+function noticedVersion(root: string): unknown {
+  try {
+    return JSON.parse(readFileSync(statePath(root, STATE_FILES.updateNotice), "utf8")).version;
+  } catch {
+    return null;
+  }
+}
+
+function recordNotice(root: string, running: string): void {
+  mkdirSync(stateDir(root), { recursive: true });
+  writeFileSync(statePath(root, STATE_FILES.updateNotice), `${JSON.stringify({ version: running })}\n`);
+}
+
+function updateNotice(root: string): string | null {
+  try {
+    const running = picketVersion();
+    if (!needsInit(root, running) || noticedVersion(root) === running) return null;
+    recordNotice(root, running);
+    return `Picket updated to ${running}; run \`picket init\` to refresh this project.`;
+  } catch {
+    return null;
+  }
+}
+
 export function injectState(_event: PayloadOf<"SessionStart">, { root }: HookContext): ContextOutput | null {
-  const parts = collectParts(root);
-  return parts.length ? context("SessionStart", parts.join("\n\n")) : null;
+  const notice = updateNotice(root);
+  const parts = [...(notice ? [`# Picket update\n${notice}`] : []), ...collectParts(root)];
+  return parts.length ? context("SessionStart", parts.join("\n\n"), notice) : null;
 }
 
 export const hook: HookSpec<"SessionStart"> = {

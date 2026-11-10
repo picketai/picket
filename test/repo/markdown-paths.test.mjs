@@ -26,6 +26,7 @@ const ELSEWHERE = [
       ".picket/state/ledger.jsonl",
       ".picket/state/scratch/",
       ".picket/state/scratch/drive.mjs",
+      ".picket/state/update-notice.json",
       ".worktrees/",
       "artifacts/strategy/glossary/",
       "artifacts/strategy/glossary/INDEX.md",

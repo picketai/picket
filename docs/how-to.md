@@ -352,13 +352,18 @@ To turn Picket's notification off, for example when you already have your own No
 
 ## Updating
 
-In a Claude Code session in the project, run `/plugin update` and choose `picket@picketai`, or from a terminal:
+Claude Code updates Picket in the background. `picket init` turns on `autoUpdate` for the `picketai` marketplace, so a new `alpha` arrives within ten minutes of a session start, unless Claude Code's own auto-updater is off. Claude Code then shows "Plugins changed. Run /reload-plugins to activate."
+
+1. Run `/reload-plugins`, or start a new session.
+2. When the session start says ``Picket updated to 1.0.0-alpha.6; run `picket init` to refresh this project.``, run `picket init` in the session. It is safe to repeat: it refreshes the `CLAUDE.md` block, adds any setting the new version needs and records the version in `.picket/config.json`. Commit those files so your teammates are not asked again.
+
+To update by hand, run `/plugin update picket@picketai` in the session, or from a terminal:
 
 ```sh
 claude plugin update picket@picketai --scope project
 ```
 
-Restart Claude Code to load the new version. Run `npx @picketai/picket@alpha init` in each project afterwards: it is safe to repeat and adds any setting a new version needs.
+To switch background updates off for the project, set `"autoUpdate": false` on `extraKnownMarketplaces.picketai` in `.claude/settings.json`; `picket init` leaves that value as it is.
 
 Coming from 1.0.0-alpha.5 or earlier, where Picket was a global npm install: run `npx @picketai/picket@alpha init` once in each project, which retires the old mod plugins and points the marketplace at the npm package, then remove the global copy with `npm uninstall -g @picketai/picket`.
 

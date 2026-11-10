@@ -6,7 +6,7 @@ Each hook name starts with its kind. `guard.*` hooks deny a tool call or bounce 
 
 | Hook | Events | Matcher | Does |
 |---|---|---|---|
-| `inject.state` | SessionStart |  | open work items with their next action, plus the host folder's `MEMORY.md` cut at the last whole entry within 6,000 characters |
+| `inject.state` | SessionStart |  | open work items with their next action, plus the host folder's `MEMORY.md` cut at the last whole entry within 6,000 characters; once per running version, when the config's `picket_version` is missing or older, a message asking the user to run `picket init` (recorded in `.picket/state/update-notice.json`) |
 | `inject.rules` | SessionStart, SubagentStart |  | the five rules in `rules/`, joined, for the lead and every agent |
 | `inject.extensions` | SessionStart, SubagentStart |  | each enabled extension's rules and its additions for the lead or the starting agent's role, in config order, within 10,000 characters; one line per refused extension |
 | `emit.statusline` | SessionStart |  | copies the plugin's self-contained `statusline.mjs` into the project's `.picket/state/` when the project holds a Picket config, and into `CLAUDE_PLUGIN_DATA`, each when its copy is missing or differs, so each `statusLine` command keeps one path across plugin updates |

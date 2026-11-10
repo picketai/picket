@@ -6,7 +6,7 @@ export type HookEntry = { summary: string; on: readonly { event: HookEvent; matc
 
 export const HOOKS = {
   "inject.state": {
-    summary: "open work items with their next action, plus the host folder's `MEMORY.md` cut at the last whole entry within 6,000 characters",
+    summary: "open work items with their next action, plus the host folder's `MEMORY.md` cut at the last whole entry within 6,000 characters; once per running version, when the config's `picket_version` is missing or older, a message asking the user to run `picket init` (recorded in `.picket/state/update-notice.json`)",
     on: [{ event: "SessionStart" }],
   },
   "inject.rules": {
