@@ -23,6 +23,42 @@ export function distTag(version) {
   return identifier;
 }
 
+const NEWEST_HEADING = /^## [^\r\n]*/m;
+const UNRELEASED_HEADING = /^## (\S+) \(not released yet\)$/;
+
+function newestHeading(changelogText) {
+  const found = changelogText.match(NEWEST_HEADING);
+  if (!found) throw new Error('CHANGELOG.md has no "## " heading');
+  return { line: found[0], index: found.index };
+}
+
+export function releaseVersion(changelogText) {
+  const { line } = newestHeading(changelogText);
+  const unreleased = line.match(UNRELEASED_HEADING);
+  if (!unreleased) throw new Error(`newest CHANGELOG.md heading "${line}" does not end "(not released yet)"`);
+  return unreleased[1];
+}
+
+export function renameRelease(changelogText, version) {
+  const prepared = releaseVersion(changelogText);
+  if (prepared !== version) throw new Error(`newest CHANGELOG.md heading prepares ${prepared}, not ${version}`);
+  const { line, index } = newestHeading(changelogText);
+  return changelogText.slice(0, index) + `## ${version}` + changelogText.slice(index + line.length);
+}
+
+function changelogPath(root) {
+  return join(root, "CHANGELOG.md");
+}
+
+function printReleaseVersion(root) {
+  console.log(releaseVersion(readFileSync(changelogPath(root), "utf8")));
+}
+
+function renameChangelog(root, version) {
+  const file = changelogPath(root);
+  writeFileSync(file, renameRelease(readFileSync(file, "utf8"), version));
+}
+
 function packageVersion(root) {
   return JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
 }
@@ -47,6 +83,12 @@ function rootOption(args) {
   return i >= 0 && args[i + 1] ? resolve(args[i + 1]) : process.cwd();
 }
 
+function requiredVersion(args) {
+  const version = args[0];
+  if (!version || version === "--root") throw new Error("changelog-rename needs a version: changelog-rename <version> [--root <dir>]");
+  return version;
+}
+
 function main(args) {
   const [verb, ...rest] = args;
   switch (verb) {
@@ -54,8 +96,12 @@ function main(args) {
       return syncVersion(rootOption(rest));
     case "dist-tag":
       return printDistTag(process.cwd(), rest[0]);
+    case "changelog-check":
+      return printReleaseVersion(rootOption(rest));
+    case "changelog-rename":
+      return renameChangelog(rootOption(rest), requiredVersion(rest));
     default:
-      throw new Error(`unknown verb: ${verb ?? "(none)"}; expected sync-version or dist-tag`);
+      throw new Error(`unknown verb: ${verb ?? "(none)"}; expected sync-version, dist-tag, changelog-check or changelog-rename`);
   }
 }
 

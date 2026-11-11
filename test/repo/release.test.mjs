@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { checkTag, distTag, syncPluginVersion } from "../../.github/scripts/release.mjs";
+import { checkTag, distTag, releaseVersion, renameRelease, syncPluginVersion } from "../../.github/scripts/release.mjs";
 import { INSTALL } from "../../src/lib/shared/install.mts";
 import { withProject } from "#test/project.mts";
 
@@ -108,4 +108,70 @@ test("sync-version rewrites the core manifest from package.json, and fails in on
   const bad = syncVersionCli(twice);
   assert.equal(bad.status, 1);
   assert.equal(bad.stderr.trim().split("\n").length, 1, bad.stderr);
+});
+
+const PREPARED = "# Changelog\n\n## 1.0.0-alpha.7 (not released yet)\n\n- x\n\n## 1.0.0-alpha.6\n";
+const RELEASED = PREPARED.replace("## 1.0.0-alpha.7 (not released yet)", "## 1.0.0-alpha.7");
+
+function changelogProject(t, text) {
+  const root = withProject(t, { picket: false });
+  writeFileSync(join(root, "CHANGELOG.md"), text);
+  return root;
+}
+
+function releaseCli(root, ...args) {
+  return spawnSync(process.execPath, [SCRIPT, ...args, "--root", root], { encoding: "utf8" });
+}
+
+function assertOneLineFailure(r) {
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, "");
+  assert.equal(r.stderr.trim().split("\n").length, 1, r.stderr);
+}
+
+test("releaseVersion reads the version of a newest heading that ends (not released yet) (T-1.1)", () => {
+  assert.equal(releaseVersion(PREPARED), "1.0.0-alpha.7");
+  assert.equal(releaseVersion(PREPARED.replaceAll("\n", "\r\n")), "1.0.0-alpha.7");
+});
+
+test("releaseVersion refuses a released newest heading and a changelog without one (T-1.1)", () => {
+  assert.throws(() => releaseVersion(RELEASED), { message: 'newest CHANGELOG.md heading "## 1.0.0-alpha.7" does not end "(not released yet)"' });
+  assert.throws(() => releaseVersion("# Changelog\n\n### Added\n"), { message: 'CHANGELOG.md has no "## " heading' });
+});
+
+test("renameRelease drops (not released yet) from the newest heading and keeps every other byte (T-1.2)", () => {
+  assert.equal(renameRelease(PREPARED, "1.0.0-alpha.7"), RELEASED);
+  const crlf = PREPARED.replaceAll("\n", "\r\n");
+  assert.equal(renameRelease(crlf, "1.0.0-alpha.7"), RELEASED.replaceAll("\n", "\r\n"));
+});
+
+test("renameRelease refuses a version other than the prepared one, naming both (T-1.2)", () => {
+  assert.throws(() => renameRelease(PREPARED, "1.0.0-alpha.8"), { message: "newest CHANGELOG.md heading prepares 1.0.0-alpha.7, not 1.0.0-alpha.8" });
+});
+
+test("changelog-check prints the prepared version and changelog-rename writes the released heading (T-1.3)", (t) => {
+  const root = changelogProject(t, PREPARED);
+  const check = releaseCli(root, "changelog-check");
+  assert.equal(check.status, 0, check.stderr);
+  assert.equal(check.stdout, "1.0.0-alpha.7\n");
+  assert.equal(readFileSync(join(root, "CHANGELOG.md"), "utf8"), PREPARED);
+  const rename = releaseCli(root, "changelog-rename", "1.0.0-alpha.7");
+  assert.equal(rename.status, 0, rename.stderr);
+  assert.equal(rename.stdout, "");
+  assert.equal(readFileSync(join(root, "CHANGELOG.md"), "utf8"), RELEASED);
+});
+
+test("changelog-rename with another version and changelog-check on a released heading fail in one stderr line and write nothing (T-1.4)", (t) => {
+  const prepared = changelogProject(t, PREPARED);
+  assertOneLineFailure(releaseCli(prepared, "changelog-rename", "1.0.0-alpha.8"));
+  assert.equal(readFileSync(join(prepared, "CHANGELOG.md"), "utf8"), PREPARED);
+  const released = changelogProject(t, RELEASED);
+  assertOneLineFailure(releaseCli(released, "changelog-check"));
+  assert.equal(readFileSync(join(released, "CHANGELOG.md"), "utf8"), RELEASED);
+});
+
+test("changelog-rename without a version fails in one stderr line", (t) => {
+  const root = changelogProject(t, PREPARED);
+  assertOneLineFailure(releaseCli(root, "changelog-rename"));
+  assert.equal(readFileSync(join(root, "CHANGELOG.md"), "utf8"), PREPARED);
 });
