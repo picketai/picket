@@ -1,0 +1,1 @@
+Fix the review's Minor finding in CONTRIBUTING.md: a failed run is not always finished with "Re-run failed jobs"; when publish fails at the "Move latest" step the version is already published, so finish that case with a retag_latest run.
