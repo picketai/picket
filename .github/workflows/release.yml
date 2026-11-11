@@ -4,6 +4,16 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Test the commit and end in npm publish --dry-run, pushing and publishing nothing. Off, a run on trunk releases the version its CHANGELOG.md heading prepares.'
+        type: boolean
+        default: false
+      retag_latest:
+        description: 'Only move the npm latest dist-tag to this published version, such as 1.0.0-alpha.6.'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -13,10 +23,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version:
+    if: ${{ !inputs.retag_latest }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      ref: ${{ steps.push.outputs.ref || steps.mode.outputs.ref }}
+      tag: ${{ steps.push.outputs.tag || steps.mode.outputs.tag }}
+    steps:
+      - name: Choose the mode
+        id: mode
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            mode=tag
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          elif [ "$DRY_RUN" = true ]; then
+            mode=dry-run
+          elif [ "$GITHUB_REF" = refs/heads/trunk ]; then
+            mode=release
+          else
+            echo "release: a release runs only on trunk, not $GITHUB_REF" >&2
+            exit 1
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "ref=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+      - if: steps.mode.outputs.mode == 'dry-run'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - if: steps.mode.outputs.mode == 'release'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: trunk
+          fetch-depth: 0
+
+      - if: steps.mode.outputs.mode != 'tag'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+
+      - name: Check the prepared changelog heading
+        if: steps.mode.outputs.mode == 'dry-run'
+        run: node .github/scripts/release.mjs changelog-check
+
+      - name: Git identity for the release commits
+        if: steps.mode.outputs.mode == 'release'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit the release and tag it
+        id: release
+        if: steps.mode.outputs.mode == 'release'
+        run: |
+          version=$(node .github/scripts/release.mjs changelog-check)
+          node .github/scripts/release.mjs changelog-rename "$version"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): release $version"
+          npm version prerelease --preid alpha
+          node .github/scripts/release.mjs dist-tag "v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Show trunk before the release
+        if: steps.mode.outputs.mode == 'release'
+        run: git ls-remote origin refs/heads/trunk
+
+      - name: Push trunk and the tag together
+        id: push
+        if: steps.mode.outputs.mode == 'release'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          git push --atomic origin HEAD:refs/heads/trunk "refs/tags/v$VERSION"
+          echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.version.outputs.ref }}
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
@@ -46,10 +137,12 @@ jobs:
           retention-days: 1
 
   build-on-22:
-    needs: test
+    needs: [version, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.version.outputs.ref }}
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
@@ -72,9 +165,12 @@ jobs:
         run: node --test "test/cli/**/*.test.mjs" "test/hooks/**/*.test.mjs"
 
   mods:
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ needs.version.outputs.ref }}
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
@@ -90,7 +186,7 @@ jobs:
         run: node scripts/test.mjs build mods
 
   publish:
-    needs: [test, build-on-22, mods]
+    needs: [version, test, build-on-22, mods]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -98,6 +194,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
+          ref: ${{ needs.version.outputs.ref }}
           fetch-depth: 0
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
@@ -115,23 +212,61 @@ jobs:
       - name: Choose the dist-tag
         id: dist
         env:
-          REF: ${{ github.event_name == 'push' && github.ref_type == 'tag' && github.ref_name || '' }}
+          REF: ${{ needs.version.outputs.tag }}
         run: |
           tag=$(node .github/scripts/release.mjs dist-tag "$REF")
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Tagged commit is on trunk
-        if: github.event_name == 'push' && github.ref_type == 'tag'
-        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/trunk
+        if: needs.version.outputs.tag != ''
+        env:
+          REF: ${{ needs.version.outputs.ref }}
+        run: git merge-base --is-ancestor "$REF" origin/trunk
+
+      - name: Show the dist-tags before publishing
+        if: needs.version.outputs.tag != ''
+        run: npm view @picketai/picket dist-tags --json
 
       - name: Publish
-        if: github.event_name == 'push' && github.ref_type == 'tag'
+        if: needs.version.outputs.tag != ''
         env:
           DIST_TAG: ${{ steps.dist.outputs.tag }}
         run: npm publish ./dist --access public --tag "$DIST_TAG"
 
+      - name: Move latest
+        if: needs.version.outputs.tag != ''
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          version="${TAG#v}"
+          npm dist-tag add "@picketai/picket@$version" latest
+
       - name: Publish dry run
-        if: github.event_name == 'workflow_dispatch'
+        if: needs.version.outputs.tag == ''
         env:
           DIST_TAG: ${{ steps.dist.outputs.tag }}
         run: npm publish ./dist --dry-run --access public --tag "$DIST_TAG"
+
+  retag:
+    if: ${{ inputs.retag_latest }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+
+      - name: Upgrade npm for trusted publishing
+        run: |
+          npm install -g npm@11.21.0
+          npm --version
+
+      - name: Show the dist-tags before moving latest
+        run: npm view @picketai/picket dist-tags --json
+
+      - name: Move latest
+        env:
+          VERSION: ${{ inputs.retag_latest }}
+        run: npm dist-tag add "@picketai/picket@$VERSION" latest

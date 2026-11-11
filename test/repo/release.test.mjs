@@ -48,19 +48,83 @@ test("the version script stages only the picket manifest under src/, and the rel
   assert.match(readFileSync(resolve(".github/workflows/release.yml"), "utf8"), /^\s+node-version: 24$/m);
 });
 
+function workflowText() {
+  return readFileSync(resolve(".github/workflows/release.yml"), "utf8").replaceAll("\r\n", "\n");
+}
+
 function workflowJobs() {
-  const text = readFileSync(resolve(".github/workflows/release.yml"), "utf8").replaceAll("\r\n", "\n");
+  const text = workflowText();
   const jobs = text.slice(text.indexOf("\njobs:\n") + "\njobs:\n".length);
   return Object.fromEntries(jobs.split(/^(?= {2}\S)/m).map((body) => [body.match(/^ {2}([\w-]+):/)[1], body]));
 }
 
+function runBlocks(text) {
+  const lines = text.split("\n");
+  const blocks = [];
+  lines.forEach((line, i) => {
+    const run = line.match(/^(\s*)(?:- )?run: (.*)$/);
+    if (!run) return;
+    if (run[2] !== "|") return blocks.push(run[2]);
+    const indent = run[1].length;
+    const body = [];
+    for (let j = i + 1; j < lines.length && (lines[j].trim() === "" || lines[j].search(/\S/) > indent); j++) body.push(lines[j]);
+    blocks.push(body.join("\n"));
+  });
+  return blocks;
+}
+
+function assertInOrder(text, needles) {
+  const at = needles.map((needle) => text.indexOf(needle));
+  assert.deepEqual(at.filter((i) => i < 0), [], `missing one of ${needles.join(", ")}`);
+  assert.deepEqual([...at].sort((a, b) => a - b), at, `expected in order: ${needles.join(", ")}`);
+}
+
+test("every job after version tests and publishes the commit version hands it (T-2.1)", () => {
+  const jobs = workflowJobs();
+  assert.deepEqual(Object.keys(jobs), ["version", "test", "build-on-22", "mods", "publish", "retag"]);
+  assert.match(jobs.test, /needs: version\n/);
+  assert.match(jobs["build-on-22"], /needs: \[version, test\]\n/);
+  assert.match(jobs.mods, /needs: version\n/);
+  assert.match(jobs.publish, /needs: \[version, test, build-on-22, mods\]\n/);
+  for (const name of ["test", "build-on-22", "mods", "publish"]) {
+    assert.match(jobs[name], /uses: actions\/checkout@[0-9a-f]{40}\n\s+with:\n\s+ref: \$\{\{ needs\.version\.outputs\.ref \}\}\n/, name);
+  }
+});
+
+test("only version may push, and only publish and retag may ask for an npm token (T-2.2)", () => {
+  const jobs = workflowJobs();
+  assert.match(workflowText(), /\npermissions:\n {2}contents: read\n\n/);
+  assert.deepEqual(Object.keys(jobs).filter((name) => /contents: write/.test(jobs[name])), ["version"]);
+  assert.deepEqual(Object.keys(jobs).filter((name) => /id-token: write/.test(jobs[name])), ["publish", "retag"]);
+});
+
+test("inputs reach no run block as an expression, and both dispatch inputs are declared (T-2.3)", () => {
+  const text = workflowText();
+  const blocks = runBlocks(text);
+  assert.ok(blocks.length >= 20, `found ${blocks.length} run blocks`);
+  assert.deepEqual(blocks.filter((block) => block.includes("${{")), []);
+  const dispatch = text.slice(text.indexOf("  workflow_dispatch:\n"), text.indexOf("\npermissions:"));
+  assert.match(dispatch, /^ {4}inputs:\n {6}dry_run:\n[\s\S]*^ {8}type: boolean\n {8}default: false\n {6}retag_latest:\n[\s\S]*^ {8}type: string\n/m);
+});
+
+test("runBlocks reads inline and folded run blocks, and stops at the next key", () => {
+  const yml = "steps:\n  - run: echo one\n  - name: two\n    run: |\n      echo ${{ x }}\n\n      echo three\n    env:\n      A: b\n";
+  assert.deepEqual(runBlocks(yml), ["echo one", "      echo ${{ x }}\n\n      echo three"]);
+});
+
+test("version commits, bumps, checks and pushes in that order, and latest moves only after a publish (T-2.4)", () => {
+  const jobs = workflowJobs();
+  assertInOrder(jobs.version, ["changelog-check)", "changelog-rename", "npm version prerelease --preid alpha", 'dist-tag "v$', "git push --atomic"]);
+  assertInOrder(jobs.publish, ["npm publish ./dist --access public", "npm dist-tag add"]);
+  assertInOrder(jobs.retag, ["npm@11.21.0", "npm dist-tag add"]);
+  assert.doesNotMatch(jobs.retag, /actions\/checkout/);
+});
+
 test("the release workflow tests on Node 24, checks the build on Node 22, tests the mods, and publishes only after all three (D-006)", () => {
   const jobs = workflowJobs();
-  assert.deepEqual(Object.keys(jobs), ["test", "build-on-22", "mods", "publish"]);
   assert.match(jobs.test, /node-version: 24\n/);
   assert.match(jobs.test, /run: npm test\n/);
   assert.match(jobs.test, /actions\/upload-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n\s+include-hidden-files: true\n\s+retention-days: 1\n/);
-  assert.match(jobs["build-on-22"], /needs: test\n/);
   assert.match(jobs["build-on-22"], /node-version: 22\n/);
   assert.doesNotMatch(jobs["build-on-22"], /npm ci/);
   assert.match(jobs["build-on-22"], /actions\/download-artifact@[0-9a-f]{40}\n\s+with:\n\s+name: dist\n\s+path: dist\/\n/);
@@ -70,7 +134,6 @@ test("the release workflow tests on Node 24, checks the build on Node 22, tests 
   assert.doesNotMatch(jobs.mods, /continue-on-error/);
   assert.match(jobs.mods, /node-version: 24\n/);
   assert.match(jobs.mods, /run: npm ci\n[\s\S]*run: npm install -g @anthropic-ai\/claude-code\n[\s\S]*run: node scripts\/test\.mjs build mods\n/);
-  assert.match(jobs.publish, /needs: \[test, build-on-22, mods\]\n/);
   assert.doesNotMatch(jobs.publish, /npm test/);
   assert.match(jobs.publish, /run: npm ci\n/);
   const uses = Object.values(jobs).join("").match(/uses: \S+/g);
