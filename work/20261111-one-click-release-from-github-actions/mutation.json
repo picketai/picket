@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-11T17:57:19.754Z",
+  "base": "8c7a90392c266ef0429e16317b3866f75845fad2",
+  "mutant": {
+    "path": ".github/scripts/release.mjs",
+    "line": 44,
+    "from": "!==",
+    "to": "==="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 27396
+}

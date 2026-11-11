@@ -1,0 +1,71 @@
+{
+  "work_id": "20261111-one-click-release-from-github-actions",
+  "base": "8c7a90392c266ef0429e16317b3866f75845fad2",
+  "request": "work/20261111-one-click-release-from-github-actions/request.md",
+  "size": "medium",
+  "changed_files": [
+    ".github/scripts/release.mjs",
+    ".github/workflows/release.yml",
+    "CONTRIBUTING.md",
+    "test/repo/release.test.mjs"
+  ],
+  "lines_added": 333,
+  "lines_removed": 17,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-11T17:57:19.754Z",
+    "base": "8c7a90392c266ef0429e16317b3866f75845fad2",
+    "mutant": {
+      "path": ".github/scripts/release.mjs",
+      "line": 44,
+      "from": "!==",
+      "to": "==="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 27396
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
