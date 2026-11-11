@@ -2,6 +2,12 @@
 
 Newest release first; each heading is a version.
 
+## 1.0.0-alpha.7 (not released yet)
+
+### Fixed
+
+- `picket init` no longer stops at `plugin: failed` when Claude Code still holds an older copy of the `picketai` marketplace, as it does after 1.0.0-alpha.5. When the plugin install fails, init runs `claude plugin marketplace update picketai` and installs once more; if that install fails too, it names both commands to run by hand.
+
 ## 1.0.0-alpha.6
 
 ### Changed, act on these

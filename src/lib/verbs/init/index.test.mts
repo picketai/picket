@@ -142,12 +142,42 @@ test("--no-install runs no command but still writes the marketplace, and a rerun
   assert.equal(step(run(root, home, { exec: runner.exec, install: false }), "marketplace")?.result, "unchanged");
 });
 
-test("a failing install names the one command to run by hand", (t) => {
-  const { root, home } = project(t);
-  const exec: ProgramRunner = () => {
-    throw Object.assign(new Error("exit 1"), { stderr: "warming up\nplugin not found\n" });
+const INSTALL_CALL = "claude plugin install picket@picketai --scope project";
+const REFRESH_CALL = "claude plugin marketplace update picketai";
+
+function failingRunner(failsOn: (call: string, index: number) => boolean): { exec: ProgramRunner; calls: string[] } {
+  const calls: string[] = [];
+  const exec: ProgramRunner = (program, args) => {
+    const call = `${program} ${args.join(" ")}`;
+    calls.push(call);
+    if (failsOn(call, calls.length - 1)) throw Object.assign(new Error("exit 1"), { stderr: "warming up\nplugin not found\n" });
+    return "";
   };
-  assert.equal(step(run(root, home, { exec }), "plugin")?.detail, "plugin not found; run by hand: claude plugin install picket@picketai --scope project");
+  return { exec, calls };
+}
+
+test("a failed first install refreshes the marketplace and installs again", (t) => {
+  const { root, home } = project(t);
+  const runner = failingRunner((_call, index) => index === 0);
+  const plugin = step(run(root, home, { exec: runner.exec }), "plugin");
+  assert.deepEqual(runner.calls, [INSTALL_CALL, REFRESH_CALL, INSTALL_CALL]);
+  assert.deepEqual({ result: plugin?.result, detail: plugin?.detail }, { result: "created", detail: `installed after ${REFRESH_CALL}` });
+});
+
+test("a failed marketplace refresh still retries the install", (t) => {
+  const { root, home } = project(t);
+  const runner = failingRunner((call, index) => index === 0 || call === REFRESH_CALL);
+  const plugin = step(run(root, home, { exec: runner.exec }), "plugin");
+  assert.deepEqual(runner.calls, [INSTALL_CALL, REFRESH_CALL, INSTALL_CALL]);
+  assert.deepEqual({ result: plugin?.result, detail: plugin?.detail }, { result: "created", detail: `installed after ${REFRESH_CALL}` });
+});
+
+test("a failing install after the refresh names both commands to run by hand", (t) => {
+  const { root, home } = project(t);
+  const runner = failingRunner(() => true);
+  const plugin = step(run(root, home, { exec: runner.exec }), "plugin");
+  assert.deepEqual(runner.calls, [INSTALL_CALL, REFRESH_CALL, INSTALL_CALL]);
+  assert.deepEqual({ result: plugin?.result, detail: plugin?.detail }, { result: "failed", detail: `plugin not found; run by hand: ${REFRESH_CALL}, then ${INSTALL_CALL}` });
 });
 
 test("without --statusline init writes no status line and removes the legacy one with a note (T-6.3)", (t) => {

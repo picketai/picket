@@ -12,6 +12,7 @@ import { shadowingPicket, shadowWarning } from "./shadow.mts";
 
 const { claudeMd, config, gitignore, settings: SETTINGS } = INSTALL;
 const INSTALL_ARGS = ["plugin", "install", INSTALL.plugin, "--scope", "project"];
+const REFRESH_ARGS = ["plugin", "marketplace", "update", MARKETPLACE];
 
 export class InitRefused extends Error {}
 
@@ -211,14 +212,24 @@ function lastLine(err) {
   return text.split(/\r?\n/).filter(Boolean).at(-1) ?? "failed";
 }
 
-function claudeStep(root, exec, { name, args, result }) {
-  const path = hostPath(root, "settings.json");
+function claudeCommand(args) {
+  return `claude ${args.join(" ")}`;
+}
+
+function claudeError(root, exec, args) {
   try {
     exec("claude", args, { cwd: root });
-    return { name, path, result };
+    return null;
   } catch (err) {
-    return { name, path, result: "failed", detail: `${lastLine(err)}; run by hand: claude ${args.join(" ")}` };
+    return err;
   }
+}
+
+function claudeStep(root, exec, { name, args, result }) {
+  const path = hostPath(root, "settings.json");
+  const error = claudeError(root, exec, args);
+  if (error === null) return { name, path, result };
+  return { name, path, result: "failed", detail: `${lastLine(error)}; run by hand: ${claudeCommand(args)}` };
 }
 
 function retiredIds(root) {
@@ -238,7 +249,12 @@ function pluginStep(root, { install, exec }) {
   const path = hostPath(root, "settings.json");
   if (!install) return { name: "plugin", path, result: "skipped" };
   if (projectSettings(root).enabledPlugins?.[INSTALL.plugin]) return { name: "plugin", path, result: "unchanged" };
-  return claudeStep(root, exec, { name: "plugin", args: INSTALL_ARGS, result: "created" });
+  if (claudeError(root, exec, INSTALL_ARGS) === null) return { name: "plugin", path, result: "created" };
+  claudeError(root, exec, REFRESH_ARGS);
+  const retryError = claudeError(root, exec, INSTALL_ARGS);
+  const refresh = claudeCommand(REFRESH_ARGS);
+  if (retryError === null) return { name: "plugin", path, result: "created", detail: `installed after ${refresh}` };
+  return { name: "plugin", path, result: "failed", detail: `${lastLine(retryError)}; run by hand: ${refresh}, then ${claudeCommand(INSTALL_ARGS)}` };
 }
 
 function isFile(path) {
