@@ -47,5 +47,9 @@
     "picket-status@picketai": true,
     "picket-markdown@picketai": true
   },
-  "outputStyle": "picket:custom"
+  "outputStyle": "picket:custom",
+  "statusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR}/.picket/state/statusline.mjs\""
+  }
 }

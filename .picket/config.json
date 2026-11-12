@@ -4,5 +4,6 @@
     "analysis": {
       "env": "HARNESS_SOURCE_ANALYSIS"
     }
-  }
+  },
+  "picket_version": "1.0.0-alpha.6"
 }
