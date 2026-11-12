@@ -1,6 +1,9 @@
-import { test } from "node:test";
+import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, pluginId, readTemplate } from "./install.mts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, holdsPicketStatusLine, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, oldStatusLineNote, pluginId, readTemplate, userSettingsPath } from "./install.mts";
 
 const TEMPLATE = "# Picket\n\nFour lanes.\n\n## Every request\n\n1. Admit.\n\n## Rules\n\nProse.\n";
 
@@ -40,6 +43,41 @@ test("isPicketStatusLine is true for the init, the data folder and the legacy va
   assert.equal(isPicketStatusLine({ type: "command", command: "picket statusline" }), true);
   assert.deepEqual(LEGACY_STATUS_LINE, { type: "command", command: "picket statusline" });
   for (const other of [{ type: "command", command: "local-line" }, undefined, null, "picket statusline"]) assert.equal(isPicketStatusLine(other), false, JSON.stringify(other));
+});
+
+function settingsFile(t: TestContext, text: string): string {
+  const folder = mkdtempSync(join(tmpdir(), "picket-install-"));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const path = join(folder, "settings.json");
+  writeFileSync(path, text);
+  return path;
+}
+
+test("holdsPicketStatusLine is true for each Picket value in the local file", (t) => {
+  for (const statusLine of [INSTALL.settings.statusLine, DATA_FOLDER_STATUS_LINE, LEGACY_STATUS_LINE]) {
+    assert.equal(holdsPicketStatusLine(settingsFile(t, JSON.stringify({ statusLine })), "local"), true, statusLine.command);
+  }
+});
+
+test("holdsPicketStatusLine is false for a foreign value, a missing file and text that is not JSON", (t) => {
+  assert.equal(holdsPicketStatusLine(settingsFile(t, JSON.stringify({ statusLine: { type: "command", command: "user-line" } })), "local"), false);
+  assert.equal(holdsPicketStatusLine(join(settingsFile(t, "{}"), "..", "missing.json"), "local"), false);
+  assert.equal(holdsPicketStatusLine(settingsFile(t, "{ not json"), "local"), false);
+});
+
+test("holdsPicketStatusLine in the user file leaves out the line picket style apply sets", (t) => {
+  assert.equal(holdsPicketStatusLine(settingsFile(t, JSON.stringify({ statusLine: DATA_FOLDER_STATUS_LINE })), "user"), false);
+  for (const statusLine of [INSTALL.settings.statusLine, LEGACY_STATUS_LINE]) {
+    assert.equal(holdsPicketStatusLine(settingsFile(t, JSON.stringify({ statusLine })), "user"), true, statusLine.command);
+  }
+});
+
+test("userSettingsPath is the settings file under the home's .claude folder", () => {
+  assert.equal(userSettingsPath("/h"), join("/h", ".claude", "settings.json"));
+});
+
+test("oldStatusLineNote names the file and why to remove its entry", () => {
+  assert.equal(oldStatusLineNote("/h/.claude/settings.json"), "remove the statusLine entry from /h/.claude/settings.json: it holds an old Picket status line");
 });
 
 test("plugin ids name the picketai marketplace", () => {

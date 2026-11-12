@@ -1,6 +1,6 @@
 import { action, done, failed, Refused } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
-import { isHomeFolder } from "../../shared/install.mts";
+import { holdsPicketStatusLine, isHomeFolder, oldStatusLineNote, userSettingsPath } from "../../shared/install.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { flag, type Args } from "../../util/args.mts";
 import { programRunner } from "../../util/process.mts";
@@ -18,10 +18,15 @@ function refuseHome({ root, home, platform }: Context): void {
   if (isHomeFolder(root, home, platform)) throw new Refused(`refusing to uninstall from the home folder ${root}; run it inside a project or pass --root <path>`, { root });
 }
 
+function withUserStatusLineNote(report: UninstallReport, home: string): UninstallReport {
+  const path = userSettingsPath(home);
+  return holdsPicketStatusLine(path, "user") ? { ...report, manual: [...report.manual, oldStatusLineNote(path)] } : report;
+}
+
 export function uninstallFrom(deps: (context: Context) => UninstallDeps) {
   return action<UninstallInput, UninstallReport>(async (input, context) => {
     refuseHome(context);
-    const report = await runUninstall(context.root, input, deps(context));
+    const report = withUserStatusLineNote(await runUninstall(context.root, input, deps(context)), context.home);
     return report.changes.some((change) => change.result === "failed") ? failed(report) : done(report);
   });
 }

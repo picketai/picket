@@ -4,8 +4,8 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { RETIRED_PLUGINS } from "../../mods.mts";
-import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, pluginId, readTemplate } from "../../shared/install.mts";
-import { HOST_DIR, hostPath } from "../../shared/paths.mts";
+import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, holdsPicketStatusLine, INSTALL, isHomeFolder, isPicketStatusLine, isStyleStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, oldStatusLineNote, pluginId, readTemplate, userSettingsPath } from "../../shared/install.mts";
+import { hostPath } from "../../shared/paths.mts";
 import { picketVersion } from "../../shared/picket-version.mts";
 import { programRunner } from "../../util/process.mts";
 import { shadowingPicket, shadowWarning } from "./shadow.mts";
@@ -150,13 +150,35 @@ function statusLineOf(path) {
   }
 }
 
+function otherSettingsFiles(root, home) {
+  return [
+    { path: hostPath(root, "settings.local.json"), file: "local" },
+    { path: userSettingsPath(home), file: "user" },
+  ];
+}
+
+function otherHolder({ path, file }) {
+  const statusLine = statusLineOf(path);
+  if (isStyleStatusLine(statusLine, file)) return { path, ours: true };
+  if (statusLine === undefined || isPicketStatusLine(statusLine)) return null;
+  return { path, ours: false };
+}
+
 function statusLineHolder(root, home) {
-  const candidates = [hostPath(root, "settings.json"), hostPath(root, "settings.local.json"), join(home, HOST_DIR, "settings.json")];
-  for (const path of candidates) {
-    const statusLine = statusLineOf(path);
-    if (statusLine !== undefined) return { path, ours: path === candidates[0] && isPicketStatusLine(statusLine) };
+  const project = hostPath(root, "settings.json");
+  const projectLine = statusLineOf(project);
+  if (projectLine !== undefined) return { path: project, ours: isPicketStatusLine(projectLine) };
+  for (const candidate of otherSettingsFiles(root, home)) {
+    const holder = otherHolder(candidate);
+    if (holder !== null) return holder;
   }
   return null;
+}
+
+function oldStatusLineNotes(root, home) {
+  return otherSettingsFiles(root, home)
+    .filter(({ path, file }) => holdsPicketStatusLine(path, file))
+    .map(({ path }) => oldStatusLineNote(path));
 }
 
 function parsedSettings(existing) {
@@ -292,7 +314,7 @@ export function init(root, { install = true, exec = programRunner(process.platfo
   const retired = retireSteps(root, { install, exec });
   const marketplace = safely("marketplace", () => marketplaceStep(root));
   const plugin = safely("plugin", () => pluginStep(root, { install, exec }));
-  return { root, steps: [...fileSteps, ...retired, marketplace, plugin], warnings: initWarnings({ env, home, platform }) };
+  return { root, steps: [...fileSteps, ...retired, marketplace, plugin], warnings: [...oldStatusLineNotes(root, home), ...initWarnings({ env, home, platform })] };
 }
 
 export function renderInit(report) {

@@ -231,6 +231,64 @@ test("without --statusline init leaves a data folder value with no note and stil
   assert.equal(step(removed, "settings")?.detail, 'removed the legacy statusLine "picket statusline"');
 });
 
+function userSettings(home: string, statusLine: unknown): string {
+  mkdirSync(join(home, ".claude"), { recursive: true });
+  const path = join(home, ".claude", "settings.json");
+  writeFileSync(path, JSON.stringify({ statusLine }));
+  return path;
+}
+
+const noteFor = (path: string) => `remove the statusLine entry from ${path}: it holds an old Picket status line`;
+
+test("an old Picket line in user settings gets the project value with --statusline and one warning either way (T-2.1, T-2.3)", (t) => {
+  for (const statusline of [true, false]) {
+    const { root, home } = project(t);
+    const user = userSettings(home, LEGACY_STATUS_LINE);
+    const before = readFileSync(user, "utf8");
+    const report = run(root, home, { install: false, statusline });
+    assert.deepEqual(settingsOf(root).statusLine, statusline ? INSTALL.settings.statusLine : undefined);
+    assert.equal(readFileSync(user, "utf8"), before);
+    assert.deepEqual(report.warnings, [noteFor(user)]);
+  }
+});
+
+test("an old Picket line in local settings gets the project value with --statusline and one warning either way (T-2.2, T-2.3)", (t) => {
+  for (const statusline of [true, false]) {
+    const { root, home } = project(t, undefined, { statusLine: LEGACY_STATUS_LINE });
+    const local = join(root, ".claude", "settings.local.json");
+    const before = readFileSync(local, "utf8");
+    const report = run(root, home, { install: false, statusline });
+    assert.deepEqual(settingsOf(root).statusLine, statusline ? INSTALL.settings.statusLine : undefined);
+    assert.equal(readFileSync(local, "utf8"), before);
+    assert.deepEqual(report.warnings, [noteFor(local)]);
+  }
+});
+
+test("a foreign line in user settings still blocks the write and gives no status line warning (T-2.4)", (t) => {
+  const { root, home } = project(t);
+  const user = userSettings(home, { type: "command", command: "user-line" });
+  const report = run(root, home, { install: false, statusline: true });
+  assert.equal("statusLine" in settingsOf(root), false);
+  assert.equal(step(report, "settings")?.detail, `statusLine already set in ${user}`);
+  assert.deepEqual(report.warnings, []);
+});
+
+test("the style line in user settings keeps the project free of a status line and gives no note, but in local settings it is old (T-2.8)", (t) => {
+  const styled = project(t);
+  const user = userSettings(styled.home, DATA_FOLDER_STATUS_LINE);
+  const before = readFileSync(user, "utf8");
+  const kept = run(styled.root, styled.home, { install: false, statusline: true });
+  assert.equal("statusLine" in settingsOf(styled.root), false);
+  assert.equal(readFileSync(user, "utf8"), before);
+  assert.deepEqual(kept.warnings, []);
+  assert.doesNotMatch(step(kept, "settings")?.detail ?? "", /statusLine already set/);
+
+  const local = project(t, undefined, { statusLine: DATA_FOLDER_STATUS_LINE });
+  const written = run(local.root, local.home, { install: false, statusline: true });
+  assert.deepEqual(settingsOf(local.root).statusLine, INSTALL.settings.statusLine);
+  assert.deepEqual(written.warnings, [noteFor(join(local.root, ".claude", "settings.local.json"))]);
+});
+
 function globalPicket(t: TestContext): string {
   const bin = withProject(t, { picket: false });
   const launcher = join(bin, process.platform === "win32" ? "picket.cmd" : "picket");

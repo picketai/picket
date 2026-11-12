@@ -46,6 +46,37 @@ export function isPicketStatusLine(value: unknown): boolean {
   return PICKET_STATUS_LINES.some((statusLine) => isDeepStrictEqual(value, statusLine));
 }
 
+export function userSettingsPath(home: string): string {
+  return join(home, HOST_DIR, "settings.json");
+}
+
+export type SettingsFile = "local" | "user";
+
+export function isStyleStatusLine(value: unknown, file: SettingsFile): boolean {
+  return file === "user" && isDeepStrictEqual(value, DATA_FOLDER_STATUS_LINE);
+}
+
+export function isOldPicketStatusLine(value: unknown, file: SettingsFile): boolean {
+  return isPicketStatusLine(value) && !isStyleStatusLine(value, file);
+}
+
+function statusLineIn(path: string): unknown {
+  try {
+    const settings: unknown = JSON.parse(readFileSync(path, "utf8"));
+    return settings !== null && typeof settings === "object" ? (settings as { statusLine?: unknown }).statusLine : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function holdsPicketStatusLine(path: string, file: SettingsFile): boolean {
+  return isOldPicketStatusLine(statusLineIn(path), file);
+}
+
+export function oldStatusLineNote(path: string): string {
+  return `remove the statusLine entry from ${path}: it holds an old Picket status line`;
+}
+
 const HEADING = /^#{1,6} /;
 const { claudeMd } = INSTALL;
 

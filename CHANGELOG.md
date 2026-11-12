@@ -7,6 +7,7 @@ Newest release first; each heading is a version.
 ### Fixed
 
 - `picket init` no longer stops at `plugin: failed` when Claude Code still holds an older copy of the `picketai` marketplace, as it does after 1.0.0-alpha.5. When the plugin install fails, init runs `claude plugin marketplace update picketai` and installs once more; if that install fails too, it names both commands to run by hand.
+- `picket init --statusline` no longer writes nothing when `.claude/settings.local.json` or `~/.claude/settings.json` holds an old Picket status line, such as `picket statusline`. It writes the project value, and init warns `remove the statusLine entry from <file>: it holds an old Picket status line` for that file, with or without the flag; it leaves both files as they are. `picket uninstall` lists the same note under `Manual steps:` for the user settings file. The line `picket style apply` sets in user settings is still yours to keep.
 
 ## 1.0.0-alpha.6
 
