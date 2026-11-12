@@ -56,11 +56,11 @@ export function isStyleStatusLine(value: unknown, file: SettingsFile): boolean {
   return file === "user" && isDeepStrictEqual(value, DATA_FOLDER_STATUS_LINE);
 }
 
-export function isOldPicketStatusLine(value: unknown, file: SettingsFile): boolean {
+function isOldPicketStatusLine(value: unknown, file: SettingsFile): boolean {
   return isPicketStatusLine(value) && !isStyleStatusLine(value, file);
 }
 
-function statusLineIn(path: string): unknown {
+export function statusLineIn(path: string): unknown {
   try {
     const settings: unknown = JSON.parse(readFileSync(path, "utf8"));
     return settings !== null && typeof settings === "object" ? (settings as { statusLine?: unknown }).statusLine : undefined;

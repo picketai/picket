@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { RETIRED_PLUGINS } from "../../mods.mts";
-import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, holdsPicketStatusLine, INSTALL, isHomeFolder, isPicketStatusLine, isStyleStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, oldStatusLineNote, pluginId, readTemplate, userSettingsPath } from "../../shared/install.mts";
+import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, holdsPicketStatusLine, INSTALL, isHomeFolder, isPicketStatusLine, isStyleStatusLine, LEGACY_STATUS_LINE, MARKETPLACE, oldStatusLineNote, pluginId, readTemplate, statusLineIn, userSettingsPath } from "../../shared/install.mts";
 import { hostPath } from "../../shared/paths.mts";
 import { picketVersion } from "../../shared/picket-version.mts";
 import { programRunner } from "../../util/process.mts";
@@ -141,15 +141,6 @@ export function mergeSettings(settings, { holder = null, statusline = false } = 
   return { merged, blocked, statusNote };
 }
 
-function statusLineOf(path) {
-  try {
-    const settings = JSON.parse(readFileSync(path, "utf8"));
-    return settings !== null && typeof settings === "object" && "statusLine" in settings ? settings.statusLine : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function otherSettingsFiles(root, home) {
   return [
     { path: hostPath(root, "settings.local.json"), file: "local" },
@@ -158,7 +149,7 @@ function otherSettingsFiles(root, home) {
 }
 
 function otherHolder({ path, file }) {
-  const statusLine = statusLineOf(path);
+  const statusLine = statusLineIn(path);
   if (isStyleStatusLine(statusLine, file)) return { path, ours: true };
   if (statusLine === undefined || isPicketStatusLine(statusLine)) return null;
   return { path, ours: false };
@@ -166,7 +157,7 @@ function otherHolder({ path, file }) {
 
 function statusLineHolder(root, home) {
   const project = hostPath(root, "settings.json");
-  const projectLine = statusLineOf(project);
+  const projectLine = statusLineIn(project);
   if (projectLine !== undefined) return { path: project, ours: isPicketStatusLine(projectLine) };
   for (const candidate of otherSettingsFiles(root, home)) {
     const holder = otherHolder(candidate);

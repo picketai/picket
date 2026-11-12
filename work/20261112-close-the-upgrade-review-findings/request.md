@@ -1,0 +1,1 @@
+Fix the two open findings of the upgrade-path review: (1) record red proof that the phase 2 status line tests (T-2.1, T-2.2) fail on base 4a2b7e2; (2) keep one settings statusLine reader: init.mjs's statusLineOf duplicates install.mts's statusLineIn, and isOldPicketStatusLine is exported with no outside caller.

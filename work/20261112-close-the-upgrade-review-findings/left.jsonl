@@ -1,0 +1,2 @@
+{"ts":"2026-11-12T17:13:20.889Z","command":"git worktree remove --force /tmp/claude-1000/-mnt-work-development-github-picket/e9bcd41a-c78b-4202-960e-a3835d811df4/scratchpad/drive3/../red","why":null}
+{"ts":"2026-11-12T17:13:20.920Z","command":"rm -rf /tmp/claude-1000/-mnt-work-development-github-picket/e9bcd41a-c78b-4202-960e-a3835d811df4/scratchpad/drive3","why":null}
