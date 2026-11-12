@@ -1,9 +1,9 @@
 id: 20261111-fix-the-alpha-5-upgrade-path-gaps
 lane: order
 title: Fix the alpha.5 upgrade path gaps
-status: open
+status: done
 created: 2026-11-11T20:02:36.485Z
-updated: 2026-11-11T20:11:42.077Z
+updated: 2026-11-12T17:11:54.584Z
 session: e9bcd41a-c78b-4202-960e-a3835d811df4
 base: 4a2b7e23852a9260232c451dc241365dccac9074
 run_through: 2

@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-12T17:09:05.025Z",
+  "base": "4a2b7e23852a9260232c451dc241365dccac9074",
+  "mutant": {
+    "path": "src/lib/shared/install.mts",
+    "line": 56,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 21405
+}
