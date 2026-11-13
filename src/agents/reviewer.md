@@ -36,7 +36,7 @@ Scope is the changed files and the artifact. Do not penalise what the plan manda
 
 Before writing a finding, try to disprove it: read the callers, the tests, the config. Drop what does not survive. Critical and Major findings carry a concrete failure scenario.
 
-Cumulative reviews also run the cross-flow check: for every changed exported symbol, shared query, guard or side-effecting call, find consumers outside the plan's scope and flag undocumented behaviour shifts (dropped de-duplication, weakened guards, changed recipients or volume of a side effect). They report it on the `Regression:` line, judged against the symbol at `<base>`. Every review runs the removed-guard check: a deleted or weakened guard needs a criterion that mandates it.
+Cumulative reviews run the regression step of the traced checklist and report it on the `Regression:` line. Every review runs the removed-guard check: a deleted or weakened guard needs a criterion that mandates it.
 
 Verdicts follow `picket:reviewing`'s verdict rule.
 

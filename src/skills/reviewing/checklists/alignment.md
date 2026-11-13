@@ -57,15 +57,15 @@ Report Cm1 as one aggregated Major finding listing each `path:line` and the text
 
 ## Test scope
 
-The developer writes unit tests and, conditionally, architecture tests; every other kind needs an explicit unlock (the `picket:developer` agent). Judge only tests the diff adds.
+The developer writes unit tests and, where the project already has them, architecture tests; another kind only when a `**Done when:**` criterion or the fast-lane request names it (the `tests` rule). Judge only tests the diff adds.
 
 | # | Check | Fail condition | Severity |
 |---|---|---|---|
-| Ts1 | Excluded test kind authored | The diff adds an integration, component, end-to-end, contract, performance, or smoke test and neither the phase summary nor the plan records an unlock naming that kind | Major |
+| Ts1 | Excluded test kind authored | The diff adds an integration, component, end-to-end, contract, performance, or smoke test and no `**Done when:**` criterion of the phase, and no fast-lane request, names that kind | Major |
 | Ts2 | Infrastructure in a unit test | An added test boots or reaches real infrastructure (DB provider, container, HTTP server, in-memory host, broker, filesystem), whatever the file is called | Major |
 | Ts3 | Architecture harness introduced | The diff introduces NetArchTest, ArchUnit, ts-arch, or dependency-cruiser where the project had none | Minor |
 | Ts4 | Test asserts nothing meaningful | An added test asserts only that a mock was called, or has no assertion on the rule its name claims to cover | Major |
 
-A plan line prescribing an excluded kind is not an unlock. Unit tests plus a logged deviation: no finding. The excluded kind written because the plan asked: still Ts1, and the plan wording is worth a note to the architect if the criterion cannot be met any other way.
+A criterion names a kind only in so many words: "the export works" names none; "an integration test against the staging database" names one. A kind named only in a phase's `**Changes:**` text, and in no criterion, is still Ts1.
 
 `node "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/scripts/lint.craft.mjs" --range <range>` (add `-C <repo>` for a nested repo) locates candidates in added lines. Its errors (commented-out code, which is Cm1, and Ts1, Ts2) are facts worth citing; its candidates (comments, which are Cm1 unless exempt or approved, and Ts3) are questions to confirm before they become findings; Cm2 and Ts4 it cannot see. `guard.comments` blocks comments at the edit, so a Cm1 finding names a bypass. It is your instrument, not a project gate, so it never counts as a machine-enforced exclusion. Never paste its output as the review.
