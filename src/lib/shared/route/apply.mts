@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Refused } from "../action.mts";
+import { correctCheckPath, withRevisionLine } from "../work/check-correction.mts";
 import { setMarker } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
 import { isSessionId, writeState, type WorkState } from "../work/state.mts";
@@ -59,6 +60,25 @@ function appliedLine(change: Change): string | null {
 }
 
 type CommitChange = Extract<Change, { kind: "commit" }>;
+type CorrectChange = Extract<Change, { kind: "correct" }>;
+
+function isCorrectChange(change: Change): change is CorrectChange {
+  return change.kind === "correct";
+}
+
+function correctedRecord(text: string, corrections: CorrectChange[], day: string): string {
+  return corrections.reduce((record, { phase, index, to, line }) => {
+    const corrected = correctCheckPath(record, phase, index, to);
+    return corrected === record ? record : withRevisionLine(corrected, `- ${day}: ${line}`);
+  }, text);
+}
+
+function writeCorrections(snap: WorkSnapshot, changes: Change[], now: Date): void {
+  const corrections = changes.filter(isCorrectChange);
+  if (!corrections.length || !snap.artifact) return;
+  const text = readFileSync(snap.artifact.path, "utf8");
+  writeFileSync(snap.artifact.path, correctedRecord(text, corrections, now.toISOString().slice(0, 10)));
+}
 
 function isCommitChange(change: Change): change is CommitChange {
   return change.kind === "commit";
@@ -70,7 +90,7 @@ function grantsRun(change: Change): boolean {
 
 function withoutApproval(changes: Change[], phase: number, refusal: string): Change[] {
   const approves = (change: Change) => change.kind === "marker" && change.phase === phase && change.mark === "approved";
-  const kept = changes.filter((change) => !approves(change) && !isCommitChange(change) && !grantsRun(change));
+  const kept = changes.filter((change) => !approves(change) && !isCommitChange(change) && !grantsRun(change) && !isCorrectChange(change));
   return [...kept, { kind: "state", unset: ["run_through"], line: null }, { kind: "note", line: refusal }];
 }
 
@@ -99,6 +119,7 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   const changes = nested.changes;
   const published = changes.filter(isPublishChange).map((change) => publish(root, id, change));
   for (const change of changes) if (change.kind === "marker") setMarker(root, id, change.phase, change.mark, now);
+  writeCorrections(snap, changes, now);
   const state = changedState(snap.state, changes, session);
   if (state) writeState(root, state, now);
   if (!isRefusedApproval(nested, row)) appendVerdict(root, id, row, now);

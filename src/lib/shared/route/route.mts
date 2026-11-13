@@ -5,7 +5,7 @@ import type { Context } from "../context.mts";
 import { VERDICTS } from "../verdicts.mjs";
 import { recordDigest } from "../work/amendment.mts";
 import type { WorkId } from "../work/files.mts";
-import { readDriveLog } from "../drive-log.mts";
+import { readDriveLog, type DriveRow } from "../drive-log.mts";
 import { carriedResults, phaseCheckResults } from "../work/declared-checks.mts";
 import { checkGate, ownGate, type RunChecks } from "../work/gate.mts";
 import { hasMarker } from "../work/markers.mts";
@@ -15,7 +15,7 @@ import { currentPhase, phaseOf, readSnapshot, type WorkSnapshot } from "../work/
 import { isSessionId } from "../work/state.mts";
 import type { VerdictEntry } from "../work/verdict-log.mts";
 import { applyChanges } from "./apply.mts";
-import { EFFECTS, type Change, type Effect, type GateOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
+import { EFFECTS, type Change, type CorrectionsOf, type Effect, type GateOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
 
 export type { RouteInput };
 export type RouteResult = { id: WorkId; verdict: string; phase: number | null; applied: string[]; next: NextView };
@@ -63,10 +63,14 @@ function rowAmend({ id, amend, reason, scope }: RouteInput, { effect }: VerdictS
   return reason || `AMENDMENT NEEDED: see ${reviewRel(id, "crosscheck", null)}`;
 }
 
-function gateOf(root: string, snap: WorkSnapshot): GateOf {
-  const { rows } = readDriveLog(root);
+function gateOf(root: string, snap: WorkSnapshot, rows: DriveRow[]): GateOf {
   const runChecks = (n: number): RunChecks => ({ own: phaseCheckResults(snap, rows, n) ?? [], carried: carriedResults(snap, rows, n), endsRun: n === snap.state.run_through });
   return (n) => ownGate(phaseOf(snap, n), securityPaths(root)) ?? checkGate(runChecks(n));
+}
+
+function correctionsOf(snap: WorkSnapshot, rows: DriveRow[]): CorrectionsOf {
+  const ownPrefixes = (n: number) => (phaseCheckResults(snap, rows, n) ?? []).filter((result) => result.outcome === "prefix");
+  return (n) => [...carriedResults(snap, rows, n), ...ownPrefixes(n)];
 }
 
 function marksOnDisk(root: string, id: WorkId, phase: number | null): MarksOnDisk {
@@ -82,7 +86,8 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const phase = input.phase ?? currentPhase(snap)?.n ?? null;
   const amend = rowAmend(input, spec);
   const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...stampedRecord(amend, input.verdict, snap) };
-  const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap));
+  const { rows } = readDriveLog(ctx.root);
+  const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap, rows), correctionsOf(snap, rows));
   const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned, changes) });
   return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id, isSessionId(input.session) ? input.session : null) };
 }

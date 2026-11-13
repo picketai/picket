@@ -7,7 +7,8 @@ import { route as routeAt, verb, type RouteInput } from "./index.mts";
 import { findVerdict } from "../../shared/verdicts.mjs";
 import { bareAgentName } from "../../shared/agent-name.mts";
 import { statePath, STATE_FILES } from "../../shared/paths.mts";
-import { appendDriveRow } from "../../shared/drive-log.mts";
+import { appendDriveRow, readDriveLog } from "../../shared/drive-log.mts";
+import { phaseCheckResults } from "../../shared/work/declared-checks.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { readBlock, saveBlock } from "../../shared/work/block.mts";
@@ -315,10 +316,10 @@ const CHECKED_DESIGN = [
   "  - n: 1\n    files: [lib/a.mjs]\n    security: false\n",
   `  - n: 2\n    files: [lib/b.mjs]\n${ordersCheck("T-2.1")}    security: false\n`,
   `  - n: 3\n    files: [lib/c.mjs]\n${ordersCheck("T-3.1")}    security: false\n`,
-  `---\n# D\n\n## Phase 1: A\n\n${criteria(1)}\n## Phase 2: B\n\n${criteria(2)}\n## Phase 3: C\n\n${criteria(3)}`,
+  `---\n# D\n\n## Phase 1: A\n\n${criteria(1)}\n## Phase 2: B\n\n${criteria(2)}\n## Phase 3: C\n\n${criteria(3)}\n## Revision log\n`,
 ].join("");
 
-function grantedCheckedItem(t: TestContext) {
+function grantedCheckedItem(t: TestContext, through: number | undefined = 3) {
   const root = hostRoot(t);
   const git = gitAt(root);
   git("init", "-q");
@@ -327,12 +328,66 @@ function grantedCheckedItem(t: TestContext) {
   git("add", "-A");
   git("commit", "-q", "-m", "base");
   route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
-  route({ id, verdict: "approved", agent: "user", phase: 1, through: 3, root });
+  route({ id, verdict: "approved", agent: "user", phase: 1, through, root });
   const hit = (phase: number, path: string, status: number) =>
     appendDriveRow(root, { ts: "2026-11-13T10:00:00.000Z", kind: "drive", command: "picket drive", source: "picket drive", work_id: id, phase, hits: [{ method: "POST", path, status, ms: 2 }] });
   const approved = (n: number) => existsSync(join(root, "work", id, "phases", `${n}.approved`));
-  return { root, id, git, hit, approved };
+  const record = () => readFileSync(join(root, "work", id, "design.md"), "utf8");
+  return { root, id, git, hit, approved, record };
 }
+
+const APPROVAL_DAY = new Date("2026-11-13T12:00:00.000Z");
+
+function userRoutes(root: string, id: WorkId, verdict: "approved" | "rejected", phase: number) {
+  return routeAt({ id, verdict, agent: "user", phase }, fixedContext(root, { env: process.env, now: APPROVAL_DAY, cwd: process.cwd() }));
+}
+
+const CARRIED_LINE = "- 2026-11-13: T-2.1 check path /orders corrected to /api/orders; approved with phase 3";
+
+test("the user's approval at the end of a run writes the carried path and its revision line into the phase commit (T-6.3)", (t) => {
+  const { root, id, git, hit, record } = grantedCheckedItem(t);
+  hit(2, "/api/orders", 201);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  hit(3, "/orders", 201);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 3, root });
+  const before = record();
+  const r = userRoutes(root, id, "approved", 3);
+  assert.ok(r.applied.includes("T-2.1 check path /orders corrected to /api/orders; approved with phase 3"), r.applied.join(" | "));
+  const after = record();
+  assert.equal(after, before.replace("path: /orders", "path: /api/orders").replace("## Revision log\n", `## Revision log\n\n${CARRIED_LINE}\n`));
+  const committed = git("show", `HEAD:work/${id}/design.md`);
+  assert.ok(committed.includes("path: /api/orders") && committed.includes(CARRIED_LINE), committed);
+  assert.equal(git("log", "-1", "--format=%s"), "feat(x): phase 3");
+});
+
+test("an approval at an ordinary gate corrects a prefix difference on the approved phase (T-6.4)", (t) => {
+  const { root, id, hit, record } = grantedCheckedItem(t, undefined);
+  hit(2, "/api/orders", 201);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  userRoutes(root, id, "approved", 2);
+  assert.deepEqual(phaseCheckResults(readSnapshot(root, id), readDriveLog(root).rows, 2)?.[0].check, { covers: "T-2.1", method: "POST", path: "/api/orders", status: 201, contains: [] });
+  assert.ok(record().includes("- 2026-11-13: T-2.1 check path /orders corrected to /api/orders; approved with phase 2"), record());
+});
+
+test("an approval over a failed check, and a rejection, leave the record byte-identical (T-6.5)", (t) => {
+  const { root, id, hit, record } = grantedCheckedItem(t, undefined);
+  hit(2, "/orders", 400);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  const before = record();
+  userRoutes(root, id, "rejected", 2);
+  assert.equal(record(), before);
+  userRoutes(root, id, "approved", 2);
+  assert.equal(record(), before);
+});
+
+test("after the correction the check passes with the pass detail (T-6.6)", (t) => {
+  const { root, id, hit } = grantedCheckedItem(t, undefined);
+  hit(2, "/api/orders", 201);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  userRoutes(root, id, "approved", 2);
+  const [result] = phaseCheckResults(readSnapshot(root, id), readDriveLog(root).rows, 2) ?? [];
+  assert.deepEqual([result.outcome, result.detail], ["pass", "POST /api/orders → 201"]);
+});
 
 test("a failed declared check stops the run grant at its phase without approving it (T-5.1)", (t) => {
   const { root, id, hit, approved } = grantedCheckedItem(t);

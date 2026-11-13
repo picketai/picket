@@ -1,6 +1,7 @@
 import { Refused } from "../action.mts";
 import { documentRel, documentSlug } from "../document-path.mts";
 import { workRel, type WorkId } from "../work/files.mts";
+import type { CheckResult } from "../work/declared-checks.mts";
 import type { Gate } from "../work/gate.mts";
 import type { PhaseMark } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
@@ -33,11 +34,15 @@ export type Change =
   | { kind: "state"; set?: Partial<WorkState>; unset?: (keyof WorkState)[]; line: string | null }
   | { kind: "note"; line: string }
   | { kind: "commit"; phase: number }
-  | { kind: "publish"; from: string; to: string; line: string };
+  | { kind: "publish"; from: string; to: string; line: string }
+  | { kind: "correct"; phase: number; index: number; covers: string; from: string; to: string; line: string };
 
 export type GateOf = (n: number) => Gate | null;
+export type CorrectionsOf = (n: number) => CheckResult[];
 
-type Plan = (snap: WorkSnapshot, planned: PlannedVerdict, gateOf: GateOf) => Change[];
+const NO_CORRECTIONS: CorrectionsOf = () => [];
+
+type Plan = (snap: WorkSnapshot, planned: PlannedVerdict, gateOf: GateOf, correctionsOf?: CorrectionsOf) => Change[];
 
 function needPhase({ phase, verdict }: PlannedVerdict): number {
   if (phase === null) throw new Refused(`${verdict} needs a phase`);
@@ -69,12 +74,20 @@ function publishChange({ state, artifact }: WorkSnapshot): Change {
   return { kind: "publish", from, to, line: `published ${from} to ${to}` };
 }
 
-const phaseApproved: Plan = (snap, planned) => {
+function correctChange(result: CheckResult, approvedPhase: number): Change[] {
+  const { check, ran } = result;
+  if (!("path" in check) || !ran || !("path" in ran)) return [];
+  const line = `${check.covers} check path ${check.path} corrected to ${ran.path}; approved with phase ${approvedPhase}`;
+  return [{ kind: "correct", phase: result.phase, index: result.index, covers: check.covers, from: check.path, to: ran.path, line }];
+}
+
+const phaseApproved: Plan = (snap, planned, _gateOf, correctionsOf = NO_CORRECTIONS) => {
   if (snap.state.lane === "research") return planned.publish ? [publishChange(snap)] : [];
   const n = needPhase(planned);
   if (!planned.marks.done) throw new Refused(`phase ${n} is not done; cannot approve`);
   const grant: Change[] = planned.through && planned.through > n ? [{ kind: "state", set: { run_through: planned.through }, line: `run_through=${planned.through}` }] : [];
-  return [marker(n, "approved"), ...grant, { kind: "commit", phase: n }];
+  const corrections = correctionsOf(n).flatMap((result) => correctChange(result, n));
+  return [marker(n, "approved"), ...grant, ...corrections, { kind: "commit", phase: n }];
 };
 
 const phaseReviewed: Plan = (snap, { phase, scope }) => {
