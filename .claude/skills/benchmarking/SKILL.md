@@ -28,7 +28,7 @@ Everything is code under `bench/`; this skill only chooses the arguments and rea
 
 ## Procedure
 
-1. Dry-run and quote the plan it prints before spending: each task's budget and the `planned $<total>` line, the worst case; every gate stop pays the prompt cache again (about 0.75 dollars). State the total and wait for the user's go and cap; the cap is the `--max-usd` value, and the runner refuses a real run without one or over it.
+1. Dry-run and quote the plan it prints before spending: each task's budget and the `planned $<total>` line. The plan is an estimate, not a ceiling: a budget caps one call, and every gate stop is a new call that pays the prompt cache again. State the total and wait for the user's go and cap; the cap is the `--max-usd` value, the only hard limit, and the runner refuses a real run without one or over it.
 2. Run in the background (`run_in_background`) and keep working; the results file fills as runs finish. Check `bench/results/spend.log` when the user asks.
 3. Records that failed on an API or session limit are not Picket results: drop them with a one-line node script before reporting, and re-run those tasks.
 4. Report with the table, then two sentences: what moved, and whether `check` passes.

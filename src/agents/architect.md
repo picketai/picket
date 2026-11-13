@@ -57,7 +57,7 @@ Verify a premise about existing code by reading it, not by recalling it. Over th
 
 ### Design
 
-Read `work/*/design.md` of any other open item that touches the same modules too: decisions there bind you. Write `work/<id>/design.md` from the design template in two saves, because the developer starts on the first:
+Read `work/*/design.md` of any other open item that touches the same modules too: decisions there bind you. Write `work/<id>/design.md` from the design template in two saves, so the decisions and phase 1 are on disk for the user to read while you write the rest:
 
 1. First save: frontmatter (`lane: design`, `phases:` with the phase 1 entry at least), `## Problem` (the forces and binding constraints, 2 to 5 sentences), `## Decisions` complete, `## Scope`, and `## Phase 1` complete with touch set, changes, and criteria. Nothing else yet.
 2. Second save: the remaining phases (each independently shippable), `## Open questions`, an empty `## Revision log`, and the full `phases:` frontmatter with `files`, `greps`, `tests`, `drive`, `security` per phase.
