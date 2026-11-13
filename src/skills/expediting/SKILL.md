@@ -30,7 +30,7 @@ You make the change yourself in the main session; no agent is spawned and admiss
 
 The craft bar, in full: names carry meaning; functions are small and do one thing; flow is obvious (early returns over nesting, pure transforms over mutation); idiomatic to the stack; no new comments (the `comments` rule), a needed why goes on the `Comments:` line for the user; no commented-out code, no "just in case" parameters, no one-caller abstractions. No plan exists here, so every reading of the request is yours: when two readings touch the same code, pick the one the existing tests imply and say so in a `Decisions:` line.
 
-Re-run `picket admit --text "<request>" --touched <comma-separated paths you have edited or must edit>` whenever the touch set grows or a decision appears (a new dependency, a changed contract, a second module, a security path, a migration). When it answers a heavier lane, stop editing, keep the diff, run `picket set <id> status=abandoned`, and hand the lane skill it names both the request and the diff. The gate breaking is the gate working.
+Re-run the admit of step 2, `picket admit --request - --touched <comma-separated paths you have edited or must edit> --human` with the request in a quoted heredoc, whenever the touch set grows or a decision appears (a new dependency, a changed contract, a second module, a security path, a migration). When it answers a heavier lane, stop editing, keep the diff, run `picket set <id> status=abandoned`, and hand the lane skill it names both the request and the diff. The gate breaking is the gate working.
 
 | Reply | Do |
 |---|---|
