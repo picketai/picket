@@ -2,8 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { DriveRow } from "../drive-log.mts";
 import { parseArtifact } from "./artifact.mts";
-import { compareChecks, containsMap, declaredStrings, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
+import { carriedResults, compareChecks, containsMap, declaredStrings, mismatchText, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
 import { workId } from "./files.mts";
+import type { WorkSnapshot } from "./snapshot.mts";
 
 const RECORD = [
   "---",
@@ -235,6 +236,46 @@ test("a run output missing a string fails naming it", () => {
 
 test("compareChecks keeps each check's index in the declared list", () => {
   assert.deepEqual(compareChecks([ORDER, TESTS], []).map(({ index, outcome }) => [index, outcome]), [[0, "not_run"], [1, "not_run"]]);
+});
+
+const ORDER_DRIVE = [{ covers: "T-1.2", method: "POST", path: "/orders", status: 201 }];
+
+function snapOf(phases: { n: number; approved: boolean; drive: unknown }[]): WorkSnapshot {
+  return { state: { id: "20261113-x" }, phases: phases.map(({ n, approved, drive }) => ({ n, approved, entry: { n, drive } })) } as unknown as WorkSnapshot;
+}
+
+function orderHit(phase: number, path: string, status = 201): DriveRow {
+  return { ...hitRow(path, status), phase };
+}
+
+test("carriedResults lists the prefix outcomes of approved phases below the given one", () => {
+  const phaseTwoDrive = [{ covers: "T-2.1", method: "POST", path: "/orders", status: 201 }];
+  const snap = snapOf([
+    { n: 1, approved: true, drive: ORDER_DRIVE },
+    { n: 2, approved: false, drive: phaseTwoDrive },
+  ]);
+  const rows = [orderHit(1, "/api/orders"), orderHit(2, "/api/orders")];
+  const carried = carriedResults(snap, rows, 2);
+  assert.deepEqual(carried.map(({ phase, check, outcome }) => [phase, check.covers, outcome]), [[1, "T-1.2", "prefix"]]);
+  assert.deepEqual(carriedResults(snap, rows, 1), []);
+});
+
+test("carriedResults leaves out failed, passed and unapproved phases' outcomes", () => {
+  const snap = snapOf([
+    { n: 1, approved: true, drive: ORDER_DRIVE },
+    { n: 2, approved: true, drive: true },
+  ]);
+  assert.deepEqual(carriedResults(snap, [orderHit(1, "/api/orders", 400)], 3), []);
+  assert.deepEqual(carriedResults(snap, [orderHit(1, "/orders")], 3), []);
+  assert.deepEqual(carriedResults(snapOf([{ n: 1, approved: false, drive: ORDER_DRIVE }]), [orderHit(1, "/api/orders")], 3), []);
+});
+
+test("mismatchText gives one line per outcome in declared versus ran form", () => {
+  const order = { ...ORDER, contains: [] };
+  assert.equal(mismatchText(compareOne(order, [hitRow("/orders", 400)])), "T-1.2 POST /orders: declared 201, ran 400");
+  assert.equal(mismatchText(compareOne(order, [hitRow("/api/orders", 201)])), "T-1.2 POST /orders ran at /api/orders; approval corrects the record");
+  assert.equal(mismatchText(compareOne(TESTS, [runRow("npm test", 1, { pass: true })])), 'T-1.3 run "npm test": declared exit 0, ran exit 1');
+  assert.equal(mismatchText(compareOne(order, [hitRow("/health", 200, undefined, "POST")])), "T-1.2 POST /orders: not run; last ran POST /health");
 });
 
 test("a check with problems is left out and its valid neighbour is still read", () => {

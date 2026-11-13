@@ -7,6 +7,7 @@ import { cut, packet, WIDTH } from "../../dist/lib/verbs/packet/packet.mjs";
 import { blockFiles, parseBlock, saveBlock } from "../../dist/lib/shared/work/block.mjs";
 import { setMarker } from "../../dist/lib/shared/work/markers.mjs";
 import { appendCheckRow } from "../../dist/lib/shared/check-log.mjs";
+import { appendDriveRow } from "../../dist/lib/shared/drive-log.mjs";
 import { writeLayout } from "../../dist/lib/shared/repos.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 import { gitOut, umbrella } from "#test/git.mts";
@@ -383,6 +384,76 @@ test("a block with no Red: line prints no red field (T-7.4)", (t) => {
   phaseDone(root, id);
   saveBlock(root, id, 1, BLOCK);
   assert.equal(redField(root, id), null);
+});
+
+const orderCheck = (covers) => `    drive:\n      - covers: ${covers}\n        method: POST\n        path: /orders\n        status: 201\n`;
+
+function checkedItem(t, { first = orderCheck("T-1.1"), second = orderCheck("T-2.1") } = {}) {
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "design", title: "Orders" });
+  const criteria = (n) => `- **T-${n}.1** a\n- **T-${n}.2** b\n- **T-${n}.3** c\n`;
+  writeFileSync(
+    join(root, "work", id, "design.md"),
+    `---\nlane: design\nphases:\n  - n: 1\n    files: [lib/a.mjs]\n${first}    security: false\n  - n: 2\n    files: [lib/b.mjs]\n${second}    security: false\n---\n# D\n\n## Phase 1: Orders\n\n${criteria(1)}\n## Phase 2: Payments\n\n${criteria(2)}`,
+  );
+  phaseDone(root, id);
+  saveBlock(root, id, 1, BLOCK);
+  const hit = (phase, path, status) =>
+    appendDriveRow(root, { ts: "2026-11-13T10:00:00.000Z", kind: "drive", command: "picket drive", source: "picket drive", work_id: id, phase, hits: [{ method: "POST", path, status, ms: 2 }] });
+  const toPhaseTwo = () => {
+    setMarker(root, id, 1, "approved", new Date());
+    setMarker(root, id, 2, "done", new Date());
+    saveBlock(root, id, 2, BLOCK);
+  };
+  return { root, id, hit, toPhaseTwo };
+}
+
+const fieldRows = (lines, label) => lines.filter((l) => l.startsWith(`  ${label.padEnd(10)}`));
+
+test("a declared check that ran with another status shows declared versus ran on a checks line after verified (T-4.1)", (t) => {
+  const { root, id, hit } = checkedItem(t);
+  hit(1, "/orders", 400);
+  const { lines } = packet(id, root);
+  const verified = lines.findIndex((l) => l.startsWith("  verified"));
+  assert.equal(lines[verified + 1], "  checks    T-1.1 POST /orders: declared 201, ran 400");
+});
+
+test("a prefix difference on the current phase shows on the checks line (T-4.2)", (t) => {
+  const { root, id, hit } = checkedItem(t);
+  hit(1, "/api/orders", 201);
+  assert.deepEqual(fieldRows(packet(id, root).lines, "checks"), ["  checks    T-1.1 POST /orders ran at /api/orders; approval corrects the record"]);
+});
+
+test("an approved phase's prefix difference shows once, on the carried line, at the next gate (T-4.3)", (t) => {
+  const { root, id, hit, toPhaseTwo } = checkedItem(t);
+  hit(1, "/api/orders", 201);
+  hit(2, "/orders", 201);
+  toPhaseTwo();
+  const { lines, text } = packet(id, root);
+  assert.deepEqual(fieldRows(lines, "carried"), ["  carried   T-1.1 POST /orders ran at /api/orders; approval corrects the record"]);
+  assert.deepEqual(fieldRows(lines, "checks"), []);
+  assert.equal(text.match(/ran at \/api\/orders/g)?.length, 1);
+});
+
+test("passing checks, drive: true and no drive key print neither checks nor carried (T-4.4)", (t) => {
+  const quiet = (options, drive) => {
+    const { root, id, hit } = checkedItem(t, options);
+    if (drive) hit(1, "/orders", 201);
+    const { lines } = packet(id, root);
+    return [...fieldRows(lines, "checks"), ...fieldRows(lines, "carried")];
+  };
+  assert.deepEqual(quiet({}, true), []);
+  assert.deepEqual(quiet({ first: "    drive: true\n" }, true), []);
+  assert.deepEqual(quiet({ first: "" }, false), []);
+});
+
+test("a check mismatch leaves the next step and its options as they are without the drive log (T-4.5)", (t) => {
+  const { root, id, hit } = checkedItem(t);
+  const before = packet(id, root).next;
+  hit(1, "/orders", 400);
+  const after = packet(id, root).next;
+  assert.equal(after.action, "approve_phase");
+  assert.deepEqual(after, before);
 });
 
 test("a research packet points at work/<id>/research.md", (t) => {

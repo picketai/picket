@@ -170,3 +170,19 @@ export function phaseCheckResults(snap: WorkSnapshot, rows: DriveRow[], n: numbe
   const read = readChecks(phaseOf(snap, n)?.entry?.drive, n);
   return read ? compareChecks(read.checks, phaseRows(rows, snap.state.id, n)) : null;
 }
+
+export function carriedResults(snap: WorkSnapshot, rows: DriveRow[], upTo: number): CheckResult[] {
+  return snap.phases
+    .filter((phase) => phase.approved && phase.n < upTo)
+    .flatMap((phase) => phaseCheckResults(snap, rows, phase.n) ?? [])
+    .filter((result) => result.outcome === "prefix");
+}
+
+function checkLabel(check: DeclaredCheck): string {
+  return "path" in check ? `${check.covers} ${check.method} ${check.path}` : `${check.covers} run "${check.command}"`;
+}
+
+export function mismatchText({ check, outcome, ran, detail }: CheckResult): string {
+  if (outcome === "prefix" && ran && "path" in ran) return `${checkLabel(check)} ran at ${ran.path}; approval corrects the record`;
+  return `${checkLabel(check)}: ${detail}`;
+}

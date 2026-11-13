@@ -9,6 +9,8 @@ import { liveLookup } from "../../shared/sources/places.mts";
 import { reportFindings } from "../../shared/work/report.mts";
 import { nestedCheckoutPaths, phaseCommitMessage } from "../../shared/route/commit.mts";
 import { planWorktrees, ticketKey } from "../../shared/checkouts.mts";
+import { readDriveLog } from "../../shared/drive-log.mts";
+import { carriedResults, mismatchText, phaseCheckResults } from "../../shared/work/declared-checks.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -140,6 +142,18 @@ function reportedCheck(block, label, logged, step) {
   return status ? `${status} (picket check)` : "not reported";
 }
 
+function listField(label, items, width) {
+  if (!items.length) return [];
+  const indent = `  ${"".padEnd(LABEL)}`;
+  return [field(label, items[0], width), ...items.slice(1).map((item) => indent + cut(item, width - indent.length))];
+}
+
+function checkLines(root, snap, phase, width) {
+  const { rows } = readDriveLog(root);
+  const unpassed = (phaseCheckResults(snap, rows, phase) ?? []).filter((result) => result.outcome !== "pass");
+  return [...listField("checks", unpassed.map(mismatchText), width), ...listField("carried", carriedResults(snap, rows, phase).map(mismatchText), width)];
+}
+
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
@@ -158,6 +172,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(field("tests", reportedCheck(b, "Tests", logged, "test"), width));
     lines.push(field("lint", reportedCheck(b, "Lint", logged, "lint"), width));
     lines.push(field("verified", blockField(b, "Verified") ?? "not reported", width));
+    lines.push(...checkLines(root, snap, n.phase, width));
     const red = blockField(b, "Red");
     if (red) lines.push(...redLines(red, redBeforeChange(root, id, n.phase), width));
     const cause = blockField(b, "Root cause");
