@@ -1,0 +1,4 @@
+{"ts":"2026-11-13T15:58:21.167Z","agent":"user","verdict":"user-lane","phase":null,"scope":null,"through":null,"admitted":"order"}
+{"ts":"2026-11-13T16:00:08.405Z","agent":"analyst","verdict":"REPORT WRITTEN","phase":null,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T16:12:47.839Z","agent":"analyst","verdict":"REPORT WRITTEN","phase":null,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T16:13:47.224Z","agent":"user","verdict":"approved","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","published":"artifacts/reports/qa-colleague-project-unread-rest.md"}
