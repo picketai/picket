@@ -87,17 +87,29 @@ export function containsMap(text: string, strings: string[]): Record<string, boo
   return Object.fromEntries(strings.map((string) => [string, text.includes(string)]));
 }
 
-export function readChecks(drive: unknown, phase: number): ReadChecks | null {
+type PlacedCheck = { index: number; check: DeclaredCheck };
+type PlacedChecks = { placed: PlacedCheck[]; problems: string[] };
+
+function readPlacedChecks(drive: unknown, phase: number): PlacedChecks | null {
   if (!Array.isArray(drive)) return null;
-  if (drive.length === 0) return { checks: [], problems: ["is an empty list; write drive: true, false, or at least one check"] };
-  const checks: DeclaredCheck[] = [];
+  if (drive.length === 0) return { placed: [], problems: ["is an empty list; write drive: true, false, or at least one check"] };
+  const placed: PlacedCheck[] = [];
   const problems: string[] = [];
-  drive.forEach((entry, i) => {
-    const found = checkProblems(entry, phase, `check ${i + 1}`);
+  drive.forEach((entry, index) => {
+    const found = checkProblems(entry, phase, `check ${index + 1}`);
     if (found.length) problems.push(...found);
-    else checks.push(toCheck(entry as Fields));
+    else placed.push({ index, check: toCheck(entry as Fields) });
   });
-  return { checks, problems };
+  return { placed, problems };
+}
+
+export function readChecks(drive: unknown, phase: number): ReadChecks | null {
+  const read = readPlacedChecks(drive, phase);
+  return read && { checks: read.placed.map(({ check }) => check), problems: read.problems };
+}
+
+export function phaseCheckProblems(snap: WorkSnapshot, n: number): string[] {
+  return readChecks(phaseOf(snap, n)?.entry?.drive, n)?.problems ?? [];
 }
 
 export type CheckOutcome = "pass" | "prefix" | "failed" | "not_run";
@@ -167,8 +179,10 @@ export function compareChecks(checks: DeclaredCheck[], rows: DriveRow[]): CheckR
 }
 
 export function phaseCheckResults(snap: WorkSnapshot, rows: DriveRow[], n: number): CheckResult[] | null {
-  const read = readChecks(phaseOf(snap, n)?.entry?.drive, n);
-  return read ? compareChecks(read.checks, phaseRows(rows, snap.state.id, n)) : null;
+  const read = readPlacedChecks(phaseOf(snap, n)?.entry?.drive, n);
+  if (!read) return null;
+  const results = compareChecks(read.placed.map(({ check }) => check), phaseRows(rows, snap.state.id, n));
+  return results.map((result, at) => ({ ...result, index: read.placed[at].index }));
 }
 
 export function carriedResults(snap: WorkSnapshot, rows: DriveRow[], upTo: number): CheckResult[] {

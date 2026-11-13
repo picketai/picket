@@ -4,24 +4,37 @@
   "request": "work/20261113-declared-checks-verified-by-picket-verify/request.md",
   "size": "large",
   "changed_files": [
+    "src/agents/architect.md",
+    "src/agents/developer.md",
     "src/lib/hooks/lint/schema/index.mts",
     "src/lib/shared/drive-log.mts",
+    "src/lib/shared/route/apply.mts",
+    "src/lib/shared/route/plan.mts",
+    "src/lib/shared/route/plan.test.mts",
+    "src/lib/shared/route/route.mts",
     "src/lib/shared/work/artifact.mts",
+    "src/lib/shared/work/check-correction.mts",
+    "src/lib/shared/work/check-correction.test.mts",
     "src/lib/shared/work/declared-checks.mts",
     "src/lib/shared/work/declared-checks.test.mts",
+    "src/lib/shared/work/gate.mts",
     "src/lib/verbs/drive/index.mts",
     "src/lib/verbs/drive/index.test.mts",
     "src/lib/verbs/drive/run.mts",
     "src/lib/verbs/drive/server.mts",
     "src/lib/verbs/drive/server.test.mts",
     "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/route/index.test.mts",
     "src/lib/verbs/verify/index.mts",
     "src/lib/verbs/verify/index.test.mts",
+    "src/skills/documenting/templates/design.md",
+    "src/skills/documenting/templates/order.md",
+    "src/skills/implementing/SKILL.md",
     "test/hooks/lint.schema.test.mjs",
     "test/kernel/packet.test.mjs"
   ],
-  "lines_added": 801,
-  "lines_removed": 35,
+  "lines_added": 1370,
+  "lines_removed": 77,
   "frameworks": [
     "typescript"
   ],
@@ -34,14 +47,25 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-13T21:32:28.788Z",
+    "base": "705787c723670d98ce03c90b9166c2828e9e6641",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 14849
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

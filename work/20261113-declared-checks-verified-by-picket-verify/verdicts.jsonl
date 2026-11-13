@@ -12,3 +12,7 @@
 {"ts":"2026-11-13T21:26:37.853Z","agent":"user","verdict":"approved","phase":5,"scope":null,"through":7,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
 {"ts":"2026-11-13T21:30:19.892Z","agent":"developer","verdict":"PHASE DONE","phase":6,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
 {"ts":"2026-11-13T21:31:41.691Z","agent":"developer","verdict":"PHASE DONE","phase":7,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T21:35:44.886Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":null,"scope":"cumulative","through":null,"classes":["Se4"],"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","amend":"AMENDMENT NEEDED: T-7.4 npm test is red at its mods step on the base; scope the criterion to the unit, product and timing steps or defer it","record":"741d1dc845b42dcec449dd8f975ecc5fb37d6b8a541a5e1f16713c2dcae9b9ca"}
+{"ts":"2026-11-13T21:36:59.229Z","agent":"architect","verdict":"AMENDED","phase":null,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","record":"3eac7664d048061b25683827a202c12d934391a879c3bb14283001827b09c808"}
+{"ts":"2026-11-13T21:39:10.475Z","agent":"developer","verdict":"PHASE DONE","phase":7,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T21:40:07.746Z","agent":"reviewer","verdict":"APPROVED","phase":null,"scope":"cumulative","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}

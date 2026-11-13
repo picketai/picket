@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { DriveRow } from "../drive-log.mts";
 import { parseArtifact } from "./artifact.mts";
-import { carriedResults, compareChecks, containsMap, declaredStrings, mismatchText, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
+import { carriedResults, compareChecks, containsMap, declaredStrings, mismatchText, phaseCheckProblems, phaseCheckResults, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
 import { workId } from "./files.mts";
 import type { WorkSnapshot } from "./snapshot.mts";
 
@@ -269,6 +269,19 @@ test("carriedResults leaves out failed, passed and unapproved phases' outcomes",
   assert.deepEqual(carriedResults(snap, [orderHit(1, "/api/orders", 400)], 3), []);
   assert.deepEqual(carriedResults(snap, [orderHit(1, "/orders")], 3), []);
   assert.deepEqual(carriedResults(snapOf([{ n: 1, approved: false, drive: ORDER_DRIVE }]), [orderHit(1, "/api/orders")], 3), []);
+});
+
+test("phaseCheckResults keeps each check's position in the record's list when an earlier check does not read", () => {
+  const malformed = { covers: "T-1.1", method: "get", path: "/health", status: 200 };
+  const snap = snapOf([{ n: 1, approved: false, drive: [malformed, ...ORDER_DRIVE] }]);
+  const [result] = phaseCheckResults(snap, [orderHit(1, "/api/orders")], 1) ?? [];
+  assert.deepEqual([result.index, result.check.covers, result.outcome], [1, "T-1.2", "prefix"]);
+  assert.deepEqual(phaseCheckProblems(snap, 1), ["check 1 method must be upper-case letters, such as GET"]);
+});
+
+test("phaseCheckProblems names an empty drive list and is empty for drive: true", () => {
+  assert.deepEqual(phaseCheckProblems(snapOf([{ n: 1, approved: false, drive: [] }]), 1), ["is an empty list; write drive: true, false, or at least one check"]);
+  assert.deepEqual(phaseCheckProblems(snapOf([{ n: 1, approved: false, drive: true }]), 1), []);
 });
 
 test("mismatchText gives one line per outcome in declared versus ran form", () => {

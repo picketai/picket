@@ -120,6 +120,27 @@ test("verify reports one result per declared check in place of drive_observed", 
   assert.deepEqual(resultNamed(report(), "check:T-1.1"), { name: "check:T-1.1", ok: true, detail: "POST /orders → 201" });
 });
 
+function unreadableSetup(t: TestContext, drive: string[]) {
+  const root = withProject(t, { picket: false });
+  mkdirSync(stateDir(root), { recursive: true });
+  const { id } = openItem(root, { lane: "order", title: "Orders" });
+  const front = ["---", "lane: order", "phases:", "  - n: 1", "    files: []", ...drive, "---"];
+  writeArtifact(root, id, "order.md", [...front, "# O", "", "## Phase 1: Orders", "", "- **T-1.1** a", ""].join("\n"));
+  return verify(root, id, 1, { runTests: false, env: process.env });
+}
+
+test("verify fails closed on a drive list whose only check does not read", (t) => {
+  const report = unreadableSetup(t, ["    drive:", "      - covers: T-1.1", "        method: get", "        path: /health", "        status: 200"]);
+  assert.equal(report.ok, false);
+  assert.deepEqual(resultNamed(report, "drive_checks"), { name: "drive_checks", ok: false, detail: "the record's drive list does not read: check 1 method must be upper-case letters, such as GET" });
+});
+
+test("verify fails closed on an empty drive list", (t) => {
+  const report = unreadableSetup(t, ["    drive: []"]);
+  assert.equal(report.ok, false);
+  assert.equal(resultNamed(report, "drive_checks")?.ok, false);
+});
+
 test("verify on a malformed package.json fails tests as undetected and carries the parse warning", (t) => {
   const { root, id } = setup(t, true);
   writeFileSync(join(root, "package.json"), '{ "scripts": { "test": "node t.js", }');

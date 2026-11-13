@@ -7,7 +7,7 @@ import { readDriveLog, type DriveRow } from "../../shared/drive-log.mts";
 import type { ItemLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import type { GrepEntry } from "../../shared/work/artifact.mts";
-import { phaseCheckResults, type CheckResult } from "../../shared/work/declared-checks.mts";
+import { phaseCheckProblems, phaseCheckResults, type CheckResult } from "../../shared/work/declared-checks.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { phaseOf, readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 import { flag, UsageError, type Args } from "../../util/args.mts";
@@ -92,10 +92,15 @@ function checkResult({ check, outcome, detail }: CheckResult): VerifyResult {
   return { name: `check:${check.covers}`, ok: outcome === "pass" || outcome === "prefix", detail };
 }
 
+function unreadableChecks(problems: string[]): VerifyResult[] {
+  return problems.length ? [{ name: "drive_checks", ok: false, detail: `the record's drive list does not read: ${problems.join("; ")}` }] : [];
+}
+
 function driveResults(root: string, snap: WorkSnapshot, n: number): VerifyResult[] {
   const log = readDriveLog(root);
   const checks = phaseCheckResults(snap, log.rows, n);
-  return checks ? checks.map(checkResult) : [driveResult(log, snap.state.id, n)];
+  if (!checks) return [driveResult(log, snap.state.id, n)];
+  return [...unreadableChecks(phaseCheckProblems(snap, n)), ...checks.map(checkResult)];
 }
 
 export function verify(root: string, id: WorkId, n: number, options: VerifyOptions): VerifyReport {

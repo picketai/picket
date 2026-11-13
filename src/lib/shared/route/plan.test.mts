@@ -111,6 +111,10 @@ test("the run's last phase with nothing carried and every check passing is appro
   assert.equal(stopLine(planWithChecks(GRANT_TO_3, 3, { own: [outcome("pass", "T-3.1")] })), undefined);
 });
 
+test("a drive list the record cannot read stops the run, even with no check result to compare", () => {
+  assert.equal(stopLine(planWithChecks(GRANT_TO_3, 2, { problems: ["check 1 method must be upper-case letters, such as GET"] })), "run grant stops here: phase 2 has a drive list the record cannot read; it takes its own approval");
+});
+
 test("a security-marked phase with a failed check stops with its security reason (T-5.6)", () => {
   const snap = snapshotOf({ run_through: 3, phases: [{ n: 1, approved: true }, { n: 2, touchSet: ["src/auth/x.ts"] }, { n: 3 }] });
   assert.equal(stopLine(planWithChecks(snap, 2, { own: [outcome("failed")] })), "run grant stops here: phase 2 touches a security path (src/auth/x.ts); it takes its own approval");

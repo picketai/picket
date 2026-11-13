@@ -10,7 +10,7 @@ import { reportFindings } from "../../shared/work/report.mts";
 import { nestedCheckoutPaths, phaseCommitMessage } from "../../shared/route/commit.mts";
 import { planWorktrees, ticketKey } from "../../shared/checkouts.mts";
 import { readDriveLog } from "../../shared/drive-log.mts";
-import { carriedResults, mismatchText, phaseCheckResults } from "../../shared/work/declared-checks.mts";
+import { carriedResults, mismatchText, phaseCheckProblems, phaseCheckResults } from "../../shared/work/declared-checks.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -151,7 +151,8 @@ function listField(label, items, width) {
 function checkLines(root, snap, phase, width) {
   const { rows } = readDriveLog(root);
   const unpassed = (phaseCheckResults(snap, rows, phase) ?? []).filter((result) => result.outcome !== "pass");
-  return [...listField("checks", unpassed.map(mismatchText), width), ...listField("carried", carriedResults(snap, rows, phase).map(mismatchText), width)];
+  const unreadable = phaseCheckProblems(snap, phase).map((problem) => `drive ${problem}`);
+  return [...listField("checks", [...unreadable, ...unpassed.map(mismatchText)], width), ...listField("carried", carriedResults(snap, rows, phase).map(mismatchText), width)];
 }
 
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {

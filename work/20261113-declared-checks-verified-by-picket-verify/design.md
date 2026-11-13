@@ -299,7 +299,7 @@ phases:
 - **T-7.1** A unit test reads each template, replaces every placeholder value in the drive list with a sample of its field's type, and gets checks with no problems from `readChecks`.
 - **T-7.2** `architect.md` names `covers`, `contains` and `exit_code`, and says `drive: true` stays for a phase with no check to declare.
 - **T-7.3** `developer.md` or `picket:implementing` says a declared check is driven with `picket drive` and that a check contradicting its criterion goes to the gate, not into the code.
-- **T-7.4** `npm test` passes, the budget tests in `test/timing/budgets.test.mjs` included.
+- **T-7.4** `node scripts/test.mjs unit build product timing` passes, the budget tests in `test/timing/budgets.test.mjs` included; the build step runs because the product tests read `dist/`.
 
 ## Open questions
 
@@ -309,3 +309,4 @@ phases:
 ## Revision log
 
 - 2026-11-13: D-001 (r2): the template and contract texts of phase 7 now rest on D-001; the cross-check found phase 7 had no decision
+- 2026-11-13: T-7.4 reworded: scoped to the unit, build, product and timing steps, since npm test is red at its mods step on the base

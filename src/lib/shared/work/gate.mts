@@ -21,9 +21,10 @@ export function ownGate(phase: Pick<ArtifactPhase, "entry" | "touchSet" | "irrev
   return null;
 }
 
-export type RunChecks = { own: CheckResult[]; carried: CheckResult[]; endsRun: boolean };
+export type RunChecks = { own: CheckResult[]; carried: CheckResult[]; endsRun: boolean; problems?: string[] };
 
-export function checkGate({ own, carried, endsRun }: RunChecks): Gate | null {
+export function checkGate({ own, carried, endsRun, problems = [] }: RunChecks): Gate | null {
+  if (problems.length) return { kind: "declared_check", reason: "has a drive list the record cannot read" };
   const unheld = own.filter((result) => result.outcome === "failed" || result.outcome === "not_run").map((result) => result.check.covers);
   if (unheld.length) return { kind: "declared_check", reason: `has a declared check that did not hold (${[...new Set(unheld)].join(", ")})` };
   if (!endsRun) return null;

@@ -380,6 +380,17 @@ test("an approval over a failed check, and a rejection, leave the record byte-id
   assert.equal(record(), before);
 });
 
+test("the correction lands on the check that ran, after an earlier check that does not read", (t) => {
+  const { root, id, hit, record } = grantedCheckedItem(t, undefined);
+  const malformed = "      - covers: T-2.2\n        method: get\n        path: /health\n        status: 200\n";
+  writeFileSync(join(root, "work", id, "design.md"), record().replace(`    drive:\n      - covers: T-2.1`, `    drive:\n${malformed}      - covers: T-2.1`));
+  hit(2, "/api/orders", 201);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  userRoutes(root, id, "approved", 2);
+  assert.ok(record().includes("path: /health"), record());
+  assert.ok(record().includes("        path: /api/orders\n        status: 201"), record());
+});
+
 test("after the correction the check passes with the pass detail (T-6.6)", (t) => {
   const { root, id, hit } = grantedCheckedItem(t, undefined);
   hit(2, "/api/orders", 201);
