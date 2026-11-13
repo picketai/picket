@@ -24,7 +24,7 @@ _Avoid_: override, plugin (a Claude Code plugin is a different, host-level bundl
 A named place where the core reads extension content: agent additions, review steps, preflight checks. The set of points is a public contract, versioned by the manifest's `schema` number.
 
 **Floor**:
-The part of Picket no extension can change: the verdict tokens, `picket` verbs as the only state mutators, with `route` the only one that records a verdict, the guards, the user gate, the budgets.
+The part of Picket no extension can change: the verdict tokens, `picket` verbs as the only state mutators, the guards, the user gate, the budgets.
 
 **Teammate**:
 An agent the lead starts with the Agent tool, such as `picket:developer`; in Claude Code terms, a subagent. Not a member of a Claude Code agent team.

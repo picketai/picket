@@ -1,0 +1,1 @@
+Trim the Floor entry in .claude/MEMORY.md so the file fits the 6000 characters sessions see: remove the clause ", with `route` the only one that records a verdict", leaving "`picket` verbs as the only state mutators". Wording only.
