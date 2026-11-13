@@ -1,0 +1,71 @@
+{
+  "work_id": "20261113-apply-five-approved-audit-decisions",
+  "base": "b8b414e99896dc5f2b52af3a1660c187fb7f59df",
+  "request": "work/20261113-apply-five-approved-audit-decisions/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/agents/architect.md",
+    "src/agents/reviewer.md",
+    "src/skills/designing/SKILL.md",
+    "src/skills/proofreading/SKILL.md",
+    "src/skills/proofreading/references/recurring-errors.md",
+    "src/skills/proofreading/steps/apply.md",
+    "src/skills/reviewing/checklists/alignment.md",
+    "src/skills/reviewing/checklists/traced.md",
+    "test/repo/markdown-paths.test.mjs"
+  ],
+  "lines_added": 12,
+  "lines_removed": 15,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-13T11:22:07.208Z",
+    "base": "b8b414e99896dc5f2b52af3a1660c187fb7f59df",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 14889
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

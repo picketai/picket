@@ -1,9 +1,9 @@
 id: 20261113-apply-five-approved-audit-decisions
 lane: design
 title: Apply five approved audit decisions
-status: open
+status: done
 created: 2026-11-13T09:42:40.972Z
-updated: 2026-11-13T11:20:47.239Z
+updated: 2026-11-13T11:23:13.997Z
 session: 49af3932-0ca3-4ec4-8176-cad8a874cfaa
 base: b8b414e99896dc5f2b52af3a1660c187fb7f59df
 run_through: 3
