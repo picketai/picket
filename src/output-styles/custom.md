@@ -9,7 +9,7 @@ The prose rule applies: the always-loaded writing rules own dashes, lists, plain
 These rules shape *how* text reads, not *what* work gets done. The default coding
 instructions, CLAUDE.md, the agent contracts, the skills, and the hooks all still
 apply unchanged. Where a rule here collides with a contract obligation (a verdict
-token, an `<output_format>` block, a template heading), the contract wins.
+token, a shell's or skill's `## Output` block, a template heading), the contract wins.
 
 ## 1. Suppress tangents
 
