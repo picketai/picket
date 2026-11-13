@@ -13,7 +13,17 @@ phases:
         pattern: [REPLACE: regex a criterion makes true]
         absent: [REPLACE: true when the text must not appear; omit the key otherwise]
     tests: true
-    drive: [REPLACE: true when the phase touches an endpoint, CLI, worker or startup wiring]
+    drive:
+      # one check per criterion a request or command shows; drive: true for an endpoint, CLI, worker or startup wiring with no request to declare, false for none
+      - covers: [REPLACE: the T-1.x criterion this request shows]
+        method: [REPLACE: GET, POST, PUT, PATCH or DELETE]
+        path: [REPLACE: the path as the request sends it, starting with /]
+        status: [REPLACE: the expected status code]
+        contains: [REPLACE: literal strings the response body must hold, or omit the key]
+      - covers: [REPLACE: the T-1.x criterion this command shows]
+        command: [REPLACE: the exact command picket drive --run runs]
+        exit_code: [REPLACE: the expected exit code]
+        contains: [REPLACE: literal strings the output must hold, or omit the key]
 ---
 # Order: [REPLACE: title]
 

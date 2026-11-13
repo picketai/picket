@@ -13,7 +13,17 @@ phases:
         pattern: [REPLACE: regex a criterion makes true]
         absent: [REPLACE: true when the text must not appear; omit the key otherwise]
     tests: true
-    drive: [REPLACE: true when the phase touches a runtime surface]
+    drive:
+      # one check per criterion a request or command shows; drive: true for a runtime phase with no request to declare, false for none
+      - covers: [REPLACE: the T-1.x criterion this request shows]
+        method: [REPLACE: GET, POST, PUT, PATCH or DELETE]
+        path: [REPLACE: the path as the request sends it, starting with /]
+        status: [REPLACE: the expected status code]
+        contains: [REPLACE: literal strings the response body must hold, or omit the key]
+      - covers: [REPLACE: the T-1.x criterion this command shows]
+        command: [REPLACE: the exact command picket drive --run runs]
+        exit_code: [REPLACE: the expected exit code]
+        contains: [REPLACE: literal strings the output must hold, or omit the key]
     security: [REPLACE: true when the phase changes authentication, authorisation, secret handling, or how the system decides a security concern or when it stops the user; false otherwise]
 ---
 # Design: [REPLACE: title]

@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { DriveRow } from "../drive-log.mts";
 import { parseArtifact } from "./artifact.mts";
 import { carriedResults, compareChecks, containsMap, declaredStrings, mismatchText, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
@@ -277,6 +278,28 @@ test("mismatchText gives one line per outcome in declared versus ran form", () =
   assert.equal(mismatchText(compareOne(TESTS, [runRow("npm test", 1, { pass: true })])), 'T-1.3 run "npm test": declared exit 0, ran exit 1');
   assert.equal(mismatchText(compareOne(order, [hitRow("/health", 200, undefined, "POST")])), "T-1.2 POST /orders: not run; last ran POST /health");
 });
+
+const TEMPLATES = new URL("../../../skills/documenting/templates/", import.meta.url);
+const SAMPLE_VALUES: Record<string, string> = { covers: "T-1.1", method: "POST", path: "/orders", status: "201", contains: "[pending]", command: "npm test", exit_code: "0" };
+const PLACEHOLDER_FIELD = /^(\s*(?:- )?)(covers|method|path|status|contains|command|exit_code): \[REPLACE:[^\]]*\]$/gm;
+
+function sampledTemplate(name: string): string {
+  const text = readFileSync(new URL(name, TEMPLATES), "utf8");
+  return text.replace(PLACEHOLDER_FIELD, (_line, lead: string, key: string) => `${lead}${key}: ${SAMPLE_VALUES[key]}`);
+}
+
+for (const name of ["design.md", "order.md"]) {
+  test(`the ${name} template's drive example reads as two checks with no problems (T-7.1)`, () => {
+    const drive = parseArtifact(sampledTemplate(name)).phases[0].entry?.drive;
+    assert.deepEqual(readChecks(drive, 1), {
+      checks: [
+        { covers: "T-1.1", method: "POST", path: "/orders", status: 201, contains: ["pending"] },
+        { covers: "T-1.1", command: "npm test", exit_code: 0, contains: ["pending"] },
+      ],
+      problems: [],
+    });
+  });
+}
 
 test("a check with problems is left out and its valid neighbour is still read", () => {
   assert.deepEqual(readChecks([{ ...HTTP, path: "health" }, RUN], 1), {
