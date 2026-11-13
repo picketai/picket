@@ -146,6 +146,60 @@ Proposed: adopt 7, 8 and 9 whatever the QA reference says. Not yet confirmed by 
 - Should a difference the item did not cause block its tester stage? Default: no.
 - `.claude/MEMORY.md` is at its 6,000 character limit, so none of the terms above are in the glossary yet. Default: move the install decision to an SDR and leave a pointer.
 
+## 3.5 Input from the QA colleague's project (2026-11-13)
+
+Source: `artifacts/reports/qa-colleague-workflow-testing-skill.md` (finding ids R-xxx). His project is read-only for us and nothing from it is copied. A second research item, `20261113-qa-colleague-project-the-unread-rest`, covers what the first report did not read.
+
+Accepted by the user:
+
+- **Classify before a defect stands** (R-006, R-024). Every failure is first called product, test or environment, with evidence. Closes hole 1. Proposed ruling on a dispute: the kernel replays the scenario, and the reviewer, who may read the code, rules whether the test or the product is wrong.
+- **A question with a default rooted in facts** (R-010, R-025). When the story is silent the tester asks, at most three questions per item, on business matters only. Closes hole 2. The user's condition: a default must rest on a fact we know, never on a suggestion with no basis. Proposed rule: each default carries a `Basis:` line naming its source (the story text, a decision in the record, a saved scenario, the behaviour observed on the base commit, a project document); with no basis the question is asked with no default.
+- **A new scenario must fail on the base commit** (R-026). A scenario for new behaviour that also passes before the change proves nothing about the change. Checked in the baseline run that closes hole 3.
+- **Smoke rules** (R-030): read-only, status and shape only, with a time cap.
+- **The commit tested is written in the report** (R-008), and "does not start" is kept apart from "fails".
+
+Accepted by the user on 2026-11-13, after discussion (result words, token reuse, the known defect rules below):
+
+- **Result words** (R-001, R-021). The user asked to reuse existing verdicts and routes before adding anything. Accepted: the five words (passed, failed, blocked, not run, not covered) are cell statuses in the report table, not verdict tokens. The verdict stays `APPROVED` or `CHANGES REQUIRED`, derived by code from the table, and each cell that needs action is routed by its class to an existing path: developer fix, architect amendment, item block, or a question to the user.
+- The user also asked to reuse the amendment tokens. Accepted: a criterion that cannot be tested as written is a drift between the record and the system, so the tester ends with `DRIFT DETECTED`, the architect amends and ends with `AMENDED`, and the tester retests. When one session has both drift and defects, drift goes first, so no fix is written against a criterion that is about to change. The tester then has three reused tokens and no new one.
+
+Accepted by the user after explanation:
+
+- **Sizing the matrix** (R-013, R-039). One check for each risk: no scenario where a declared hit or a saved scenario already checks it, "not applicable" where the kind does not exist for the criterion, and a cap by item size. What falls outside the cap is listed as not covered. The tester cannot count the developer's unit tests, since it may not read the changed files.
+- **A known defect kept visible** (R-007, R-022). The scenario asserts the correct behaviour and carries `known: DF-xxx`; its failure does not count against an item or trip the breaker. Every regression run prints the open known defects with their age. A ticket is offered through `picket:ticketing`, with the user's confirmation.
+- The user's condition: when a known defect stops failing, the reason must be stated, or a hidden cause could do more harm than the defect. Proposal, decided from facts the kernel has:
+  - passes on the base commit too: fixed outside this item; report the commit range since the last failing run and what changed in it;
+  - fails on base, passes on the item, and the item's story or a criterion names the defect: fixed by this item on purpose;
+  - fails on base, passes on the item, not named by the item: stopped reproducing as a side effect; the label is not removed and the case goes to the user's stop with the files that changed;
+  - the item changed the seed, a mock or the scenario's own inputs: possibly masked by the environment; treated as the side-effect case.
+  The label is removed only in the first two cases.
+
+Proposed from the second report, `artifacts/reports/qa-colleague-project-unread-rest.md` (ids written "second R-xxx"). The user asked for these to be added as proposed; not yet ruled on one by one:
+
+- **The verdict depends on the new behaviour having run** (second R-038). `APPROVED` is impossible while a criterion has no passed check of its own, however many other cells pass.
+- **A pass through a mock is labelled** (second R-005). The closing line separates live passes from passes against a mock.
+- **A ranked list of sources for `Basis:`** (second R-034): the story and its criteria, the record's decisions, an API description, the behaviour on the base commit, and a saved scenario last, since it can be out of date.
+- **The build under test is proven in code** (second R-024, R-025). A check that each `app` image was built from the item's commit, recorded in the report.
+- **Permission checks in both directions** (second R-045): each credential is tested where it must work and where it must be refused.
+
+Proposed from the last unread files, read by the lead on 2026-11-13 (the case builder script and the run report skill; the tools folders by listing only):
+
+- **The report is a view over data.** His run report is generated by scripts from a ledger and is never edited by hand; a wrong report means the data or a script is wrong. For us: the kernel generates `test.md` from the recorded step results and the tester's table rows, and the tester writes no report prose that carries a number.
+- **A defect outside the story's criteria does not block the story.** He has a decision "close with bugs": the story works as specified and the bugs sit outside its acceptance criteria. For us: a defect that the baseline run shows on the base commit too, or that no criterion of the item covers, is recorded as a known defect and offered as a ticket; only a defect inside the item's criteria gives `CHANGES REQUIRED`.
+- **A result belongs to the build that carried it.** He never passes or fails a story on code it did not run. For us: each round's results name their commit, and results from before a fix do not count for the commit after it.
+- **A partial re-run never replaces a full run.** He keeps re-runs of a subset in a separate folder so that they cannot overwrite the full results. For us: a single scenario replayed during a fix is kept apart, and the breaker compares full runs only.
+- **A question is a choice.** His questions for the product owner are phrased as "A or B?", answerable in one meeting, with stable ids and the finding they come from.
+- **Environment trouble is reported apart from functional results**, and a check that failed because the environment stalled is still recorded with its re-run.
+- **Private values stay out of evidence.** His report has a shareable build and a private one, and redacts before citing. For us: a captured token or personal value is never written into a saved scenario or the report, only its variable name (bears on items 10 and 17).
+
+Unknowns closed by that read: the case builder holds the cases in the script and merges by story key, overwriting, so no step retires or deprecates a case; history is kept as a private per-run copy of the cases file, because the next generation overwrites it. Whether QA staff edit cases by hand in ADO cannot be seen from the files and is a question for the colleague.
+
+Not taken: asserting the wrong behaviour on purpose to watch a known defect (second R-021), editing tests in place by tier (second R-001, R-027), a fixed checklist found by a label (second R-033).
+
+Kept as decided, against his practice: black box toward the change (R-040, R-046), reset and not ownership for shared state (R-036), supersede and never edit in place (R-023).
+
+Left to the QA team: the agent team, manual testing, performance budgets, coverage against the documented contract, the flaky detector, ticket filing.
+
 ## 4. Proposed order of next steps
 
 1. Research on the user's real system (18).
