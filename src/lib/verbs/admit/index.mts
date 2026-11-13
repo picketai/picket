@@ -38,7 +38,7 @@ function parseAdmit(args: Args): AdmitInput {
 }
 
 function renderAdmission(v: AdmitResult): string {
-  if (v.lane === null) return 'lane: (none) · re-run with the request text: picket admit --text "<request>"';
+  if (v.lane === null) return "lane: (none) · re-run with the request on stdin, in a quoted heredoc: picket admit --request - --human";
   return `lane: ${v.lane}${"skill" in v && v.skill ? ` · skill: picket:${v.skill}` : ""} (${v.reasons.join("; ")})`;
 }
 

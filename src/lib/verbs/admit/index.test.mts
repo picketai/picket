@@ -28,6 +28,12 @@ test("admit takes the text, a file, or standard input for -, and splits --touche
   assert.throws(() => parse(["--text"]), UsageError);
 });
 
+test("with no request text the hint names the quoted-heredoc form on stdin and not the inline --text form", () => {
+  const hint = verb.render({ lane: null, reasons: ["no request text given"], signals: {} });
+  assert.equal(hint, "lane: (none) · re-run with the request on stdin, in a quoted heredoc: picket admit --request - --human");
+  assert.ok(!hint.includes("--text"), hint);
+});
+
 test("a configured fast cap of one file keeps a two-file request out of the fast lane (T-5.3)", (t) => {
   const root = repo(t);
   const request = "fix the typo in `src/config.ts` and `src/http/server.ts`";
