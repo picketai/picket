@@ -69,6 +69,20 @@ function toCheck(fields: Fields): DeclaredCheck {
   return { covers, command: String(fields.command), exit_code: Number(fields.exit_code), contains };
 }
 
+export type CheckKind = "http" | "run";
+
+function kindOf(check: DeclaredCheck): CheckKind {
+  return "path" in check ? "http" : "run";
+}
+
+export function declaredStrings(checks: DeclaredCheck[], kind: CheckKind): string[] {
+  return [...new Set(checks.filter((check) => kindOf(check) === kind).flatMap((check) => check.contains))];
+}
+
+export function containsMap(text: string, strings: string[]): Record<string, boolean> {
+  return Object.fromEntries(strings.map((string) => [string, text.includes(string)]));
+}
+
 export function readChecks(drive: unknown, phase: number): ReadChecks | null {
   if (!Array.isArray(drive)) return null;
   if (drive.length === 0) return { checks: [], problems: ["is an empty list; write drive: true, false, or at least one check"] };

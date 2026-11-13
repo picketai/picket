@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseArtifact } from "./artifact.mts";
-import { readChecks } from "./declared-checks.mts";
+import { containsMap, declaredStrings, readChecks } from "./declared-checks.mts";
 
 const RECORD = [
   "---",
@@ -131,6 +131,26 @@ test("contains that is not a list of non-empty strings is a problem (T-1.3)", ()
   assert.deepEqual(problemsOf({ ...HTTP, contains: "pending" }), message);
   assert.deepEqual(problemsOf({ ...HTTP, contains: ["pending", ""] }), message);
   assert.deepEqual(problemsOf({ ...HTTP, contains: [201] }), message);
+});
+
+test("containsMap says which strings the text holds, past any display cut (T-2.1)", () => {
+  assert.deepEqual(containsMap("a pending order", ["pending", "paid"]), { pending: true, paid: false });
+  const body = `${"x".repeat(2900)}paid${"y".repeat(96)}`;
+  assert.equal(body.length, 3000);
+  assert.deepEqual(containsMap(body, ["paid"]), { paid: true });
+});
+
+test("declaredStrings unites one kind's contains strings without repeats", () => {
+  const checks = readChecks(
+    [
+      { ...HTTP, contains: ["pending", "id"] },
+      { ...HTTP, covers: "T-1.3", contains: ["id", "total"] },
+      { ...RUN, contains: ["ok"] },
+    ],
+    1,
+  )?.checks ?? [];
+  assert.deepEqual(declaredStrings(checks, "http"), ["pending", "id", "total"]);
+  assert.deepEqual(declaredStrings(checks, "run"), ["ok"]);
 });
 
 test("a check with problems is left out and its valid neighbour is still read", () => {

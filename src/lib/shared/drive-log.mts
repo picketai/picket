@@ -1,10 +1,13 @@
+import { existsSync } from "node:fs";
 import { appendJsonl, readJsonl, type JsonlRead } from "../util/io.mts";
 import { statePath, STATE_FILES } from "./paths.mts";
-import type { WorkId } from "./work/files.mts";
-import { currentPhase, readSnapshot } from "./work/snapshot.mts";
+import { readChecks, type DeclaredCheck } from "./work/declared-checks.mts";
+import { isWorkId, workFile, type WorkId } from "./work/files.mts";
+import { currentPhase, phaseOf, readSnapshot } from "./work/snapshot.mts";
 import { currentItem } from "./work/state.mts";
 
-export type DriveHit = { method: string; path: string; status: number | null; ms: number };
+export type ContainsMap = Record<string, boolean>;
+export type DriveHit = { method: string; path: string; status: number | null; ms: number; contains?: ContainsMap };
 
 export type DriveRow = {
   ts: string;
@@ -18,6 +21,8 @@ export type DriveRow = {
   env?: string[];
   ok?: boolean;
   exit_code?: number;
+  run?: string;
+  contains?: ContainsMap;
   port?: number;
   hits?: DriveHit[];
 };
@@ -47,6 +52,12 @@ export function readDriveLog(root: string): JsonlRead<DriveRow> {
   const { rows, skipped } = readJsonl<unknown>(driveLogPath(root));
   const good = rows.filter(isRow);
   return { rows: good, skipped: skipped + rows.length - good.length };
+}
+
+export function phaseChecks(root: string, { work_id, phase }: { work_id: string | null; phase: number | null }): DeclaredCheck[] {
+  if (work_id === null || phase === null || !isWorkId(work_id) || !existsSync(workFile(root, work_id, "state.yaml"))) return [];
+  const entry = phaseOf(readSnapshot(root, work_id), phase)?.entry;
+  return readChecks(entry?.drive, phase)?.checks ?? [];
 }
 
 export function driveTarget(root: string, { session }: { session: string | null }): DriveTarget {

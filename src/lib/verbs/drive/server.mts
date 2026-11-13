@@ -3,12 +3,13 @@ import type { ChildProcess } from "node:child_process";
 import { Refused } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import { detectTooling } from "../../shared/tooling.mts";
+import { containsMap } from "../../shared/work/declared-checks.mts";
 import { UsageError } from "../../util/args.mts";
 import { killTree, startShell } from "../../util/process.mts";
 
 export type Hit = { method: string; path: string; body: string | undefined };
-export type HitResult = { method: string; path: string; status: number | null; ms: number; body?: string; error?: string };
-export type ServerInput = { start: string | undefined; hits: Hit[]; port: string | undefined; wait: string | undefined; env: Record<string, string> };
+export type HitResult = { method: string; path: string; status: number | null; ms: number; body?: string; error?: string; contains?: Record<string, boolean> };
+export type ServerInput = { start: string | undefined; hits: Hit[]; port: string | undefined; wait: string | undefined; env: Record<string, string>; contains: string[] };
 export type ServerReport = {
   ok: boolean;
   mode: "server";
@@ -67,7 +68,11 @@ function failureCode(err: unknown): string {
   return failure.cause?.code ?? failure.name ?? String(failure.message);
 }
 
-async function request(base: string, hit: Hit, timeoutMs: number): Promise<HitResult> {
+function containsOf(text: string, strings: string[]): Pick<HitResult, "contains"> {
+  return strings.length ? { contains: containsMap(text, strings) } : {};
+}
+
+async function request(base: string, hit: Hit, timeoutMs: number, contains: string[] = []): Promise<HitResult> {
   const started = Date.now();
   const url = /^https?:/.test(hit.path) ? hit.path : base + hit.path;
   try {
@@ -78,7 +83,7 @@ async function request(base: string, hit: Hit, timeoutMs: number): Promise<HitRe
       signal: AbortSignal.timeout(timeoutMs),
     });
     const text = await res.text();
-    return { method: hit.method, path: hit.path, status: res.status, ms: Date.now() - started, body: text.slice(0, BODY_CHARS) };
+    return { method: hit.method, path: hit.path, status: res.status, ms: Date.now() - started, body: text.slice(0, BODY_CHARS), ...containsOf(text, contains) };
   } catch (err) {
     return { method: hit.method, path: hit.path, status: null, ms: Date.now() - started, error: failureCode(err) };
   }
@@ -128,7 +133,7 @@ export async function serverMode(input: ServerInput, ctx: Context, dir: string, 
   const waitMs = Date.now() - started;
   const serverExit = server.exitCode();
   const hits: HitResult[] = [];
-  if (up) for (const hit of input.hits) hits.push(await request(base, hit, timeoutMs));
+  if (up) for (const hit of input.hits) hits.push(await request(base, hit, timeoutMs, input.contains));
   const stopped = await stop(server, port, ctx.platform);
   return {
     ok: up && hits.every((hit) => hit.status !== null),

@@ -3,11 +3,12 @@ import { action, done, failed, refuse } from "../../shared/action.mts";
 import { workingCheckout } from "../../shared/checkouts.mts";
 import type { Context } from "../../shared/context.mts";
 import { destructiveCommand, destructiveRefusal } from "../../shared/destructive.mts";
-import { appendDriveRow, driveTarget, type DriveRow } from "../../shared/drive-log.mts";
+import { appendDriveRow, driveTarget, phaseChecks, type DriveHit, type DriveRow } from "../../shared/drive-log.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
+import { declaredStrings } from "../../shared/work/declared-checks.mts";
 import { flag, many, pairs, seconds, str, type Args } from "../../util/args.mts";
 import { runMode, type RunReport } from "./run.mts";
-import { parseHit, serverMode, type Hit, type ServerReport } from "./server.mts";
+import { parseHit, serverMode, type Hit, type HitResult, type ServerReport } from "./server.mts";
 import { restoreSideEffects, treeSnapshot, type SideEffects } from "./side-effects.mts";
 
 export type DriveInput = {
@@ -54,26 +55,38 @@ function rootRelative(checkout: string, side: SideEffects): SideEffects {
   return { dirtied: under(side.dirtied), created: under(side.created), restored: under(side.restored), removed: under(side.removed) };
 }
 
+function loggedHit({ method, path, status, ms, contains }: HitResult): DriveHit {
+  return { method, path, status, ms, ...(contains ? { contains } : {}) };
+}
+
 async function driveOnce(input: DriveInput, ctx: Context, row: RowBase): Promise<DriveReport> {
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const checkout = workingCheckout(ctx.root, ctx.cwd);
   const dir = join(ctx.root, checkout);
   const before = treeSnapshot(dir);
   const restore = () => rootRelative(checkout, restoreSideEffects(dir, before, input.keepChanges));
+  const checks = phaseChecks(ctx.root, row);
   if (input.run) {
-    const report = runMode({ run: input.run, env: input.env }, ctx, dir, timeoutMs);
+    const report = runMode({ run: input.run, env: input.env, contains: declaredStrings(checks, "run") }, ctx, dir, timeoutMs);
     const side = restore();
-    appendDriveRow(ctx.root, { ...row, command: `picket drive --run ${input.run}`.slice(0, LOGGED_COMMAND_CHARS), ok: report.ok, exit_code: report.exit_code });
+    appendDriveRow(ctx.root, {
+      ...row,
+      command: `picket drive --run ${input.run}`.slice(0, LOGGED_COMMAND_CHARS),
+      run: input.run,
+      ok: report.ok,
+      exit_code: report.exit_code,
+      ...(report.contains ? { contains: report.contains } : {}),
+    });
     return { ...report, ...side };
   }
-  const report = await serverMode(input, ctx, dir, timeoutMs);
+  const report = await serverMode({ ...input, contains: declaredStrings(checks, "http") }, ctx, dir, timeoutMs);
   const side = restore();
   appendDriveRow(ctx.root, {
     ...row,
     command: serverCommand(report.start, input.hits).slice(0, LOGGED_COMMAND_CHARS),
     port: report.port,
     ok: report.ok,
-    hits: report.hits.map(({ method, path, status, ms }) => ({ method, path, status, ms })),
+    hits: report.hits.map(loggedHit),
   });
   return { ...report, ...side };
 }
