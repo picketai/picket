@@ -1,7 +1,7 @@
 import { frontmatter } from "../../util/yaml-lite.mts";
 
 export type GrepEntry = { path: string; pattern: string; flags?: string; absent?: boolean };
-export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tests?: boolean; drive?: boolean; security?: unknown } & Record<string, unknown>;
+export type PhaseEntry = { n: number; files?: string[]; greps?: GrepEntry[]; tests?: boolean; drive?: boolean | unknown[]; security?: unknown } & Record<string, unknown>;
 export type ArtifactPhase = { n: number; title: string; entry: PhaseEntry | null; touchSet: string[]; irreversible: boolean };
 export type ParsedArtifact = { front: Record<string, unknown>; body: string; phases: ArtifactPhase[] };
 
@@ -110,6 +110,10 @@ function deferralOf([, id, rest]: RegExpMatchArray): Deferral | null {
   const owner = marker[1].trim();
   const gate = marker[2].trim();
   return owner && gate ? { id, owner, gate } : null;
+}
+
+export function phaseCriterionIds(body: string, n: number): string[] {
+  return criterionLines(phaseSection(body, n)).map(([, id]) => id);
 }
 
 export function deferredCriteria(body: string): Deferral[] {

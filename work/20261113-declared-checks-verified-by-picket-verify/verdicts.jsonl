@@ -1,0 +1,6 @@
+{"ts":"2026-11-13T21:03:51.094Z","agent":"architect","verdict":"ARTIFACT WRITTEN","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T21:05:10.079Z","agent":"reviewer","verdict":"DRIFT DETECTED","phase":1,"scope":"crosscheck","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","amend":"AMENDMENT NEEDED: D-001 Phase 7 (templates and contracts) has no decision behind it.","record":"9f34a5d8b8a3493d0206d91d1adc1db09c0b4a0c02496179cef99b940b81af92"}
+{"ts":"2026-11-13T21:05:45.622Z","agent":"architect","verdict":"AMENDED","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","record":"741d1dc845b42dcec449dd8f975ecc5fb37d6b8a541a5e1f16713c2dcae9b9ca"}
+{"ts":"2026-11-13T21:06:09.984Z","agent":"reviewer","verdict":"ALIGNED","phase":1,"scope":"crosscheck","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T21:06:49.413Z","agent":"developer","verdict":"PHASE DONE","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-13T21:14:59.780Z","agent":"user","verdict":"approved","phase":1,"scope":null,"through":7,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}

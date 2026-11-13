@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { loadConfig } from "../../../shared/config.mjs";
-import { malformedDeferrals } from "../../../shared/work/artifact.mts";
+import { malformedDeferrals, phaseCriterionIds } from "../../../shared/work/artifact.mts";
+import { readChecks, type DeclaredCheck } from "../../../shared/work/declared-checks.mts";
 import { frontmatter } from "../../../util/yaml-lite.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { context, type ContextOutput } from "../../output.mts";
@@ -10,7 +11,7 @@ import { leftoverProblems, reportProblems } from "./report.mts";
 
 type ArtifactLane = "order" | "design";
 type GrepEntry = { path?: string; pattern?: string; flags?: string; absent?: unknown };
-type PhaseEntry = { n?: unknown; files?: unknown; greps?: unknown; security?: unknown };
+type PhaseEntry = { n?: unknown; files?: unknown; greps?: unknown; drive?: unknown; security?: unknown };
 type PhaseCheck = { problems: string[]; headings: number[] };
 type DecisionSection = { r: number; body: string };
 
@@ -55,6 +56,21 @@ function worktreePathProblems(p: PhaseEntry): string[] {
   return [...new Set(paths)].map((path) => `phases[n=${p.n}] ${path} is a worktree path; plan paths are project-root relative`);
 }
 
+function uncoveredProblems(checks: DeclaredCheck[], body: string, n: number): string[] {
+  const criteria = phaseCriterionIds(body, n);
+  return checks
+    .filter((check) => !criteria.includes(check.covers))
+    .map((check) => `phases[n=${n}].drive check covers ${check.covers}, which no criterion of phase ${n} carries`);
+}
+
+function driveProblems(p: PhaseEntry, body: string): string[] {
+  if (!Object.hasOwn(p, "drive") || typeof p.drive === "boolean") return [];
+  const n = Number(p.n);
+  const read = readChecks(p.drive, n);
+  if (!read) return [`phases[n=${p.n}].drive must be true, false or a list of checks`];
+  return [...read.problems.map((problem) => `phases[n=${p.n}].drive ${problem}`), ...uncoveredProblems(read.checks, body, n)];
+}
+
 function phaseProblems(front: Record<string, unknown>, body: string, lane: ArtifactLane): PhaseCheck {
   const problems: string[] = [];
   const fmPhases: PhaseEntry[] = Array.isArray(front.phases) ? front.phases : [];
@@ -67,7 +83,7 @@ function phaseProblems(front: Record<string, unknown>, body: string, lane: Artif
     if (!Array.isArray(p.files)) problems.push(`phases[n=${p.n}].files must be a list`);
     if (!headings.includes(Number(p.n))) problems.push(`frontmatter phase ${p.n} has no "## Phase ${p.n}" heading`);
     if (!hasValidSecurityMark(p, lane)) problems.push(`phases[n=${p.n}].security must be true or false`);
-    problems.push(...grepProblems(p), ...worktreePathProblems(p));
+    problems.push(...grepProblems(p), ...worktreePathProblems(p), ...driveProblems(p, body));
   }
   return { problems, headings };
 }

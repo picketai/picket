@@ -106,6 +106,44 @@ test("lint.schema flags a non-boolean absent and a whole-file lookahead, and pas
   assert.equal(lintWrite(root, p), "");
 });
 
+function driveRecord(drive) {
+  return `---\nlane: design\nphases:\n  - n: 1\n    files: [src/orders.ts]\n${drive}    security: false\n---\n# D\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n## Phase 1: A\n\n- **T-1.1** a\n- **T-1.2** b\n- **T-1.3** c\n\n## Revision log\n`;
+}
+
+const HTTP_CHECK = (covers) => `      - covers: ${covers}\n        method: POST\n        path: /orders\n        status: 201\n        contains: [pending]\n`;
+const RUN_CHECK = "      - covers: T-1.2\n        command: npm test\n        exit_code: 0\n";
+
+test("lint.schema names the phase and the id of a check covering another phase or a missing criterion (T-1.4)", (t) => {
+  const { root } = hookProject(t);
+  const s = openItem(root, { lane: "design", title: "Checks" });
+  const p = join(root, "work", s.id, "design.md");
+
+  writeFileSync(p, driveRecord(`    drive:\n${HTTP_CHECK("T-2.1")}`));
+  const foreign = lintWrite(root, p);
+  assert.ok(foreign.includes('phases[n=1].drive check 1 covers "T-2.1", not a T-1.<x> criterion of this phase'), foreign);
+  writeFileSync(p, driveRecord(`    drive:\n${HTTP_CHECK("T-1.9")}`));
+  const missing = lintWrite(root, p);
+  assert.ok(missing.includes("phases[n=1].drive check covers T-1.9, which no criterion of phase 1 carries"), missing);
+});
+
+test("lint.schema reports a drive that is neither a boolean nor a list", (t) => {
+  const { root } = hookProject(t);
+  const s = openItem(root, { lane: "design", title: "Checks" });
+  const p = join(root, "work", s.id, "design.md");
+  writeFileSync(p, driveRecord("    drive: yes\n"));
+  assert.ok(lintWrite(root, p).includes("phases[n=1].drive must be true, false or a list of checks"));
+});
+
+test("lint.schema passes drive: true and two valid checks (T-1.5)", (t) => {
+  const { root } = hookProject(t);
+  const s = openItem(root, { lane: "design", title: "Checks" });
+  const p = join(root, "work", s.id, "design.md");
+  writeFileSync(p, driveRecord("    drive: true\n"));
+  assert.equal(lintWrite(root, p), "");
+  writeFileSync(p, driveRecord(`    drive:\n${HTTP_CHECK("T-1.1")}${RUN_CHECK}`));
+  assert.equal(lintWrite(root, p), "");
+});
+
 function reportText(front) {
   return `---\n${front}\n---\n# Report: Pricing\n\n## Summary\nPrices round half-up [VERIFIED].\n\n## Findings\n- **R-001** [VERIFIED] Prices round half-up.\n`;
 }
