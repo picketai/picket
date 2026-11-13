@@ -1,0 +1,67 @@
+{
+  "work_id": "20261113-apply-four-approved-rule-wording-fixes",
+  "base": "00bff4bb95aa4a050e291cd6ab61c14776db0392",
+  "request": "work/20261113-apply-four-approved-rule-wording-fixes/request.md",
+  "size": "medium",
+  "changed_files": [
+    "CLAUDE.md",
+    "src/output-styles/custom.md",
+    "src/rules/prose.md",
+    "src/rules/security-paths.md",
+    "src/templates/claude-block.md"
+  ],
+  "lines_added": 5,
+  "lines_removed": 5,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 1,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-13T14:50:53.350Z",
+    "base": "d65faa965b79b0709d3647fba57f5159c90c6d68",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 14726
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
