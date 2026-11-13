@@ -3,13 +3,15 @@ import { join, posix } from "node:path";
 import { action, done, failed } from "../../shared/action.mts";
 import { locate, testRuns, type TestRun } from "../../shared/checkouts.mts";
 import { runStep } from "../../shared/checks.mts";
-import { readDriveLog } from "../../shared/drive-log.mts";
+import { readDriveLog, type DriveRow } from "../../shared/drive-log.mts";
 import type { ItemLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import type { GrepEntry } from "../../shared/work/artifact.mts";
+import { phaseCheckResults, type CheckResult } from "../../shared/work/declared-checks.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
-import { phaseOf, readSnapshot } from "../../shared/work/snapshot.mts";
+import { phaseOf, readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 import { flag, UsageError, type Args } from "../../util/args.mts";
+import type { JsonlRead } from "../../util/io.mts";
 
 export type VerifyInput = { id: WorkId; phase: number; runTests: boolean };
 export type VerifyResult = { name: string; ok: boolean; detail: string };
@@ -79,12 +81,21 @@ function skippedNote(skipped: number): string {
   return skipped ? ` (${skipped} unreadable line${skipped === 1 ? "" : "s"} skipped)` : "";
 }
 
-function driveResult(root: string, id: WorkId, n: number): VerifyResult {
-  const log = readDriveLog(root);
-  const drives = log.rows.filter((row) => row.kind === "drive" && (row.work_id === id || !row.work_id) && (row.phase === n || row.phase == null));
+function driveResult(log: JsonlRead<DriveRow>, id: WorkId, n: number): VerifyResult {
+  const drives = log.rows.filter((row) => row.kind === "drive" && row.work_id === id && row.phase === n);
   const last = drives.at(-1);
-  const detail = last ? `${drives.length} drive-class command(s) observed, last: ${last.command?.slice(0, DRIVE_COMMAND_CHARS)}` : "no drive-class command observed for this phase";
+  const detail = last ? `${drives.length} drive-class command(s) observed, last: ${last.command?.slice(0, DRIVE_COMMAND_CHARS)}` : `no drive row for phase ${n} of this item`;
   return { name: "drive_observed", ok: drives.length > 0, detail: detail + skippedNote(log.skipped) };
+}
+
+function checkResult({ check, outcome, detail }: CheckResult): VerifyResult {
+  return { name: `check:${check.covers}`, ok: outcome === "pass" || outcome === "prefix", detail };
+}
+
+function driveResults(root: string, snap: WorkSnapshot, n: number): VerifyResult[] {
+  const log = readDriveLog(root);
+  const checks = phaseCheckResults(snap, log.rows, n);
+  return checks ? checks.map(checkResult) : [driveResult(log, snap.state.id, n)];
 }
 
 export function verify(root: string, id: WorkId, n: number, options: VerifyOptions): VerifyReport {
@@ -101,7 +112,7 @@ export function verify(root: string, id: WorkId, n: number, options: VerifyOptio
   const runs = mustHaves.tests ? testRuns(root, id, n) : [];
   results.push(...runs.map((run) => testsResult(root, run, options)));
   const warnings = runs.flatMap((run) => run.warnings);
-  if (mustHaves.drive) results.push(driveResult(root, id, n));
+  if (mustHaves.drive) results.push(...driveResults(root, snap, n));
   const report = { ok: results.every((result) => result.ok), phase: n, results };
   return warnings.length ? { ...report, warnings } : report;
 }

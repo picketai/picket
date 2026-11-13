@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { DriveRow } from "../drive-log.mts";
 import { parseArtifact } from "./artifact.mts";
-import { containsMap, declaredStrings, readChecks } from "./declared-checks.mts";
+import { compareChecks, containsMap, declaredStrings, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
+import { workId } from "./files.mts";
 
 const RECORD = [
   "---",
@@ -151,6 +153,88 @@ test("declaredStrings unites one kind's contains strings without repeats", () =>
   )?.checks ?? [];
   assert.deepEqual(declaredStrings(checks, "http"), ["pending", "id", "total"]);
   assert.deepEqual(declaredStrings(checks, "run"), ["ok"]);
+});
+
+const ORDER: HttpCheck = { covers: "T-1.2", method: "POST", path: "/orders", status: 201, contains: ["pending"] };
+const TESTS: RunCheck = { covers: "T-1.3", command: "npm test", exit_code: 0, contains: ["pass"] };
+
+function hitRow(path: string, status: number | null, contains?: Record<string, boolean>, method = "POST"): DriveRow {
+  const hit = { method, path, status, ms: 3, ...(contains ? { contains } : {}) };
+  return { ts: "2026-11-13T10:00:00.000Z", kind: "drive", command: "picket drive", source: "picket drive", work_id: "20261113-x", phase: 1, hits: [hit] };
+}
+
+function runRow(run: string, exit_code: number, contains?: Record<string, boolean>): DriveRow {
+  return { ts: "2026-11-13T10:00:00.000Z", kind: "drive", command: `picket drive --run ${run}`, source: "picket drive", work_id: "20261113-x", phase: 1, run, exit_code, ...(contains ? { contains } : {}) };
+}
+
+function compareOne(check: DeclaredCheck, rows: DriveRow[]): CheckResult {
+  return compareChecks([check], rows)[0];
+}
+
+test("the latest hit with the declared method and path decides, so an earlier 500 does not fail it (T-3.1)", () => {
+  const passed = hitRow("/orders", 201, { pending: true });
+  const result = compareOne(ORDER, [hitRow("/orders", 500, { pending: false }), passed]);
+  assert.deepEqual(result, { phase: 1, index: 0, check: ORDER, outcome: "pass", ran: passed.hits?.[0], detail: "POST /orders → 201" });
+});
+
+test("a hit that differs only by a path prefix is a prefix outcome naming both paths (T-3.2)", () => {
+  const row = hitRow("/api/orders", 201, { pending: true });
+  assert.deepEqual(compareOne(ORDER, [row]), { phase: 1, index: 0, check: ORDER, outcome: "prefix", ran: row.hits?.[0], detail: "ran at /api/orders; declared /orders, the user rules at the gate" });
+});
+
+test("an exact-path hit is preferred over a later prefix hit", () => {
+  const exact = hitRow("/orders", 201, { pending: true });
+  assert.equal(compareOne(ORDER, [exact, hitRow("/api/orders", 201, { pending: true })]).outcome, "pass");
+});
+
+test("a status other than the declared one fails with declared versus ran (T-3.3)", () => {
+  const row = hitRow("/orders", 400, { pending: true });
+  assert.deepEqual(compareOne(ORDER, [row]), { phase: 1, index: 0, check: ORDER, outcome: "failed", ran: row.hits?.[0], detail: "declared 201, ran 400" });
+});
+
+test("a string mapped to false fails naming the string (T-3.3)", () => {
+  const row = hitRow("/orders", 201, { pending: false });
+  assert.deepEqual(compareOne(ORDER, [row]), { phase: 1, index: 0, check: ORDER, outcome: "failed", ran: row.hits?.[0], detail: '"pending" not in the body' });
+});
+
+test("a string absent from the map fails as not checked by the logged drive (T-3.3)", () => {
+  const row = hitRow("/orders", 201);
+  assert.deepEqual(compareOne(ORDER, [row]), { phase: 1, index: 0, check: ORDER, outcome: "failed", ran: row.hits?.[0], detail: '"pending" not checked by the logged drive' });
+});
+
+test("no hit at the declared resource is not run, naming the last hit of the same method", () => {
+  const row = hitRow("/payments", 201, { pending: true });
+  assert.deepEqual(compareOne(ORDER, [row, hitRow("/orders", 200, {}, "GET")]), { phase: 1, index: 0, check: ORDER, outcome: "not_run", ran: row.hits?.[0], detail: "not run; last ran POST /payments" });
+});
+
+test("only picket drive rows of this item and phase count; others leave the check not run (T-3.4)", () => {
+  const good = hitRow("/orders", 201, { pending: true });
+  const others: DriveRow[] = [{ ...good, work_id: "20261113-y" }, { ...good, phase: 2 }, { ...good, phase: null }, { ...good, source: undefined }];
+  const counted = phaseRows(others, workId("20261113-x"), 1);
+  assert.deepEqual(counted, []);
+  assert.deepEqual(compareOne(ORDER, counted), { phase: 1, index: 0, check: ORDER, outcome: "not_run", ran: null, detail: "not run" });
+  assert.deepEqual(phaseRows([...others, good], workId("20261113-x"), 1), [good]);
+});
+
+test("a run check matches only the exact command (T-3.5)", () => {
+  const watch = runRow("npm test -- --watch", 0, { pass: true });
+  assert.deepEqual(compareOne(TESTS, [watch]), { phase: 1, index: 0, check: TESTS, outcome: "not_run", ran: { run: "npm test -- --watch", exit_code: 0, contains: { pass: true } }, detail: 'not run; last ran "npm test -- --watch"' });
+});
+
+test("an exact run with the declared exit code and every string passes (T-3.5)", () => {
+  assert.deepEqual(compareOne(TESTS, [runRow("npm test", 0, { pass: true })]), { phase: 1, index: 0, check: TESTS, outcome: "pass", ran: { run: "npm test", exit_code: 0, contains: { pass: true } }, detail: '"npm test" → exit 0' });
+});
+
+test("an exact run with another exit code fails with declared versus ran (T-3.5)", () => {
+  assert.deepEqual(compareOne(TESTS, [runRow("npm test", 1, { pass: true })]), { phase: 1, index: 0, check: TESTS, outcome: "failed", ran: { run: "npm test", exit_code: 1, contains: { pass: true } }, detail: "declared exit 0, ran exit 1" });
+});
+
+test("a run output missing a string fails naming it", () => {
+  assert.equal(compareOne(TESTS, [runRow("npm test", 0, { pass: false })]).detail, '"pass" not in the output');
+});
+
+test("compareChecks keeps each check's index in the declared list", () => {
+  assert.deepEqual(compareChecks([ORDER, TESTS], []).map(({ index, outcome }) => [index, outcome]), [[0, "not_run"], [1, "not_run"]]);
 });
 
 test("a check with problems is left out and its valid neighbour is still read", () => {

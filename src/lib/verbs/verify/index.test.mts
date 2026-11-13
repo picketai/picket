@@ -86,6 +86,40 @@ test("verify counts an unreadable drive-log line in the drive_observed detail", 
   assert.deepEqual(detail(), { name: "drive_observed", ok: true, detail: "1 drive-class command(s) observed, last: curl http://127.0.0.1:8080/invoices.csv (1 unreadable line skipped)" });
 });
 
+test("drive: true counts only drive rows of this item and phase, not rows with no item or no phase (T-3.6)", (t) => {
+  const { root, id } = setup(t);
+  const row = (fields: object) => JSON.stringify({ kind: "drive", command: "curl http://127.0.0.1:8080/invoices.csv", ...fields });
+  const drive = () => resultNamed(verify(root, id, 1, { runTests: false, env: process.env }), "drive_observed");
+  writeFileSync(statePath(root, STATE_FILES.driveLog), `${row({ work_id: id, phase: null })}\n${row({ work_id: null, phase: 1 })}\n${row({ work_id: null, phase: null })}\n`);
+  assert.deepEqual(drive(), { name: "drive_observed", ok: false, detail: "no drive row for phase 1 of this item" });
+  writeFileSync(statePath(root, STATE_FILES.driveLog), `${row({ work_id: id, phase: 1 })}\n`);
+  assert.equal(drive()?.ok, true);
+});
+
+function checkSetup(t: TestContext) {
+  const root = withProject(t, { picket: false });
+  mkdirSync(stateDir(root), { recursive: true });
+  const { id } = openItem(root, { lane: "order", title: "Orders" });
+  const front = ["---", "lane: order", "phases:", "  - n: 1", "    files: []", "    drive:", "      - covers: T-1.1", "        method: POST", "        path: /orders", "        status: 201", "---"];
+  writeArtifact(root, id, "order.md", [...front, "# O", "", "## Phase 1: Orders", "", "- **T-1.1** a", ""].join("\n"));
+  const logHit = (path: string, status: number) =>
+    writeFileSync(statePath(root, STATE_FILES.driveLog), JSON.stringify({ kind: "drive", command: "picket drive", source: "picket drive", work_id: id, phase: 1, hits: [{ method: "POST", path, status, ms: 2 }] }) + "\n");
+  return { report: () => verify(root, id, 1, { runTests: false, env: process.env }), logHit };
+}
+
+test("verify reports one result per declared check in place of drive_observed", (t) => {
+  const { report, logHit } = checkSetup(t);
+  logHit("/orders", 400);
+  const failedReport = report();
+  assert.equal(failedReport.ok, false);
+  assert.deepEqual(resultNamed(failedReport, "check:T-1.1"), { name: "check:T-1.1", ok: false, detail: "declared 201, ran 400" });
+  assert.equal(resultNamed(failedReport, "drive_observed"), undefined);
+  logHit("/api/orders", 201);
+  assert.deepEqual(resultNamed(report(), "check:T-1.1"), { name: "check:T-1.1", ok: true, detail: "ran at /api/orders; declared /orders, the user rules at the gate" });
+  logHit("/orders", 201);
+  assert.deepEqual(resultNamed(report(), "check:T-1.1"), { name: "check:T-1.1", ok: true, detail: "POST /orders → 201" });
+});
+
 test("verify on a malformed package.json fails tests as undetected and carries the parse warning", (t) => {
   const { root, id } = setup(t, true);
   writeFileSync(join(root, "package.json"), '{ "scripts": { "test": "node t.js", }');
