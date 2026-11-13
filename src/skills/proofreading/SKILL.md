@@ -21,7 +21,7 @@ Proofread a document that will be read outside the team and report every defect 
 
 1. Input: `$ARGUMENTS`, a path, a directory, a URL or pasted text. Empty: ask which document; stop. Never proofread "the last thing we discussed" by guess.
 2. Scope the read. State on one line: audience (ask if unknown; clarity is measured against a reader), purpose (what the reader does next), surface (email, docs site, README, PDF, ticket, changelog; infer from the path and say so), and whether house style applies (yes for prose authored in this repo; external style guide → check against that instead; default: house-style hits at L2).
-3. Read `references/recurring-errors.md` before pass 1; append a line when a defect class repeats across documents.
+3. Read `references/recurring-errors.md` and, when it exists, the project's `.picket/recurring-errors.md` before pass 1.
 4. Run the five passes: read `steps/passes.md`.
 5. The user says "apply", "fix them", "apply the L0s": read `steps/apply.md`.
 

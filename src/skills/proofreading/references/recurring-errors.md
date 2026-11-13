@@ -1,10 +1,10 @@
 # Recurring errors
 
-Project-specific error classes worth a targeted sweep. Read before pass 1; append a line when the same defect appears in two different documents, or three or more times in one.
+Error classes worth a targeted sweep in any project. Read before pass 1. A project's own classes live in `.picket/recurring-errors.md`, in the same format.
 
 Format: one line per class, `**Class**: what to look for, and the fix.`
 
-## Words this project confuses
+## Words often confused
 
 - **its / it's**: "it's" is only ever "it is". Possessive takes no apostrophe.
 - **affect / effect**: "affect" is the verb, "effect" the noun, except "to effect a change" (to bring it about).
@@ -17,7 +17,3 @@ Format: one line per class, `**Class**: what to look for, and the fix.`
 - **Product and API names**: check casing and spelling against the repository, never against memory.
 - **Version and scope statements**: a claim about behaviour with no version attached ages into a lie.
 - **Undefined acronyms**: expand on first use, or drop the acronym.
-
-## Project-specific
-
-(none recorded yet)

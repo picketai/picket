@@ -7,4 +7,4 @@ Triggered by "apply", "fix them", "just do it", or a subset such as "apply the L
 3. A file under `work/<id>/` belongs to the agent that wrote it: hand the accepted findings to that agent through the lane skill instead of editing. Any other file is edited in place.
 4. After applying, re-run the pass 1 mechanical sweeps on the result and report the new counts. An edit that introduces a defect is the common failure here.
 5. Pasted text with no file: deliver the corrected document in one fenced block with nothing else inside the fence.
-6. Append to `references/recurring-errors.md` any defect class this document repeated three or more times, or that has now appeared in two different documents.
+6. Append to the project's `.picket/recurring-errors.md`, creating it on the first entry, any defect class this document repeated three or more times, or that has now appeared in two different documents. The plugin's own `references/recurring-errors.md` is never edited: an update replaces it.

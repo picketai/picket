@@ -20,6 +20,7 @@ const ELSEWHERE = [
       ".claude/PROJECT-MAP.md",
       ".claude/agent-memory/analyst/MEMORY.md",
       ".claude/settings.local.json",
+      ".picket/recurring-errors.md",
       ".picket/state/",
       ".picket/state/branching.yaml",
       ".picket/state/drive-log.jsonl",
