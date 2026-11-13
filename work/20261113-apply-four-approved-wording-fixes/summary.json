@@ -1,0 +1,51 @@
+{
+  "work_id": "20261113-apply-four-approved-wording-fixes",
+  "base": "80123bcc30ebfee61fa61feaddce8b007908c7c1",
+  "request": "work/20261113-apply-four-approved-wording-fixes/request.md",
+  "size": "small",
+  "changed_files": [
+    "src/rules/prose.md",
+    "src/skills/reviewing/checklists/crosscheck.md"
+  ],
+  "lines_added": 2,
+  "lines_removed": 2,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 1,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-13T11:59:30.889Z",
+    "base": "80123bcc30ebfee61fa61feaddce8b007908c7c1",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 13720
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    }
+  ]
+}
