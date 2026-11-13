@@ -1,6 +1,6 @@
 # Cross-check: decisions versus phases in one design record
 
-Read-only artifact-consistency pass before Phase 1, and again after an amendment when the architect asks. It answers one question: do the record's `## Decisions` and its `## Phases` agree with each other and with the sources they cite? Code is not read; the per-phase alignment check owns artifact-to-code.
+Read-only artifact-consistency pass before Phase 1, and again after an amendment, when `picket next` says `review_crosscheck`. It answers one question: do the record's `## Decisions` and its `## Phases` agree with each other and with the sources they cite? Code is not read; the per-phase alignment check owns artifact-to-code.
 
 Vocabulary: "decisions" means `## Problem` plus `## Decisions` (each `### D-###`, its `**Instead of:**` lines, and the citations in `## Problem`); "phases" means `## Scope` plus `## Phases` (each `T-<phase>.<seq>` criterion).
 

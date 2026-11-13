@@ -12,7 +12,7 @@ disable-model-invocation: true
 
 # Benchmarking
 
-`/benchmarking <run|baseline|check|report> [--harness plugin|trunk] [--tasks all|lane:<lane>|<id,...>] [--runs N]`
+`/benchmarking <dry|run|baseline|check|report> [--harness plugin|trunk] [--tasks all|lane:<lane>|<id,...>] [--runs N]`
 
 Everything is code under `bench/`; this skill only chooses the arguments and reads the result. Read `bench/README.md` once if the layout is new to you.
 

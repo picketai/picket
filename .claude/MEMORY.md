@@ -46,8 +46,8 @@ One operator on a changed line inverted by `picket mutate` (`===` to `!==`) to t
 The reviewer row id (`Ts4`, `Rf8`) behind a Critical or Major finding. `picket close` reports a class named in two or more reviews.
 
 **Procedure**:
-A step file in the skills' shared procedures folder that two or more skills or agents follow (the phase loop, the gate, the cumulative review). It has one owner and is cited, never copied.
-_Avoid_: shared step, common step
+The ordered steps for one task, kept in a step file of the skill that uses it. It has one owner; a shell or a SKILL.md points at it and never copies it.
+_Avoid_: shared step, common step, shared procedure
 
 **Checklist**:
 A file in the reviewing skill's checklists folder that the reviewer loads by size, framework or concern; unlike a step file it is not run in order.
