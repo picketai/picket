@@ -7,6 +7,7 @@ import { route as routeAt, verb, type RouteInput } from "./index.mts";
 import { findVerdict } from "../../shared/verdicts.mjs";
 import { bareAgentName } from "../../shared/agent-name.mts";
 import { statePath, STATE_FILES } from "../../shared/paths.mts";
+import { appendDriveRow } from "../../shared/drive-log.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { readBlock, saveBlock } from "../../shared/work/block.mts";
@@ -305,6 +306,72 @@ test("a run grant never crosses a security path or an irreversible step; that ph
   r = route({ id: s.id, verdict: "PHASE DONE", agent: "developer", phase: 3, root });
   assert.ok(r.applied.some((a) => a.includes("irreversible")), r.applied.join(" | "));
   assert.deepEqual([r.next.action, r.next.phase], ["approve_phase", 3]);
+});
+
+const ordersCheck = (covers: string) => `    drive:\n      - covers: ${covers}\n        method: POST\n        path: /orders\n        status: 201\n`;
+const criteria = (n: number) => `- **T-${n}.1** a\n- **T-${n}.2** b\n- **T-${n}.3** c\n`;
+const CHECKED_DESIGN = [
+  "---\nlane: design\nphases:\n",
+  "  - n: 1\n    files: [lib/a.mjs]\n    security: false\n",
+  `  - n: 2\n    files: [lib/b.mjs]\n${ordersCheck("T-2.1")}    security: false\n`,
+  `  - n: 3\n    files: [lib/c.mjs]\n${ordersCheck("T-3.1")}    security: false\n`,
+  `---\n# D\n\n## Phase 1: A\n\n${criteria(1)}\n## Phase 2: B\n\n${criteria(2)}\n## Phase 3: C\n\n${criteria(3)}`,
+].join("");
+
+function grantedCheckedItem(t: TestContext) {
+  const root = hostRoot(t);
+  const git = gitAt(root);
+  git("init", "-q");
+  const { id } = openItem(root, { lane: "design", title: "Orders" });
+  writeFileSync(join(root, "work", id, "design.md"), CHECKED_DESIGN);
+  git("add", "-A");
+  git("commit", "-q", "-m", "base");
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  route({ id, verdict: "approved", agent: "user", phase: 1, through: 3, root });
+  const hit = (phase: number, path: string, status: number) =>
+    appendDriveRow(root, { ts: "2026-11-13T10:00:00.000Z", kind: "drive", command: "picket drive", source: "picket drive", work_id: id, phase, hits: [{ method: "POST", path, status, ms: 2 }] });
+  const approved = (n: number) => existsSync(join(root, "work", id, "phases", `${n}.approved`));
+  return { root, id, git, hit, approved };
+}
+
+test("a failed declared check stops the run grant at its phase without approving it (T-5.1)", (t) => {
+  const { root, id, hit, approved } = grantedCheckedItem(t);
+  hit(2, "/orders", 400);
+  const r = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.ok(r.applied.includes("run grant stops here: phase 2 has a declared check that did not hold (T-2.1); it takes its own approval"), r.applied.join(" | "));
+  assert.equal(approved(2), false);
+  assert.equal(readState(root, id).run_through, undefined);
+});
+
+test("a declared check never driven in its phase stops the run grant (T-5.2)", (t) => {
+  const { root, id, hit, approved } = grantedCheckedItem(t);
+  hit(1, "/orders", 201);
+  const r = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.ok(r.applied.some((line) => line.includes("did not hold (T-2.1)")), r.applied.join(" | "));
+  assert.equal(approved(2), false);
+});
+
+test("a prefix difference rides the grant: phase 2 is approved and committed, and the last phase stops for it (T-5.3, T-5.4)", (t) => {
+  const { root, id, git, hit, approved } = grantedCheckedItem(t);
+  hit(2, "/api/orders", 201);
+  const second = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.equal(approved(2), true, second.applied.join(" | "));
+  assert.equal(git("log", "-1", "--format=%s", "--", `work/${id}/phases/2.approved`), "feat(x): phase 2");
+  hit(3, "/orders", 201);
+  const third = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 3, root });
+  assert.ok(third.applied.includes("run grant stops here: phase 3 ends the run with 1 carried check difference; it takes its own approval"), third.applied.join(" | "));
+  assert.equal(approved(3), false);
+  assert.deepEqual([third.next.action, third.next.phase], ["approve_phase", 3]);
+});
+
+test("a grant over checks that all pass approves through the last phase (T-5.5)", (t) => {
+  const { root, id, hit, approved } = grantedCheckedItem(t);
+  hit(2, "/orders", 201);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  hit(3, "/orders", 201);
+  const r = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 3, root });
+  assert.deepEqual([approved(2), approved(3)], [true, true]);
+  assert.equal(r.next.action, "review_cumulative");
 });
 
 test("a run grant stops at a phase the record marks security-sensitive", (t) => {

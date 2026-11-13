@@ -5,7 +5,9 @@ import type { Context } from "../context.mts";
 import { VERDICTS } from "../verdicts.mjs";
 import { recordDigest } from "../work/amendment.mts";
 import type { WorkId } from "../work/files.mts";
-import { ownGate } from "../work/gate.mts";
+import { readDriveLog } from "../drive-log.mts";
+import { carriedResults, phaseCheckResults } from "../work/declared-checks.mts";
+import { checkGate, ownGate, type RunChecks } from "../work/gate.mts";
 import { hasMarker } from "../work/markers.mts";
 import { readNext, type NextView } from "../work/next-view.mts";
 import { reviewRel } from "../work/reviews.mts";
@@ -62,7 +64,9 @@ function rowAmend({ id, amend, reason, scope }: RouteInput, { effect }: VerdictS
 }
 
 function gateOf(root: string, snap: WorkSnapshot): GateOf {
-  return (n) => ownGate(phaseOf(snap, n), securityPaths(root));
+  const { rows } = readDriveLog(root);
+  const runChecks = (n: number): RunChecks => ({ own: phaseCheckResults(snap, rows, n) ?? [], carried: carriedResults(snap, rows, n), endsRun: n === snap.state.run_through });
+  return (n) => ownGate(phaseOf(snap, n), securityPaths(root)) ?? checkGate(runChecks(n));
 }
 
 function marksOnDisk(root: string, id: WorkId, phase: number | null): MarksOnDisk {

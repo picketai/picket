@@ -1,0 +1,62 @@
+{
+  "work_id": "20261113-declared-checks-verified-by-picket-verify",
+  "base": "705787c723670d98ce03c90b9166c2828e9e6641",
+  "request": "work/20261113-declared-checks-verified-by-picket-verify/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/lib/hooks/lint/schema/index.mts",
+    "src/lib/shared/drive-log.mts",
+    "src/lib/shared/work/artifact.mts",
+    "src/lib/shared/work/declared-checks.mts",
+    "src/lib/shared/work/declared-checks.test.mts",
+    "src/lib/verbs/drive/index.mts",
+    "src/lib/verbs/drive/index.test.mts",
+    "src/lib/verbs/drive/run.mts",
+    "src/lib/verbs/drive/server.mts",
+    "src/lib/verbs/drive/server.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "src/lib/verbs/verify/index.mts",
+    "src/lib/verbs/verify/index.test.mts",
+    "test/hooks/lint.schema.test.mjs",
+    "test/kernel/packet.test.mjs"
+  ],
+  "lines_added": 801,
+  "lines_removed": 35,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 7,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

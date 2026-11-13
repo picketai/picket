@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EFFECTS, type Change, type Effect, type PlannedVerdict } from "./plan.mts";
-import { ownGate } from "../work/gate.mts";
+import { checkGate, ownGate, type RunChecks } from "../work/gate.mts";
+import type { CheckOutcome, CheckResult, DeclaredCheck } from "../work/declared-checks.mts";
 import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
 import { Refused } from "../action.mts";
 import { VERDICTS } from "../verdicts.mjs";
@@ -65,6 +66,54 @@ test("approved with through past the phase records the run grant and commits", (
     { kind: "state", set: { run_through: 3 }, line: "run_through=3" },
     { kind: "commit", phase: 1 },
   ]);
+});
+
+const CHECK: DeclaredCheck = { covers: "T-2.1", method: "POST", path: "/orders", status: 201, contains: [] };
+
+function outcome(kind: CheckOutcome, covers = "T-2.1"): CheckResult {
+  return { phase: Number(covers.slice(2, covers.indexOf("."))), index: 0, check: { ...CHECK, covers }, outcome: kind, ran: null, detail: "" };
+}
+
+function planWithChecks(snap: WorkSnapshot, n: number, checks: Partial<RunChecks>): Change[] {
+  const gateOf = (phase: number) => ownGate(phaseOf(snap, phase), SECURITY_PATHS) ?? checkGate({ own: [], carried: [], endsRun: phase === snap.state.run_through, ...checks });
+  const { effect, agent } = VERDICT_TABLE["PHASE DONE"];
+  return EFFECTS[effect](snap, { id: snap.state.id, verdict: "PHASE DONE", agent, phase: n, marks: { done: false, approved: false } }, gateOf);
+}
+
+const GRANT_TO_3 = snapshotOf({ run_through: 3, phases: [{ n: 1, approved: true }, { n: 2 }, { n: 3 }] });
+const stopLine = (changes: Change[]) => changes.find((change) => change.kind === "state")?.line;
+
+test("PHASE DONE under a grant with a failed check stops the run at that phase (T-5.1)", () => {
+  assert.deepEqual(planWithChecks(GRANT_TO_3, 2, { own: [outcome("failed")] }), [
+    { kind: "marker", phase: 2, mark: "done", line: "phases/2.done" },
+    { kind: "state", unset: ["run_through"], line: "run grant stops here: phase 2 has a declared check that did not hold (T-2.1); it takes its own approval" },
+  ]);
+});
+
+test("a not-run check stops the run the same way (T-5.2)", () => {
+  assert.equal(stopLine(planWithChecks(GRANT_TO_3, 2, { own: [outcome("not_run")] })), "run grant stops here: phase 2 has a declared check that did not hold (T-2.1); it takes its own approval");
+});
+
+test("a prefix difference alone inside the run is carried and the grant approves the phase (T-5.3)", () => {
+  assert.deepEqual(planWithChecks(GRANT_TO_3, 2, { own: [outcome("prefix"), outcome("pass", "T-2.2")] }), [
+    { kind: "marker", phase: 2, mark: "done", line: "phases/2.done" },
+    { kind: "marker", phase: 2, mark: "approved", line: "phases/2.approved (run grant through 3)" },
+    { kind: "commit", phase: 2 },
+  ]);
+});
+
+test("the run's last phase stops when the run carried a difference, counting them (T-5.4)", () => {
+  assert.equal(stopLine(planWithChecks(GRANT_TO_3, 3, { carried: [outcome("prefix")] })), "run grant stops here: phase 3 ends the run with 1 carried check difference; it takes its own approval");
+  assert.equal(stopLine(planWithChecks(GRANT_TO_3, 3, { carried: [outcome("prefix")], own: [outcome("prefix", "T-3.1")] })), "run grant stops here: phase 3 ends the run with 2 carried check differences; it takes its own approval");
+});
+
+test("the run's last phase with nothing carried and every check passing is approved by the grant (T-5.5)", () => {
+  assert.equal(stopLine(planWithChecks(GRANT_TO_3, 3, { own: [outcome("pass", "T-3.1")] })), undefined);
+});
+
+test("a security-marked phase with a failed check stops with its security reason (T-5.6)", () => {
+  const snap = snapshotOf({ run_through: 3, phases: [{ n: 1, approved: true }, { n: 2, touchSet: ["src/auth/x.ts"] }, { n: 3 }] });
+  assert.equal(stopLine(planWithChecks(snap, 2, { own: [outcome("failed")] })), "run grant stops here: phase 2 touches a security path (src/auth/x.ts); it takes its own approval");
 });
 
 const RESEARCH = { lane: "research", title: "Pricing rules", id: "20261029-pricing" } as const;
