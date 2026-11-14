@@ -6,6 +6,7 @@ import { describeExit, Refused } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import type { EngineRunner } from "../../shared/env/engine.mts";
 import { readStacks } from "../../shared/env/stacks.mts";
+import { recordStack } from "../../shared/env/stacks.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { gitIn, gitRepo } from "#test/git.mts";
@@ -116,6 +117,48 @@ test("a done item and an environment with a rule error refuse before any build",
   const second = engine(broken.ctx.root);
   const runner: EngineRunner = (program, args) => (args.includes("json") && args.includes("--profile") ? { status: 0, stdout: JSON.stringify(model), stderr: "" } : second.runner(program, args));
   assert.equal(refusal(() => startEnvironment(broken.ctx, runner, broken.id)), "the environment fails E6; run picket env check");
+});
+
+const SHARED_STACK = "picket-proj-481";
+
+function recordFor(root: string, item: string): void {
+  recordStack(root, SHARED_STACK, { item, session: "session-0", files: [], engine: { name: "docker", program: "docker", prefix: [] }, started: "2026-11-14T09:00:00.000Z" });
+}
+
+function secondItem(root: string, status: "open" | "blocked" | "done"): WorkId {
+  const { id } = openItem(root, { lane: "order", title: "Payments refund", source: "PROJ-481" });
+  const reason = status === "blocked" ? { blocked_reason: "waiting" } : {};
+  if (status !== "open") writeState(root, { ...readState(root, id), status, ...reason }, new Date());
+  return id;
+}
+
+test("a stack recorded for another open or blocked item refuses before any Compose call and keeps its entry (T-2.1)", (t) => {
+  for (const status of ["open", "blocked"] as const) {
+    const { ctx, id } = project(t);
+    const other = secondItem(ctx.root, status);
+    recordFor(ctx.root, other);
+    const before = readStacks(ctx.root);
+    const { runner, calls } = engine(ctx.root);
+    assert.equal(refusal(() => startEnvironment(ctx, runner, id)), `${SHARED_STACK} belongs to ${other}, which is ${status}; close it first`);
+    assert.deepEqual(calls, [], status);
+    assert.deepEqual(readStacks(ctx.root), before, status);
+  }
+});
+
+test("a stack recorded for a done item starts and is recorded for the starting item (T-2.2)", (t) => {
+  const { ctx, id } = project(t);
+  recordFor(ctx.root, secondItem(ctx.root, "done"));
+  const { runner } = engine(ctx.root);
+  assert.equal(describeExit(startEnvironment(ctx, runner, id)).code, 0);
+  assert.equal(readStacks(ctx.root)[SHARED_STACK].item, id);
+});
+
+test("a stack already recorded for the starting item starts again (T-2.3)", (t) => {
+  const { ctx, id } = project(t);
+  recordFor(ctx.root, id);
+  const { runner } = engine(ctx.root);
+  assert.equal(describeExit(startEnvironment(ctx, runner, id)).code, 0);
+  assert.equal(readStacks(ctx.root)[SHARED_STACK].item, id);
 });
 
 test("no engine fails with the install line and starts nothing", (t) => {

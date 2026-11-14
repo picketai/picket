@@ -140,6 +140,19 @@ test("env start on a git copy with an open item prints the orders URL and record
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(root, ".picket", "state", "env", "stacks.json"), "utf8"))), ["picket-proj-481"]);
 });
 
+test("env start for a second open item from the same ticket exits 2 naming the first, whose stack stays recorded (T-2.4)", (t) => {
+  const { root, id: first } = startProject(t);
+  const { id: second } = openItem(root, { lane: "order", title: "Payments refund", source: "PROJ-481" });
+  const started = envVerb(root, "start", first);
+  assert.equal(started.status, 0, started.stdout + started.stderr);
+  const refused = envVerb(root, "start", second);
+  assert.equal(refused.status, 2, refused.stdout + refused.stderr);
+  assert.ok((refused.stdout + refused.stderr).includes(`picket-proj-481 belongs to ${first}, which is open; close it first`), refused.stdout + refused.stderr);
+  const stacks = JSON.parse(readFileSync(join(root, ".picket", "state", "env", "stacks.json"), "utf8"));
+  assert.deepEqual(Object.keys(stacks), ["picket-proj-481"]);
+  assert.equal(stacks["picket-proj-481"].item, first);
+});
+
 test("env trial on a git copy passes twice, then env check shows no pending trial line (T-6.5)", (t) => {
   const { root } = startProject(t);
   const before = envCheck(root, FAKE_ENGINE);

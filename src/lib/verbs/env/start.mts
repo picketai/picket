@@ -6,7 +6,7 @@ import { overrideDoc, REVISION_LABEL, sourceFor, type ServiceSource } from "../.
 import { failureCause, jsonRecords, machineCheck, readModelJson, realRunner, runCompose, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { readModel, type EnvModel, type EnvService } from "../../shared/env/model.mts";
 import { hasError, staticFindings } from "../../shared/env/rules.mts";
-import { recordStack } from "../../shared/env/stacks.mts";
+import { activeClaim, readStacks, recordStack } from "../../shared/env/stacks.mts";
 import { COMPOSE_FILE, ENV_DIR, imageName, itemKey, stackName, urlVariable } from "../../shared/env/standard.mts";
 import { statePath } from "../../shared/paths.mts";
 import { readLayout } from "../../shared/repos.mts";
@@ -27,6 +27,11 @@ function openState(root: string, id: WorkId): WorkState {
   const state = readState(root, id);
   if (CLOSED_STATUSES.includes(state.status)) throw new Refused(`${id} is ${state.status}; env start runs only for an open or blocked item`);
   return state;
+}
+
+function refuseClaimedStack(root: string, stack: string, id: WorkId): void {
+  const claim = activeClaim(root, stack, readStacks(root)[stack]?.item ?? null, id);
+  if (claim !== null) throw new Refused(claim);
 }
 
 function checkedModel(engine: Engine, root: string): EnvModel {
@@ -86,9 +91,10 @@ function serviceUrls(engine: Engine, root: string, stack: string, files: string[
 function startStack(ctx: Context, engine: Engine, machine: MachineReport, id: WorkId): StartReport {
   const { root, env, session, now } = ctx;
   const state = openState(root, id);
-  const model = checkedModel(engine, root);
   const key = itemKey(state);
   const stack = stackName(key);
+  refuseClaimedStack(root, stack, id);
+  const model = checkedModel(engine, root);
   const layout = readLayout(root, id);
   const started = model.services.filter((s) => s.profiles.length === 0);
   const apps = started.filter((s) => s.role === "app" && s.build !== null);
