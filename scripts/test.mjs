@@ -11,7 +11,7 @@ const TEST_FILE = /\.test\.mjs$/;
 const PLUGIN_DIR = "dist";
 const ENGINE_MODULE = "lib/shared/env/engine.mjs";
 const ENV_TESTS = join("test", "env");
-const ENGINE_TEST = /\.engine\.mjs$/;
+const ENGINE_TEST_SUFFIX = ".engine.mjs";
 
 function testFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -65,11 +65,12 @@ function mods() {
 
 async function env() {
   const { findEngine, realRunner } = await import(pathToFileURL(resolve(PLUGIN_DIR, ENGINE_MODULE)).href);
-  if (findEngine(process.env, process.cwd(), realRunner) === null) {
+  const engine = findEngine(process.env, process.cwd(), realRunner);
+  if (engine === null || engine.kind === "other") {
     console.log("env: skipped, no container engine");
     return 0;
   }
-  const files = readdirSync(ENV_TESTS).filter((name) => ENGINE_TEST.test(name));
+  const files = readdirSync(ENV_TESTS).filter((name) => name.endsWith(ENGINE_TEST_SUFFIX));
   return nodeTest(files.map((name) => join(ENV_TESTS, name)).sort());
 }
 
