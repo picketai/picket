@@ -1,0 +1,71 @@
+{
+  "work_id": "20261113-mods-match-the-host-hook-types",
+  "base": "885a3d2f1c2bf86fe856e6db4b856436d0a62b05",
+  "request": "work/20261113-mods-match-the-host-hook-types/request.md",
+  "size": "large",
+  "changed_files": [
+    "scripts/mods-report.mjs",
+    "scripts/test.mjs",
+    "src/mods/markdown/hooks/index.test.tsx",
+    "src/mods/markdown/hooks/index.tsx",
+    "src/mods/markdown/hooks/picket-markdown.test.tsx",
+    "src/mods/status/hooks/index.test.tsx",
+    "test/repo/mods-report.test.mjs",
+    "test/repo/mods-report/validate-2.1.325.json"
+  ],
+  "lines_added": 497,
+  "lines_removed": 47,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-14T07:13:46.021Z",
+    "base": "885a3d2f1c2bf86fe856e6db4b856436d0a62b05",
+    "mutant": {
+      "path": "scripts/mods-report.mjs",
+      "line": 16,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 28330
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
