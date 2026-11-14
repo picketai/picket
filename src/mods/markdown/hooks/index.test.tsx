@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
-import type { On, UiPane } from 'claude-code'
+import type { CommandRunInput, Hook, On, UiPane, UiScrollInput } from 'claude-code'
 
 import { PANE_PADDING } from '../../shared/theme'
 
@@ -39,17 +39,35 @@ const modelled = (hostPath: string) => hostPath.replace(/\\/g, '/').replace(/^.*
 const CONFIG = 'D:/repo/.picket/config.json'
 const SWITCHED_OFF = JSON.stringify({ mods: { markdown: false } })
 
-type ClockEvery = Parameters<Parameters<On>[1]>
+type ClockEvery = Parameters<Hook<'clock.every'>>
 
 const recordingIntervals = (on: On, intervals: number[]): On =>
   ((event: string, ...rest: unknown[]) => {
     const answer = rest.at(-1) as (...args: ClockEvery) => unknown
     if (event !== 'clock.every') return (on as (...args: unknown[]) => unknown)(event, ...rest)
     return (on as (...args: unknown[]) => unknown)(event, ...rest.slice(0, -1), (...args: ClockEvery) => {
-      intervals.push((args[1] as { ms: number }).ms)
+      intervals.push(args[1].ms)
       return answer(...args)
     })
   }) as On
+
+const markdownCommand = (args: string): CommandRunInput => ({
+  command: 'picket-markdown',
+  args,
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: true, columns: 160 },
+})
+
+const wheel = (row: number): UiScrollInput => ({
+  component: 'Pane',
+  requestId: 'picket-markdown',
+  offset: 0,
+  by: 3,
+  bodyRows: 40,
+  contentRows: 200,
+  origin: { kind: 'person' },
+  pointer: { row, column: 4 },
+})
 
 const world = (on: On, config?: string) => {
   const intervals: number[] = []
@@ -64,7 +82,7 @@ const world = (on: On, config?: string) => {
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.cwd', () => ({ value: REPO }))
   on('session.root', () => ({ value: REPO }))
-  on('session.id', () => ({ value: undefined }))
+  on('session.id', () => ({ deny: 'no session' }))
   on('session.messages', () => ({ value: [] }))
   on('agent.list', () => ({ value: [] }))
   on('env.get', () => ({ value: undefined }))
@@ -72,7 +90,7 @@ const world = (on: On, config?: string) => {
   on('command.list', () => ({ value: registered.map(({ name }) => ({ name, description: '', source: 'plugin' as const })) }))
   on('command.register', ($, e) => {
     registered.push({ name: e.name, immediate: e.immediate })
-    return { value: undefined }
+    return { value: { command: e.name } }
   })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -130,13 +148,13 @@ const shownText = (node: unknown): string => {
 test('/picket-markdown with no argument closes an open pane, and a second run opens it on the same document (T-1.3)', async ($, on) => {
   const { opened, closed } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: 'guide.md' })
+  await $.command.run(markdownCommand('guide.md'))
 
-  const closing = await $.command.run({ command: 'picket-markdown', args: '' })
+  const closing = await $.command.run(markdownCommand(''))
   expect(closed).toEqual(['picket-markdown'])
   expect(closing).toEqual({ text: 'Markdown pane closed.' })
 
-  const reopening = await $.command.run({ command: 'picket-markdown', args: '' })
+  const reopening = await $.command.run(markdownCommand(''))
   expect(opened).toEqual(['picket-markdown', 'picket-markdown'])
   expect(reopening).toEqual({ text: `Reopened ${GUIDE}` })
   expect(await (await pane($)).find({ type: 'Text', text: 'Guide' })).toBeDefined()
@@ -145,8 +163,8 @@ test('/picket-markdown with no argument closes an open pane, and a second run op
 test('/picket-markdown with a path shows that file while the pane is open, and closes nothing (T-1.4)', async ($, on) => {
   const { closed } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: 'guide.md' })
-  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
+  await $.command.run(markdownCommand('guide.md'))
+  await $.command.run(markdownCommand('work/w2/design.md'))
 
   expect(closed).toEqual([])
   expect(await (await pane($)).find({ type: 'Text', text: 'Design' })).toBeDefined()
@@ -155,12 +173,12 @@ test('/picket-markdown with a path shows that file while the pane is open, and c
 test('the Markdown pane keeps one inset on every side, empty, in Files and in Outline (T-1.7)', async ($, on) => {
   world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: '' })
+  await $.command.run(markdownCommand(''))
   const drawn = await pane($)
   expect(await drawn.find({ type: 'Text', text: /^No file open/ })).toBeDefined()
   expect(await inset(drawn)).toEqual(PADDED)
 
-  await $.command.run({ command: 'picket-markdown', args: 'guide.md' })
+  await $.command.run(markdownCommand('guide.md'))
   expect(await drawn.find({ key: 'mode:files' })).toBeDefined()
   expect(await inset(drawn)).toEqual(PADDED)
   await drawn.press({ key: 'mode:outline' })
@@ -171,23 +189,22 @@ test('the Markdown pane keeps one inset on every side, empty, in Files and in Ou
 test('the document starts on the first body row, and the wheel scrolls the tree from the row below the document and the top inset (T-1.8)', async ($, on) => {
   world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: 'guide.md' })
+  await $.command.run(markdownCommand('guide.md'))
   const drawn = await pane($)
   const firstRow = async () => shownText((await drawn.find({ key: 'document' }))?.children[0])
   const treeTop = Number((await drawn.find({ key: 'document' }))?.props.height) + PANE_PADDING
-  const wheel = (row: number) => $.ui.scroll({ component: 'Pane', requestId: 'picket-markdown', by: 3, pointer: { row, column: 4 } })
   expect(await firstRow()).toMatch(/^\s*Guide\?/)
 
-  await wheel(treeTop)
+  await $.ui.scroll(wheel(treeTop))
   expect(await firstRow()).toMatch(/^\s*Guide\?/)
-  await wheel(treeTop - 1)
+  await $.ui.scroll(wheel(treeTop - 1))
   expect(await firstRow()).not.toMatch(/Guide/)
 })
 
 test('/picket-markdown on a work item document shows the status picket state answers', async ($, on) => {
   const { runs } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
+  await $.command.run(markdownCommand('work/w2/design.md'))
 
   expect(await (await pane($)).find({ type: 'Text', text: 'work w2 · design · open · phase 1/3 approved' })).toBeDefined()
   expect(runs.filter(isStateCall)).toEqual([['picket', 'state', 'w2']])
@@ -229,7 +246,7 @@ test('mods.markdown false leaves a reply with a Markdown path to the engine unch
 test('/picket-markdown with no argument and no document opens the empty pane naming the command (T-2.2)', async ($, on) => {
   const { opened } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: '' })
+  await $.command.run(markdownCommand(''))
 
   expect(opened).toEqual(['picket-markdown'])
   expect(await (await pane($)).find({ type: 'Text', text: /\/picket-markdown <path>/ })).toBeDefined()
@@ -247,7 +264,7 @@ test('a rendered reply adds its linked file to the pane list with no session.app
     props: { text: 'Read guide.md first.', isFirstOfReply: true },
   })
   await timer.advance(0)
-  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
+  await $.command.run(markdownCommand('work/w2/design.md'))
 
   expect(await (await pane($)).find({ key: `file:${guide}` })).toBeDefined()
 })
@@ -255,7 +272,7 @@ test('a rendered reply adds its linked file to the pane list with no session.app
 test('the poll asks picket state again only when the work signature changes', async ($, on) => {
   const { timer, modified, runs } = world(on)
   await $.session.start(START)
-  await $.command.run({ command: 'picket-markdown', args: 'work/w2/design.md' })
+  await $.command.run(markdownCommand('work/w2/design.md'))
   expect(runs.filter(isStateCall).length).toBe(1)
 
   await timer.advance(POLL_MS)

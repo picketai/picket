@@ -375,7 +375,7 @@ test('a picket state that fails is asked again on the next poll, with no file ch
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.cwd', () => ({ value: REPO }))
   on('session.messages', () => ({ value: [] }))
-  on('command.register', () => ({ value: undefined }))
+  on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>engine</Text>
@@ -398,7 +398,12 @@ test('a picket state that fails is asked again on the next poll, with no file ch
   })
 
   await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
-  await $.command.run({ command: 'picket-markdown', args: 'work/w1/order.md' })
+  await $.command.run({
+    command: 'picket-markdown',
+    args: 'work/w1/order.md',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: true, columns: 160 },
+  })
   const pane = await $.ui.mount({
     plugin: 'picket',
     surface: 'terminal',

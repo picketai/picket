@@ -14,13 +14,17 @@ const FILE_TOOLS = ['Read', 'Write', 'Edit']
 const COMMAND = 'picket-markdown'
 const MOD_NAME = 'markdown'
 
-type AppendedMessage = { agentId?: string; message: { role: string; content: unknown } }
+type AppendedMessage = { agentId?: string; message: { role?: string; content: unknown } }
 
 let isOff = false
 
 function toggleReply(toggled: Toggled): string {
   if (toggled.kind === 'closed') return 'Markdown pane closed.'
   return toggled.path === null ? `Opened the empty pane: /${COMMAND} <path> shows a markdown file` : `Reopened ${toggled.path}`
+}
+
+function filePaths(hrefs: readonly string[]): string[] {
+  return hrefs.map(fromHref).filter((path): path is string => path !== undefined)
 }
 
 export const DOC_PANE = PANE
@@ -72,7 +76,7 @@ export async function renderLinkedReply<R>($: EngineInterface, e: RenderInput<'A
   const linked = await link($, e.props.text, await $.session.cwd())
   if (linked.hrefs.length === 0) return next(e)
   $.clock.after(0, () => {
-    addFiles($, linked.hrefs.map(fromHref)).catch(() => {})
+    addFiles($, filePaths(linked.hrefs)).catch(() => {})
   })
   return renderReply($, e, linked)
 }

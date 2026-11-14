@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
-import type { AgentInfo, On } from 'claude-code'
+import type { AgentInfo, CommandRunInput, Hook, On, UiPane } from 'claude-code'
 
 import { PANE_PADDING, SURFACES, TONES } from '../../shared/theme'
 
@@ -8,11 +8,17 @@ const NOW = Date.parse('2026-10-16T10:00:00Z')
 
 const START = { cwd: 'D:/repo', surface: 'terminal', isInteractive: true } as const
 
+const engineDrawsAllButTheBand: Hook<'ui.render'> = ($, e, next) => {
+  if (e.component === 'AbovePrompt') return next(e)
+  const { Text } = $.ui.resolve(e)
+  return <Text>engine</Text>
+}
+
 const world = (on: On, roster: AgentInfo[] = []) => {
   const timer = mock.clock(on, { now: NOW })
   on('agent.list', () => ({ value: roster }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('command.register', () => ({ value: undefined }))
+  on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('command.list', () => ({ value: [] }))
   on('ui.panes', () => ({ value: [] }))
   on('env.get', () => ({ value: undefined }))
@@ -20,10 +26,7 @@ const world = (on: On, roster: AgentInfo[] = []) => {
   on('fs.list', () => ({ value: [] }))
   on('store.get', () => ({ value: undefined }))
   on('session.messages', () => ({ value: [] }))
-  on('ui.render', ($, e) => {
-    const { Text } = $.ui.resolve(e)
-    return <Text>engine</Text>
-  })
+  on('ui.render', engineDrawsAllButTheBand)
   return timer
 }
 
@@ -34,6 +37,7 @@ const band = ($: Engine, hasSurvey = false) =>
     component: 'AbovePrompt',
     props: {
       hasSurvey,
+      isCollapsed: false,
       isWorking: false,
       maxRows: 10,
       bodyColumns: 160,
@@ -146,7 +150,7 @@ test('the band yields to a survey and otherwise draws the work line with no sess
   on('process.run', () => exited(0, JSON.stringify(LATEST)))
   await $.session.start(START)
 
-  expect((await (await band($, true)).find({ type: 'Text' }))?.text).toBe('engine')
+  expect(await (await band($, true)).find({ type: 'Text' })).toBeUndefined()
 
   const drawn = await band($)
   expect(await drawn.find({ type: 'Text', text: /^▶/ })).toBeDefined()
@@ -282,14 +286,14 @@ type PaneWorld = {
 
 const PROJECT_CONFIG = 'D:/repo/.picket/config.json'
 
-type ClockEvery = Parameters<Parameters<On>[1]>
+type ClockEvery = Parameters<Hook<'clock.every'>>
 
 const recordingIntervals = (on: On, intervals: number[]): On =>
   ((event: string, ...rest: unknown[]) => {
     const answer = rest.at(-1) as (...args: ClockEvery) => unknown
     if (event !== 'clock.every') return (on as (...args: unknown[]) => unknown)(event, ...rest)
     return (on as (...args: unknown[]) => unknown)(event, ...rest.slice(0, -1), (...args: ClockEvery) => {
-      intervals.push((args[1] as { ms: number }).ms)
+      intervals.push(args[1].ms)
       return answer(...args)
     })
   }) as On
@@ -328,12 +332,12 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     const mtimeMs = w.work[id]?.[file]
     return mtimeMs === undefined ? { deny: 'ENOENT' } : { value: { kind: 'file' as const, size: 10, mtimeMs, isLink: false } }
   })
-  let panes: { id: string }[] = []
+  let panes: UiPane[] = []
   on('agent.list', () => ({ value: w.roster }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => {
     w.registered.push({ name: e.name, immediate: e.immediate })
-    return { value: undefined }
+    return { value: { command: e.name } }
   })
   on('session.root', () => ({ value: 'D:/repo' }))
   on('session.messages', () => ({ value: [] }))
@@ -377,7 +381,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
   })
   on('ui.open', ($, e) => {
     w.opened.push(e.id)
-    panes = [{ id: e.id }]
+    panes = [{ id: e.id, title: e.title ?? e.id, isShown: true, isFocused: false, isPlaced: true }]
     return { value: { isPlaced: true } }
   })
   on('ui.panes', () => ({ value: panes }))
@@ -398,10 +402,7 @@ const paneWorld = (on: On, transcripts: string[] = [S_CURRENT, S_WORKING, S_NONE
     w.runs.push(e.argv)
     return isList(e.argv) ? exited(0, JSON.stringify(list)) : exited(0, JSON.stringify(LATEST))
   })
-  on('ui.render', ($, e) => {
-    const { Text } = $.ui.resolve(e)
-    return <Text>engine</Text>
-  })
+  on('ui.render', engineDrawsAllButTheBand)
   return { w, timer }
 }
 
@@ -429,9 +430,16 @@ const textsIn = (node: unknown): string[] => {
 
 const outline = async (drawn: Drawing) => textsIn(await drawn.find({ key: 'list' })).filter(text => HEADER_OR_TITLE.test(text))
 
+const SESSION_COMMAND: CommandRunInput = {
+  command: 'picket-session',
+  args: '',
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: true, columns: 160 },
+}
+
 const openWorkPane = async ($: Engine) => {
   await $.session.start(START)
-  await $.command.run({ command: 'picket-session', args: '' })
+  await $.command.run(SESSION_COMMAND)
 }
 
 test('/picket-session opens the work pane, closes it the second time, and runs mid-turn (T-4.2)', async ($, on) => {
@@ -439,7 +447,7 @@ test('/picket-session opens the work pane, closes it the second time, and runs m
   await openWorkPane($)
   expect(w.opened).toEqual(['work'])
 
-  await $.command.run({ command: 'picket-session', args: '' })
+  await $.command.run(SESSION_COMMAND)
   expect(w.closed).toEqual(['work'])
   expect(w.registered).toContainEqual({ name: 'picket-session', immediate: true })
 })
