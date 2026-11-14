@@ -1,0 +1,308 @@
+{
+  "success": false,
+  "strict": true,
+  "target": "/repo/dist/.claude-plugin/plugin.json",
+  "manifest": {
+    "file": "/repo/dist/.claude-plugin/plugin.json",
+    "type": "plugin",
+    "errors": [],
+    "warnings": [],
+    "notes": [
+      "types ./hooks/mods/types/index.d.ts declares on $: nothing (no EngineInterface member)",
+      "types ./hooks/mods/types/index.d.ts declares state: picket.now, picket.work, picket.agents, picket.rows, picket.sessions, picket.done, picket.paneView, picket.transcriptIds, picket.hasMarkdown, picket.currentId, picket.doc, picket.files, picket.expanded, picket.offsets, picket.treeOffset, picket.mode, picket.changed, picket.history, picket.hscroll"
+    ],
+    "gatingHooks": []
+  },
+  "contents": [
+    {
+      "file": "/repo/dist/hooks/hooks.json",
+      "type": "hooks",
+      "errors": [],
+      "warnings": [],
+      "notes": [
+        "./mods/index.tsx hooks: session.start, command.run{command=picket-session}, ui.scroll{component=Pane, requestId=?}, ui.render{component=Pane, requestId=?} (default matcher key: plugin), tool.call{tool=Bash}, agent.spawn, session.send, turn.complete, ui.render{component=AbovePrompt} (default matcher key: plugin), session.append, tool.call, command.run{command=picket-markdown}, ui.render{component=AssistantMessage}, ui.scroll{component=Pane, requestId=?}, ui.render{component=Pane, requestId=?} (default matcher key: plugin)",
+        "./mods/index.tsx gating hook without .catch: command.run{command=picket-session}",
+        "./mods/index.tsx gating hook with .catch: ui.scroll{component=Pane, requestId=?}",
+        "./mods/index.tsx gating hook with .catch: tool.call{tool=Bash}",
+        "./mods/index.tsx gating hook with .catch: agent.spawn",
+        "./mods/index.tsx gating hook with .catch: session.send",
+        "./mods/index.tsx gating hook with .catch: session.append",
+        "./mods/index.tsx gating hook with .catch: tool.call",
+        "./mods/index.tsx gating hook without .catch: command.run{command=picket-markdown}",
+        "./mods/index.tsx gating hook with .catch: ui.scroll{component=Pane, requestId=?}",
+        "./mods/index.tsx calls: $.agent.list (via syncRoster), $.clock.after (via renderLinkedReply), $.clock.every (via startMarkdown, startStatus, startWorkPane), $.clock.now (via renderPane, startStatus, syncRoster), $.command.list (via hasMarkdownCommand), $.command.register (via startMarkdown, startWorkPane), $.command.run (via openMarkdown, renameSession), $.env.get (via configDir), $.fs.list (via entryCount, listSessions, listTranscriptIds, liveSessions, workFolders), $.fs.read (via appendName, liveSessions, load, readProjectConfig, readTitleRecords), $.fs.stat (via existing, load, modifiedAt, refresh), $.fs.write (via appendName), $.process.run (via deleteTranscript, openInEditor, readTitleRecords, runPicket)",
+        "./mods/index.tsx calls: $.prompt.fill (via ask), $.session.cwd (via ask, noteFileTool, remember, renderLinkedReply, renderPane, reveal, runMarkdownCommand, workOf), $.session.id (via listSessions, refreshBand, sessionArgs), $.session.messages (via rememberMessages), $.session.root (via listSessions, readProjectConfig, refreshRows, transcriptFolder), $.state.get, $.state.set, $.store.get (via loadDone), $.store.set (via saveDone), $.ui.close (via toggle, togglePane), $.ui.copy (via copy, copyRemoveCommand, copyResume), $.ui.open (via show, toggle, togglePane), $.ui.panes (via isPaneOpen, toggle), $.ui.resolve (via renderBand, renderPane, renderReply)",
+        "./mods/index.tsx calls: $.ui.toast (via ask, copy, copyRemoveCommand, copyResume, deleteAll, deleteTranscript, goBack, openInEditor, openMarkdown, renameSession, showOrToast)",
+        "./mods/index.tsx env writes: nothing",
+        "./mods/index.tsx env reads: CLAUDE_CONFIG_DIR, HOME, USERPROFILE",
+        "./mods/index.tsx state writes: picket.agents, picket.changed, picket.currentId, picket.doc, picket.done, picket.expanded, picket.files, picket.hasMarkdown, picket.history, picket.hscroll, picket.mode, picket.now, picket.offsets, picket.paneView, picket.rows, picket.sessions, picket.transcriptIds, picket.treeOffset, picket.work",
+        "./mods/index.tsx state reads: picket.agents, picket.changed, picket.currentId, picket.doc, picket.done, picket.expanded, picket.files, picket.hasMarkdown, picket.history, picket.hscroll, picket.mode, picket.now, picket.offsets, picket.paneView, picket.rows, picket.sessions, picket.transcriptIds, picket.treeOffset, picket.work"
+      ],
+      "gatingHooks": [
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "command.run",
+          "hook": "command.run{command=picket-session}",
+          "hasCatch": false
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "ui.scroll",
+          "hook": "ui.scroll{component=Pane, requestId=?}",
+          "hasCatch": true
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "tool.call",
+          "hook": "tool.call{tool=Bash}",
+          "hasCatch": true
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "agent.spawn",
+          "hook": "agent.spawn",
+          "hasCatch": true
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "session.send",
+          "hook": "session.send",
+          "hasCatch": true
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "session.append",
+          "hook": "session.append",
+          "hasCatch": true
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "tool.call",
+          "hook": "tool.call",
+          "hasCatch": true
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "command.run",
+          "hook": "command.run{command=picket-markdown}",
+          "hasCatch": false
+        },
+        {
+          "module": "./mods/index.tsx",
+          "pattern": "ui.scroll",
+          "hook": "ui.scroll{component=Pane, requestId=?}",
+          "hasCatch": true
+        }
+      ]
+    },
+    {
+      "file": "/repo/dist/hooks/mods/index.tsx",
+      "type": "hooks",
+      "errors": [],
+      "warnings": [
+        {
+          "path": "line 38, column 57",
+          "message": "error TS2345: Argument of type '{ readonly message: { readonly type: \"user\" | \"assistant\" | \"attachment\" | \"system\"; readonly name?: string | undefined; readonly role?: \"user\" | \"assistant\" | undefined; readonly isMeta?: true | undefined; readonly content: { ...; }[]; }; readonly door: SessionAppendDoor; readonly origin: { ...; } | ... 19 more ......' is not assignable to parameter of type 'AppendedMessage'. The types of 'message.role' are incompatible between these types. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+          "code": null
+        }
+      ],
+      "notes": [],
+      "gatingHooks": []
+    },
+    {
+      "file": "/repo/dist/hooks/mods/markdown/hooks/index.test.tsx",
+      "type": "hooks",
+      "errors": [],
+      "warnings": [
+        {
+          "path": "line 42, column 30",
+          "message": "error TS2344: Type '{ readonly id?: MatcherValue<string, string | undefined> | undefined; readonly rows?: MatcherValue<number | undefined, number | undefined> | undefined; ... 6 more ...; readonly holdToasts?: MatcherValue<...> | undefined; } | ... 429 more ... | { ...; }' does not satisfy the constraint '(...args: any) => any'. Type '{ readonly id?: MatcherValue<string, string | undefined> | undefined; readonly rows?: MatcherValue<number | undefined, number | undefined> | undefined; ... 6 more ...; readonly holdToasts?: MatcherValue<...> | undefined; }' is not assignable to type '(...args: any) => any'. Type '{ readonly id?: MatcherValue<string, string | undefined> | undefined; readonly rows?: MatcherValue<number | undefined, number | undefined> | undefined; ... 6 more ...; readonly holdToasts?: MatcherValue<...> | undefined; }' provides no match for the signature '(...args: any): any'.",
+          "code": null
+        },
+        {
+          "path": "line 67, column 26",
+          "message": "error TS2322: Type '{ value: undefined; }' is not assignable to type 'OpEventResult<\"session.id\"> | Promise<OpEventResult<\"session.id\">>'. Type '{ value: undefined; }' is not assignable to type '{ deny: string; value?: undefined; } | Promise<OpEventResult<\"session.id\">>'. Property 'deny' is missing in type '{ value: undefined; }' but required in type '{ deny: string; value?: undefined; }'.",
+          "code": null
+        },
+        {
+          "path": "line 73, column 26",
+          "message": "error TS2345: Argument of type '($: EngineInterface, e: { readonly name: string; readonly description: string; readonly argumentHint?: string | undefined; readonly immediate?: true | undefined; }) => { ...; }' is not assignable to parameter of type '($: EngineInterface, e: { readonly name: string; readonly description: string; readonly argumentHint?: string | undefined; readonly immediate?: true | undefined; }, next: Next<...>) => OpEventResult<...> | Promise<...>'. Type '{ value: undefined; }' is not assignable to type 'OpEventResult<\"command.register\"> | Promise<OpEventResult<\"command.register\">>'. Type '{ value: undefined; }' is not assignable to type '{ deny: string; value?: undefined; } | Promise<OpEventResult<\"command.register\">>'. Property 'deny' is missing in type '{ value: undefined; }' but required in type '{ deny: string; value?: undefined; }'.",
+          "code": null
+        },
+        {
+          "path": "line 133, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 135, column 39",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 139, column 41",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 148, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 149, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 158, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 163, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 174, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 178, column 46",
+          "message": "error TS2345: Argument of type '{ component: \"Pane\"; requestId: string; by: number; pointer: { row: number; column: number; }; }' is not assignable to parameter of type 'UiScrollInput'. Type '{ component: \"Pane\"; requestId: string; by: number; pointer: { row: number; column: number; }; }' is missing the following properties from type 'UiScrollInput': offset, bodyRows, contentRows, origin",
+          "code": null
+        },
+        {
+          "path": "line 190, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 232, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 250, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 258, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        }
+      ],
+      "notes": [],
+      "gatingHooks": []
+    },
+    {
+      "file": "/repo/dist/hooks/mods/markdown/hooks/index.tsx",
+      "type": "hooks",
+      "errors": [],
+      "warnings": [
+        {
+          "path": "line 75, column 17",
+          "message": "error TS2345: Argument of type '(string | undefined)[]' is not assignable to parameter of type 'readonly string[]'. Type 'string | undefined' is not assignable to type 'string'. Type 'undefined' is not assignable to type 'string'.",
+          "code": null
+        }
+      ],
+      "notes": [],
+      "gatingHooks": []
+    },
+    {
+      "file": "/repo/dist/hooks/mods/markdown/hooks/picket-markdown.test.tsx",
+      "type": "hooks",
+      "errors": [],
+      "warnings": [
+        {
+          "path": "line 378, column 32",
+          "message": "error TS2322: Type '{ value: undefined; }' is not assignable to type 'OpEventResult<\"command.register\"> | Promise<OpEventResult<\"command.register\">>'. Type '{ value: undefined; }' is not assignable to type '{ deny: string; value?: undefined; } | Promise<OpEventResult<\"command.register\">>'. Property 'deny' is missing in type '{ value: undefined; }' but required in type '{ deny: string; value?: undefined; }'.",
+          "code": null
+        },
+        {
+          "path": "line 401, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        }
+      ],
+      "notes": [],
+      "gatingHooks": []
+    },
+    {
+      "file": "/repo/dist/hooks/mods/status/hooks/index.test.tsx",
+      "type": "hooks",
+      "errors": [],
+      "warnings": [
+        {
+          "path": "line 15, column 32",
+          "message": "error TS2322: Type '{ value: undefined; }' is not assignable to type 'OpEventResult<\"command.register\"> | Promise<OpEventResult<\"command.register\">>'. Type '{ value: undefined; }' is not assignable to type '{ deny: string; value?: undefined; } | Promise<OpEventResult<\"command.register\">>'. Property 'deny' is missing in type '{ value: undefined; }' but required in type '{ deny: string; value?: undefined; }'.",
+          "code": null
+        },
+        {
+          "path": "line 35, column 5",
+          "message": "error TS2741: Property 'isCollapsed' is missing in type '{ hasSurvey: boolean; isWorking: false; maxRows: number; bodyColumns: number; scroll: { offset: number; bodyRows: number; }; view: {}; }' but required in type '{ hasSurvey: boolean; isCollapsed: boolean; isWorking: boolean; maxRows: number; bodyColumns: number; scroll: SiteScroll; view: SiteView; }'.",
+          "code": null
+        },
+        {
+          "path": "line 285, column 30",
+          "message": "error TS2344: Type '{ readonly id?: MatcherValue<string, string | undefined> | undefined; readonly rows?: MatcherValue<number | undefined, number | undefined> | undefined; ... 6 more ...; readonly holdToasts?: MatcherValue<...> | undefined; } | ... 429 more ... | { ...; }' does not satisfy the constraint '(...args: any) => any'. Type '{ readonly id?: MatcherValue<string, string | undefined> | undefined; readonly rows?: MatcherValue<number | undefined, number | undefined> | undefined; ... 6 more ...; readonly holdToasts?: MatcherValue<...> | undefined; }' is not assignable to type '(...args: any) => any'. Type '{ readonly id?: MatcherValue<string, string | undefined> | undefined; readonly rows?: MatcherValue<number | undefined, number | undefined> | undefined; ... 6 more ...; readonly holdToasts?: MatcherValue<...> | undefined; }' provides no match for the signature '(...args: any): any'.",
+          "code": null
+        },
+        {
+          "path": "line 334, column 26",
+          "message": "error TS2345: Argument of type '($: EngineInterface, e: { readonly name: string; readonly description: string; readonly argumentHint?: string | undefined; readonly immediate?: true | undefined; }) => { ...; }' is not assignable to parameter of type '($: EngineInterface, e: { readonly name: string; readonly description: string; readonly argumentHint?: string | undefined; readonly immediate?: true | undefined; }, next: Next<...>) => OpEventResult<...> | Promise<...>'. Type '{ value: undefined; }' is not assignable to type 'OpEventResult<\"command.register\"> | Promise<OpEventResult<\"command.register\">>'. Type '{ value: undefined; }' is not assignable to type '{ deny: string; value?: undefined; } | Promise<OpEventResult<\"command.register\">>'. Property 'deny' is missing in type '{ value: undefined; }' but required in type '{ deny: string; value?: undefined; }'.",
+          "code": null
+        },
+        {
+          "path": "line 383, column 27",
+          "message": "error TS2322: Type '{ id: string; }[]' is not assignable to type 'readonly UiPane[]'. Type '{ id: string; }' is missing the following properties from type 'UiPane': title, isShown, isFocused, isPlaced",
+          "code": null
+        },
+        {
+          "path": "line 434, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        },
+        {
+          "path": "line 442, column 23",
+          "message": "error TS2345: Argument of type '{ command: string; args: string; }' is not assignable to parameter of type 'CommandRunInput'. Type '{ command: string; args: string; }' is missing the following properties from type 'CommandRunInput': origin, presentation",
+          "code": null
+        }
+      ],
+      "notes": [],
+      "gatingHooks": []
+    }
+  ],
+  "advice": [
+    {
+      "file": "/repo/dist/README.md",
+      "message": "This README has no line that installs \"picket\" from a marketplace. Add the install line, which works in one step on Claude Code 2.1.275 or later. Validate the folder that holds its marketplace.json to have <owner>/<repo> filled in, and the name its marketplace lists it under.",
+      "installLine": "/plugin install picket --marketplace <owner>/<repo>"
+    }
+  ],
+  "directory": {
+    "profile": null,
+    "findings": [
+      {
+        "code": "ICON_MISSING",
+        "title": "No icon",
+        "severity": "warning",
+        "blocking": false,
+        "hold": false,
+        "file": ".claude-plugin/plugin.json",
+        "field": "icon",
+        "message": "No icon found in the plugin. The validator looked for `icon` in plugin.json and for a file at .claude-plugin/icon.png or .svg, assets/icon.png or .svg, or a similar path.",
+        "fix": "Add a square PNG to the plugin folder at .claude-plugin/icon.png, or set `icon` in plugin.json to the path of a square PNG or JPEG in the plugin: 512 to 2048 px on each side, under 2 MB. SVG and WebP are not accepted. That file may become the listing icon only once: the first time the plugin is saved or submitted in the developer portal. Adding or changing it later does not change the icon."
+      }
+    ],
+    "undecided": [],
+    "incomplete": true,
+    "failure": null,
+    "notes": [
+      "hooks/hooks.json names a hooks module (a code file listed under `modules`). The plugin directory has rules of its own for such code, and these checks apply none of them, so passing here does not mean the directory accepts the plugin. The developer portal's own validation applies those rules."
+    ]
+  }
+}

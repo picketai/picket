@@ -1,0 +1,3 @@
+warn artifact: order.md not written yet (next action will ask for it)
+warn project_map: absent; the analyst can write one
+warn source:analysis: unreachable: HARNESS_SOURCE_ANALYSIS is not set (set it in the env block of .claude/settings.local.json)

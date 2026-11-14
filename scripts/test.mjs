@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { hostMismatchReport, hostTypeErrors } from "./mods-report.mjs";
 
 const UNIT_TESTS = "src/**/*.test.mts";
 const PRODUCT_ROOTS = ["test", "bench/test"];
@@ -24,16 +25,38 @@ function nodeTest(patterns) {
   return run(process.execPath, ["--test", ...patterns]);
 }
 
-function claudeOnPath() {
-  return spawnSync("claude", ["--version"], { stdio: "ignore" }).status === 0;
+function claudeVersion() {
+  const probe = spawnSync("claude", ["--version"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  if (probe.status !== 0) return null;
+  return probe.stdout.trim().split(/\s+/)[0] || null;
+}
+
+function parsedReport(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function nameHostTypeErrors(version) {
+  const validation = spawnSync("claude", ["plugin", "validate", "--strict", "--json", PLUGIN_DIR], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+  const report = parsedReport(validation.stdout ?? "");
+  const errors = report === null ? [] : hostTypeErrors(report, resolve(PLUGIN_DIR));
+  if (errors.length > 0) console.log(hostMismatchReport(version, errors));
 }
 
 function mods() {
-  if (!claudeOnPath()) {
+  const version = claudeVersion();
+  if (version === null) {
     console.log("mods: skipped, claude not on PATH");
     return 0;
   }
-  return run("claude", ["plugin", "validate", "--strict", PLUGIN_DIR]) || run("claude", ["plugin", "test", PLUGIN_DIR]);
+  if (run("claude", ["plugin", "validate", "--strict", PLUGIN_DIR]) !== 0) {
+    nameHostTypeErrors(version);
+    return 1;
+  }
+  return run("claude", ["plugin", "test", PLUGIN_DIR]);
 }
 
 const STEPS = {

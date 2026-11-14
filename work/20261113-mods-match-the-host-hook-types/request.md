@@ -1,0 +1,6 @@
+Fix the `mods` step of `npm test`, which fails with 27 TypeScript errors under `claude plugin validate --strict dist`. Root cause: the mods' code and tests do not match the installed Claude Code's hook API types because that API changed and the repository never type-checks `src/mods` against it. Bring the two shipped call sites (`src/mods/index.tsx:38`, `src/mods/markdown/hooks/index.tsx:75`) and the three test files up to the current types, and add a check in the repository so the next host change is caught as a named failure. Separately decide whether `picket mutate` should take its baseline from `npm test`, since a host update alone now turns every item's mutation check off.
+
+## Brief
+purpose: Make the mods step of npm test pass again and keep it from breaking silently: the mods' code and tests match the installed Claude Code's hook API types, and a host change is caught as a named failure
+in scope: The two shipped call sites (src/mods/index.tsx:38, src/mods/markdown/hooks/index.tsx:75) and the three mods test files brought up to the current host types; a check in the repository that names a mismatch between the mods and the host types; a decision on whether picket mutate takes its baseline from npm test
+out of scope: New behaviour in the status or Markdown panes; the plugin icon warning; any part of SDR 00004; changing what the validator itself checks
