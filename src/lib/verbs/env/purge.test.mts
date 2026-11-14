@@ -72,3 +72,20 @@ test("an unrecorded stack takes its item from the container labels, so an open i
   };
   assert.throws(() => purgeEnvironment(fixedContext(root), runner, STACK), /which is open; close it first$/);
 });
+
+test("a stack recorded for a done item but labelled with an open item refuses, naming the open one (T-1.5)", (t) => {
+  const { root } = stackOf(t, "done");
+  const { id: open } = openItem(root, { lane: "order", title: "Payments", source: "PROJ-481" });
+  const before = readStacks(root);
+  const calls: string[][] = [];
+  const runner: EngineRunner = (_program, args) => {
+    if (args[0] === "info") return { status: 0, stdout: '{"OSType":"linux"}', stderr: "" };
+    if (args[1] === "version") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
+    calls.push(args);
+    if (args[0] === "ps" && args.includes("json")) return { status: 0, stdout: JSON.stringify({ Labels: `com.docker.compose.project=${STACK},io.github.picketai.item=${open}` }), stderr: "" };
+    return { status: 0, stdout: "", stderr: "" };
+  };
+  assert.throws(() => purgeEnvironment(fixedContext(root), runner, STACK), (err: Error) => err instanceof Refused && err.message === `${STACK} belongs to ${open}, which is open; close it first`);
+  assert.ok(!calls.some((args) => args.includes("down")));
+  assert.deepEqual(readStacks(root), before);
+});

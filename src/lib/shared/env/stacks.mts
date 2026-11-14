@@ -7,6 +7,7 @@ import { readState } from "../work/state.mts";
 import { allowedEngine, composeArgs, fakeEnginePath } from "./engine.mts";
 
 const CLOSED = ["done", "abandoned"];
+export const ACTIVE_STATUSES = ["open", "blocked"];
 
 export type StackEngine = { name: string; program: string; prefix: string[] };
 export type StackEntry = { item: string; session: string | null; files: string[]; engine: StackEngine; started: string };
@@ -61,6 +62,12 @@ export function itemStatus(root: string, item: string): string {
   } catch {
     return "unknown";
   }
+}
+
+export function activeClaim(root: string, stack: string, item: string | null, owner: string | null): string | null {
+  if (item === null || item === owner) return null;
+  const status = itemStatus(root, item);
+  return ACTIVE_STATUSES.includes(status) ? `${stack} belongs to ${item}, which is ${status}; close it first` : null;
 }
 
 export function closedStacks(root: string, stacks: Stacks): { stack: string; item: string; status: string }[] {

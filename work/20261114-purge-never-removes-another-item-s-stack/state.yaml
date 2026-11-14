@@ -1,0 +1,9 @@
+id: 20261114-purge-never-removes-another-item-s-stack
+lane: design
+title: Purge never removes another item's stack
+status: open
+created: 2026-11-14T15:10:58.705Z
+updated: 2026-11-14T15:17:51.343Z
+session: d09e885b-38d7-46ab-90a1-fca179743a5f
+base: eb4afe7fd931a6a4df4dfd365cc39ae5599d27ed
+run_through: 2

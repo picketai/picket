@@ -153,6 +153,7 @@ function engine(answers: boolean): EngineCalls {
     if (!answers) return { status: 1, stdout: "", stderr: "" };
     if (args[0] === "info") return { status: 0, stdout: '{"OSType":"linux"}', stderr: "" };
     if (args[1] === "version") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
+    if (args[0] === "ps" && args.includes("json")) return { status: 0, stdout: "", stderr: "" };
     if (args[0] === "ps") return { status: 0, stdout: "c1\n", stderr: "" };
     if (args[0] === "volume") return { status: 0, stdout: "orders-data\n", stderr: "" };
     return { status: 0, stdout: "", stderr: "" };
@@ -199,4 +200,67 @@ test("close with no environment and no stack makes no engine call and reports no
   assert.equal(result.environment, null);
   assert.deepEqual(calls, []);
   assert.doesNotMatch(closingBlock(result), /^Environment:/m);
+});
+
+const SHARED_STACK = "picket-proj-481";
+
+function labelled(item: string | null): EngineCalls {
+  const inner = engine(true);
+  const labels = item === null ? "" : JSON.stringify({ Labels: `com.docker.compose.project=${SHARED_STACK},io.github.picketai.item=${item}` });
+  const runner: EngineRunner = (program, args) => {
+    if (args[0] !== "ps" || !args.includes("json")) return inner.runner(program, args);
+    inner.calls.push([program, ...args]);
+    return { status: 0, stdout: labels, stderr: "" };
+  };
+  return { runner, calls: inner.calls };
+}
+
+function twoItems(t: TestContext, { recordB }: { recordB: boolean }): { root: string; a: WorkId; b: WorkId } {
+  const root = withProject(t);
+  const { id: a } = openItem(root, { lane: "fast", title: "Orders", source: "PROJ-481" });
+  const { id: b } = openItem(root, { lane: "fast", title: "Payments", source: "PROJ-481" });
+  writeState(root, { ...readState(root, a), status: "done" }, new Date());
+  mkdirSync(join(root, ".picket", "env"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
+  if (recordB) recordStack(root, SHARED_STACK, { item: b, session: null, files: [], engine: { name: "docker", program: "docker", prefix: [] }, started: "2026-11-14T10:00:00.000Z" });
+  return { root, a, b };
+}
+
+function removalCalls(calls: string[][]): string[][] {
+  return calls.filter((args) => args.includes("down") || (args[1] === "image" && args[2] === "rm"));
+}
+
+test("closing A leaves the shared stack recorded for open item B in place and says whose it is (T-1.1)", (t) => {
+  const { root, a, b } = twoItems(t, { recordB: true });
+  const before = readStacks(root);
+  const { runner, calls } = labelled(b);
+  const result = closeWith(root, a, runner);
+  assert.deepEqual(removalCalls(calls), []);
+  assert.deepEqual(readStacks(root), before);
+  assert.equal(before[SHARED_STACK].item, b);
+  assert.equal(result.status, "done");
+  assert.deepEqual(result.environment, { removed: null, warning: `environment not removed: ${SHARED_STACK} is recorded for ${b}` });
+});
+
+test("closing A leaves an unrecorded shared stack whose containers name open item B (T-1.3)", (t) => {
+  const { root, a, b } = twoItems(t, { recordB: false });
+  const { runner, calls } = labelled(b);
+  const result = closeWith(root, a, runner);
+  assert.deepEqual(removalCalls(calls), []);
+  assert.deepEqual(readStacks(root), {});
+  assert.deepEqual(result.environment, { removed: null, warning: `environment not removed: ${SHARED_STACK} belongs to ${b}, which is open; close it first` });
+});
+
+test("closing A still purges an unrecorded shared stack labelled with a done item or with none (T-1.4)", (t) => {
+  for (const label of ["done", null] as const) {
+    const { root, a, b } = twoItems(t, { recordB: false });
+    if (label === "done") writeState(root, { ...readState(root, b), status: "done" }, new Date());
+    const { runner, calls } = labelled(label === "done" ? b : null);
+    const result = closeWith(root, a, runner);
+    const down = removalCalls(calls).find((args) => args.includes("down"));
+    assert.ok(down, String(label));
+    assert.deepEqual(down.slice(-3), ["down", "--volumes", "--remove-orphans"]);
+    assert.ok(down.includes(SHARED_STACK), String(label));
+    assert.equal(result.environment?.warning, null, String(label));
+  }
 });

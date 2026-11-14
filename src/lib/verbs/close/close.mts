@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Refused } from "../../shared/action.mts";
 import { machineCheck, type EngineRunner } from "../../shared/env/engine.mts";
-import { purgeStack, type Resources } from "../../shared/env/purge.mts";
+import { foreignClaim, purgeStack, type Resources } from "../../shared/env/purge.mts";
 import { readStacks } from "../../shared/env/stacks.mts";
 import { COMPOSE_FILE, ENV_DIR, itemKey, stackName } from "../../shared/env/standard.mts";
 import { dropItemChecks } from "../../shared/check-log.mts";
@@ -222,9 +222,13 @@ function notRemoved(reason: string): EnvironmentRemoval {
 function purgeOnClose(root: string, state: WorkState, { now, env, cwd, runner }: CloseContext): EnvironmentRemoval | null {
   const stack = itemStack(root, state);
   if (stack === null) return null;
+  const recordedFor = readStacks(root)[stack]?.item;
+  if (recordedFor !== undefined && recordedFor !== state.id) return notRemoved(`${stack} is recorded for ${recordedFor}`);
   const { engine, machine } = machineCheck(env, cwd, root, runner);
   if (!engine || !machine.ok) return notRemoved(machine.missing[0]?.split(":")[0] ?? "no container engine");
   try {
+    const claim = foreignClaim(engine, root, stack, state.id);
+    if (claim !== null) return notRemoved(claim);
     return { removed: purgeStack(engine, root, stack, state.id, now).resources, warning: null };
   } catch (err) {
     return notRemoved((err as Error).message);

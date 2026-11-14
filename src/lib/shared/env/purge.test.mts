@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Refused } from "../action.mts";
 import { findEngine, type Engine, type EngineRunner } from "./engine.mts";
-import { purgeStack } from "./purge.mts";
+import { readState, writeState } from "../work/state.mts";
+import { openItem, withProject } from "#test/project.mts";
+import { foreignClaim, purgeStack } from "./purge.mts";
 import { readStacks, recordStack } from "./stacks.mts";
 
 const STACK = "picket-proj-481";
@@ -80,6 +82,48 @@ test("a file in place of the evidence folder stops the purge before any removal 
   assert.throws(() => purgeStack(engine, root, STACK, ITEM, NOW), (err: Error) => err instanceof Refused && err.message.startsWith("purge stopped: cannot record .picket/state/env/purged/"));
   assert.ok(!seen.calls.some((args) => args.includes("down") || (args[0] === "image" && args[1] === "rm")));
   assert.deepEqual(Object.keys(readStacks(root)), [STACK]);
+});
+
+function labelEngine(root: string, item: string | null): Engine {
+  const labels = item === null ? "" : JSON.stringify({ Labels: `com.docker.compose.project=${STACK},io.github.picketai.item=${item}` });
+  const engine = findEngine({}, root, (_p, args) => ({ status: 0, stdout: args[0] === "info" ? "{}" : args.includes("json") ? labels : "", stderr: "" }), null);
+  assert.ok(engine);
+  return engine;
+}
+
+function itemAt(root: string, title: string, status: "open" | "done"): string {
+  const { id } = openItem(root, { lane: "order", title });
+  if (status === "done") writeState(root, { ...readState(root, id), status }, new Date());
+  return id;
+}
+
+function recordFor(root: string, item: string): void {
+  recordStack(root, STACK, { item, session: null, files: [], engine: { name: "docker", program: "docker", prefix: [] }, started: NOW.toISOString() });
+}
+
+test("foreignClaim takes the record's claim before the label's", (t) => {
+  const root = withProject(t);
+  const recorded = itemAt(root, "Recorded", "open");
+  recordFor(root, recorded);
+  assert.equal(foreignClaim(labelEngine(root, itemAt(root, "Labelled", "open")), root, STACK, null), `${STACK} belongs to ${recorded}, which is open; close it first`);
+});
+
+test("foreignClaim falls back to the label when the record names a closed item or none", (t) => {
+  const root = withProject(t);
+  const labelled = itemAt(root, "Labelled", "open");
+  const text = `${STACK} belongs to ${labelled}, which is open; close it first`;
+  assert.equal(foreignClaim(labelEngine(root, labelled), root, STACK, null), text);
+  recordFor(root, itemAt(root, "Closed", "done"));
+  assert.equal(foreignClaim(labelEngine(root, labelled), root, STACK, null), text);
+});
+
+test("foreignClaim is null for the owner's own stack, an unlabelled stack and a closed item's label", (t) => {
+  const root = withProject(t);
+  const owner = itemAt(root, "Owner", "open");
+  recordFor(root, owner);
+  assert.equal(foreignClaim(labelEngine(root, owner), root, STACK, owner), null);
+  assert.equal(foreignClaim(labelEngine(root, null), root, STACK, owner), null);
+  assert.equal(foreignClaim(labelEngine(root, itemAt(root, "Closed", "done")), root, STACK, owner), null);
 });
 
 test("nothing listed means no evidence, no removal call and nothing to remove", (t) => {

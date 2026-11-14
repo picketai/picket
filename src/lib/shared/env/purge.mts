@@ -3,7 +3,7 @@ import { dirname, relative } from "node:path";
 import { Refused } from "../action.mts";
 import { statePath } from "../paths.mts";
 import { failureCause, jsonRecords, runCompose, type Engine } from "./engine.mts";
-import { dropStack, readStacks } from "./stacks.mts";
+import { activeClaim, dropStack, readStacks } from "./stacks.mts";
 import { ITEM_LABEL } from "./standard.mts";
 
 export type Resources = { containers: string[]; volumes: string[]; networks: string[]; images: string[] };
@@ -42,6 +42,10 @@ export function labelledItem(engine: Engine, stack: string): string | null {
     if (item) return item;
   }
   return null;
+}
+
+export function foreignClaim(engine: Engine, root: string, stack: string, owner: string | null): string | null {
+  return activeClaim(root, stack, readStacks(root)[stack]?.item ?? null, owner) ?? activeClaim(root, stack, labelledItem(engine, stack), owner);
 }
 
 export function isEmpty(resources: Resources): boolean {
