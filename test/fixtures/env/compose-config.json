@@ -46,5 +46,10 @@
   },
   "networks": { "default": { "name": "env_default", "ipam": {} } },
   "volumes": { "orders-data": { "name": "env_orders-data" } },
-  "x-picket": { "version": 1, "shared": { "legacy": { "address": "PICKET_SHARED_LEGACY" } } }
+  "x-picket": {
+    "version": 1,
+    "shared": { "legacy": { "address": "PICKET_SHARED_LEGACY" } },
+    "wiring": [{ "service": "orders", "file": "services/orders/.env", "key": "PAYMENTS_URL", "by": "env", "variable": "PAYMENTS_URL" }],
+    "pending": [{ "service": "billing", "what": "its Dockerfile is left to the project" }]
+  }
 }

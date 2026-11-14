@@ -1,6 +1,6 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { EXIT, describeExit } from "../../shared/action.mts";
@@ -22,6 +22,12 @@ function context(t: TestContext, { environment }: { environment: boolean }): Con
     writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
   }
   return { root, cwd: root, now: () => new Date(0), env: {}, home: root, session: null, platform: process.platform };
+}
+
+function umbrellaContext(t: TestContext): Context {
+  const ctx = context(t, { environment: false });
+  cpSync(resolve("test/fixtures/env/umbrella"), ctx.root, { recursive: true });
+  return ctx;
 }
 
 function linuxDocker(model: Model): EngineRunner {
@@ -64,19 +70,34 @@ test("a machine that passes with no compose.yaml exits 2 naming the missing file
   assert.equal(renderCheck(report(outcome)).split("\n").at(-1), "no environment: .picket/env/compose.yaml is missing");
 });
 
-test("the fixture model passes the rules and exits 0", (t) => {
-  const outcome = checkEnvironment(context(t, { environment: true }), linuxDocker(RECORDED));
+const BILLING_PENDING = [
+  "pending: billing: its Dockerfile is left to the project",
+  "pending: billing: services/billing/appsettings.json ConnectionStrings:Billing has no wiring row",
+  "pending: billing: services/billing/appsettings.json Services:Orders:Url has no wiring row",
+];
+
+test("the fixture umbrella passes the rules, prints billing's pending lines and exits 0 (T-4.7)", (t) => {
+  const outcome = checkEnvironment(umbrellaContext(t), linuxDocker(RECORDED));
   assert.equal(describeExit(outcome).code, EXIT.done);
-  assert.deepEqual({ ...report(outcome), machine: null }, { ok: true, machine: null, environment: "present", findings: [] });
-  assert.equal(renderCheck(report(outcome)).split("\n").at(-1), "rules passed");
+  assert.ok(report(outcome).findings.every((f) => f.rule === "E9" && f.level === "pending" && f.service === "billing"));
+  assert.deepEqual(renderCheck(report(outcome)).split("\n").slice(2), ["rules passed", ...BILLING_PENDING]);
 });
 
 test("an error finding exits 2 and prints one line per finding", (t) => {
   const model = structuredClone(RECORDED);
   model.services.cache.image = "busybox:1.36";
-  const outcome = checkEnvironment(context(t, { environment: true }), linuxDocker(model));
+  const outcome = checkEnvironment(umbrellaContext(t), linuxDocker(model));
   assert.equal(describeExit(outcome).code, 2);
-  assert.deepEqual(renderCheck(report(outcome)).split("\n").slice(2), ["E6 cache: image busybox:1.36 is not pinned by digest (@sha256:)"]);
+  assert.deepEqual(renderCheck(report(outcome)).split("\n").slice(2), ["E6 cache: image busybox:1.36 is not pinned by digest (@sha256:)", ...BILLING_PENDING]);
+});
+
+test("a scanned service missing from the environment is an E9 error that fails the check", (t) => {
+  const ctx = umbrellaContext(t);
+  mkdirSync(join(ctx.root, "services", "stock"), { recursive: true });
+  writeFileSync(join(ctx.root, "services", "stock", "package.json"), "{}");
+  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  assert.equal(describeExit(outcome).code, 2);
+  assert.ok(renderCheck(report(outcome)).split("\n").includes("E9 stock: services/stock is not in the environment: add a service, or list it as shared, ignored or pending"));
 });
 
 test("a passing report renders the engine line and sizes in GiB with one decimal", () => {

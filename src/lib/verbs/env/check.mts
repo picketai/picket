@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { action, done, failed, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import { findEngine, machineReport, readModelJson, realRunner, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { inStepFindings } from "../../shared/env/instep.mts";
 import { readModel } from "../../shared/env/model.mts";
+import { scanUmbrella } from "../../shared/env/scan.mts";
 import { hasError, staticFindings, type Finding } from "../../shared/env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -16,7 +18,8 @@ const COMPOSE_PATH = `${ENV_DIR}/${COMPOSE_FILE}`;
 
 function environmentReport(engine: Engine, machine: MachineReport, root: string): EnvCheckReport {
   if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) return { ok: false, machine, environment: "missing", findings: [] };
-  const findings = staticFindings(readModel(readModelJson(engine, root)));
+  const model = readModel(readModelJson(engine, root));
+  const findings = [...staticFindings(model), ...inStepFindings(scanUmbrella(root), model, root)];
   return { ok: !hasError(findings), machine, environment: "present", findings };
 }
 
@@ -39,7 +42,8 @@ export function renderMachine(report: MachineReport): string[] {
   ];
 }
 
-function findingLine({ rule, service, message }: Finding): string {
+function findingLine({ rule, service, level, message }: Finding): string {
+  if (level === "pending") return `pending: ${service ?? rule}: ${message}`;
   return service === null ? `${rule}: ${message}` : `${rule} ${service}: ${message}`;
 }
 

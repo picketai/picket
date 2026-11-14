@@ -55,8 +55,15 @@ test("the image services carry digests, and only the data client has the picket-
   assert.equal(service("orders-seed").healthcheck, null);
 });
 
-test("the x-picket block reads its shared entry and has no unknown key (T-2.1)", () => {
-  assert.deepEqual(readModel(RECORDED).picket, { version: 1, shared: { legacy: { address: "PICKET_SHARED_LEGACY" } }, wiring: [], ignored: [], pending: [], unknown_keys: [] });
+test("the x-picket block reads its shared entry, wiring and pending rows and has no unknown key (T-2.1)", () => {
+  assert.deepEqual(readModel(RECORDED).picket, {
+    version: 1,
+    shared: { legacy: { address: "PICKET_SHARED_LEGACY" } },
+    wiring: [{ service: "orders", file: "services/orders/.env", key: "PAYMENTS_URL", by: "env", variable: "PAYMENTS_URL", replaced: null }],
+    ignored: [],
+    pending: [{ service: "billing", what: "its Dockerfile is left to the project" }],
+    unknown_keys: [],
+  });
 });
 
 test("a model without x-picket reads picket as null and a service without labels has no role", () => {

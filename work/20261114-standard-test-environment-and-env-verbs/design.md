@@ -97,8 +97,12 @@ phases:
         contains: ["pending: billing"]
     security: true
   - n: 5
-    files: [src/lib/shared/env/build-plan.mts, src/lib/shared/env/build-plan.test.mts, src/lib/shared/env/stacks.mts, src/lib/shared/env/stacks.test.mts, src/lib/shared/env/engine.mts, src/lib/verbs/env/start.mts, src/lib/verbs/env/start.test.mts, src/lib/verbs/env/stop.mts, src/lib/verbs/env/stop.test.mts, src/lib/verbs.mts, src/lib/cli/registry.mts, test/fixtures/env/fake-engine.mjs, test/cli/env.test.mjs, docs/reference/cli.md]
+    files: [src/lib/shared/env/build-plan.mts, src/lib/shared/env/build-plan.test.mts, src/lib/shared/env/stacks.mts, src/lib/shared/env/stacks.test.mts, src/lib/shared/env/engine.mts, src/lib/shared/env/engine.test.mts, src/lib/verbs/env/check.mts, src/lib/verbs/env/init.mts, src/lib/hooks/guard/bash/index.test.mts, src/lib/verbs/env/start.mts, src/lib/verbs/env/start.test.mts, src/lib/verbs/env/stop.mts, src/lib/verbs/env/stop.test.mts, src/lib/verbs.mts, src/lib/cli/registry.mts, test/fixtures/env/fake-engine.mjs, test/cli/env.test.mjs, docs/reference/cli.md]
     greps:
+      - path: src/lib/shared/env/engine.mts
+        pattern: 'export function allowedEngine\b'
+      - path: src/lib/shared/env/engine.mts
+        pattern: 'export function engineRefusal\b'
       - path: src/lib/shared/env/build-plan.mts
         pattern: '\bGIT_INDEX_FILE\b'
       - path: src/lib/shared/env/build-plan.mts
@@ -107,7 +111,7 @@ phases:
         pattern: '"env start": \(\) => import\("\.\./verbs/env/start\.mts"\)'
     tests: true
     drive: true
-    security: false
+    security: true
   - n: 6
     files: [src/lib/shared/env/trial.mts, src/lib/shared/env/trial.test.mts, src/lib/verbs/env/trial.mts, src/lib/verbs/env/trial.test.mts, src/lib/verbs/env/check.mts, src/lib/verbs/env/check.test.mts, src/lib/verbs.mts, src/lib/cli/registry.mts, test/cli/env.test.mjs, docs/reference/cli.md]
     greps:
@@ -197,12 +201,12 @@ SDR 00004 (`artifacts/strategy/decisions/00004-testing-stage-saved-scenarios-sta
 **Risks:**
 - **RISK-003** `x-picket` grows into a second configuration language. Mitigation: an unknown key is a finding (rule E8), and adding a key needs a version bump.
 
-### D-003: One engine adapter, judged by what the engine reports
-**Decision:** Infrastructural decision. `src/lib/shared/env/engine.mts` is the only module that spawns the engine, through an injected runner, so unit tests pass recorded answers. The program is `PICKET_ENGINE` from the context's environment, else the first of `docker` and `podman` whose `info --format json` exits 0; a value ending in `.mjs` runs under `process.execPath` (the fixture's fake engine). The requirements are the engine's OS type `linux` (Docker `OSType`, Podman `host.os`) and Compose major version 2 or later from `compose version --format json`. The host operating system is not checked: native Windows passes when Docker Desktop runs Linux containers and fails in Windows containers mode. Memory and free disk are printed, never judged (OQ-002). Engine output that is a JSON array or JSON lines reads the same.
+### D-003 (r2): One engine adapter, judged by what the engine reports
+**Decision:** Infrastructural decision. `src/lib/shared/env/engine.mts` is the only module that spawns the engine, through an injected runner, so unit tests pass recorded answers. The program is `PICKET_ENGINE` from the context's environment, else the first of `docker` and `podman` whose `info --format json` exits 0. `PICKET_ENGINE` may name only `docker`, `podman`, or the fixture's fake engine at `<pluginRoot()>/../test/fixtures/env/fake-engine.mjs` (compared by real path, and present only in Picket's own checkout), which runs under `process.execPath`. Any other value makes no call at all and adds a missing line naming it. The reason: `env check` and `env status` are read-only for the guard, which sees the command text but not a variable exported earlier, so a free `PICKET_ENGINE` would let an agent run any program past the guard; with the allow-list, the variable can only choose between the two engines or the fixture. Every env verb and the session hook (through the engine recorded in `stacks.json`) obey the same limit. The requirements are the engine's OS type `linux` (Docker `OSType`, Podman `host.os`) and Compose major version 2 or later from `compose version --format json`. The host operating system is not checked: native Windows passes when Docker Desktop runs Linux containers and fails in Windows containers mode. Memory and free disk are printed, never judged (OQ-002). Engine output that is a JSON array or JSON lines reads the same.
 **Instead of:** checking the host OS for WSL2: the user's developers run Claude Code on native Windows with Docker Desktop, which works and would be refused.
 **Risks:**
 - **RISK-004** `podman compose` may delegate to podman-compose 1.x. Mitigation: the Compose version check fails and its line names docker-compose v2 as the provider to install.
-- **RISK-005** The `.mjs` branch is product code that serves tests. Mitigation: it is one branch with its own unit test; its maintenance cost is that line.
+- **RISK-005** The fake-engine branch is product code that serves tests, and anything that can write beside the plugin root's parent folder could plant a fake there. Mitigation: one allow-list function with its own unit test; in an installed plugin that path does not exist, and in Picket's own repository an agent that can edit the fake can also edit `src/`, which every `picket` call runs after a build.
 
 ### D-004: The scan is tables, not branches
 **Decision:** Infrastructural decision. `profiles.mts` holds one row per runtime: marker files, a test that a marker is a service, whether it runs in a Linux container, the default Dockerfile choice, the request step for a Picket-written Dockerfile, and how a configuration key becomes a variable name. Rows: `dotnet` (a `.csproj` with the Web SDK or `OutputType` Exe; a library `.csproj` defaults to ignored; keys `A:B` become `A__B`), `dotnet-framework` (a `.csproj` with `TargetFrameworkVersion`; not Linux, defaults to shared), `node` (`package.json`, nested ones folded into the outer service), `go`, `java`, `python`, `rust`, `ruby`, `php`, and `container` (a `Dockerfile` with no other marker). Only `dotnet` and `node` carry a Picket-written Dockerfile step; every other row defaults to "user". `config-entries.mts` holds the readers (JSON through the vendored jsonc parser, .NET XML `<add key value>` and `<add name connectionString>`, dotenv, properties) and lists any other configuration-named file (YAML, TOML, INI) as one file-level entry. The address-like test and the masking rules know no engine: they are the patterns phase 3 states, checked on the examples there. A new runtime or reader is one row.
@@ -421,7 +425,11 @@ Values appear masked. `instep.mts` exports `inStepFindings(scan, model): Finding
 - `src/lib/shared/env/build-plan.test.mts`: new; temporary git repositories
 - `src/lib/shared/env/stacks.mts`: new; `stacks.json` read and write
 - `src/lib/shared/env/stacks.test.mts`: new
-- `src/lib/shared/env/engine.mts`: `compose` call helper for a stack
+- `src/lib/shared/env/engine.mts`: `compose` call helper; the engine allow-list
+- `src/lib/shared/env/engine.test.mts`: allow-list cases; fake-path tests inject the path
+- `src/lib/verbs/env/check.mts`: pass the refusal line to the report
+- `src/lib/verbs/env/init.mts`: pass the refusal line to the report
+- `src/lib/hooks/guard/bash/index.test.mts`: agent commands setting `PICKET_ENGINE`
 - `src/lib/verbs/env/start.mts`: new; `env start <id>`
 - `src/lib/verbs/env/start.test.mts`: new
 - `src/lib/verbs/env/stop.mts`: new; `env stop <id>`
@@ -432,9 +440,11 @@ Values appear masked. `instep.mts` exports `inStepFindings(scan, model): Finding
 - `test/cli/env.test.mjs`: start and stop on a temporary copy
 - `docs/reference/cli.md`: regenerated by the build
 
-**Changes:** `build-plan.mts` exports `type ServiceSource = { service; checkout: string; context: string; dockerfile: string | null; version: string }`, `sourceFor(root, layout, service): ServiceSource` (per D-006: the context made relative to the umbrella goes through `locate`; the checkout is the worktree or the owning repository's root checkout; a Dockerfile outside the original context becomes absolute), `contextVersion(checkoutDir, contextRel): string` (per D-006, the temporary index under the system temporary folder passed to `gitRun` as `GIT_INDEX_FILE`, removed afterwards) and `overrideDoc(model, sources, key, id): object` (each `app`: `image`, `build.context`, `build.dockerfile` when set, `build.labels` with the revision and item labels, `labels` with the item label; every other started service: `labels` with the item label). `stacks.mts` exports `type StackEntry = { item; session: string | null; files: string[]; engine: { program; prefix: string[] }; started: string }`, `readStacks(root)`, `recordStack(root, stack, entry)` and `dropStack(root, stack)`.
+**Changes:** `build-plan.mts` exports `type ServiceSource = { service; checkout: string; context: string; dockerfile: string | null; version: string }`, `sourceFor(root, layout, service): ServiceSource` (per D-006: the context made relative to the umbrella goes through `locate`; the checkout is the worktree or the owning repository's root checkout; a Dockerfile outside the original context becomes absolute), `contextVersion(checkoutDir, contextRel): string` (per D-006, the temporary index under the system temporary folder passed to `gitRun` as `GIT_INDEX_FILE`, removed afterwards) and `overrideDoc(model, sources, key, id): object` (each `app`: `image`, `build.context`, `build.dockerfile` when set, `build.labels` with the revision and item labels, `labels` with the item label; every other started service: `labels` with the item label). `stacks.mts` exports `type StackEntry = { item; session: string | null; files: string[]; engine: { name: string; program: string; prefix: string[] }; started: string }`, `readStacks(root)`, `recordStack(root, stack, entry)` and `dropStack(root, stack)`.
 
 `env start <id>` refuses a done or abandoned item and an environment with an E1 to E8 error. It writes the override to `.picket/state/env/<stack>/compose.picket.yaml`, runs `compose -p <stack> --project-directory ... -f compose.yaml -f <override> build <apps>`, checks each app image with `image inspect` (the revision label from `Config.Labels` must equal the version, else it refuses with `<image> was not built from <version>` before `up`), runs `up --detach --wait`, records the stack with `ctx.session`, and prints one line per app (`<service> · built from <checkout> at <version>`) and `<urlVariable>=http://127.0.0.1:<port>` for each started service with a port, from `compose port <service> <target>` with `0.0.0.0` read as `127.0.0.1`. `env stop <id>` runs `compose -p <stack> stop` with the recorded files and keeps the entry. The fake engine answers `image inspect` with the tag of the image it is asked about as the revision label, and `port` with `0.0.0.0:49153`.
+
+Per D-003 (r2), `engine.mts` gains `fakeEnginePath(): string | null` (the real path of `<pluginRoot()>/../test/fixtures/env/fake-engine.mjs` when that file exists, else `null`), `allowedEngine(value, cwd, fake): boolean` (true for exactly `docker` or `podman`, or a value whose real path, resolved against `cwd`, equals `fake`) and `engineRefusal(env, cwd, fake): string | null`, which gives `PICKET_ENGINE names <value>, which is neither docker nor podman, so no engine was tried` for a disallowed value. `findEngine(env, cwd, runner, fake = fakeEnginePath())` returns `null` for a disallowed value without calling the runner. `machineReport` takes an optional `refused` line and appends it to `missing` after the no-engine line; `env check`, `env init`, `env start` and `env stop` pass `engineRefusal`. The existing tests that run a `.mjs` from a temporary root pass that file as `fake`. The declared checks and CLI tests of phases 1 to 4 keep `PICKET_ENGINE=test/fixtures/env/fake-engine.mjs`, which resolves to the allowed path from this repository's root.
 
 **Done when:**
 - **T-5.1** `build-plan.test.mts`: with a layout whose repository `services/orders` has the worktree `services/orders/.worktrees/feat-x`, orders builds from that worktree and every other app from the root checkout; a Dockerfile `../../.picket/env/docker/orders/Dockerfile` becomes an absolute path.
@@ -443,6 +453,8 @@ Values appear masked. `instep.mts` exports `inStepFindings(scan, model): Finding
 - **T-5.4** `start.test.mts` with an injected runner: the calls run in the order build, image inspect, up, port; an inspect answer with another revision refuses with `was not built from` and makes no `up` call; a pass records the stack with the context's session.
 - **T-5.5** `stop.test.mts`: the stop call is `compose -p picket-<key> ... stop`, and the stacks entry stays.
 - **T-5.6** On a temporary git copy with an open item, `env start <id>` with the fake engine exits 0 and prints `PICKET_URL_ORDERS=http://127.0.0.1:49153`, and `.picket/state/env/stacks.json` names the stack.
+- **T-5.7** `engine.test.mts`: with a runner that answers every program, `findEngine` for `PICKET_ENGINE` values `sh`, `/tmp/evil.mjs`, `./docker` and `node` returns `null` and the runner records no call; `docker` and `podman` are tried by those names; the injected `fake` path runs as `process.execPath` with that path first; `machineReport` with the refusal for `sh` lists `no container engine: install Docker or Podman`, then `PICKET_ENGINE names sh, which is neither docker nor podman, so no engine was tried`.
+- **T-5.8** guard.bash `index.test.mts`, for agent `picket:developer`: `picket env check` gets an `allow`, while `PICKET_ENGINE=/tmp/x.mjs picket env check`, `export PICKET_ENGINE=/tmp/x.mjs && picket env check` and `env PICKET_ENGINE=/tmp/x.mjs picket env check` get no `allow` decision.
 
 ## Phase 6: The trial start
 
@@ -487,7 +499,7 @@ Values appear masked. `instep.mts` exports `inStepFindings(scan, model): Finding
 - `test/fixtures/env/fake-engine.mjs`: answer `ps` with an empty list
 - `docs/reference/cli.md`: regenerated by the build
 
-**Changes:** `HOOK_EVENTS` gains `"SessionEnd"`. `Payloads` gets `SessionStart: CommonPayload & { source?: string }` and `SessionEnd: CommonPayload & { reason?: string }`; `OutputFor<"SessionEnd">` is `never`, so its handler returns `null`. `HOOKS["env.stacks"]` is on `SessionStart` and `SessionEnd`, with a summary naming both actions. The hook calls no engine probe: it reads `stacks.json` and, per D-007, starts each stop as a detached, silent process (`<program> <prefix> compose -p <stack> <-f files> stop`) through a `Spawn` it takes as a parameter, as `notify.user` does. On SessionStart with source `startup` it also returns a context line per stack whose item is done or abandoned: `<stack>: item <id> is <status>; run picket env purge <stack>`. `env status` (read-only) lists from `<engine> ps -a --format json --filter label=io.github.picketai.item` each Compose project with its item id, the item's status from `work/<id>/state.yaml` or `unknown`, and running or stopped; with none it prints `no stacks`.
+**Changes:** `HOOK_EVENTS` gains `"SessionEnd"`. `Payloads` gets `SessionStart: CommonPayload & { source?: string }` and `SessionEnd: CommonPayload & { reason?: string }`; `OutputFor<"SessionEnd">` is `never`, so its handler returns `null`. `HOOKS["env.stacks"]` is on `SessionStart` and `SessionEnd`, with a summary naming both actions. The hook calls no engine probe: it reads `stacks.json` and, per D-007, starts each stop as a detached, silent process (`<program> <prefix> compose -p <stack> <-f files> stop`) through a `Spawn` it takes as a parameter, as `notify.user` does. Per D-003 (r2) it never trusts the recorded `program` and `prefix`: it rebuilds them from the recorded engine `name` with the mapping `findEngine` uses, after `allowedEngine` (with `fakeEnginePath()`), and skips an entry the allow-list refuses, so an edited `stacks.json` cannot name another program. On SessionStart with source `startup` it also returns a context line per stack whose item is done or abandoned: `<stack>: item <id> is <status>; run picket env purge <stack>`. `env status` (read-only) lists from `<engine> ps -a --format json --filter label=io.github.picketai.item` each Compose project with its item id, the item's status from `work/<id>/state.yaml` or `unknown`, and running or stopped; with none it prints `no stacks`.
 
 **Done when:**
 - **T-7.1** `index.test.mts`: SessionEnd with reason `prompt_input_exit`, and `stacks.json` holding two stacks of that session and one of another, spawns exactly two detached stops (options `detached: true`, `stdio: "ignore"`) and returns `null`; reasons `clear` and `resume` spawn nothing.
@@ -497,6 +509,7 @@ Values appear masked. `instep.mts` exports `inStepFindings(scan, model): Finding
 - **T-7.5** `status.test.mts`: rows for stacks of an open item, a done item and an unknown id show `open`, `done` and `unknown`; `kernel.test.mts` asserts `env status` is `safe`.
 - **T-7.6** `node scripts/test.mjs timing` exits 0, with `dist/hooks/env.stacks.mjs` inside the cold-start budget.
 - **T-7.7** `node dist/bin/picket.mjs env status --root test/fixtures/env/umbrella`, driven with `--env PICKET_ENGINE=test/fixtures/env/fake-engine.mjs`, exits 0 and prints `no stacks`.
+- **T-7.8** `index.test.mts`: a stacks entry of the ending session whose engine `name` is `sh` gets no spawn, and an entry recorded with name `docker` but program `/tmp/evil` spawns `docker`, not `/tmp/evil`.
 
 ## Phase 8: Purge at close
 
@@ -571,4 +584,5 @@ Values appear masked. `instep.mts` exports `inStepFindings(scan, model): Finding
 - 2026-11-14: D-007 (r2): purge writes its resource list to a state file before removing, since output prints only after the run; phase 8 gains T-8.6.
 - 2026-11-14: D-002 (r2): verify fails a phase on out-of-step findings on paths the item changed; phase 9 had no covering decision.
 - 2026-11-14: D-005 (r2): outside hosts decided per host (mock, dependency, shared), reconciled with SDR 00004 D-003; phase 4 T-4.1 and T-4.2 follow.
+- 2026-11-14: D-003 (r2): `PICKET_ENGINE` limited to docker, podman or the fixture fake, so a read-only env verb cannot run any program; phases 5 and 7 enforce it.
 - 2026-11-14: D-002 (r3): unconfirmed parts are pending, never errors; E10 is pending without a record and `rules passed` carries no count, so T-2.5 and T-4.7 hold.

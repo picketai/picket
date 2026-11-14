@@ -91,7 +91,7 @@ picket env check
 Scan the umbrella and list the environment decisions for the user.
 
 ```sh
-picket env init
+picket env init [--create [--decide "<id>=<choice>,..."]]
 ```
 
 ## picket extension

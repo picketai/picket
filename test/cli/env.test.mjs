@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { runCli } from "#test/cli.mts";
@@ -52,6 +52,56 @@ test("env init on a copy of the umbrella prints and saves no secret and masks th
   }
   assert.match(r.stdout, /^S1 services\/billing /m);
   assert.match(r.stdout, /picket env init --create/);
+});
+
+function envCreate(root, engine) {
+  return runCli(root, ["env", "init", "--create", "--root", root], { env: { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: engine } });
+}
+
+function items(root) {
+  return existsSync(join(root, "work")) ? readdirSync(join(root, "work")) : [];
+}
+
+test("env init then env init --create on a copy without an environment creates one item with a masked request (T-4.4)", (t) => {
+  const root = umbrellaCopy(t);
+  rmSync(join(root, ".picket", "env"), { recursive: true });
+  assert.equal(envInit(root, FAKE_ENGINE).status, 0);
+  const r = envCreate(root, FAKE_ENGINE);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const [id] = items(root);
+  assert.equal(items(root).length, 1);
+  assert.match(r.stdout, new RegExp(`^picket next ${id}$`, "m"));
+  const request = readFileSync(join(root, "work", id, "request.md"), "utf8");
+  for (const secret of SECRETS) assert.ok(!request.includes(secret), secret);
+  assert.ok(request.includes("Password=***"));
+});
+
+test("a file added between env init and --create makes --create exit 2 and creates no item (T-4.5)", (t) => {
+  const root = umbrellaCopy(t);
+  rmSync(join(root, ".picket", "env"), { recursive: true });
+  envInit(root, FAKE_ENGINE);
+  writeFileSync(join(root, "services", "orders", "appsettings.json"), '{ "Stock": { "Url": "http://stock:8080" } }');
+  const r = envCreate(root, FAKE_ENGINE);
+  assert.equal(r.status, 2);
+  assert.match(r.stdout, /the umbrella changed since the scan/);
+  assert.deepEqual(items(root), []);
+});
+
+test("with the fixture environment, --create names only services/stock, and without it exits 2 in step (T-4.6)", (t) => {
+  const inStep = umbrellaCopy(t);
+  envInit(inStep, FAKE_ENGINE);
+  const refused = envCreate(inStep, FAKE_ENGINE);
+  assert.equal(refused.status, 2);
+  assert.match(refused.stdout, /the environment is in step/);
+  const root = umbrellaCopy(t);
+  mkdirSync(join(root, "services", "stock"));
+  writeFileSync(join(root, "services", "stock", "package.json"), "{}");
+  envInit(root, FAKE_ENGINE);
+  const r = envCreate(root, FAKE_ENGINE);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const request = readFileSync(join(root, "work", items(root)[0], "request.md"), "utf8");
+  assert.ok(request.includes("services/stock"));
+  for (const other of ["services/billing", "services/legacy", "services/orders"]) assert.ok(!request.includes(other), other);
 });
 
 test("env init with no engine exits 2 and leaves no scan behind (T-3.6)", (t) => {
