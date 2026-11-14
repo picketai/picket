@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { hostMismatchReport, hostTypeErrors } from "./mods-report.mjs";
 
 const UNIT_TESTS = "src/**/*.test.mts";
@@ -8,6 +9,9 @@ const PRODUCT_ROOTS = ["test", "bench/test"];
 const TIMING_ROOT = join("test", "timing");
 const TEST_FILE = /\.test\.mjs$/;
 const PLUGIN_DIR = "dist";
+const ENGINE_MODULE = "lib/shared/env/engine.mjs";
+const ENV_TESTS = join("test", "env");
+const ENGINE_TEST = /\.engine\.mjs$/;
 
 function testFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -59,10 +63,21 @@ function mods() {
   return run("claude", ["plugin", "test", PLUGIN_DIR]);
 }
 
+async function env() {
+  const { findEngine, realRunner } = await import(pathToFileURL(resolve(PLUGIN_DIR, ENGINE_MODULE)).href);
+  if (findEngine(process.env, process.cwd(), realRunner) === null) {
+    console.log("env: skipped, no container engine");
+    return 0;
+  }
+  const files = readdirSync(ENV_TESTS).filter((name) => ENGINE_TEST.test(name));
+  return nodeTest(files.map((name) => join(ENV_TESTS, name)).sort());
+}
+
 const STEPS = {
   unit: () => nodeTest([UNIT_TESTS]),
   build: () => run(process.execPath, ["scripts/build.mjs"]),
   product: () => nodeTest(PRODUCT_ROOTS.flatMap(testFiles).sort()),
+  env,
   timing: () => nodeTest(testFiles(TIMING_ROOT).sort()),
   mods,
 };
@@ -80,7 +95,7 @@ if (unknown.length > 0) {
 
 for (const name of requested.length > 0 ? requested : Object.keys(STEPS)) {
   const started = Date.now();
-  const code = STEPS[name]();
+  const code = await STEPS[name]();
   console.log(`${name}: exit ${code} in ${Date.now() - started} ms`);
   if (code !== 0) process.exit(1);
 }

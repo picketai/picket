@@ -1,6 +1,8 @@
 import { statfsSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { spawnProgram, type ProgramResult } from "../../util/process.mts";
+import { Refused } from "../action.mts";
+import { COMPOSE_FILE, ENV_DIR } from "./standard.mts";
 
 export type EngineKind = "docker" | "podman" | "other";
 export type EngineRunner = (program: string, args: string[]) => ProgramResult;
@@ -122,6 +124,26 @@ function gaps(info: EngineInfo, compose: string | null): string[] {
   if (info.os_type !== LINUX) missing.push(notLinux(info.os_type ?? "unknown"));
   if (composeMajor(compose) < MIN_COMPOSE_MAJOR) missing.push(NO_COMPOSE);
   return missing;
+}
+
+export function composeFiles(root: string): string[] {
+  const dir = join(root, ENV_DIR);
+  return ["--project-directory", dir, "-f", join(dir, COMPOSE_FILE)];
+}
+
+function composeOutput(engine: Engine, root: string, args: string[]): string {
+  const result = engine.run(["compose", ...composeFiles(root), ...args]);
+  if (result.status === 0) return result.stdout;
+  const last = result.stderr.trim().split(/\r?\n/).at(-1) ?? "";
+  throw new Refused(`compose ${args.join(" ")} failed: ${last}`);
+}
+
+export function readModelJson(engine: Engine, root: string): unknown {
+  const profiles = composeOutput(engine, root, ["config", "--profiles"])
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  return JSON.parse(composeOutput(engine, root, ["config", "--format", "json", ...profiles.flatMap((name) => ["--profile", name])]));
 }
 
 export function machineReport(engine: Engine | null, root: string): MachineReport {

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { findEngine, jsonRecords, machineReport, NO_COMPOSE, NO_ENGINE, notLinux, type EngineRunner } from "./engine.mts";
+import { Refused } from "../action.mts";
+import { findEngine, jsonRecords, machineReport, NO_COMPOSE, NO_ENGINE, notLinux, readModelJson, type EngineRunner } from "./engine.mts";
 
 type Answers = Record<string, string>;
 type Recorded = { runner: EngineRunner; calls: string[][] };
@@ -99,6 +100,32 @@ test("an engine of kind other is read with the Docker shape, then the Podman sha
   assert.deepEqual(report.engine, { program: "nerd", kind: "other" });
   assert.equal(report.os_type, "linux");
   assert.equal(report.memory_bytes, 4);
+});
+
+test("readModelJson lists the profiles, then reads the model with each profile enabled, under the given root (T-2.3)", () => {
+  const root = resolve("umbrella");
+  const dir = join(root, ".picket", "env");
+  const files = ["--project-directory", dir, "-f", join(dir, "compose.yaml")];
+  const { runner, calls } = recording({
+    [["docker", "info", "--format", "json"].join(" ")]: "{}",
+    [["docker", "compose", ...files, "config", "--profiles"].join(" ")]: "picket-data\n",
+    [["docker", "compose", ...files, "config", "--format", "json", "--profile", "picket-data"].join(" ")]: '{"name":"env"}',
+  });
+  const engine = findEngine({}, root, runner);
+  assert.ok(engine);
+  calls.length = 0;
+  assert.deepEqual(readModelJson(engine, root), { name: "env" });
+  assert.deepEqual(calls, [
+    ["docker", "compose", ...files, "config", "--profiles"],
+    ["docker", "compose", ...files, "config", "--format", "json", "--profile", "picket-data"],
+  ]);
+});
+
+test("readModelJson refuses with the engine's last error line when compose config fails", () => {
+  const { runner } = recording({ "docker info --format json": "{}" });
+  const engine = findEngine({}, "/", runner);
+  assert.ok(engine);
+  assert.throws(() => readModelJson(engine, resolve("umbrella")), (err: Error) => err instanceof Refused && err.message === "compose config --profiles failed: not found");
 });
 
 test("jsonRecords reads a JSON array and JSON lines as the same records (T-1.5)", () => {

@@ -1,0 +1,76 @@
+services:
+  orders:
+    build:
+      context: ../../services/orders
+      dockerfile: ../../.picket/env/docker/orders/Dockerfile
+    labels:
+      io.github.picketai.role: app
+    environment:
+      PAYMENTS_URL: http://payments-mock:8080
+    ports:
+      - target: 8080
+    volumes:
+      - type: volume
+        source: orders-data
+        target: /data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    depends_on:
+      orders-seed:
+        condition: service_completed_successfully
+      payments-mock:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+
+  payments-mock:
+    image: busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    labels:
+      io.github.picketai.role: mock
+    command: ["sh", "-c", "mkdir -p /www && echo ok > /www/health && httpd -f -p 8080 -h /www"]
+    ports:
+      - target: 8080
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  cache:
+    image: redis:7.4-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    labels:
+      io.github.picketai.role: dependency
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  orders-seed:
+    image: busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    labels:
+      io.github.picketai.role: seed
+    command: ["sh", "-c", "echo '[{\"id\":1,\"item\":\"seed\"}]' > /data/orders.json"]
+    volumes:
+      - type: volume
+        source: orders-data
+        target: /data
+
+  billing-db-client:
+    image: mcr.microsoft.com/mssql-tools:latest@sha256:62556500522072535cb3df2bb5965333dded9be47000473e9e0f84118e248642
+    labels:
+      io.github.picketai.role: data
+    profiles: ["picket-data"]
+    command: ["/opt/mssql-tools/bin/sqlcmd", "-?"]
+
+volumes:
+  orders-data: {}
+
+x-picket:
+  version: 1
+  shared:
+    legacy:
+      address: PICKET_SHARED_LEGACY

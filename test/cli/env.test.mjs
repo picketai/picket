@@ -5,17 +5,25 @@ import { runCli } from "#test/cli.mts";
 import { withProject } from "#test/project.mts";
 
 const FAKE_ENGINE = resolve("test/fixtures/env/fake-engine.mjs");
+const UMBRELLA = resolve("test/fixtures/env/umbrella");
 
 function envCheck(root, engine) {
   return runCli(root, ["env", "check", "--root", root], { env: { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: engine } });
 }
 
-test("env check with the fake engine passes and names Linux containers and the Compose version (T-1.6)", (t) => {
-  const root = withProject(t);
-  const r = envCheck(root, FAKE_ENGINE);
+test("env check on the fixture umbrella names Linux containers and passes the rules (T-1.6, T-2.5)", () => {
+  const r = envCheck(UMBRELLA, FAKE_ENGINE);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /^engine: .*fake-engine\.mjs \(Linux containers, Compose 2\.99\.0-fixture\)$/m);
   assert.match(r.stdout, /^memory: 8\.0 GiB · free disk: \d+\.\d GiB$/m);
+  assert.match(r.stdout, /^rules passed$/m);
+});
+
+test("env check in a project without an environment exits 2 naming compose.yaml", (t) => {
+  const root = withProject(t);
+  const r = envCheck(root, FAKE_ENGINE);
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stdout, /^no environment: \.picket\/env\/compose\.yaml is missing$/m);
 });
 
 test("env check with an engine that does not exist exits 2 and names what to install (T-1.6)", (t) => {
