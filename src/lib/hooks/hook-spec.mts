@@ -10,7 +10,8 @@ type NotificationPayload = CommonPayload & { notification_type?: string; message
 type PromptPayload = CommonPayload & { prompt?: string; source?: string };
 
 type Payloads = {
-  SessionStart: CommonPayload;
+  SessionStart: CommonPayload & { source?: string };
+  SessionEnd: CommonPayload & { reason?: string };
   SubagentStart: CommonPayload;
   UserPromptSubmit: PromptPayload;
   PreToolUse: ToolPayload;

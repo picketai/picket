@@ -14,6 +14,7 @@ export const REGISTRY = {
   "env init": () => import("../verbs/env/init.mts"),
   "env start": () => import("../verbs/env/start.mts"),
   "env stop": () => import("../verbs/env/stop.mts"),
+  "env status": () => import("../verbs/env/status.mts"),
   "env trial": () => import("../verbs/env/trial.mts"),
   "extension add": () => import("../verbs/extension/add.mts"),
   "extension list": () => import("../verbs/extension/list.mts"),

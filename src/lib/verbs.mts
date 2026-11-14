@@ -16,6 +16,7 @@ export const VERB_NAMES = {
       init: { summary: "scan the umbrella and list the environment decisions for the user", readOnly: false },
       start: { summary: "build a work item's apps and start its stack", readOnly: false },
       stop: { summary: "stop a work item's stack and keep its containers and volumes", readOnly: false },
+      status: { summary: "list the test-environment stacks the engine holds, with each item's status", readOnly: true },
       trial: { summary: "build and start the environment twice from the root checkout, then remove it", readOnly: false },
     },
   },

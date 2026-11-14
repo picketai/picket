@@ -110,6 +110,14 @@ Stop a work item's stack and keep its containers and volumes.
 picket env stop <id>
 ```
 
+### picket env status
+
+List the test-environment stacks the engine holds, with each item's status.
+
+```sh
+picket env status
+```
+
 ### picket env trial
 
 Build and start the environment twice from the root checkout, then remove it.

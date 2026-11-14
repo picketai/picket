@@ -46,6 +46,7 @@ function answer({ words, projectDirectory }) {
   if (words[0] === "compose" && words[1] === "port" && words.length === 4) return `${PUBLISHED}\n`;
   if (words[0] === "compose" && ["build", "up", "stop", "down"].includes(words[1])) return "";
   if (words[0] === "image" && words[1] === "ls") return `${FAKE_IMAGE}\n`;
+  if (words[0] === "ps") return "";
   if (words[0] === "image" && words[1] === "rm") return "";
   return null;
 }

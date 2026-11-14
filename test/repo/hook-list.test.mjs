@@ -10,7 +10,7 @@ const BUILT = join(DIST, "hooks", "hooks.json");
 const HOOK_FOLDERS = resolve("src/lib/hooks");
 
 const EXPECTED_GROUPS = [
-  ["SessionStart", undefined, ["inject.state", "inject.rules", "inject.extensions", "emit.statusline"]],
+  ["SessionStart", undefined, ["inject.state", "inject.rules", "inject.extensions", "emit.statusline", "env.stacks"]],
   ["SubagentStart", undefined, ["inject.rules", "inject.extensions"]],
   ["UserPromptSubmit", undefined, ["inject.consulting"]],
   ["PreToolUse", "Write|Edit", ["guard.scope", "guard.comments", "guard.silenced"]],
@@ -22,6 +22,7 @@ const EXPECTED_GROUPS = [
   ["Stop", undefined, ["guard.block", "route.verdict", "emit.ledger"]],
   ["SubagentStop", undefined, ["guard.block", "route.verdict", "emit.ledger"]],
   ["Notification", "permission_prompt|idle_prompt", ["notify.user"]],
+  ["SessionEnd", undefined, ["env.stacks"]],
 ];
 
 function readJson(path) {

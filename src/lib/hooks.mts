@@ -1,4 +1,4 @@
-export const HOOK_EVENTS = ["SessionStart", "SubagentStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "SubagentStop", "Notification"] as const;
+export const HOOK_EVENTS = ["SessionStart", "SubagentStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "Stop", "SubagentStop", "Notification", "SessionEnd"] as const;
 
 export type HookEvent = (typeof HOOK_EVENTS)[number];
 
@@ -75,6 +75,10 @@ export const HOOKS = {
   "notify.user": {
     summary: "an OS notification in a detached process (a Windows toast through powershell.exe, osascript, notify-send); `PICKET_NOTIFY=off` skips it",
     on: [{ event: "Notification", matcher: "permission_prompt|idle_prompt" }],
+  },
+  "env.stacks": {
+    summary: "at session end (not `clear` or `resume`), a detached `compose stop` for each test-environment stack the session started; at startup, stops stacks whose session is gone and names stacks whose item is done or abandoned; engines outside docker, podman and the fixture fake are skipped",
+    on: [{ event: "SessionStart" }, { event: "SessionEnd" }],
   },
 } as const satisfies Record<string, HookEntry>;
 

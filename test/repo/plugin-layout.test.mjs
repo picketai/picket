@@ -80,8 +80,8 @@ test("the registration check notices a bundle that hooks.json drops", () => {
   assert.notDeepEqual([...registeredBundles(dropped)].sort(), bundlesOnDisk().sort());
 });
 
-test("hooks.json registers the nine events the plugin needs", () => {
-  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["Notification", "PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionStart", "Stop", "SubagentStart", "SubagentStop", "UserPromptSubmit"]);
+test("hooks.json registers the ten events the plugin needs", () => {
+  assert.deepEqual(Object.keys(readJson(PLUGIN_HOOKS).hooks).sort(), ["Notification", "PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionEnd", "SessionStart", "Stop", "SubagentStart", "SubagentStop", "UserPromptSubmit"]);
 });
 
 test("the Notification hook runs notify.user.mjs only for permission and idle prompts", () => {

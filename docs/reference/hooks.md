@@ -23,3 +23,4 @@ Each hook name starts with its kind. `guard.*` hooks deny a tool call or bounce 
 | `route.verdict` | Stop, SubagentStop |  | applies the verdict to the work item with the kernel and hands back `picket next` as context |
 | `emit.ledger` | Stop, SubagentStop |  | one v2 ledger row per turn (`bench/schema/ledger-v2.schema.json`) |
 | `notify.user` | Notification | `permission_prompt\|idle_prompt` | an OS notification in a detached process (a Windows toast through powershell.exe, osascript, notify-send); `PICKET_NOTIFY=off` skips it |
+| `env.stacks` | SessionStart, SessionEnd |  | at session end (not `clear` or `resume`), a detached `compose stop` for each test-environment stack the session started; at startup, stops stacks whose session is gone and names stacks whose item is done or abandoned; engines outside docker, podman and the fixture fake are skipped |
