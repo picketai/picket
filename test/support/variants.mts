@@ -103,6 +103,33 @@ export const stdinSpellings: Family<Invocation> = {
   },
 };
 
+function sentenceParts(sentence: string): { inner: string; bare: string } {
+  if (!sentence.endsWith(".")) throw new Error(`a sentence seed ends with a period, got ${sentence}`);
+  const inner = `${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
+  return { inner, bare: inner.slice(0, -1) };
+}
+
+export function distractorSentences(distractor: string): Family<string> {
+  return {
+    name: "distractor sentences",
+    spell: (sentence) => {
+      const { inner } = sentenceParts(sentence);
+      return spelled([`${distractor}. ${sentence}`, `${sentence} ${distractor}.`, `${distractor}, and ${inner}`, `${distractor}\n${sentence}`]);
+    },
+  };
+}
+
+const QUOTES: [string, string][] = [["\"", "\""], ["`", "`"], ["“", "”"], ["'", "'"]];
+
+export const quotedSpans: Family<string> = {
+  name: "quoted spans",
+  spell: (sentence) => {
+    const { bare } = sentenceParts(sentence);
+    const fromTicket = QUOTES.map(([open, close]) => `Implement ${open}${bare}${close} from the ticket.`);
+    return spelled([...fromTicket, `Make the API match the spec: "${bare}".`]);
+  },
+};
+
 export function openSpellings<T, R>(closure: Closure<T, R>, check: ClosureCheck<T>, t: TestContext): Spelling<T>[] {
   const spellings = check.seeds.flatMap((seed) => check.family.spell(seed));
   return spellings.filter((spelling) => !closure.closed(closure.run(spelling.input, t)));

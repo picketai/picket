@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asWritten, closureFailure, openSpellings, pairNames, pairPlaces, programFlagSpellings, stdinSpellings } from "#test/variants.mts";
+import { asWritten, closureFailure, distractorSentences, openSpellings, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -128,6 +128,25 @@ test("stdinSpellings reads the heredoc after - alone and after the leading flags
     { label: "python3 - << P", input: { argv: ["python3", "-"], heredocs: ["P"] } },
     { label: "python3 -X utf8 - << P", input: { argv: ["python3", "-X", "utf8", "-"], heredocs: ["P"] } },
   ]);
+});
+
+test("distractorSentences puts the distractor before, after, joined by and, and on the line above (T-4.2)", () => {
+  assert.deepEqual(labels(distractorSentences("D"), "Store it."), ["D. Store it.", "Store it. D.", "D, and store it.", "D\nStore it."]);
+});
+
+test("quotedSpans quotes the sentence four ways in a ticket request, then in a spec request (T-4.3)", () => {
+  assert.deepEqual(labels(quotedSpans, "Store it."), [
+    'Implement "store it" from the ticket.',
+    "Implement `store it` from the ticket.",
+    "Implement “store it” from the ticket.",
+    "Implement 'store it' from the ticket.",
+    'Make the API match the spec: "store it".',
+  ]);
+});
+
+test("the prose families refuse a seed without a closing period", () => {
+  assert.throws(() => quotedSpans.spell("Store it"), /a sentence seed ends with a period, got Store it/);
+  assert.throws(() => distractorSentences("D").spell("Store it"), /a sentence seed ends with a period, got Store it/);
 });
 
 test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {
