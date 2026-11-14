@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asWritten, closureFailure, openSpellings } from "#test/variants.mts";
+import { asWritten, closureFailure, openSpellings, pairNames, pairPlaces } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -69,4 +69,51 @@ test("a closure test with no open seed passes (T-1.3)", (t) => {
   const child = runClosureTest(t, [-1, 0]);
   assert.equal(child.status, 0, child.stdout);
   assert.match(child.stdout, /ok 1 - g stays closed under as written/);
+});
+
+function labels(family, seed) {
+  return family.spell(seed).map((spelling) => spelling.label);
+}
+
+test("pairPlaces puts the pair in the five addresses, in order (T-2.3)", () => {
+  assert.deepEqual(labels(pairPlaces, "password=K"), [
+    "https://a.example.com/x?password=K",
+    "https://a.example.com/x?a=1&password=K",
+    "Server=h;password=K",
+    "jdbc:postgresql://h/db?user=a&password=K",
+    "redis://h:6379?password=K",
+  ]);
+});
+
+test("pairNames prefixes the name, then upper-cases it, each in a query string (T-2.3)", () => {
+  assert.deepEqual(labels(pairNames, "password=K"), [
+    "https://a.example.com/x?sslpassword=K",
+    "https://a.example.com/x?client_password=K",
+    "https://a.example.com/x?access_password=K",
+    "https://a.example.com/x?X-Amz-password=K",
+    "https://a.example.com/x?PASSWORD=K",
+  ]);
+});
+
+test("a spelling's input is the address its label shows", () => {
+  for (const spelling of [...pairPlaces.spell("pwd=V"), ...pairNames.spell("pwd=V")]) assert.equal(spelling.input, spelling.label);
+});
+
+test("pairNames refuses a seed that is not name=value", () => {
+  assert.throws(() => pairNames.spell("password"), /a pair seed needs name=value, got password/);
+});
+
+test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {
+  const closure = {
+    guard: "semicolon masker",
+    run: (value) => value.replace(/;(\w+)=[^;]*/g, ";$1=***"),
+    closed: (output) => !output.includes("K"),
+    checks: [{ family: pairPlaces, seeds: ["password=K"] }],
+  };
+  assert.deepEqual(openSpellings(closure, closure.checks[0], t).map((spelling) => spelling.label), [
+    "https://a.example.com/x?password=K",
+    "https://a.example.com/x?a=1&password=K",
+    "jdbc:postgresql://h/db?user=a&password=K",
+    "redis://h:6379?password=K",
+  ]);
 });
