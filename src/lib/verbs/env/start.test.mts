@@ -18,7 +18,7 @@ const ENV = { PATH: process.env.PATH ?? "", SYSTEMROOT: process.env.SYSTEMROOT ?
 
 type Engine = { runner: EngineRunner; calls: string[] };
 
-const VALUE_FLAGS = ["-p", "--project-directory", "-f"];
+const VALUE_FLAGS = ["-p", "--project-directory", "-f", "--profile"];
 
 function modelAt(root: string): string {
   return RECORDED.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`);

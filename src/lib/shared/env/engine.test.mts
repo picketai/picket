@@ -162,7 +162,7 @@ test("readModelJson lists the profiles, then reads the model with each profile e
   const { runner, calls } = recording({
     [["docker", "info", "--format", "json"].join(" ")]: "{}",
     [["docker", "compose", ...files, "config", "--profiles"].join(" ")]: "picket-data\n",
-    [["docker", "compose", ...files, "config", "--format", "json", "--profile", "picket-data"].join(" ")]: '{"name":"env"}',
+    [["docker", "compose", ...files, "--profile", "picket-data", "config", "--format", "json"].join(" ")]: '{"name":"env"}',
   });
   const engine = findEngine({}, root, runner);
   assert.ok(engine);
@@ -170,7 +170,7 @@ test("readModelJson lists the profiles, then reads the model with each profile e
   assert.deepEqual(readModelJson(engine, root), { name: "env" });
   assert.deepEqual(calls, [
     ["docker", "compose", ...files, "config", "--profiles"],
-    ["docker", "compose", ...files, "config", "--format", "json", "--profile", "picket-data"],
+    ["docker", "compose", ...files, "--profile", "picket-data", "config", "--format", "json"],
   ]);
 });
 

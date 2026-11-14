@@ -171,18 +171,19 @@ export function composeFiles(root: string): string[] {
   return ["--project-directory", dir, "-f", join(dir, COMPOSE_FILE)];
 }
 
-function composeOutput(engine: Engine, root: string, args: string[]): string {
-  const result = engine.run(["compose", ...composeFiles(root), ...args]);
+function composeOutput(engine: Engine, root: string, globalFlags: string[], args: string[]): string {
+  const result = engine.run(["compose", ...composeFiles(root), ...globalFlags, ...args]);
   if (result.status === 0) return result.stdout;
   throw new Refused(`compose ${args.join(" ")} failed: ${lastErrorLine(result)}`);
 }
 
 export function readModelJson(engine: Engine, root: string): unknown {
-  const profiles = composeOutput(engine, root, ["config", "--profiles"])
+  const profiles = composeOutput(engine, root, [], ["config", "--profiles"])
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line !== "");
-  return JSON.parse(composeOutput(engine, root, ["config", "--format", "json", ...profiles.flatMap((name) => ["--profile", name])]));
+  const profileFlags = profiles.flatMap((name) => ["--profile", name]);
+  return JSON.parse(composeOutput(engine, root, profileFlags, ["config", "--format", "json"]));
 }
 
 export type MachineCheck = { engine: Engine | null; machine: MachineReport };
