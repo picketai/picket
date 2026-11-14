@@ -24,6 +24,7 @@ type VerdictSpec = { agent: string; effect: Effect };
 
 const CLASSED_VERDICT = "CHANGES REQUIRED";
 const AMENDED = "AMENDED";
+const PHASE_DONE = "PHASE DONE";
 const SPECS = VERDICTS as Readonly<Record<string, VerdictSpec>>;
 
 function verdictSpec(verdict: string, agent: string | null): VerdictSpec {
@@ -51,6 +52,12 @@ function verdictRow({ agent, verdict, phase, scope, through, classes, session, a
 function stampedRecord(amend: string | undefined, verdict: string, snap: WorkSnapshot): { record?: string } {
   if (!snap.artifact || !(amend || verdict === AMENDED)) return {};
   return { record: recordDigest(snap.artifact.body) };
+}
+
+function grantStamp({ verdict, phase }: PlannedVerdict, changes: Change[], snap: WorkSnapshot): { through?: number } {
+  if (verdict !== PHASE_DONE) return {};
+  const approved = changes.some((change) => change.kind === "marker" && change.mark === "approved" && change.phase === phase);
+  return { through: approved ? snap.state.run_through : undefined };
 }
 
 function refuseMisplacedPublish({ publish, verdict }: RouteInput, { effect }: VerdictSpec, snap: WorkSnapshot): void {
@@ -94,6 +101,6 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...stampedRecord(amend, input.verdict, snap) };
   const { rows } = readDriveLog(ctx.root);
   const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap, rows), correctionsOf(snap, rows));
-  const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow(planned, changes) });
+  const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow({ ...planned, ...grantStamp(planned, changes, snap) }, changes) });
   return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id, isSessionId(input.session) ? input.session : null) };
 }

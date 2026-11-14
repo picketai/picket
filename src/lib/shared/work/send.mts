@@ -111,10 +111,14 @@ function lastIndexOf(rows: readonly VerdictRow[], matches: (row: VerdictRow) => 
   return -1;
 }
 
-function developerHandedOn(snap: WorkSnapshot, from: number, session: string): boolean {
+function grantReaches(row: VerdictRow, phase: number): boolean {
+  return typeof row.through === "number" && row.through >= phase;
+}
+
+function developerHandedOn(snap: WorkSnapshot, phase: number, session: string): boolean {
   const at = lastIndexOf(snap.verdicts, developer(snap).owns);
   const row = snap.verdicts[at];
-  if (row?.verdict !== "PHASE DONE" || row.phase !== from || row.session !== session) return false;
+  if (row?.verdict !== "PHASE DONE" || row.phase !== phase - 1 || row.session !== session || !grantReaches(row, phase)) return false;
   return !snap.verdicts.slice(at + 1).some((later) => later.agent === "user");
 }
 
@@ -123,7 +127,7 @@ export function runHandOff(snap: WorkSnapshot, session: string | null): number |
   const through = snap.state.run_through;
   if (session === null || !current || current.done || current.idle || through === undefined || through < current.n) return null;
   if (!phaseOf(snap, current.n - 1)?.approved) return null;
-  return developerHandedOn(snap, current.n - 1, session) ? current.n : null;
+  return developerHandedOn(snap, current.n, session) ? current.n : null;
 }
 
 function implementSends(snap: WorkSnapshot, phase: number, session: string | null): SendView[] {

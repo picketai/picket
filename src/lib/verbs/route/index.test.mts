@@ -440,6 +440,32 @@ test("a grant over checks that all pass approves through the last phase (T-5.5)"
   assert.equal(r.next.action, "review_cumulative");
 });
 
+function lastRowThrough(root: string, id: WorkId): number | null {
+  return readSnapshot(root, id).verdicts.at(-1)?.through ?? null;
+}
+
+test("a PHASE DONE the run grant approves carries the grant on its row; one with no grant or stopped at a gate carries null (T-2.2)", (t) => {
+  const granted = setup(t);
+  route({ id: granted.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root: granted.root });
+  route({ id: granted.id, verdict: "approved", agent: "user", phase: 1, through: 3, root: granted.root });
+  route({ id: granted.id, verdict: "PHASE DONE", agent: "developer", phase: 2, root: granted.root });
+  assert.equal(lastRowThrough(granted.root, granted.id), 3);
+
+  const plain = setup(t);
+  route({ id: plain.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root: plain.root });
+  route({ id: plain.id, verdict: "approved", agent: "user", phase: 1, root: plain.root });
+  route({ id: plain.id, verdict: "PHASE DONE", agent: "developer", phase: 2, root: plain.root });
+  assert.equal(lastRowThrough(plain.root, plain.id), null);
+
+  const root = hostRoot(t);
+  const s = openItem(root, { lane: "design", title: "Gated" });
+  writeFileSync(join(root, "work", s.id, "design.md"), "---\nlane: design\nphases:\n  - n: 1\n    files: [src/config.ts]\n  - n: 2\n    files: [src/auth/guard.ts]\n  - n: 3\n    files: [src/c.ts]\n---\n# D\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n\n## Phase 3: C\n\nt\n");
+  route({ id: s.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  route({ id: s.id, verdict: "approved", agent: "user", phase: 1, through: 3, root });
+  route({ id: s.id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.equal(lastRowThrough(root, s.id), null);
+});
+
 test("a run grant stops at a phase the record marks security-sensitive", (t) => {
   const root = hostRoot(t);
   const s = openItem(root, { lane: "design", title: "Tidy" });

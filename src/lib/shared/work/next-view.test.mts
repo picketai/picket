@@ -88,7 +88,7 @@ test("a phase the run grant handed to the live developer shows the hand-off deta
     phases: [{ n: 1, done: true, approved: true }, { n: 2, done: true, approved: true }, { n: 3, title: "C" }],
     run_through: 3,
     verdicts: [
-      { ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: null, session: "S" },
+      { ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: 3, session: "S" },
       { ts: "2026-11-03T15:56:00.000Z", agent: "architect", verdict: "AMENDED", phase: null, scope: null, through: null, session: "S" },
     ],
   });

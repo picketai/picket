@@ -102,7 +102,7 @@ const handedOffPhase3 = (changes: { idle?: boolean; after?: object[] } = {}): Sn
   phases: [{ n: 1, done: true, approved: true }, { n: 2, done: true, approved: true }, { n: 3, idle: changes.idle ?? false }],
   run_through: 3,
   verdicts: [
-    { ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: null, session: S },
+    { ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: 3, session: S },
     ...(changes.after ?? []),
     { ts: "2026-11-03T15:56:00.000Z", agent: "architect", verdict: "AMENDED", phase: null, scope: null, through: null, session: S },
   ],
@@ -110,6 +110,17 @@ const handedOffPhase3 = (changes: { idle?: boolean; after?: object[] } = {}): Sn
 
 test("a phase the run grant handed to the live developer gets no send (T-2.1)", () => {
   assert.deepEqual(sends(handedOffPhase3(), implement(3)), []);
+});
+
+test("a grant set after the previous phase's PHASE DONE row, which carries no grant stamp, keeps the send (T-2.1)", () => {
+  const unstamped: SnapshotInput = {
+    phases: [{ n: 1, done: true, approved: true }, { n: 2, done: true, approved: true }, { n: 3 }],
+    run_through: 3,
+    verdicts: [{ ts: "2026-11-03T15:53:57.000Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: null, session: S }],
+  };
+  const out = sends(unstamped, implement(3));
+  assert.deepEqual(out.map((s) => s.to), [named("developer")]);
+  assert.equal(out[0].message.split("\n").at(-1), "run through 3");
 });
 
 test("the hand-off ends with a user row, another session or an idle marker, and the send returns (T-2.2)", () => {
