@@ -18,6 +18,9 @@ export const STATE_FILES = Object.freeze({
   branchingManifest: "branching.yaml",
   mutationRestore: "mutation-restore.json",
   updateNotice: "update-notice.json",
+  envScan: "env/scan.json",
+  envStacks: "env/stacks.json",
+  envTrial: "env/trial.json",
 });
 
 export const MODEL_WRITABLE_STATE_FILES = Object.freeze([STATE_FILES.branchingManifest]);

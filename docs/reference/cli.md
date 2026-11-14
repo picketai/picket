@@ -86,6 +86,14 @@ Check the machine and the environment against the standard.
 picket env check
 ```
 
+### picket env init
+
+Scan the umbrella and list the environment decisions for the user.
+
+```sh
+picket env init
+```
+
 ## picket extension
 
 Manage the project's extensions.

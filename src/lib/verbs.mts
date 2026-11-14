@@ -13,6 +13,7 @@ export const VERB_NAMES = {
     summary: "build, start, check and remove the project's test environment",
     subverbs: {
       check: { summary: "check the machine and the environment against the standard", readOnly: true },
+      init: { summary: "scan the umbrella and list the environment decisions for the user", readOnly: false },
     },
   },
   extension: {
