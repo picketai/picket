@@ -1,0 +1,5 @@
+{"ts":"2026-11-14T14:51:35.033Z","agent":"user","verdict":"user-lane","phase":null,"scope":null,"through":null,"admitted":"order"}
+{"ts":"2026-11-14T14:52:24.466Z","agent":"analyst","verdict":"REPORT WRITTEN","phase":null,"scope":null,"through":null,"session":"80c47df5-fbc0-45b8-a2b0-562ee6c4ba85"}
+{"ts":"2026-11-14T14:55:25.131Z","agent":"analyst","verdict":"REPORT WRITTEN","phase":null,"scope":null,"through":null,"session":"80c47df5-fbc0-45b8-a2b0-562ee6c4ba85"}
+{"ts":"2026-11-14T14:57:52.372Z","agent":"analyst","verdict":"REPORT WRITTEN","phase":null,"scope":null,"through":null,"session":"80c47df5-fbc0-45b8-a2b0-562ee6c4ba85"}
+{"ts":"2026-11-14T14:58:17.021Z","agent":"user","verdict":"approved","phase":1,"scope":null,"through":null,"session":"80c47df5-fbc0-45b8-a2b0-562ee6c4ba85","published":"artifacts/reports/lessons-assets-video-transcript.md"}
