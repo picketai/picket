@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asWritten, closureFailure, distractorSentences, openSpellings, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings } from "#test/variants.mts";
+import { asWritten, closureFailure, distractorSentences, listPlacements, openSpellings, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -147,6 +147,15 @@ test("quotedSpans quotes the sentence four ways in a ticket request, then in a s
 test("the prose families refuse a seed without a closing period", () => {
   assert.throws(() => quotedSpans.spell("Store it"), /a sentence seed ends with a period, got Store it/);
   assert.throws(() => distractorSentences("D").spell("Store it"), /a sentence seed ends with a period, got Store it/);
+});
+
+test("listPlacements puts the malformed item alone, before and after the valid check (T-5.2)", () => {
+  const spellings = listPlacements(["V"]).spell({ label: "x", lines: ["M"] });
+  assert.deepEqual(spellings, [
+    { label: "x, alone", input: { label: "x, alone", lines: ["    drive:", "M"] } },
+    { label: "x, before a valid check", input: { label: "x, before a valid check", lines: ["    drive:", "M", "V"] } },
+    { label: "x, after a valid check", input: { label: "x, after a valid check", lines: ["    drive:", "V", "M"] } },
+  ]);
 });
 
 test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {

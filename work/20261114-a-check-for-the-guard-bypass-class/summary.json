@@ -1,0 +1,54 @@
+{
+  "work_id": "20261114-a-check-for-the-guard-bypass-class",
+  "base": "5d23e0c2e8f215f3a1b06898b7a8207021be349d",
+  "request": "work/20261114-a-check-for-the-guard-bypass-class/request.md",
+  "size": "large",
+  "changed_files": [
+    "scripts/replay-rejected.mjs",
+    "src/lib/hooks/guard/bash/in-place.variants.test.mts",
+    "src/lib/shared/admission/signals.variants.test.mts",
+    "src/lib/shared/env/config-entries.variants.test.mts",
+    "test/repo/replay-rejected.test.mjs",
+    "test/repo/variants.test.mjs",
+    "test/support/variants.mts"
+  ],
+  "lines_added": 573,
+  "lines_removed": 3,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 7,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

@@ -130,6 +130,22 @@ export const quotedSpans: Family<string> = {
   },
 };
 
+export type ListSeed = { label: string; lines: string[] };
+
+const DRIVE_HEADER = "    drive:";
+
+export function listPlacements(valid: string[]): Family<ListSeed> {
+  const placed = (label: string, lines: string[]): Spelling<ListSeed> => ({ label, input: { label, lines: [DRIVE_HEADER, ...lines] } });
+  return {
+    name: "list placements",
+    spell: ({ label, lines }) => [
+      placed(`${label}, alone`, lines),
+      placed(`${label}, before a valid check`, [...lines, ...valid]),
+      placed(`${label}, after a valid check`, [...valid, ...lines]),
+    ],
+  };
+}
+
 export function openSpellings<T, R>(closure: Closure<T, R>, check: ClosureCheck<T>, t: TestContext): Spelling<T>[] {
   const spellings = check.seeds.flatMap((seed) => check.family.spell(seed));
   return spellings.filter((spelling) => !closure.closed(closure.run(spelling.input, t)));
