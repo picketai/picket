@@ -47,3 +47,7 @@ export function spendRefusal(maxUsd, total) {
   if (cents(total) > cents(maxUsd)) return `planned $${total.toFixed(2)} is over --max-usd $${maxUsd.toFixed(2)}`;
   return null;
 }
+
+export function runRefusal({ maxUsd, budgetUsd, total }) {
+  return budgetRefusal(budgetUsd) ?? spendRefusal(maxUsd, total);
+}

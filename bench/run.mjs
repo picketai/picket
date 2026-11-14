@@ -11,7 +11,7 @@ import { grade, changedFiles, linesAdded } from "./lib/grade.mjs";
 import { addUsage, cacheHitRatio, totalTokens, round } from "./lib/metrics.mjs";
 import { defaultExec, nextPort, parseNetstatListeners, runOrphans, stopProcesses } from "./lib/ports.mjs";
 import { trustWorkspace, untrustWorkspace } from "./lib/trust.mjs";
-import { budgetRefusal, callLimit, charge, openLedger, plannedSpend, spendRefusal, taskBudget } from "./lib/spend.mjs";
+import { callLimit, charge, openLedger, plannedSpend, runRefusal, taskBudget } from "./lib/spend.mjs";
 
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(BENCH, "..");
@@ -318,7 +318,7 @@ async function main() {
   const plan = plannedSpend({ tasks, runs: args.runs, budgetUsd: args.budget, records: existing.records });
   logPlan(plan, log);
   if (args.dry) return;
-  const refusal = budgetRefusal(args.budget) ?? spendRefusal(args.maxUsd, plan.total);
+  const refusal = runRefusal({ maxUsd: args.maxUsd, budgetUsd: args.budget, total: plan.total });
   if (refusal) {
     console.error(`refused: ${refusal}`);
     process.exitCode = 1;

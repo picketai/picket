@@ -146,6 +146,15 @@ export function listPlacements(valid: string[]): Family<ListSeed> {
   };
 }
 
+function numberLabel(n: number): string {
+  return Object.is(n, -0) ? "-0" : String(n);
+}
+
+export const outOfDomainNumbers: Family<number> = {
+  name: "out-of-domain numbers",
+  spell: (n) => [NaN, 0, -0, -n, Infinity, -Infinity].map((input) => ({ label: numberLabel(input), input })),
+};
+
 export function openSpellings<T, R>(closure: Closure<T, R>, check: ClosureCheck<T>, t: TestContext): Spelling<T>[] {
   const spellings = check.seeds.flatMap((seed) => check.family.spell(seed));
   return spellings.filter((spelling) => !closure.closed(closure.run(spelling.input, t)));

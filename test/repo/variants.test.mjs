@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asWritten, closureFailure, distractorSentences, listPlacements, openSpellings, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings } from "#test/variants.mts";
+import { asWritten, closureFailure, distractorSentences, listPlacements, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -156,6 +156,12 @@ test("listPlacements puts the malformed item alone, before and after the valid c
     { label: "x, before a valid check", input: { label: "x, before a valid check", lines: ["    drive:", "M", "V"] } },
     { label: "x, after a valid check", input: { label: "x, after a valid check", lines: ["    drive:", "V", "M"] } },
   ]);
+});
+
+test("outOfDomainNumbers spells NaN, both zeros, the negation and both infinities (T-6.2)", () => {
+  const spellings = outOfDomainNumbers.spell(2);
+  assert.deepEqual(spellings.map((spelling) => spelling.label), ["NaN", "0", "-0", "-2", "Infinity", "-Infinity"]);
+  assert.deepEqual(spellings.map((spelling) => spelling.input), [NaN, 0, -0, -2, Infinity, -Infinity]);
 });
 
 test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {
