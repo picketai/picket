@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-14T15:01:07.383Z",
+  "base": "36e0878171fa629a70a26ed634c37f90ae7dd4d5",
+  "mutant": {
+    "path": "src/lib/shared/env/engine.mts",
+    "line": 129,
+    "from": "!==",
+    "to": "==="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 106743
+}

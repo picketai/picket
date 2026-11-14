@@ -1,2 +1,4 @@
 {"ts":"2026-11-14T14:23:49.667Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_phase","phase":1,"reply":"r"}
 {"ts":"2026-11-14T14:35:52.159Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"resolve_block","phase":null,"reply":"c","fresh":true}
+{"ts":"2026-11-14T15:05:52.347Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_amendment","phase":null,"reply":"a","choice":"amend"}
+{"ts":"2026-11-14T15:06:27.691Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_amendment","phase":null,"reply":"a","choice":"amend"}

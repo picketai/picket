@@ -5,3 +5,8 @@
 {"ts":"2026-11-14T14:26:16.874Z","agent":"developer","verdict":"PHASE DONE","phase":2,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
 {"ts":"2026-11-14T14:26:28.463Z","agent":"developer","verdict":"PHASE STALLED","phase":3,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
 {"ts":"2026-11-14T14:59:00.889Z","agent":"developer","verdict":"PHASE DONE","phase":3,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-14T15:04:33.516Z","agent":"reviewer","verdict":"CHANGES REQUIRED","phase":null,"scope":"cumulative","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","amend":"AMENDMENT NEEDED: T-1.5 the drive check expects TAP `# pass 1`; Node prints `ℹ pass 1`","record":"77b7b2609c4c1db269c7874ee29952d64d87912badfc5c1ee3a0f3f66cf6c4e9"}
+{"ts":"2026-11-14T15:06:09.923Z","agent":"architect","verdict":"AMENDED","phase":null,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","record":"77b7b2609c4c1db269c7874ee29952d64d87912badfc5c1ee3a0f3f66cf6c4e9"}
+{"ts":"2026-11-14T15:07:54.581Z","agent":"architect","verdict":"AMENDED","phase":null,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","record":"cf06e999c24b8c8c039a2599c584128a237e864e23910126a3a449158e33f0da"}
+{"ts":"2026-11-14T15:08:32.416Z","agent":"developer","verdict":"PHASE DONE","phase":3,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-14T15:09:05.827Z","agent":"reviewer","verdict":"APPROVED","phase":null,"scope":"cumulative","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}

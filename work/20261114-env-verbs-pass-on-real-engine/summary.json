@@ -1,0 +1,75 @@
+{
+  "work_id": "20261114-env-verbs-pass-on-real-engine",
+  "base": "36e0878171fa629a70a26ed634c37f90ae7dd4d5",
+  "request": "work/20261114-env-verbs-pass-on-real-engine/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/lib/shared/env/engine.mts",
+    "src/lib/shared/env/engine.test.mts",
+    "src/lib/shared/env/purge.mts",
+    "src/lib/shared/env/trial.mts",
+    "src/lib/verbs/env/start.mts",
+    "src/lib/verbs/env/start.test.mts",
+    "src/lib/verbs/env/status.mts",
+    "src/lib/verbs/env/stop.mts",
+    "test/env/fake-engine.test.mjs",
+    "test/fixtures/env/fake-engine.mjs",
+    "test/fixtures/env/podman-stderr/config-unknown-flag.txt",
+    "test/fixtures/env/podman-stderr/up-pasta.txt"
+  ],
+  "lines_added": 255,
+  "lines_removed": 65,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-14T15:01:07.383Z",
+    "base": "36e0878171fa629a70a26ed634c37f90ae7dd4d5",
+    "mutant": {
+      "path": "src/lib/shared/env/engine.mts",
+      "line": 129,
+      "from": "!==",
+      "to": "==="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 106743
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

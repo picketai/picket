@@ -36,8 +36,8 @@ phases:
         command: node --test test/env/model.engine.mjs
         exit_code: 0
         contains:
-          - "# pass 1"
-          - "# fail 0"
+          - "ℹ pass 1"
+          - "ℹ fail 0"
     security: false
   - n: 2
     files:
@@ -274,3 +274,4 @@ Starts only after OQ-001 is answered and `podman network create picket-probe-net
 - **OQ-001** Will the machine owner fix the host so that a rootless Podman container can join a user-defined network? Today `podman info` gives runroot `/mnt/work/development/containers/podman/run` (from `~/.config/containers/storage.conf`, `/home/vlad/Work` resolving to `/mnt/work`), and the pasta AppArmor profile allows writes only under `/run/user/<uid>/**`, `/tmp/**` and the owner's home, so pasta cannot write its PID file. Recommended: set `runroot` back under `/run/user/1000` (Podman's rootless default `/run/user/1000/containers`), with containers stopped, then `systemctl --user restart podman.socket`; the alternative is a line `owner /mnt/work/development/containers/podman/run/** rw,` in `/etc/apparmor.d/local/usr.bin.pasta` and `sudo apparmor_parser -r /etc/apparmor.d/usr.bin.pasta`. Owner: the user. Fallback: phases 1 and 2 ship; their `tests` must_have runs `npm test`, whose env step stops in `test/env/lifecycle.engine.mjs` at `compose up` with the pasta cause (later steps do not run), and the user reads that at the gate as this host fault or lets verify run with `PICKET_ENGINE=test/fixtures/env/fake-engine.mjs`, which skips the env step; phase 3 waits.
 
 ## Revision log
+- 2026-11-14: T-1.5: drive check strings now "ℹ pass 1" and "ℹ fail 0", the text Node prints; one-off frontmatter correction the user approved
