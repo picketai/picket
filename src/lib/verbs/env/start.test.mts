@@ -24,7 +24,7 @@ function modelAt(root: string): string {
   return RECORDED.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`);
 }
 
-function engine(root: string, { revision }: { revision?: string } = {}): Engine {
+function engine(root: string, { revision, published = "0.0.0.0:49153" }: { revision?: string; published?: string } = {}): Engine {
   const calls: string[] = [];
   const runner: EngineRunner = (_program, args) => {
     const words = args.filter((arg, i) => !VALUE_FLAGS.includes(arg) && !VALUE_FLAGS.includes(args[i - 1]));
@@ -38,7 +38,7 @@ function engine(root: string, { revision }: { revision?: string } = {}): Engine 
       const tag = words[2].slice(words[2].lastIndexOf(":") + 1);
       return { status: 0, stdout: JSON.stringify([{ Config: { Labels: { "org.opencontainers.image.revision": revision ?? tag } } }]), stderr: "" };
     }
-    if (words[1] === "port") return { status: 0, stdout: "0.0.0.0:49153\n", stderr: "" };
+    if (words[1] === "port") return { status: 0, stdout: `${published}\n`, stderr: "" };
     return { status: 0, stdout: "", stderr: "" };
   };
   return { runner, calls };
@@ -87,6 +87,13 @@ test("start runs build, image inspect, up, then port, and records the stack with
   const lines = renderStart(report).split("\n");
   assert.match(lines[1], /^orders · built from \. at [0-9a-f]{7}(?:-t[0-9a-f]{7})?$/);
   assert.ok(lines.includes("PICKET_URL_ORDERS=http://127.0.0.1:49153"));
+});
+
+test("a port Podman publishes with an empty host is reached on 127.0.0.1", (t) => {
+  const { ctx, id } = project(t);
+  const { runner } = engine(ctx.root, { published: ":44011" });
+  const report = describeExit(startEnvironment(ctx, runner, id)).json as StartReport;
+  assert.deepEqual(report.urls, { PICKET_URL_ORDERS: "http://127.0.0.1:44011", PICKET_URL_PAYMENTS_MOCK: "http://127.0.0.1:44011" });
 });
 
 test("an image whose revision label differs refuses before up and records no stack (T-5.4)", (t) => {

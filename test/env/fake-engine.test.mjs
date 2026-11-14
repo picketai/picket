@@ -57,6 +57,11 @@ test("the fake has no model answer when no profile is enabled", () => {
   assertComposeRefusal(fake(args), args, 'fake engine: no answer for "compose config --format json"');
 });
 
+test("the fake answers compose port the way Podman 5.7.0 does, with an empty host before the port", () => {
+  const r = fake(["compose", "-p", "picket-trial", "--project-directory", ENV_DIR, "-f", COMPOSE_FILE, "port", "orders", "8080"]);
+  assert.deepEqual({ status: r.status, stdout: r.stdout, stderr: r.stderr }, { status: 0, stdout: ":49153\n", stderr: "" });
+});
+
 test("a failed call outside compose keeps one stderr line", () => {
   const r = fake(["volume", "rm", "x"]);
   assert.deepEqual({ status: r.status, stdout: r.stdout, stderr: r.stderr }, { status: 1, stdout: "", stderr: 'fake engine: no answer for "volume rm x"\n' });

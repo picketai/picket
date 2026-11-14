@@ -7,7 +7,7 @@ const RECORDED_MODEL = join(HERE, "compose-config.json");
 const RECORDED_ROOT = '"/umbrella/';
 const VALUE_FLAGS = new Set(["--project-directory", "-f", "-p"]);
 const COMPOSE_GLOBAL_FLAGS = new Set([...VALUE_FLAGS, "--profile"]);
-const PUBLISHED = "0.0.0.0:49153";
+const PODMAN_PUBLISHED = ":49153";
 const FAKE_IMAGE = "sha256:0f0f0f0f0f0f";
 const DATA_PROFILE = "picket-data";
 const ESC = "\u001b";
@@ -71,7 +71,7 @@ function answer({ words, projectDirectory, profiles }) {
   if (call === "compose config --profiles") return `${DATA_PROFILE}\n`;
   if (call === "compose config --format json" && profiles.includes(DATA_PROFILE)) return recordedModel(projectDirectory);
   if (words[0] === "image" && words[1] === "inspect" && words.length === 3) return imageInspect(words[2]);
-  if (words[0] === "compose" && words[1] === "port" && words.length === 4) return `${PUBLISHED}\n`;
+  if (words[0] === "compose" && words[1] === "port" && words.length === 4) return `${PODMAN_PUBLISHED}\n`;
   if (words[0] === "compose" && ["build", "up", "stop", "down"].includes(words[1])) return "";
   if (words[0] === "image" && words[1] === "ls") return `${FAKE_IMAGE}\n`;
   if (words[0] === "ps") return "";

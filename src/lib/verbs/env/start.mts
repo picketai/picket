@@ -20,7 +20,7 @@ export type BuiltApp = { service: string; checkout: string; version: string };
 export type StartReport = { ok: boolean; machine: MachineReport; stack: string | null; apps: BuiltApp[]; urls: Record<string, string> };
 
 const CLOSED_STATUSES = ["done", "abandoned"];
-const ANY_ADDRESS = /^(?:0\.0\.0\.0|\[::\]|::)$/;
+const ANY_ADDRESS = new Set(["", "0.0.0.0", "[::]", "::"]);
 const LOCALHOST = "127.0.0.1";
 
 function openState(root: string, id: WorkId): WorkState {
@@ -69,7 +69,7 @@ function hostUrl(published: string): string | null {
   const at = line.lastIndexOf(":");
   if (at < 0) return null;
   const host = line.slice(0, at);
-  return `http://${ANY_ADDRESS.test(host) ? LOCALHOST : host}:${line.slice(at + 1)}`;
+  return `http://${ANY_ADDRESS.has(host) ? LOCALHOST : host}:${line.slice(at + 1)}`;
 }
 
 function serviceUrls(engine: Engine, root: string, stack: string, files: string[], services: EnvService[]): Record<string, string> {
