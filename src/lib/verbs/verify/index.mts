@@ -4,6 +4,12 @@ import { action, done, failed } from "../../shared/action.mts";
 import { locate, testRuns, type TestRun } from "../../shared/checkouts.mts";
 import { runStep } from "../../shared/checks.mts";
 import { readDriveLog, type DriveRow } from "../../shared/drive-log.mts";
+import { machineCheck, readModelJson, realRunner, type Engine, type EngineRunner } from "../../shared/env/engine.mts";
+import { locatedFindings, splitByChange, type LocatedFinding } from "../../shared/env/instep.mts";
+import { readModel, type EnvModel } from "../../shared/env/model.mts";
+import { scanUmbrella } from "../../shared/env/scan.mts";
+import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
+import { changedSince } from "../../shared/git.mts";
 import type { ItemLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import type { GrepEntry } from "../../shared/work/artifact.mts";
@@ -16,7 +22,8 @@ import type { JsonlRead } from "../../util/io.mts";
 export type VerifyInput = { id: WorkId; phase: number; runTests: boolean };
 export type VerifyResult = { name: string; ok: boolean; detail: string };
 export type VerifyReport = { ok: boolean; phase: number; results: VerifyResult[]; warnings?: string[] };
-export type VerifyOptions = { runTests: boolean; env: NodeJS.ProcessEnv };
+export type VerifyOptions = { runTests: boolean; env: NodeJS.ProcessEnv; runner?: EngineRunner; cwd?: string };
+type EnvironmentCheck = { result: VerifyResult; warnings: string[] };
 
 const PHASE_NUMBER = /^\d+$/;
 const TEST_TIMEOUT_MS = 300_000;
@@ -103,6 +110,39 @@ function driveResults(root: string, snap: WorkSnapshot, n: number): VerifyResult
   return [...unreadableChecks(phaseCheckProblems(snap, n)), ...checks.map(checkResult)];
 }
 
+function changedPaths(root: string, snap: WorkSnapshot, planPaths: string[]): string[] {
+  const rootChanges = snap.state.base ? changedSince(root, snap.state.base) : [];
+  const repoChanges = snap.layout.repos.flatMap(({ path, base, worktree }) => (base ? changedSince(join(root, worktree ?? path), base).map((file) => posix.join(path, file)) : []));
+  return [...new Set([...planPaths, ...rootChanges, ...repoChanges])];
+}
+
+function notChecked(reason: string): EnvironmentCheck {
+  return { result: { name: "environment", ok: false, detail: `environment not checked: ${reason}` }, warnings: [] };
+}
+
+function findingText({ finding }: LocatedFinding): string {
+  return finding.service === null ? finding.message : `${finding.service}: ${finding.message}`;
+}
+
+function modelOrReason(engine: Engine, root: string): EnvModel | string {
+  try {
+    return readModel(readModelJson(engine, root));
+  } catch (err) {
+    return (err as Error).message;
+  }
+}
+
+function environmentCheck(root: string, snap: WorkSnapshot, planPaths: string[], { env, cwd, runner = realRunner }: VerifyOptions): EnvironmentCheck {
+  const { engine, machine } = machineCheck(env, cwd ?? root, root, runner);
+  if (!engine || !machine.ok) return notChecked(machine.missing[0]?.split(":")[0] ?? "no container engine");
+  const model = modelOrReason(engine, root);
+  if (typeof model === "string") return notChecked(model);
+  const errors = locatedFindings(scanUmbrella(root), model, root).filter(({ finding }) => finding.level === "error");
+  const { caused, other } = splitByChange(errors, changedPaths(root, snap, planPaths));
+  const detail = caused.length ? `out of step: ${caused.map(findingText).join("; ")}` : "in step for the paths this item changed";
+  return { result: { name: "environment", ok: caused.length === 0, detail }, warnings: other.map((f) => `environment: ${findingText(f)}`) };
+}
+
 export function verify(root: string, id: WorkId, n: number, options: VerifyOptions): VerifyReport {
   const snap = readSnapshot(root, id);
   const phase = phaseOf(snap, n);
@@ -118,12 +158,17 @@ export function verify(root: string, id: WorkId, n: number, options: VerifyOptio
   results.push(...runs.map((run) => testsResult(root, run, options)));
   const warnings = runs.flatMap((run) => run.warnings);
   if (mustHaves.drive) results.push(...driveResults(root, snap, n));
+  if (existsSync(join(root, ENV_DIR, COMPOSE_FILE))) {
+    const environment = environmentCheck(root, snap, mustHaves.files ?? [], options);
+    results.push(environment.result);
+    warnings.push(...environment.warnings);
+  }
   const report = { ok: results.every((result) => result.ok), phase: n, results };
   return warnings.length ? { ...report, warnings } : report;
 }
 
-export const verifyPhase = action<VerifyInput, VerifyReport>(async ({ id, phase, runTests }, { root, env }) => {
-  const report = verify(root, id, phase, { runTests, env });
+export const verifyPhase = action<VerifyInput, VerifyReport>(async ({ id, phase, runTests }, { root, env, cwd }) => {
+  const report = verify(root, id, phase, { runTests, env, cwd, runner: realRunner });
   return report.ok ? done(report) : failed(report);
 });
 

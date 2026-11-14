@@ -1,13 +1,15 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import type { EngineRunner } from "../../shared/env/engine.mts";
+import type { WorkId } from "../../shared/work/files.mts";
 import { verb, verify, type VerifyReport } from "./index.mts";
 import { stateDir, statePath, STATE_FILES } from "../../shared/paths.mts";
 import { phaseOf, readSnapshot } from "../../shared/work/snapshot.mts";
 import { writeLayout } from "../../shared/repos.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
-import { writeIn } from "#test/git.mts";
+import { gitIn, gitRepo, writeIn } from "#test/git.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 
 function setup(t: TestContext, tests = false) {
@@ -262,4 +264,59 @@ test("verify names the status, command and log of a failed test step", (t) => {
   const r = verify(root, id, 1, { runTests: true, env: process.env });
   assert.deepEqual(r.results.find((x) => x.name === "tests"), { name: "tests", ok: false, detail: "failed · npm test · log .picket/state/verify-test.log" });
   assert.equal(existsSync(statePath(root, "verify-test.log")), true);
+});
+
+const RECORDED_MODEL = readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8");
+const STOCK_FINDING = "stock: services/stock is not in the environment: add a service, or list it as shared, ignored or pending";
+
+function engineRunner(root: string): EngineRunner {
+  return (_program, args) => {
+    if (args[0] === "info") return { status: 0, stdout: '{"OSType":"linux"}', stderr: "" };
+    if (args[1] === "version") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
+    if (args.at(-1) === "--profiles") return { status: 0, stdout: "picket-data\n", stderr: "" };
+    if (args.includes("config")) return { status: 0, stdout: RECORDED_MODEL.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`), stderr: "" };
+    return { status: 1, stdout: "", stderr: "" };
+  };
+}
+
+const noEngine: EngineRunner = () => ({ status: 1, stdout: "", stderr: "" });
+
+function environmentItem(t: TestContext, { stockAtBase, phaseFile }: { stockAtBase: boolean; phaseFile: string }): { root: string; id: WorkId } {
+  const root = realpathSync(gitRepo(t, { files: { "README.md": "u\n" } }));
+  cpSync(resolve("test/fixtures/env/umbrella"), root, { recursive: true });
+  if (stockAtBase) writeIn(root, "services/stock/package.json", "{}\n");
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "umbrella");
+  const { id } = openItem(root, { lane: "order", title: "Stock" });
+  writeArtifact(root, id, "order.md", ["---", "lane: order", "phases:", "  - n: 1", `    files: [${phaseFile}]`, "    tests: false", "    drive: false", "---", "# O", "", "## Phase 1: Stock", "", "t"].join("\n"));
+  return { root, id };
+}
+
+const environmentOf = (report: VerifyReport) => report.results.find((x) => x.name === "environment");
+
+test("a phase that adds an out-of-step service fails the environment result naming it (T-9.1)", (t) => {
+  const { root, id } = environmentItem(t, { stockAtBase: false, phaseFile: "services/stock/package.json" });
+  writeIn(root, "services/stock/package.json", "{}\n");
+  const report = verify(root, id, 1, { runTests: false, env: {}, cwd: root, runner: engineRunner(root) });
+  assert.deepEqual(environmentOf(report), { name: "environment", ok: false, detail: `out of step: ${STOCK_FINDING}` });
+  assert.equal(report.ok, false);
+});
+
+test("an out-of-step folder present at the base and untouched is a warning, not a failure (T-9.2)", (t) => {
+  const { root, id } = environmentItem(t, { stockAtBase: true, phaseFile: "README.md" });
+  const report = verify(root, id, 1, { runTests: false, env: {}, cwd: root, runner: engineRunner(root) });
+  assert.deepEqual(environmentOf(report), { name: "environment", ok: true, detail: "in step for the paths this item changed" });
+  assert.deepEqual(report.warnings, [`environment: ${STOCK_FINDING}`]);
+  assert.equal(report.ok, true);
+});
+
+test("a root without an environment gets no environment result (T-9.3)", (t) => {
+  const { root, id } = setup(t);
+  assert.equal(environmentOf(verify(root, id, 1, { runTests: false, env: {}, cwd: root, runner: noEngine })), undefined);
+});
+
+test("with the environment and no engine, the environment result fails as not checked (T-9.4)", (t) => {
+  const { root, id } = environmentItem(t, { stockAtBase: false, phaseFile: "README.md" });
+  const report = verify(root, id, 1, { runTests: false, env: {}, cwd: root, runner: noEngine });
+  assert.deepEqual(environmentOf(report), { name: "environment", ok: false, detail: "environment not checked: no container engine" });
 });

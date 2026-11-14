@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { inStepFindings, outOfStep } from "./instep.mts";
+import { inStepFindings, locatedFindings, outOfStep, splitByChange } from "./instep.mts";
 import { readModel, type EnvModel } from "./model.mts";
 import { scanUmbrella } from "./scan.mts";
 
@@ -54,6 +54,19 @@ test("a new services/stock package gives one E9 naming services/stock (T-4.3)", 
   assert.match(found[0].message, /^services\/stock is not in the environment/);
   const gaps = outOfStep(scanUmbrella(root), model(), root);
   assert.deepEqual([gaps.services.map((s) => s.path), gaps.entries], [["services/stock"], []]);
+});
+
+test("splitByChange puts the services/stock finding under caused for a file in it and under other for another folder (T-9.5)", (t) => {
+  const root = copy(t);
+  mkdirSync(join(root, "services", "stock"));
+  writeFileSync(join(root, "services", "stock", "package.json"), "{}");
+  const errorsOnly = locatedFindings(scanUmbrella(root), model(), root).filter(({ finding }) => finding.level === "error");
+  assert.deepEqual(errorsOnly.map(({ path }) => path), ["services/stock"]);
+  const inStock = splitByChange(errorsOnly, ["services/stock/package.json"]);
+  assert.deepEqual([inStock.caused.length, inStock.other.length], [1, 0]);
+  const elsewhere = splitByChange(errorsOnly, ["services/orders/server.mjs"]);
+  assert.deepEqual([elsewhere.caused.length, elsewhere.other.length], [0, 1]);
+  assert.equal(splitByChange(errorsOnly, ["services"]).caused.length, 1, "a changed folder above the finding also causes it");
 });
 
 test("a by: file row whose replaced file is missing is an error, and present it passes", (t) => {

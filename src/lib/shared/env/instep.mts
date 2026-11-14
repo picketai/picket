@@ -6,7 +6,9 @@ import type { Scan, ScannedEntry, ScannedService } from "./scan.mts";
 
 export type OutOfStep = { services: ScannedService[]; entries: ScannedEntry[] };
 
-type Gap = { finding: Finding; service: ScannedService | null; entry: ScannedEntry | null };
+type Gap = { finding: Finding; service: ScannedService | null; entry: ScannedEntry | null; path: string | null };
+export type LocatedFinding = { finding: Finding; path: string | null };
+export type SplitFindings = { caused: LocatedFinding[]; other: LocatedFinding[] };
 
 const RULE = "E9";
 
@@ -22,8 +24,11 @@ function levelFor(service: string | null, pending: Set<string>): Finding["level"
   return service !== null && pending.has(service) ? "pending" : "error";
 }
 
-function gap(service: string | null, pending: Set<string>, message: string, rows: { service?: ScannedService; entry?: ScannedEntry } = {}): Gap {
-  return { finding: { rule: RULE, service, level: levelFor(service, pending), message }, service: rows.service ?? null, entry: rows.entry ?? null };
+type GapRows = { service?: ScannedService; entry?: ScannedEntry; path?: string | null };
+
+function gap(service: string | null, pending: Set<string>, message: string, rows: GapRows = {}): Gap {
+  const path = rows.path ?? rows.service?.path ?? rows.entry?.file ?? null;
+  return { finding: { rule: RULE, service, level: levelFor(service, pending), message }, service: rows.service ?? null, entry: rows.entry ?? null, path };
 }
 
 function serviceGaps(scan: Scan, model: EnvModel, pending: Set<string>): Gap[] {
@@ -58,18 +63,31 @@ function rowGaps(scan: Scan, model: EnvModel, root: string, pending: Set<string>
     const message = rowMessage(row, model, root);
     if (message === null) return [];
     const entry = scan.entries.find((e) => e.file === row.file && e.key === row.key);
-    return [gap(row.service, pending, message, { entry })];
+    return [gap(row.service, pending, message, { entry, path: row.file })];
   });
 }
 
 function gaps(scan: Scan, model: EnvModel, root: string): Gap[] {
   const pending = new Set((model.picket?.pending ?? []).map((row) => row.service));
-  const rows = (model.picket?.pending ?? []).map((row) => gap(row.service, pending, row.what));
+  const rows = (model.picket?.pending ?? []).map((row) => gap(row.service, pending, row.what, { service: scan.services.find((s) => s.name === row.service) }));
   return [...rows, ...serviceGaps(scan, model, pending), ...entryGaps(scan, model, pending), ...rowGaps(scan, model, root, pending)];
 }
 
 export function inStepFindings(scan: Scan, model: EnvModel, root: string): Finding[] {
   return gaps(scan, model, root).map(({ finding }) => finding);
+}
+
+export function locatedFindings(scan: Scan, model: EnvModel, root: string): LocatedFinding[] {
+  return gaps(scan, model, root).map(({ finding, path }) => ({ finding, path }));
+}
+
+function under(path: string, folder: string): boolean {
+  return path === folder || path.startsWith(`${folder.replace(/\/$/, "")}/`);
+}
+
+export function splitByChange(findings: LocatedFinding[], changed: string[]): SplitFindings {
+  const caused = (path: string | null) => path !== null && changed.some((c) => under(path, c) || under(c, path));
+  return { caused: findings.filter((f) => caused(f.path)), other: findings.filter((f) => !caused(f.path)) };
 }
 
 export function outOfStep(scan: Scan, model: EnvModel, root: string): OutOfStep {
