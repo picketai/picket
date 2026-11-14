@@ -224,6 +224,19 @@ test("an amend send names the saved review of the row that asked, before the rew
   );
 });
 
+const T15_AMEND = "AMENDMENT NEEDED: T-1.5 the drive check expects # pass 1";
+const runCheck = (covers: string) => ({ covers, command: "node --test a", exit_code: 0, contains: ["# pass 1"] });
+const checkedPhase = (covers: string) => [{ n: 1, done: true, approved: true, entry: { n: 1, files: ["src/a.mts"], drive: [runCheck(covers)] } }];
+
+test("a reword send names the declared checks the amend line covers after the reword line (T-3.1)", () => {
+  const reword: NextStep = { action: "amend", actor: "architect", detail: T15_AMEND, review: `work/${ID}/reviews/cumulative.md`, reword: true };
+  const lastLine = (input: SnapshotInput, step: NextStep) => sends(input, step)[0].message.split("\n").at(-1);
+  assert.equal(lastLine({ phases: checkedPhase("T-1.5") }, reword), "checks: T-1.5");
+  assert.equal(lastLine({ phases: checkedPhase("T-1.6") }, reword), "reword: approved by the user at the amendment gate");
+  const { reword: _granted, ...plain } = reword as Extract<NextStep, { action: "amend" }>;
+  assert.equal(lastLine({ phases: checkedPhase("T-1.5") }, plain), `review: work/${ID}/reviews/cumulative.md`);
+});
+
 test("a checkpoint fix spawns the developer with the checkpoint review and the phase it fixes (T-1.4)", () => {
   const phases = Array.from({ length: 6 }, (_, i) => (i < 3 ? { n: i + 1, done: true, approved: true } : { n: i + 1 }));
   const fix: NextStep = { action: "fix_findings", actor: "developer", phase: 3, review: "checkpoint", detail: "d" };

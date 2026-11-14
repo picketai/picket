@@ -490,6 +490,29 @@ test("after a, an AMENDED with a different record counts: plan-only goes to the 
   assert.equal(changed(MIXED).action, "fix_findings");
 });
 
+const ASKED_FRAME = "c".repeat(64);
+const OTHER_FRAME = "d".repeat(64);
+const FRAME_FINDING = "the architect's amendment changed the frontmatter beyond the declared checks it names";
+
+function framedAnswer(review: object, askedFrame: string | undefined, amendedFrame: string | undefined) {
+  const asking = { ...recorded(review), ...(askedFrame ? { frame: askedFrame } : {}) };
+  const amended = { ...recorded(laterRow("architect", "AMENDED"), "b".repeat(64)), ...(amendedFrame ? { frame: amendedFrame } : {}) };
+  return step({ lane: "design", phases: APPROVED_PHASES, replies: [gateReply("a")], verdicts: [asking, amended] });
+}
+
+test("an AMENDED whose frame differs from the asking row's returns the gate; a matching or missing frame moves past it (T-3.4)", () => {
+  assert.deepEqual(framedAnswer(PLAN_ONLY, ASKED_FRAME, OTHER_FRAME), {
+    action: "approve_amendment",
+    actor: "user",
+    detail: `${FRAME_FINDING}: ${PLAN_AMEND}; review: ${CUMULATIVE_REVIEW}`,
+    options: ["[a] amend design.md, approved phases included", "[f] fix the code instead"],
+  });
+  assert.equal(framedAnswer(PLAN_ONLY, ASKED_FRAME, ASKED_FRAME).action, "review_cumulative");
+  assert.equal(framedAnswer(MIXED, ASKED_FRAME, ASKED_FRAME).action, "fix_findings");
+  assert.equal(framedAnswer(PLAN_ONLY, undefined, OTHER_FRAME).action, "review_cumulative");
+  assert.equal(framedAnswer(PLAN_ONLY, ASKED_FRAME, undefined).action, "review_cumulative");
+});
+
 test("a drift-blocked design item still re-checks after an AMENDED with the drift's record (T-2.4)", () => {
   const verdicts = [recorded(amending("DRIFT DETECTED", "crosscheck")), recorded({ ...row("AMENDED"), agent: "architect" })];
   assert.equal(step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts }).action, "review_crosscheck");

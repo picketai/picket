@@ -28,7 +28,7 @@ export type RouteInput = {
 };
 
 export type MarksOnDisk = { done: boolean; approved: boolean };
-export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk; record?: string };
+export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk; record?: string; frame?: string };
 
 export type Change =
   | { kind: "marker"; phase: number; mark: PhaseMark; line: string | null }

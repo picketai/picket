@@ -28,6 +28,7 @@ const FIXTURE_TS = "2026-10-29T10:00:00.000Z";
 const FIXTURE_SESSION = "S";
 const FIXTURE_BRIEF = { purpose: "bill late fees", in_scope: "the fees module", out_of_scope: "refunds" };
 const FIXTURE_LAYOUT = { nested: ["src/Orders"], worktrees: null, repos: [] };
+const CHECKED_ENTRY = { n: 1, files: ["src/a.mjs"], drive: [{ covers: "T-1.1", command: "node a.mjs", exit_code: 0, contains: ["ok"] }] };
 
 function developerRow(phase) {
   return { ts: FIXTURE_TS, agent: "developer", verdict: "PHASE DONE", phase, scope: null, through: null, session: FIXTURE_SESSION };
@@ -51,7 +52,7 @@ const ENTRY_FIXTURES = {
     return [
       ...sendsFor(snapshotOf({ lane: "order", artifact: null, brief: FIXTURE_BRIEF }), write, FIXTURE_SESSION, () => true),
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), amend, FIXTURE_SESSION),
-      ...sendsFor(snapshotOf({ lane: "order", phases: [{ n: 1, done: true, approved: true }] }), { ...amend, reword: true }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "order", phases: [{ n: 1, done: true, approved: true, entry: CHECKED_ENTRY }] }), { ...amend, detail: "AMENDMENT NEEDED: T-1.1 x", reword: true }, FIXTURE_SESSION),
     ];
   },
   analyst: () => sendsFor(snapshotOf({ lane: "research", artifact: null, brief: FIXTURE_BRIEF }), { action: "write_artifact", actor: "analyst", detail: "d" }, FIXTURE_SESSION),
@@ -305,7 +306,7 @@ test("every shell outside PENDING has Entry fixtures", () => {
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work", "worktrees"]);
-  assert.deepEqual(sentKeys("architect"), ["amend", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "review", "reword", "sources", "work"]);
+  assert.deepEqual(sentKeys("architect"), ["amend", "checks", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "review", "reword", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
   assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {

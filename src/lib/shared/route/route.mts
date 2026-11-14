@@ -3,7 +3,7 @@ import { bareAgentName } from "../agent-name.mts";
 import { securityPaths } from "../config.mjs";
 import type { Context } from "../context.mts";
 import { VERDICTS } from "../verdicts.mjs";
-import { recordDigest } from "../work/amendment.mts";
+import { frameDigest, namedChecks, recordDigest } from "../work/amendment.mts";
 import type { WorkId } from "../work/files.mts";
 import { readDriveLog, type DriveRow } from "../drive-log.mts";
 import { carriedResults, phaseCheckProblems, phaseCheckResults } from "../work/declared-checks.mts";
@@ -39,19 +39,24 @@ function publishedTo(changes: Change[]): { published?: string } {
   return change?.kind === "publish" ? { published: change.to } : {};
 }
 
-function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, blocking, planOnly, record }: PlannedVerdict, changes: Change[]): VerdictEntry {
+function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, blocking, planOnly, record, frame }: PlannedVerdict, changes: Change[]): VerdictEntry {
   const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
   const sessioned = isSessionId(session) ? { session } : {};
   const amending = amend ? { amend } : {};
   const blocked = blocking ? { blocking } : {};
   const planned = planOnly === true ? { plan_only: true as const } : {};
-  const recorded = record ? { record } : {};
-  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...blocked, ...planned, ...recorded, ...publishedTo(changes) };
+  const stamped = record ? { record, ...(frame ? { frame } : {}) } : {};
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...blocked, ...planned, ...stamped, ...publishedTo(changes) };
 }
 
-function stampedRecord(amend: string | undefined, verdict: string, snap: WorkSnapshot): { record?: string } {
+function askedAmend(amend: string | undefined, snap: WorkSnapshot): string {
+  return amend ?? snap.verdicts.filter((row) => Boolean(row.amend)).at(-1)?.amend ?? "";
+}
+
+function amendmentStamps(amend: string | undefined, verdict: string, snap: WorkSnapshot): { record?: string; frame?: string } {
   if (!snap.artifact || !(amend || verdict === AMENDED)) return {};
-  return { record: recordDigest(snap.artifact.body) };
+  const named = namedChecks(snap.phases, askedAmend(amend, snap));
+  return { record: recordDigest(snap.artifact.body), frame: frameDigest(snap.phases, named) };
 }
 
 function grantStamp({ verdict, phase }: PlannedVerdict, changes: Change[], snap: WorkSnapshot): { through?: number } {
@@ -98,7 +103,7 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   refuseMisplacedPublish(input, spec, snap);
   const phase = input.phase ?? currentPhase(snap)?.n ?? null;
   const amend = rowAmend(input, spec);
-  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...stampedRecord(amend, input.verdict, snap) };
+  const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...amendmentStamps(amend, input.verdict, snap) };
   const { rows } = readDriveLog(ctx.root);
   const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap, rows), correctionsOf(snap, rows));
   const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow({ ...planned, ...grantStamp(planned, changes, snap) }, changes) });

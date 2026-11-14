@@ -466,6 +466,28 @@ test("a PHASE DONE the run grant approves carries the grant on its row; one with
   assert.equal(lastRowThrough(root, s.id), null);
 });
 
+const T15_AMEND = "AMENDMENT NEEDED: T-1.5 the drive check expects # pass 1";
+const T15_RECORD = [
+  "---\nlane: order\nphases:\n",
+  "  - n: 1\n    files: [lib/a.mjs]\n    drive:\n      - covers: T-1.5\n        command: node --test a.mjs\n        exit_code: 0\n        contains:\n          - \"# pass 1\"\n",
+  `---\n# O\n\n## Phase 1: A\n\n${criteria(1)}\n## Revision log\n`,
+].join("");
+
+test("a cumulative amendment and the AMENDED that corrects only the named check's contains carry equal frames (T-3.3)", (t) => {
+  const root = hostRoot(t);
+  const { id } = openItem(root, { lane: "order", title: "Framed" });
+  const recordPath = join(root, "work", id, "order.md");
+  writeFileSync(recordPath, T15_RECORD);
+  route({ id, verdict: "CHANGES REQUIRED", agent: "reviewer", scope: "cumulative", amend: T15_AMEND, root });
+  const corrected = T15_RECORD.replace('"# pass 1"', '"ℹ pass 1"').replace("## Revision log\n", "## Revision log\n\n- 2026-11-14: T-1.5 expects Node's ℹ pass 1\n");
+  writeFileSync(recordPath, corrected);
+  route({ id, verdict: "AMENDED", agent: "architect", root });
+  const [asking, amended] = readSnapshot(root, id).verdicts;
+  assert.match(asking.frame ?? "", /^[0-9a-f]{64}$/);
+  assert.equal(amended.frame, asking.frame);
+  assert.notEqual(amended.record, asking.record);
+});
+
 test("a run grant stops at a phase the record marks security-sensitive", (t) => {
   const root = hostRoot(t);
   const s = openItem(root, { lane: "design", title: "Tidy" });

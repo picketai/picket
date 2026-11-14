@@ -1,6 +1,6 @@
 import { ticketKey, touchedRepos } from "../checkouts.mts";
 import { documentRel, documentSlug } from "../document-path.mts";
-import { isUnchangedAmendment } from "./amendment.mts";
+import { isOutOfFrameAmendment, isUnchangedAmendment } from "./amendment.mts";
 import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
 import { freshReplies, type AmendmentChoice } from "./replies.mts";
@@ -34,6 +34,7 @@ const PHASED: readonly Lane[] = ["order", "design"];
 const MIDPOINT_MIN_PHASES = 6;
 const ISO_DAY = "YYYY-MM-DD".length;
 const DECISION_ANCHOR = /#(D-\d{3})$/;
+const OUT_OF_FRAME_FINDING = "the architect's amendment changed the frontmatter beyond the declared checks it names";
 const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
 const IRREVERSIBLE_OPTIONS = ["[i] confirm the irreversible step", "[x] reject: <why>"];
@@ -149,14 +150,28 @@ function amendmentGate(snap: WorkSnapshot, review: GatedReview, finding: string)
   return { action: "approve_amendment", actor: "user", detail, options: [`[a] amend ${ARTIFACT_BY_LANE[lane]}, approved phases included`, "[f] fix the code instead"] };
 }
 
+function rowsBefore(snap: WorkSnapshot, row: VerdictRow): VerdictRow[] {
+  return snap.verdicts.slice(0, snap.verdicts.indexOf(row));
+}
+
+function isOutOfFrame(snap: WorkSnapshot, row: VerdictRow): boolean {
+  return isOutOfFrameAmendment(rowsBefore(snap, row), row.frame);
+}
+
 function isCountedAmended(snap: WorkSnapshot, row: VerdictRow): boolean {
-  return row.verdict === "AMENDED" && !isUnchangedAmendment(snap.verdicts.slice(0, snap.verdicts.indexOf(row)), row.record);
+  return row.verdict === "AMENDED" && !isUnchangedAmendment(rowsBefore(snap, row), row.record) && !isOutOfFrame(snap, row);
+}
+
+function uncountedFinding(snap: WorkSnapshot, amended: VerdictRow): string {
+  if (isOutOfFrame(snap, amended)) return OUT_OF_FRAME_FINDING;
+  return `the architect returned AMENDED but ${ARTIFACT_BY_LANE[snap.state.lane]} is unchanged`;
 }
 
 function amendAnswerStep(snap: WorkSnapshot, review: GatedReview, after: readonly VerdictRow[]): NextStep {
   const amendedAt = after.findIndex((v) => isCountedAmended(snap, v));
   if (amendedAt >= 0) return amendedStep(snap, review, after.slice(amendedAt + 1));
-  if (after.some((v) => v.verdict === "AMENDED")) return amendmentGate(snap, review, `the architect returned AMENDED but ${ARTIFACT_BY_LANE[snap.state.lane]} is unchanged`);
+  const uncounted = after.filter((v) => v.verdict === "AMENDED").at(-1);
+  if (uncounted) return amendmentGate(snap, review, uncountedFinding(snap, uncounted));
   return { action: "amend", actor: "architect", detail: review.amend, review: reviewRel(snap.state.id, "cumulative", null), reword: true };
 }
 

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { touchedRepos } from "../checkouts.mts";
 import type { AgentType, NextView, SendView } from "../views.mts";
+import { namedChecks } from "./amendment.mts";
 import { phasePaths } from "./artifact.mts";
 import { briefLines } from "./brief.mts";
 import { workRel, type WorkFile } from "./files.mts";
@@ -179,9 +180,15 @@ function findingsSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "fix
   ]);
 }
 
+function rewordLines(snap: WorkSnapshot, amend: string): string[] {
+  const named = namedChecks(snap.phases, amend);
+  return [REWORD_LINE, ...(named.length ? [`checks: ${named.join(", ")}`] : [])];
+}
+
 function amendSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "amend" }>, session: string | null): SendView {
   const reviewLines = step.review ? [`review: ${step.review}`] : [];
-  return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`, ...reviewLines, ...(step.reword ? [REWORD_LINE] : [])]);
+  const reword = step.reword ? rewordLines(snap, step.detail) : [];
+  return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`, ...reviewLines, ...reword]);
 }
 
 function renderSend(s: SendView): string {
