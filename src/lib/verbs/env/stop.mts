@@ -1,6 +1,6 @@
 import { action, done, failed, Refused, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
-import { lastErrorLine, machineCheck, realRunner, runCompose, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { failureCause, machineCheck, realRunner, runCompose, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { readStacks } from "../../shared/env/stacks.mts";
 import { itemKey, stackName } from "../../shared/env/standard.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -19,7 +19,7 @@ export function stopEnvironment(ctx: Context, runner: EngineRunner, id: WorkId):
   const entry = readStacks(root)[stack];
   if (!entry) throw new Refused(`no stack ${stack} is recorded; run picket env start ${id}`);
   const result = runCompose(engine, root, stack, entry.files, ["stop"]);
-  if (result.status !== 0) throw new Refused(`compose stop failed: ${lastErrorLine(result)}`);
+  if (result.status !== 0) throw new Refused(`compose stop failed: ${failureCause(result)}`);
   return done({ ok: true, machine, stack });
 }
 

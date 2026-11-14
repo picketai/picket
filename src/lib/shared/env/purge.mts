@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, relative } from "node:path";
 import { Refused } from "../action.mts";
 import { statePath } from "../paths.mts";
-import { jsonRecords, lastErrorLine, runCompose, type Engine } from "./engine.mts";
+import { failureCause, jsonRecords, runCompose, type Engine } from "./engine.mts";
 import { dropStack, readStacks } from "./stacks.mts";
 import { ITEM_LABEL } from "./standard.mts";
 
@@ -13,7 +13,7 @@ const PROJECT_LABEL = "com.docker.compose.project";
 
 function ids(engine: Engine, args: string[]): string[] {
   const result = engine.run(args);
-  if (result.status !== 0) throw new Refused(`${args.slice(0, 2).join(" ")} failed: ${lastErrorLine(result)}`);
+  if (result.status !== 0) throw new Refused(`${args.slice(0, 2).join(" ")} failed: ${failureCause(result)}`);
   return [...new Set(result.stdout.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== ""))];
 }
 
@@ -62,10 +62,10 @@ function recordEvidence(root: string, stack: string, id: string | null, now: Dat
 function removeAll(engine: Engine, root: string, stack: string, resources: Resources): void {
   const files = readStacks(root)[stack]?.files ?? [];
   const down = runCompose(engine, root, stack, files, ["down", "--volumes", "--remove-orphans"]);
-  if (down.status !== 0) throw new Refused(`compose down failed: ${lastErrorLine(down)}`);
+  if (down.status !== 0) throw new Refused(`compose down failed: ${failureCause(down)}`);
   if (resources.images.length === 0) return;
   const removed = engine.run(["image", "rm", "--force", ...resources.images]);
-  if (removed.status !== 0) throw new Refused(`image rm failed: ${lastErrorLine(removed)}`);
+  if (removed.status !== 0) throw new Refused(`image rm failed: ${failureCause(removed)}`);
 }
 
 function forget(root: string, stack: string): void {

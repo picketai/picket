@@ -1,0 +1,10 @@
+[4m>>>> Executing external compose provider "/usr/libexec/docker/cli-plugins/docker-compose". Please see podman-compose(1) for how to disable this message. <<<<
+
+[0m Network picket-probe-mini_default  Creating
+ Network picket-probe-mini_default  Created
+ Container picket-probe-mini-one-1  Creating
+ Container picket-probe-mini-one-1  Created
+ Container picket-probe-mini-one-1  Starting
+Error response from daemon: setting up Pasta: pasta failed with exit code 1:
+Couldn't open PID file /umbrella/podman/run/networks/rootless-netns/rootless-netns-conn.pid: Permission denied
+Error: executing /usr/libexec/docker/cli-plugins/docker-compose -p picket-probe-mini --project-directory /umbrella/mini -f /umbrella/mini/compose.yaml up --detach --wait: exit status 1

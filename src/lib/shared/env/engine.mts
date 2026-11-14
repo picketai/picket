@@ -113,8 +113,28 @@ export function runCompose(engine: Engine, root: string, stack: string, files: s
   return engine.run(composeArgs(root, stack, files, args));
 }
 
-export function lastErrorLine(result: ProgramResult): string {
-  return result.stderr.trim().split(/\r?\n/).at(-1) ?? "";
+const ANSI_ESCAPE = /\u001b\[[0-9;]*m/g;
+const PROVIDER_BANNER = /^>>>> Executing external compose provider/;
+const PROVIDER_WRAPPER = /^Error: executing \S+ .*: exit status \d+$/;
+
+function lastLine(text: string): string {
+  return text.trim().split(/\r?\n/).at(-1) ?? "";
+}
+
+function causeLines(stderr: string): string[] {
+  return stderr
+    .replace(ANSI_ESCAPE, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !PROVIDER_BANNER.test(line) && !PROVIDER_WRAPPER.test(line));
+}
+
+export function failureCause(result: ProgramResult): string {
+  const lines = causeLines(result.stderr);
+  const cause = lines.at(-1);
+  if (cause === undefined) return lastLine(result.stderr);
+  const before = lines.at(-2);
+  return before?.endsWith(":") ? `${before} ${cause}` : cause;
 }
 
 function stringField(value: unknown): string | null {
@@ -174,7 +194,7 @@ export function composeFiles(root: string): string[] {
 function composeOutput(engine: Engine, root: string, globalFlags: string[], args: string[]): string {
   const result = engine.run(["compose", ...composeFiles(root), ...globalFlags, ...args]);
   if (result.status === 0) return result.stdout;
-  throw new Refused(`compose ${args.join(" ")} failed: ${lastErrorLine(result)}`);
+  throw new Refused(`compose ${args.join(" ")} failed: ${failureCause(result)}`);
 }
 
 export function readModelJson(engine: Engine, root: string): unknown {

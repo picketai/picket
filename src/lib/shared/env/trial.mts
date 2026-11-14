@@ -5,7 +5,7 @@ import { readJson } from "../../util/io.mts";
 import { STATE_FILES, statePath } from "../paths.mts";
 import { nestedRepos, type ItemLayout } from "../repos.mts";
 import { overrideDoc, sourceFor, type ServiceSource } from "./build-plan.mts";
-import { lastErrorLine, runCompose, type Engine } from "./engine.mts";
+import { failureCause, runCompose, type Engine } from "./engine.mts";
 import type { EnvModel } from "./model.mts";
 import type { Finding } from "./rules.mts";
 import { COMPOSE_FILE, ENV_DIR, ITEM_LABEL, stackName } from "./standard.mts";
@@ -43,8 +43,8 @@ function round(engine: Engine, root: string, files: string[], apps: string[]): s
   const build = compose(["build", ...apps]);
   const up = build.status === 0 ? compose(["up", "--detach", "--wait"]) : null;
   compose(["down", "--volumes", "--remove-orphans"]);
-  if (build.status !== 0) return `build failed: ${lastErrorLine(build)}`;
-  if (up && up.status !== 0) return `up failed: ${lastErrorLine(up)}`;
+  if (build.status !== 0) return `build failed: ${failureCause(build)}`;
+  if (up && up.status !== 0) return `up failed: ${failureCause(up)}`;
   return null;
 }
 

@@ -1,6 +1,6 @@
 import { action, done, failed, Refused, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
-import { jsonRecords, lastErrorLine, machineCheck, realRunner, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { failureCause, jsonRecords, machineCheck, realRunner, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { itemStatus } from "../../shared/env/stacks.mts";
 import { ITEM_LABEL } from "../../shared/env/standard.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -49,7 +49,7 @@ export function environmentStatus({ env, cwd, root }: Context, runner: EngineRun
   const { engine, machine } = machineCheck(env, cwd, root, runner);
   if (!engine || !machine.ok) return failed({ ok: false, machine, stacks: [] });
   const listed = engine.run(["ps", "-a", "--format", "json", "--filter", `label=${ITEM_LABEL}`]);
-  if (listed.status !== 0) throw new Refused(`ps failed: ${lastErrorLine(listed)}`);
+  if (listed.status !== 0) throw new Refused(`ps failed: ${failureCause(listed)}`);
   return done({ ok: true, machine, stacks: stackRows(root, jsonRecords(listed.stdout)) });
 }
 

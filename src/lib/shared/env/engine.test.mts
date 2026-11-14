@@ -1,10 +1,10 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { Refused } from "../action.mts";
-import { allowedEngine, engineRefusal, fakeEnginePath, findEngine, jsonRecords, machineCheck, machineReport, NO_COMPOSE, NO_ENGINE, notLinux, readModelJson, type EngineRunner } from "./engine.mts";
+import { allowedEngine, engineRefusal, failureCause, fakeEnginePath, findEngine, jsonRecords, machineCheck, machineReport, NO_COMPOSE, NO_ENGINE, notLinux, readModelJson, realRunner, type EngineRunner } from "./engine.mts";
 
 type Answers = Record<string, string>;
 type Recorded = { runner: EngineRunner; calls: string[][] };
@@ -174,11 +174,52 @@ test("readModelJson lists the profiles, then reads the model with each profile e
   ]);
 });
 
-test("readModelJson refuses with the engine's last error line when compose config fails", () => {
+test("readModelJson refuses with the engine's cause when compose config fails", () => {
   const { runner } = recording({ "docker info --format json": "{}" });
   const engine = findEngine({}, "/", runner);
   assert.ok(engine);
   assert.throws(() => readModelJson(engine, resolve("umbrella")), (err: Error) => err instanceof Refused && err.message === "compose config --profiles failed: not found");
+});
+
+function capturedStderr(name: string): string {
+  return readFileSync(resolve("test/fixtures/env/podman-stderr", name), "utf8");
+}
+
+test("failureCause finds Compose's unknown flag under Podman's banner and wrapper (T-2.1)", () => {
+  assert.equal(failureCause({ status: 1, stdout: "", stderr: capturedStderr("config-unknown-flag.txt") }), "unknown flag: --profile");
+});
+
+test("failureCause joins a cause split after a colon and skips the progress lines (T-2.2)", () => {
+  assert.equal(
+    failureCause({ status: 1, stdout: "", stderr: capturedStderr("up-pasta.txt") }),
+    "Error response from daemon: setting up Pasta: pasta failed with exit code 1: Couldn't open PID file /umbrella/podman/run/networks/rootless-netns/rootless-netns-conn.pid: Permission denied",
+  );
+});
+
+test("failureCause keeps a plain one-line stderr as it is (T-2.3)", () => {
+  assert.equal(failureCause({ status: 1, stdout: "", stderr: "not found\n" }), "not found");
+});
+
+test("failureCause falls back to the wrapper line when it is all the stderr holds (T-2.3)", () => {
+  const wrapper = "Error: executing /usr/libexec/docker/cli-plugins/docker-compose config: exit status 1";
+  assert.equal(failureCause({ status: 1, stdout: "", stderr: `${wrapper}\n` }), wrapper);
+});
+
+test("failureCause of an empty stderr is empty (T-2.3)", () => {
+  assert.equal(failureCause({ status: 1, stdout: "", stderr: "" }), "");
+});
+
+test("readModelJson through the fake engine keeps the fake's cause inside its Podman wrapper (T-2.4)", (t) => {
+  const root = tempRoot(t);
+  const fake = fakeEnginePath();
+  assert.ok(fake);
+  const engine = findEngine({ PICKET_ENGINE: fake }, root, realRunner);
+  assert.ok(engine);
+  const missing = join(root, ".picket", "env", "compose.yaml");
+  assert.throws(
+    () => readModelJson(engine, root),
+    (err: Error) => err instanceof Refused && err.message === `compose config --profiles failed: fake engine: open ${missing}: no such file or directory`,
+  );
 });
 
 test("jsonRecords reads a JSON array and JSON lines as the same records (T-1.5)", () => {

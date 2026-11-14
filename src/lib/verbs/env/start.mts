@@ -3,7 +3,7 @@ import { dirname, join, relative } from "node:path";
 import { action, done, failed, Refused, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import { overrideDoc, REVISION_LABEL, sourceFor, type ServiceSource } from "../../shared/env/build-plan.mts";
-import { jsonRecords, lastErrorLine, machineCheck, readModelJson, realRunner, runCompose, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { failureCause, jsonRecords, machineCheck, readModelJson, realRunner, runCompose, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { readModel, type EnvModel, type EnvService } from "../../shared/env/model.mts";
 import { hasError, staticFindings } from "../../shared/env/rules.mts";
 import { recordStack } from "../../shared/env/stacks.mts";
@@ -46,7 +46,7 @@ function writeOverride(root: string, stack: string, doc: object): string {
 
 function composeOrRefuse(engine: Engine, root: string, stack: string, files: string[], args: string[]): string {
   const result = runCompose(engine, root, stack, files, args);
-  if (result.status !== 0) throw new Refused(`compose ${args[0]} failed: ${lastErrorLine(result)}`);
+  if (result.status !== 0) throw new Refused(`compose ${args[0]} failed: ${failureCause(result)}`);
   return result.stdout;
 }
 

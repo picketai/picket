@@ -10,6 +10,9 @@ const COMPOSE_GLOBAL_FLAGS = new Set([...VALUE_FLAGS, "--profile"]);
 const PUBLISHED = "0.0.0.0:49153";
 const FAKE_IMAGE = "sha256:0f0f0f0f0f0f";
 const DATA_PROFILE = "picket-data";
+const ESC = "\u001b";
+const COMPOSE_PROVIDER = "/usr/libexec/docker/cli-plugins/docker-compose";
+const PROVIDER_BANNER = `>>>> Executing external compose provider "${COMPOSE_PROVIDER}". Please see podman-compose(1) for how to disable this message. <<<<`;
 
 function flagValues(pairs) {
   const valuesOf = (flag) => pairs.filter(([name]) => name === flag).map(([, value]) => value);
@@ -77,18 +80,26 @@ function answer({ words, projectDirectory, profiles }) {
   return null;
 }
 
-const call = parsed(process.argv.slice(2));
-const missing = call.files.find((file) => !existsSync(file));
-const output = call.misplaced === null && missing === undefined ? answer(call) : null;
+function failureCause(call) {
+  const missing = call.files.find((file) => !existsSync(file));
+  if (call.misplaced !== null) return unknownFlag(call.misplaced);
+  if (missing !== undefined) return `fake engine: open ${missing}: no such file or directory`;
+  return `fake engine: no answer for "${call.words.join(" ")}"`;
+}
 
-if (call.misplaced !== null) {
-  process.stderr.write(`${unknownFlag(call.misplaced)}\n`);
-  process.exitCode = 1;
-} else if (missing !== undefined) {
-  process.stderr.write(`fake engine: open ${missing}: no such file or directory\n`);
-  process.exitCode = 1;
-} else if (output === null) {
-  process.stderr.write(`fake engine: no answer for "${call.words.join(" ")}"\n`);
+function podmanComposeStderr(cause, composeArgs) {
+  const banner = `${ESC}[4m${PROVIDER_BANNER}\n\n${ESC}[0m`;
+  return `${banner}${cause}\nError: executing ${COMPOSE_PROVIDER} ${composeArgs.join(" ")}: exit status 1\n`;
+}
+
+const args = process.argv.slice(2);
+const call = parsed(args);
+const ready = call.misplaced === null && call.files.every((file) => existsSync(file));
+const output = ready ? answer(call) : null;
+
+if (output === null) {
+  const cause = failureCause(call);
+  process.stderr.write(args[0] === "compose" ? podmanComposeStderr(cause, args.slice(1)) : `${cause}\n`);
   process.exitCode = 1;
 } else {
   process.stdout.write(output);
