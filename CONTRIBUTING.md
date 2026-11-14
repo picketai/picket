@@ -98,6 +98,7 @@ The rules below are the conventions of the refactor. Each ends with its id; `art
 - Put the test of one module beside it as `<module>.test.mts`, keep tests of `dist/` and of the repository in `test/`, take shared helpers from `#test/*`, and remove temp folders through `t.after` (C-017).
 - List every mod in `src/lib/mods.mts`, one folder `src/mods/<name>/` each; mods read Picket data only through the kernel and keep Claude Code mod style (C-018).
 - Give every instruction fact one owner: a step lives in the step file of the skill that runs it, step and checklist files are kebab-case `<name>.md` with no number prefix, and no Markdown holds an em or en dash (C-019).
+- Give every guard (a function whose closed outcome other code trusts: a refusal, a denial, a mask, a failed check) a closure test `<module>.variants.test.mts` beside it, built with `#test/variants.mts`; a change to a guard adds its new seeds, and a guard over an input grammar no family covers adds the family (C-020).
 
 ### Foundation modules
 
@@ -124,6 +125,29 @@ Each entry is bundled with everything it imports into one file, `dist/hooks/<kin
 A handler's tests sit beside its modules (`src/lib/hooks/guard/bash/index.test.mts`); `test/hooks/<kind>.<name>.test.mjs` spawns the bundle (`test/hooks/guard.bash.test.mjs`).
 
 The libraries the hooks share: `src/lib/shared/transcript/` reads a transcript (`tail.mts` from its end, `entries.mts` spawn hints, tool statistics and the read-before-edit lookup, `turn.mts` the turn's block, `agent.mts` the agent's name), `src/lib/shared/sources/protection.mts` says what a source protects, `src/lib/shared/shell/powershell.mts` reads a PowerShell command, `src/lib/shared/shell/kernel-call.mts` finds where a `picket` call starts, and `src/lib/util/vendor/shell-quote-parse.mjs` tokenizes Bash for `guard.bash`.
+
+## Guards
+
+A guard is right for the spellings its author wrote down and open for their siblings: another separator, a flag cluster, a quoted span, an out-of-range number, a malformed list item. A closure test (C-020) runs each seed the guard must close on through a family of spellings and fails naming every spelling that came out open, so `npm test` asks for the siblings before review does.
+
+The helper and the families live in `test/support/variants.mts`, grouped by the grammar they spell:
+
+- pairs: `pairPlaces` and `pairNames` place a `name=value` pair in addresses and vary its name.
+- interpreter arguments: `programFlagSpellings` and `stdinSpellings` spell a program flag and a program read from standard input.
+- request prose: `distractorSentences` and `quotedSpans` put a sentence beside a distractor or inside quotes.
+- declared lists: `listPlacements` puts a malformed item alone, before and after a valid one.
+- numbers: `outOfDomainNumbers` spells `NaN`, both zeros, the negation and both infinities.
+
+A closure test proves itself on the code a review rejected: `node scripts/replay-rejected.mjs <rev> <test-file>` exports the tree at `<rev>` into a temporary folder, copies the helper and the named test files from the working tree into it, and runs them there. It exits 0 when the tests pass at that revision, 1 when they fail, and 2 for a usage error, an unknown revision or a tree it cannot export.
+
+Seeds come from the inputs the review probed and from what the guard's recorded decision says it closes, never from a spelling the decision leaves open: an open seed fails on day one and forces a guard change.
+
+No check covers these; they stay with the author and the reviewer:
+
+- Recognising that a function is a guard. Nothing marks one, so a new guard without a closure test passes every check until a reviewer sees it.
+- Naming the spellings of a grammar no family covers yet, such as a new config format or PowerShell's `-Command`. A family checks only the spellings someone wrote down.
+- A guard that reads state a lower-trust actor can change. Whether a caller may trust a piece of state is a judgement per caller.
+- A decision that is itself wrong. A closure test pins the guard's decision as written, so a spelling the decision leaves open stays open.
 
 ## Markdown
 
