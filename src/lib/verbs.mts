@@ -14,6 +14,7 @@ export const VERB_NAMES = {
     subverbs: {
       check: { summary: "check the machine and the environment against the standard", readOnly: true },
       init: { summary: "scan the umbrella and list the environment decisions for the user", readOnly: false },
+      purge: { summary: "remove a closed item's stack: containers, networks, its volumes and its images", readOnly: false },
       start: { summary: "build a work item's apps and start its stack", readOnly: false },
       stop: { summary: "stop a work item's stack and keep its containers and volumes", readOnly: false },
       status: { summary: "list the test-environment stacks the engine holds, with each item's status", readOnly: true },

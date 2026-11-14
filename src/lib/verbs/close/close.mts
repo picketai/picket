@@ -1,5 +1,10 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { Refused } from "../../shared/action.mts";
+import { machineCheck, type EngineRunner } from "../../shared/env/engine.mts";
+import { purgeStack, type Resources } from "../../shared/env/purge.mts";
+import { readStacks } from "../../shared/env/stacks.mts";
+import { COMPOSE_FILE, ENV_DIR, itemKey, stackName } from "../../shared/env/standard.mts";
 import { dropItemChecks } from "../../shared/check-log.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
@@ -19,7 +24,8 @@ import { auditLine } from "./audit.mts";
 
 export type Repeat = { class: string; items: WorkId[] };
 export type CloseOptions = { message?: string; touched?: string[] };
-export type CloseContext = { now: Date; env: NodeJS.ProcessEnv };
+export type CloseContext = { now: Date; env: NodeJS.ProcessEnv; cwd: string; runner: EngineRunner };
+export type EnvironmentRemoval = { removed: Resources | null; warning: string | null };
 export type CommitRange = { first: string; last: string };
 export type Closing = {
   audit: string;
@@ -43,6 +49,7 @@ export type CloseResult = WorkState & {
   repeats: Repeat[];
   closing: Closing;
   worktrees: string[];
+  environment: EnvironmentRemoval | null;
 };
 
 const PHASED_LANES: readonly Lane[] = ["order", "design"];
@@ -202,7 +209,30 @@ function recordedWorktrees(snap: WorkSnapshot): string[] {
   return snap.layout.repos.flatMap((repo) => (repo.worktree ? [repo.worktree] : []));
 }
 
-export function close(root: string, id: WorkId, { message, touched = [] }: CloseOptions, { now, env }: CloseContext): CloseResult {
+function itemStack(root: string, state: WorkState): string | null {
+  const recorded = Object.entries(readStacks(root)).find(([, entry]) => entry.item === state.id)?.[0];
+  if (recorded) return recorded;
+  return existsSync(join(root, ENV_DIR, COMPOSE_FILE)) ? stackName(itemKey(state)) : null;
+}
+
+function notRemoved(reason: string): EnvironmentRemoval {
+  return { removed: null, warning: `environment not removed: ${reason}` };
+}
+
+function purgeOnClose(root: string, state: WorkState, { now, env, cwd, runner }: CloseContext): EnvironmentRemoval | null {
+  const stack = itemStack(root, state);
+  if (stack === null) return null;
+  const { engine, machine } = machineCheck(env, cwd, root, runner);
+  if (!engine || !machine.ok) return notRemoved(machine.missing[0]?.split(":")[0] ?? "no container engine");
+  try {
+    return { removed: purgeStack(engine, root, stack, state.id, now).resources, warning: null };
+  } catch (err) {
+    return notRemoved((err as Error).message);
+  }
+}
+
+export function close(root: string, id: WorkId, { message, touched = [] }: CloseOptions, closeCtx: CloseContext): CloseResult {
+  const { now, env } = closeCtx;
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
   const audit = auditLine(snap.state, snap.phases.length, readLedger(root).rows);
@@ -214,7 +244,8 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   if (!isRepo(root)) {
     const state = markDone(root, snap.state, now);
     writeAudit(root, id, audit);
-    return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing: closingFacts(root, snap, audit, null), worktrees };
+    const environment = purgeOnClose(root, state, closeCtx);
+    return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing: closingFacts(root, snap, audit, null), worktrees, environment };
   }
   refuseUntouchedFastClose(root, snap.state, touched);
   const state = markDone(root, snap.state, now);
@@ -222,5 +253,6 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env);
   if (commit) recordAccept(root, id, commit, null, now);
   const committed = commit ? filesInCommit(root, commit) : [];
-  return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing: closingFacts(root, snap, audit, commit), worktrees };
+  const environment = purgeOnClose(root, state, closeCtx);
+  return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing: closingFacts(root, snap, audit, commit), worktrees, environment };
 }

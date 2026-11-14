@@ -1,10 +1,15 @@
-import { test } from "node:test";
+import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { parseArgs, UsageError } from "../../util/args.mts";
+import type { EngineRunner } from "../../shared/env/engine.mts";
+import { readStacks, recordStack } from "../../shared/env/stacks.mts";
 import type { WorkId } from "../../shared/work/files.mts";
-import type { Lane } from "../../shared/work/state.mts";
+import { readState, writeState, type Lane } from "../../shared/work/state.mts";
+import { openItem, withProject } from "#test/project.mts";
 import { closingBlock } from "./block.mts";
-import { defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
+import { close, defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
 import { checkCommitMessage } from "../../shared/commit-message.mts";
 import { verb } from "./index.mts";
 
@@ -31,6 +36,7 @@ function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseR
     repeats: [],
     closing: { ...NO_FACTS, ...closing },
     worktrees: [],
+    environment: null,
     ...rest,
   };
 }
@@ -136,4 +142,61 @@ test("each repeat gets a Repeats line and a Follow-up line, after what is left a
     "Follow-up: Fix the Sl1 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261020-a, 20261021-b rejected.",
     "Follow-up: Fix the Ts4 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261022-c rejected.",
   ]);
+});
+
+type EngineCalls = { runner: EngineRunner; calls: string[][] };
+
+function engine(answers: boolean): EngineCalls {
+  const calls: string[][] = [];
+  const runner: EngineRunner = (program, args) => {
+    calls.push([program, ...args]);
+    if (!answers) return { status: 1, stdout: "", stderr: "" };
+    if (args[0] === "info") return { status: 0, stdout: '{"OSType":"linux"}', stderr: "" };
+    if (args[1] === "version") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
+    if (args[0] === "ps") return { status: 0, stdout: "c1\n", stderr: "" };
+    if (args[0] === "volume") return { status: 0, stdout: "orders-data\n", stderr: "" };
+    return { status: 0, stdout: "", stderr: "" };
+  };
+  return { runner, calls };
+}
+
+function doneItem(t: TestContext, { environment }: { environment: boolean }): { root: string; id: WorkId } {
+  const root = withProject(t);
+  const { id } = openItem(root, { lane: "fast", title: "Orders", source: "PROJ-481" });
+  writeState(root, { ...readState(root, id), status: "done" }, new Date());
+  if (environment) {
+    mkdirSync(join(root, ".picket", "env"), { recursive: true });
+    writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
+    recordStack(root, "picket-proj-481", { item: id, session: null, files: [], engine: { name: "docker", program: "docker", prefix: [] }, started: "2026-11-14T10:00:00.000Z" });
+  }
+  return { root, id };
+}
+
+function closeWith(root: string, id: WorkId, runner: EngineRunner): CloseResult {
+  return close(root, id, {}, { now: new Date("2026-11-14T10:00:00Z"), env: {}, cwd: root, runner });
+}
+
+test("close of an item with a stack and an environment removes it and reports what was removed (T-8.3)", (t) => {
+  const { root, id } = doneItem(t, { environment: true });
+  const result = closeWith(root, id, engine(true).runner);
+  assert.deepEqual(result.environment, { removed: { containers: ["c1"], volumes: ["orders-data"], networks: [], images: [] }, warning: null });
+  assert.deepEqual(readStacks(root), {});
+  assert.ok(closingBlock(result).split("\n").includes("Environment: removed 1 container, 1 volume, 0 networks, 0 images"));
+});
+
+test("close with no engine warns that the environment was not removed and still ends done (T-8.3)", (t) => {
+  const { root, id } = doneItem(t, { environment: true });
+  const result = closeWith(root, id, engine(false).runner);
+  assert.equal(result.status, "done");
+  assert.deepEqual(result.environment, { removed: null, warning: "environment not removed: no container engine" });
+  assert.ok(closingBlock(result).split("\n").includes("Environment: environment not removed: no container engine"));
+});
+
+test("close with no environment and no stack makes no engine call and reports no environment (T-8.4)", (t) => {
+  const { root, id } = doneItem(t, { environment: false });
+  const { runner, calls } = engine(true);
+  const result = closeWith(root, id, runner);
+  assert.equal(result.environment, null);
+  assert.deepEqual(calls, []);
+  assert.doesNotMatch(closingBlock(result), /^Environment:/m);
 });

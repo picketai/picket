@@ -47,6 +47,17 @@ function worktreesLeft({ branch, worktrees }: CloseResult): string | null {
   return `Left for you: /picket:branching --remove ${branch ?? "<branch>"} (worktrees: ${worktrees.join(", ")})`;
 }
 
+function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+function environmentLine({ environment }: CloseResult): string | null {
+  if (environment === null) return null;
+  if (environment.warning !== null) return `Environment: ${environment.warning}`;
+  const { containers, volumes, networks, images } = environment.removed ?? { containers: [], volumes: [], networks: [], images: [] };
+  return `Environment: removed ${count(containers.length, "container")}, ${count(volumes.length, "volume")}, ${count(networks.length, "network")}, ${count(images.length, "image")}`;
+}
+
 function warningLines(v: CloseResult): string[] {
   const dirty = v.dirty.length ? [`uncommitted changes: ${v.dirty.join(", ")} (commit them or \`git checkout -- <path>\`)`] : [];
   return [...v.warnings, ...dirty].map((warning) => `WARNING: ${warning}`);
@@ -66,6 +77,7 @@ export function closingBlock(v: CloseResult): string {
     ...v.repeats.map((r) => `Repeats: ${r.class} (${r.items.join(", ")})`),
     ...v.left.map(leftForYou),
     worktreesLeft(v),
+    environmentLine(v),
     v.left_staged.length ? `Left staged: ${v.left_staged.join(", ")}` : null,
     ...warningLines(v),
     ...v.repeats.map(followUp),

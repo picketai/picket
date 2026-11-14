@@ -94,6 +94,14 @@ Scan the umbrella and list the environment decisions for the user.
 picket env init [--create [--decide "<id>=<choice>,..."]]
 ```
 
+### picket env purge
+
+Remove a closed item's stack: containers, networks, its volumes and its images.
+
+```sh
+picket env purge <stack>
+```
+
 ### picket env start
 
 Build a work item's apps and start its stack.
