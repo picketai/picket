@@ -116,6 +116,8 @@ test("no nested repo, no nested path, a recorded branch, or worktrees: none goes
 });
 
 const AMEND_LINE = "AMENDMENT NEEDED: D-002 the port moved";
+const CROSSCHECK_REVIEW = "work/20261023-probe/reviews/crosscheck.md";
+const CUMULATIVE_REVIEW = "work/20261023-probe/reviews/cumulative.md";
 
 function amending(verdict: string, scope: string | null = null) {
   return { ...row(verdict, scope), amend: AMEND_LINE };
@@ -137,7 +139,7 @@ test("a third cumulative rejection since the last approval still stops with the 
 test("a pending phase or drift amendment goes to the architect with no reword grant, and a cumulative one stops at approve_amendment", () => {
   const amend = { action: "amend", actor: "architect", detail: AMEND_LINE };
   assert.deepEqual(step({ lane: "design", phases: numbered(2), verdicts: [amending("CHANGES REQUIRED", "phase 1")] }), amend);
-  assert.deepEqual(step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck")] }), amend);
+  assert.deepEqual(step({ lane: "design", status: "blocked", blocked_reason: AMEND_LINE, phases: numbered(2), verdicts: [amending("DRIFT DETECTED", "crosscheck")] }), { ...amend, review: CROSSCHECK_REVIEW });
   const approved = numbered(2, { done: true, approved: true });
   assert.equal(step({ lane: "design", phases: approved, verdicts: [row("approved"), amending("CHANGES REQUIRED", "cumulative")] }).action, "approve_amendment");
 });
@@ -168,7 +170,7 @@ function pluginReplay(rowCount: number): SnapshotInput {
 }
 
 test("the plugin-only replay serves the drift's amendment before the developer's stall (T-1.1)", () => {
-  assert.deepEqual(step(pluginReplay(5)), { action: "amend", actor: "architect", detail: PLUGIN_DRIFT_LINE });
+  assert.deepEqual(step(pluginReplay(5)), { action: "amend", actor: "architect", detail: PLUGIN_DRIFT_LINE, review: CROSSCHECK_REVIEW });
 });
 
 test("the plugin-only replay re-checks after the amendment, then offers the stall options once aligned (T-1.2)", () => {
@@ -192,6 +194,25 @@ test("an amended drift sends the reviewer instance to re-check the decisions rev
   assert.deepEqual(view.send, [
     { tool: "SendMessage", to: `${instanceTag("20261023-probe")}-reviewer`, type: "picket:reviewer", message: "work: 20261023-probe\nscope: crosscheck\nartifact: work/20261023-probe/design.md\ndelta: D-003" },
   ]);
+});
+
+const DRIFT_RECORD_PATH = "work/20261023-probe/design.md";
+const D007_RECORD = ["## Decisions", "", "### D-007 (r2): Seven", "", "## Revision log", "", "- 2026-10-29: D-007 (r2): answers the drift", ""].join("\n");
+
+function blockedBy(blocking: string[], body: string): SnapshotInput {
+  const drift = { ...amending("DRIFT DETECTED", "crosscheck"), ts: "2026-10-29T09:00:00.000Z", blocking };
+  const amended = { ...row("AMENDED"), agent: "architect", ts: "2026-10-29T09:30:00.000Z" };
+  return { lane: "design", phases: numbered(2), artifact: { path: `/probe/${DRIFT_RECORD_PATH}`, expected: "design.md", body }, verdicts: [drift, amended] };
+}
+
+test("a drift blocked by phase findings beside the revised decision re-checks in full (T-1.1)", () => {
+  const blocking = ["#D-007", "#phase-9", "#phase-6"].map((anchor) => `${DRIFT_RECORD_PATH}${anchor}`);
+  assert.deepEqual(step(blockedBy(blocking, D007_RECORD)), { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta: [] });
+});
+
+test("a drift blocked only by revised decisions keeps the delta, and one with no blocking finding re-checks in full (T-1.2)", () => {
+  assert.deepEqual(step(blockedBy([`${DRIFT_RECORD_PATH}#D-003`], AMENDED_RECORD)).delta, ["D-003"]);
+  assert.deepEqual(step(blockedBy([], AMENDED_RECORD)).delta, []);
 });
 
 test("a later ALIGNED cross-check ends the re-check, and an order item never gets one", () => {
@@ -380,7 +401,7 @@ test("a plan-only cumulative rejection with no reply stops at approve_amendment,
 
 test("after a, the architect amends with a reword grant until AMENDED, then the cumulative review runs with only the summary first (T-2.4)", () => {
   const replied = { phases: APPROVED_PHASES, replies: [gateReply("a")] };
-  assert.deepEqual(step({ ...replied, verdicts: [PLAN_ONLY] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+  assert.deepEqual(step({ ...replied, verdicts: [PLAN_ONLY] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, review: CUMULATIVE_REVIEW, reword: true });
   const amended = snapshotOf({ ...replied, verdicts: [PLAN_ONLY, laterRow("architect", "AMENDED")] });
   const next = nextStep(amended, SECURITY_PATHS);
   assert.deepEqual([next.action, next.actor], ["review_cumulative", "reviewer"]);
@@ -422,7 +443,7 @@ test("a mixed cumulative rejection with no reply stops at approve_amendment, nam
 
 test("after a on a mixed rejection, the architect amends with a reword grant, then the developer fixes the code, then the cumulative review runs (T-1.2)", () => {
   const replied = { phases: APPROVED_PHASES, replies: [gateReply("a")] };
-  assert.deepEqual(step({ ...replied, verdicts: [MIXED] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+  assert.deepEqual(step({ ...replied, verdicts: [MIXED] }), { action: "amend", actor: "architect", detail: PLAN_AMEND, review: CUMULATIVE_REVIEW, reword: true });
   assert.deepEqual(step({ ...replied, verdicts: [MIXED, laterRow("architect", "AMENDED")] }), {
     action: "fix_findings",
     actor: "developer",
@@ -457,7 +478,7 @@ test("after a, an AMENDED with the review's record reopens the gate, and a newer
       options: ["[a] amend design.md, approved phases included", "[f] fix the code instead"],
     });
     const again = [gateReply("a"), gateReplyAt("a", "2026-10-23T12:30:00.000Z")];
-    assert.deepEqual(step({ ...base, replies: again }), { action: "amend", actor: "architect", detail: PLAN_AMEND, reword: true });
+    assert.deepEqual(step({ ...base, replies: again }), { action: "amend", actor: "architect", detail: PLAN_AMEND, review: CUMULATIVE_REVIEW, reword: true });
     const fixing = step({ ...base, replies: [gateReply("a"), gateReplyAt("f", "2026-10-23T12:30:00.000Z")] });
     assert.deepEqual([fixing.action, fixing.actor, fixing.review], ["fix_findings", "developer", "cumulative"]);
   }

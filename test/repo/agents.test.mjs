@@ -47,7 +47,7 @@ const ENTRY_FIXTURES = {
   },
   architect: () => {
     const write = { action: "write_artifact", actor: "architect", detail: "d" };
-    const amend = { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-001 x" };
+    const amend = { action: "amend", actor: "architect", detail: "AMENDMENT NEEDED: D-001 x", review: "work/x/reviews/crosscheck.md" };
     return [
       ...sendsFor(snapshotOf({ lane: "order", artifact: null, brief: FIXTURE_BRIEF }), write, FIXTURE_SESSION, () => true),
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), amend, FIXTURE_SESSION),
@@ -305,7 +305,7 @@ test("every shell outside PENDING has Entry fixtures", () => {
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
   assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work", "worktrees"]);
-  assert.deepEqual(sentKeys("architect"), ["amend", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "reword", "sources", "work"]);
+  assert.deepEqual(sentKeys("architect"), ["amend", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "review", "reword", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
   assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {

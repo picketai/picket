@@ -1,0 +1,14 @@
+Fix three kernel gaps seen while leading the items 20261114-standard-test-environment-and-env-verbs and 20261114-env-verbs-pass-on-real-engine.
+
+1. A drift with several findings reaches the architect as one line. The cross-check of 20261114-standard-test-environment-and-env-verbs returned DRIFT DETECTED with three Major findings; the `amend` send that `picket next` printed carried only the last line ("AMENDMENT NEEDED: D-007 print-before-remove is not enforced by phase 8"), the architect amended D-007 only, the re-check ran on `delta: D-007` and returned ALIGNED, and two Major findings stayed open with the kernel reporting the record aligned. The amend send must give the architect every Critical and Major finding of the cross-check (for example by naming the saved review file), and the re-check must not report ALIGNED while a Major finding of the previous cross-check is unaddressed.
+
+2. Setting a run grant before a phase is sent makes `picket next` claim the phase was taken. After a checkpoint review cleared the run grant, `picket next` printed a SendMessage for phase 6; running `picket set <id> run_through=10` first made the next `picket next` answer "the developer took it from the run grant, so there is no send: wait for its block" although no message had been sent, so the lead had to send the phase by hand. `picket next` must keep printing the send until the developer has really been handed the phase.
+
+3. A wrong `contains` or `exit_code` in a declared check of an approved phase has no amendment route. In 20261114-env-verbs-pass-on-real-engine the T-1.5 drive check expected "# pass 1" where Node prints "ℹ pass 1"; the cumulative review asked for an amendment, the gate offered "[a] amend design.md, approved phases included", the reply produced a `reword:` send, and the architect's shell forbids a reword to touch frontmatter, so the architect returned AMENDED with the record unchanged and the kernel came back to the same gate. The user had to authorise a one-off correction by hand. An approved amendment at that gate must be able to correct the declared check the amendment names (its `contains`, `exit_code` or command), with a revision log line, and nothing else in the frontmatter.
+
+Each fix needs a test that fails on the current code.
+
+## Brief
+purpose: Close three kernel gaps that forced the lead off the printed sends: a multi-finding drift sent as one line, a run grant set before the send, and a declared check with no amendment route
+in scope: the amend send and re-check after a drift with several findings; picket next after a run grant is set before a phase is sent; correcting a declared check of an approved phase through the amendment gate; a failing test first for each
+out of scope: the Se4 class follow-up; the env verbs; saved scenarios (TF-003); any new gate or verdict token

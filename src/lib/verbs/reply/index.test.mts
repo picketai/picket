@@ -200,7 +200,7 @@ function planOnlyRejection(t: TestContext) {
 test("a at the amendment gate sends the architect the amend line with the reword grant and records the choice (T-2.3)", async (t) => {
   const { root, id } = planOnlyRejection(t);
   const result = await applied(root, id, "a");
-  assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: ${PLAN_AMEND}\nreword: approved by the user at the amendment gate`]]);
+  assert.deepEqual(result.send.map((s) => [s.to, s.message]), [[`${instanceTag(id)}-architect`, `work: ${id}\namend: ${PLAN_AMEND}\nreview: work/${id}/reviews/cumulative.md\nreword: approved by the user at the amendment gate`]]);
   assert.deepEqual([replyRows(root, id).at(-1).action, replyRows(root, id).at(-1).choice], ["approve_amendment", "amend"]);
 });
 

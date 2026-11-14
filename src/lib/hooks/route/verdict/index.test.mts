@@ -106,6 +106,23 @@ test("a cross-check drift with only a Decisions: DRIFT line amends with that lin
   assert.equal(verdictRows(root, id).at(-1).amend, needed);
 });
 
+function crosscheckBlock(id: string, findings: string[], verdict: string): string {
+  return [`## Review: ${id} · crosscheck`, "", "The record and the plan disagree.", "", `Findings: ${findings.length}`, ...findings, "Classes: none", "", verdict].join("\n");
+}
+
+test("a cross-check drift records its Critical and Major finding paths in block order as blocking, and an ALIGNED row has none (T-1.4)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = designItem(root);
+  const record = `work/${id}/design.md`;
+  const findings = [`- [Major] ${record}#D-007: The port moved. Nothing says so.`, `- [Minor] ${record}#phase-2: Wording.`, `- [Major] ${record}#phase-9: The touch set misses a file.`, `- [Major] ${record}#phase-6: The criterion names no check.`];
+  routeReview(root, id, crosscheckBlock(id, findings, "DRIFT DETECTED"));
+  assert.deepEqual(verdictRows(root, id).at(-1).blocking, [`${record}#D-007`, `${record}#phase-9`, `${record}#phase-6`]);
+  routeReview(root, id, crosscheckBlock(id, [], "ALIGNED"));
+  const aligned = verdictRows(root, id).at(-1);
+  assert.equal(aligned.verdict, "ALIGNED");
+  assert.equal(Object.hasOwn(aligned, "blocking"), false);
+});
+
 test("an architect AMENDED block quoting the amendment line carries no amend, so next leaves amend", (t) => {
   const root = withProject(t, { host: true, picket: false });
   const id = designItem(root);

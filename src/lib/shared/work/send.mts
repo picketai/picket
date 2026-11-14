@@ -175,6 +175,11 @@ function findingsSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "fix
   ]);
 }
 
+function amendSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "amend" }>, session: string | null): SendView {
+  const reviewLines = step.review ? [`review: ${step.review}`] : [];
+  return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`, ...reviewLines, ...(step.reword ? [REWORD_LINE] : [])]);
+}
+
 function renderSend(s: SendView): string {
   const heading = `${s.tool} ${s.to} · ${s.type}${s.model ? ` · model ${s.model}` : ""}`;
   return [heading, ...(s.first ?? []).map((command) => `first: ${command}`), "```text", s.message, "```"].join("\n");
@@ -202,7 +207,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "fix_findings":
       return [findingsSend(snap, step, session)];
     case "amend":
-      return [send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`, ...(step.reword ? [REWORD_LINE] : [])])];
+      return [amendSend(snap, step, session)];
     case "review_crosscheck":
       return [recheckSend(snap, step.delta, session)];
     default:

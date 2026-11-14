@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { picketRole } from "../../../shared/agent-name.mts";
 import { blockCommitProblem } from "../../../shared/commit-message.mts";
-import { citesOnlyRecord, parseFindings } from "../../../shared/findings.mts";
+import { citesOnlyRecord, parseFindings, type Severity } from "../../../shared/findings.mts";
 import { stateDir, statePath, stateRel } from "../../../shared/paths.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { latestHints, type Hints } from "../../../shared/transcript/entries.mts";
@@ -36,6 +36,7 @@ const CLASSES: BlockField<"review"> = "Classes";
 const CLASSES_LINE = new RegExp(`^${CLASSES}:\\s*(.*)$`, "m");
 const AMENDMENT_LINE = /^AMENDMENT NEEDED:.*$/m;
 const DRIFT_DECISIONS_LINE = /^Decisions:\s*DRIFT\b.*$/m;
+const BLOCKING_SEVERITIES: readonly Severity[] = ["Critical", "Major"];
 
 function blockInfo(text: string): BlockInfo | null {
   const heading = readHeading(text);
@@ -104,11 +105,21 @@ function isBouncedForCommit(info: BlockInfo | null, verdict: string, text: strin
   return info?.agent === "developer" && verdict === "PHASE DONE" && blockCommitProblem(text.slice(info.index)) !== null;
 }
 
+function isCrosscheckDrift(agent: string, verdict: string, scope: string | undefined): boolean {
+  return agent === "reviewer" && verdict === "DRIFT DETECTED" && scope === "crosscheck";
+}
+
 function amendmentText(text: string, agent: string, verdict: string, scope: string | undefined): string | null {
   const needed = text.match(AMENDMENT_LINE)?.[0];
   if (needed) return needed;
-  const crosscheckDrift = agent === "reviewer" && verdict === "DRIFT DETECTED" && scope === "crosscheck";
-  return crosscheckDrift ? (text.match(DRIFT_DECISIONS_LINE)?.[0] ?? null) : null;
+  return isCrosscheckDrift(agent, verdict, scope) ? (text.match(DRIFT_DECISIONS_LINE)?.[0] ?? null) : null;
+}
+
+function blockingFindings(text: string, agent: string, verdict: string, scope: string | undefined): string[] | undefined {
+  if (!isCrosscheckDrift(agent, verdict, scope)) return undefined;
+  return parseFindings(text)
+    .filter((finding) => BLOCKING_SEVERITIES.includes(finding.severity))
+    .map((finding) => finding.path);
 }
 
 function isPlanOnly(info: BlockInfo | null, verdict: string, amend: string | undefined, text: string): boolean {
@@ -141,7 +152,8 @@ function applyVerdict({ event, info, hints, id, verdict, phase, text, ctx }: Rou
   const classes = info?.agent === "reviewer" ? reviewClasses(text) : [];
   const reviewerAmend = info?.agent === "reviewer" ? (amend ?? undefined) : undefined;
   const planOnly = isPlanOnly(info, verdict, reviewerAmend, text);
-  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: reviewerAmend, planOnly, session: event.session_id, classes }, ctx);
+  const blocking = blockingFindings(text, agent, verdict, scope);
+  const routed = route({ id: workId(id), verdict, agent, phase, scope, reason: amend ?? undefined, amend: reviewerAmend, blocking, planOnly, session: event.session_id, classes }, ctx);
   const next = routed.next;
   return `picket: ${verdict} applied to ${id}${phase ? ` phase ${phase}` : ""} (${routed.applied.join(", ") || "recorded"}). Next: ${next.action}${next.actor ? ` by ${next.actor}` : ""}${next.phase ? ` · phase ${next.phase}` : ""}. ${next.detail}${next.options?.length ? ` Options: ${next.options.join(" · ")}` : ""}${amend ? `\n${amend}` : ""}${unsaved}`;
 }

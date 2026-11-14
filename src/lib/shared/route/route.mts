@@ -38,13 +38,14 @@ function publishedTo(changes: Change[]): { published?: string } {
   return change?.kind === "publish" ? { published: change.to } : {};
 }
 
-function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, planOnly, record }: PlannedVerdict, changes: Change[]): VerdictEntry {
+function verdictRow({ agent, verdict, phase, scope, through, classes, session, amend, blocking, planOnly, record }: PlannedVerdict, changes: Change[]): VerdictEntry {
   const classed = verdict === CLASSED_VERDICT && Array.isArray(classes) && classes.length ? { classes } : {};
   const sessioned = isSessionId(session) ? { session } : {};
   const amending = amend ? { amend } : {};
+  const blocked = blocking ? { blocking } : {};
   const planned = planOnly === true ? { plan_only: true as const } : {};
   const recorded = record ? { record } : {};
-  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...planned, ...recorded, ...publishedTo(changes) };
+  return { agent, verdict, phase, scope: scope ?? null, through: through ?? null, ...classed, ...sessioned, ...amending, ...blocked, ...planned, ...recorded, ...publishedTo(changes) };
 }
 
 function stampedRecord(amend: string | undefined, verdict: string, snap: WorkSnapshot): { record?: string } {

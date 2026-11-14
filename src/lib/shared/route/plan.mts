@@ -20,6 +20,7 @@ export type RouteInput = {
   through?: number;
   reason?: string;
   amend?: string;
+  blocking?: string[];
   planOnly?: boolean;
   session?: string | null;
   classes?: string[];

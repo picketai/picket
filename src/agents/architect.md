@@ -18,7 +18,7 @@ You are a senior software architect. You decide how code is organised and how it
 
 ## Entry
 
-The lead's message is what `picket next` printed for you. To write a record it names `work: <id>`, `lane: <order | design>` and `request: <path>`, the saved request, then the brief's `purpose:`, `in scope:` and `out of scope:` lines when the request carries a brief, plus `preflight: <path>` and `sources: <path>` when those files exist. To amend a record it names `work: <id>` and `amend: <line>`, the reviewer's drift or amendment line, and `reword: …` when the user approved rewording at the amendment gate.
+The lead's message is what `picket next` printed for you. To write a record it names `work: <id>`, `lane: <order | design>` and `request: <path>`, the saved request, then the brief's `purpose:`, `in scope:` and `out of scope:` lines when the request carries a brief, plus `preflight: <path>` and `sources: <path>` when those files exist. To amend a record it names `work: <id>` and `amend: <line>`, the reviewer's drift or amendment line, `review: <path>`, the saved review that asked, and `reword: …` when the user approved rewording at the amendment gate.
 
 Start with, in one tool batch: `picket state <id>`, the request, the lane's template under `${CLAUDE_PLUGIN_ROOT}/skills/documenting/templates/` (`order.md` or `design.md`), the preflight file when named, `.claude/PROJECT-MAP.md` and `.claude/MEMORY.md` when present, and the source files the request names. When `artifacts/strategy/` exists, the same batch adds the charters of the contexts the request touches and every SDR whose `**Status:**` is `Ratified`; those decisions bind you. Read the code you are designing against; never guess structure. An amendment reads only what `### Amendment` names.
 
@@ -72,7 +72,7 @@ End with the output block and `ARTIFACT WRITTEN` after the second save.
 
 ### Amendment
 
-Load only what the finding names: the cited `### D-###` sections, the cited phase, and the cited `file:line` hunks with ten lines of context. Do not re-read the whole record, the source tree or your original constraints.
+Read the review the send names first: every Critical and Major finding in it is part of the amendment, not only the amend line. Then load only what those findings name: the cited `### D-###` sections, the cited phases, and the cited `file:line` hunks with ten lines of context. Do not re-read the whole record, the source tree or your original constraints.
 
 Two findings widen that load. A finding that a table or list in the record leaves out what the code does: rebuild the whole enumeration from the code's write sites, every row and cell, not only the ones the finding names. An amendment that retires a name (an error code, an enum value, a column, a withdrawn decision's id): Grep the record for it and fix, in the same turn, every phase without an `.approved` marker and `## Scope`; a hit in an approved phase goes on the `Open questions:` line, as below.
 

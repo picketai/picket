@@ -9,6 +9,7 @@ import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
 import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "./stall.mts";
 import { ARTIFACT_BY_LANE, type Lane } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
+import type { WorkId } from "./files.mts";
 
 export { NEXT_ACTIONS, type NextAction } from "./action-text.mts";
 
@@ -24,7 +25,7 @@ export type NextStep =
   | { action: "review_checkpoint" | "review_cumulative"; actor: "reviewer"; phase: number; detail: string }
   | { action: "close"; actor: "lead"; detail: string }
   | { action: "fix_findings"; actor: "developer"; phase: number; review: FindingsReview; detail: string }
-  | { action: "amend"; actor: "architect"; detail: string; reword?: true }
+  | { action: "amend"; actor: "architect"; detail: string; review?: string; reword?: true }
   | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
   | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] };
 
@@ -32,6 +33,7 @@ const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
 const MIDPOINT_MIN_PHASES = 6;
 const ISO_DAY = "YYYY-MM-DD".length;
+const DECISION_ANCHOR = /#(D-\d{3})$/;
 const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
 const IRREVERSIBLE_OPTIONS = ["[i] confirm the irreversible step", "[x] reject: <why>"];
@@ -67,15 +69,30 @@ function lastIndexWhere(verdicts: readonly VerdictRow[], matches: (row: VerdictR
   return -1;
 }
 
-function pendingAmend({ verdicts }: WorkSnapshot): string | null {
-  const at = lastIndexWhere(verdicts, (v) => Boolean(v.amend) && v.scope !== "cumulative");
-  if (at < 0 || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED")) return null;
-  return verdicts[at].amend ?? null;
+type AmendRow = VerdictRow & { amend: string };
+
+function isAmendRow(row: VerdictRow): row is AmendRow {
+  return Boolean(row.amend);
+}
+
+function pendingAmend({ verdicts }: WorkSnapshot): AmendRow | null {
+  const at = lastIndexWhere(verdicts, (v) => isAmendRow(v) && v.scope !== "cumulative");
+  const row = verdicts[at];
+  if (!row || !isAmendRow(row) || verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED")) return null;
+  return row;
+}
+
+function amendReview(id: WorkId, row: AmendRow): string | null {
+  if (row.scope === "crosscheck" || row.scope === "checkpoint") return reviewRel(id, row.scope, null);
+  if (row.agent === "reviewer" && row.scope === null && row.phase !== null) return reviewRel(id, "phase", row.phase);
+  return null;
 }
 
 function amendStep(snap: WorkSnapshot): NextStep | null {
-  const amend = pendingAmend(snap);
-  return amend ? { action: "amend", actor: "architect", detail: amend } : null;
+  const row = pendingAmend(snap);
+  if (!row) return null;
+  const review = amendReview(snap.state.id, row);
+  return { action: "amend", actor: "architect", detail: row.amend, ...(review ? { review } : {}) };
 }
 
 function amendedDrift({ state, verdicts }: WorkSnapshot): VerdictRow | null {
@@ -85,10 +102,20 @@ function amendedDrift({ state, verdicts }: WorkSnapshot): VerdictRow | null {
   return verdicts.slice(at + 1).some((v) => v.verdict === "AMENDED") ? verdicts[at] : null;
 }
 
+function decisionAnchor(path: string): string | null {
+  return path.match(DECISION_ANCHOR)?.[1] ?? null;
+}
+
+function recheckDelta(drift: VerdictRow, revised: string[]): string[] {
+  if (drift.blocking === undefined) return revised;
+  const covered = drift.blocking.length > 0 && drift.blocking.every((path) => revised.includes(decisionAnchor(path) ?? ""));
+  return covered ? revised : [];
+}
+
 function recheckStep(snap: WorkSnapshot): NextStep | null {
   const drift = amendedDrift(snap);
   if (!drift) return null;
-  const delta = decisionsRevisedSince(snap.artifact?.body ?? "", drift.ts.slice(0, ISO_DAY));
+  const delta = recheckDelta(drift, decisionsRevisedSince(snap.artifact?.body ?? "", drift.ts.slice(0, ISO_DAY)));
   return { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta };
 }
 
@@ -130,7 +157,7 @@ function amendAnswerStep(snap: WorkSnapshot, review: GatedReview, after: readonl
   const amendedAt = after.findIndex((v) => isCountedAmended(snap, v));
   if (amendedAt >= 0) return amendedStep(snap, review, after.slice(amendedAt + 1));
   if (after.some((v) => v.verdict === "AMENDED")) return amendmentGate(snap, review, `the architect returned AMENDED but ${ARTIFACT_BY_LANE[snap.state.lane]} is unchanged`);
-  return { action: "amend", actor: "architect", detail: review.amend, reword: true };
+  return { action: "amend", actor: "architect", detail: review.amend, review: reviewRel(snap.state.id, "cumulative", null), reword: true };
 }
 
 function cumulativeFixStep(snap: WorkSnapshot, detail: string): NextStep {

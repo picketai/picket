@@ -1,0 +1,9 @@
+id: 20261114-kernel-gaps-in-amend-and-grants
+lane: order
+title: Kernel gaps in amend and grants
+status: open
+created: 2026-11-14T15:33:04.273Z
+updated: 2026-11-14T15:42:24.126Z
+session: d09e885b-38d7-46ab-90a1-fca179743a5f
+base: f82fe2e3d328a2679d59c02c98045486b80856ad
+run_through: 3

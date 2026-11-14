@@ -193,6 +193,26 @@ test("an amend step with a reword grant adds the reword line after the amend lin
   assert.deepEqual(sends({ phases }, { action: "approve_amendment", actor: "user", detail: "d", options: [] }), []);
 });
 
+function architectMessage(input: SnapshotInput): string | undefined {
+  const snap = snapshotOf(input);
+  return sendsFor(snap, nextStep(snap, []), S).find((s) => s.type === "picket:architect")?.message;
+}
+
+test("an amend send names the saved review of the row that asked, before the reword line (T-1.3)", () => {
+  const drift = { ...verdictRow("reviewer", "DRIFT DETECTED", "crosscheck"), amend: "AMENDMENT NEEDED: D-002 x" };
+  assert.equal(architectMessage({ lane: "design", status: "blocked", phases: [{ n: 1 }], verdicts: [drift] }), `work: ${ID}\namend: AMENDMENT NEEDED: D-002 x\nreview: work/${ID}/reviews/crosscheck.md`);
+  const phaseReview = { ...verdictRow("reviewer", "CHANGES REQUIRED", null), phase: 2, amend: "AMENDMENT NEEDED: T-2.1 x" };
+  const twoPhases = [{ n: 1, done: true, approved: true }, { n: 2, done: true }];
+  assert.equal(architectMessage({ phases: twoPhases, verdicts: [phaseReview] }), `work: ${ID}\namend: AMENDMENT NEEDED: T-2.1 x\nreview: work/${ID}/reviews/phase-2.md`);
+  const cumulative = { ...verdictRow("reviewer", "CHANGES REQUIRED", "cumulative"), phase: 2, amend: "AMENDMENT NEEDED: T-1.2 x" };
+  const gate: ReplyRow = { ts: "2026-10-23T11:00:00.000Z", session: S, action: "approve_amendment", phase: null, reply: "a", choice: "amend" };
+  const approved = [{ n: 1, done: true, approved: true }, { n: 2, done: true, approved: true }];
+  assert.equal(
+    architectMessage({ phases: approved, verdicts: [cumulative], replies: [gate] }),
+    `work: ${ID}\namend: AMENDMENT NEEDED: T-1.2 x\nreview: work/${ID}/reviews/cumulative.md\nreword: approved by the user at the amendment gate`,
+  );
+});
+
 test("a checkpoint fix spawns the developer with the checkpoint review and the phase it fixes (T-1.4)", () => {
   const phases = Array.from({ length: 6 }, (_, i) => (i < 3 ? { n: i + 1, done: true, approved: true } : { n: i + 1 }));
   const fix: NextStep = { action: "fix_findings", actor: "developer", phase: 3, review: "checkpoint", detail: "d" };
