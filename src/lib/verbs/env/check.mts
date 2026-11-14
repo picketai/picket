@@ -8,6 +8,7 @@ import { readModel } from "../../shared/env/model.mts";
 import { scanUmbrella } from "../../shared/env/scan.mts";
 import { hasError, staticFindings, type Finding } from "../../shared/env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
+import { trialFinding } from "../../shared/env/trial.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 
 export type CheckInput = Record<string, never>;
@@ -18,8 +19,10 @@ const COMPOSE_PATH = `${ENV_DIR}/${COMPOSE_FILE}`;
 
 function environmentReport(engine: Engine, machine: MachineReport, root: string): EnvCheckReport {
   if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) return { ok: false, machine, environment: "missing", findings: [] };
-  const model = readModel(readModelJson(engine, root));
-  const findings = [...staticFindings(model), ...inStepFindings(scanUmbrella(root), model, root)];
+  const modelJson = readModelJson(engine, root);
+  const model = readModel(modelJson);
+  const trial = trialFinding(root, modelJson);
+  const findings = [...staticFindings(model), ...inStepFindings(scanUmbrella(root), model, root), ...(trial ? [trial] : [])];
   return { ok: !hasError(findings), machine, environment: "present", findings };
 }
 

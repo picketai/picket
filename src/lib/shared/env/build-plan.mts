@@ -27,12 +27,12 @@ function dockerfileFor(build: NonNullable<EnvService["build"]>): string | null {
   return within(abs, build.context) ? build.dockerfile : abs;
 }
 
-function contextTree(checkoutDir: string, contextRel: string, env: NodeJS.ProcessEnv): string {
+function contextTree(checkoutDir: string, rel: string, fromTop: string, env: NodeJS.ProcessEnv): string {
   const scratch = mkdtempSync(join(tmpdir(), "picket-index-"));
   try {
     const indexEnv = { ...env, GIT_INDEX_FILE: join(scratch, "index") };
-    gitRun(checkoutDir, ["add", "-A", "--", contextRel === "" ? "." : contextRel], { env: indexEnv });
-    const prefix = contextRel === "" ? [] : [`--prefix=${contextRel}/`];
+    gitRun(checkoutDir, ["add", "-A", "--", rel === "" ? "." : rel], { env: indexEnv });
+    const prefix = fromTop === "" ? [] : [`--prefix=${fromTop}/`];
     return gitRun(checkoutDir, ["write-tree", ...prefix], { env: indexEnv }).trim();
   } finally {
     rmSync(scratch, { recursive: true, force: true });
@@ -41,9 +41,10 @@ function contextTree(checkoutDir: string, contextRel: string, env: NodeJS.Proces
 
 export function contextVersion(checkoutDir: string, contextRel: string, env: NodeJS.ProcessEnv): string {
   const rel = posix(contextRel).replace(/\/$/, "");
+  const fromTop = `${gitRun(checkoutDir, ["rev-parse", "--show-prefix"]).trim()}${rel}`.replace(/\/$/, "");
   const head = gitRun(checkoutDir, ["rev-parse", "HEAD"]).trim();
-  const headTree = gitRun(checkoutDir, ["rev-parse", rel === "" ? "HEAD^{tree}" : `HEAD:${rel}`], { okExitCodes: [128] }).trim();
-  const tree = contextTree(checkoutDir, rel, env);
+  const headTree = gitRun(checkoutDir, ["rev-parse", fromTop === "" ? "HEAD^{tree}" : `HEAD:${fromTop}`], { okExitCodes: [128] }).trim();
+  const tree = contextTree(checkoutDir, rel, fromTop, env);
   return tree === headTree ? head.slice(0, SHORT) : `${head.slice(0, SHORT)}-t${tree.slice(0, SHORT)}`;
 }
 

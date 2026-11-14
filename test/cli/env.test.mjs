@@ -140,6 +140,18 @@ test("env start on a git copy with an open item prints the orders URL and record
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(root, ".picket", "state", "env", "stacks.json"), "utf8"))), ["picket-proj-481"]);
 });
 
+test("env trial on a git copy passes twice, then env check shows no pending trial line (T-6.5)", (t) => {
+  const { root } = startProject(t);
+  const before = envCheck(root, FAKE_ENGINE);
+  assert.match(before.stdout, /^pending: trial: run picket env trial$/m);
+  const r = runCli(root, ["env", "trial", "--root", root], { env: { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: FAKE_ENGINE } });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^trial passed twice; removed 1 trial image\(s\)$/m);
+  const after = envCheck(root, FAKE_ENGINE);
+  assert.equal(after.status, 0, after.stdout);
+  assert.doesNotMatch(after.stdout, /trial/);
+});
+
 test("env check with an engine that does not exist exits 2 and names what to install (T-1.6)", (t) => {
   const root = withProject(t);
   const r = envCheck(root, "picket-no-such-engine");

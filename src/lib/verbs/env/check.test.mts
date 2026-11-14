@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { EXIT, describeExit } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import type { EngineRunner, MachineReport } from "../../shared/env/engine.mts";
+import { recordTrial } from "../../shared/env/trial.mts";
 import { parseArgs } from "../../util/args.mts";
 import { checkEnvironment, renderCheck, verb, type EnvCheckReport } from "./check.mts";
 
@@ -74,13 +75,32 @@ const BILLING_PENDING = [
   "pending: billing: its Dockerfile is left to the project",
   "pending: billing: services/billing/appsettings.json ConnectionStrings:Billing has no wiring row",
   "pending: billing: services/billing/appsettings.json Services:Orders:Url has no wiring row",
+  "pending: trial: run picket env trial",
 ];
 
-test("the fixture umbrella passes the rules, prints billing's pending lines and exits 0 (T-4.7)", (t) => {
+test("the fixture umbrella with no trial record passes, prints the pending lines and exits 0 (T-4.7, T-6.4)", (t) => {
   const outcome = checkEnvironment(umbrellaContext(t), linuxDocker(RECORDED));
   assert.equal(describeExit(outcome).code, EXIT.done);
-  assert.ok(report(outcome).findings.every((f) => f.rule === "E9" && f.level === "pending" && f.service === "billing"));
+  assert.ok(report(outcome).findings.every((f) => f.level === "pending"));
   assert.deepEqual(renderCheck(report(outcome)).split("\n").slice(2), ["rules passed", ...BILLING_PENDING]);
+});
+
+test("a failed or stale trial record fails the check naming E10; a passing one for this model adds no E10 line (T-6.4)", (t) => {
+  const failedRun = umbrellaContext(t);
+  recordTrial(failedRun.root, RECORDED, false, new Date(0));
+  const failedOutcome = checkEnvironment(failedRun, linuxDocker(RECORDED));
+  assert.equal(describeExit(failedOutcome).code, 2);
+  assert.ok(renderCheck(report(failedOutcome)).split("\n").includes("E10: the last trial failed; fix the environment and run picket env trial"));
+  const stale = umbrellaContext(t);
+  recordTrial(stale.root, { ...RECORDED, name: "before" }, true, new Date(0));
+  const staleOutcome = checkEnvironment(stale, linuxDocker(RECORDED));
+  assert.equal(describeExit(staleOutcome).code, 2);
+  assert.ok(renderCheck(report(staleOutcome)).split("\n").includes("E10: the last trial ran on another environment; run picket env trial"));
+  const passed = umbrellaContext(t);
+  recordTrial(passed.root, RECORDED, true, new Date(0));
+  const passedOutcome = checkEnvironment(passed, linuxDocker(RECORDED));
+  assert.equal(describeExit(passedOutcome).code, 0);
+  assert.ok(!renderCheck(report(passedOutcome)).includes("trial"));
 });
 
 test("an error finding exits 2 and prints one line per finding", (t) => {

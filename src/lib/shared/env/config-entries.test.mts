@@ -34,6 +34,36 @@ test("masked hides connection-string, JDBC and URL passwords and whole secret-na
   assert.equal(masked("Storage", "AccountEndpoint=https://x.example.com/;AccountKey=abc=="), "AccountEndpoint=https://x.example.com/;AccountKey=***");
 });
 
+test("masked hides secrets in query strings and SAS values, which isAddressLike lists", () => {
+  const cases: [string, string][] = [
+    ["https://pay.example.com/hook?apikey=abc123", "https://pay.example.com/hook?apikey=***"],
+    ["jdbc:mysql://h:3306/db?user=a&password=hunter2", "jdbc:mysql://h:3306/db?user=a&password=***"],
+    ["redis://h:6379?password=zzz", "redis://h:6379?password=***"],
+    ["Endpoint=sb://bus.example.com/;SharedAccessSignature=sv=2020&sig=SECRETSIG", "Endpoint=sb://bus.example.com/;SharedAccessSignature=***"],
+    ["https://blob.example.com/c?sv=2020&sig=SECRETSIG", "https://blob.example.com/c?sv=2020&sig=***"],
+    ["https://fn.example.com/api/run?code=FUNCKEY", "https://fn.example.com/api/run?code=***"],
+  ];
+  for (const [value, expected] of cases) {
+    assert.equal(isAddressLike("Value", value), true, value);
+    assert.equal(masked("Value", value), expected, value);
+  }
+});
+
+test("masked hides any pair whose name contains a secret word, after earlier plain pairs", () => {
+  const cases: [string, string][] = [
+    ["https://a.example.com/x?api_key=K1", "https://a.example.com/x?api_key=***"],
+    ["https://a.example.com/x?access_token=K2", "https://a.example.com/x?access_token=***"],
+    ["https://a.example.com/x?client_secret=K3", "https://a.example.com/x?client_secret=***"],
+    ["https://s3.example.com/b/o?X-Amz-Date=20261114&X-Amz-Signature=K4", "https://s3.example.com/b/o?X-Amz-Date=20261114&X-Amz-Signature=***"],
+    ["jdbc:postgresql://h/db?user=a&sslpassword=K5", "jdbc:postgresql://h/db?user=a&sslpassword=***"],
+    ["Server=db;Api Key=K6;Database=x", "Server=db;Api Key=***;Database=x"],
+  ];
+  for (const [value, expected] of cases) {
+    assert.equal(isAddressLike("Value", value), true, value);
+    assert.equal(masked("Value", value), expected, value);
+  }
+});
+
 test("masked leaves values without secrets as they are and keeps null", () => {
   assert.equal(masked("ORDERS_URL", "http://orders:8080"), "http://orders:8080");
   assert.equal(masked("Legacy", "Data Source=db01;Integrated Security=True"), "Data Source=db01;Integrated Security=True");

@@ -54,6 +54,16 @@ test("a clean context is HEAD, an edit adds the tree, undoing it returns to HEAD
   assert.equal(staged(), "");
 });
 
+test("a checkout folder below the repository top reads its context from that folder", (t) => {
+  const repo = gitRepo(t, { files: { "fixtures/umbrella/svc/a.txt": "one\n" } });
+  const umbrella = join(repo, "fixtures", "umbrella");
+  const head7 = gitOut(repo, "rev-parse", "HEAD").slice(0, 7);
+  assert.equal(contextVersion(umbrella, "svc", ENV), head7);
+  writeIn(umbrella, "svc/a.txt", "two\n");
+  assert.match(contextVersion(umbrella, "svc", ENV), new RegExp(`^${head7}-t[0-9a-f]{7}$`));
+  assert.equal(gitOut(repo, "diff", "--cached", "--name-only"), "");
+});
+
 test("a new untracked file in the context changes the version, and the root context compares whole trees", (t) => {
   const root = gitRepo(t, { files: { "a.txt": "one\n" } });
   const head7 = gitOut(root, "rev-parse", "HEAD").slice(0, 7);

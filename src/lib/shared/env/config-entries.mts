@@ -8,16 +8,16 @@ type Pair = { key: string; value: string };
 
 const MASK = "***";
 const CONFIG_NAME = /(?:appsettings|settings|config|configuration|application)/i;
-const SECRET_KEY_PARTS = ["password", "passwd", "pwd", "secret", "token", "apikey", "api_key", "credential", "privatekey", "private_key", "sas", "signature"];
+const SECRET_WORDS = ["password", "passwd", "pwd", "secret", "token", "apikey", "api_key", "credential", "privatekey", "private_key", "sas", "signature", "sig", "code", "accountkey", "sharedaccesskey"];
 const ADDRESS_KEY_ENDINGS = ["url", "uri", "endpoint", "host", "address", "connectionstring", "dsn"];
 const ADDRESS_PAIR_NAMES = "server|data source|host|hostname|address|addr|network address|endpoint|accountendpoint|contact points";
-const SECRET_PAIR_NAMES = "password|pwd|secret|token|api key|accountkey|sharedaccesskey";
 
 const URL_SCHEME = /[a-z][a-z0-9+.-]*:\/\//i;
 const JDBC = /^jdbc:[a-z0-9]+:/i;
 const HOST_PORT = /^[^\s:/]*[a-z][^\s:/]*:\d{1,5}$/i;
 const ADDRESS_PAIR = new RegExp(`(?:^|[;( ])\\s*(?:${ADDRESS_PAIR_NAMES})\\s*=\\s*[^;)\\s]`, "i");
-const SECRET_PAIR = new RegExp(`((?:^|[;( ])\\s*(?:${SECRET_PAIR_NAMES})\\s*=\\s*)([^;)]*)`, "gi");
+const PAIR_NAME = /(?:^|[;( ?&])\s*([^=;()?&\s][^=;()?&]*?)\s*=\s*/g;
+const SECRET_VALUE_END = /[;)]/;
 const URL_PASSWORD = /([a-z][a-z0-9+.-]*:\/\/[^:/@\s]+:)([^@\s/]*)(@)/gi;
 const XML_ADD = /<add\b([^>]*?)\/?>/gi;
 const XML_ATTRIBUTE = /([\w:.-]+)\s*=\s*"([^"]*)"/g;
@@ -90,8 +90,27 @@ export function isAddressLike(key: string | null, value: string | null): boolean
   return key !== null && ADDRESS_KEY_ENDINGS.some((ending) => lastSegment(key).endsWith(ending));
 }
 
+function isSecretName(name: string): boolean {
+  const plain = name.toLowerCase().replace(/\s+/g, "");
+  return SECRET_WORDS.some((word) => plain.includes(word));
+}
+
+function maskedPairs(text: string): string {
+  let out = "";
+  let copied = 0;
+  for (const match of text.matchAll(PAIR_NAME)) {
+    const valueStart = (match.index ?? 0) + match[0].length;
+    if (valueStart < copied || !isSecretName(match[1])) continue;
+    const end = text.slice(valueStart).search(SECRET_VALUE_END);
+    const valueEnd = end < 0 ? text.length : valueStart + end;
+    out += `${text.slice(copied, valueStart)}${MASK}`;
+    copied = valueEnd;
+  }
+  return out + text.slice(copied);
+}
+
 export function masked(key: string | null, value: string | null): string | null {
   if (value === null) return null;
-  if (key !== null && SECRET_KEY_PARTS.some((part) => lastSegment(key).includes(part))) return MASK;
-  return value.replace(SECRET_PAIR, `$1${MASK}`).replace(URL_PASSWORD, `$1${MASK}$3`);
+  if (key !== null && isSecretName(lastSegment(key))) return MASK;
+  return maskedPairs(value).replace(URL_PASSWORD, `$1${MASK}$3`);
 }

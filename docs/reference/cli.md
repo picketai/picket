@@ -110,6 +110,14 @@ Stop a work item's stack and keep its containers and volumes.
 picket env stop <id>
 ```
 
+### picket env trial
+
+Build and start the environment twice from the root checkout, then remove it.
+
+```sh
+picket env trial
+```
+
 ## picket extension
 
 Manage the project's extensions.

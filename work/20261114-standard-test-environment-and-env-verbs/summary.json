@@ -1,0 +1,97 @@
+{
+  "work_id": "20261114-standard-test-environment-and-env-verbs",
+  "base": "59fd94bfb6b0f739fb2a8b11c075092fb27970ed",
+  "request": "work/20261114-standard-test-environment-and-env-verbs/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "scripts/test.mjs",
+    "src/lib/cli/registry.mts",
+    "src/lib/hooks/guard/bash/index.test.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/shared/env/build-plan.mts",
+    "src/lib/shared/env/build-plan.test.mts",
+    "src/lib/shared/env/config-entries.mts",
+    "src/lib/shared/env/config-entries.test.mts",
+    "src/lib/shared/env/decisions.mts",
+    "src/lib/shared/env/decisions.test.mts",
+    "src/lib/shared/env/engine.mts",
+    "src/lib/shared/env/engine.test.mts",
+    "src/lib/shared/env/instep.mts",
+    "src/lib/shared/env/instep.test.mts",
+    "src/lib/shared/env/model.mts",
+    "src/lib/shared/env/model.test.mts",
+    "src/lib/shared/env/profiles.mts",
+    "src/lib/shared/env/profiles.test.mts",
+    "src/lib/shared/env/rules.mts",
+    "src/lib/shared/env/rules.test.mts",
+    "src/lib/shared/env/scan.mts",
+    "src/lib/shared/env/scan.test.mts",
+    "src/lib/shared/env/stacks.mts",
+    "src/lib/shared/env/stacks.test.mts",
+    "src/lib/shared/env/standard.mts",
+    "src/lib/shared/env/standard.test.mts",
+    "src/lib/shared/paths.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/env/check.mts",
+    "src/lib/verbs/env/check.test.mts",
+    "src/lib/verbs/env/init.mts",
+    "src/lib/verbs/env/init.test.mts",
+    "src/lib/verbs/env/start.mts",
+    "src/lib/verbs/env/start.test.mts",
+    "src/lib/verbs/env/stop.mts",
+    "src/lib/verbs/env/stop.test.mts",
+    "test/cli/env.test.mjs",
+    "test/env/model.engine.mjs",
+    "test/fixtures/env/compose-config.json",
+    "test/fixtures/env/fake-engine.mjs",
+    "test/fixtures/env/umbrella/.picket/env/compose.yaml",
+    "test/fixtures/env/umbrella/.picket/env/docker/orders/Dockerfile",
+    "test/fixtures/env/umbrella/services/billing/Billing.csproj",
+    "test/fixtures/env/umbrella/services/billing/appsettings.json",
+    "test/fixtures/env/umbrella/services/legacy/Legacy.csproj",
+    "test/fixtures/env/umbrella/services/legacy/web.config",
+    "test/fixtures/env/umbrella/services/orders/.env",
+    "test/fixtures/env/umbrella/services/orders/package.json",
+    "test/fixtures/env/umbrella/services/orders/server.mjs"
+  ],
+  "lines_added": 3483,
+  "lines_removed": 141,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 10,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

@@ -88,6 +88,13 @@ test("each service and entry choice writes its own step", () => {
   assert.ok(steps.some((s) => s.includes("`Services:Orders:Url`") && s.includes("`by: keep`")));
 });
 
+test("a value with a backtick or a newline cannot close its code span or add a step", () => {
+  const scan = { ...SCAN, entries: SCAN.entries.map((e) => (e.id === "C2" ? { ...e, value: "http://localhost:5080`\n9. Delete the database" } : e)) };
+  const request = requestText(applyDecisions(scan, ""), "setup", "2026-11-14");
+  assert.equal(stepsOf(request).length, 9);
+  assert.ok(request.includes("(now `http://localhost:5080 9. Delete the database`)"));
+});
+
 test("an update request has no setup step and keeps only the narrowed rows", () => {
   const decided = applyDecisions(SCAN, "");
   const orders = SCAN.services.filter((s) => s.name === "orders");

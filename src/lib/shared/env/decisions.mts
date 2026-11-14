@@ -70,7 +70,7 @@ export function narrowed(decided: Decided, services: ScannedService[], entries: 
 }
 
 function code(text: string): string {
-  return `\`${text}\``;
+  return `\`${text.replaceAll("`", "").replace(/[\r\n]+/g, " ")}\``;
 }
 
 function sharedVariable(name: string): string {
