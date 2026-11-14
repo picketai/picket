@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asWritten, closureFailure, openSpellings, pairNames, pairPlaces } from "#test/variants.mts";
+import { asWritten, closureFailure, openSpellings, pairNames, pairPlaces, programFlagSpellings, stdinSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -101,6 +101,33 @@ test("a spelling's input is the address its label shows", () => {
 
 test("pairNames refuses a seed that is not name=value", () => {
   assert.throws(() => pairNames.spell("password"), /a pair seed needs name=value, got password/);
+});
+
+test("programFlagSpellings spells the long form, the attached form, the cluster and leading flags (T-3.2)", () => {
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["node", "-e", "P"], heredocs: [] }), ["node --eval P", "node --eval=P", "node -pe P", "node --no-warnings -e P"]);
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["python3", "-c", "P"], heredocs: [] }), ["python3 -Bc P", "python3 -X utf8 -c P"]);
+});
+
+test("programFlagSpellings carries the program as its own word or attached to the long flag", () => {
+  const inputs = programFlagSpellings.spell({ argv: ["node", "-e", "P"], heredocs: [] }).map((spelling) => spelling.input);
+  assert.deepEqual(inputs, [
+    { argv: ["node", "--eval", "P"], heredocs: [] },
+    { argv: ["node", "--eval=P"], heredocs: [] },
+    { argv: ["node", "-pe", "P"], heredocs: [] },
+    { argv: ["node", "--no-warnings", "-e", "P"], heredocs: [] },
+  ]);
+});
+
+test("programFlagSpellings throws on an interpreter missing from the table (T-3.3)", () => {
+  assert.throws(() => programFlagSpellings.spell({ argv: ["perl", "-e", "P"], heredocs: [] }), /no flag table row for the interpreter perl/);
+});
+
+test("stdinSpellings reads the heredoc after - alone and after the leading flags (T-3.4)", () => {
+  const spellings = stdinSpellings.spell({ argv: ["python3"], heredocs: ["P"] });
+  assert.deepEqual(spellings, [
+    { label: "python3 - << P", input: { argv: ["python3", "-"], heredocs: ["P"] } },
+    { label: "python3 -X utf8 - << P", input: { argv: ["python3", "-X", "utf8", "-"], heredocs: ["P"] } },
+  ]);
 });
 
 test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {

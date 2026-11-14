@@ -52,6 +52,57 @@ export const pairNames: Family<string> = {
   },
 };
 
+export type Invocation = { argv: string[]; heredocs: string[] };
+
+type InterpreterFlags = { long: Record<string, string>; clusterLetter: string; leading: string[] };
+
+const INTERPRETER_FLAGS: Record<string, InterpreterFlags> = {
+  node: { long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
+  python3: { long: {}, clusterLetter: "B", leading: ["-X", "utf8"] },
+  ruby: { long: {}, clusterLetter: "w", leading: ["-w"] },
+};
+
+function flagsOf(interpreter: string): InterpreterFlags {
+  const flags = INTERPRETER_FLAGS[interpreter];
+  if (flags === undefined) throw new Error(`no flag table row for the interpreter ${interpreter}`);
+  return flags;
+}
+
+export function invocationLabel({ argv, heredocs }: Invocation): string {
+  return [argv.join(" "), ...heredocs.map((program) => `<< ${program}`)].join(" ");
+}
+
+function invocations(argvs: string[][], heredocs: string[]): Spelling<Invocation>[] {
+  return argvs.map((argv) => {
+    const input = { argv, heredocs };
+    return { label: invocationLabel(input), input };
+  });
+}
+
+function longSpellings(interpreter: string, long: string | undefined, program: string): string[][] {
+  return long === undefined ? [] : [[interpreter, long, program], [interpreter, `${long}=${program}`]];
+}
+
+export const programFlagSpellings: Family<Invocation> = {
+  name: "program flag spellings",
+  spell: ({ argv: [interpreter, flag, program] }) => {
+    const { long, clusterLetter, leading } = flagsOf(interpreter);
+    return invocations([
+      ...longSpellings(interpreter, long[flag], program),
+      [interpreter, `-${clusterLetter}${flag.slice(1)}`, program],
+      [interpreter, ...leading, flag, program],
+    ], []);
+  },
+};
+
+export const stdinSpellings: Family<Invocation> = {
+  name: "stdin spellings",
+  spell: ({ argv: [interpreter], heredocs }) => {
+    const { leading } = flagsOf(interpreter);
+    return invocations([[interpreter, "-"], [interpreter, ...leading, "-"]], heredocs);
+  },
+};
+
 export function openSpellings<T, R>(closure: Closure<T, R>, check: ClosureCheck<T>, t: TestContext): Spelling<T>[] {
   const spellings = check.seeds.flatMap((seed) => check.family.spell(seed));
   return spellings.filter((spelling) => !closure.closed(closure.run(spelling.input, t)));
