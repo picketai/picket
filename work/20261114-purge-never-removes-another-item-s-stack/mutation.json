@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-14T15:30:24.041Z",
+  "base": "eb4afe7fd931a6a4df4dfd365cc39ae5599d27ed",
+  "mutant": {
+    "path": "src/lib/shared/env/stacks.mts",
+    "line": 68,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 104127
+}
