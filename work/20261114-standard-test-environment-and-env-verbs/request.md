@@ -1,0 +1,12 @@
+Build step 2 of SDR 00004 (artifacts/strategy/decisions/00004-testing-stage-saved-scenarios-standard.md, D-003, D-004, TF-002; detail in artifacts/strategy/drafts/testing-and-test-environment.md section 2): the standard test environment.
+
+Add the `picket env` verbs and the enforced standard for a project's test environment: `.picket/env/` at the umbrella root on the Compose Specification, run by Docker or Podman with Linux containers; service roles app, dependency, mock, shared, data and optional seed; the check rules that verify an environment follows the standard; `picket env init` for first install and every update, which checks the machine, scans for services, Dockerfiles and address-like configuration entries, decides each one with the user and creates a work item whose request lists every step, writing no environment files itself; the lifecycle (build a changed service from its worktree and the others from the root checkout, image name picket/<service>-<item>:<commit>, start, stop at session end, purge at item close); and a fixture system in this repository to test it against.
+
+User's constraints from 2026-11-14: his services are mostly dotnet and node, so prepare for these, but do not limit the standard to them; any other runtime must be accommodated as long as it is technically and physically possible. His database is SQL Server, but do not go for just one type of connection; the standard must not be tied to one database engine or one connection type.
+
+Out of scope: saved scenarios and replay (TF-003), the tester (TF-004), the mock format and stub server and the data catalog with SQL files (TF-006), the database guards (TF-007).
+
+## Brief
+purpose: Give every project one enforced, checkable shape for its test environment so the kernel can build, start, check and remove it (SDR 00004 D-003, D-004, TF-002)
+in scope: the picket env verbs; the .picket/env standard on Compose with service roles; the check rules; picket env init that checks the machine, scans, decides with the user and creates a work item; the lifecycle from build to purge; a fixture system in this repository; runtime-neutral and database-neutral by design, with dotnet, node and SQL Server prepared for
+out of scope: saved scenarios and replay (TF-003); the tester (TF-004); the mock format, stub server and data catalog with SQL files (TF-006); the database guards (TF-007); Windows containers; Kubernetes; testing against a deployed environment

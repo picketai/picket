@@ -31,7 +31,7 @@ function classifyVerify(root: string, ...words: string[]): { verdict: string; se
 }
 
 const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify", "name"];
-const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"] };
+const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"], env: ["check"] };
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
   for (const flag of ["--only", "--run", "--start"]) assert.ok(WRAPPING_FLAGS.has(flag), flag);
@@ -51,6 +51,11 @@ test("kernelClass is safe for today's read verbs and subverbs and kernel for eve
   assert.equal(kernelClass("nosuchverb", undefined), "kernel");
   assert.equal(kernelClass("constructor", undefined), "kernel");
   assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "reply", "uninstall", "waive"]);
+});
+
+test("env check is a safe read and env without a subverb is a kernel call (T-1.7)", () => {
+  assert.equal(kernelClass("env", "check"), "safe");
+  assert.equal(kernelClass("env", undefined), "kernel");
 });
 
 test("picket verify is safe only when every checkout's test command is safe in its own folder (T-3.5)", (t) => {

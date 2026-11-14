@@ -9,6 +9,12 @@ export const VERB_NAMES = {
   comment: { summary: "record the user's approval of one code comment", readOnly: false, leadOnly: true },
   cost: { summary: "sum the ledger: turns, tokens, cache, stops, bounces, escalations", readOnly: true },
   drive: { summary: "start the app or run a command, exercise it, stop it and log the evidence", readOnly: false },
+  env: {
+    summary: "build, start, check and remove the project's test environment",
+    subverbs: {
+      check: { summary: "check the machine and the environment against the standard", readOnly: true },
+    },
+  },
   extension: {
     summary: "manage the project's extensions",
     subverbs: {

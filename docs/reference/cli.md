@@ -74,6 +74,18 @@ Start the app or run a command, exercise it, stop it and log the evidence.
 picket drive --run "<command>" | drive [--start "<command>"] --hit "<METHOD /path [json]>"... [--env NAME=VALUE]... [--port <n>] [--wait <path>] [--timeout <s>] [--keep-changes] [--work <id>] [--phase <n>]
 ```
 
+## picket env
+
+Build, start, check and remove the project's test environment.
+
+### picket env check
+
+Check the machine and the environment against the standard.
+
+```sh
+picket env check
+```
+
 ## picket extension
 
 Manage the project's extensions.

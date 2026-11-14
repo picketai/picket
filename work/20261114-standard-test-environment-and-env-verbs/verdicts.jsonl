@@ -1,0 +1,5 @@
+{"ts":"2026-11-14T09:30:40.610Z","agent":"architect","verdict":"ARTIFACT WRITTEN","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-14T09:32:05.563Z","agent":"reviewer","verdict":"DRIFT DETECTED","phase":1,"scope":"crosscheck","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","amend":"AMENDMENT NEEDED: D-007 print-before-remove is not enforced by phase 8","record":"203e9d3619187fef21e10a10987d8b88da5f8fe066d233b0dcb6daed184a01ff"}
+{"ts":"2026-11-14T09:32:56.208Z","agent":"architect","verdict":"AMENDED","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f","record":"1c2ebf6df25f0502fcbdc49cc8212d04095628eee7f19d60c0eab038c66880d1"}
+{"ts":"2026-11-14T09:33:22.989Z","agent":"reviewer","verdict":"ALIGNED","phase":1,"scope":"crosscheck","through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
+{"ts":"2026-11-14T09:34:52.815Z","agent":"developer","verdict":"PHASE DONE","phase":1,"scope":null,"through":null,"session":"d09e885b-38d7-46ab-90a1-fca179743a5f"}
