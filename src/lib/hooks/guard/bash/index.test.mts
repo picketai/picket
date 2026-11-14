@@ -85,6 +85,15 @@ test("guardBash allows a lone read-only picket verb and leaves a mutating one to
   assert.equal(decide("picket next x; ls"), "allow");
 });
 
+test("a developer's picket env check is allowed, but not when the command sets PICKET_ENGINE (T-5.8)", (t) => {
+  const root = project(t);
+  const decide = (command: string) => decision(command, { root, tool: "Bash", agent: "picket:developer" });
+  assert.equal(decide("picket env check"), "allow");
+  for (const command of ["PICKET_ENGINE=/tmp/x.mjs picket env check", "export PICKET_ENGINE=/tmp/x.mjs && picket env check", "env PICKET_ENGINE=/tmp/x.mjs picket env check"]) {
+    assert.notEqual(decide(command), "allow", command);
+  }
+});
+
 test("guardBash allows a lone picket verify only when the test command it would run is itself safe", (t) => {
   const root = project(t);
   const decide = (command: string) => decision(command, { root, tool: "Bash" });

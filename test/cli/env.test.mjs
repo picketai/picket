@@ -4,7 +4,8 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { runCli } from "#test/cli.mts";
-import { withProject } from "#test/project.mts";
+import { gitIn, gitRepo } from "#test/git.mts";
+import { openItem, withProject } from "#test/project.mts";
 
 const FAKE_ENGINE = resolve("test/fixtures/env/fake-engine.mjs");
 const UMBRELLA = resolve("test/fixtures/env/umbrella");
@@ -112,9 +113,36 @@ test("env init with no engine exits 2 and leaves no scan behind (T-3.6)", (t) =>
   assert.equal(existsSync(join(root, SCAN_FILE)), false);
 });
 
+function startProject(t) {
+  const root = gitRepo(t, { files: { "README.md": "umbrella\n" } });
+  cpSync(UMBRELLA, root, { recursive: true });
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "umbrella");
+  const { id } = openItem(root, { lane: "order", title: "Orders export", source: "PROJ-481" });
+  return { root, id };
+}
+
+function envVerb(root, verb, id) {
+  return runCli(root, ["env", verb, id, "--root", root], { env: { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: FAKE_ENGINE } });
+}
+
+test("env start on a git copy with an open item prints the orders URL and records the stack; env stop keeps it (T-5.6)", (t) => {
+  const { root, id } = startProject(t);
+  const r = envVerb(root, "start", id);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^PICKET_URL_ORDERS=http:\/\/127\.0\.0\.1:49153$/m);
+  assert.match(r.stdout, /^orders · built from \. at [0-9a-f]{7}$/m);
+  const stacks = JSON.parse(readFileSync(join(root, ".picket", "state", "env", "stacks.json"), "utf8"));
+  assert.deepEqual(Object.keys(stacks), ["picket-proj-481"]);
+  const stopped = envVerb(root, "stop", id);
+  assert.equal(stopped.status, 0, stopped.stdout + stopped.stderr);
+  assert.match(stopped.stdout, /^stopped picket-proj-481/);
+  assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(root, ".picket", "state", "env", "stacks.json"), "utf8"))), ["picket-proj-481"]);
+});
+
 test("env check with an engine that does not exist exits 2 and names what to install (T-1.6)", (t) => {
   const root = withProject(t);
   const r = envCheck(root, "picket-no-such-engine");
   assert.equal(r.status, 2, r.stderr);
-  assert.equal(r.stdout.trim(), "missing: no container engine: install Docker or Podman");
+  assert.equal(r.stdout.trim(), "missing: no container engine: install Docker or Podman\nmissing: PICKET_ENGINE names picket-no-such-engine, which is neither docker nor podman, so no engine was tried");
 });

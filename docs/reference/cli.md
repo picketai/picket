@@ -94,6 +94,22 @@ Scan the umbrella and list the environment decisions for the user.
 picket env init [--create [--decide "<id>=<choice>,..."]]
 ```
 
+### picket env start
+
+Build a work item's apps and start its stack.
+
+```sh
+picket env start <id>
+```
+
+### picket env stop
+
+Stop a work item's stack and keep its containers and volumes.
+
+```sh
+picket env stop <id>
+```
+
 ## picket extension
 
 Manage the project's extensions.

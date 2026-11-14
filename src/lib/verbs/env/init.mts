@@ -4,7 +4,7 @@ import { action, done, failed, Refused, type Outcome } from "../../shared/action
 import { admit } from "../../shared/admission/admit.mts";
 import type { Context } from "../../shared/context.mts";
 import { applyDecisions, narrowed, outsideHosts, requestText, SETUP_TITLE, UPDATE_TITLE, type Decided, type OutsideHost, type RequestMode } from "../../shared/env/decisions.mts";
-import { findEngine, machineReport, readModelJson, realRunner, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { machineCheck, readModelJson, realRunner, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { outOfStep } from "../../shared/env/instep.mts";
 import { readModel } from "../../shared/env/model.mts";
 import { scanUmbrella, type EntryTarget, type Scan, type ScannedEntry, type ScannedService } from "../../shared/env/scan.mts";
@@ -62,8 +62,7 @@ function createSetupItem({ root, now, session }: Context, engine: Engine, decide
 }
 
 export function initEnvironment(ctx: Context, runner: EngineRunner, input: InitInput = { create: false, decide: "" }): Outcome<InitReport> {
-  const engine = findEngine(ctx.env, ctx.cwd, runner);
-  const machine = machineReport(engine, ctx.root);
+  const { engine, machine } = machineCheck(ctx.env, ctx.cwd, ctx.root, runner);
   const report: InitReport = { ok: false, machine, scan_file: null, scan: null, hosts: [], created: null };
   if (!engine || !machine.ok) return failed(report);
   if (input.create) return done({ ...report, ok: true, created: createSetupItem(ctx, engine, input.decide) });

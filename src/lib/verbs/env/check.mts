@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { action, done, failed, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
-import { findEngine, machineReport, readModelJson, realRunner, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { machineCheck, readModelJson, realRunner, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { inStepFindings } from "../../shared/env/instep.mts";
 import { readModel } from "../../shared/env/model.mts";
 import { scanUmbrella } from "../../shared/env/scan.mts";
@@ -24,8 +24,7 @@ function environmentReport(engine: Engine, machine: MachineReport, root: string)
 }
 
 export function checkEnvironment({ env, cwd, root }: Context, runner: EngineRunner): Outcome<EnvCheckReport> {
-  const engine = findEngine(env, cwd, runner);
-  const machine = machineReport(engine, root);
+  const { engine, machine } = machineCheck(env, cwd, root, runner);
   const report: EnvCheckReport = engine && machine.ok ? environmentReport(engine, machine, root) : { ok: false, machine, environment: null, findings: [] };
   return report.ok ? done(report) : failed(report);
 }

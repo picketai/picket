@@ -1,10 +1,10 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { Refused } from "../action.mts";
-import { findEngine, jsonRecords, machineReport, NO_COMPOSE, NO_ENGINE, notLinux, readModelJson, type EngineRunner } from "./engine.mts";
+import { allowedEngine, engineRefusal, fakeEnginePath, findEngine, jsonRecords, machineCheck, machineReport, NO_COMPOSE, NO_ENGINE, notLinux, readModelJson, type EngineRunner } from "./engine.mts";
 
 type Answers = Record<string, string>;
 type Recorded = { runner: EngineRunner; calls: string[][] };
@@ -84,22 +84,75 @@ test("PICKET_ENGINE is the only candidate, so podman wins while docker answers (
   assert.equal(findEngine({ PICKET_ENGINE: "picket-no-such-engine" }, root, runner), null);
 });
 
-test("a PICKET_ENGINE ending in .mjs runs under node with the path resolved against cwd (T-1.4)", (t) => {
+function fakeIn(root: string): string {
+  const path = join(root, "test", "fixtures", "env", "fake-engine.mjs");
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, "");
+  return realpathSync(path);
+}
+
+test("the injected fake runs under node with its real path first, named relative to cwd (T-1.4, T-5.7)", (t) => {
   const root = tempRoot(t);
-  const script = resolve(root, "test/fixtures/env/fake-engine.mjs");
-  const { runner, calls } = recording({ [`${process.execPath} ${script} info --format json`]: "{}" });
-  const engine = findEngine({ PICKET_ENGINE: "test/fixtures/env/fake-engine.mjs" }, root, runner);
-  assert.deepEqual(calls, [[process.execPath, script, "info", "--format", "json"]]);
+  const fake = fakeIn(root);
+  const { runner, calls } = recording({ [`${process.execPath} ${fake} info --format json`]: "{}" });
+  const engine = findEngine({ PICKET_ENGINE: "test/fixtures/env/fake-engine.mjs" }, root, runner, fake);
+  assert.deepEqual(calls, [[process.execPath, fake, "info", "--format", "json"]]);
   assert.equal(engine?.name, "test/fixtures/env/fake-engine.mjs");
   assert.equal(engine?.kind, "other");
 });
 
-test("an engine of kind other is read with the Docker shape, then the Podman shape", (t) => {
-  const answers = { "nerd info --format json": '{"host":{"os":"linux","memTotal":4}}', "nerd compose version --format json": '{"version":"v2.1.0"}' };
-  const report = reportFor(t, answers, { PICKET_ENGINE: "nerd" });
-  assert.deepEqual(report.engine, { program: "nerd", kind: "other" });
+test("the fake engine's answers are read with the Docker shape, then the Podman shape", (t) => {
+  const root = tempRoot(t);
+  const fake = fakeIn(root);
+  const { runner } = recording({ [`${process.execPath} ${fake} info --format json`]: '{"host":{"os":"linux","memTotal":4}}', [`${process.execPath} ${fake} compose version --format json`]: '{"version":"v2.1.0"}' });
+  const report = machineReport(findEngine({ PICKET_ENGINE: fake }, root, runner, fake), root);
+  assert.deepEqual(report.engine, { program: fake, kind: "other" });
   assert.equal(report.os_type, "linux");
   assert.equal(report.memory_bytes, 4);
+});
+
+test("a PICKET_ENGINE outside docker, podman and the fake makes no call and gives null (T-5.7)", (t) => {
+  const root = tempRoot(t);
+  const fake = fakeIn(root);
+  const calls: string[][] = [];
+  const answerAll: Recorded = {
+    calls,
+    runner: (program, args) => {
+      calls.push([program, ...args]);
+      return { status: 0, stdout: "{}", stderr: "" };
+    },
+  };
+  for (const value of ["sh", "/tmp/evil.mjs", "./docker", "node"]) {
+    assert.equal(findEngine({ PICKET_ENGINE: value }, root, answerAll.runner, fake), null, value);
+    assert.equal(allowedEngine(value, root, fake), false, value);
+  }
+  assert.deepEqual(answerAll.calls, []);
+  for (const value of ["docker", "podman"]) {
+    assert.equal(findEngine({ PICKET_ENGINE: value }, root, answerAll.runner, fake)?.program, value);
+  }
+  assert.deepEqual(answerAll.calls, [
+    ["docker", "info", "--format", "json"],
+    ["podman", "info", "--format", "json"],
+  ]);
+  assert.equal(allowedEngine(fake, "/", fake), true);
+  assert.equal(allowedEngine("test/fixtures/env/fake-engine.mjs", root, null), false, "no fake on disk means no fake allowed");
+});
+
+test("machineReport lists the install line, then the refusal for a disallowed PICKET_ENGINE (T-5.7)", (t) => {
+  const root = tempRoot(t);
+  const env = { PICKET_ENGINE: "sh" };
+  const refusal = engineRefusal(env, root, null);
+  assert.deepEqual(machineReport(findEngine(env, root, recording({}).runner, null), root, refusal).missing, [
+    "no container engine: install Docker or Podman",
+    "PICKET_ENGINE names sh, which is neither docker nor podman, so no engine was tried",
+  ]);
+  assert.equal(engineRefusal({ PICKET_ENGINE: "docker" }, root, null), null);
+  assert.equal(engineRefusal({}, root, null), null);
+  assert.equal(machineCheck(env, root, root, recording({}).runner, null).machine.missing.length, 2);
+});
+
+test("fakeEnginePath finds this checkout's fake engine by real path", () => {
+  assert.equal(fakeEnginePath(), realpathSync(resolve("test/fixtures/env/fake-engine.mjs")));
 });
 
 test("readModelJson lists the profiles, then reads the model with each profile enabled, under the given root (T-2.3)", () => {

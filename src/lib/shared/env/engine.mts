@@ -1,7 +1,8 @@
-import { statfsSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { realpathSync, statfsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { spawnProgram, type ProgramResult } from "../../util/process.mts";
 import { Refused } from "../action.mts";
+import { pluginRoot } from "../paths.mts";
 import { COMPOSE_FILE, ENV_DIR } from "./standard.mts";
 
 export type EngineKind = "docker" | "podman" | "other";
@@ -22,7 +23,7 @@ type EngineInfo = { os_type: string | null; memory_bytes: number | null };
 
 const ENGINE_VARIABLE = "PICKET_ENGINE";
 const DEFAULT_ENGINES = ["docker", "podman"];
-const SCRIPT_SUFFIX = ".mjs";
+const FAKE_ENGINE = ["test", "fixtures", "env", "fake-engine.mjs"];
 const LINUX = "linux";
 const MIN_COMPOSE_MAJOR = 2;
 
@@ -59,22 +60,61 @@ function firstRecord(result: ProgramResult): Record<string, unknown> | null {
   }
 }
 
-function kindOf(name: string): EngineKind {
-  const base = basename(name).toLowerCase().replace(/\.exe$/, "");
-  return base === "docker" || base === "podman" ? base : "other";
+function realPathOrNull(path: string): string | null {
+  try {
+    return realpathSync(path);
+  } catch {
+    return null;
+  }
 }
 
-function engineFor(name: string, cwd: string, runner: EngineRunner): Engine {
-  const script = name.endsWith(SCRIPT_SUFFIX);
+export function fakeEnginePath(): string | null {
+  try {
+    return realPathOrNull(join(pluginRoot(), "..", ...FAKE_ENGINE));
+  } catch {
+    return null;
+  }
+}
+
+function isFake(value: string, cwd: string, fake: string | null): boolean {
+  return fake !== null && realPathOrNull(resolve(cwd, value)) === fake;
+}
+
+export function allowedEngine(value: string, cwd: string, fake: string | null): boolean {
+  return DEFAULT_ENGINES.includes(value) || isFake(value, cwd, fake);
+}
+
+export function engineRefusal(env: NodeJS.ProcessEnv, cwd: string, fake: string | null = fakeEnginePath()): string | null {
+  const value = env[ENGINE_VARIABLE];
+  if (!value || allowedEngine(value, cwd, fake)) return null;
+  return `${ENGINE_VARIABLE} names ${value}, which is neither docker nor podman, so no engine was tried`;
+}
+
+function engineFor(name: string, cwd: string, fake: string | null, runner: EngineRunner): Engine {
+  const script = isFake(name, cwd, fake);
   const program = script ? process.execPath : name;
-  const prefix = script ? [resolve(cwd, name)] : [];
-  return { name, program, prefix, kind: kindOf(name), run: (args) => runner(program, [...prefix, ...args]) };
+  const prefix = script && fake !== null ? [fake] : [];
+  const kind: EngineKind = name === "docker" || name === "podman" ? name : "other";
+  return { name, program, prefix, kind, run: (args) => runner(program, [...prefix, ...args]) };
 }
 
-export function findEngine(env: NodeJS.ProcessEnv, cwd: string, runner: EngineRunner): Engine | null {
+export function findEngine(env: NodeJS.ProcessEnv, cwd: string, runner: EngineRunner, fake: string | null = fakeEnginePath()): Engine | null {
   const chosen = env[ENGINE_VARIABLE];
+  if (chosen && !allowedEngine(chosen, cwd, fake)) return null;
   const names = chosen ? [chosen] : DEFAULT_ENGINES;
-  return names.map((name) => engineFor(name, cwd, runner)).find((engine) => engine.run(["info", "--format", "json"]).status === 0) ?? null;
+  return names.map((name) => engineFor(name, cwd, fake, runner)).find((engine) => engine.run(["info", "--format", "json"]).status === 0) ?? null;
+}
+
+export function composeArgs(root: string, stack: string, files: string[], args: string[]): string[] {
+  return ["compose", "-p", stack, "--project-directory", join(root, ENV_DIR), ...files.flatMap((file) => ["-f", file]), ...args];
+}
+
+export function runCompose(engine: Engine, root: string, stack: string, files: string[], args: string[]): ProgramResult {
+  return engine.run(composeArgs(root, stack, files, args));
+}
+
+export function lastErrorLine(result: ProgramResult): string {
+  return result.stderr.trim().split(/\r?\n/).at(-1) ?? "";
 }
 
 function stringField(value: unknown): string | null {
@@ -134,8 +174,7 @@ export function composeFiles(root: string): string[] {
 function composeOutput(engine: Engine, root: string, args: string[]): string {
   const result = engine.run(["compose", ...composeFiles(root), ...args]);
   if (result.status === 0) return result.stdout;
-  const last = result.stderr.trim().split(/\r?\n/).at(-1) ?? "";
-  throw new Refused(`compose ${args.join(" ")} failed: ${last}`);
+  throw new Refused(`compose ${args.join(" ")} failed: ${lastErrorLine(result)}`);
 }
 
 export function readModelJson(engine: Engine, root: string): unknown {
@@ -146,9 +185,17 @@ export function readModelJson(engine: Engine, root: string): unknown {
   return JSON.parse(composeOutput(engine, root, ["config", "--format", "json", ...profiles.flatMap((name) => ["--profile", name])]));
 }
 
-export function machineReport(engine: Engine | null, root: string): MachineReport {
+export type MachineCheck = { engine: Engine | null; machine: MachineReport };
+
+export function machineCheck(env: NodeJS.ProcessEnv, cwd: string, root: string, runner: EngineRunner, fake: string | null = fakeEnginePath()): MachineCheck {
+  const engine = findEngine(env, cwd, runner, fake);
+  return { engine, machine: machineReport(engine, root, engineRefusal(env, cwd, fake)) };
+}
+
+export function machineReport(engine: Engine | null, root: string, refused: string | null = null): MachineReport {
   const free_disk_bytes = freeDiskBytes(root);
-  if (!engine) return { ok: false, engine: null, os_type: null, compose: null, memory_bytes: null, free_disk_bytes, missing: [NO_ENGINE] };
+  const noEngine = refused === null ? [NO_ENGINE] : [NO_ENGINE, refused];
+  if (!engine) return { ok: false, engine: null, os_type: null, compose: null, memory_bytes: null, free_disk_bytes, missing: noEngine };
   const info = readInfo(engine);
   const compose = readComposeVersion(engine);
   const missing = gaps(info, compose);
