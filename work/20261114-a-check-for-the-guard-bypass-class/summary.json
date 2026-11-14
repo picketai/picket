@@ -4,16 +4,21 @@
   "request": "work/20261114-a-check-for-the-guard-bypass-class/request.md",
   "size": "large",
   "changed_files": [
+    "CONTRIBUTING.md",
+    "bench/lib/spend.mjs",
+    "bench/run.mjs",
+    "bench/test/spend.variants.test.mjs",
     "scripts/replay-rejected.mjs",
     "src/lib/hooks/guard/bash/in-place.variants.test.mts",
     "src/lib/shared/admission/signals.variants.test.mts",
     "src/lib/shared/env/config-entries.variants.test.mts",
+    "src/lib/verbs/verify/index.variants.test.mts",
     "test/repo/replay-rejected.test.mjs",
     "test/repo/variants.test.mjs",
     "test/support/variants.mts"
   ],
-  "lines_added": 573,
-  "lines_removed": 3,
+  "lines_added": 716,
+  "lines_removed": 7,
   "frameworks": [
     "typescript"
   ],
@@ -26,14 +31,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-14T20:38:08.626Z",
+    "base": "5d23e0c2e8f215f3a1b06898b7a8207021be349d",
+    "mutant": {
+      "path": "scripts/replay-rejected.mjs",
+      "line": 18,
+      "from": "!==",
+      "to": "==="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 107481
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

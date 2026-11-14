@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-14T20:38:08.626Z",
+  "base": "5d23e0c2e8f215f3a1b06898b7a8207021be349d",
+  "mutant": {
+    "path": "scripts/replay-rejected.mjs",
+    "line": 18,
+    "from": "!==",
+    "to": "==="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 107481
+}

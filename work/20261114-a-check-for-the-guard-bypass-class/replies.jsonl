@@ -1,3 +1,5 @@
 {"ts":"2026-11-14T20:02:29.097Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_phase","phase":3,"reply":"r 7"}
 {"ts":"2026-11-14T20:23:02.963Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_phase","phase":6,"reply":"a"}
 {"ts":"2026-11-14T20:27:49.233Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"resolve_block","phase":null,"reply":"c","fresh":true}
+{"ts":"2026-11-14T20:35:43.870Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_phase","phase":7,"reply":"a"}
+{"ts":"2026-11-14T20:55:32.150Z","session":"d09e885b-38d7-46ab-90a1-fca179743a5f","action":"approve_amendment","phase":null,"reply":"a","choice":"amend"}

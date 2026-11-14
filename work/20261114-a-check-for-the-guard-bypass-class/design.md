@@ -113,7 +113,7 @@ phases:
     tests: true
     drive:
       - covers: T-6.4
-        command: node bench/run.mjs --tasks lane:fast --runs 0 --max-usd 10 --budget-usd abc --out tmp/bench-refusal.json
+        command: node bench/run.mjs --harness plugin --tasks lane:fast --runs 0 --max-usd 10 --budget-usd abc --out tmp/bench-refusal.json
         exit_code: 1
         contains: ['refused: --budget-usd needs a positive number of dollars']
     security: false
@@ -317,7 +317,7 @@ The closure test: guard `admit security`, `run: (text) => signalsOf(text, [], []
 The closure test: guard `verify`, `run` writes an order record whose phase 1 carries the spelled `drive:` block, logs one drive row (the `checkSetup` row shape at `src/lib/verbs/verify/index.test.mts:105`) that passes the valid check `POST /orders` 201 covering `T-1.2`, and returns `verify(root, id, 1, { runTests: false, env: process.env })`; `closed`: `ok` is false. Checks: as written on `{ label: "drive: []", lines: ["    drive: []"] }`; `listPlacements` on eight malformed items labelled `method post`, `path orders`, `status "201"`, `status 999`, `no status`, `empty command`, `exit_code "0"` and `scalar item`. Probed on 2026-11-14 without the logged row: all 25 spellings fail verify at the base, and at `d40b21ab` the empty list and all eight `alone` spellings pass it.
 
 **Done when:**
-- **T-5.1** `node --test src/lib/verbs/verify/index.variants.test.mts` passes with two tests: as written, list placements.
+- **T-5.1** `node --test src/lib/verbs/verify/index.variants.test.mts` passes with its two closure tests, as written and list placements, plus the T-5.3 test.
 - **T-5.2** `listPlacements(["V"])` on `{ label: "x", lines: ["M"] }` returns the labels `x, alone`, `x, before a valid check` and `x, after a valid check` with blocks `drive:` then `M`, then `M` and `V`, then `V` and `M`.
 - **T-5.3** With the valid check alone and its row logged, the run's `verify` report is `ok: true`, so the closed outcome comes from the malformed item and not from a missing row.
 - **T-5.4** The replay at `d40b21ab` exits 1 and its output holds `path orders, alone` and `drive: []`.
@@ -337,7 +337,7 @@ The closure test: guard `verify`, `run` writes an order record whose phase 1 car
 - **T-6.1** `node --test bench/test/spend.variants.test.mjs` passes with two tests, `runRefusal --budget-usd stays closed under out-of-domain numbers` and the same for `--max-usd`.
 - **T-6.2** `outOfDomainNumbers` on 2 returns the labels `NaN`, `0`, `-0`, `-2`, `Infinity`, `-Infinity`, in that order.
 - **T-6.3** `bench/run.mjs` decides a real run's refusal only through `runRefusal`, and `bench/test/spend.test.mjs` passes unchanged.
-- **T-6.4** `node bench/run.mjs --tasks lane:fast --runs 0 --max-usd 10 --budget-usd abc --out tmp/bench-refusal.json` exits 1 and prints `refused: --budget-usd needs a positive number of dollars`; `--runs 0` keeps the drive free of model calls even if the refusal were open.
+- **T-6.4** `node bench/run.mjs --harness plugin --tasks lane:fast --runs 0 --max-usd 10 --budget-usd abc --out tmp/bench-refusal.json` exits 1 and prints `refused: --budget-usd needs a positive number of dollars`; `--runs 0` keeps the drive free of model calls even if the refusal were open.
 ## Phase 7: Convention, rule line and the plain statement
 **Touch set:**
 - `CONTRIBUTING.md`: C-020 and a `## Guards` section
@@ -361,3 +361,5 @@ The closure test: guard `verify`, `run` writes an order record whose phase 1 car
 - **OQ-003** A flag that takes a value before a heredoc program is open at the base: `python3 -X utf8`, `python3 -W ignore` and `node --require ./x.js`, each fed a write program on standard input, yield no target, because `readsStdin` (`src/lib/hooks/guard/bash/in-place.mts:31`) wants a `-` or flags only; the 20261109 review probed only `python3 -X utf8 -`. This is the same Se4 class, found by this record's families. Should a follow-up item fix `readsStdin`? Owner: the user. Fallback: `stdinSpellings` spells `-` after the leading flags only.
 
 ## Revision log
+- 2026-11-14: T-6.4: command gains `--harness plugin`; the default trunk harness lookup exits 1 before the refusal on this checkout.
+- 2026-11-14: T-5.1: counts the T-5.3 test that shares the file besides the two closure tests.
