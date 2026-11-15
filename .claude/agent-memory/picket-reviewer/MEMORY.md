@@ -19,3 +19,7 @@
 - [AMENDED without an edit](amended-verdict-without-edit.md) — on re-review grep the amended T-N.x, revision log and artifact mtime
 - [Admit corpus before and after](admit-corpus-before-after.md) — git archive base src to scratch, import lane/signals via strip-types, diff lanes
 - [Replay a stop through guard.block](replay-stop-through-guard-block.md) — subagents/*.jsonl head -N, node -e payload, pipe into dist hook
+- [Probe declared checks as pure code](probe-declared-checks-pure.md) — readChecks/compareChecks/correctCheckPath via node -e; npm test mods step red at base
+- [node --test prints spec, not TAP](node-test-prints-spec-not-tap.md) — drive contains "# pass 1" never matches; env engine tests run in ~80s
+- [Bench paths in this checkout](bench-paths-in-this-checkout.md) — bench drive needs --harness plugin; craft TK1 flags all bench/; replay-rejected probe
+- [Reproduce red in a scratch copy](reproduce-red-in-scratch-copy.md) — git archive HEAD to scratch, swap one base file via archive|tar, node --test there

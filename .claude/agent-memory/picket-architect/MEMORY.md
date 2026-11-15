@@ -1,4 +1,4 @@
-- [Transcript facts](transcript-facts.md) — continuation message shape, transcript location, teammate agent_type is the instance name, bounce entry is a turn boundary, SubagentStop context continues the agent, teammate message beats its verdict row, hook timing caveat
+- [Transcript facts](transcript-facts.md) — continuation message shape, transcript location, teammate agent_type is the instance name, bounce entry is a turn boundary, SubagentStop context continues the agent, teammate message beats its verdict row, rejected review rounds live only in transcripts, hook timing caveat
 - [Claude CLI plugin facts](claude-cli-plugin-facts.md) — one hooks module per plugin, zero-quota validate/details/plugin test checks, modules and hooks share one hooks.json, install needs a known marketplace, lint.schema heading trap, Windows hooks must match Bash|PowerShell, Notification hook input and idle key, strict validate fails on agents subfolders, UserPromptSubmit contract from the binary, plugin bin PATH scope, CLAUDE_PLUGIN_DATA, renames, npm source, module path base, marketplace autoUpdate and systemMessage (2.1.322)
 - [Bash heredoc backslashes](bash-heredoc-backslashes.md): doubled backslashes collapse in node heredocs, backtick-heavy appends fail, Write and Edit decode backslash-u escapes; grep records afterwards
 - [Guard log replay](guard-log-replay.md) — size a guard.bash change by replaying guard.log through a scratch copy with a scratch root; 300-char trace cap
@@ -9,20 +9,23 @@
 - [Verify grep patterns](verify-grep-patterns.md) — `$` fails on CRLF under flag m, anchor with \b; absence via negative lookahead + flags i; files must exist, so deletions go on the block; edit frontmatter with Edit
 - [Block format couplings](block-format-couplings.md) — PR finding lines parse by position, packet one-word labels, CLAUDE.md 2046/2048 bytes, row id prefixes collide
 - [Record edits ride phase commits](record-edits-ride-phase-commits.md) — approval commits all of work/<id>/, so a half-done amendment can land; lint compares markers to HEAD
-- [Markdown paths facts](markdown-paths-facts.md): memory files are scanned, so cite full repo paths; ignored folders count as missing; ELSEWHERE is exact-match and fails when an excused path starts to exist
+- [Markdown paths facts](markdown-paths-facts.md): agent memory, work/ and artifacts/ are no longer scanned; ignored folders count as missing; ELSEWHERE is exact-match
 - [.mts conversion facts](mts-conversion-facts.md): in-place .mjs to .mts keeps importers working; no @ts-expect-error fixtures; convention scans bite only on .mts; shell spawns go through util/process.mts; copied .mjs files import .mjs names
 - [esbuild inlines .mjs](esbuild-bundle-inlines-mjs.md): bundle true with a .mts-only onResolve filter inlines relative .mjs imports; filter every relative path
 - [Hook path couplings](hook-path-couplings.md): budget skip, extensions guard regex and KERNEL_DIRS go vacuous or throw when hooks move; renamed bundles fail the live session open; a new event pins EXPECTED_GROUPS and the event list
 - [Fake Node version](fake-node-version.md): process.versions.node is configurable, so an --import preload fakes an old Node; write the preload with Write, not Bash
 - [Mod engine API facts](mod-engine-api-facts.md): engine types path, command.run queues, immediate commands, session registry, worktree -C, test fs paths resolve against plugin root, probe plugin
 - [Mod theme tokens](mod-theme-tokens.md): tokens the mods already render; role tokens unverified, binary grep refused
-- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1), Linux Node 26 runs .mts probes; CLAUDE.md budget 2560 in test; dist rebuilt mid-run breaks parallel runs; Linux host: ugrep, git now on PATH, picket check runs npm test
+- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1), Linux Node 26 runs .mts probes; mods step green since f39277ec; which interpreters exist; budgets; verify runs npm test; Podman 5.7.0 picked, pasta AppArmor blocks Compose up
 - [Skill base directory facts](skill-base-directory-facts.md): the lead sees a skill's base directory line, a subagent's preloaded skill does not; path forms follow the reader
 - [Generated tracked files](generated-tracked-files.md): npm test builds before product tests, so staleness of build-written tracked files is checked against the git index
 - [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home and obeys CLAUDE_PROJECT_DIR first; lead-only verb list pinned in a guard test
 - [Route owns directory prefixes](route-owns-directory-prefixes.md): a plan path ending in a slash owns every staged path under it, deletions included
 - [New skill touchpoints](new-skill-touchpoints.md): routing cases, Use when, plugin.json, docs section, EVERY_SKILL, CLAUDE.md template prefix, npm test rebuilds dist; when_to_use unread, Entry fixtures, one touch path per bullet
 - [Next and mod couplings](next-and-mod-couplings.md): mod imports limited to MOD_LIB_SHARED; rejection keeps approve_phase; rows lost the amend line; guard classes per verb; cli.md headings
-- [Verdict hook drive](verdict-hook-drive.md): pipe a SubagentStop payload into dist/hooks/route.verdict.mjs; scratch replay of a closed item; picket reply is lead-only
+- [Verdict hook drive](verdict-hook-drive.md): pipe a SubagentStop payload into dist/hooks/route.verdict.mjs, a PostToolUse one into lint.schema.mjs; scratch replay needs midpoint N.reviewed and the rows session id; record digest skips frontmatter; picket reply is lead-only
 - [Admit rule probe](admit-rule-probe.md): size an admit signal change on the corpus and bench prompts with a scratch signals.mts copy; write .mts with Write
 - [Bench runner drive safety](bench-runner-drive-safety.md): run.mjs runs main at import; drives use --dry or --runs 0 with a temp --out; routing idf for vocabulary checks
+- [npm OIDC dist-tag](npm-oidc-dist-tag.md): dist-tag does the OIDC exchange from npm 11.21.0 only; machine npm is 11.20.0; npm view and pack reach the registry
+- [Guard on probe paths](guard-bash-probe-paths.md): a Bash heredoc naming a src code file is denied as a code write; write probes with Write
+- [Compose model facts](compose-model-facts.md): config JSON drops profile-disabled services and service-level x- keys; global flags only before the subcommand; podman compose wrapper line last on stderr; info JSON fields
