@@ -19,7 +19,13 @@ const BUDGETS = {
   rule_lines: 60,
   hook_cold_ms: 200, // a hook runs on every matching tool call
   inject_chars: 10000,
+  scenario_core_lines: 600, // the replay core's landed 554 lines rounded up to 50 (design OQ-001)
+  scenario_adapter_lines: 50, // the fetch adapter's landed 21 lines rounded up to 50 (design OQ-001)
 };
+
+const SCENARIO_DIR = join(ROOT, "src", "lib", "shared", "scenarios");
+const SCENARIO_CORE = ["format.mts", "rules.mts", "values.mts", "runner.mts"];
+const SCENARIO_ADAPTER = "http.mts";
 
 const RULE_FOLDERS = [join(ROOT, ".claude", "rules"), join(ROOT, "src", "rules")];
 const SKILL_FOLDERS = [join(ROOT, "src", "skills"), join(ROOT, ".claude", "skills")];
@@ -69,6 +75,13 @@ test("the step budget covers steps/ and checklists/", (t) => {
     writeFileSync(join(skills, path), Array.from({ length: count }, (_, i) => `line ${i + 1}`).join("\n"));
   }
   assert.deepEqual(overStepBudget(skills).sort(), ["ordering/steps/long.md: 81 > 80", "reviewing/checklists/long.md: 81 > 80"]);
+});
+
+test("the scenario core and its HTTP adapter stay within their line budgets", () => {
+  const core = SCENARIO_CORE.reduce((sum, name) => sum + lines(join(SCENARIO_DIR, name)), 0);
+  assert.ok(core <= BUDGETS.scenario_core_lines, `${SCENARIO_CORE.join(", ")}: ${core} lines > ${BUDGETS.scenario_core_lines}`);
+  const adapter = lines(join(SCENARIO_DIR, SCENARIO_ADAPTER));
+  assert.ok(adapter <= BUDGETS.scenario_adapter_lines, `${SCENARIO_ADAPTER}: ${adapter} lines > ${BUDGETS.scenario_adapter_lines}`);
 });
 
 test("every skill has a 'Use when' trigger in its description or when_to_use, and a description within its cap", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {

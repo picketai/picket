@@ -1,0 +1,110 @@
+import type { Card, CaptureStep, ExpectStep, RequestStep, Step } from "./format.mts";
+import type { HttpAdapter, HttpAnswer, HttpRequest } from "./http.mts";
+import { resolveText, type ValueScope } from "./values.mts";
+
+export type RunInput = {
+  card: Card;
+  urls: Record<string, string>;
+  adapter: HttpAdapter;
+  env: NodeJS.ProcessEnv;
+  today: string;
+  runKey: string;
+  timeoutMs: number;
+  sleep: (ms: number) => Promise<void>;
+};
+export type RunOutcome = { outcome: "passed" | "failed" | "blocked"; step: number | null; detail: string };
+
+type RunState = { scope: ValueScope; answer: HttpAnswer };
+type Prepared = { request: HttpRequest; service: string } | { stop: RunOutcome };
+
+const SERVICE_TARGET = /^\{([^{}]+)\}(.*)$/;
+const NO_ANSWER: HttpAnswer = { status: null, headers: {}, text: "", error: null };
+const PASSED: RunOutcome = { outcome: "passed", step: null, detail: "" };
+const SECOND_MS = 1000;
+
+function halt(outcome: "failed" | "blocked", step: Step, text: string): RunOutcome {
+  return { outcome, step: step.line, detail: `step ${step.line}: ${text}` };
+}
+
+function resolveAll(templates: string[], scope: ValueScope): string[] | { blocked: string } {
+  const texts: string[] = [];
+  for (const template of templates) {
+    const value = resolveText(template, scope);
+    if ("blocked" in value) return value;
+    texts.push(value.text);
+  }
+  return texts;
+}
+
+function prepare(step: RequestStep, input: RunInput, scope: ValueScope): Prepared {
+  const [, service, path] = step.target.match(SERVICE_TARGET) ?? [];
+  const base = service === undefined ? undefined : input.urls[service];
+  if (base === undefined) return { stop: halt("blocked", step, `{${service ?? step.target}} has no published port`) };
+  const values = resolveAll([path, ...step.headers.map(([, value]) => value), ...(step.body === null ? [] : [step.body])], scope);
+  if (!Array.isArray(values)) return { stop: halt("blocked", step, values.blocked) };
+  const [resolvedPath, ...rest] = values;
+  const headers = Object.fromEntries(step.headers.map(([name], at) => [name, rest[at]]));
+  const body = step.body === null ? null : rest[step.headers.length];
+  return { request: { method: step.method, url: base + resolvedPath, headers, body, timeoutMs: input.timeoutMs }, service };
+}
+
+async function sendRequest(step: RequestStep, input: RunInput, state: RunState): Promise<RunOutcome | null> {
+  const prepared = prepare(step, input, state.scope);
+  if ("stop" in prepared) return prepared.stop;
+  state.answer = await input.adapter(prepared.request);
+  if (state.answer.status === null) return halt("blocked", step, `{${prepared.service}} did not answer: ${state.answer.error}`);
+  return null;
+}
+
+function checkExpect(step: ExpectStep, state: RunState): RunOutcome | null {
+  if (step.what === "status") {
+    return state.answer.status === step.status ? null : halt("failed", step, `expected status ${step.status}, got ${state.answer.status}`);
+  }
+  const expected = resolveText(step.text, state.scope);
+  if ("blocked" in expected) return halt("blocked", step, expected.blocked);
+  return state.answer.text.includes(expected.text) ? null : halt("failed", step, `${JSON.stringify(step.text)} not in the answer`);
+}
+
+function jsonAt(text: string, path: string): unknown {
+  let node: unknown;
+  try {
+    node = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  for (const key of path.split(".")) node = node !== null && typeof node === "object" ? (node as Record<string, unknown>)[key] : undefined;
+  return node;
+}
+
+function capturedValue(step: CaptureStep, answer: HttpAnswer): string | null {
+  if (step.from === "header") {
+    const name = step.key.toLowerCase();
+    return Object.entries(answer.headers).find(([key]) => key.toLowerCase() === name)?.[1] ?? null;
+  }
+  const value = jsonAt(answer.text, step.key);
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : null;
+}
+
+function capture(step: CaptureStep, state: RunState): RunOutcome | null {
+  const value = capturedValue(step, state.answer);
+  if (value === null) return halt("failed", step, `capture ${step.name}: no ${step.key} in the answer`);
+  state.scope.captures[step.name] = value;
+  return null;
+}
+
+async function runStep(step: Step, input: RunInput, state: RunState): Promise<RunOutcome | null> {
+  if (step.word === "request") return sendRequest(step, input, state);
+  if (step.word === "expect") return checkExpect(step, state);
+  if (step.word === "capture") return capture(step, state);
+  await input.sleep(step.seconds * SECOND_MS);
+  return null;
+}
+
+export async function runScenario(input: RunInput): Promise<RunOutcome> {
+  const state: RunState = { scope: { run: input.runKey, captures: {}, env: input.env, today: input.today }, answer: NO_ANSWER };
+  for (const step of input.card.steps) {
+    const outcome = await runStep(step, input, state);
+    if (outcome !== null) return outcome;
+  }
+  return PASSED;
+}
