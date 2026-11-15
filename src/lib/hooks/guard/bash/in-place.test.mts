@@ -45,6 +45,21 @@ test("a - operand after a flag value reads the heredoc, and a here-string with a
   assert.ok(inPlaceTargets(["python3", "open('src/a.py','w').write('x')"], []).includes("src/a.py"));
 });
 
+test("a Perl open with a write mode yields the path without its mode prefix (T-1.3)", () => {
+  assert.deepEqual(inPlaceTargets(["perl", "-e", "open(F, '>src/a.pl')"], []), ["src/a.pl"]);
+  assert.deepEqual(inPlaceTargets(["perl", "-e", "open(my $f, '+<', 'src/a.pl')"], []), ["src/a.pl"]);
+});
+
+test("a Perl read, a read across two lines, a module run and a script file after a value flag yield nothing (T-1.4)", () => {
+  const write = "open('src/a.py','w').write('x')\n";
+  assert.deepEqual(inPlaceTargets(["perl", "-e", "open(my $f, '<', 'src/a.pl')"], []), []);
+  assert.deepEqual(inPlaceTargets(["perl", "-e", "open(F, 'src/a.pl')"], []), []);
+  assert.deepEqual(inPlaceTargets(["python3", "-"], ["s=open('src/a.py').read()\nprint('>')\n"]), []);
+  assert.deepEqual(inPlaceTargets(["python3", "-m", "mod"], [write]), []);
+  assert.deepEqual(inPlaceTargets(["node", "-r", "./x.js", "script.js"], ["require('fs').writeFileSync('src/a.ts','x')\n"]), []);
+  assert.deepEqual(inPlaceTargets(["node", "--test", "test/cli/close.test.mjs"], ["require('fs').writeFileSync('src/a.ts','x')\n"]), []);
+});
+
 test("a command that is not an interpreter yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["cat", "-"], ["open('src/a.py','w').write('x')"]), []);
 });

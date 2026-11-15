@@ -8,9 +8,17 @@ const EDITOR_PROGRAM_CLUSTER = /^-[A-Za-z]*[eE]$/;
 const PROGRAM_CLUSTER = /^-[A-Za-z]*[cepE]$/;
 const PROGRAM_LONG_FLAGS = new Set(["--eval", "--print"]);
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
-const WRITE_CALL = /\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1/;
+const WRITE_CALL = /\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1|\bopen[ \t]*\(?[^;)\n'"]*['"](?:>|\+[<>])/;
 const QUOTED_LITERAL = /(['"])([^'"\s]+)\1/g;
+const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])/;
 const STDIN_OPERAND = "-";
+const PYTHON_VALUE_FLAGS: ReadonlySet<string> = new Set(["-W", "-X", "--check-hash-based-pycs"]);
+const VALUE_FLAGS: Record<string, ReadonlySet<string>> = {
+  python: PYTHON_VALUE_FLAGS,
+  python3: PYTHON_VALUE_FLAGS,
+  node: new Set(["-r", "--require", "--import", "--loader", "--experimental-loader", "-C", "--conditions", "--input-type"]),
+};
+const NO_VALUE_FLAGS: ReadonlySet<string> = new Set();
 
 function wordsOf(seg: Segment): string[] {
   return seg.filter((t): t is string => typeof t === "string");
@@ -29,20 +37,33 @@ function inlineProgram(root: string, args: string[]): string | null {
   return at === -1 ? null : (args[at + 1] ?? null);
 }
 
-function readsStdin(args: string[]): boolean {
-  return args.includes(STDIN_OPERAND) || args.every((word) => word.startsWith("-"));
+function namesScriptFile(root: string, args: string[]): boolean {
+  const valueFlags = VALUE_FLAGS[root] ?? NO_VALUE_FLAGS;
+  for (let i = 0; i < args.length; i++) {
+    if (valueFlags.has(args[i])) i++;
+    else if (!args[i].startsWith("-")) return true;
+  }
+  return false;
+}
+
+function readsStdin(root: string, args: string[]): boolean {
+  return args.includes(STDIN_OPERAND) || !namesScriptFile(root, args);
 }
 
 function programText(root: string, args: string[], heredocs: readonly string[]): string {
   const inline = inlineProgram(root, args);
   if (inline !== null) return inline;
   const hereStrings = args.filter((word) => WRITE_CALL.test(word));
-  return [...(readsStdin(args) ? heredocs : []), ...hereStrings].join("\n");
+  return [...(readsStdin(root, args) ? heredocs : []), ...hereStrings].join("\n");
+}
+
+function withoutModePrefix(literal: string): string {
+  return literal.replace(PERL_MODE_PREFIX, "");
 }
 
 function programWrites(program: string): string[] {
   if (!WRITE_CALL.test(program)) return [];
-  return [...program.matchAll(QUOTED_LITERAL)].map((match) => match[2]);
+  return [...program.matchAll(QUOTED_LITERAL)].map((match) => withoutModePrefix(match[2])).filter((literal) => literal !== "");
 }
 
 function inPlaceFileOperands(args: string[]): string[] {

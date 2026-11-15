@@ -201,6 +201,20 @@ test("an in-place shell edit of a code file is denied to the lead and to an agen
   }
 });
 
+test("a Perl write mode and an interpreter value flag before a heredoc are in-place code-write denials for the lead (T-1.5)", (t) => {
+  const root = project(t);
+  for (const [command, path] of [
+    [`perl -e 'open(my $f, ">", "src/a.pl")'`, "src/a.pl"],
+    [`perl -e "open(F, '>src/a.pl')"`, "src/a.pl"],
+    ["python3 -W ignore <<'EOF'\nopen('src/a.py','w').write('x')\nEOF", "src/a.py"],
+    ["node --require ./x.js <<'EOF'\nrequire('fs').writeFileSync('src/a.ts','x')\nEOF", "src/a.ts"],
+  ]) {
+    const out = guardOutput(command, { root, tool: "Bash", agent: undefined });
+    assert.equal(out?.permissionDecision, "deny", command);
+    assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+  }
+});
+
 test("a redirect, tee or PowerShell writer to a code file stays denied to an agent only (T-3.4)", (t) => {
   const root = project(t);
   for (const [command, tool] of [["echo x >> src/a.ts"], ["printf x | tee -a src/a.py"], ["cat > test/kernel/x.test.mjs <<'EOF'\nx\nEOF"], ["Set-Content src/a.ts x", "PowerShell"]]) {
