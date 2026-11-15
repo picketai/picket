@@ -3,10 +3,23 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { acceptFingerprint, listScenarios, readAccepted } from "./files.mts";
+import { acceptFingerprint, listScenarios, nextScenarioId, readAccepted } from "./files.mts";
 import { fingerprintOf, writeScenario, type Card } from "./format.mts";
+import type { ScenarioRow } from "./results.mts";
 
 const DIR = join(".picket", "env", "scenarios");
+
+function resultNaming(scenario: string): ScenarioRow {
+  return { type: "result", run: "r1", scenario, fingerprint: "sha256:f", key: "k", versions: {}, outcome: "passed", attempts: 1, unstable: false, class: "passed", detail: "" };
+}
+
+test("the next scenario id is one above the highest in the folder and in the results (T-9.6)", (t) => {
+  const root = project(t, { "S-0001.md": "x", "S-0002.md": "x", "S-0003.md": "x", "notes.md": "x" });
+  assert.equal(nextScenarioId(root, [resultNaming("S-0005"), resultNaming("S-0002")]), "S-0006");
+  assert.equal(nextScenarioId(root, []), "S-0004");
+  assert.equal(nextScenarioId(project(t, null), []), "S-0001");
+  assert.equal(nextScenarioId(project(t, { "S-9999.md": "x" }), []), "S-10000");
+});
 
 function smoke(id: string): Card {
   return {

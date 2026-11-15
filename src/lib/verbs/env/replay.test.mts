@@ -8,7 +8,9 @@ import type { EngineRunner } from "../../shared/env/engine.mts";
 import { readModel } from "../../shared/env/model.mts";
 import { readLayout } from "../../shared/repos.mts";
 import type { BaseInput } from "../../shared/scenarios/base-run.mts";
+import { appendDriveRow } from "../../shared/drive-log.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
+import { readCandidates } from "../../shared/scenarios/keep.mts";
 import type { HttpAdapter, HttpRequest } from "../../shared/scenarios/http.mts";
 import { baseKey, keyId } from "../../shared/scenarios/keys.mts";
 import { appendRows, readResults, type ResultRow, type ScenarioOutcome } from "../../shared/scenarios/results.mts";
@@ -261,6 +263,60 @@ const REPLACING_ORDER = [
   "",
 ].join("\n");
 
+const TWO_CHECKS = [
+  "---",
+  "lane: order",
+  "phases:",
+  "  - n: 1",
+  "    files: [services/orders/server.mjs]",
+  "    drive:",
+  "      - covers: T-1.1",
+  "        method: POST",
+  "        path: /orders",
+  "        status: 201",
+  "      - covers: T-1.2",
+  "        method: POST",
+  "        path: /refunds",
+  "        status: 201",
+  "---",
+  "# O",
+  "",
+  "## Phase 1: Orders",
+  "",
+  "- **T-1.1** an order is created",
+  "- **T-1.2** a refund is created",
+  "",
+].join("\n");
+
+const byPath: HttpAdapter = async (request) => {
+  const status = request.url.endsWith("/health") ? 200 : request.url.endsWith("/orders") ? 201 : 500;
+  return { status, headers: {}, text: "ok", error: null };
+};
+
+test("each HTTP check of the phase becomes a candidate replayed once, stored with its outcome (T-9.3)", async (t) => {
+  const { ctx, id } = project(t);
+  writeArtifact(ctx.root, id, "order.md", TWO_CHECKS);
+  const hits = [
+    { method: "POST", path: "/orders", status: 201, ms: 2, body: '{"sku":"PKT-a-1"}' },
+    { method: "POST", path: "/refunds", status: 201, ms: 2, body: '{"order":"PKT-a-1"}' },
+  ];
+  appendDriveRow(ctx.root, { ts: "2026-11-15T09:00:00.000Z", kind: "drive", command: "picket drive", source: "picket drive", work_id: id, phase: 1, hits });
+  const { code, text } = await replay(ctx, deps(ctx.root, byPath), full(id));
+  assert.equal(code, 0);
+  assert.deepEqual(text.split("\n").slice(-2), ["keep T-1.1: replay passed; kept on approval", "keep T-1.2: not kept: replay failed: step 2: expected status 201, got 500"]);
+  const [orders, refunds] = readCandidates(ctx.root, id)["1"];
+  assert.deepEqual([orders.covers, orders.outcome, orders.detail, orders.replaces], ["T-1.1", "passed", "", null]);
+  assert.deepEqual([refunds.covers, refunds.outcome, refunds.detail], ["T-1.2", "failed", "step 2: expected status 201, got 500"]);
+  assert.match(orders.text ?? "", /^request POST \{orders\}\/orders$/m);
+});
+
+test("a phase with no drive list stores no candidates and prints no keep line", async (t) => {
+  const { ctx, id } = project(t);
+  const { text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), full(id));
+  assert.ok(!text.includes("keep "), text);
+  assert.deepEqual(readCandidates(ctx.root, id), {});
+});
+
 test("a failing scenario that a phase of the item replaces is classed replaced by this item and exits 0 (T-7.5)", async (t) => {
   const { ctx, id } = project(t);
   writeArtifact(ctx.root, id, "order.md", REPLACING_ORDER);
@@ -268,6 +324,6 @@ test("a failing scenario that a phase of the item replaces is classed replaced b
   const spy = baseAnswering("passed");
   const { code, text } = await replay(ctx, deps(ctx.root, answering(503, "draining").adapter, engine(ctx.root), spy), full(id));
   assert.equal(code, 0);
-  assert.equal(text, "S-0001 replaced by this item: step 2: expected status 200, got 503\nreplayed 1 on picket-proj-481: 1 replaced by this item");
+  assert.equal(text, "S-0001 replaced by this item: step 2: expected status 200, got 503\nreplayed 1 on picket-proj-481: 1 replaced by this item\nkeep T-1.1: not kept: the check did not run");
   assert.equal(spy.calls.length, 0);
 });

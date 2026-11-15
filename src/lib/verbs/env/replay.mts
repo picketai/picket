@@ -13,8 +13,13 @@ import { affected, replayScenarios, type ScenarioRun } from "../../shared/scenar
 import { appendRows, lastKnown, readResults, type ResultRow, type RunMode, type RunRow, type ScenarioRow, type Versions } from "../../shared/scenarios/results.mts";
 import { newRunKey } from "../../shared/scenarios/values.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
+import { readDriveLog } from "../../shared/drive-log.mts";
+import { writeScenario } from "../../shared/scenarios/format.mts";
+import { candidateCard, candidateInputs, keepText, storeCandidates, type Candidate, type CandidateInput } from "../../shared/scenarios/keep.mts";
+import { scenarioProblems } from "../../shared/scenarios/rules.mts";
+import { runScenario } from "../../shared/scenarios/runner.mts";
 import { replacedScenarios } from "../../shared/work/declared-checks.mts";
-import { readSnapshot } from "../../shared/work/snapshot.mts";
+import { currentPhase, readSnapshot } from "../../shared/work/snapshot.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { readState, type WorkState } from "../../shared/work/state.mts";
 import { flag, str, UsageError, type Args } from "../../util/args.mts";
@@ -23,7 +28,8 @@ import { startStack, type StartedStack } from "./start.mts";
 export type ReplayMode = Exclude<RunMode, "base">;
 export type ReplayInput = { id: WorkId; mode: ReplayMode; only: string | null };
 export type ReplayLine = { scenario: string; class: ResultClass; detail: string; byHand: boolean };
-export type ReplayReport = { ok: boolean; stack: string | null; reason: string | null; lines: ReplayLine[] };
+export type KeepLine = { covers: string; text: string };
+export type ReplayReport = { ok: boolean; stack: string | null; reason: string | null; lines: ReplayLine[]; keeps: KeepLine[] };
 export type ReplayDeps = {
   runner: EngineRunner;
   adapter: HttpAdapter;
@@ -116,7 +122,34 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   appendRows(root, [...base.rows, runRow(context, null), ...rows]);
   for (const scenarioRun of runs) if (scenarioRun.byHand && scenarioRun.outcome !== "blocked") acceptFingerprint(root, scenarioRun.fingerprint);
   const lines = runs.map((scenarioRun, at) => lineOf(scenarioRun, rows[at]));
-  return { ok: !lines.some((line) => isBlamed(line.class)), stack: start.report.stack, reason: null, lines };
+  const keeps = await replayCandidates(session, services);
+  return { ok: !lines.some((line) => isBlamed(line.class)), stack: start.report.stack, reason: null, lines, keeps };
+}
+
+async function replayCandidate(candidate: CandidateInput, session: Session, services: string[]): Promise<Candidate> {
+  const { check, index } = candidate.result;
+  const base = { covers: check.covers, index, replaces: "replaces" in check ? (check.replaces ?? null) : null };
+  const built = candidateCard(candidate);
+  if ("notKept" in built) return { ...base, outcome: "not kept", detail: built.notKept, text: null };
+  const text = writeScenario(built.card);
+  const [problem] = scenarioProblems(built.card, services);
+  if (problem !== undefined) return { ...base, outcome: "blocked", detail: problem, text };
+  const { newRunKey: runKeyOf, ...replay } = replayDeps(session.ctx, session.deps);
+  const ran = await runScenario({ ...replay, card: built.card, urls: session.start.report.endpoints, runKey: runKeyOf() });
+  return { ...base, outcome: ran.outcome, detail: ran.detail, text };
+}
+
+async function replayCandidates(session: Session, services: string[]): Promise<KeepLine[]> {
+  const { ctx, input, start } = session;
+  const snap = readSnapshot(ctx.root, input.id);
+  const phase = currentPhase(snap)?.n;
+  if (phase === undefined) return [];
+  const inputs = candidateInputs(ctx.root, snap, readDriveLog(ctx.root).rows, phase, start.model);
+  if (inputs.length === 0) return [];
+  const candidates: Candidate[] = [];
+  for (const candidate of inputs) candidates.push(await replayCandidate(candidate, session, services));
+  storeCandidates(ctx.root, input.id, phase, candidates);
+  return candidates.map((candidate) => ({ covers: candidate.covers, text: candidate.outcome === "passed" ? `replay passed; ${keepText(candidate)}` : keepText(candidate) }));
 }
 
 export async function replayEnvironment(ctx: Context, deps: ReplayDeps, input: ReplayInput): Promise<Outcome<ReplayReport>> {
@@ -126,7 +159,7 @@ export async function replayEnvironment(ctx: Context, deps: ReplayDeps, input: R
   if (!engine || !machine.ok) {
     const reason = engine ? machine.missing.join("; ") : NO_ENGINE;
     appendRows(ctx.root, [runRow({ item: input.id, run, mode: input.mode, key: "", versions: {} }, reason)]);
-    return failed({ ok: false, stack: null, reason, lines: [] });
+    return failed({ ok: false, stack: null, reason, lines: [], keeps: [] });
   }
   const start = startStack(ctx, engine, machine, input.id);
   const report = await replayStack({ ctx, deps, input, state, engine, start, layout: readLayout(ctx.root, input.id), run, replaced: replacedByItem(ctx.root, input.id) });
@@ -148,7 +181,7 @@ function summaryText(report: ReplayReport): string {
 
 export function renderReplay(report: ReplayReport): string {
   if (report.reason !== null) return `not replayed: ${report.reason}`;
-  return [...report.lines.map(lineText), summaryText(report)].join("\n");
+  return [...report.lines.map(lineText), summaryText(report), ...report.keeps.map((keep) => `keep ${keep.covers}: ${keep.text}`)].join("\n");
 }
 
 function parseReplay(args: Args): ReplayInput {

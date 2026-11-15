@@ -7,6 +7,7 @@ import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
 import { Refused } from "../action.mts";
 import { VERDICTS } from "../verdicts.mjs";
 import { snapshotOf } from "#test/snapshot.mts";
+import type { Candidate } from "../scenarios/keep.mts";
 
 const SECURITY_PATHS = ["src/auth/"];
 const VERDICT_TABLE = VERDICTS as Record<string, { effect: Effect; agent: string }>;
@@ -66,6 +67,33 @@ test("approved with through past the phase records the run grant and commits", (
     { kind: "state", set: { run_through: 3 }, line: "run_through=3" },
     { kind: "commit", phase: 1 },
   ]);
+});
+
+const KEPT: Candidate = { covers: "T-1.1", index: 0, outcome: "passed", detail: "", text: "card", replaces: null };
+const keepsOf = (n: number) => (n === 1 ? [KEPT] : []);
+
+function planWith(verdict: string, snap: WorkSnapshot, planned: Partial<PlannedVerdict>): Change[] {
+  const { effect, agent } = VERDICT_TABLE[verdict];
+  const gateOf = (n: number) => ownGate(phaseOf(snap, n), SECURITY_PATHS);
+  return EFFECTS[effect](snap, { id: snap.state.id, verdict, agent, phase: null, marks: { done: false, approved: false }, ...planned }, gateOf, { keepsOf });
+}
+
+test("an approval with passed candidates keeps them just before the commit", () => {
+  const snap = snapshotOf({ phases: [{ n: 1 }, { n: 2 }] });
+  assert.deepEqual(planWith("approved", snap, { phase: 1, marks: { done: true, approved: false } }), [
+    { kind: "marker", phase: 1, mark: "approved", line: "phases/1.approved" },
+    { kind: "keep", phase: 1, candidates: [KEPT], line: null },
+    { kind: "commit", phase: 1 },
+  ]);
+  assert.ok(!planWith("approved", snap, { phase: 2, marks: { done: true, approved: false } }).some((change) => change.kind === "keep"));
+});
+
+test("a run grant's approval keeps the candidates too, and a stopped grant keeps none", () => {
+  const granted = snapshotOf({ run_through: 2, phases: [{ n: 1 }, { n: 2 }] });
+  assert.deepEqual(planWith("PHASE DONE", granted, { phase: 1 }).map((change) => change.kind), ["marker", "marker", "keep", "commit"]);
+  const gated = snapshotOf({ run_through: 2, phases: [{ n: 1, touchSet: ["src/auth/x.ts"] }, { n: 2 }] });
+  assert.ok(!planWith("PHASE DONE", gated, { phase: 1 }).some((change) => change.kind === "keep"));
+  assert.ok(!planWith("rejected", granted, { phase: 1 }).some((change) => change.kind === "keep"));
 });
 
 const CHECK: DeclaredCheck = { covers: "T-2.1", method: "POST", path: "/orders", status: 201, contains: [] };

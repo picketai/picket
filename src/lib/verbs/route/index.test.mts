@@ -18,6 +18,8 @@ import { fixedContext } from "#test/context.mts";
 import { writeLayout } from "../../shared/repos.mts";
 import { readNext } from "../../shared/work/next-view.mts";
 import { gitAt, umbrella } from "#test/git.mts";
+import { fingerprintMatches, parseScenario, writeScenario, type Card } from "../../shared/scenarios/format.mts";
+import { storeCandidates, type Candidate } from "../../shared/scenarios/keep.mts";
 import { openItem, withProject } from "#test/project.mts";
 
 type Routed = Partial<RouteInput> & { id: WorkId; verdict: string; agent: string; root: string; classes?: string[] };
@@ -764,4 +766,91 @@ test("an approval that grants a run and claims a new session writes state.yaml o
   assert.equal(counts["state.yaml"], 1);
   assert.deepEqual(result.applied.slice(0, 2), ["phases/1.approved", "run_through=3"]);
   assert.deepEqual([readState(root, id).run_through, readState(root, id).session], [3, "s-new"]);
+});
+
+const SCENARIOS = ".picket/env/scenarios";
+
+function scenarioCard(id: string, target: string, supersedes?: string): Card {
+  return {
+    header: { id, kind: "normal", covers: [], intent: "orders", ...(supersedes ? { supersedes } : {}), status: "active", format: 1 },
+    steps: [
+      { word: "request", line: 1, method: "GET", target, headers: [], body: null },
+      { word: "expect", line: 2, what: "status", status: 200 },
+    ],
+  };
+}
+
+function candidate(outcome: Candidate["outcome"], replaces: string | null = null): Candidate {
+  return { covers: "T-1.1", index: 0, outcome, detail: outcome === "passed" ? "" : "step 2: expected status 200, got 500", text: writeScenario(scenarioCard("S-0000", "{orders}/orders", replaces ?? undefined)), replaces };
+}
+
+function keepingItem(t: TestContext, candidates: Candidate[]) {
+  const root = hostRoot(t);
+  const git = gitAt(root);
+  git("init", "-q");
+  const { id } = openItem(root, { lane: "order", title: "Orders" });
+  writeFileSync(join(root, "work", id, "order.md"), ORDERS_ONE_PHASE);
+  mkdirSync(join(root, "services", "orders"), { recursive: true });
+  writeFileSync(join(root, "services", "orders", "server.mjs"), "ok\n");
+  mkdirSync(join(root, SCENARIOS), { recursive: true });
+  writeFileSync(join(root, SCENARIOS, "S-0001.md"), writeScenario(scenarioCard("S-0001", "{orders}/health")));
+  git("add", "-A");
+  git("commit", "-q", "-m", "base");
+  writeFileSync(join(root, "services", "orders", "server.mjs"), "changed\n");
+  git("add", "--", "services/orders/server.mjs");
+  storeCandidates(root, id, 1, candidates);
+  const scenarioFiles = () => fs.readdirSync(join(root, SCENARIOS)).sort();
+  return { root, id, git, scenarioFiles };
+}
+
+const ORDERS_ONE_PHASE = "---\nlane: order\nphases:\n  - n: 1\n    files: [services/orders/server.mjs]\n  - n: 2\n    files: [services/orders/b.mjs]\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n";
+
+test("approving a phase writes its passed candidate as the next scenario in the phase commit (T-9.4)", (t) => {
+  const { root, id, git } = keepingItem(t, [candidate("passed")]);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  assert.ok(r.applied.includes("kept S-0002 from T-1.1"), r.applied.join(" | "));
+  const written = readFileSync(join(root, SCENARIOS, "S-0002.md"), "utf8");
+  assert.ok(fingerprintMatches(written));
+  assert.equal(parseScenario(written).card?.header.id, "S-0002");
+  const committed = git("show", "--name-only", "--format=", "HEAD").split("\n");
+  for (const path of [`${SCENARIOS}/S-0002.md`, "services/orders/server.mjs", `work/${id}/phases/1.approved`]) assert.ok(committed.includes(path), `${path} in ${committed.join(", ")}`);
+});
+
+test("a kept candidate that replaces S-0001 deprecates it in the same commit and removes no file (T-9.4)", (t) => {
+  const { root, id, git, scenarioFiles } = keepingItem(t, [candidate("passed", "S-0001")]);
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  assert.ok(r.applied.includes("kept S-0002 from T-1.1; S-0001 deprecated, superseded by S-0002"), r.applied.join(" | "));
+  const old = parseScenario(readFileSync(join(root, SCENARIOS, "S-0001.md"), "utf8")).card?.header;
+  const kept = parseScenario(readFileSync(join(root, SCENARIOS, "S-0002.md"), "utf8")).card?.header;
+  assert.deepEqual([old?.status, old?.superseded_by, kept?.supersedes], ["deprecated", "S-0002", "S-0001"]);
+  assert.deepEqual(scenarioFiles(), ["S-0001.md", "S-0002.md"]);
+  const committed = git("show", "--name-only", "--format=", "HEAD").split("\n");
+  assert.ok(committed.includes(`${SCENARIOS}/S-0001.md`) && committed.includes(`${SCENARIOS}/S-0002.md`), committed.join(", "));
+});
+
+test("a rejection and a failed candidate leave the scenario folder unchanged (T-9.5)", (t) => {
+  const rejected = keepingItem(t, [candidate("passed")]);
+  route({ id: rejected.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root: rejected.root });
+  route({ id: rejected.id, verdict: "rejected", agent: "user", phase: 1, root: rejected.root });
+  assert.deepEqual(rejected.scenarioFiles(), ["S-0001.md"]);
+  const failing = keepingItem(t, [candidate("failed")]);
+  route({ id: failing.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root: failing.root });
+  const r = route({ id: failing.id, verdict: "approved", agent: "user", phase: 1, root: failing.root });
+  assert.ok(!r.applied.some((line) => line.startsWith("kept ")), r.applied.join(" | "));
+  assert.deepEqual(failing.scenarioFiles(), ["S-0001.md"]);
+});
+
+test("a nested checkout that refuses the commit leaves the scenario folder unchanged (T-9.5)", (t) => {
+  const { root, id, worktreeGit, worktree, hook } = worktreeItem(t);
+  mkdirSync(join(root, SCENARIOS), { recursive: true });
+  storeCandidates(root, id, 1, [candidate("passed")]);
+  refuseCommits(hook);
+  writeFileSync(join(worktree, "pricing.cs"), "class Pricing { int Rate; }\n");
+  worktreeGit("add", "--", "pricing.cs");
+  route({ id, verdict: "PHASE DONE", agent: "developer", phase: 1, root });
+  const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
+  assert.ok(r.applied.includes(`${WORKTREE} refused the commit: blocked by hook`), r.applied.join(" | "));
+  assert.deepEqual(fs.readdirSync(join(root, SCENARIOS)), []);
 });

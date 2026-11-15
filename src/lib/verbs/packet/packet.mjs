@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
+import { keepText, readCandidates } from "../../shared/scenarios/keep.mts";
 import { readResults, replaySummary, summaryText } from "../../shared/scenarios/results.mts";
 import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
@@ -159,9 +160,26 @@ function checkLines(root, snap, phase, width) {
   return [...listField("checks", [...unreadable, ...unpassed.map(mismatchText)], width), ...listField("carried", carriedResults(snap, rows, phase).map(mismatchText), width)];
 }
 
+function hasEnvironment(root) {
+  return existsSync(join(root, ENV_DIR, COMPOSE_FILE));
+}
+
 function scenarioLines(root, id, width) {
-  if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) return [];
+  if (!hasEnvironment(root)) return [];
   return [field("scenarios", summaryText(replaySummary(readResults(root), id)), width)];
+}
+
+const NOT_REPLAYED = "not kept: not replayed on the environment";
+
+function keepLines(root, snap, phase, width) {
+  if (!hasEnvironment(root)) return [];
+  const candidates = readCandidates(root, snap.state.id)[String(phase)] ?? [];
+  const results = (phaseCheckResults(snap, readDriveLog(root).rows, phase) ?? []).filter((result) => "path" in result.check);
+  const items = results.map(({ check, index }) => {
+    const candidate = candidates.find((c) => c.index === index);
+    return `${check.covers} ${check.method} ${check.path}: ${candidate ? keepText(candidate) : NOT_REPLAYED}`;
+  });
+  return listField("keeps", items, width);
 }
 
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
@@ -184,6 +202,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(field("verified", blockField(b, "Verified") ?? "not reported", width));
     lines.push(...checkLines(root, snap, n.phase, width));
     lines.push(...scenarioLines(root, id, width));
+    lines.push(...keepLines(root, snap, n.phase, width));
     const red = blockField(b, "Red");
     if (red) lines.push(...redLines(red, redBeforeChange(root, id, n.phase), width));
     const cause = blockField(b, "Root cause");

@@ -6,6 +6,7 @@ import { setMarker } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
 import { isSessionId, writeState, type WorkState } from "../work/state.mts";
 import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
+import { keepCandidates, type KeptFiles } from "../scenarios/keep.mts";
 import { commitCheckouts, commitPhase, phaseCommitMessage } from "./commit.mts";
 import type { Change } from "./plan.mts";
 
@@ -60,6 +61,7 @@ function appliedLine(change: Change): string | null {
 }
 
 type CommitChange = Extract<Change, { kind: "commit" }>;
+type KeepChange = Extract<Change, { kind: "keep" }>;
 type CorrectChange = Extract<Change, { kind: "correct" }>;
 
 function isCorrectChange(change: Change): change is CorrectChange {
@@ -84,13 +86,22 @@ function isCommitChange(change: Change): change is CommitChange {
   return change.kind === "commit";
 }
 
+function isKeepChange(change: Change): change is KeepChange {
+  return change.kind === "keep";
+}
+
+function writeKept(root: string, changes: Change[], committing: boolean): KeptFiles {
+  const candidates = committing ? changes.filter(isKeepChange).flatMap((change) => change.candidates) : [];
+  return candidates.length ? keepCandidates(root, candidates) : { paths: [], lines: [] };
+}
+
 function grantsRun(change: Change): boolean {
   return isStateChange(change) && change.set !== undefined && "run_through" in change.set;
 }
 
 function withoutApproval(changes: Change[], phase: number, refusal: string): Change[] {
   const approves = (change: Change) => change.kind === "marker" && change.phase === phase && change.mark === "approved";
-  const kept = changes.filter((change) => !approves(change) && !isCommitChange(change) && !grantsRun(change) && !isCorrectChange(change));
+  const kept = changes.filter((change) => !approves(change) && !isCommitChange(change) && !grantsRun(change) && !isCorrectChange(change) && !isKeepChange(change));
   return [...kept, { kind: "state", unset: ["run_through"], line: null }, { kind: "note", line: refusal }];
 }
 
@@ -123,7 +134,8 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   const state = changedState(snap.state, changes, session);
   if (state) writeState(root, state, now);
   if (!isRefusedApproval(nested, row)) appendVerdict(root, id, row, now);
-  const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null)];
-  for (const change of changes) if (change.kind === "commit" && nested.message !== null) applied.push(...commitPhase(root, snap, change.phase, nested.message, env, now));
+  const kept = writeKept(root, changes, nested.message !== null);
+  const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null), ...kept.lines];
+  for (const change of changes) if (change.kind === "commit" && nested.message !== null) applied.push(...commitPhase(root, snap, change.phase, nested.message, env, now, kept.paths));
   return applied;
 }

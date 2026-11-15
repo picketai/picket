@@ -57,14 +57,14 @@ function resultLines({ sha, committed, left_staged, warnings }: CommitResult, me
   return [...lines, ...warnings];
 }
 
-export function commitPhase(root: string, snap: WorkSnapshot, phase: number, message: string, env: NodeJS.ProcessEnv, now: Date): string[] {
+export function commitPhase(root: string, snap: WorkSnapshot, phase: number, message: string, env: NodeJS.ProcessEnv, now: Date, kept: string[] = []): string[] {
   const id = snap.state.id;
   const planned = phaseOf(snap, phase);
-  const listed = listedPathMatcher(root, [workRel(id), ...(planned ? phasePaths(planned) : [])]);
+  const listed = listedPathMatcher(root, [workRel(id), ...kept, ...(planned ? phasePaths(planned) : [])]);
   const reported = listedPathMatcher(root, blockFiles(root, id, phase));
   let result: CommitResult;
   try {
-    result = commitOwned(root, message, { add: [workRel(id)], owns: (path) => listed(path) || reported(path), env });
+    result = commitOwned(root, message, { add: [workRel(id), ...kept], owns: (path) => listed(path) || reported(path), env });
   } catch (err) {
     return [(err as Error).message];
   }

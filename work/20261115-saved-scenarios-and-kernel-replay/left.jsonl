@@ -4,3 +4,4 @@
 {"ts":"2026-11-15T11:37:11.121Z","command":"rm .picket/state/scratch/20261115-saved-scenarios-and-kernel-replay/drive-verify.mjs","why":null}
 {"ts":"2026-11-15T11:51:17.650Z","command":"rm .picket/state/scratch/20261115-saved-scenarios-and-kernel-replay/drive-keys.mjs","why":null}
 {"ts":"2026-11-15T13:03:09.270Z","command":"rm .picket/state/scratch/20261115-saved-scenarios-and-kernel-replay/drive-guard.mjs","why":null}
+{"ts":"2026-11-15T13:15:47.510Z","command":"rm .picket/state/scratch/20261115-saved-scenarios-and-kernel-replay/drive-keep.mjs","why":null}

@@ -4,11 +4,14 @@ import { readJson } from "../../util/io.mts";
 import { SCENARIO_DIR } from "../env/standard.mts";
 import { statePath, STATE_FILES } from "../paths.mts";
 import { fingerprintMatches, fingerprintOf, parseScenario, type Card } from "./format.mts";
+import type { ScenarioRow } from "./results.mts";
 
 export type SavedScenario = { path: string; id: string | null; card: Card | null; problems: string[]; fingerprint: string; byHand: boolean };
 
 const CARD_FILE = /\.md$/;
 const FILE_ID = /^(S-\d{4,})\.md$/;
+const ID_NUMBER = /^S-(\d+)/;
+const ID_DIGITS = 4;
 
 function acceptedPath(root: string): string {
   return statePath(root, STATE_FILES.scenarioAccepted);
@@ -47,6 +50,25 @@ function withDuplicateIds(scenarios: SavedScenario[]): SavedScenario[] {
     }
     return { ...scenario, problems: [...scenario.problems, `header: id ${scenario.id} is already used by ${first}`] };
   });
+}
+
+function idNumber(id: string): number {
+  return Number(id.match(ID_NUMBER)?.[1] ?? 0);
+}
+
+export function nextScenarioId(root: string, rows: readonly ScenarioRow[]): string {
+  const dir = join(root, SCENARIO_DIR);
+  const fromFiles = existsSync(dir) ? readdirSync(dir).flatMap((name) => (FILE_ID.test(name) ? [idNumber(name)] : [])) : [];
+  const fromRows = rows.flatMap((row) => (row.type === "result" ? [idNumber(row.scenario)] : []));
+  const next = Math.max(0, ...fromFiles, ...fromRows) + 1;
+  return `S-${String(next).padStart(ID_DIGITS, "0")}`;
+}
+
+export function writeScenarioFile(root: string, id: string, text: string): string {
+  const path = `${SCENARIO_DIR}/${id}.md`;
+  mkdirSync(join(root, SCENARIO_DIR), { recursive: true });
+  writeFileSync(join(root, path), text);
+  return path;
 }
 
 export function listScenarios(root: string): SavedScenario[] {

@@ -10,6 +10,7 @@ import { appendCheckRow } from "../../dist/lib/shared/check-log.mjs";
 import { appendDriveRow } from "../../dist/lib/shared/drive-log.mjs";
 import { writeLayout } from "../../dist/lib/shared/repos.mjs";
 import { appendRows } from "../../dist/lib/shared/scenarios/results.mjs";
+import { storeCandidates } from "../../dist/lib/shared/scenarios/keep.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 import { gitOut, umbrella } from "#test/git.mts";
 
@@ -487,6 +488,32 @@ test("with the environment and no replay the scenarios line says not replayed; w
   const unreplayed = checkedItem(t);
   withEnvironment(unreplayed.root);
   assert.deepEqual(fieldRows(packet(unreplayed.id, unreplayed.root).lines, "scenarios"), ["  scenarios not replayed"]);
+});
+
+const httpCheck = (covers, path, extra = "") => `      - covers: ${covers}\n        method: POST\n        path: ${path}\n        status: 201\n${extra}`;
+const THREE_CHECKS = `    drive:\n${httpCheck("T-1.1", "/orders")}${httpCheck("T-1.2", "/orders/refund", "        replaces: S-0001\n")}${httpCheck("T-1.3", "/pay")}`;
+
+test("the keeps field shows a kept, a replacing and a not-kept check, and a check with no candidate (T-9.7)", (t) => {
+  const { root, id } = checkedItem(t, { first: THREE_CHECKS });
+  withEnvironment(root);
+  const candidate = (covers, index, outcome, detail, replaces = null) => ({ covers, index, outcome, detail, text: outcome === "not kept" ? null : "card", replaces });
+  storeCandidates(root, id, 1, [candidate("T-1.1", 0, "passed", ""), candidate("T-1.2", 1, "passed", "", "S-0001")]);
+  assert.deepEqual(fieldRows(packet(id, root).lines, "keeps").length, 1);
+  const { lines } = packet(id, root);
+  const at = lines.findIndex((l) => l.startsWith("  keeps"));
+  assert.deepEqual(lines.slice(at, at + 3), [
+    "  keeps     T-1.1 POST /orders: kept on approval",
+    "            T-1.2 POST /orders/refund: kept on approval, replaces S-0001",
+    "            T-1.3 POST /pay: not kept: not replayed on the environment",
+  ]);
+  storeCandidates(root, id, 1, [candidate("T-1.3", 2, "not kept", "the check failed")]);
+  assert.ok(packet(id, root).lines.includes("            T-1.3 POST /pay: not kept: the check failed"));
+});
+
+test("without the environment the packet prints no keeps field (T-9.7)", (t) => {
+  const { root, id } = checkedItem(t, { first: THREE_CHECKS });
+  storeCandidates(root, id, 1, [{ covers: "T-1.1", index: 0, outcome: "passed", detail: "", text: "card", replaces: null }]);
+  assert.deepEqual(fieldRows(packet(id, root).lines, "keeps"), []);
 });
 
 test("a research packet points at work/<id>/research.md", (t) => {

@@ -1,6 +1,7 @@
 import { Refused } from "../action.mts";
 import { documentRel, documentSlug } from "../document-path.mts";
 import { workRel, type WorkId } from "../work/files.mts";
+import type { Candidate } from "../scenarios/keep.mts";
 import type { CheckResult } from "../work/declared-checks.mts";
 import type { Gate } from "../work/gate.mts";
 import type { PhaseMark } from "../work/markers.mts";
@@ -36,14 +37,23 @@ export type Change =
   | { kind: "note"; line: string }
   | { kind: "commit"; phase: number }
   | { kind: "publish"; from: string; to: string; line: string }
-  | { kind: "correct"; phase: number; index: number; covers: string; from: string; to: string; line: string };
+  | { kind: "correct"; phase: number; index: number; covers: string; from: string; to: string; line: string }
+  | { kind: "keep"; phase: number; candidates: Candidate[]; line: string | null };
 
 export type GateOf = (n: number) => Gate | null;
 export type CorrectionsOf = (n: number) => CheckResult[];
+export type KeepsOf = (n: number) => Candidate[];
+export type Lookups = { correctionsOf?: CorrectionsOf; keepsOf?: KeepsOf };
 
 const NO_CORRECTIONS: CorrectionsOf = () => [];
+const NO_KEEPS: KeepsOf = () => [];
 
-type Plan = (snap: WorkSnapshot, planned: PlannedVerdict, gateOf: GateOf, correctionsOf?: CorrectionsOf) => Change[];
+type Plan = (snap: WorkSnapshot, planned: PlannedVerdict, gateOf: GateOf, lookups?: Lookups) => Change[];
+
+function keepChanges(n: number, keepsOf: KeepsOf): Change[] {
+  const candidates = keepsOf(n);
+  return candidates.length ? [{ kind: "keep", phase: n, candidates, line: null }] : [];
+}
 
 function needPhase({ phase, verdict }: PlannedVerdict): number {
   if (phase === null) throw new Refused(`${verdict} needs a phase`);
@@ -54,17 +64,17 @@ function marker(phase: number, mark: PhaseMark, line: string | null = `phases/${
   return { kind: "marker", phase, mark, line };
 }
 
-function runGrantChanges(snap: WorkSnapshot, n: number, marks: MarksOnDisk, gateOf: GateOf): Change[] {
+function runGrantChanges(snap: WorkSnapshot, n: number, marks: MarksOnDisk, gateOf: GateOf, keepsOf: KeepsOf): Change[] {
   const through = snap.state.run_through;
   if (!through || n > through || marks.approved) return [];
   const gate = gateOf(n);
   if (gate) return [{ kind: "state", unset: ["run_through"], line: `run grant stops here: phase ${n} ${gate.reason}; it takes its own approval` }];
-  return [marker(n, "approved", `phases/${n}.approved (run grant through ${through})`), { kind: "commit", phase: n }];
+  return [marker(n, "approved", `phases/${n}.approved (run grant through ${through})`), ...keepChanges(n, keepsOf), { kind: "commit", phase: n }];
 }
 
-const phaseDone: Plan = (snap, planned, gateOf) => {
+const phaseDone: Plan = (snap, planned, gateOf, { keepsOf = NO_KEEPS } = {}) => {
   const n = needPhase(planned);
-  return [marker(n, "done"), ...runGrantChanges(snap, n, planned.marks, gateOf)];
+  return [marker(n, "done"), ...runGrantChanges(snap, n, planned.marks, gateOf, keepsOf)];
 };
 
 function publishChange({ state, artifact }: WorkSnapshot): Change {
@@ -82,13 +92,13 @@ function correctChange(result: CheckResult, approvedPhase: number): Change[] {
   return [{ kind: "correct", phase: result.phase, index: result.index, covers: check.covers, from: check.path, to: ran.path, line }];
 }
 
-const phaseApproved: Plan = (snap, planned, _gateOf, correctionsOf = NO_CORRECTIONS) => {
+const phaseApproved: Plan = (snap, planned, _gateOf, { correctionsOf = NO_CORRECTIONS, keepsOf = NO_KEEPS } = {}) => {
   if (snap.state.lane === "research") return planned.publish ? [publishChange(snap)] : [];
   const n = needPhase(planned);
   if (!planned.marks.done) throw new Refused(`phase ${n} is not done; cannot approve`);
   const grant: Change[] = planned.through && planned.through > n ? [{ kind: "state", set: { run_through: planned.through }, line: `run_through=${planned.through}` }] : [];
   const corrections = correctionsOf(n).flatMap((result) => correctChange(result, n));
-  return [marker(n, "approved"), ...grant, ...corrections, { kind: "commit", phase: n }];
+  return [marker(n, "approved"), ...grant, ...corrections, ...keepChanges(n, keepsOf), { kind: "commit", phase: n }];
 };
 
 const phaseReviewed: Plan = (snap, { phase, scope }) => {

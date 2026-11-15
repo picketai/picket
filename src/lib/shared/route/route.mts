@@ -15,7 +15,8 @@ import { currentPhase, phaseOf, readSnapshot, type WorkSnapshot } from "../work/
 import { isSessionId } from "../work/state.mts";
 import type { VerdictEntry } from "../work/verdict-log.mts";
 import { applyChanges } from "./apply.mts";
-import { EFFECTS, type Change, type CorrectionsOf, type Effect, type GateOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
+import { readCandidates } from "../scenarios/keep.mts";
+import { EFFECTS, type Change, type CorrectionsOf, type Effect, type GateOf, type KeepsOf, type MarksOnDisk, type PlannedVerdict, type RouteInput } from "./plan.mts";
 
 export type { RouteInput };
 export type RouteResult = { id: WorkId; verdict: string; phase: number | null; applied: string[]; next: NextView };
@@ -91,6 +92,10 @@ function correctionsOf(snap: WorkSnapshot, rows: DriveRow[]): CorrectionsOf {
   return (n) => [...carriedResults(snap, rows, n), ...ownPrefixes(n)];
 }
 
+function keepsOf(root: string, id: WorkId): KeepsOf {
+  return (n) => (readCandidates(root, id)[String(n)] ?? []).filter((candidate) => candidate.outcome === "passed");
+}
+
 function marksOnDisk(root: string, id: WorkId, phase: number | null): MarksOnDisk {
   if (phase === null) return { done: false, approved: false };
   return { done: hasMarker(root, id, phase, "done"), approved: hasMarker(root, id, phase, "approved") };
@@ -105,7 +110,7 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const amend = rowAmend(input, spec);
   const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...amendmentStamps(amend, input.verdict, snap) };
   const { rows } = readDriveLog(ctx.root);
-  const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap, rows), correctionsOf(snap, rows));
+  const changes = EFFECTS[spec.effect](snap, planned, gateOf(ctx.root, snap, rows), { correctionsOf: correctionsOf(snap, rows), keepsOf: keepsOf(ctx.root, input.id) });
   const applied = applyChanges(ctx.root, snap, changes, { now: ctx.now(), env: ctx.env, session: input.session, row: verdictRow({ ...planned, ...grantStamp(planned, changes, snap) }, changes) });
   return { id: input.id, verdict: input.verdict, phase: planned.phase, applied, next: readNext(ctx.root, input.id, isSessionId(input.session) ? input.session : null) };
 }
