@@ -61,6 +61,37 @@ test("a run row under drive: true carries today's keys plus run and no contains 
   assert.deepEqual(Object.keys(row).sort(), ["command", "env", "exit_code", "kind", "ok", "phase", "run", "source", "ts", "work_id"]);
 });
 
+const ORDERS_SERVER = [
+  'import { createServer } from "node:http";',
+  "createServer((request, response) => {",
+  '  response.writeHead(request.method === "POST" ? 201 : 200, { "content-type": "application/json" });',
+  '  response.end(\'{"id":"PKT-a-1"}\');',
+  "}).listen(Number(process.env.PORT));",
+  "",
+].join("\n");
+const ORDERS_CHECK = "    drive:\n      - covers: T-1.1\n        method: POST\n        path: /orders\n        status: 201\n";
+const SECRET_HIT = 'POST /orders {"sku":"PKT-a","password":"p"}';
+
+async function hitInItem(t: TestContext, drive: string): Promise<DriveRow> {
+  const root = gitRepo(t, { host: true, picket: true, files: { "server.mjs": ORDERS_SERVER } });
+  const { id } = openItem(root, { lane: "design", title: "Orders" });
+  writeArtifact(root, id, "design.md", runCheckRecord(drive));
+  const outcome = await driveApp({ ...parse(["--start", "node server.mjs", "--hit", SECRET_HIT]), work: id, phase: "1" }, { ...edgeContext(root), cwd: root });
+  assert.equal(outcome.status, "done", JSON.stringify(outcome));
+  return readDriveLog(root).rows[0];
+}
+
+test("a hit in a phase declaring an HTTP check logs its request body with secret values masked (T-7.4)", async (t) => {
+  const row = await hitInItem(t, ORDERS_CHECK);
+  assert.deepEqual(row.hits?.map(({ method, path, status, body }) => ({ method, path, status, body })), [{ method: "POST", path: "/orders", status: 201, body: '{"sku":"PKT-a","password":"***"}' }]);
+});
+
+test("a hit under drive: true logs no body (T-7.4)", async (t) => {
+  const row = await hitInItem(t, "    drive: true\n");
+  assert.equal(row.hits?.length, 1);
+  assert.equal(Object.hasOwn(row.hits?.[0] ?? {}, "body"), false);
+});
+
 test("drive --run from a nested checkout runs there, logs at the root and reports its files root-relative", async (t) => {
   const root = gitRepo(t, { host: true, files: { "README.md": "shop\n" } });
   const app = join(root, "app");

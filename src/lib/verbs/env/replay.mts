@@ -13,6 +13,8 @@ import { affected, replayScenarios, type ScenarioRun } from "../../shared/scenar
 import { appendRows, lastKnown, readResults, type ResultRow, type RunMode, type RunRow, type ScenarioRow, type Versions } from "../../shared/scenarios/results.mts";
 import { newRunKey } from "../../shared/scenarios/values.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
+import { replacedScenarios } from "../../shared/work/declared-checks.mts";
+import { readSnapshot } from "../../shared/work/snapshot.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { readState, type WorkState } from "../../shared/work/state.mts";
 import { flag, str, UsageError, type Args } from "../../util/args.mts";
@@ -39,7 +41,7 @@ const DAY_LENGTH = 10;
 
 type Keys = { working: ContentKey; base: ContentKey };
 type RunContext = { item: WorkId; run: string; mode: RunMode; key: string; versions: Versions };
-type Session = { ctx: Context; deps: ReplayDeps; input: ReplayInput; state: WorkState; engine: Engine; start: StartedStack; layout: ItemLayout; run: string };
+type Session = { ctx: Context; deps: ReplayDeps; input: ReplayInput; state: WorkState; engine: Engine; start: StartedStack; layout: ItemLayout; run: string; replaced: Set<string> };
 type BaseComparison = { rows: ScenarioRow[]; note: string | null };
 
 function openState(root: string, id: WorkId): WorkState {
@@ -52,8 +54,12 @@ function runRow({ item, run, mode, key, versions }: RunContext, reason: string |
   return { type: "run", run, item, mode, key, versions, ...(reason === null ? {} : { reason }) };
 }
 
-function resultRow(scenarioRun: ScenarioRun, rows: ScenarioRow[], context: RunContext, baseId: string): ResultRow {
-  const cls = classify(scenarioRun, lastKnown(rows, scenarioRun.id, scenarioRun.fingerprint, baseId), false);
+function replacedByItem(root: string, id: WorkId): Set<string> {
+  return new Set(readSnapshot(root, id).phases.flatMap((phase) => replacedScenarios(phase.entry?.drive, phase.n)));
+}
+
+function resultRow(scenarioRun: ScenarioRun, rows: ScenarioRow[], context: RunContext, baseId: string, replaced = false): ResultRow {
+  const cls = classify(scenarioRun, lastKnown(rows, scenarioRun.id, scenarioRun.fingerprint, baseId), replaced);
   const { id: scenario, fingerprint, outcome, attempts, unstable, detail } = scenarioRun;
   return { type: "result", run: context.run, scenario, fingerprint, key: context.key, versions: context.versions, outcome, attempts: attempts.length, unstable, class: cls, detail };
 }
@@ -102,10 +108,11 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints });
   const baseId = keyId(keys.base);
   const stored = readResults(root);
-  const unmatched = new Set(runs.filter((scenarioRun) => needsBase(scenarioRun, stored, baseId)).map((scenarioRun) => scenarioRun.id));
+  const unmatched = new Set(runs.filter((scenarioRun) => !session.replaced.has(scenarioRun.id) && needsBase(scenarioRun, stored, baseId)).map((scenarioRun) => scenarioRun.id));
   const base = await compareWithBase(session, scenarios.filter((scenario) => unmatched.has(scenario.id ?? scenario.path)), baseId);
   const context: RunContext = { item: input.id, run, mode: input.mode, key: keyId(keys.working), versions: Object.fromEntries(start.report.apps.map((app) => [app.service, app.version])) };
-  const rows = runs.map((scenarioRun) => noted(resultRow(scenarioRun, [...stored, ...base.rows], context, baseId), base.note, unmatched));
+  const known = [...stored, ...base.rows];
+  const rows = runs.map((scenarioRun) => noted(resultRow(scenarioRun, known, context, baseId, session.replaced.has(scenarioRun.id)), base.note, unmatched));
   appendRows(root, [...base.rows, runRow(context, null), ...rows]);
   for (const scenarioRun of runs) if (scenarioRun.byHand && scenarioRun.outcome !== "blocked") acceptFingerprint(root, scenarioRun.fingerprint);
   const lines = runs.map((scenarioRun, at) => lineOf(scenarioRun, rows[at]));
@@ -122,7 +129,7 @@ export async function replayEnvironment(ctx: Context, deps: ReplayDeps, input: R
     return failed({ ok: false, stack: null, reason, lines: [] });
   }
   const start = startStack(ctx, engine, machine, input.id);
-  const report = await replayStack({ ctx, deps, input, state, engine, start, layout: readLayout(ctx.root, input.id), run });
+  const report = await replayStack({ ctx, deps, input, state, engine, start, layout: readLayout(ctx.root, input.id), run, replaced: replacedByItem(ctx.root, input.id) });
   return report.ok ? done(report) : failed(report);
 }
 

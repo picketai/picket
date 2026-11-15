@@ -3,7 +3,7 @@ import { action, done, failed, refuse } from "../../shared/action.mts";
 import { workingCheckout } from "../../shared/checkouts.mts";
 import type { Context } from "../../shared/context.mts";
 import { destructiveCommand, destructiveRefusal } from "../../shared/destructive.mts";
-import { appendDriveRow, driveTarget, phaseChecks, type DriveHit, type DriveRow } from "../../shared/drive-log.mts";
+import { appendDriveRow, driveTarget, maskedBody, phaseChecks, type DriveHit, type DriveRow } from "../../shared/drive-log.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { declaredStrings } from "../../shared/work/declared-checks.mts";
 import { flag, many, pairs, seconds, str, type Args } from "../../util/args.mts";
@@ -55,8 +55,12 @@ function rootRelative(checkout: string, side: SideEffects): SideEffects {
   return { dirtied: under(side.dirtied), created: under(side.created), restored: under(side.restored), removed: under(side.removed) };
 }
 
-function loggedHit({ method, path, status, ms, contains }: HitResult): DriveHit {
-  return { method, path, status, ms, ...(contains ? { contains } : {}) };
+function loggedHit({ method, path, status, ms, contains }: HitResult, sent: string | undefined): DriveHit {
+  return { method, path, status, ms, ...(contains ? { contains } : {}), ...(sent === undefined ? {} : { body: maskedBody(sent) }) };
+}
+
+function loggedHits(report: ServerReport, hits: Hit[], logBodies: boolean): DriveHit[] {
+  return report.hits.map((hit, at) => loggedHit(hit, logBodies ? hits[at]?.body : undefined));
 }
 
 async function driveOnce(input: DriveInput, ctx: Context, row: RowBase): Promise<DriveReport> {
@@ -86,7 +90,7 @@ async function driveOnce(input: DriveInput, ctx: Context, row: RowBase): Promise
     command: serverCommand(report.start, input.hits).slice(0, LOGGED_COMMAND_CHARS),
     port: report.port,
     ok: report.ok,
-    hits: report.hits.map(loggedHit),
+    hits: loggedHits(report, input.hits, checks.some((check) => "path" in check)),
   });
   return { ...report, ...side };
 }

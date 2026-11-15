@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { appendJsonl, readJsonl, type JsonlRead } from "../util/io.mts";
+import { isSecretName, masked } from "./env/config-entries.mts";
 import { statePath, STATE_FILES } from "./paths.mts";
 import { readChecks, type DeclaredCheck } from "./work/declared-checks.mts";
 import { isWorkId, workFile, type WorkId } from "./work/files.mts";
@@ -7,7 +8,7 @@ import { currentPhase, phaseOf, readSnapshot } from "./work/snapshot.mts";
 import { currentItem } from "./work/state.mts";
 
 export type ContainsMap = Record<string, boolean>;
-export type DriveHit = { method: string; path: string; status: number | null; ms: number; contains?: ContainsMap };
+export type DriveHit = { method: string; path: string; status: number | null; ms: number; contains?: ContainsMap; body?: string };
 
 export type DriveRow = {
   ts: string;
@@ -34,6 +35,32 @@ const ENV_FLAG = /--env(\s+)([A-Za-z_][A-Za-z0-9_]*)=(?:"[^"]*"|'[^']*'|[^\s"']*
 
 export function maskEnvValues(command: string): string {
   return command.replace(QUOTED_ENV_FLAG, "--env$1$3=***").replace(ENV_FLAG, "--env$1$2=***");
+}
+
+const MASK = "***";
+
+function maskedValue(key: string, value: unknown): unknown {
+  if (isSecretName(key.replaceAll("-", "")) && (typeof value === "string" || typeof value === "number")) return MASK;
+  return maskedJson(value);
+}
+
+function maskedJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskedJson);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, maskedValue(key, child)]));
+}
+
+function parsedJson(text: string): { value: unknown } | null {
+  try {
+    return { value: JSON.parse(text) };
+  } catch {
+    return null;
+  }
+}
+
+export function maskedBody(text: string): string {
+  const parsed = parsedJson(text);
+  return parsed === null ? (masked(null, text) ?? "") : JSON.stringify(maskedJson(parsed.value));
 }
 
 function driveLogPath(root: string): string {

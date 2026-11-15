@@ -15,7 +15,7 @@ import { appendRows, readResults, type ResultRow, type ScenarioOutcome } from ".
 import type { WorkId } from "../../shared/work/files.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import { gitIn, gitRepo } from "#test/git.mts";
-import { openItem } from "#test/project.mts";
+import { openItem, writeArtifact } from "#test/project.mts";
 import { parseArgs } from "../../util/args.mts";
 import { renderReplay, replayEnvironment, verb, type ReplayDeps, type ReplayInput, type ReplayReport } from "./replay.mts";
 
@@ -238,4 +238,36 @@ test("a done item refuses before any engine call", async (t) => {
   const runner: EngineRunner = (_program, args) => (calls.push(args.join(" ")), { status: 1, stdout: "", stderr: "" });
   assert.match(await refusal(() => replayEnvironment(ctx, deps(ctx.root, answering(200, "ok").adapter, runner), full(id))), /is done; env replay runs only for an open or blocked item$/);
   assert.deepEqual(calls, []);
+});
+
+const REPLACING_ORDER = [
+  "---",
+  "lane: order",
+  "phases:",
+  "  - n: 1",
+  "    files: [services/orders/server.mjs]",
+  "    drive:",
+  "      - covers: T-1.1",
+  "        method: GET",
+  "        path: /health",
+  "        status: 503",
+  "        replaces: S-0001",
+  "---",
+  "# O",
+  "",
+  "## Phase 1: Health",
+  "",
+  "- **T-1.1** health answers 503 while orders drains",
+  "",
+].join("\n");
+
+test("a failing scenario that a phase of the item replaces is classed replaced by this item and exits 0 (T-7.5)", async (t) => {
+  const { ctx, id } = project(t);
+  writeArtifact(ctx.root, id, "order.md", REPLACING_ORDER);
+  writeFileSync(join(ctx.root, "services", "orders", "server.mjs"), "drains\n");
+  const spy = baseAnswering("passed");
+  const { code, text } = await replay(ctx, deps(ctx.root, answering(503, "draining").adapter, engine(ctx.root), spy), full(id));
+  assert.equal(code, 0);
+  assert.equal(text, "S-0001 replaced by this item: step 2: expected status 200, got 503\nreplayed 1 on picket-proj-481: 1 replaced by this item");
+  assert.equal(spy.calls.length, 0);
 });

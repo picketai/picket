@@ -134,6 +134,23 @@ test("ownGate on a phase object gates an irreversible step and answers null for 
   assert.equal(gateOf(undefined, SECURITY_PATHS), null);
 });
 
+const REPLACING = { covers: "T-1.1", method: "POST", path: "/orders", status: 201, replaces: "S-0012" };
+
+test("a phase whose check replaces a saved scenario takes the replacement gate (T-7.2)", () => {
+  const entry: PhaseEntry = { n: 1, files: ["lib/a.ts"], drive: [REPLACING] };
+  assert.deepEqual(gateOf({ entry, touchSet: [], irreversible: false }, SECURITY_PATHS), { kind: "replacement", reason: "replaces saved scenario S-0012" });
+  const two: PhaseEntry = { ...entry, drive: [REPLACING, { ...REPLACING, covers: "T-1.2", replaces: "S-0013" }] };
+  assert.deepEqual(gateOf({ entry: two, touchSet: [], irreversible: false }, SECURITY_PATHS), { kind: "replacement", reason: "replaces saved scenarios S-0012, S-0013" });
+  const { replaces: _, ...plain } = REPLACING;
+  assert.equal(gateOf({ entry: { ...entry, drive: [plain] }, touchSet: [], irreversible: false }, SECURITY_PATHS), null);
+});
+
+test("security and irreversible kinds win over a replacement (T-7.2)", () => {
+  const entry: PhaseEntry = { n: 1, files: ["lib/a.ts"], drive: [REPLACING] };
+  assert.equal(gateOf({ entry: { ...entry, security: true }, touchSet: [], irreversible: false }, SECURITY_PATHS)?.kind, "security_mark");
+  assert.equal(gateOf({ entry, touchSet: [], irreversible: true }, SECURITY_PATHS)?.kind, "irreversible");
+});
+
 test("a security path wins over a mark, and a mark wins over an irreversible step", (t) => {
   const config = { security_paths: ["lib/secure/"] };
   const irreversible = "- **T-1.1** drop the table [IRREVERSIBLE]\n";

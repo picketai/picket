@@ -2,17 +2,25 @@ import type { ContainsMap, DriveHit, DriveRow } from "../drive-log.mts";
 import type { WorkId } from "./files.mts";
 import { phaseOf, type WorkSnapshot } from "./snapshot.mts";
 
-export type HttpCheck = { covers: string; method: string; path: string; status: number; contains: string[] };
+export type HttpCheck = { covers: string; method: string; path: string; status: number; contains: string[]; service?: string; replaces?: string };
 export type RunCheck = { covers: string; command: string; exit_code: number; contains: string[] };
 export type DeclaredCheck = HttpCheck | RunCheck;
 export type ReadChecks = { checks: DeclaredCheck[]; problems: string[] };
 
 type Fields = Record<string, unknown>;
 
-const HTTP_KEYS = ["covers", "method", "path", "status", "contains"];
+const HTTP_KEYS = ["covers", "method", "path", "status", "contains", "service", "replaces"];
 const RUN_KEYS = ["covers", "command", "exit_code", "contains"];
 const COVERS = /^T-(\d+)\.\d+$/;
 const METHOD = /^[A-Z]+$/;
+const SERVICE = /^[a-z0-9][a-z0-9_.-]*$/;
+const SCENARIO_ID = /^S-\d{4,}$/;
+
+function optionalProblem(fields: Fields, key: string, pattern: RegExp, problem: string): string[] {
+  if (!Object.hasOwn(fields, key)) return [];
+  const value = fields[key];
+  return typeof value === "string" && pattern.test(value) ? [] : [problem];
+}
 
 function isFields(value: unknown): value is Fields {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -42,6 +50,8 @@ function httpProblems(fields: Fields, at: string): string[] {
   if (typeof fields.path !== "string" || !fields.path.startsWith("/")) problems.push(`${at} path must start with /`);
   const status = fields.status;
   if (typeof status !== "number" || !Number.isInteger(status) || status < 100 || status > 599) problems.push(`${at} status must be an integer from 100 to 599`);
+  problems.push(...optionalProblem(fields, "service", SERVICE, `${at} service must be an environment service name such as orders`));
+  problems.push(...optionalProblem(fields, "replaces", SCENARIO_ID, `${at} replaces must be a scenario id such as S-0012`));
   return problems;
 }
 
@@ -69,8 +79,17 @@ function checkProblems(entry: unknown, phase: number, at: string): string[] {
 function toCheck(fields: Fields): DeclaredCheck {
   const contains = Array.isArray(fields.contains) ? fields.contains.map(String) : [];
   const covers = String(fields.covers);
-  if (Object.hasOwn(fields, "path")) return { covers, method: String(fields.method), path: String(fields.path), status: Number(fields.status), contains };
+  if (Object.hasOwn(fields, "path")) return { covers, method: String(fields.method), path: String(fields.path), status: Number(fields.status), contains, ...optionalText(fields, "service"), ...optionalText(fields, "replaces") };
   return { covers, command: String(fields.command), exit_code: Number(fields.exit_code), contains };
+}
+
+function optionalText(fields: Fields, key: "service" | "replaces"): Partial<HttpCheck> {
+  return typeof fields[key] === "string" ? { [key]: fields[key] } : {};
+}
+
+export function replacedScenarios(drive: unknown, phase: number): string[] {
+  const checks = readChecks(drive, phase)?.checks ?? [];
+  return checks.flatMap((check) => ("replaces" in check && check.replaces !== undefined ? [check.replaces] : []));
 }
 
 export type CheckKind = "http" | "run";

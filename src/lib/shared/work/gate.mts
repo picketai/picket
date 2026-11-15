@@ -1,8 +1,8 @@
 import { securityPathOf } from "../security-paths.mts";
 import { phasePaths, type ArtifactPhase, type PhaseEntry } from "./artifact.mts";
-import type { CheckResult } from "./declared-checks.mts";
+import { replacedScenarios, type CheckResult } from "./declared-checks.mts";
 
-export type Gate = { kind: "security_path" | "security_mark" | "irreversible" | "declared_check"; reason: string };
+export type Gate = { kind: "security_path" | "security_mark" | "irreversible" | "replacement" | "declared_check"; reason: string };
 
 function firstSecurityPath(paths: string[], securityPaths: readonly string[]): string | null {
   return paths.find((path) => securityPathOf(path, securityPaths) !== null) ?? null;
@@ -18,7 +18,14 @@ export function ownGate(phase: Pick<ArtifactPhase, "entry" | "touchSet" | "irrev
   if (securePath) return { kind: "security_path", reason: `touches a security path (${securePath})` };
   if (isMarkedSecure(phase.entry)) return { kind: "security_mark", reason: "is marked security-sensitive in the record" };
   if (phase.irreversible) return { kind: "irreversible", reason: "carries an irreversible step" };
-  return null;
+  return replacementGate(phase.entry);
+}
+
+function replacementGate(entry: PhaseEntry | null): Gate | null {
+  const replaced = entry ? replacedScenarios(entry.drive, entry.n) : [];
+  if (replaced.length === 0) return null;
+  const named = replaced.length === 1 ? `saved scenario ${replaced[0]}` : `saved scenarios ${replaced.join(", ")}`;
+  return { kind: "replacement", reason: `replaces ${named}` };
 }
 
 export type RunChecks = { own: CheckResult[]; carried: CheckResult[]; endsRun: boolean; problems?: string[] };

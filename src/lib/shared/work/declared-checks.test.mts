@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import type { DriveRow } from "../drive-log.mts";
 import { parseArtifact } from "./artifact.mts";
-import { carriedResults, compareChecks, containsMap, declaredStrings, mismatchText, phaseCheckProblems, phaseCheckResults, phaseRows, readChecks, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
+import { carriedResults, compareChecks, containsMap, declaredStrings, mismatchText, phaseCheckProblems, phaseCheckResults, phaseRows, readChecks, replacedScenarios, type CheckResult, type DeclaredCheck, type HttpCheck, type RunCheck } from "./declared-checks.mts";
 import { workId } from "./files.mts";
 import type { WorkSnapshot } from "./snapshot.mts";
 
@@ -91,6 +91,24 @@ test("a key outside the HTTP check's set is a problem (T-1.3)", () => {
 
 test("a key outside the run check's set is a problem (T-1.3)", () => {
   assert.deepEqual(problemsOf({ ...RUN, status: 200 }), ["check 1 has key status, which a run check does not take"]);
+});
+
+test("an HTTP check reads its service and replaces keys (T-7.1)", () => {
+  assert.deepEqual(readChecks([{ ...HTTP, service: "orders", replaces: "S-0012" }], 1), { checks: [{ ...HTTP, contains: [], service: "orders", replaces: "S-0012" }], problems: [] });
+  assert.deepEqual(readChecks([HTTP], 1)?.checks, [{ ...HTTP, contains: [] }]);
+  assert.deepEqual(replacedScenarios([{ ...HTTP, replaces: "S-0012" }, HTTP, RUN], 1), ["S-0012"]);
+  assert.deepEqual(replacedScenarios(true, 1), []);
+});
+
+test("a malformed service or replaces is its own problem (T-7.1)", () => {
+  assert.deepEqual(problemsOf({ ...HTTP, service: "Orders!" }), ["check 1 service must be an environment service name such as orders"]);
+  assert.deepEqual(problemsOf({ ...HTTP, replaces: "S-12" }), ["check 1 replaces must be a scenario id such as S-0012"]);
+  assert.deepEqual(problemsOf({ ...HTTP, service: 7 }), ["check 1 service must be an environment service name such as orders"]);
+});
+
+test("service or replaces on a run check is the foreign-key problem (T-7.1)", () => {
+  assert.deepEqual(problemsOf({ ...RUN, replaces: "S-0012" }), ["check 1 has key replaces, which a run check does not take"]);
+  assert.deepEqual(problemsOf({ ...RUN, service: "orders" }), ["check 1 has key service, which a run check does not take"]);
 });
 
 test("covers naming another phase's criterion is a problem (T-1.3)", () => {

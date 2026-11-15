@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { appendDriveRow, driveTarget, maskEnvValues, readDriveLog } from "./drive-log.mts";
+import { appendDriveRow, driveTarget, maskedBody, maskEnvValues, readDriveLog } from "./drive-log.mts";
 import { stateDir, statePath, STATE_FILES } from "./paths.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -29,4 +29,15 @@ test("driveTarget names the current item, or nothing when there is none", (t) =>
   assert.deepEqual(driveTarget(root, { session: null }), { work_id: null, phase: null });
   const { id } = openItem(root, { lane: "fast", title: "Target" });
   assert.deepEqual(driveTarget(root, { session: null }), { work_id: id, phase: null });
+});
+
+test("a JSON body has every string or number under a secret-named key masked at any depth (T-7.3)", () => {
+  assert.equal(maskedBody('{"user":"a","password":"p","nested":{"apiKey":"k","n":1}}'), '{"user":"a","password":"***","nested":{"apiKey":"***","n":1}}');
+  assert.equal(maskedBody('[{"token":42,"items":[{"secret":"s","sku":"PKT-b"}]}]'), '[{"token":"***","items":[{"secret":"***","sku":"PKT-b"}]}]');
+  assert.equal(maskedBody('{"sku":"PKT-a"}'), '{"sku":"PKT-a"}');
+});
+
+test("a body that is not JSON is masked as pairs (T-7.3)", () => {
+  assert.equal(maskedBody("name=x&password=y"), "name=x&password=***");
+  assert.equal(maskedBody("plain text"), "plain text");
 });

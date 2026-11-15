@@ -400,6 +400,16 @@ test("after the correction the check passes with the pass detail (T-6.6)", (t) =
   assert.deepEqual([result.outcome, result.detail], ["pass", "POST /api/orders → 201"]);
 });
 
+test("a check that replaces a saved scenario stops the run grant at its phase even when it held (T-7.6)", (t) => {
+  const { root, id, hit, approved, record } = grantedCheckedItem(t);
+  writeFileSync(join(root, "work", id, "design.md"), record().replace(`${ordersCheck("T-2.1")}`, `${ordersCheck("T-2.1")}        replaces: S-0012\n`));
+  hit(2, "/orders", 201);
+  const r = route({ id, verdict: "PHASE DONE", agent: "developer", phase: 2, root });
+  assert.ok(r.applied.includes("run grant stops here: phase 2 replaces saved scenario S-0012; it takes its own approval"), r.applied.join(" | "));
+  assert.equal(approved(2), false);
+  assert.deepEqual([r.next.action, r.next.phase], ["approve_phase", 2]);
+});
+
 test("a failed declared check stops the run grant at its phase without approving it (T-5.1)", (t) => {
   const { root, id, hit, approved } = grantedCheckedItem(t);
   hit(2, "/orders", 400);
