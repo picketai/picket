@@ -19,6 +19,10 @@ test("an inline program with a write call yields its quoted literals", () => {
   assert.deepEqual(inPlaceTargets(["ruby", "-e", "File.write('src/a.rb', 'x')"], []), ["src/a.rb", "x"]);
 });
 
+test("deno eval takes the word after the subcommand as the program", () => {
+  assert.deepEqual(inPlaceTargets(["deno", "eval", "require('fs').writeFileSync('src/a.ts','x')", "-p", "1"], []), ["fs", "src/a.ts", "x"]);
+});
+
 test("an attached --eval= program and a flag cluster ending in c, e or p carry the program", () => {
   assert.deepEqual(inPlaceTargets(["node", "--eval=require('fs').writeFileSync('src/a.ts','x')"], []), ["fs", "src/a.ts", "x"]);
   assert.deepEqual(inPlaceTargets(["node", "-pe", "require('fs').writeFileSync('src/a.ts','x')"], []), ["fs", "src/a.ts", "x"]);
