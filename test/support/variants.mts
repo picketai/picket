@@ -54,12 +54,15 @@ export const pairNames: Family<string> = {
 
 export type Invocation = { argv: string[]; heredocs: string[] };
 
-type InterpreterFlags = { long: Record<string, string>; clusterLetter: string; leading: string[] };
+type InterpreterFlags = { long: Record<string, string>; attached?: true; clusterLetter?: string; leading: string[] };
 
 const INTERPRETER_FLAGS: Record<string, InterpreterFlags> = {
   node: { long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
   python3: { long: {}, clusterLetter: "B", leading: ["-X", "utf8"] },
   ruby: { long: {}, clusterLetter: "w", leading: ["-w"] },
+  php: { long: {}, attached: true, leading: ["-c", "php.ini"] },
+  lua: { long: {}, attached: true, leading: ["-l", "mod"] },
+  awk: { long: { "-e": "--source" }, attached: true, leading: ["-F", ":"] },
 };
 
 function flagsOf(interpreter: string): InterpreterFlags {
@@ -86,10 +89,11 @@ function longSpellings(interpreter: string, long: string | undefined, program: s
 export const programFlagSpellings: Family<Invocation> = {
   name: "program flag spellings",
   spell: ({ argv: [interpreter, flag, program] }) => {
-    const { long, clusterLetter, leading } = flagsOf(interpreter);
+    const { long, attached, clusterLetter, leading } = flagsOf(interpreter);
     return invocations([
       ...longSpellings(interpreter, long[flag], program),
-      [interpreter, `-${clusterLetter}${flag.slice(1)}`, program],
+      ...(attached ? [[interpreter, `${flag}${program}`]] : []),
+      ...(clusterLetter === undefined ? [] : [[interpreter, `-${clusterLetter}${flag.slice(1)}`, program]]),
       [interpreter, ...leading, flag, program],
     ], []);
   },

@@ -1,5 +1,5 @@
 import { normalizeRoot } from "../../../shared/shell/kernel-call.mts";
-import { familyOf, type Family } from "./interpreters.mts";
+import { attachedValue, familyOf, type Family } from "./interpreters.mts";
 import type { Segment } from "./rules.mts";
 
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
@@ -16,6 +16,9 @@ function inlineProgram(family: Family, args: string[]): string | null {
   if (family.subcommand !== undefined && args[0] === family.subcommand) return args[1] ?? null;
   const attached = args.map((word) => ATTACHED_PROGRAM.exec(word)?.[1]).find((program) => program !== undefined);
   if (attached !== undefined) return attached;
+  const programFlags = family.programFlags ?? [];
+  const attachedToFlag = args.map((word) => attachedValue(word, programFlags)).find((program) => program !== undefined);
+  if (attachedToFlag !== undefined) return attachedToFlag;
   const at = args.findIndex(family.takesProgram);
   return at === -1 ? null : (args[at + 1] ?? null);
 }

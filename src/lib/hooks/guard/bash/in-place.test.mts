@@ -100,6 +100,19 @@ test("a php or lua value flag before the program does not hide its write (T-2.4)
   assert.ok(inPlaceTargets(["lua", "-l", "mod", "-"], [`io.open("src/a.ts","w")\n`]).includes("src/a.ts"));
 });
 
+test("a php, lua or awk program attached to its flag, or after --source=, writes its target", () => {
+  assert.ok(inPlaceTargets(["php", "-c", "php.ini", `-rfile_put_contents("src/a.ts","x");`], []).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["lua", "-l", "mod", `-eio.open("src/a.ts","w"):write("x")`], []).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["gawk", "-F", ":", `--source=BEGIN { print "x" > "src/a.ts" }`], []).includes("src/a.ts"));
+  assert.deepEqual(inPlaceTargets(["gawk", "-i", "inplace", "-e{ print }", "src/a.ts"], []), ["src/a.ts"]);
+});
+
+test("a php, lua or awk read attached to its program flag yields nothing", () => {
+  assert.deepEqual(inPlaceTargets(["php", `-recho file_get_contents("src/a.ts");`], []), []);
+  assert.deepEqual(inPlaceTargets(["lua", `-eio.open("src/a.ts","r")`], []), []);
+  assert.deepEqual(inPlaceTargets(["gawk", "-e{ print }", "src/a.ts"], []), []);
+});
+
 test("an awk read, an awk script file, a tcl read and a tcl script file beside a write heredoc yield nothing (T-3.3)", () => {
   assert.deepEqual(inPlaceTargets(["awk", "{ print $1 }", "src/a.ts"], []), []);
   assert.deepEqual(inPlaceTargets(words("awk -f fix.awk src/a.ts"), []), []);

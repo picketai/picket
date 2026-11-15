@@ -118,6 +118,15 @@ test("programFlagSpellings carries the program as its own word or attached to th
   ]);
 });
 
+test("programFlagSpellings attaches the program to the flag for a row that opts in, and skips the cluster for a row without a letter", () => {
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["awk", "-e", "P"], heredocs: [] }), ["awk --source P", "awk --source=P", "awk -eP", "awk -F : -e P"]);
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["php", "-r", "P"], heredocs: [] }), ["php -rP", "php -c php.ini -r P"]);
+  assert.deepEqual(programFlagSpellings.spell({ argv: ["lua", "-e", "P"], heredocs: [] }).map((spelling) => spelling.input), [
+    { argv: ["lua", "-eP"], heredocs: [] },
+    { argv: ["lua", "-l", "mod", "-e", "P"], heredocs: [] },
+  ]);
+});
+
 test("programFlagSpellings throws on an interpreter missing from the table (T-3.3)", () => {
   assert.throws(() => programFlagSpellings.spell({ argv: ["perl", "-e", "P"], heredocs: [] }), /no flag table row for the interpreter perl/);
 });

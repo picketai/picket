@@ -249,6 +249,22 @@ test("a php, lua or Rscript inline write is an in-place code-write denial for th
   }
 });
 
+test("a php, lua or gawk program attached to its flag is an in-place code-write denial for the lead and an agent", (t) => {
+  const root = project(t);
+  for (const command of [
+    `php -r'file_put_contents("src/a.ts","x");'`,
+    `lua -e'io.open("src/a.ts","w"):write("x")'`,
+    `gawk -e'BEGIN { print "x" > "src/a.ts" }'`,
+    `gawk --source='BEGIN { print "x" > "src/a.ts" }'`,
+  ]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL("src/a.ts")), out?.permissionDecisionReason);
+    }
+  }
+});
+
 test("an awk redirect, a gawk inplace edit and a tclsh open for writing are in-place code-write denials for the lead and an agent", (t) => {
   const root = project(t);
   for (const command of [`awk 'BEGIN { print "x" > "src/a.ts" }'`, "gawk -i inplace '{ print }' src/a.ts", "tclsh <<'EOF'\nset f [open src/a.ts w]\nEOF"]) {

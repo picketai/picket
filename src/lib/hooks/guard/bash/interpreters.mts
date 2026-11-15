@@ -1,6 +1,7 @@
 export type Family = {
   names: readonly string[];
   takesProgram: (word: string) => boolean;
+  programFlags?: readonly string[];
   valueFlags: ReadonlySet<string>;
   writeCall: RegExp;
   programOperand?: { scriptFlags: ReadonlySet<string> };
@@ -25,7 +26,19 @@ const VERSIONED_NAME = /^([a-z]+?)(?:-?\d+(?:\.\d+)*[a-z]?)?$/;
 
 const takesProgramFlag = (word: string): boolean => PROGRAM_CLUSTER.test(word) || PROGRAM_LONG_FLAGS.has(word);
 const takesEditorProgram = (word: string): boolean => EDITOR_PROGRAM_CLUSTER.test(word);
-const exactly = (...flags: string[]) => (word: string): boolean => flags.includes(word);
+
+export function attachedValue(word: string, flags: readonly string[]): string | undefined {
+  for (const flag of flags) {
+    if (flag.startsWith("--") && word.startsWith(`${flag}=`)) return word.slice(flag.length + 1);
+    if (flag.length === 2 && word.length > 2 && word.startsWith(flag)) return word.slice(2);
+  }
+  return undefined;
+}
+
+const listedProgramFlags = (...flags: string[]): Pick<Family, "takesProgram" | "programFlags"> => ({
+  takesProgram: (word) => flags.includes(word),
+  programFlags: flags,
+});
 
 function editedFileOperands(args: string[]): string[] {
   if (!args.some((word) => IN_PLACE_CLUSTER.test(word))) return [];
@@ -57,7 +70,8 @@ function awkFileOperands(args: string[]): string[] {
     if (AWK_PROGRAM_FLAGS.includes(args[i]) || AWK_SCRIPT_FLAGS.has(args[i])) {
       programGiven = true;
       i++;
-    } else if (AWK_VALUE_FLAGS.has(args[i])) i++;
+    } else if (attachedValue(args[i], AWK_PROGRAM_FLAGS) !== undefined) programGiven = true;
+    else if (AWK_VALUE_FLAGS.has(args[i])) i++;
     else if (!args[i].startsWith("-")) operands.push(args[i]);
   }
   return programGiven ? operands : operands.slice(1);
@@ -87,12 +101,12 @@ export const FAMILIES: readonly Family[] = [
   inPlaceEditor(["ruby"]),
   flagProgram(["bun"]),
   { ...flagProgram(["deno"]), subcommand: "eval" },
-  { names: ["php"], takesProgram: exactly("-r", "-B", "-R", "-E"), valueFlags: new Set(["-c", "-d", "-z"]), writeCall: PHP_WRITE_CALL },
-  { names: ["lua", "luajit"], takesProgram: exactly("-e"), valueFlags: new Set(["-l"]), writeCall: LUA_WRITE_CALL },
-  { names: ["r", "rscript"], takesProgram: exactly("-e"), valueFlags: NO_VALUE_FLAGS, writeCall: R_WRITE_CALL },
+  { names: ["php"], ...listedProgramFlags("-r", "-B", "-R", "-E"), valueFlags: new Set(["-c", "-d", "-z"]), writeCall: PHP_WRITE_CALL },
+  { names: ["lua", "luajit"], ...listedProgramFlags("-e"), valueFlags: new Set(["-l"]), writeCall: LUA_WRITE_CALL },
+  { names: ["r", "rscript"], ...listedProgramFlags("-e"), valueFlags: NO_VALUE_FLAGS, writeCall: R_WRITE_CALL },
   {
     names: ["awk", "gawk", "mawk", "nawk"],
-    takesProgram: exactly(...AWK_PROGRAM_FLAGS),
+    ...listedProgramFlags(...AWK_PROGRAM_FLAGS),
     valueFlags: AWK_VALUE_FLAGS,
     writeCall: AWK_WRITE_CALL,
     programOperand: { scriptFlags: AWK_SCRIPT_FLAGS },
