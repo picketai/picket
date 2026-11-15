@@ -39,9 +39,19 @@ function contextTree(checkoutDir: string, rel: string, fromTop: string, env: Nod
   }
 }
 
-export function contextVersion(checkoutDir: string, contextRel: string, env: NodeJS.ProcessEnv): string {
+function contextPaths(checkoutDir: string, contextRel: string): { rel: string; fromTop: string } {
   const rel = posix(contextRel).replace(/\/$/, "");
   const fromTop = `${gitRun(checkoutDir, ["rev-parse", "--show-prefix"]).trim()}${rel}`.replace(/\/$/, "");
+  return { rel, fromTop };
+}
+
+export function workingTree(checkoutDir: string, contextRel: string, env: NodeJS.ProcessEnv): string {
+  const { rel, fromTop } = contextPaths(checkoutDir, contextRel);
+  return contextTree(checkoutDir, rel, fromTop, env);
+}
+
+export function contextVersion(checkoutDir: string, contextRel: string, env: NodeJS.ProcessEnv): string {
+  const { rel, fromTop } = contextPaths(checkoutDir, contextRel);
   const head = gitRun(checkoutDir, ["rev-parse", "HEAD"]).trim();
   const headTree = gitRun(checkoutDir, ["rev-parse", fromTop === "" ? "HEAD^{tree}" : `HEAD:${fromTop}`], { okExitCodes: [128] }).trim();
   const tree = contextTree(checkoutDir, rel, fromTop, env);

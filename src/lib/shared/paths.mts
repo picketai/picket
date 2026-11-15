@@ -21,6 +21,7 @@ export const STATE_FILES = Object.freeze({
   envScan: "env/scan.json",
   envStacks: "env/stacks.json",
   envTrial: "env/trial.json",
+  scenarioResults: "scenarios/results.jsonl",
 });
 
 export const MODEL_WRITABLE_STATE_FILES = Object.freeze([STATE_FILES.branchingManifest]);

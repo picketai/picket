@@ -4,7 +4,7 @@ import { readFileSync, realpathSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
 import type { ItemLayout } from "../repos.mts";
-import { contextVersion, overrideDoc, REVISION_LABEL, sourceFor, type ServiceSource } from "./build-plan.mts";
+import { contextVersion, overrideDoc, REVISION_LABEL, sourceFor, workingTree, type ServiceSource } from "./build-plan.mts";
 import { readModel, type EnvService } from "./model.mts";
 
 const ENV = { PATH: process.env.PATH ?? "", SYSTEMROOT: process.env.SYSTEMROOT ?? "" };
@@ -72,6 +72,18 @@ test("a new untracked file in the context changes the version, and the root cont
   assert.match(contextVersion(root, "", ENV), /-t[0-9a-f]{7}$/);
   rmSync(join(root, "b.txt"));
   assert.equal(contextVersion(root, "", ENV), head7);
+});
+
+test("the working tree of a clean context is its tree at HEAD, an edit changes it, and the index stays empty (T-3.6)", (t) => {
+  const root = gitRepo(t, { files: { "services/orders/server.mjs": "ok\n", "other.txt": "x\n" } });
+  const atHead = gitOut(root, "rev-parse", "HEAD:services/orders");
+  assert.equal(workingTree(root, "services/orders", ENV), atHead);
+  assert.equal(workingTree(root, "services/orders/", ENV), atHead);
+  assert.equal(workingTree(root, "", ENV), gitOut(root, "rev-parse", "HEAD^{tree}"));
+  writeIn(root, "services/orders/server.mjs", "changed\n");
+  assert.match(workingTree(root, "services/orders", ENV), /^[0-9a-f]{40}$/);
+  assert.notEqual(workingTree(root, "services/orders", ENV), atHead);
+  assert.equal(gitOut(root, "diff", "--cached", "--name-only"), "");
 });
 
 test("the override tags and labels each app and gives every other started service only the item label (T-5.3)", () => {
