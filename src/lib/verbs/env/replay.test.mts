@@ -7,6 +7,7 @@ import type { Context } from "../../shared/context.mts";
 import type { EngineRunner } from "../../shared/env/engine.mts";
 import { readModel } from "../../shared/env/model.mts";
 import { readLayout } from "../../shared/repos.mts";
+import type { BaseInput } from "../../shared/scenarios/base-run.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
 import type { HttpAdapter, HttpRequest } from "../../shared/scenarios/http.mts";
 import { baseKey, keyId } from "../../shared/scenarios/keys.mts";
@@ -56,9 +57,26 @@ function project(t: TestContext): { ctx: Context; id: WorkId } {
   return { ctx, id };
 }
 
-function deps(root: string, adapter: HttpAdapter, runner: EngineRunner = engine(root)): ReplayDeps {
+type BaseSpy = { calls: BaseInput[]; base: ReplayDeps["base"] };
+
+function baseAnswering(outcome: ScenarioOutcome | { failure: string }): BaseSpy {
+  const calls: BaseInput[] = [];
+  const base: ReplayDeps["base"] = async (input) => {
+    calls.push(input);
+    if (typeof outcome !== "string") return outcome;
+    const runs = input.scenarios.map((scenario) => ({ id: scenario.id ?? scenario.path, fingerprint: scenario.fingerprint, outcome, attempts: [outcome], unstable: false, byHand: false, detail: "" }));
+    return { runs, versions: { orders: "base000" } };
+  };
+  return { calls, base };
+}
+
+function deps(root: string, adapter: HttpAdapter, runner: EngineRunner = engine(root), spy: BaseSpy = baseAnswering({ failure: "no base run expected" })): ReplayDeps {
   let next = 0;
-  return { runner, adapter, sleep: async () => {}, random: () => new Uint8Array([next++, 1]) };
+  return { runner, adapter, sleep: async () => {}, random: () => new Uint8Array([next++, 1]), base: spy.base };
+}
+
+function failingTwice(): HttpAdapter {
+  return answering(500, "boom").adapter;
 }
 
 function full(id: WorkId): ReplayInput {
@@ -134,11 +152,54 @@ test("a failure the stored base passed is a new failure and exits 2; one the bas
   assert.equal(known.text, "S-0001 failing before the item: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 failing before the item");
 });
 
-test("a failure with no stored base result is blamed until phase 5 runs the base", async (t) => {
+function baseKeyId(ctx: Context, id: WorkId): string {
+  const model = readModel(JSON.parse(modelAt(ctx.root)));
+  return keyId(baseKey(ctx.root, readLayout(ctx.root, id), readState(ctx.root, id).base ?? null, model));
+}
+
+test("a confirmed failure with no base row runs the base once and stores base rows; the next replay reads them (T-5.4)", async (t) => {
   const { ctx, id } = project(t);
-  const { code, text } = await replay(ctx, deps(ctx.root, answering(500, "boom").adapter), full(id));
-  assert.equal(code, 2);
-  assert.match(text, /^S-0001 no base result: step 2/);
+  writeFileSync(join(ctx.root, "services", "orders", "server.mjs"), "item change\n");
+  const spy = baseAnswering("passed");
+  const first = await replay(ctx, deps(ctx.root, failingTwice(), engine(ctx.root), spy), full(id));
+  assert.equal(first.code, 2);
+  assert.equal(first.text.split("\n")[0], "S-0001 new failure: step 2: expected status 200, got 500");
+  assert.equal(spy.calls.length, 1);
+  assert.deepEqual([spy.calls[0].key, spy.calls[0].scenarios.map((scenario) => scenario.id)], ["proj-481", ["S-0001"]]);
+  const rows = readResults(ctx.root);
+  const baseRun = rows.find((row) => row.type === "run" && row.mode === "base");
+  assert.ok(baseRun && baseRun.type === "run");
+  assert.deepEqual([baseRun.key, baseRun.versions], [baseKeyId(ctx, id), { orders: "base000" }]);
+  assert.ok(rows.some((row) => row.type === "result" && row.run === baseRun.run && row.outcome === "passed" && row.key === baseKeyId(ctx, id)));
+  const again = baseAnswering("failed");
+  const second = await replay(ctx, deps(ctx.root, failingTwice(), engine(ctx.root), again), full(id));
+  assert.equal(again.calls.length, 0);
+  assert.equal(second.text.split("\n")[0], "S-0001 new failure: step 2: expected status 200, got 500");
+});
+
+test("passing replays and unstable failures start no base run (T-5.5)", async (t) => {
+  const { ctx, id } = project(t);
+  const spy = baseAnswering("passed");
+  assert.equal((await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, engine(ctx.root), spy), full(id))).code, 0);
+  const statuses = [500, 200];
+  const flaky: HttpAdapter = async () => ({ status: statuses.shift() ?? 200, headers: {}, text: "ok", error: null });
+  const unstable = await replay(ctx, deps(ctx.root, flaky, engine(ctx.root), spy), full(id));
+  assert.equal(unstable.code, 0);
+  assert.equal(spy.calls.length, 0);
+});
+
+test("a base that does not start, or no base commit, leaves the failure as no base result with the cause", async (t) => {
+  const broken = project(t);
+  const failure = await replay(broken.ctx, deps(broken.ctx.root, failingTwice(), engine(broken.ctx.root), baseAnswering({ failure: "compose up failed: orders is unhealthy" })), full(broken.id));
+  assert.equal(failure.code, 2);
+  assert.equal(failure.text.split("\n")[0], "S-0001 no base result: the base did not start: compose up failed: orders is unhealthy");
+  const baseless = project(t);
+  const { base: _, ...withoutBase } = readState(baseless.ctx.root, baseless.id);
+  writeState(baseless.ctx.root, withoutBase, new Date());
+  const spy = baseAnswering("passed");
+  const none = await replay(baseless.ctx, deps(baseless.ctx.root, failingTwice(), engine(baseless.ctx.root), spy), full(baseless.id));
+  assert.equal(none.text.split("\n")[0], "S-0001 no base result: the item has no base commit");
+  assert.equal(spy.calls.length, 0);
 });
 
 test("a hand-changed card is marked once and accepted for the next replay (T-4.3)", async (t) => {

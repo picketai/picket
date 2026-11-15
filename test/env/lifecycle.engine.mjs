@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { findEngine, realRunner } from "../../dist/lib/shared/env/engine.mjs";
@@ -81,4 +81,33 @@ test("the fixture umbrella passes check, trial, start, stop and purge on a real 
   assert.deepEqual(lines(engine, ["volume", "ls", "-q", "--filter", `label=com.docker.compose.project=${stack}`]), []);
   assert.deepEqual(lines(engine, ["network", "ls", "-q", "--filter", `label=com.docker.compose.project=${stack}`]), []);
   assert.deepEqual(lines(engine, ["image", "ls", "-q", "--filter", `label=${ITEM_LABEL}=${id}`]), []);
+});
+
+const HEALTH_ONLY_FOR_WGET = `import { createServer } from "node:http";
+
+createServer((request, response) => {
+  const probe = (request.headers["user-agent"] ?? "").startsWith("Wget");
+  response.writeHead(request.url === "/health" && probe ? 200 : 500, { "content-type": "text/plain" });
+  response.end(probe ? "ok" : "broken");
+}).listen(Number(process.env.PORT ?? 8080));
+`;
+
+test("an item that breaks /health replays S-0001 as a new failure after a base run that passed, and leaves no base stack or worktree (T-5.6)", { timeout: RUN_MINUTES * 60_000 }, async (t) => {
+  const engine = findEngine(process.env, process.cwd(), realRunner);
+  assert.ok(engine, "the env step runs this file only when an engine answers");
+  const root = umbrellaRepo(t);
+  const key = `ENVBASE-${process.pid}`;
+  const stack = `picket-${key.toLowerCase()}`;
+  const id = JSON.parse(expectOk(root, "open", "--lane", "order", "--title", "Base comparison", "--source", key)).id;
+  t.after(() => {
+    removeOwnStack(engine, root, `${stack}-base`, id);
+    removeOwnStack(engine, root, stack, id);
+  });
+  writeFileSync(join(root, "services", "orders", "server.mjs"), HEALTH_ONLY_FOR_WGET);
+
+  const replayed = picket(root, "env", "replay", id);
+  assert.equal(replayed.status, 2, replayed.out);
+  assert.match(replayed.out, /^S-0001 new failure: step 2: expected status 200, got 500$/m);
+  assert.deepEqual(lines(engine, ["ps", "-a", "-q", "--filter", `label=com.docker.compose.project=${stack}-base`]), []);
+  assert.equal(execFileSync("git", ["-C", root, "worktree", "list"], { encoding: "utf8" }).trim().split("\n").length, 1);
 });
