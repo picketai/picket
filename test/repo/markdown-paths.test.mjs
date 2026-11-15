@@ -56,6 +56,7 @@ const ELSEWHERE = [
       "src/security/",
       ".azuredevops/pull_request_template.md",
       ".github/PULL_REQUEST_TEMPLATE.md",
+      ".picket/env/compose.yaml",
     ],
   },
   { why: "inside a bench run repository", paths: ["data/invoices.json", "test/hidden/"] },

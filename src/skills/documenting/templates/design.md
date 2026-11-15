@@ -20,6 +20,8 @@ phases:
         path: [REPLACE: the path as the request sends it, starting with /]
         status: [REPLACE: the expected status code]
         contains: [REPLACE: literal strings the response body must hold, or omit the key]
+        service: [REPLACE: optional; the environment service the request goes to when several apps share the phase, or omit the key]
+        replaces: [REPLACE: optional; the saved scenario S-<id> this check changes on purpose, or omit the key]
       - covers: [REPLACE: the T-1.x criterion this command shows]
         command: [REPLACE: the exact command picket drive --run runs]
         exit_code: [REPLACE: the expected exit code]

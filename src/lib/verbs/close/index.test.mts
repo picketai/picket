@@ -8,6 +8,11 @@ import { readStacks, recordStack } from "../../shared/env/stacks.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readState, writeState, type Lane } from "../../shared/work/state.mts";
 import { openItem, withProject } from "#test/project.mts";
+import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
+import { Refused } from "../../shared/action.mts";
+import type { ResultClass } from "../../shared/scenarios/compare.mts";
+import { writeScenario, type Card } from "../../shared/scenarios/format.mts";
+import { appendRows, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import { closingBlock } from "./block.mts";
 import { close, defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
 import { checkCommitMessage } from "../../shared/commit-message.mts";
@@ -262,5 +267,80 @@ test("closing A still purges an unrecorded shared stack labelled with a done ite
     assert.deepEqual(down.slice(-3), ["down", "--volumes", "--remove-orphans"]);
     assert.ok(down.includes(SHARED_STACK), String(label));
     assert.equal(result.environment?.warning, null, String(label));
+  }
+});
+
+type FastOptions = { lane?: Lane; environment?: boolean; scenario?: "active" | "deprecated" | null };
+
+function fastItem(t: TestContext, { lane = "fast", environment = true, scenario = "active" }: FastOptions = {}): { root: string; id: WorkId; head: () => string } {
+  const root = gitRepo(t, { files: { "README.md": "u\n" } });
+  if (environment) writeIn(root, ".picket/env/compose.yaml", "services: {}\n");
+  if (scenario !== null) {
+    const card: Card = { header: { id: "S-0002", kind: "smoke", covers: [], intent: "health", status: scenario, format: 1 }, steps: [{ word: "request", line: 1, method: "GET", target: "{orders}/health", headers: [], body: null }] };
+    writeIn(root, ".picket/env/scenarios/S-0002.md", writeScenario(card));
+  }
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "environment");
+  const { id } = openItem(root, { lane, title: "Orders", source: "PROJ-481" });
+  return { root, id, head: () => gitOut(root, "rev-parse", "HEAD") };
+}
+
+function affectedRun(root: string, id: WorkId, classes: ResultClass[], reason?: string): void {
+  const run: ScenarioRow = { type: "run", run: `r-${classes.join("-")}`, item: id, mode: "affected", key: "k", versions: {}, ...(reason ? { reason } : {}) };
+  const results = classes.map((cls, at): ScenarioRow => ({ type: "result", run: run.run, scenario: `S-000${at + 2}`, fingerprint: "sha256:f", key: "k", versions: {}, outcome: cls === "passed" ? "passed" : "failed", attempts: 1, unstable: false, class: cls, detail: "" }));
+  appendRows(root, [run, ...results]);
+}
+
+const COMMITTER = { GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@example.com", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@example.com" };
+
+function closeFast(root: string, id: WorkId): CloseResult {
+  return close(root, id, {}, { now: new Date("2026-11-15T10:00:00Z"), env: { ...process.env, ...COMMITTER }, cwd: root, runner: engine(false).runner });
+}
+
+function refusal(run: () => unknown): string {
+  try {
+    run();
+  } catch (err) {
+    assert.ok(err instanceof Refused, String(err));
+    return err.message;
+  }
+  assert.fail("not refused");
+}
+
+test("a fast item with an active scenario and no affected replay is refused, stays open and commits nothing (T-10.1)", (t) => {
+  const { root, id, head } = fastItem(t);
+  const before = head();
+  assert.equal(refusal(() => closeFast(root, id)), `run picket env replay ${id} --affected before closing`);
+  assert.equal(readState(root, id).status, "open");
+  assert.equal(head(), before);
+});
+
+test("a latest affected run with a new failure refuses naming the scenario and the way out (T-10.2)", (t) => {
+  const { root, id } = fastItem(t);
+  affectedRun(root, id, ["passed"]);
+  affectedRun(root, id, ["new failure"]);
+  assert.equal(
+    refusal(() => closeFast(root, id)),
+    `S-0002 new failure after this change: fix the change, or, if the request changes this behaviour on purpose, run picket set ${id} status=abandoned and take it to the order lane`,
+  );
+  assert.equal(readState(root, id).status, "open");
+});
+
+test("an affected run with only passes and old failures, or with no engine, lets the close commit (T-10.2)", (t) => {
+  for (const write of [(root: string, id: WorkId) => affectedRun(root, id, ["passed", "failing before the item"]), (root: string, id: WorkId) => affectedRun(root, id, [], "no container engine")]) {
+    const { root, id, head } = fastItem(t);
+    const before = head();
+    write(root, id);
+    const result = closeFast(root, id);
+    assert.equal(result.status, "done");
+    assert.notEqual(head(), before);
+  }
+});
+
+test("an order item, and a fast item without the environment or an active scenario, close as before (T-10.3)", (t) => {
+  for (const options of [{ lane: "order" as Lane }, { environment: false }, { scenario: null }, { scenario: "deprecated" as const }]) {
+    const { root, id } = fastItem(t, options);
+    if (options.lane === "order") writeState(root, { ...readState(root, id), status: "done" }, new Date());
+    assert.equal(closeFast(root, id).status, "done", JSON.stringify(options));
   }
 });

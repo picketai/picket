@@ -6,6 +6,9 @@ import { foreignClaim, purgeStack, type Resources } from "../../shared/env/purge
 import { readStacks } from "../../shared/env/stacks.mts";
 import { COMPOSE_FILE, ENV_DIR, itemKey, stackName } from "../../shared/env/standard.mts";
 import { dropItemChecks } from "../../shared/check-log.mts";
+import { isBlamed } from "../../shared/scenarios/compare.mts";
+import { listScenarios } from "../../shared/scenarios/files.mts";
+import { latestRun, readResults, type ResultRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
@@ -101,6 +104,26 @@ function refuseUntouchedFastClose(root: string, { id, lane }: WorkState, touched
   const own = `${repoPrefix(root)}${workRel(id)}`;
   const foreign = stagedFiles(root).filter((path) => !path.startsWith(own));
   if (foreign.length) throw new Refused(`staged paths outside ${own}: ${foreign.join(", ")}; pass --touched <p1,p2> to commit them with the close, or unstage them`, { id });
+}
+
+function hasActiveScenario(root: string): boolean {
+  return existsSync(join(root, ENV_DIR, COMPOSE_FILE)) && listScenarios(root).some((scenario) => scenario.card?.header.status === "active");
+}
+
+function blamedResults(rows: ScenarioRow[], run: string): ResultRow[] {
+  return rows.filter((row): row is ResultRow => row.type === "result" && row.run === run && isBlamed(row.class));
+}
+
+function refuseUnreplayedFastClose(root: string, { id, lane, status }: WorkState): void {
+  if (lane !== "fast" || status === "done" || !hasActiveScenario(root)) return;
+  const rows = readResults(root);
+  const run = latestRun(rows, id, ["affected"]);
+  if (run === null) throw new Refused(`run picket env replay ${id} --affected before closing`, { id });
+  if (run.reason !== undefined) return;
+  const blamed = blamedResults(rows, run.run);
+  if (blamed.length === 0) return;
+  const named = blamed.map((row) => `${row.scenario} ${row.class}`).join(", ");
+  throw new Refused(`${named} after this change: fix the change, or, if the request changes this behaviour on purpose, run picket set ${id} status=abandoned and take it to the order lane`, { id });
 }
 
 function markDone(root: string, state: WorkState, now: Date): WorkState {
@@ -239,6 +262,7 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const { now, env } = closeCtx;
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
+  refuseUnreplayedFastClose(root, snap.state);
   const audit = auditLine(snap.state, snap.phases.length, readLedger(root).rows);
   const commitMessage = checkedCloseMessage(message, snap.state);
   const repeats = ownRepeats(root, id);

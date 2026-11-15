@@ -311,8 +311,8 @@ test("mismatchText gives one line per outcome in declared versus ran form", () =
 });
 
 const TEMPLATES = new URL("../../../skills/documenting/templates/", import.meta.url);
-const SAMPLE_VALUES: Record<string, string> = { covers: "T-1.1", method: "POST", path: "/orders", status: "201", contains: "[pending]", command: "npm test", exit_code: "0" };
-const PLACEHOLDER_FIELD = /^(\s*(?:- )?)(covers|method|path|status|contains|command|exit_code): \[REPLACE:[^\]]*\]$/gm;
+const SAMPLE_VALUES: Record<string, string> = { covers: "T-1.1", method: "POST", path: "/orders", status: "201", contains: "[pending]", service: "orders", replaces: "S-0012", command: "npm test", exit_code: "0" };
+const PLACEHOLDER_FIELD = /^(\s*(?:- )?)(covers|method|path|status|contains|service|replaces|command|exit_code): \[REPLACE:[^\]]*\]$/gm;
 
 function sampledTemplate(name: string): string {
   const text = readFileSync(new URL(name, TEMPLATES), "utf8");
@@ -320,11 +320,11 @@ function sampledTemplate(name: string): string {
 }
 
 for (const name of ["design.md", "order.md"]) {
-  test(`the ${name} template's drive example reads as two checks with no problems (T-7.1)`, () => {
+  test(`the ${name} template's drive example, service and replaces filled, reads as two checks with no problems (T-7.1, T-10.5)`, () => {
     const drive = parseArtifact(sampledTemplate(name)).phases[0].entry?.drive;
     assert.deepEqual(readChecks(drive, 1), {
       checks: [
-        { covers: "T-1.1", method: "POST", path: "/orders", status: 201, contains: ["pending"] },
+        { covers: "T-1.1", method: "POST", path: "/orders", status: 201, contains: ["pending"], service: "orders", replaces: "S-0012" },
         { covers: "T-1.1", command: "npm test", exit_code: 0, contains: ["pending"] },
       ],
       problems: [],
