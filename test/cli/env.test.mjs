@@ -16,12 +16,13 @@ function envCheck(root, engine) {
   return runCli(root, ["env", "check", "--root", root], { env: { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: engine } });
 }
 
-test("env check on the fixture umbrella names Linux containers and passes the rules (T-1.6, T-2.5)", () => {
+test("env check on the fixture umbrella names Linux containers, passes the rules and counts its scenarios (T-1.6, T-2.5)", () => {
   const r = envCheck(UMBRELLA, FAKE_ENGINE);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /^engine: .*fake-engine\.mjs \(Linux containers, Compose 2\.99\.0-fixture\)$/m);
   assert.match(r.stdout, /^memory: 8\.0 GiB · free disk: \d+\.\d GiB$/m);
   assert.match(r.stdout, /^rules passed$/m);
+  assert.match(r.stdout, /^scenarios: 1 active, 0 deprecated$/m);
 });
 
 test("env check in a project without an environment exits 2 naming compose.yaml", (t) => {

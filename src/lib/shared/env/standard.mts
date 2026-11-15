@@ -12,6 +12,7 @@ export const DATA_PROFILE = "picket-data";
 export const X_PICKET = "x-picket";
 export const ENV_DIR = ".picket/env";
 export const COMPOSE_FILE = "compose.yaml";
+export const SCENARIO_DIR = `${ENV_DIR}/scenarios`;
 
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);

@@ -90,7 +90,7 @@ export function isAddressLike(key: string | null, value: string | null): boolean
   return key !== null && ADDRESS_KEY_ENDINGS.some((ending) => lastSegment(key).endsWith(ending));
 }
 
-function isSecretName(name: string): boolean {
+export function isSecretName(name: string): boolean {
   const plain = name.toLowerCase().replace(/\s+/g, "");
   return SECRET_WORDS.some((word) => plain.includes(word));
 }
