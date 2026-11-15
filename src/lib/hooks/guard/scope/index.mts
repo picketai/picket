@@ -1,6 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, isPrTicketRel, stateRel } from "../../../shared/paths.mts";
+import { SCENARIO_DIR } from "../../../shared/env/standard.mts";
 import { sourceRoots, underSource } from "../../../shared/sources/protection.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { wasRead } from "../../../shared/transcript/entries.mts";
@@ -18,6 +19,7 @@ const SCRATCH_PREFIX = `${stateRel("scratch")}/`.toLowerCase();
 const LEGACY_STATE_PREFIX = `${LEGACY.stateDir}/`;
 const EXTENSIONS_PREFIX = `${PICKET_DIR}/extensions/`;
 const CONFIG_REL = configRel();
+const SCENARIO_PREFIX = `${SCENARIO_DIR}/`;
 const PREFIX = "guard.scope: ";
 
 function realPath(path: string): string {
@@ -61,8 +63,13 @@ function unreadReason(event: EditEvent, rel: string): string {
   return `read ${rel} with the Read tool before editing it; the file may have changed since you last saw it`;
 }
 
+function isSavedScenario(rel: string, platform: NodeJS.Platform): boolean {
+  return samePathCase(rel, platform).startsWith(samePathCase(SCENARIO_PREFIX, platform));
+}
+
 function denialReason(event: EditEvent, ctx: HookContext, target: EditTarget, rel: string): string | null {
   if (KERNEL_OWNED.test(samePathCase(rel, ctx.platform))) return `${rel} is kernel-owned; use \`picket open\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`;
+  if (isSavedScenario(rel, ctx.platform)) return `${rel} is a saved scenario, written by the kernel: keep one through a declared check the user approves, replace one with replaces; a person edits one by hand outside Claude Code`;
   if (isHookOnlyState(rel)) return `${rel} is written by the hooks only`;
   if (isLegacyState(rel)) return `${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`;
   const source = underSource(target.abs, sourceRoots(ctx.root, ctx.env, ctx.platform), ctx.platform);

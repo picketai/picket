@@ -108,6 +108,39 @@ test("guardScope denies a write into a source reached through ..", (t) => {
   }
 });
 
+function scenarioProject(t: Parameters<typeof withProject>[0]): { root: string; edit: (rel: string) => any; write: (rel: string) => any } {
+  const root = project(t);
+  for (const rel of [".picket/env/scenarios/S-0001.md", ".picket/env/compose.yaml", "test/fixtures/env/umbrella/.picket/env/scenarios/S-0001.md"]) {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), "x\n");
+  }
+  const reads = [".picket/env/scenarios/S-0001.md", ".picket/env/compose.yaml", "test/fixtures/env/umbrella/.picket/env/scenarios/S-0001.md"].map((rel, at) => ({
+    type: "assistant",
+    message: { role: "assistant", content: [{ type: "tool_use", id: `r${at}`, name: "Read", input: { file_path: join(root, rel) } }] },
+  }));
+  const tp = transcript(root, [user("go"), ...reads]);
+  const edit = (rel: string) => guardScope({ hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path: join(root, rel), old_string: "x", new_string: "y" }, cwd: root, transcript_path: tp }, hookContext(root))?.hookSpecificOutput ?? null;
+  const write = (rel: string) => scopeWrite(root, join(root, rel));
+  return { root, edit, write };
+}
+
+test("guardScope denies an Edit of a saved scenario and a Write of a new one, naming the kernel (T-8.1)", (t) => {
+  const { edit, write } = scenarioProject(t);
+  const edited = edit(".picket/env/scenarios/S-0001.md");
+  assert.equal(edited?.permissionDecision, "deny");
+  assert.match(edited.permissionDecisionReason, /^guard\.scope: \.picket\/env\/scenarios\/S-0001\.md is a saved scenario, written by the kernel: keep one through a declared check the user approves, replace one with replaces; a person edits one by hand outside Claude Code$/);
+  const written = write(".picket/env/scenarios/S-0099.md");
+  assert.equal(written?.permissionDecision, "deny");
+  assert.match(written.permissionDecisionReason, /written by the kernel/);
+});
+
+test("guardScope leaves the rest of the environment folder and a fixture card under test/ to the other rules (T-8.3)", (t) => {
+  const { edit, write } = scenarioProject(t);
+  assert.equal(edit(".picket/env/compose.yaml"), null);
+  assert.equal(edit("test/fixtures/env/umbrella/.picket/env/scenarios/S-0001.md"), null);
+  assert.equal(write(".picket/env/scenarios-notes.md"), null);
+});
+
 test("guardScope lets an Edit through .. reach a file the transcript read under its plain path", (t) => {
   const root = project(t);
   const plain = join(root, "src", "a.ts");

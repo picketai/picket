@@ -94,6 +94,16 @@ test("a developer's picket env check is allowed, but not when the command sets P
   }
 });
 
+test("a developer's shell write to a saved scenario gets no allow (T-8.4)", (t) => {
+  const root = project(t);
+  mkdirSync(join(root, ".picket", "env", "scenarios"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "scenarios", "S-0001.md"), "a\n");
+  const decide = (command: string) => decision(command, { root, tool: "Bash", agent: "picket:developer" });
+  for (const command of ["echo x > .picket/env/scenarios/S-0001.md", "sed -i s/a/b/ .picket/env/scenarios/S-0001.md", "tee .picket/env/scenarios/S-0001.md < a.txt"]) {
+    assert.notEqual(decide(command), "allow", command);
+  }
+});
+
 test("guardBash allows a lone picket verify only when the test command it would run is itself safe", (t) => {
   const root = project(t);
   const decide = (command: string) => decision(command, { root, tool: "Bash" });

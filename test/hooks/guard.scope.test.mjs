@@ -153,3 +153,10 @@ test("the spawned guard.scope asks on an extension write, asks on a read config 
   assert.equal(unread.permissionDecision, "deny");
   assert.match(unread.permissionDecisionReason, /read .* before editing/);
 });
+
+test("the spawned guard.scope denies a Write of a saved scenario as kernel-written (T-8.5)", (t) => {
+  const { root } = hookProject(t);
+  const out = run({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: join(root, ".picket", "env", "scenarios", "S-0001.md"), content: "x" }, cwd: root }, root);
+  assert.equal(out?.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(out.hookSpecificOutput.permissionDecisionReason, /written by the kernel/);
+});
