@@ -1,9 +1,9 @@
 id: 20261115-in-place-guard-covers-more-interpreters
 lane: order
 title: In-place guard covers more interpreters
-status: open
+status: done
 created: 2026-11-15T08:10:48.888Z
-updated: 2026-11-15T08:18:34.265Z
+updated: 2026-11-15T08:43:42.825Z
 session: d09e885b-38d7-46ab-90a1-fca179743a5f
 base: 845a14084431c68a3df307eb692d1fe453606e39
 run_through: 3
