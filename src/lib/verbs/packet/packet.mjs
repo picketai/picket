@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
+import { readResults, replaySummary, summaryText } from "../../shared/scenarios/results.mts";
 import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
 import { projectRoot } from "../../shared/paths.mts";
@@ -155,6 +159,11 @@ function checkLines(root, snap, phase, width) {
   return [...listField("checks", [...unreadable, ...unpassed.map(mismatchText)], width), ...listField("carried", carriedResults(snap, rows, phase).map(mismatchText), width)];
 }
 
+function scenarioLines(root, id, width) {
+  if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) return [];
+  return [field("scenarios", summaryText(replaySummary(readResults(root), id)), width)];
+}
+
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
@@ -174,6 +183,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(field("lint", reportedCheck(b, "Lint", logged, "lint"), width));
     lines.push(field("verified", blockField(b, "Verified") ?? "not reported", width));
     lines.push(...checkLines(root, snap, n.phase, width));
+    lines.push(...scenarioLines(root, id, width));
     const red = blockField(b, "Red");
     if (red) lines.push(...redLines(red, redBeforeChange(root, id, n.phase), width));
     const cause = blockField(b, "Root cause");

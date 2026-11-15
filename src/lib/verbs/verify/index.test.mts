@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { EngineRunner } from "../../shared/env/engine.mts";
+import { readModel } from "../../shared/env/model.mts";
+import type { ResultClass } from "../../shared/scenarios/compare.mts";
+import { keyId, workingKey } from "../../shared/scenarios/keys.mts";
+import { appendRows, type RunMode, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { verb, verify, type VerifyReport } from "./index.mts";
 import { stateDir, statePath, STATE_FILES } from "../../shared/paths.mts";
@@ -319,4 +323,66 @@ test("with the environment and no engine, the environment result fails as not ch
   const { root, id } = environmentItem(t, { stockAtBase: false, phaseFile: "README.md" });
   const report = verify(root, id, 1, { runTests: false, env: {}, cwd: root, runner: noEngine });
   assert.deepEqual(environmentOf(report), { name: "environment", ok: false, detail: "environment not checked: no container engine" });
+  assert.equal(scenariosOf(report), undefined);
+});
+
+const scenariosOf = (report: VerifyReport) => report.results.find((x) => x.name === "scenarios");
+const ENV = { PATH: process.env.PATH ?? "", SYSTEMROOT: process.env.SYSTEMROOT ?? "" };
+
+function changedOrders(t: TestContext): { root: string; id: WorkId; key: string } {
+  const { root, id } = environmentItem(t, { stockAtBase: false, phaseFile: "services/orders/server.mjs" });
+  writeIn(root, "services/orders/server.mjs", "export const changed = true;\n");
+  const model = readModel(JSON.parse(RECORDED_MODEL.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`)));
+  return { root, id, key: keyId(workingKey(root, readSnapshot(root, id).layout, model, ENV)) };
+}
+
+function replayed(root: string, id: WorkId, key: string, classes: ResultClass[], mode: RunMode = "full", versions: Record<string, string> = {}): void {
+  const run: ScenarioRow = { type: "run", run: `r-${mode}-${key}`, item: id, mode, key, versions };
+  const results = classes.map((cls, at): ScenarioRow => {
+    const outcome = cls === "passed" ? "passed" : "failed";
+    return { type: "result", run: run.run, scenario: `S-000${at + 1}`, fingerprint: "sha256:f", key, versions, outcome, attempts: outcome === "passed" ? 1 : 2, unstable: false, class: cls, detail: "" };
+  });
+  appendRows(root, [run, ...results]);
+}
+
+function verifyScenarios(root: string, id: WorkId) {
+  return scenariosOf(verify(root, id, 1, { runTests: false, env: ENV, cwd: root, runner: engineRunner(root) }));
+}
+
+test("a full replay under the working key holding a new failure fails the scenarios result naming it (T-6.1)", (t) => {
+  const { root, id, key } = changedOrders(t);
+  replayed(root, id, key, ["passed", "new failure"]);
+  assert.deepEqual(verifyScenarios(root, id), { name: "scenarios", ok: false, detail: "S-0002 new failure" });
+});
+
+test("a full replay with only passes and old failures is ok and summarised (T-6.2)", (t) => {
+  const { root, id, key } = changedOrders(t);
+  replayed(root, id, key, ["passed", "failing before the item"]);
+  assert.deepEqual(verifyScenarios(root, id), { name: "scenarios", ok: true, detail: "2 replayed: 1 passed, 1 failing before the item" });
+});
+
+test("a changed item with no replay fails as not replayed; an unchanged one is ok (T-6.3)", (t) => {
+  const { root, id } = changedOrders(t);
+  assert.deepEqual(verifyScenarios(root, id), { name: "scenarios", ok: false, detail: `not replayed: run picket env replay ${id}` });
+  const clean = environmentItem(t, { stockAtBase: false, phaseFile: "README.md" });
+  assert.deepEqual(verifyScenarios(clean.root, clean.id), { name: "scenarios", ok: true, detail: "no app or environment change since the base" });
+});
+
+test("a full replay under another key is stale naming the app; an only replay does not count (T-6.4)", (t) => {
+  const { root, id, key } = changedOrders(t);
+  replayed(root, id, key, ["passed"], "only");
+  assert.deepEqual(verifyScenarios(root, id), { name: "scenarios", ok: false, detail: `not replayed: run picket env replay ${id}` });
+  replayed(root, id, "0123456789ab", ["passed"], "full", { orders: "0000000" });
+  assert.deepEqual(verifyScenarios(root, id), { name: "scenarios", ok: false, detail: `stale: orders changed since the replay; run picket env replay ${id}` });
+});
+
+test("a full run row with a reason fails as not replayed with the reason", (t) => {
+  const { root, id } = changedOrders(t);
+  appendRows(root, [{ type: "run", run: "r-none", item: id, mode: "full", key: "", versions: {}, reason: "no container engine" }]);
+  assert.deepEqual(verifyScenarios(root, id), { name: "scenarios", ok: false, detail: `not replayed: no container engine; run picket env replay ${id}` });
+});
+
+test("a root without an environment gets no scenarios result (T-6.5)", (t) => {
+  const { root, id } = setup(t);
+  assert.equal(scenariosOf(verify(root, id, 1, { runTests: false, env: {}, cwd: root, runner: noEngine })), undefined);
 });

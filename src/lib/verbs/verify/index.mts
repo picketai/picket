@@ -6,7 +6,10 @@ import { runStep } from "../../shared/checks.mts";
 import { readDriveLog, type DriveRow } from "../../shared/drive-log.mts";
 import { machineCheck, readModelJson, realRunner, type Engine, type EngineRunner } from "../../shared/env/engine.mts";
 import { locatedFindings, splitByChange, type LocatedFinding } from "../../shared/env/instep.mts";
+import { sourceFor } from "../../shared/env/build-plan.mts";
 import { readModel, type EnvModel } from "../../shared/env/model.mts";
+import { baseKey, keyId, workingKey } from "../../shared/scenarios/keys.mts";
+import { readResults, replaySummary, summaryText, type RunRow } from "../../shared/scenarios/results.mts";
 import { scanUmbrella } from "../../shared/env/scan.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
 import { changedSince } from "../../shared/git.mts";
@@ -23,7 +26,7 @@ export type VerifyInput = { id: WorkId; phase: number; runTests: boolean };
 export type VerifyResult = { name: string; ok: boolean; detail: string };
 export type VerifyReport = { ok: boolean; phase: number; results: VerifyResult[]; warnings?: string[] };
 export type VerifyOptions = { runTests: boolean; env: NodeJS.ProcessEnv; runner?: EngineRunner; cwd?: string };
-type EnvironmentCheck = { result: VerifyResult; warnings: string[] };
+type EnvironmentCheck = { result: VerifyResult; warnings: string[]; model: EnvModel | null };
 
 const PHASE_NUMBER = /^\d+$/;
 const TEST_TIMEOUT_MS = 300_000;
@@ -117,7 +120,7 @@ function changedPaths(root: string, snap: WorkSnapshot, planPaths: string[]): st
 }
 
 function notChecked(reason: string): EnvironmentCheck {
-  return { result: { name: "environment", ok: false, detail: `environment not checked: ${reason}` }, warnings: [] };
+  return { result: { name: "environment", ok: false, detail: `environment not checked: ${reason}` }, warnings: [], model: null };
 }
 
 function findingText({ finding }: LocatedFinding): string {
@@ -140,7 +143,29 @@ function environmentCheck(root: string, snap: WorkSnapshot, planPaths: string[],
   const errors = locatedFindings(scanUmbrella(root), model, root).filter(({ finding }) => finding.level === "error");
   const { caused, other } = splitByChange(errors, changedPaths(root, snap, planPaths));
   const detail = caused.length ? `out of step: ${caused.map(findingText).join("; ")}` : "in step for the paths this item changed";
-  return { result: { name: "environment", ok: caused.length === 0, detail }, warnings: other.map((f) => `environment: ${findingText(f)}`) };
+  return { result: { name: "environment", ok: caused.length === 0, detail }, warnings: other.map((f) => `environment: ${findingText(f)}`), model };
+}
+
+function scenarioResult(ok: boolean, detail: string): VerifyResult {
+  return { name: "scenarios", ok, detail };
+}
+
+function changedSinceReplay(root: string, snap: WorkSnapshot, model: EnvModel, run: RunRow, env: NodeJS.ProcessEnv): string {
+  const apps = model.services.filter((service) => service.role === "app" && service.build !== null && service.profiles.length === 0);
+  const changed = apps.filter((service) => run.versions[service.name] !== sourceFor(root, snap.layout, service, env).version).map((service) => service.name);
+  return changed.length ? changed.join(", ") : "the environment";
+}
+
+function scenariosCheck(root: string, snap: WorkSnapshot, model: EnvModel, env: NodeJS.ProcessEnv): VerifyResult {
+  const working = keyId(workingKey(root, snap.layout, model, env));
+  if (working === keyId(baseKey(root, snap.layout, snap.state.base ?? null, model))) return scenarioResult(true, "no app or environment change since the base");
+  const replay = `run picket env replay ${snap.state.id}`;
+  const summary = replaySummary(readResults(root), snap.state.id);
+  if (summary.run === null) return scenarioResult(false, `not replayed: ${replay}`);
+  if (summary.run.reason !== undefined) return scenarioResult(false, `not replayed: ${summary.run.reason}; ${replay}`);
+  if (summary.run.key !== working) return scenarioResult(false, `stale: ${changedSinceReplay(root, snap, model, summary.run, env)} changed since the replay; ${replay}`);
+  if (summary.blamed.length) return scenarioResult(false, summary.blamed.map((entry) => `${entry.scenario} ${entry.class}`).join("; "));
+  return scenarioResult(true, summaryText(summary));
 }
 
 export function verify(root: string, id: WorkId, n: number, options: VerifyOptions): VerifyReport {
@@ -162,6 +187,7 @@ export function verify(root: string, id: WorkId, n: number, options: VerifyOptio
     const environment = environmentCheck(root, snap, mustHaves.files ?? [], options);
     results.push(environment.result);
     warnings.push(...environment.warnings);
+    if (environment.model !== null) results.push(scenariosCheck(root, snap, environment.model, options.env));
   }
   const report = { ok: results.every((result) => result.ok), phase: n, results };
   return warnings.length ? { ...report, warnings } : report;

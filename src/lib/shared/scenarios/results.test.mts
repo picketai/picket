@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { appendRows, lastKnown, latestRun, readResults, type ResultRow, type RunMode, type RunRow } from "./results.mts";
+import { appendRows, lastKnown, latestRun, readResults, replaySummary, summaryText, type ResultRow, type RunMode, type RunRow } from "./results.mts";
 
 function scratch(t: TestContext): string {
   const root = mkdtempSync(join(tmpdir(), "picket-results-"));
@@ -47,6 +47,37 @@ test("the last known result is the latest matching full, affected or base row (T
   assert.deepEqual(lastKnown(rows.slice(0, 2), "S-0001", "sha256:f1", "k1"), result("r1"));
   assert.equal(lastKnown(rows, "S-0002", "sha256:f1", "k1"), null);
   assert.equal(lastKnown([run("r4", "only"), result("r4")], "S-0001", "sha256:f1", "k1"), null);
+});
+
+test("the replay summary counts the classes of the item's latest full run and names the blamed scenarios", () => {
+  const rows = [
+    run("r1", "full"),
+    result("r1", { class: "new failure" }),
+    run("r2", "full"),
+    result("r2", { scenario: "S-0001", class: "passed" }),
+    result("r2", { scenario: "S-0002", class: "new failure" }),
+    result("r2", { scenario: "S-0003", class: "failing before the item" }),
+    result("r2", { scenario: "S-0004", class: "no base result" }),
+    run("r3", "only"),
+    result("r3", { class: "new failure" }),
+  ];
+  const summary = replaySummary(rows, "20261115-orders");
+  assert.deepEqual(summary, {
+    run: run("r2", "full"),
+    counts: { passed: 1, "new failure": 1, "failing before the item": 1, "no base result": 1 },
+    blamed: [
+      { scenario: "S-0002", class: "new failure" },
+      { scenario: "S-0004", class: "no base result" },
+    ],
+  });
+  assert.equal(summaryText(summary), "4 replayed: 1 passed, 1 new failure (S-0002), 1 failing before the item, 1 no base result (S-0004)");
+});
+
+test("the summary text says not replayed, with a run's reason, or that no scenario ran", () => {
+  assert.equal(summaryText(replaySummary([], "20261115-orders")), "not replayed");
+  assert.equal(summaryText(replaySummary([{ ...run("r1", "full"), reason: "no container engine" }], "20261115-orders")), "not replayed: no container engine");
+  assert.equal(summaryText(replaySummary([run("r1", "full")], "20261115-orders")), "0 replayed: no saved scenarios");
+  assert.equal(summaryText(replaySummary([run("r1", "full", "20261115-other"), result("r1")], "20261115-orders")), "not replayed");
 });
 
 test("the latest run of an item is filtered by mode and ignores other items", () => {

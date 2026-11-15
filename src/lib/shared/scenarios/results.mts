@@ -1,6 +1,6 @@
 import { appendJsonl, readJsonl } from "../../util/io.mts";
 import { statePath, STATE_FILES } from "../paths.mts";
-import type { ResultClass } from "./compare.mts";
+import { isBlamed, RESULT_CLASSES, type ResultClass } from "./compare.mts";
 
 export type RunMode = "full" | "affected" | "only" | "base";
 export type ScenarioOutcome = "passed" | "failed" | "blocked" | "not run";
@@ -21,6 +21,7 @@ export type ResultRow = {
   detail: string;
 };
 export type ScenarioRow = RunRow | ResultRow;
+export type ReplaySummary = { run: RunRow | null; counts: Partial<Record<ResultClass, number>>; blamed: { scenario: string; class: ResultClass }[] };
 
 const KNOWN_MODES: readonly RunMode[] = ["full", "affected", "base"];
 
@@ -55,4 +56,27 @@ export function lastKnown(rows: readonly ScenarioRow[], scenario: string, finger
 export function latestRun(rows: readonly ScenarioRow[], item: string, modes: readonly RunMode[]): RunRow | null {
   const runs = rows.filter((row): row is RunRow => row.type === "run" && row.item === item && modes.includes(row.mode));
   return runs.at(-1) ?? null;
+}
+
+export function replaySummary(rows: readonly ScenarioRow[], item: string): ReplaySummary {
+  const run = latestRun(rows, item, ["full"]);
+  const results = run === null ? [] : rows.filter((row): row is ResultRow => row.type === "result" && row.run === run.run);
+  const counts: Partial<Record<ResultClass, number>> = {};
+  for (const result of results) counts[result.class] = (counts[result.class] ?? 0) + 1;
+  const blamed = results.filter((result) => isBlamed(result.class)).map((result) => ({ scenario: result.scenario, class: result.class }));
+  return { run, counts, blamed };
+}
+
+function countText(summary: ReplaySummary, cls: ResultClass): string {
+  const named = summary.blamed.filter((entry) => entry.class === cls).map((entry) => entry.scenario);
+  return `${summary.counts[cls]} ${cls}${named.length ? ` (${named.join(", ")})` : ""}`;
+}
+
+export function summaryText(summary: ReplaySummary): string {
+  if (summary.run === null) return "not replayed";
+  if (summary.run.reason !== undefined) return `not replayed: ${summary.run.reason}`;
+  const present = RESULT_CLASSES.filter((cls) => (summary.counts[cls] ?? 0) > 0);
+  const total = present.reduce((sum, cls) => sum + (summary.counts[cls] ?? 0), 0);
+  if (total === 0) return "0 replayed: no saved scenarios";
+  return `${total} replayed: ${present.map((cls) => countText(summary, cls)).join(", ")}`;
 }

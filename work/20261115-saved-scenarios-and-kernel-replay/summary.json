@@ -1,0 +1,89 @@
+{
+  "work_id": "20261115-saved-scenarios-and-kernel-replay",
+  "base": "931eef60257017a63e47904982583a6aa3d30ed7",
+  "request": "work/20261115-saved-scenarios-and-kernel-replay/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "src/lib/cli/registry.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/shared/env/build-plan.mts",
+    "src/lib/shared/env/build-plan.test.mts",
+    "src/lib/shared/env/config-entries.mts",
+    "src/lib/shared/env/standard.mts",
+    "src/lib/shared/paths.mts",
+    "src/lib/shared/scenarios/base-run.mts",
+    "src/lib/shared/scenarios/base-run.test.mts",
+    "src/lib/shared/scenarios/compare.mts",
+    "src/lib/shared/scenarios/compare.test.mts",
+    "src/lib/shared/scenarios/files.mts",
+    "src/lib/shared/scenarios/files.test.mts",
+    "src/lib/shared/scenarios/format.mts",
+    "src/lib/shared/scenarios/format.test.mts",
+    "src/lib/shared/scenarios/http.mts",
+    "src/lib/shared/scenarios/http.test.mts",
+    "src/lib/shared/scenarios/keys.mts",
+    "src/lib/shared/scenarios/keys.test.mts",
+    "src/lib/shared/scenarios/replay.mts",
+    "src/lib/shared/scenarios/replay.test.mts",
+    "src/lib/shared/scenarios/results.mts",
+    "src/lib/shared/scenarios/results.test.mts",
+    "src/lib/shared/scenarios/rules.mts",
+    "src/lib/shared/scenarios/rules.test.mts",
+    "src/lib/shared/scenarios/runner.mts",
+    "src/lib/shared/scenarios/runner.test.mts",
+    "src/lib/shared/scenarios/values.mts",
+    "src/lib/shared/scenarios/values.test.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/env/check.mts",
+    "src/lib/verbs/env/check.test.mts",
+    "src/lib/verbs/env/replay.mts",
+    "src/lib/verbs/env/replay.test.mts",
+    "src/lib/verbs/env/start.mts",
+    "src/lib/verbs/env/start.test.mts",
+    "test/cli/env.test.mjs",
+    "test/env/lifecycle.engine.mjs",
+    "test/fixtures/env/fake-engine.mjs",
+    "test/fixtures/env/umbrella/.picket/env/scenarios/S-0001.md",
+    "test/timing/budgets.test.mjs"
+  ],
+  "lines_added": 2553,
+  "lines_removed": 72,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 10,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

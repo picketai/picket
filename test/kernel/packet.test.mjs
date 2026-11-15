@@ -9,6 +9,7 @@ import { setMarker } from "../../dist/lib/shared/work/markers.mjs";
 import { appendCheckRow } from "../../dist/lib/shared/check-log.mjs";
 import { appendDriveRow } from "../../dist/lib/shared/drive-log.mjs";
 import { writeLayout } from "../../dist/lib/shared/repos.mjs";
+import { appendRows } from "../../dist/lib/shared/scenarios/results.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
 import { gitOut, umbrella } from "#test/git.mts";
 
@@ -454,6 +455,38 @@ test("a check mismatch leaves the next step and its options as they are without 
   const after = packet(id, root).next;
   assert.equal(after.action, "approve_phase");
   assert.deepEqual(after, before);
+});
+
+function withEnvironment(root) {
+  fs.mkdirSync(join(root, ".picket", "env"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
+}
+
+function replayRows(root, id) {
+  const run = { type: "run", run: "r1", item: id, mode: "full", key: "k1", versions: { orders: "4f2a91c" } };
+  const result = (scenario, cls) => ({ type: "result", run: "r1", scenario, fingerprint: "sha256:f", key: "k1", versions: run.versions, outcome: cls === "passed" ? "passed" : "failed", attempts: 2, unstable: false, class: cls, detail: "" });
+  appendRows(root, [run, result("S-0001", "passed"), result("S-0002", "new failure"), result("S-0003", "failing before the item")]);
+}
+
+test("with the environment the packet prints the latest replay's summary on a scenarios line after the checks (T-6.6)", (t) => {
+  const { root, id, hit } = checkedItem(t);
+  hit(1, "/orders", 400);
+  withEnvironment(root);
+  replayRows(root, id);
+  const { lines } = packet(id, root);
+  const scenarios = fieldRows(lines, "scenarios");
+  assert.deepEqual(scenarios, ["  scenarios 3 replayed: 1 passed, 1 new failure (S-0002), 1 failing before the item"]);
+  assert.equal(lines.indexOf(scenarios[0]), lines.findIndex((l) => l.startsWith("  checks")) + 1);
+});
+
+test("with the environment and no replay the scenarios line says not replayed; without it there is no line (T-6.6)", (t) => {
+  const bare = checkedItem(t);
+  assert.deepEqual(fieldRows(packet(bare.id, bare.root).lines, "scenarios"), []);
+  replayRows(bare.root, bare.id);
+  assert.deepEqual(fieldRows(packet(bare.id, bare.root).lines, "scenarios"), []);
+  const unreplayed = checkedItem(t);
+  withEnvironment(unreplayed.root);
+  assert.deepEqual(fieldRows(packet(unreplayed.id, unreplayed.root).lines, "scenarios"), ["  scenarios not replayed"]);
 });
 
 test("a research packet points at work/<id>/research.md", (t) => {
