@@ -215,6 +215,15 @@ test("a Perl write mode and an interpreter value flag before a heredoc are in-pl
   }
 });
 
+test("a Perl two-argument write with a space after the mode is an in-place code-write denial for the lead", (t) => {
+  const root = project(t);
+  for (const command of [`perl -e 'open(F, "> src/a.pl"); print F 1'`, `perl -e 'open(F, ">> src/a.pl")'`]) {
+    const out = guardOutput(command, { root, tool: "Bash", agent: undefined });
+    assert.equal(out?.permissionDecision, "deny", command);
+    assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL("src/a.pl")), out?.permissionDecisionReason);
+  }
+});
+
 test("a redirect, tee or PowerShell writer to a code file stays denied to an agent only (T-3.4)", (t) => {
   const root = project(t);
   for (const [command, tool] of [["echo x >> src/a.ts"], ["printf x | tee -a src/a.py"], ["cat > test/kernel/x.test.mjs <<'EOF'\nx\nEOF"], ["Set-Content src/a.ts x", "PowerShell"]]) {

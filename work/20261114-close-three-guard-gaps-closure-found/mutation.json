@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-15T08:03:07.865Z",
+  "base": "d961c5461bbcab2a4f60f9a04f033b2514f9cb70",
+  "mutant": {
+    "path": "bench/lib/claude.mjs",
+    "line": 52,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 107419
+}

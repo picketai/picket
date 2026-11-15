@@ -9,8 +9,8 @@ const PROGRAM_CLUSTER = /^-[A-Za-z]*[cepE]$/;
 const PROGRAM_LONG_FLAGS = new Set(["--eval", "--print"]);
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
 const WRITE_CALL = /\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1|\bopen[ \t]*\(?[^;)\n'"]*['"](?:>|\+[<>])/;
-const QUOTED_LITERAL = /(['"])([^'"\s]+)\1/g;
-const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])/;
+const QUOTED_LITERAL = /(['"])((?:(?:\+[<>]|>>|[<>])[ \t]*)?[^'"\s]+)\1/g;
+const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])[ \t]*/;
 const STDIN_OPERAND = "-";
 const PYTHON_VALUE_FLAGS: ReadonlySet<string> = new Set(["-W", "-X", "--check-hash-based-pycs"]);
 const VALUE_FLAGS: Record<string, ReadonlySet<string>> = {

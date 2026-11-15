@@ -35,6 +35,12 @@ export function launchCommand(args, { platform = process.platform, jobFile, clau
   return { command: claude, args, shell: platform === "win32" && /\.cmd$/i.test(claude) };
 }
 
+function budgetCapArgs(maxBudgetUsd) {
+  if (maxBudgetUsd === undefined) return [];
+  if (!Number.isFinite(maxBudgetUsd) || maxBudgetUsd <= 0) throw new Error(`--max-budget-usd needs a positive number of dollars, got ${String(maxBudgetUsd)}`);
+  return ["--max-budget-usd", String(maxBudgetUsd)];
+}
+
 /**
  * @param {object} o
  * @param {string} o.cwd            repository the session runs in
@@ -48,12 +54,6 @@ export function launchCommand(args, { platform = process.platform, jobFile, clau
  * @param {string} [o.eventsPath]   JSONL file that receives every stamped event
  * @param {number} [o.t0]           wall-clock origin for relative timestamps
  */
-function budgetCapArgs(maxBudgetUsd) {
-  if (maxBudgetUsd === undefined) return [];
-  if (!Number.isFinite(maxBudgetUsd) || maxBudgetUsd <= 0) throw new Error(`--max-budget-usd needs a positive number of dollars, got ${String(maxBudgetUsd)}`);
-  return ["--max-budget-usd", String(maxBudgetUsd)];
-}
-
 export function claudeArgs(o) {
   const args = ["-p", "--output-format", "stream-json", "--verbose"];
   if (o.resume) args.push("--resume", o.resume);

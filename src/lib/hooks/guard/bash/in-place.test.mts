@@ -50,6 +50,15 @@ test("a Perl open with a write mode yields the path without its mode prefix (T-1
   assert.deepEqual(inPlaceTargets(["perl", "-e", "open(my $f, '+<', 'src/a.pl')"], []), ["src/a.pl"]);
 });
 
+test("a Perl two-argument open with spaces after the mode yields the path alone", () => {
+  assert.deepEqual(inPlaceTargets(["perl", "-e", `open(F, ">>  src/a.pl")`], []), ["src/a.pl"]);
+  assert.deepEqual(inPlaceTargets(["perl", "-e", "open(F, '+<\tsrc/a.pl')"], []), ["src/a.pl"]);
+});
+
+test("a Perl two-argument read with a space after the mode yields nothing", () => {
+  assert.deepEqual(inPlaceTargets(["perl", "-e", "open(F, '< src/a.pl')"], []), []);
+});
+
 test("a Perl read, a read across two lines, a module run and a script file after a value flag yield nothing (T-1.4)", () => {
   const write = "open('src/a.py','w').write('x')\n";
   assert.deepEqual(inPlaceTargets(["perl", "-e", "open(my $f, '<', 'src/a.pl')"], []), []);
