@@ -1,4 +1,4 @@
-import { asWritten, closureTests, invocationLabel, programFlagSpellings, stdinSpellings, type Invocation } from "#test/variants.mts";
+import { asWritten, closureTests, interpreterNames, invocationLabel, programFlagSpellings, stdinSpellings, type Invocation } from "#test/variants.mts";
 import { inPlaceTargets } from "./in-place.mts";
 
 const NODE_WRITE = "require('fs').writeFileSync('src/a.ts','x')";
@@ -40,5 +40,6 @@ closureTests({
     { family: asWritten(invocationLabel), seeds: AS_WRITTEN_SEEDS },
     { family: programFlagSpellings, seeds: [inline("node", "-e", NODE_WRITE), inline("python3", "-c", PYTHON_WRITE), inline("ruby", "-e", RUBY_WRITE)] },
     { family: stdinSpellings, seeds: [fedOnStdin(NODE_WRITE, "node"), fedOnStdin(PYTHON_WRITE, "python3"), fedOnStdin(RUBY_WRITE, "ruby")] },
+    { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE)] },
   ],
 });

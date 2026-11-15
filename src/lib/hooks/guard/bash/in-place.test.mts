@@ -69,6 +69,20 @@ test("a Perl read, a read across two lines, a module run and a script file after
   assert.deepEqual(inPlaceTargets(["node", "--test", "test/cli/close.test.mjs"], ["require('fs').writeFileSync('src/a.ts','x')\n"]), []);
 });
 
+test("a versioned or aliased interpreter name resolves to its family (T-1.3)", () => {
+  const write = "open('src/a.py','w').write('x')";
+  for (const argv of [["python3.14", "-c", write], ["python3.14t", "-c", write], ["pypy3", "-c", write], ["py", "-3", "-c", write]]) {
+    assert.ok(inPlaceTargets(argv, []).includes("src/a.py"), argv.join(" "));
+  }
+  assert.deepEqual(inPlaceTargets(words("ruby3.3 -i fix.rb src/a.rb"), []), ["src/a.rb"]);
+});
+
+test("a name that only starts with an interpreter's name is no interpreter (T-1.4)", () => {
+  assert.deepEqual(inPlaceTargets(words("nodemon -e ts src/a.ts"), []), []);
+  assert.deepEqual(inPlaceTargets(words("python3-config --cflags"), []), []);
+  assert.deepEqual(inPlaceTargets(["pydoc"], ["open('src/a.py','w').write('x')\n"]), []);
+});
+
 test("a command that is not an interpreter yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["cat", "-"], ["open('src/a.py','w').write('x')"]), []);
 });

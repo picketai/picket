@@ -1,88 +1,56 @@
 import { normalizeRoot } from "../../../shared/shell/kernel-call.mts";
+import { familyOf, type Family } from "./interpreters.mts";
 import type { Segment } from "./rules.mts";
 
-const INTERPRETERS = new Set(["python", "python3", "node", "perl", "ruby", "bun", "deno"]);
-const IN_PLACE_EDITORS = new Set(["perl", "ruby"]);
-const IN_PLACE_CLUSTER = /^-[aclnpsTtuUwWX0-9]*i/;
-const EDITOR_PROGRAM_CLUSTER = /^-[A-Za-z]*[eE]$/;
-const PROGRAM_CLUSTER = /^-[A-Za-z]*[cepE]$/;
-const PROGRAM_LONG_FLAGS = new Set(["--eval", "--print"]);
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
-const WRITE_CALL = /\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1|\bopen[ \t]*\(?[^;)\n'"]*['"](?:>|\+[<>])/;
 const QUOTED_LITERAL = /(['"])((?:(?:\+[<>]|>>|[<>])[ \t]*)?[^'"\s]+)\1/g;
 const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])[ \t]*/;
 const STDIN_OPERAND = "-";
-const PYTHON_VALUE_FLAGS: ReadonlySet<string> = new Set(["-W", "-X", "--check-hash-based-pycs"]);
-const VALUE_FLAGS: Record<string, ReadonlySet<string>> = {
-  python: PYTHON_VALUE_FLAGS,
-  python3: PYTHON_VALUE_FLAGS,
-  node: new Set(["-r", "--require", "--import", "--loader", "--experimental-loader", "-C", "--conditions", "--input-type"]),
-};
-const NO_VALUE_FLAGS: ReadonlySet<string> = new Set();
 
 function wordsOf(seg: Segment): string[] {
   return seg.filter((t): t is string => typeof t === "string");
 }
 
-function takesProgram(root: string, word: string): boolean {
-  if (IN_PLACE_EDITORS.has(root)) return EDITOR_PROGRAM_CLUSTER.test(word);
-  return PROGRAM_CLUSTER.test(word) || PROGRAM_LONG_FLAGS.has(word);
-}
-
-function inlineProgram(root: string, args: string[]): string | null {
-  if (root === "deno" && args[0] === "eval") return args[1] ?? null;
+function inlineProgram(family: Family, args: string[]): string | null {
+  if (family.subcommand !== undefined && args[0] === family.subcommand) return args[1] ?? null;
   const attached = args.map((word) => ATTACHED_PROGRAM.exec(word)?.[1]).find((program) => program !== undefined);
   if (attached !== undefined) return attached;
-  const at = args.findIndex((word) => takesProgram(root, word));
+  const at = args.findIndex(family.takesProgram);
   return at === -1 ? null : (args[at + 1] ?? null);
 }
 
-function namesScriptFile(root: string, args: string[]): boolean {
-  const valueFlags = VALUE_FLAGS[root] ?? NO_VALUE_FLAGS;
+function namesScriptFile(family: Family, args: string[]): boolean {
   for (let i = 0; i < args.length; i++) {
-    if (valueFlags.has(args[i])) i++;
+    if (family.valueFlags.has(args[i])) i++;
     else if (!args[i].startsWith("-")) return true;
   }
   return false;
 }
 
-function readsStdin(root: string, args: string[]): boolean {
-  return args.includes(STDIN_OPERAND) || !namesScriptFile(root, args);
+function readsStdin(family: Family, args: string[]): boolean {
+  return args.includes(STDIN_OPERAND) || !namesScriptFile(family, args);
 }
 
-function programText(root: string, args: string[], heredocs: readonly string[]): string {
-  const inline = inlineProgram(root, args);
+function programText(family: Family, args: string[], heredocs: readonly string[]): string {
+  const inline = inlineProgram(family, args);
   if (inline !== null) return inline;
-  const hereStrings = args.filter((word) => WRITE_CALL.test(word));
-  return [...(readsStdin(root, args) ? heredocs : []), ...hereStrings].join("\n");
+  const hereStrings = args.filter((word) => family.writeCall.test(word));
+  return [...(readsStdin(family, args) ? heredocs : []), ...hereStrings].join("\n");
 }
 
 function withoutModePrefix(literal: string): string {
   return literal.replace(PERL_MODE_PREFIX, "");
 }
 
-function programWrites(program: string): string[] {
-  if (!WRITE_CALL.test(program)) return [];
+function programWrites(family: Family, program: string): string[] {
+  if (!family.writeCall.test(program)) return [];
   return [...program.matchAll(QUOTED_LITERAL)].map((match) => withoutModePrefix(match[2])).filter((literal) => literal !== "");
-}
-
-function inPlaceFileOperands(args: string[]): string[] {
-  if (!args.some((word) => IN_PLACE_CLUSTER.test(word))) return [];
-  const positional: string[] = [];
-  let programGiven = false;
-  for (let i = 0; i < args.length; i++) {
-    if (EDITOR_PROGRAM_CLUSTER.test(args[i])) {
-      programGiven = true;
-      i++;
-    } else if (!args[i].startsWith("-")) positional.push(args[i]);
-  }
-  return programGiven ? positional : positional.slice(1);
 }
 
 export function inPlaceTargets(seg: Segment, heredocs: readonly string[]): string[] {
   const [first, ...args] = wordsOf(seg);
-  const root = normalizeRoot(first ?? "").toLowerCase();
-  if (!INTERPRETERS.has(root)) return [];
-  const editedFiles = IN_PLACE_EDITORS.has(root) ? inPlaceFileOperands(args) : [];
-  return [...editedFiles, ...programWrites(programText(root, args, heredocs))];
+  const family = familyOf(normalizeRoot(first ?? ""));
+  if (family === undefined) return [];
+  const editedFiles = family.inPlace?.(args) ?? [];
+  return [...editedFiles, ...programWrites(family, programText(family, args, heredocs))];
 }

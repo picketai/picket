@@ -133,7 +133,7 @@ A guard is right for the spellings its author wrote down and open for their sibl
 The helper and the families live in `test/support/variants.mts`, grouped by the grammar they spell:
 
 - pairs: `pairPlaces` and `pairNames` place a `name=value` pair in addresses and vary its name.
-- interpreter arguments: `programFlagSpellings` and `stdinSpellings` spell a program flag and a program read from standard input.
+- interpreter arguments: `programFlagSpellings`, `stdinSpellings` and `interpreterNames` spell a program flag, a program read from standard input, and the interpreter's versioned names, aliases, a full path and an `.exe` suffix.
 - request prose: `distractorSentences` and `quotedSpans` put a sentence beside a distractor or inside quotes.
 - declared lists: `listPlacements` puts a malformed item alone, before and after a valid one.
 - numbers: `outOfDomainNumbers` spells `NaN`, both zeros, the negation and both infinities.

@@ -224,6 +224,20 @@ test("a Perl two-argument write with a space after the mode is an in-place code-
   }
 });
 
+test("an interpreter under a versioned or aliased name is an in-place code-write denial for the lead and an agent", (t) => {
+  const root = project(t);
+  for (const [command, path] of [
+    [`python3.14 -c "open('src/a.py','w').write('x')"`, "src/a.py"],
+    [`nodejs -e "require('fs').writeFileSync('src/a.ts','x')"`, "src/a.ts"],
+  ]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+    }
+  }
+});
+
 test("a redirect, tee or PowerShell writer to a code file stays denied to an agent only (T-3.4)", (t) => {
   const root = project(t);
   for (const [command, tool] of [["echo x >> src/a.ts"], ["printf x | tee -a src/a.py"], ["cat > test/kernel/x.test.mjs <<'EOF'\nx\nEOF"], ["Set-Content src/a.ts x", "PowerShell"]]) {

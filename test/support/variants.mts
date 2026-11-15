@@ -103,6 +103,29 @@ export const stdinSpellings: Family<Invocation> = {
   },
 };
 
+const INTERPRETER_NAMES: Record<string, string[]> = {
+  python3: ["python3.14", "python3.14t", "pypy3", "py"],
+  node: ["nodejs"],
+  ruby: ["ruby3.3"],
+  perl: ["perl5.40"],
+};
+
+function namesOf(interpreter: string): string[] {
+  const names = INTERPRETER_NAMES[interpreter];
+  if (names === undefined) throw new Error(`no name table row for the interpreter ${interpreter}`);
+  return names;
+}
+
+function nameSpellings(interpreter: string): string[] {
+  const names = [interpreter, ...namesOf(interpreter)];
+  return [...names.slice(1), ...names.flatMap((name) => [`/usr/bin/${name}`, `${name}.exe`])];
+}
+
+export const interpreterNames: Family<Invocation> = {
+  name: "interpreter names",
+  spell: ({ argv: [interpreter, ...rest], heredocs }) => invocations(nameSpellings(interpreter).map((name) => [name, ...rest]), heredocs),
+};
+
 function sentenceParts(sentence: string): { inner: string; bare: string } {
   if (!sentence.endsWith(".")) throw new Error(`a sentence seed ends with a period, got ${sentence}`);
   const inner = `${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
