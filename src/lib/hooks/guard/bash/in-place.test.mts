@@ -83,6 +83,19 @@ test("a name that only starts with an interpreter's name is no interpreter (T-1.
   assert.deepEqual(inPlaceTargets(["pydoc"], ["open('src/a.py','w').write('x')\n"]), []);
 });
 
+test("a php, lua or R read, and a php or lua script file beside a write heredoc, yield nothing (T-2.3)", () => {
+  assert.deepEqual(inPlaceTargets(["php", "-r", `echo file_get_contents("src/a.ts");`], []), []);
+  assert.deepEqual(inPlaceTargets(["lua", "-e", `io.open("src/a.ts","r")`], []), []);
+  assert.deepEqual(inPlaceTargets(["Rscript", "-e", `readLines("src/a.ts")`], []), []);
+  assert.deepEqual(inPlaceTargets(["php", "fix.php"], ["<?php file_put_contents('src/a.ts', 'x');\n"]), []);
+  assert.deepEqual(inPlaceTargets(["lua", "fix.lua"], [`io.open("src/a.ts","w"):write("x")\n`]), []);
+});
+
+test("a php or lua value flag before the program does not hide its write (T-2.4)", () => {
+  assert.ok(inPlaceTargets(["php", "-c", "php.ini", "-r", `file_put_contents("src/a.ts","x");`], []).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["lua", "-l", "mod", "-"], [`io.open("src/a.ts","w")\n`]).includes("src/a.ts"));
+});
+
 test("a command that is not an interpreter yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["cat", "-"], ["open('src/a.py','w').write('x')"]), []);
 });

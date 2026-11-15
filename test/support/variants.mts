@@ -108,6 +108,8 @@ const INTERPRETER_NAMES: Record<string, string[]> = {
   node: ["nodejs"],
   ruby: ["ruby3.3"],
   perl: ["perl5.40"],
+  php: ["php8.3"],
+  lua: ["lua5.4", "luajit"],
 };
 
 function namesOf(interpreter: string): string[] {

@@ -12,11 +12,15 @@ const PROGRAM_LONG_FLAGS = new Set(["--eval", "--print"]);
 const EDITOR_PROGRAM_CLUSTER = /^-[A-Za-z]*[eE]$/;
 const IN_PLACE_CLUSTER = /^-[aclnpsTtuUwWX0-9]*i/;
 const WRITE_CALL = /\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1|\bopen[ \t]*\(?[^;)\n'"]*['"](?:>|\+[<>])/;
+const PHP_WRITE_CALL = /\bfile_put_contents\(|\bfopen\([^)]*?(['"])[waxc][bt+]*\1/;
+const LUA_WRITE_CALL = /\bio\.open\([^)]*?(['"])[wa][b+]*\1|\bio\.output\(/;
+const R_WRITE_CALL = /\bwriteLines\(|\bwriteChar\(|\bwriteBin\(|\bwrite(?:\.\w+)?\(|\bsink\(|\bcat\([^)]*\bfile\s*=|\bfile\([^)]*?(['"])[wa][bt+]*\1/;
 const NO_VALUE_FLAGS: ReadonlySet<string> = new Set();
 const VERSIONED_NAME = /^([a-z]+?)(?:-?\d+(?:\.\d+)*[a-z]?)?$/;
 
 const takesProgramFlag = (word: string): boolean => PROGRAM_CLUSTER.test(word) || PROGRAM_LONG_FLAGS.has(word);
 const takesEditorProgram = (word: string): boolean => EDITOR_PROGRAM_CLUSTER.test(word);
+const exactly = (...flags: string[]) => (word: string): boolean => flags.includes(word);
 
 function editedFileOperands(args: string[]): string[] {
   if (!args.some((word) => IN_PLACE_CLUSTER.test(word))) return [];
@@ -53,6 +57,9 @@ export const FAMILIES: readonly Family[] = [
   inPlaceEditor(["ruby"]),
   flagProgram(["bun"]),
   { ...flagProgram(["deno"]), subcommand: "eval" },
+  { names: ["php"], takesProgram: exactly("-r", "-B", "-R", "-E"), valueFlags: new Set(["-c", "-d", "-z"]), writeCall: PHP_WRITE_CALL },
+  { names: ["lua", "luajit"], takesProgram: exactly("-e"), valueFlags: new Set(["-l"]), writeCall: LUA_WRITE_CALL },
+  { names: ["r", "rscript"], takesProgram: exactly("-e"), valueFlags: NO_VALUE_FLAGS, writeCall: R_WRITE_CALL },
 ];
 
 const BY_NAME: ReadonlyMap<string, Family> = new Map(FAMILIES.flatMap((family) => family.names.map((name) => [name, family] as const)));

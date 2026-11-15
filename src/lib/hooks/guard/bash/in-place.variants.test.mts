@@ -9,6 +9,10 @@ const inline = (...argv: string[]): Invocation => ({ argv, heredocs: [] });
 const fedOnStdin = (program: string, ...argv: string[]): Invocation => ({ argv, heredocs: [program] });
 
 const PERL_WRITE = "open(my $f, '>', 'src/a.pl')";
+const PHP_WRITE = `file_put_contents("src/a.ts", "x");`;
+const PHP_SCRIPT = "<?php file_put_contents('src/a.ts', 'x');";
+const LUA_WRITE = `io.open("src/a.ts","w"):write("x")`;
+const R_WRITE = `writeLines("x", "src/a.ts")`;
 
 const AS_WRITTEN_SEEDS = [
   inline("node", `--eval=${NODE_WRITE}`),
@@ -30,6 +34,16 @@ const AS_WRITTEN_SEEDS = [
   fedOnStdin(PYTHON_WRITE, "python3", "-X", "utf8"),
   fedOnStdin(PYTHON_WRITE, "python3", "-W", "ignore"),
   fedOnStdin(NODE_WRITE, "node", "--require", "./x.js"),
+  inline("php", "-r", PHP_WRITE),
+  inline("php", "-r", `$f = fopen("src/a.ts", "w");`),
+  fedOnStdin(PHP_SCRIPT, "php"),
+  fedOnStdin(PHP_SCRIPT, "php", "-c", "php.ini"),
+  inline("lua", "-e", LUA_WRITE),
+  inline("lua", "-e", `io.output("src/a.ts")`),
+  fedOnStdin(LUA_WRITE, "lua", "-"),
+  inline("Rscript", "-e", R_WRITE),
+  inline("Rscript", "-e", `cat("x", file = "src/a.ts")`),
+  fedOnStdin(R_WRITE, "R", "--vanilla"),
 ];
 
 closureTests({
@@ -40,6 +54,6 @@ closureTests({
     { family: asWritten(invocationLabel), seeds: AS_WRITTEN_SEEDS },
     { family: programFlagSpellings, seeds: [inline("node", "-e", NODE_WRITE), inline("python3", "-c", PYTHON_WRITE), inline("ruby", "-e", RUBY_WRITE)] },
     { family: stdinSpellings, seeds: [fedOnStdin(NODE_WRITE, "node"), fedOnStdin(PYTHON_WRITE, "python3"), fedOnStdin(RUBY_WRITE, "ruby")] },
-    { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE)] },
+    { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE), inline("php", "-r", PHP_WRITE), inline("lua", "-e", LUA_WRITE)] },
   ],
 });
