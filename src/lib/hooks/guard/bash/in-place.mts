@@ -12,13 +12,21 @@ function wordsOf(seg: Segment): string[] {
   return seg.filter((t): t is string => typeof t === "string");
 }
 
+function everyFlagProgram(programFlags: readonly string[], args: string[]): string | null {
+  const programs: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const attached = attachedValue(args[i], programFlags);
+    if (attached !== undefined) programs.push(attached);
+    else if (programFlags.includes(args[i]) && i + 1 < args.length) programs.push(args[++i]);
+  }
+  return programs.length === 0 ? null : programs.join("\n");
+}
+
 function inlineProgram(family: Family, args: string[]): string | null {
   if (family.subcommand !== undefined && args[0] === family.subcommand) return args[1] ?? null;
   const attached = args.map((word) => ATTACHED_PROGRAM.exec(word)?.[1]).find((program) => program !== undefined);
   if (attached !== undefined) return attached;
-  const programFlags = family.programFlags ?? [];
-  const attachedToFlag = args.map((word) => attachedValue(word, programFlags)).find((program) => program !== undefined);
-  if (attachedToFlag !== undefined) return attachedToFlag;
+  if (family.programFlags !== undefined) return everyFlagProgram(family.programFlags, args);
   const at = args.findIndex(family.takesProgram);
   return at === -1 ? null : (args[at + 1] ?? null);
 }

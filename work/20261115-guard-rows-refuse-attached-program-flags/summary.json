@@ -1,0 +1,74 @@
+{
+  "work_id": "20261115-guard-rows-refuse-attached-program-flags",
+  "base": "3ace7e506a323c24bef25b4907feafe2bf7838bb",
+  "request": "work/20261115-guard-rows-refuse-attached-program-flags/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/lib/hooks/guard/bash/in-place.mts",
+    "src/lib/hooks/guard/bash/in-place.test.mts",
+    "src/lib/hooks/guard/bash/in-place.variants.test.mts",
+    "src/lib/hooks/guard/bash/interpreters.mts",
+    "src/lib/hooks/guard/bash/payloads.test.mts",
+    "test/repo/variants.test.mjs",
+    "test/support/variants.mts"
+  ],
+  "lines_added": 167,
+  "lines_removed": 24,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-15T09:05:19.045Z",
+    "base": "3ace7e506a323c24bef25b4907feafe2bf7838bb",
+    "mutant": {
+      "path": "src/lib/hooks/guard/bash/in-place.mts",
+      "line": 20,
+      "from": "!==",
+      "to": "==="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 98941
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

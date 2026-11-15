@@ -1,9 +1,8 @@
 id: 20261115-guard-rows-refuse-attached-program-flags
 lane: order
 title: Guard rows refuse attached program flags
-status: open
+status: done
 created: 2026-11-15T08:43:59.528Z
-updated: 2026-11-15T08:52:52.832Z
+updated: 2026-11-15T10:13:00.766Z
 session: d09e885b-38d7-46ab-90a1-fca179743a5f
 base: 3ace7e506a323c24bef25b4907feafe2bf7838bb
-run_through: 3

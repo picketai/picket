@@ -107,6 +107,12 @@ test("a php, lua or awk program attached to its flag, or after --source=, writes
   assert.deepEqual(inPlaceTargets(["gawk", "-i", "inplace", "-e{ print }", "src/a.ts"], []), ["src/a.ts"]);
 });
 
+test("every program flag value joins the program, so a later harmless program hides no earlier write", () => {
+  assert.deepEqual(inPlaceTargets(["gawk", "-e", `BEGIN { print "x" > "src/a.ts" }`, "-e1"], []), ["x", "src/a.ts"]);
+  assert.ok(inPlaceTargets(["php", "-B", `file_put_contents("src/a.ts","x");`, "-Recho 1;"], []).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["Rscript", "-e1", "-e", `writeLines("x", "src/a.ts")`], []).includes("src/a.ts"));
+});
+
 test("a php, lua or awk read attached to its program flag yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["php", `-recho file_get_contents("src/a.ts");`], []), []);
   assert.deepEqual(inPlaceTargets(["lua", `-eio.open("src/a.ts","r")`], []), []);

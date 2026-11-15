@@ -256,6 +256,10 @@ test("a php, lua or gawk program attached to its flag is an in-place code-write 
     `lua -e'io.open("src/a.ts","w"):write("x")'`,
     `gawk -e'BEGIN { print "x" > "src/a.ts" }'`,
     `gawk --source='BEGIN { print "x" > "src/a.ts" }'`,
+    `gawk -e 'BEGIN { print "x" > "src/a.ts" }' -e1`,
+    `php -B 'file_put_contents("src/a.ts","x");' -R'echo 1;'`,
+    `lua -e 'io.open("src/a.ts","w"):write("x")' -ex=1`,
+    `Rscript -e 'writeLines("x", "src/a.ts")' -e1`,
   ]) {
     for (const agent of [undefined, "picket:developer"]) {
       const out = guardOutput(command, { root, tool: "Bash", agent });
