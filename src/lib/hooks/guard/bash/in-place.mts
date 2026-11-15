@@ -31,13 +31,24 @@ function namesScriptFile(family: Family, args: string[]): boolean {
   return false;
 }
 
-function readsStdin(family: Family, args: string[]): boolean {
-  return args.includes(STDIN_OPERAND) || !namesScriptFile(family, args);
+function scriptAt(family: Family, args: string[], i: number): string | undefined {
+  const scriptFlags = family.scriptFlags ?? [];
+  if (scriptFlags.includes(args[i])) return args[i + 1] ?? "";
+  return attachedValue(args[i], scriptFlags);
 }
 
-function operandProgram(scriptFlags: ReadonlySet<string>, family: Family, args: string[], heredocs: readonly string[]): string {
+function readsStdinScript(family: Family, args: string[]): boolean {
+  return args.some((_, i) => STDIN_SCRIPTS.has(scriptAt(family, args, i) ?? ""));
+}
+
+function readsStdin(family: Family, args: string[]): boolean {
+  return args.includes(STDIN_OPERAND) || readsStdinScript(family, args) || !namesScriptFile(family, args);
+}
+
+function operandProgram(family: Family, args: string[], heredocs: readonly string[]): string {
   for (let i = 0; i < args.length; i++) {
-    if (scriptFlags.has(args[i])) return STDIN_SCRIPTS.has(args[i + 1] ?? "") ? heredocs.join("\n") : "";
+    const script = scriptAt(family, args, i);
+    if (script !== undefined) return STDIN_SCRIPTS.has(script) ? heredocs.join("\n") : "";
     if (family.valueFlags.has(args[i])) i++;
     else if (!args[i].startsWith("-")) return args[i];
   }
@@ -47,7 +58,7 @@ function operandProgram(scriptFlags: ReadonlySet<string>, family: Family, args: 
 function programText(family: Family, args: string[], heredocs: readonly string[]): string {
   const inline = inlineProgram(family, args);
   if (inline !== null) return inline;
-  if (family.programOperand !== undefined) return operandProgram(family.programOperand.scriptFlags, family, args, heredocs);
+  if (family.programOperand) return operandProgram(family, args, heredocs);
   const hereStrings = args.filter((word) => family.writeCall.test(word));
   return [...(readsStdin(family, args) ? heredocs : []), ...hereStrings].join("\n");
 }

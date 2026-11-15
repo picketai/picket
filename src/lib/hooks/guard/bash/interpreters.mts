@@ -4,7 +4,8 @@ export type Family = {
   programFlags?: readonly string[];
   valueFlags: ReadonlySet<string>;
   writeCall: RegExp;
-  programOperand?: { scriptFlags: ReadonlySet<string> };
+  programOperand?: true;
+  scriptFlags?: readonly string[];
   subcommand?: string;
   inPlace?: (args: string[]) => string[];
   namedTarget?: RegExp;
@@ -54,7 +55,8 @@ function editedFileOperands(args: string[]): string[] {
 }
 
 const AWK_PROGRAM_FLAGS = ["-e", "--source"];
-const AWK_SCRIPT_FLAGS: ReadonlySet<string> = new Set(["-f", "--file", "-E"]);
+const AWK_SCRIPT_FLAGS = ["-f", "--file", "-E"];
+const AWK_PROGRAM_SOURCES = [...AWK_PROGRAM_FLAGS, ...AWK_SCRIPT_FLAGS];
 const AWK_VALUE_FLAGS: ReadonlySet<string> = new Set(["-F", "-v", "-f", "-i", "-l", "-E", "--field-separator", "--assign", "--file", "--include", "--load"]);
 const INPLACE_LIBRARY = /^inplace(?:\.awk)?$/;
 const ATTACHED_INPLACE = /^(?:-i|--include=)inplace(?:\.awk)?$/;
@@ -67,10 +69,10 @@ function awkFileOperands(args: string[]): string[] {
   const operands: string[] = [];
   let programGiven = false;
   for (let i = 0; i < args.length; i++) {
-    if (AWK_PROGRAM_FLAGS.includes(args[i]) || AWK_SCRIPT_FLAGS.has(args[i])) {
+    if (AWK_PROGRAM_SOURCES.includes(args[i])) {
       programGiven = true;
       i++;
-    } else if (attachedValue(args[i], AWK_PROGRAM_FLAGS) !== undefined) programGiven = true;
+    } else if (attachedValue(args[i], AWK_PROGRAM_SOURCES) !== undefined) programGiven = true;
     else if (AWK_VALUE_FLAGS.has(args[i])) i++;
     else if (!args[i].startsWith("-")) operands.push(args[i]);
   }
@@ -103,13 +105,14 @@ export const FAMILIES: readonly Family[] = [
   { ...flagProgram(["deno"]), subcommand: "eval" },
   { names: ["php"], ...listedProgramFlags("-r", "-B", "-R", "-E"), valueFlags: new Set(["-c", "-d", "-z"]), writeCall: PHP_WRITE_CALL },
   { names: ["lua", "luajit"], ...listedProgramFlags("-e"), valueFlags: new Set(["-l"]), writeCall: LUA_WRITE_CALL },
-  { names: ["r", "rscript"], ...listedProgramFlags("-e"), valueFlags: NO_VALUE_FLAGS, writeCall: R_WRITE_CALL },
+  { names: ["r", "rscript"], ...listedProgramFlags("-e"), valueFlags: NO_VALUE_FLAGS, writeCall: R_WRITE_CALL, scriptFlags: ["-f", "--file"] },
   {
     names: ["awk", "gawk", "mawk", "nawk"],
     ...listedProgramFlags(...AWK_PROGRAM_FLAGS),
     valueFlags: AWK_VALUE_FLAGS,
     writeCall: AWK_WRITE_CALL,
-    programOperand: { scriptFlags: AWK_SCRIPT_FLAGS },
+    programOperand: true,
+    scriptFlags: AWK_SCRIPT_FLAGS,
     inPlace: awkInPlace,
   },
   {

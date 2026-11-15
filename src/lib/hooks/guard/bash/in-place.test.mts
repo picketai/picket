@@ -113,6 +113,20 @@ test("a php, lua or awk read attached to its program flag yields nothing", () =>
   assert.deepEqual(inPlaceTargets(["gawk", "-e{ print }", "src/a.ts"], []), []);
 });
 
+test("an R or awk script file named in any spelling keeps the heredoc out of the program, and R --file= stays refused", () => {
+  const rWrite = `writeLines("x", "src/a.ts")\n`;
+  const awkWrite = `BEGIN { print "x" > "src/a.ts" }\n`;
+  assert.deepEqual(inPlaceTargets(["R", "-f", "fix.R"], [rWrite]), []);
+  assert.deepEqual(inPlaceTargets(["gawk", "--file=fix.awk"], [awkWrite]), []);
+  assert.deepEqual(inPlaceTargets(["gawk", "-ffix.awk", "src/a.ts"], []), []);
+  assert.ok(inPlaceTargets(["R", "--file=fix.R"], [rWrite]).includes("src/a.ts"));
+});
+
+test("gawk inplace edits the operands after an attached script flag, and R -f - reads the heredoc", () => {
+  assert.deepEqual(inPlaceTargets(["gawk", "-i", "inplace", "--file=fix.awk", "src/a.ts", "src/b.ts"], []), ["src/a.ts", "src/b.ts"]);
+  assert.ok(inPlaceTargets(["R", "-f", "-"], [`writeLines("x", "src/a.ts")\n`]).includes("src/a.ts"));
+});
+
 test("an awk read, an awk script file, a tcl read and a tcl script file beside a write heredoc yield nothing (T-3.3)", () => {
   assert.deepEqual(inPlaceTargets(["awk", "{ print $1 }", "src/a.ts"], []), []);
   assert.deepEqual(inPlaceTargets(words("awk -f fix.awk src/a.ts"), []), []);
