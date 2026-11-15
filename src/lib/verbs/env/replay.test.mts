@@ -1,0 +1,180 @@
+import { test, type TestContext } from "node:test";
+import assert from "node:assert/strict";
+import { cpSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { describeExit, Refused } from "../../shared/action.mts";
+import type { Context } from "../../shared/context.mts";
+import type { EngineRunner } from "../../shared/env/engine.mts";
+import { readModel } from "../../shared/env/model.mts";
+import { readLayout } from "../../shared/repos.mts";
+import { listScenarios } from "../../shared/scenarios/files.mts";
+import type { HttpAdapter, HttpRequest } from "../../shared/scenarios/http.mts";
+import { baseKey, keyId } from "../../shared/scenarios/keys.mts";
+import { appendRows, readResults, type ResultRow, type ScenarioOutcome } from "../../shared/scenarios/results.mts";
+import type { WorkId } from "../../shared/work/files.mts";
+import { readState, writeState } from "../../shared/work/state.mts";
+import { gitIn, gitRepo } from "#test/git.mts";
+import { openItem } from "#test/project.mts";
+import { parseArgs } from "../../util/args.mts";
+import { renderReplay, replayEnvironment, verb, type ReplayDeps, type ReplayInput, type ReplayReport } from "./replay.mts";
+
+const RECORDED = readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8");
+const ENV = { PATH: process.env.PATH ?? "", SYSTEMROOT: process.env.SYSTEMROOT ?? "" };
+const VALUE_FLAGS = ["-p", "--project-directory", "-f", "--profile"];
+const CARD = ".picket/env/scenarios/S-0001.md";
+
+function modelAt(root: string): string {
+  return RECORDED.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`);
+}
+
+function engine(root: string): EngineRunner {
+  return (_program, args) => {
+    const words = args.filter((arg, i) => !VALUE_FLAGS.includes(arg) && !VALUE_FLAGS.includes(args[i - 1]));
+    const call = words.join(" ");
+    if (call === "info --format json") return { status: 0, stdout: '{"OSType":"linux"}', stderr: "" };
+    if (call === "compose version --format json") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
+    if (call === "compose config --profiles") return { status: 0, stdout: "picket-data\n", stderr: "" };
+    if (words[1] === "config") return { status: 0, stdout: modelAt(root), stderr: "" };
+    if (words[0] === "image") return { status: 0, stdout: JSON.stringify([{ Config: { Labels: { "org.opencontainers.image.revision": words[2].slice(words[2].lastIndexOf(":") + 1) } } }]), stderr: "" };
+    if (words[1] === "port") return { status: 0, stdout: "0.0.0.0:49153\n", stderr: "" };
+    return { status: 0, stdout: "", stderr: "" };
+  };
+}
+
+function answering(status: number, text: string): { adapter: HttpAdapter; seen: HttpRequest[] } {
+  const seen: HttpRequest[] = [];
+  return { seen, adapter: async (request) => (seen.push(request), { status, headers: {}, text, error: null }) };
+}
+
+function project(t: TestContext): { ctx: Context; id: WorkId } {
+  const root = realpathSync(gitRepo(t, { files: { "README.md": "u\n" } }));
+  cpSync(resolve("test/fixtures/env/umbrella"), root, { recursive: true });
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "umbrella");
+  const { id } = openItem(root, { lane: "order", title: "Orders export", source: "PROJ-481" });
+  const ctx: Context = { root, cwd: root, now: () => new Date("2026-11-15T10:00:00Z"), env: ENV, home: root, session: "session-1", platform: process.platform };
+  return { ctx, id };
+}
+
+function deps(root: string, adapter: HttpAdapter, runner: EngineRunner = engine(root)): ReplayDeps {
+  let next = 0;
+  return { runner, adapter, sleep: async () => {}, random: () => new Uint8Array([next++, 1]) };
+}
+
+function full(id: WorkId): ReplayInput {
+  return { id, mode: "full", only: null };
+}
+
+async function replay(ctx: Context, d: ReplayDeps, input: ReplayInput): Promise<{ code: number; report: ReplayReport; text: string }> {
+  const exit = describeExit(await replayEnvironment(ctx, d, input));
+  const report = exit.json as ReplayReport;
+  return { code: exit.code, report, text: renderReplay(report) };
+}
+
+function storeBase(ctx: Context, id: WorkId, outcome: ScenarioOutcome): void {
+  const model = readModel(JSON.parse(modelAt(ctx.root)));
+  const key = keyId(baseKey(ctx.root, readLayout(ctx.root, id), readState(ctx.root, id).base ?? null, model));
+  const [card] = listScenarios(ctx.root);
+  const row: ResultRow = { type: "result", run: "base-1", scenario: "S-0001", fingerprint: card.fingerprint, key, versions: {}, outcome, attempts: 1, unstable: false, class: "passed", detail: "" };
+  appendRows(ctx.root, [{ type: "run", run: "base-1", item: id, mode: "base", key, versions: {} }, row]);
+}
+
+async function refusal(run: () => Promise<unknown>): Promise<string> {
+  try {
+    await run();
+  } catch (err) {
+    assert.ok(err instanceof Refused, String(err));
+    return err.message;
+  }
+  assert.fail("not refused");
+}
+
+test("env replay takes an id and either --affected or --only", () => {
+  assert.deepEqual(verb.parse(parseArgs(["20261115-x"])), { id: "20261115-x", mode: "full", only: null });
+  assert.deepEqual(verb.parse(parseArgs(["20261115-x", "--affected"])), { id: "20261115-x", mode: "affected", only: null });
+  assert.deepEqual(verb.parse(parseArgs(["20261115-x", "--only", "S-0002"])), { id: "20261115-x", mode: "only", only: "S-0002" });
+  assert.throws(() => verb.parse(parseArgs([])), /env replay needs <id>/);
+  assert.throws(() => verb.parse(parseArgs(["20261115-x", "--affected", "--only", "S-0002"])), /--affected and --only exclude each other/);
+});
+
+test("a passing replay prints the scenario and the summary and stores a run and a result row", async (t) => {
+  const { ctx, id } = project(t);
+  const { adapter, seen } = answering(200, "ok");
+  const { code, text } = await replay(ctx, deps(ctx.root, adapter), full(id));
+  assert.equal(code, 0);
+  assert.equal(text, "S-0001 passed\nreplayed 1 on picket-proj-481: 1 passed");
+  assert.equal(seen[0].url, "http://127.0.0.1:49153/health");
+  const [run, result] = readResults(ctx.root);
+  assert.ok(run.type === "run" && result.type === "result");
+  assert.deepEqual([run.mode, run.item, run.reason], ["full", id, undefined]);
+  assert.deepEqual([result.scenario, result.outcome, result.class, result.attempts, result.key], ["S-0001", "passed", "passed", 1, run.key]);
+  assert.deepEqual(Object.keys(result.versions), ["orders"]);
+});
+
+test("with no engine a run row with the reason is stored and the replay fails (T-4.5)", async (t) => {
+  const { ctx, id } = project(t);
+  const { code, report, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, () => ({ status: 1, stdout: "", stderr: "" })), full(id));
+  assert.equal(code, 2);
+  assert.equal(report.reason, "no container engine");
+  assert.equal(text, "not replayed: no container engine");
+  const [row] = readResults(ctx.root);
+  assert.deepEqual(row.type === "run" && [row.item, row.mode, row.reason], [id, "full", "no container engine"]);
+});
+
+test("a failure the stored base passed is a new failure and exits 2; one the base failed exits 0 (T-4.6)", async (t) => {
+  const failing = project(t);
+  storeBase(failing.ctx, failing.id, "passed");
+  const blamed = await replay(failing.ctx, deps(failing.ctx.root, answering(500, "boom").adapter), full(failing.id));
+  assert.equal(blamed.code, 2);
+  assert.equal(blamed.text, "S-0001 new failure: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 new failure");
+  const before = project(t);
+  storeBase(before.ctx, before.id, "failed");
+  const known = await replay(before.ctx, deps(before.ctx.root, answering(500, "boom").adapter), full(before.id));
+  assert.equal(known.code, 0);
+  assert.equal(known.text, "S-0001 failing before the item: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 failing before the item");
+});
+
+test("a failure with no stored base result is blamed until phase 5 runs the base", async (t) => {
+  const { ctx, id } = project(t);
+  const { code, text } = await replay(ctx, deps(ctx.root, answering(500, "boom").adapter), full(id));
+  assert.equal(code, 2);
+  assert.match(text, /^S-0001 no base result: step 2/);
+});
+
+test("a hand-changed card is marked once and accepted for the next replay (T-4.3)", async (t) => {
+  const { ctx, id } = project(t);
+  const path = join(ctx.root, CARD);
+  writeFileSync(path, readFileSync(path, "utf8").replace('"ok"', '"o"'));
+  const first = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), full(id));
+  assert.equal(first.text.split("\n")[0], "S-0001 passed · changed by hand");
+  const second = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), full(id));
+  assert.equal(second.text.split("\n")[0], "S-0001 passed");
+});
+
+test("a hand change that breaks a safety rule is blocked and never accepted", async (t) => {
+  const { ctx, id } = project(t);
+  const path = join(ctx.root, CARD);
+  writeFileSync(path, readFileSync(path, "utf8").replace("{orders}/health", "http://example.com/health"));
+  for (let round = 0; round < 2; round++) {
+    const { code, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), full(id));
+    assert.equal(code, 0);
+    assert.equal(text.split("\n")[0], "S-0001 blocked: rule 1: step 1 sends to http://example.com/health; a request goes only to {<service>} of the environment · changed by hand");
+  }
+});
+
+test("--affected on an unchanged item replays nothing; --only of an unknown id refuses", async (t) => {
+  const { ctx, id } = project(t);
+  const none = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), { id, mode: "affected", only: null });
+  assert.equal(none.code, 0);
+  assert.equal(none.text, "no saved scenarios to replay");
+  assert.equal(await refusal(() => replayEnvironment(ctx, deps(ctx.root, answering(200, "ok").adapter), { id, mode: "only", only: "S-0009" })), "no saved scenario S-0009");
+});
+
+test("a done item refuses before any engine call", async (t) => {
+  const { ctx, id } = project(t);
+  writeState(ctx.root, { ...readState(ctx.root, id), status: "done" }, new Date());
+  const calls: string[] = [];
+  const runner: EngineRunner = (_program, args) => (calls.push(args.join(" ")), { status: 1, stdout: "", stderr: "" });
+  assert.match(await refusal(() => replayEnvironment(ctx, deps(ctx.root, answering(200, "ok").adapter, runner), full(id))), /is done; env replay runs only for an open or blocked item$/);
+  assert.deepEqual(calls, []);
+});

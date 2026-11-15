@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listScenarios } from "./files.mts";
-import { writeScenario, type Card } from "./format.mts";
+import { acceptFingerprint, listScenarios, readAccepted } from "./files.mts";
+import { fingerprintOf, writeScenario, type Card } from "./format.mts";
 
 const DIR = join(".picket", "env", "scenarios");
 
@@ -34,9 +34,30 @@ test("cards are listed by file name with their id, card, problems and hand-chang
   const [first, second, third, ...rest] = listScenarios(root);
   assert.deepEqual(rest, []);
   const ready: Card = { ...smoke("S-0002"), steps: [{ word: "request", line: 1, method: "GET", target: "{orders}/ready", headers: [], body: null }] };
-  assert.deepEqual(first, { path: ".picket/env/scenarios/S-0001.md", id: "S-0002", card: ready, problems: [], byHand: true });
-  assert.deepEqual(second, { path: ".picket/env/scenarios/S-0002.md", id: "S-0002", card: smoke("S-0002"), problems: ["header: id S-0002 is already used by .picket/env/scenarios/S-0001.md"], byHand: false });
-  assert.deepEqual(third, { path: ".picket/env/scenarios/S-0003.md", id: "S-0003", card: null, problems: ["header: a card starts with a --- header block"], byHand: true });
+  const edited = written.replace("{orders}/health", "{orders}/ready");
+  assert.deepEqual(first, { path: ".picket/env/scenarios/S-0001.md", id: "S-0002", card: ready, problems: [], fingerprint: fingerprintOf(edited), byHand: true });
+  assert.deepEqual(second, {
+    path: ".picket/env/scenarios/S-0002.md",
+    id: "S-0002",
+    card: smoke("S-0002"),
+    problems: ["header: id S-0002 is already used by .picket/env/scenarios/S-0001.md"],
+    fingerprint: fingerprintOf(written),
+    byHand: false,
+  });
+  assert.deepEqual(third, { path: ".picket/env/scenarios/S-0003.md", id: "S-0003", card: null, problems: ["header: a card starts with a --- header block"], fingerprint: fingerprintOf("click\n"), byHand: true });
+});
+
+test("an accepted fingerprint makes a hand-changed card the normal version on this machine (T-4.3)", (t) => {
+  const edited = writeScenario(smoke("S-0001")).replace("{orders}/health", "{orders}/ready");
+  const root = project(t, { "S-0001.md": edited });
+  assert.deepEqual(readAccepted(root), new Set());
+  assert.equal(listScenarios(root)[0].byHand, true);
+  acceptFingerprint(root, fingerprintOf(edited));
+  acceptFingerprint(root, fingerprintOf(edited));
+  assert.deepEqual(readAccepted(root), new Set([fingerprintOf(edited)]));
+  assert.equal(listScenarios(root)[0].byHand, false);
+  writeFileSync(join(root, DIR, "S-0001.md"), `${edited}request GET {orders}/x\n`);
+  assert.equal(listScenarios(root)[0].byHand, true);
 });
 
 test("a broken card whose file name is no scenario id has no id", (t) => {

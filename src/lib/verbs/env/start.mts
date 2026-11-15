@@ -17,7 +17,8 @@ import { UsageError, type Args } from "../../util/args.mts";
 
 export type StartInput = { id: WorkId };
 export type BuiltApp = { service: string; checkout: string; version: string };
-export type StartReport = { ok: boolean; machine: MachineReport; stack: string | null; apps: BuiltApp[]; urls: Record<string, string> };
+export type StartReport = { ok: boolean; machine: MachineReport; stack: string | null; apps: BuiltApp[]; urls: Record<string, string>; endpoints: Record<string, string> };
+export type StartedStack = { report: StartReport; model: EnvModel; key: string };
 
 const CLOSED_STATUSES = ["done", "abandoned"];
 const ANY_ADDRESS = new Set(["", "0.0.0.0", "[::]", "::"]);
@@ -77,18 +78,22 @@ function hostUrl(published: string): string | null {
   return `http://${ANY_ADDRESS.has(host) ? LOCALHOST : host}:${line.slice(at + 1)}`;
 }
 
-function serviceUrls(engine: Engine, root: string, stack: string, files: string[], services: EnvService[]): Record<string, string> {
-  const urls = services.flatMap((service): [string, string][] => {
+function serviceEndpoints(engine: Engine, root: string, stack: string, files: string[], services: EnvService[]): Record<string, string> {
+  const endpoints = services.flatMap((service): [string, string][] => {
     const [port] = service.ports;
     if (port === undefined) return [];
     const result = runCompose(engine, root, stack, files, ["port", service.name, String(port.target)]);
     const url = result.status === 0 ? hostUrl(result.stdout) : null;
-    return url === null ? [] : [[urlVariable(service.name), url]];
+    return url === null ? [] : [[service.name, url]];
   });
-  return Object.fromEntries(urls);
+  return Object.fromEntries(endpoints);
 }
 
-function startStack(ctx: Context, engine: Engine, machine: MachineReport, id: WorkId): StartReport {
+function urlVariables(endpoints: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(endpoints).map(([service, url]) => [urlVariable(service), url]));
+}
+
+export function startStack(ctx: Context, engine: Engine, machine: MachineReport, id: WorkId): StartedStack {
   const { root, env, session, now } = ctx;
   const state = openState(root, id);
   const key = itemKey(state);
@@ -105,13 +110,14 @@ function startStack(ctx: Context, engine: Engine, machine: MachineReport, id: Wo
   recordStack(root, stack, { item: id, session, files, engine: { name: engine.name, program: engine.program, prefix: engine.prefix }, started: now().toISOString() });
   composeOrRefuse(engine, root, stack, files, ["up", "--detach", "--wait"]);
   const built = sources.map(({ service, checkout, version }) => ({ service, checkout: relative(root, checkout).replaceAll("\\", "/") || ".", version }));
-  return { ok: true, machine, stack, apps: built, urls: serviceUrls(engine, root, stack, files, started) };
+  const endpoints = serviceEndpoints(engine, root, stack, files, started);
+  return { report: { ok: true, machine, stack, apps: built, urls: urlVariables(endpoints), endpoints }, model, key };
 }
 
 export function startEnvironment(ctx: Context, runner: EngineRunner, id: WorkId): Outcome<StartReport> {
   const { engine, machine } = machineCheck(ctx.env, ctx.cwd, ctx.root, runner);
-  if (!engine || !machine.ok) return failed({ ok: false, machine, stack: null, apps: [], urls: {} });
-  return done(startStack(ctx, engine, machine, id));
+  if (!engine || !machine.ok) return failed({ ok: false, machine, stack: null, apps: [], urls: {}, endpoints: {} });
+  return done(startStack(ctx, engine, machine, id).report);
 }
 
 export function renderStart(report: StartReport): string {

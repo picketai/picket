@@ -102,6 +102,14 @@ Remove a closed item's stack: containers, networks, its volumes and its images.
 picket env purge <stack>
 ```
 
+### picket env replay
+
+Start a work item's stack, replay the saved scenarios and store the results.
+
+```sh
+picket env replay <id> [--affected | --only <S-id>]
+```
+
 ### picket env start
 
 Build a work item's apps and start its stack.

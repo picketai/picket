@@ -1,9 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { runCli } from "#test/cli.mts";
+import { promisify } from "node:util";
+import { PICKET_BIN, runCli } from "#test/cli.mts";
 import { gitIn, gitRepo } from "#test/git.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -11,6 +14,7 @@ const FAKE_ENGINE = resolve("test/fixtures/env/fake-engine.mjs");
 const UMBRELLA = resolve("test/fixtures/env/umbrella");
 const SCAN_FILE = ".picket/state/env/scan.json";
 const SECRETS = ["fixture-secret-1", "fixture-secret-2", "fixture-secret-3"];
+const execFileAsync = promisify(execFile);
 
 function envCheck(root, engine) {
   return runCli(root, ["env", "check", "--root", root], { env: { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: engine } });
@@ -164,6 +168,38 @@ test("env trial on a git copy passes twice, then env check shows no pending tria
   const after = envCheck(root, FAKE_ENGINE);
   assert.equal(after.status, 0, after.stdout);
   assert.doesNotMatch(after.stdout, /trial/);
+});
+
+function healthServer(t) {
+  const server = createServer((request, response) => {
+    response.writeHead(request.url === "/health" ? 200 : 404, { "content-type": "text/plain" });
+    response.end(request.url === "/health" ? "ok" : "missing");
+  });
+  t.after(() => server.close());
+  return new Promise((ready) => server.listen(0, "127.0.0.1", () => ready(server.address().port)));
+}
+
+async function replayCli(root, id, published) {
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: root, PICKET_ENGINE: FAKE_ENGINE, PICKET_FAKE_PUBLISHED: published };
+  try {
+    const { stdout, stderr } = await execFileAsync(process.execPath, [PICKET_BIN, "env", "replay", id, "--root", root], { cwd: root, env });
+    return { status: 0, stdout, stderr };
+  } catch (err) {
+    return { status: err.code, stdout: err.stdout, stderr: err.stderr };
+  }
+}
+
+test("env replay on a git copy replays S-0001 against the published port and stores its result (T-4.7)", async (t) => {
+  const { root, id } = startProject(t);
+  const port = await healthServer(t);
+  const r = await replayCli(root, id, `127.0.0.1:${port}`);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^S-0001 passed$/m);
+  assert.match(r.stdout, /^replayed 1 on picket-proj-481: 1 passed$/m);
+  const rows = readFileSync(join(root, ".picket", "state", "scenarios", "results.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  const result = rows.find((row) => row.type === "result" && row.scenario === "S-0001");
+  assert.ok(result, JSON.stringify(rows));
+  assert.deepEqual(Object.keys(result.versions), ["orders"]);
 });
 
 test("env check with an engine that does not exist exits 2 and names what to install (T-1.6)", (t) => {

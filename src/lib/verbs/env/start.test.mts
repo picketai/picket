@@ -82,6 +82,8 @@ test("start runs build, image inspect, up, then port, and records the stack with
   const report = describeExit(outcome).json as StartReport;
   assert.equal(report.stack, "picket-proj-481");
   assert.deepEqual(report.urls, { PICKET_URL_ORDERS: "http://127.0.0.1:49153", PICKET_URL_PAYMENTS_MOCK: "http://127.0.0.1:49153" });
+  assert.deepEqual(report.endpoints, { orders: "http://127.0.0.1:49153", "payments-mock": "http://127.0.0.1:49153" });
+  assert.ok(!renderStart(report).includes("payments-mock="), "the render prints variables, not endpoints");
   const recorded = readStacks(ctx.root)["picket-proj-481"];
   assert.deepEqual([recorded.item, recorded.session, recorded.started, recorded.engine], [id, "session-1", "2026-11-14T10:00:00.000Z", { name: "docker", program: "docker", prefix: [] }]);
   assert.deepEqual(recorded.files, [join(ctx.root, ".picket", "env", "compose.yaml"), join(ctx.root, ".picket", "state", "env", "picket-proj-481", "compose.picket.yaml")]);
@@ -166,4 +168,5 @@ test("no engine fails with the install line and starts nothing", (t) => {
   const outcome = startEnvironment(ctx, () => ({ status: 1, stdout: "", stderr: "" }), id);
   assert.equal(describeExit(outcome).code, 2);
   assert.equal(renderStart(describeExit(outcome).json as StartReport), "missing: no container engine: install Docker or Podman");
+  assert.deepEqual((describeExit(outcome).json as StartReport).endpoints, {});
 });

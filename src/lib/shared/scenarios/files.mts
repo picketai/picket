@@ -1,19 +1,39 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { readJson } from "../../util/io.mts";
 import { SCENARIO_DIR } from "../env/standard.mts";
-import { fingerprintMatches, parseScenario, type Card } from "./format.mts";
+import { statePath, STATE_FILES } from "../paths.mts";
+import { fingerprintMatches, fingerprintOf, parseScenario, type Card } from "./format.mts";
 
-export type SavedScenario = { path: string; id: string | null; card: Card | null; problems: string[]; byHand: boolean };
+export type SavedScenario = { path: string; id: string | null; card: Card | null; problems: string[]; fingerprint: string; byHand: boolean };
 
 const CARD_FILE = /\.md$/;
 const FILE_ID = /^(S-\d{4,})\.md$/;
 
-function readScenario(root: string, name: string): SavedScenario {
+function acceptedPath(root: string): string {
+  return statePath(root, STATE_FILES.scenarioAccepted);
+}
+
+export function readAccepted(root: string): Set<string> {
+  const stored = readJson<unknown>(acceptedPath(root));
+  return new Set(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : []);
+}
+
+export function acceptFingerprint(root: string, fingerprint: string): void {
+  const accepted = readAccepted(root);
+  if (accepted.has(fingerprint)) return;
+  const path = acceptedPath(root);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify([...accepted, fingerprint].sort(), null, 2)}\n`);
+}
+
+function readScenario(root: string, name: string, accepted: Set<string>): SavedScenario {
   const path = `${SCENARIO_DIR}/${name}`;
   const text = readFileSync(join(root, path), "utf8");
   const { card, problems } = parseScenario(text);
   const id = card?.header.id ?? name.match(FILE_ID)?.[1] ?? null;
-  return { path, id, card, problems, byHand: !fingerprintMatches(text) };
+  const fingerprint = fingerprintOf(text);
+  return { path, id, card, problems, fingerprint, byHand: !fingerprintMatches(text) && !accepted.has(fingerprint) };
 }
 
 function withDuplicateIds(scenarios: SavedScenario[]): SavedScenario[] {
@@ -32,9 +52,10 @@ function withDuplicateIds(scenarios: SavedScenario[]): SavedScenario[] {
 export function listScenarios(root: string): SavedScenario[] {
   const dir = join(root, SCENARIO_DIR);
   if (!existsSync(dir)) return [];
+  const accepted = readAccepted(root);
   const names = readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && CARD_FILE.test(entry.name))
     .map((entry) => entry.name)
     .sort();
-  return withDuplicateIds(names.map((name) => readScenario(root, name)));
+  return withDuplicateIds(names.map((name) => readScenario(root, name, accepted)));
 }

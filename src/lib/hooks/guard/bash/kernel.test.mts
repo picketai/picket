@@ -59,6 +59,10 @@ test("env check and env status are safe reads and env without a subverb is a ker
   assert.equal(kernelClass("env", undefined), "kernel");
 });
 
+test("env replay starts a stack and writes results, so it is a kernel call (T-4.8)", () => {
+  assert.equal(kernelClass("env", "replay"), "kernel");
+});
+
 test("picket verify is safe only when every checkout's test command is safe in its own folder (T-3.5)", (t) => {
   const unsafe = worktreeItem(t, "node wt.js");
   assert.deepEqual(classifyVerify(unsafe.root, unsafe.id, "1"), { verdict: "unknown", seen: ["dotnet test @ <root>", `node wt.js @ ${WORKTREE}`] });

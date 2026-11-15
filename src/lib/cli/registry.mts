@@ -13,6 +13,7 @@ export const REGISTRY = {
   "env check": () => import("../verbs/env/check.mts"),
   "env init": () => import("../verbs/env/init.mts"),
   "env purge": () => import("../verbs/env/purge.mts"),
+  "env replay": () => import("../verbs/env/replay.mts"),
   "env start": () => import("../verbs/env/start.mts"),
   "env stop": () => import("../verbs/env/stop.mts"),
   "env status": () => import("../verbs/env/status.mts"),

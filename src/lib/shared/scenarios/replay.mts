@@ -1,0 +1,66 @@
+import type { SavedScenario } from "./files.mts";
+import type { Card } from "./format.mts";
+import type { HttpAdapter } from "./http.mts";
+import type { ContentKey } from "./keys.mts";
+import type { ScenarioOutcome } from "./results.mts";
+import { scenarioProblems } from "./rules.mts";
+import { runScenario, type RunOutcome } from "./runner.mts";
+
+export type ScenarioRun = { id: string; fingerprint: string; outcome: ScenarioOutcome; attempts: string[]; unstable: boolean; byHand: boolean; detail: string };
+
+export type ReplayInput = {
+  scenarios: SavedScenario[];
+  services: string[];
+  urls: Record<string, string>;
+  adapter: HttpAdapter;
+  env: NodeJS.ProcessEnv;
+  today: string;
+  newRunKey: () => string;
+  timeoutMs: number;
+  sleep: (ms: number) => Promise<void>;
+};
+
+const SERVICE_TARGET = /^\{([^{}]+)\}/;
+
+function isActive(scenario: SavedScenario): boolean {
+  return scenario.card?.header.status !== "deprecated";
+}
+
+function problemsOf(scenario: SavedScenario, services: string[]): string[] {
+  return [...scenario.problems, ...(scenario.card ? scenarioProblems(scenario.card, services) : [])];
+}
+
+function attempt(card: Card, input: ReplayInput): Promise<RunOutcome> {
+  const { urls, adapter, env, today, timeoutMs, sleep } = input;
+  return runScenario({ card, urls, adapter, env, today, runKey: input.newRunKey(), timeoutMs, sleep });
+}
+
+async function confirmed(card: Card, input: ReplayInput): Promise<Pick<ScenarioRun, "outcome" | "attempts" | "unstable" | "detail">> {
+  const first = await attempt(card, input);
+  if (first.outcome !== "failed") return { outcome: first.outcome, attempts: [first.outcome], unstable: false, detail: first.detail };
+  const second = await attempt(card, input);
+  return { outcome: second.outcome, attempts: [first.outcome, second.outcome], unstable: second.outcome !== first.outcome, detail: second.outcome === "passed" ? first.detail : second.detail };
+}
+
+async function replayOne(scenario: SavedScenario, input: ReplayInput): Promise<ScenarioRun> {
+  const base = { id: scenario.id ?? scenario.path, fingerprint: scenario.fingerprint, byHand: scenario.byHand };
+  const [problem] = problemsOf(scenario, input.services);
+  if (problem !== undefined || scenario.card === null) return { ...base, outcome: "blocked", attempts: [], unstable: false, detail: problem ?? "" };
+  return { ...base, ...(await confirmed(scenario.card, input)) };
+}
+
+export async function replayScenarios(input: ReplayInput): Promise<ScenarioRun[]> {
+  const runs: ScenarioRun[] = [];
+  for (const scenario of input.scenarios.filter(isActive)) runs.push(await replayOne(scenario, input));
+  return runs;
+}
+
+function targetServices(card: Card): string[] {
+  return card.steps.flatMap((step) => (step.word === "request" ? (step.target.match(SERVICE_TARGET)?.slice(1, 2) ?? []) : []));
+}
+
+export function affected(scenarios: SavedScenario[], working: ContentKey, base: ContentKey): SavedScenario[] {
+  if (working.env !== base.env) return scenarios;
+  const changed = new Set(Object.keys(working.apps).filter((app) => working.apps[app] !== base.apps[app]));
+  return scenarios.filter((scenario) => scenario.card !== null && targetServices(scenario.card).some((service) => changed.has(service)));
+}
