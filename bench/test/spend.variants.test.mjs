@@ -8,8 +8,8 @@ const isRefusal = (result) => typeof result === "string";
 closureTests({
   guard: "runRefusal --budget-usd",
   run: (budgetUsd) => {
-    const { total } = plannedSpend({ tasks: [TASK], runs: 1, budgetUsd, records: [] });
-    return runRefusal({ maxUsd: CAP_USD, budgetUsd, total });
+    const { rows, total } = plannedSpend({ tasks: [TASK], runs: 1, budgetUsd, records: [] });
+    return runRefusal({ maxUsd: CAP_USD, budgetUsd, rows, total });
   },
   closed: isRefusal,
   checks: [{ family: outOfDomainNumbers, seeds: [2] }],
@@ -17,7 +17,17 @@ closureTests({
 
 closureTests({
   guard: "runRefusal --max-usd",
-  run: (maxUsd) => runRefusal({ maxUsd, budgetUsd: null, total: 5 }),
+  run: (maxUsd) => runRefusal({ maxUsd, budgetUsd: null, rows: [], total: 5 }),
   closed: isRefusal,
   checks: [{ family: outOfDomainNumbers, seeds: [CAP_USD] }],
+});
+
+closureTests({
+  guard: "runRefusal task budget_usd",
+  run: (budgetUsd) => {
+    const { rows, total } = plannedSpend({ tasks: [{ ...TASK, budget_usd: budgetUsd }], runs: 1, budgetUsd: null, records: [] });
+    return runRefusal({ maxUsd: CAP_USD, budgetUsd: null, rows, total });
+  },
+  closed: isRefusal,
+  checks: [{ family: outOfDomainNumbers, seeds: [2] }],
 });

@@ -8,6 +8,19 @@ test("settingSources passes --setting-sources with its value, and is absent when
   assert.equal(claudeArgs({}).includes("--setting-sources"), false);
 });
 
+test("a positive maxBudgetUsd passes --max-budget-usd with its value", () => {
+  const args = claudeArgs({ maxBudgetUsd: 2 });
+  assert.deepEqual(args.slice(args.indexOf("--max-budget-usd"), args.indexOf("--max-budget-usd") + 2), ["--max-budget-usd", "2"]);
+});
+
+test("an absent maxBudgetUsd adds no --max-budget-usd", () => {
+  assert.equal(claudeArgs({}).includes("--max-budget-usd"), false);
+});
+
+test("a null maxBudgetUsd throws instead of sending an uncapped call", () => {
+  assert.throws(() => claudeArgs({ maxBudgetUsd: null }), /^Error: --max-budget-usd needs a positive number of dollars, got null$/);
+});
+
 function fakeChild() {
   const child = { pid: 4242, killed: 0, kill: () => child.killed++ };
   return child;

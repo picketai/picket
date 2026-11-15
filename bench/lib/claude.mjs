@@ -48,12 +48,18 @@ export function launchCommand(args, { platform = process.platform, jobFile, clau
  * @param {string} [o.eventsPath]   JSONL file that receives every stamped event
  * @param {number} [o.t0]           wall-clock origin for relative timestamps
  */
+function budgetCapArgs(maxBudgetUsd) {
+  if (maxBudgetUsd === undefined) return [];
+  if (!Number.isFinite(maxBudgetUsd) || maxBudgetUsd <= 0) throw new Error(`--max-budget-usd needs a positive number of dollars, got ${String(maxBudgetUsd)}`);
+  return ["--max-budget-usd", String(maxBudgetUsd)];
+}
+
 export function claudeArgs(o) {
   const args = ["-p", "--output-format", "stream-json", "--verbose"];
   if (o.resume) args.push("--resume", o.resume);
   if (o.permissionMode) args.push("--permission-mode", o.permissionMode);
   if (o.allowedTools?.length) args.push("--allowedTools", o.allowedTools.join(","));
-  if (o.maxBudgetUsd) args.push("--max-budget-usd", String(o.maxBudgetUsd));
+  args.push(...budgetCapArgs(o.maxBudgetUsd));
   if (o.maxTurns) args.push("--max-turns", String(o.maxTurns));
   if (o.pluginDir) args.push("--plugin-dir", o.pluginDir);
   if (o.model) args.push("--model", o.model);

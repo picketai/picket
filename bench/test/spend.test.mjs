@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { budgetRefusal, callLimit, capLeft, charge, openLedger, plannedSpend, spendRefusal, taskBudget } from "../lib/spend.mjs";
+import { budgetRefusal, callLimit, capLeft, charge, openLedger, plannedSpend, runRefusal, spendRefusal, taskBudget } from "../lib/spend.mjs";
 
 const TASKS = [
   { id: "fast-a", lane: "fast", budget_usd: 5 },
@@ -64,6 +64,30 @@ test("stops the suite when no cap is left", () => {
     assert.equal(capLeft(ledger), 0, String(spent));
     assert.equal(callLimit(ledger, 5), null, String(spent));
   }
+});
+
+function refusalFor(task, budgetUsd) {
+  const { rows, total } = plannedSpend({ tasks: [task], runs: 1, budgetUsd, records: [] });
+  return runRefusal({ maxUsd: 100, budgetUsd, rows, total });
+}
+
+test("refuses a task whose budget_usd is not a positive number", () => {
+  for (const budget_usd of [0, "2"]) {
+    assert.equal(refusalFor({ id: "fast-a", lane: "fast", budget_usd }, null), "task fast-a: budget_usd needs a positive number of dollars", String(budget_usd));
+  }
+});
+
+test("a valid --budget-usd overrides a bad task budget_usd", () => {
+  assert.equal(refusalFor({ id: "fast-a", lane: "fast", budget_usd: 0 }, 3), null);
+});
+
+test("refuses a bad task budget_usd even when its runs are recorded", () => {
+  const { rows, total } = plannedSpend({ tasks: [{ id: "fast-a", lane: "fast", budget_usd: -1 }], runs: 1, budgetUsd: null, records: [{ task: "fast-a", run: 1 }] });
+  assert.equal(runRefusal({ maxUsd: 100, budgetUsd: null, rows, total }), "task fast-a: budget_usd needs a positive number of dollars");
+});
+
+test("a bad --budget-usd is refused before a bad task budget_usd", () => {
+  assert.equal(refusalFor({ id: "fast-a", lane: "fast", budget_usd: 0 }, NaN), "--budget-usd needs a positive number of dollars");
 });
 
 test("leaves a resumed file's recorded cost out of the cap", () => {

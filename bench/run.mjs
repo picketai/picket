@@ -318,7 +318,7 @@ async function main() {
   const plan = plannedSpend({ tasks, runs: args.runs, budgetUsd: args.budget, records: existing.records });
   logPlan(plan, log);
   if (args.dry) return;
-  const refusal = runRefusal({ maxUsd: args.maxUsd, budgetUsd: args.budget, total: plan.total });
+  const refusal = runRefusal({ maxUsd: args.maxUsd, budgetUsd: args.budget, rows: plan.rows, total: plan.total });
   if (refusal) {
     console.error(`refused: ${refusal}`);
     process.exitCode = 1;

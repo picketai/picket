@@ -48,6 +48,15 @@ export function spendRefusal(maxUsd, total) {
   return null;
 }
 
-export function runRefusal({ maxUsd, budgetUsd, total }) {
-  return budgetRefusal(budgetUsd) ?? spendRefusal(maxUsd, total);
+function isPositiveDollars(usd) {
+  return Number.isFinite(usd) && usd > 0;
+}
+
+export function taskBudgetRefusal(rows) {
+  const row = rows.find((r) => !isPositiveDollars(r.budget));
+  return row ? `task ${row.id}: budget_usd needs a positive number of dollars` : null;
+}
+
+export function runRefusal({ maxUsd, budgetUsd, rows, total }) {
+  return budgetRefusal(budgetUsd) ?? taskBudgetRefusal(rows) ?? spendRefusal(maxUsd, total);
 }
