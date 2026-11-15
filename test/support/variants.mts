@@ -110,6 +110,8 @@ const INTERPRETER_NAMES: Record<string, string[]> = {
   perl: ["perl5.40"],
   php: ["php8.3"],
   lua: ["lua5.4", "luajit"],
+  awk: ["gawk", "mawk", "nawk"],
+  tclsh: ["tclsh8.6"],
 };
 
 function namesOf(interpreter: string): string[] {

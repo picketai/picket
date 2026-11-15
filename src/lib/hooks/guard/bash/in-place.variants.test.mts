@@ -13,6 +13,8 @@ const PHP_WRITE = `file_put_contents("src/a.ts", "x");`;
 const PHP_SCRIPT = "<?php file_put_contents('src/a.ts', 'x');";
 const LUA_WRITE = `io.open("src/a.ts","w"):write("x")`;
 const R_WRITE = `writeLines("x", "src/a.ts")`;
+const AWK_WRITE = `BEGIN { print "x" > "src/a.ts" }`;
+const TCL_WRITE = "set f [open src/a.ts w]";
 
 const AS_WRITTEN_SEEDS = [
   inline("node", `--eval=${NODE_WRITE}`),
@@ -44,6 +46,15 @@ const AS_WRITTEN_SEEDS = [
   inline("Rscript", "-e", R_WRITE),
   inline("Rscript", "-e", `cat("x", file = "src/a.ts")`),
   fedOnStdin(R_WRITE, "R", "--vanilla"),
+  inline("awk", AWK_WRITE),
+  inline("awk", "-F:", "-v", "n=1", `BEGIN { print n >> "src/a.ts" }`),
+  inline("gawk", "-e", `BEGIN { printf "x" > "src/a.ts" }`),
+  fedOnStdin(AWK_WRITE, "awk", "-f", "-"),
+  inline("gawk", "-i", "inplace", "{ print }", "src/a.ts"),
+  inline("gawk", "--include=inplace", "{ print }", "src/a.ts"),
+  fedOnStdin(TCL_WRITE, "tclsh"),
+  fedOnStdin(`set f [open "src/a.ts" a]`, "tclsh"),
+  fedOnStdin("set f [open src/a.ts {WRONLY CREAT}]", "tclsh"),
 ];
 
 closureTests({
@@ -54,6 +65,6 @@ closureTests({
     { family: asWritten(invocationLabel), seeds: AS_WRITTEN_SEEDS },
     { family: programFlagSpellings, seeds: [inline("node", "-e", NODE_WRITE), inline("python3", "-c", PYTHON_WRITE), inline("ruby", "-e", RUBY_WRITE)] },
     { family: stdinSpellings, seeds: [fedOnStdin(NODE_WRITE, "node"), fedOnStdin(PYTHON_WRITE, "python3"), fedOnStdin(RUBY_WRITE, "ruby")] },
-    { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE), inline("php", "-r", PHP_WRITE), inline("lua", "-e", LUA_WRITE)] },
+    { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE), inline("php", "-r", PHP_WRITE), inline("lua", "-e", LUA_WRITE), inline("awk", AWK_WRITE), fedOnStdin(TCL_WRITE, "tclsh")] },
   ],
 });

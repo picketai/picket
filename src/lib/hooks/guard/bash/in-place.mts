@@ -6,6 +6,7 @@ const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
 const QUOTED_LITERAL = /(['"])((?:(?:\+[<>]|>>|[<>])[ \t]*)?[^'"\s]+)\1/g;
 const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])[ \t]*/;
 const STDIN_OPERAND = "-";
+const STDIN_SCRIPTS: ReadonlySet<string> = new Set([STDIN_OPERAND, "/dev/stdin"]);
 
 function wordsOf(seg: Segment): string[] {
   return seg.filter((t): t is string => typeof t === "string");
@@ -31,9 +32,19 @@ function readsStdin(family: Family, args: string[]): boolean {
   return args.includes(STDIN_OPERAND) || !namesScriptFile(family, args);
 }
 
+function operandProgram(scriptFlags: ReadonlySet<string>, family: Family, args: string[], heredocs: readonly string[]): string {
+  for (let i = 0; i < args.length; i++) {
+    if (scriptFlags.has(args[i])) return STDIN_SCRIPTS.has(args[i + 1] ?? "") ? heredocs.join("\n") : "";
+    if (family.valueFlags.has(args[i])) i++;
+    else if (!args[i].startsWith("-")) return args[i];
+  }
+  return "";
+}
+
 function programText(family: Family, args: string[], heredocs: readonly string[]): string {
   const inline = inlineProgram(family, args);
   if (inline !== null) return inline;
+  if (family.programOperand !== undefined) return operandProgram(family.programOperand.scriptFlags, family, args, heredocs);
   const hereStrings = args.filter((word) => family.writeCall.test(word));
   return [...(readsStdin(family, args) ? heredocs : []), ...hereStrings].join("\n");
 }
@@ -44,6 +55,7 @@ function withoutModePrefix(literal: string): string {
 
 function programWrites(family: Family, program: string): string[] {
   if (!family.writeCall.test(program)) return [];
+  if (family.namedTarget !== undefined) return [...program.matchAll(family.namedTarget)].map((match) => match[1]);
   return [...program.matchAll(QUOTED_LITERAL)].map((match) => withoutModePrefix(match[2])).filter((literal) => literal !== "");
 }
 

@@ -249,6 +249,17 @@ test("a php, lua or Rscript inline write is an in-place code-write denial for th
   }
 });
 
+test("an awk redirect, a gawk inplace edit and a tclsh open for writing are in-place code-write denials for the lead and an agent", (t) => {
+  const root = project(t);
+  for (const command of [`awk 'BEGIN { print "x" > "src/a.ts" }'`, "gawk -i inplace '{ print }' src/a.ts", "tclsh <<'EOF'\nset f [open src/a.ts w]\nEOF"]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL("src/a.ts")), out?.permissionDecisionReason);
+    }
+  }
+});
+
 test("a redirect, tee or PowerShell writer to a code file stays denied to an agent only (T-3.4)", (t) => {
   const root = project(t);
   for (const [command, tool] of [["echo x >> src/a.ts"], ["printf x | tee -a src/a.py"], ["cat > test/kernel/x.test.mjs <<'EOF'\nx\nEOF"], ["Set-Content src/a.ts x", "PowerShell"]]) {

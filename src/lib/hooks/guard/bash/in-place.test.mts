@@ -96,6 +96,23 @@ test("a php or lua value flag before the program does not hide its write (T-2.4)
   assert.ok(inPlaceTargets(["lua", "-l", "mod", "-"], [`io.open("src/a.ts","w")\n`]).includes("src/a.ts"));
 });
 
+test("an awk read, an awk script file, a tcl read and a tcl script file beside a write heredoc yield nothing (T-3.3)", () => {
+  assert.deepEqual(inPlaceTargets(["awk", "{ print $1 }", "src/a.ts"], []), []);
+  assert.deepEqual(inPlaceTargets(words("awk -f fix.awk src/a.ts"), []), []);
+  assert.deepEqual(inPlaceTargets(["tclsh"], ["set f [open src/a.ts r]\n"]), []);
+  assert.deepEqual(inPlaceTargets(["tclsh"], ["set f [open src/a.ts]\n"]), []);
+  assert.deepEqual(inPlaceTargets(["tclsh", "fix.tcl"], ["set f [open src/a.ts w]\n"]), []);
+});
+
+test("gawk with the inplace library edits the file operands after its program (T-3.4)", () => {
+  assert.deepEqual(inPlaceTargets(["gawk", "-i", "inplace", "{ print }", "src/a.ts", "src/b.ts"], []), ["src/a.ts", "src/b.ts"]);
+  assert.deepEqual(inPlaceTargets(["gawk", "-i", "inplace", "-e", "{ print }", "src/a.ts"], []), ["src/a.ts"]);
+});
+
+test("a tcl open for writing yields its bare, quoted or braced path alone", () => {
+  assert.deepEqual(inPlaceTargets(["tclsh"], [`set f [open src/a.ts w]\nset g [open "src/b.ts" a+]\nset h [open {src/c.ts} {WRONLY CREAT}]\n`]), ["src/a.ts", "src/b.ts", "src/c.ts"]);
+});
+
 test("a command that is not an interpreter yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["cat", "-"], ["open('src/a.py','w').write('x')"]), []);
 });
