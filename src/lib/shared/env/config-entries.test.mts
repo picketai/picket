@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { configFormat, isAddressLike, masked, readConfigFile } from "./config-entries.mts";
+import { configFormat, isAddressLike, isSecretName, masked, readConfigFile } from "./config-entries.mts";
 
 const ADDRESS_VALUES = [
   "Server=localhost,1433;Database=Billing;User Id=sa;Password=x",
@@ -62,6 +62,15 @@ test("masked hides any pair whose name contains a secret word, after earlier pla
     assert.equal(isAddressLike("Value", value), true, value);
     assert.equal(masked("Value", value), expected, value);
   }
+});
+
+test("isSecretName passes ordinary code compounds and still matches secret code names (T-1.1)", () => {
+  for (const name of ["countryCode", "postalCode", "statusCode", "zipCode", "country_code", "STATUS-CODE"]) assert.equal(isSecretName(name), false, name);
+  for (const name of ["authCode", "passcode", "code", "auth_code", "code_verifier", "user_code", "x-code", "countryCodeAuthCode"]) assert.equal(isSecretName(name), true, name);
+});
+
+test("masked keeps an ordinary code pair and hides a bare code pair in the same URL (T-1.4)", () => {
+  assert.equal(masked("Url", "https://a.example.com/x?countryCode=DE&code=FUNCKEY"), "https://a.example.com/x?countryCode=DE&code=***");
 });
 
 test("masked leaves values without secrets as they are and keeps null", () => {

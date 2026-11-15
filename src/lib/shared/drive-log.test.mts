@@ -37,6 +37,10 @@ test("a JSON body has every string or number under a secret-named key masked at 
   assert.equal(maskedBody('{"sku":"PKT-a"}'), '{"sku":"PKT-a"}');
 });
 
+test("a JSON body keeps ordinary code keys and masks a secret code key (T-1.2)", () => {
+  assert.equal(maskedBody('{"countryCode":"DE","statusCode":200,"authCode":"Kval9"}'), '{"countryCode":"DE","statusCode":200,"authCode":"***"}');
+});
+
 test("a body that is not JSON is masked as pairs (T-7.3)", () => {
   assert.equal(maskedBody("name=x&password=y"), "name=x&password=***");
   assert.equal(maskedBody("plain text"), "plain text");

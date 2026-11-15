@@ -14,7 +14,7 @@ const REVIEW_PROBES = [
 ];
 
 const FAMILY_VALUE = "Kval9";
-const SECRET_WORDS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "sig", "credential", "accountkey", "sharedaccesskey"];
+const SECRET_WORDS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "sig", "credential", "accountkey", "sharedaccesskey", "code", "authcode", "passcode"];
 const SECRET_VALUES = ["abc123", "hunter2", "zzz", "SECRETSIG", "K1", "K2", "K3", "K4", "K5", FAMILY_VALUE];
 const FAMILY_SEEDS = SECRET_WORDS.map((word) => `${word}=${FAMILY_VALUE}`);
 

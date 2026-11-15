@@ -72,3 +72,9 @@ test("a literal secret in a header or a JSON body key is refused, a captured one
   assert.deepEqual(problems(["request POST {orders}/login", "capture token json token", "request GET {orders}/x", "  header Authorization: Bearer {token}"]), []);
   assert.deepEqual(problems(["request POST {orders}/login", "  header content-type: application/json", '  body {"user":"a"}']), []);
 });
+
+test("ordinary code keys and headers pass the card rule, a passcode does not (T-1.3)", () => {
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"countryCode":"DE","postalCode":"10115"}']), []);
+  assert.deepEqual(problems(["request GET {orders}/x", "  header X-Country-Code: DE"]), []);
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"passcode":"1234"}']), ["step 1: body key passcode holds a literal secret; take it from a capture or {user:<role>.<field>}"]);
+});

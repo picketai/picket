@@ -52,6 +52,42 @@ export const pairNames: Family<string> = {
   },
 };
 
+export const JSON_SECRET_VALUE = "Kval9";
+
+const JSON_SECRET_KEYS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "credential", "accountkey", "sharedaccesskey", "authCode", "passcode", "code", "auth_code", "code_verifier"];
+
+export const jsonSecretSeeds: string[] = JSON_SECRET_KEYS.map((key) => JSON.stringify({ [key]: JSON_SECRET_VALUE }));
+
+function onlyPair(seed: string): [string, unknown] {
+  const pairs = Object.entries(JSON.parse(seed) as Record<string, unknown>);
+  if (pairs.length !== 1) throw new Error(`a JSON seed holds one key, got ${seed}`);
+  return pairs[0];
+}
+
+export const jsonPlaces: Family<string> = {
+  name: "JSON places",
+  spell: (seed) => {
+    const [key, value] = onlyPair(seed);
+    const pair = { [key]: value };
+    return spelled([
+      JSON.stringify({ sku: "PKT-a", ...pair }),
+      JSON.stringify({ order: { customer: pair } }),
+      JSON.stringify([{ sku: "PKT-a" }, pair]),
+      JSON.stringify({ items: [{ auth: pair }] }),
+      JSON.stringify({ sku: "PKT-a", ...pair }, null, 2),
+    ]);
+  },
+};
+
+export const jsonKeySpellings: Family<string> = {
+  name: "key spellings",
+  spell: (seed) => {
+    const [key, value] = onlyPair(seed);
+    const keys = [key.toUpperCase(), `${key[0].toUpperCase()}${key.slice(1)}`, `user_${key}`, `x-${key.replaceAll("_", "-")}`, `${key}Hash`];
+    return spelled(keys.map((spelledKey) => JSON.stringify({ [spelledKey]: value })));
+  },
+};
+
 export type Invocation = { argv: string[]; heredocs: string[] };
 
 type InterpreterFlags = { long: Record<string, string>; attached?: true; clusterLetter?: string; leading: string[] };
