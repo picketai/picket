@@ -10,19 +10,35 @@
     "src/lib/shared/env/config-entries.mts",
     "src/lib/shared/env/config-entries.test.mts",
     "src/lib/shared/env/config-entries.variants.test.mts",
+    "src/lib/shared/env/stack-start.mts",
+    "src/lib/shared/env/stack-start.test.mts",
+    "src/lib/shared/route/apply.mts",
+    "src/lib/shared/route/commit.mts",
+    "src/lib/shared/scenarios/base-run.mts",
     "src/lib/shared/scenarios/compare.mts",
     "src/lib/shared/scenarios/compare.test.mts",
+    "src/lib/shared/scenarios/format.mts",
+    "src/lib/shared/scenarios/format.test.mts",
+    "src/lib/shared/scenarios/http.mts",
+    "src/lib/shared/scenarios/keep.mts",
     "src/lib/shared/scenarios/keep.test.mts",
+    "src/lib/shared/scenarios/keys.mts",
+    "src/lib/shared/scenarios/keys.test.mts",
     "src/lib/shared/scenarios/replay.mts",
     "src/lib/shared/scenarios/replay.test.mts",
     "src/lib/shared/scenarios/rules.mts",
     "src/lib/shared/scenarios/rules.test.mts",
     "src/lib/shared/scenarios/rules.variants.test.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/index.test.mts",
     "src/lib/verbs/env/replay.test.mts",
+    "src/lib/verbs/env/start.mts",
+    "src/lib/verbs/route/index.test.mts",
+    "src/lib/verbs/verify/index.mts",
     "test/support/variants.mts"
   ],
-  "lines_added": 213,
-  "lines_removed": 72,
+  "lines_added": 589,
+  "lines_removed": 214,
   "frameworks": [
     "typescript"
   ],
@@ -35,14 +51,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-16T08:44:10.612Z",
+    "base": "d8635b8f1743c361dbb98092f0c174cf57be27bd",
+    "mutant": {
+      "path": "src/lib/shared/drive-log.mts",
+      "line": 52,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 147261
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

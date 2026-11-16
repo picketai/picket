@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-16T08:44:10.612Z",
+  "base": "d8635b8f1743c361dbb98092f0c174cf57be27bd",
+  "mutant": {
+    "path": "src/lib/shared/drive-log.mts",
+    "line": 52,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 147261
+}
