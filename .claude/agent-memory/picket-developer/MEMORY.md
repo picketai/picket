@@ -30,3 +30,4 @@
 - [No-removed-line check counts imports](no-removed-line-check-counts-imports.md) — pinned test files: add imports on new lines, never widen one
 - [init test and TMPDIR under home](init-test-tmpdir-under-home.md) — product step fails when TMPDIR sits under the home folder; use a scratch TMPDIR
 - [Podman pasta signal denied](podman-pasta-signal-denied.md) — host AppArmor can block `env stop`; fixed on the dev machine, real-engine tests pass since 2026-11-15
+- [Artifact amended mid-run](artifact-amended-mid-run.md) — re-read the phase section and revision log at every phase of a run

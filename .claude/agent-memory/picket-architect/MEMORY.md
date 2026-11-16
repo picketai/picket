@@ -30,3 +30,4 @@
 - [Guard on probe paths](guard-bash-probe-paths.md): a Bash heredoc naming a src code file is denied as a code write; write probes with Write
 - [Guard write paths](guard-write-paths.md): protect a folder in guard.scope; shell writes to non-code files already prompt; verify must not start stacks
 - [Compose model facts](compose-model-facts.md): config JSON drops profile-disabled services and service-level x- keys; global flags only before the subcommand; podman compose wrapper line last on stderr; info JSON fields
+- [Rejected tree locations](rejected-tree-locations.md): cumulative review tree is the close commit parent, checkpoint tree is the phase commit; old trees lack interpreters.mts and runRefusal

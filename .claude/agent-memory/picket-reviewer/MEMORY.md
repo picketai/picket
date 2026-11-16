@@ -25,3 +25,5 @@
 - [Probe scenario URL joins](probe-scenario-url-joins.md) — rule 1 checks only the {service} token; fetch refuses credential URLs
 - [Attached open( in the fallback](probe-attached-open-in-fallback.md) — probe -weopen(...) and wrapped echo on in-place guard changes; echo | bash -c python3 still passes
 - [Reproduce red in a scratch copy](reproduce-red-in-scratch-copy.md) — git archive HEAD to scratch, swap one base file via archive|tar, node --test there
+- [In-place probes from a scratch file](in-place-probe-from-scratch-file.md) — node -e with a src write literal is denied by guard.bash; run a scratchpad .mts
+- [Replay labels by family block](replay-labels-by-family-block.md) — awk a replay's label to its is-open-under header; no git stash in probes

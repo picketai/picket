@@ -1,0 +1,8 @@
+Fix the Se4 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261030-bench-out-of-the-product-capped, 20261109-close-guard-test-admit-ledger-gaps, 20261113-declared-checks-verified-by-picket-verify, 20261114-close-three-guard-gaps-closure-found, 20261114-standard-test-environment-and-env-verbs, 20261115-guard-rows-refuse-attached-program-flags, 20261116-in-place-guard-closes-three-open-spellings rejected.
+
+Se4 is a guard (a refusal, a denial, a mask, a failed check) that is open under a spelling its tests did not try. The closure tests of CONTRIBUTING.md C-020 catch it only when the developer writes the right seeds; in each of these seven items a reviewer's probe still found a missed spelling. The check this item adds must not depend on the developer guessing the seeds: it derives the spellings to try from the guard's own tables and from shared spelling families, and it fails when a guard or a row has no closure test or a family does not reach it.
+
+## Brief
+purpose: Stop the Se4 mistake class from reaching review: a guard open under a spelling its tests did not try is caught by npm test without the developer guessing the seeds
+in scope: a check that derives the spellings to try from each guard's own tables and the shared families, fails when a guard or a table row has no closure test or no family reaches it, and fails on the code the seven named reviews rejected; CONTRIBUTING.md C-020 and its Guards section
+out of scope: new guards, new interpreter rows, closing the spellings CONTRIBUTING.md names as limits, build step 4 (the tester)
