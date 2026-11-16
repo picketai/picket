@@ -1,4 +1,4 @@
-import { isSecretName } from "../env/config-entries.mts";
+import { isSecretName, mapSecretLeaves } from "../env/config-entries.mts";
 import type { Card, RequestStep, Step } from "./format.mts";
 
 export const PLACEHOLDER = /\{([a-z][a-z0-9_]*(?::[A-Za-z0-9_.+-]+)?)\}/g;
@@ -60,14 +60,13 @@ function secretHeaderProblems(step: RequestStep): string[] {
     .map(([name]) => `step ${step.line}: header ${name} holds a literal secret; ${SECRET_SOURCE}`);
 }
 
-function isLiteralSecret(key: string, value: unknown): boolean {
-  return isSecretName(key) && (typeof value === "number" || (typeof value === "string" && holdsLiteral(value)));
-}
-
 function literalSecretKeys(value: unknown): string[] {
-  if (Array.isArray(value)) return value.flatMap(literalSecretKeys);
-  if (value === null || typeof value !== "object") return [];
-  return Object.entries(value).flatMap(([key, child]) => (isLiteralSecret(key, child) ? [key] : literalSecretKeys(child)));
+  const keys = new Set<string>();
+  mapSecretLeaves(value, (leaf, key) => {
+    if (typeof leaf === "number" || holdsLiteral(leaf)) keys.add(key);
+    return leaf;
+  });
+  return [...keys];
 }
 
 function jsonBody(body: string | null): unknown {

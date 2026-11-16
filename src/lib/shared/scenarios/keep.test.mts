@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { maskedBody } from "../drive-log.mts";
 import type { CheckResult, HttpCheck } from "../work/declared-checks.mts";
 import { writeScenarioFile } from "./files.mts";
 import { fingerprintMatches, parseScenario, writeScenario, type Card } from "./format.mts";
@@ -66,6 +67,11 @@ test("each refusal names why the check is not kept (T-9.2)", () => {
   assert.equal(refusal({ files: ["README.md"] }), "the phase's files sit in no app or in several; name one with service");
   assert.equal(refusal({ files: ["services/orders/a.mjs", "services/billing/b.cs"] }), "the phase's files sit in no app or in several; name one with service");
   assert.equal(refusal({ result: result({ ran: { ...HIT, body: '{"sku":"A-1"}' } }) }), "POST changes data it did not create; create it with a PKT- prefix");
+});
+
+test("a logged body whose nested secret the drive log masked is not kept (T-2.6)", () => {
+  const body = maskedBody('{"secret":{"value":"hunter2"}}');
+  assert.equal(refusal({ result: result({ ran: { ...HIT, body } }) }), "the logged body holds a masked secret");
 });
 
 test("the criterion text is read from the phase's bullet line", () => {

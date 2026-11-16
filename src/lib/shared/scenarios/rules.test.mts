@@ -73,6 +73,21 @@ test("a literal secret in a header or a JSON body key is refused, a captured one
   assert.deepEqual(problems(["request POST {orders}/login", "  header content-type: application/json", '  body {"user":"a"}']), []);
 });
 
+test("a literal secret nested below a secret key is refused once, under that key (T-2.2)", () => {
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"secret":{"value":"hunter2"}}']), ["step 1: body key secret holds a literal secret; take it from a capture or {user:<role>.<field>}"]);
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"tokens":["a","b"]}']), ["step 1: body key tokens holds a literal secret; take it from a capture or {user:<role>.<field>}"]);
+});
+
+test("a nested secret made only of sources passes (T-2.3)", () => {
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"password":{"value":"{user:admin.password}"}}']), []);
+  assert.deepEqual(problems(["request POST {orders}/login", "capture token json token", "request POST {orders}/x", '  body {"auth":{"token":"{token}"}}']), []);
+});
+
+test("a boolean or null under a secret key is not refused (T-2.4)", () => {
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"password":true}']), []);
+  assert.deepEqual(problems(["request POST {orders}/x", '  body {"secret":null}']), []);
+});
+
 test("ordinary code keys and headers pass the card rule, a passcode does not (T-1.3)", () => {
   assert.deepEqual(problems(["request POST {orders}/x", '  body {"countryCode":"DE","postalCode":"10115"}']), []);
   assert.deepEqual(problems(["request GET {orders}/x", "  header X-Country-Code: DE"]), []);

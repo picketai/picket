@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { configFormat, isAddressLike, isSecretName, masked, readConfigFile } from "./config-entries.mts";
+import { configFormat, isAddressLike, isSecretName, mapSecretLeaves, masked, readConfigFile } from "./config-entries.mts";
 
 const ADDRESS_VALUES = [
   "Server=localhost,1433;Database=Billing;User Id=sa;Password=x",
@@ -71,6 +71,20 @@ test("isSecretName passes ordinary code compounds and still matches secret code 
 
 test("masked keeps an ordinary code pair and hides a bare code pair in the same URL (T-1.4)", () => {
   assert.equal(masked("Url", "https://a.example.com/x?countryCode=DE&code=FUNCKEY"), "https://a.example.com/x?countryCode=DE&code=***");
+});
+
+test("mapSecretLeaves maps every string or number below a secret key with the nearest secret key, and keeps the rest", () => {
+  const value = { secret: { value: "a", n: 1, flag: true, none: null }, sku: "b", list: [{ token: "c" }], password: { apiKey: ["d"] } };
+  assert.deepEqual(mapSecretLeaves(value, (leaf, key) => `${key}:${leaf}`), {
+    secret: { value: "secret:a", n: "secret:1", flag: true, none: null },
+    sku: "b",
+    list: [{ token: "token:c" }],
+    password: { apiKey: ["apiKey:d"] },
+  });
+});
+
+test("mapSecretLeaves leaves a value without secret keys as it is", () => {
+  assert.deepEqual(mapSecretLeaves([{ sku: "a", n: 2 }, "free", 3], () => "***"), [{ sku: "a", n: 2 }, "free", 3]);
 });
 
 test("masked leaves values without secrets as they are and keeps null", () => {

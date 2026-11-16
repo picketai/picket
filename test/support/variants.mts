@@ -56,7 +56,13 @@ export const JSON_SECRET_VALUE = "Kval9";
 
 const JSON_SECRET_KEYS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "credential", "accountkey", "sharedaccesskey", "authCode", "passcode", "code", "auth_code", "code_verifier"];
 
-export const jsonSecretSeeds: string[] = JSON_SECRET_KEYS.map((key) => JSON.stringify({ [key]: JSON_SECRET_VALUE }));
+const NESTED_SECRET_PAIRS = [
+  { secret: { value: JSON_SECRET_VALUE } },
+  { tokens: [JSON_SECRET_VALUE] },
+  { password: { items: [{ v: JSON_SECRET_VALUE }] } },
+];
+
+export const jsonSecretSeeds: string[] = [...JSON_SECRET_KEYS.map((key) => ({ [key]: JSON_SECRET_VALUE })), ...NESTED_SECRET_PAIRS].map((pair) => JSON.stringify(pair));
 
 function onlyPair(seed: string): [string, unknown] {
   const pairs = Object.entries(JSON.parse(seed) as Record<string, unknown>);

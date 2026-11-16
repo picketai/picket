@@ -41,6 +41,17 @@ test("a JSON body keeps ordinary code keys and masks a secret code key (T-1.2)",
   assert.equal(maskedBody('{"countryCode":"DE","statusCode":200,"authCode":"Kval9"}'), '{"countryCode":"DE","statusCode":200,"authCode":"***"}');
 });
 
+test("a JSON body has every leaf below a secret-named key masked, inside objects and arrays (T-2.1)", () => {
+  assert.equal(maskedBody('{"secret":{"value":"hunter2"}}'), '{"secret":{"value":"***"}}');
+  assert.equal(maskedBody('{"tokens":["abc"]}'), '{"tokens":["***"]}');
+  assert.equal(maskedBody('{"auth":{"code":"Kval9"}}'), '{"auth":{"code":"***"}}');
+});
+
+test("a boolean or null under a secret-named key is not masked (T-2.4)", () => {
+  assert.equal(maskedBody('{"password":true}'), '{"password":true}');
+  assert.equal(maskedBody('{"secret":null}'), '{"secret":null}');
+});
+
 test("a body that is not JSON is masked as pairs (T-7.3)", () => {
   assert.equal(maskedBody("name=x&password=y"), "name=x&password=***");
   assert.equal(maskedBody("plain text"), "plain text");

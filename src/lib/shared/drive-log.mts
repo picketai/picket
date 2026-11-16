@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { appendJsonl, readJsonl, type JsonlRead } from "../util/io.mts";
-import { isSecretName, masked } from "./env/config-entries.mts";
+import { mapSecretLeaves, masked } from "./env/config-entries.mts";
 import { statePath, STATE_FILES } from "./paths.mts";
 import { readChecks, type DeclaredCheck } from "./work/declared-checks.mts";
 import { isWorkId, workFile, type WorkId } from "./work/files.mts";
@@ -39,17 +39,6 @@ export function maskEnvValues(command: string): string {
 
 const MASK = "***";
 
-function maskedValue(key: string, value: unknown): unknown {
-  if (isSecretName(key.replaceAll("-", "")) && (typeof value === "string" || typeof value === "number")) return MASK;
-  return maskedJson(value);
-}
-
-function maskedJson(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(maskedJson);
-  if (value === null || typeof value !== "object") return value;
-  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, maskedValue(key, child)]));
-}
-
 function parsedJson(text: string): { value: unknown } | null {
   try {
     return { value: JSON.parse(text) };
@@ -60,7 +49,7 @@ function parsedJson(text: string): { value: unknown } | null {
 
 export function maskedBody(text: string): string {
   const parsed = parsedJson(text);
-  return parsed === null ? (masked(null, text) ?? "") : JSON.stringify(maskedJson(parsed.value));
+  return parsed === null ? (masked(null, text) ?? "") : JSON.stringify(mapSecretLeaves(parsed.value, () => MASK));
 }
 
 function driveLogPath(root: string): string {

@@ -102,6 +102,19 @@ export function isSecretName(name: string): boolean {
   return SECRET_WORDS.some((word) => plain.includes(word));
 }
 
+export type SecretLeafMapper = (leaf: string | number, key: string) => unknown;
+
+function mapUnder(value: unknown, secretKey: string | null, onLeaf: SecretLeafMapper): unknown {
+  if (secretKey !== null && (typeof value === "string" || typeof value === "number")) return onLeaf(value, secretKey);
+  if (Array.isArray(value)) return value.map((child) => mapUnder(child, secretKey, onLeaf));
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, mapUnder(child, isSecretName(key) ? key : secretKey, onLeaf)]));
+}
+
+export function mapSecretLeaves(value: unknown, onLeaf: SecretLeafMapper): unknown {
+  return mapUnder(value, null, onLeaf);
+}
+
 function maskedPairs(text: string): string {
   let out = "";
   let copied = 0;
