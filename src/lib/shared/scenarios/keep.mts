@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, relative } from "node:path";
 import { readJson } from "../../util/io.mts";
 import type { DriveHit, DriveRow } from "../drive-log.mts";
 import type { EnvModel } from "../env/model.mts";
@@ -131,18 +131,22 @@ export function storeCandidates(root: string, item: string, phase: number, candi
   writeFileSync(path, `${JSON.stringify({ ...readCandidates(root, item), [String(phase)]: candidates }, null, 2)}\n`);
 }
 
-export type KeptFiles = { paths: string[]; lines: string[] };
+export type KeptBefore = { path: string; text: string | null };
+export type KeptFiles = { paths: string[]; lines: string[]; before: KeptBefore[] };
 
-function deprecateReplaced(root: string, replaced: string, by: string): { paths: string[]; line: string } {
+const PHASE_COMMIT_FAILED = "the phase commit failed";
+
+function deprecateReplaced(root: string, replaced: string, by: string): { before: KeptBefore[]; line: string } {
   const old = listScenarios(root).find((scenario) => scenario.id === replaced && scenario.card?.header.status === "active");
-  const text = old ? deprecate(readFileSync(join(root, old.path), "utf8"), by) : null;
-  if (!old || text === null) return { paths: [], line: `${replaced} is no active saved scenario; nothing deprecated` };
+  const earlier = old ? readFileSync(join(root, old.path), "utf8") : null;
+  const text = earlier === null ? null : deprecate(earlier, by);
+  if (!old || text === null) return { before: [], line: `${replaced} is no active saved scenario; nothing deprecated` };
   writeFileSync(join(root, old.path), text);
-  return { paths: [old.path], line: `${replaced} deprecated, superseded by ${by}` };
+  return { before: [{ path: old.path, text: earlier }], line: `${replaced} deprecated, superseded by ${by}` };
 }
 
 export function keepCandidates(root: string, candidates: Candidate[]): KeptFiles {
-  const kept: KeptFiles = { paths: [], lines: [] };
+  const kept: KeptFiles = { paths: [], lines: [], before: [] };
   for (const candidate of candidates) {
     const card = candidate.text === null ? null : parseScenario(candidate.text).card;
     if (card === null) {
@@ -150,10 +154,27 @@ export function keepCandidates(root: string, candidates: Candidate[]): KeptFiles
       continue;
     }
     const id = nextScenarioId(root, readResults(root));
-    kept.paths.push(writeScenarioFile(root, id, writeScenario({ ...card, header: { ...card.header, id } })));
+    const path = writeScenarioFile(root, id, writeScenario({ ...card, header: { ...card.header, id } }));
     const replaced = candidate.replaces === null ? null : deprecateReplaced(root, candidate.replaces, id);
-    kept.paths.push(...(replaced?.paths ?? []));
+    const touched: KeptBefore[] = [{ path, text: null }, ...(replaced?.before ?? [])];
+    kept.paths.push(...touched.map((entry) => entry.path));
+    kept.before.push(...touched);
     kept.lines.push(`kept ${id} from ${candidate.covers}${replaced ? `; ${replaced.line}` : ""}`);
   }
   return kept;
+}
+
+function scenarioIdOf(path: string): string {
+  return basename(path, ".md");
+}
+
+export function restoreKept(root: string, kept: KeptFiles): string[] {
+  return kept.before.map(({ path, text }) => {
+    if (text === null) {
+      rmSync(join(root, path), { force: true });
+      return `${scenarioIdOf(path)} not kept: ${PHASE_COMMIT_FAILED}`;
+    }
+    writeFileSync(join(root, path), text);
+    return `${scenarioIdOf(path)} left active: ${PHASE_COMMIT_FAILED}`;
+  });
 }

@@ -57,7 +57,9 @@ function resultLines({ sha, committed, left_staged, warnings }: CommitResult, me
   return [...lines, ...warnings];
 }
 
-export function commitPhase(root: string, snap: WorkSnapshot, phase: number, message: string, env: NodeJS.ProcessEnv, now: Date, kept: string[] = []): string[] {
+export type PhaseCommit = { lines: string[]; sha: string | null };
+
+export function commitPhase(root: string, snap: WorkSnapshot, phase: number, message: string, env: NodeJS.ProcessEnv, now: Date, kept: string[] = []): PhaseCommit {
   const id = snap.state.id;
   const planned = phaseOf(snap, phase);
   const listed = listedPathMatcher(root, [workRel(id), ...kept, ...(planned ? phasePaths(planned) : [])]);
@@ -66,9 +68,9 @@ export function commitPhase(root: string, snap: WorkSnapshot, phase: number, mes
   try {
     result = commitOwned(root, message, { add: [workRel(id), ...kept], owns: (path) => listed(path) || reported(path), env });
   } catch (err) {
-    return [(err as Error).message];
+    return { lines: [err instanceof Error ? err.message : String(err)], sha: null };
   }
   const lines = resultLines(result, message, phase, listed);
   if (result.sha) recordAccept(root, id, result.sha, phase, now);
-  return lines;
+  return { lines, sha: result.sha };
 }

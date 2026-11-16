@@ -1,13 +1,13 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { maskedBody } from "../drive-log.mts";
 import type { CheckResult, HttpCheck } from "../work/declared-checks.mts";
 import { writeScenarioFile } from "./files.mts";
 import { fingerprintMatches, parseScenario, writeScenario, type Card } from "./format.mts";
-import { candidateCard, criterionText, deprecate, keepCandidates, keepText, readCandidates, storeCandidates, type Candidate, type CandidateInput } from "./keep.mts";
+import { candidateCard, criterionText, deprecate, keepCandidates, keepText, readCandidates, restoreKept, storeCandidates, type Candidate, type CandidateInput } from "./keep.mts";
 import { scenarioProblems } from "./rules.mts";
 
 const CHECK: HttpCheck = { covers: "T-1.1", method: "POST", path: "/orders", status: 201, contains: ["id"] };
@@ -109,13 +109,31 @@ test("keeping writes the next id with a fresh fingerprint and deprecates the act
   writeScenarioFile(root, "S-0001", old);
   const replacing = writeScenario(card({ result: result({ check: { ...CHECK, replaces: "S-0001" } }) }));
   const kept = keepCandidates(root, [{ covers: "T-1.1", index: 0, outcome: "passed", detail: "", text: replacing, replaces: "S-0001" }]);
-  assert.deepEqual(kept, { paths: [".picket/env/scenarios/S-0002.md", ".picket/env/scenarios/S-0001.md"], lines: ["kept S-0002 from T-1.1; S-0001 deprecated, superseded by S-0002"] });
+  assert.deepEqual(kept, {
+    paths: [".picket/env/scenarios/S-0002.md", ".picket/env/scenarios/S-0001.md"],
+    lines: ["kept S-0002 from T-1.1; S-0001 deprecated, superseded by S-0002"],
+    before: [
+      { path: ".picket/env/scenarios/S-0002.md", text: null },
+      { path: ".picket/env/scenarios/S-0001.md", text: old },
+    ],
+  });
   const written = readFileSync(join(root, ".picket", "env", "scenarios", "S-0002.md"), "utf8");
   assert.ok(fingerprintMatches(written));
   assert.deepEqual([parseScenario(written).card?.header.id, parseScenario(written).card?.header.supersedes], ["S-0002", "S-0001"]);
   const deprecated = readFileSync(join(root, ".picket", "env", "scenarios", "S-0001.md"), "utf8");
   assert.ok(fingerprintMatches(deprecated));
   assert.deepEqual([parseScenario(deprecated).card?.header.status, parseScenario(deprecated).card?.header.superseded_by], ["deprecated", "S-0002"]);
+});
+
+test("restoreKept deletes each new card, writes back each deprecated card, and names both", (t) => {
+  const root = scratch(t);
+  const old = writeScenario({ ...card(), header: { ...card().header, id: "S-0001" } });
+  writeScenarioFile(root, "S-0001", old);
+  const replacing = writeScenario(card({ result: result({ check: { ...CHECK, replaces: "S-0001" } }) }));
+  const kept = keepCandidates(root, [{ covers: "T-1.1", index: 0, outcome: "passed", detail: "", text: replacing, replaces: "S-0001" }]);
+  assert.deepEqual(restoreKept(root, kept), ["S-0002 not kept: the phase commit failed", "S-0001 left active: the phase commit failed"]);
+  assert.deepEqual(readdirSync(join(root, ".picket", "env", "scenarios")), ["S-0001.md"]);
+  assert.equal(readFileSync(join(root, ".picket", "env", "scenarios", "S-0001.md"), "utf8"), old);
 });
 
 test("a replaces naming no active scenario deprecates nothing and says so", (t) => {

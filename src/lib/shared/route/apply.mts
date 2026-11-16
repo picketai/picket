@@ -6,7 +6,7 @@ import { setMarker } from "../work/markers.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
 import { isSessionId, writeState, type WorkState } from "../work/state.mts";
 import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
-import { keepCandidates, type KeptFiles } from "../scenarios/keep.mts";
+import { keepCandidates, restoreKept, type KeptFiles } from "../scenarios/keep.mts";
 import { commitCheckouts, commitPhase, phaseCommitMessage } from "./commit.mts";
 import type { Change } from "./plan.mts";
 
@@ -92,7 +92,12 @@ function isKeepChange(change: Change): change is KeepChange {
 
 function writeKept(root: string, changes: Change[], committing: boolean): KeptFiles {
   const candidates = committing ? changes.filter(isKeepChange).flatMap((change) => change.candidates) : [];
-  return candidates.length ? keepCandidates(root, candidates) : { paths: [], lines: [] };
+  return candidates.length ? keepCandidates(root, candidates) : { paths: [], lines: [], before: [] };
+}
+
+function committedOrRestored(root: string, snap: WorkSnapshot, phase: number, message: string, { env, now }: Pick<ApplyOptions, "env" | "now">, kept: KeptFiles): string[] {
+  const { lines, sha } = commitPhase(root, snap, phase, message, env, now, kept.paths);
+  return sha === null ? [...lines, ...restoreKept(root, kept)] : lines;
 }
 
 function grantsRun(change: Change): boolean {
@@ -136,6 +141,6 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   if (!isRefusedApproval(nested, row)) appendVerdict(root, id, row, now);
   const kept = writeKept(root, changes, nested.message !== null);
   const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null), ...kept.lines];
-  for (const change of changes) if (change.kind === "commit" && nested.message !== null) applied.push(...commitPhase(root, snap, change.phase, nested.message, env, now, kept.paths));
+  for (const change of changes) if (change.kind === "commit" && nested.message !== null) applied.push(...committedOrRestored(root, snap, change.phase, nested.message, { env, now }, kept));
   return applied;
 }

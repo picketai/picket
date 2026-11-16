@@ -842,6 +842,39 @@ test("a rejection and a failed candidate leave the scenario folder unchanged (T-
   assert.deepEqual(failing.scenarioFiles(), ["S-0001.md"]);
 });
 
+function failingPhaseCommit(t: TestContext, candidates: Candidate[]) {
+  const item = keepingItem(t, candidates);
+  const hook = join(item.root, ".git", "hooks", "commit-msg");
+  writeFileSync(hook, "#!/bin/sh\nexit 1\n");
+  chmodSync(hook, 0o755);
+  const committed = readFileSync(join(item.root, SCENARIOS, "S-0001.md"), "utf8");
+  route({ id: item.id, verdict: "PHASE DONE", agent: "developer", phase: 1, root: item.root });
+  const r = route({ id: item.id, verdict: "approved", agent: "user", phase: 1, root: item.root });
+  const scenarioStatus = item.git("status", "--porcelain", "--", SCENARIOS);
+  return { ...item, applied: r.applied, committed, scenarioStatus };
+}
+
+test("a failed phase commit deletes the new card and says it was not kept", (t) => {
+  const { root, applied, committed, scenarioFiles, scenarioStatus } = failingPhaseCommit(t, [candidate("passed")]);
+  assert.ok(applied.some((line) => line.startsWith("git commit failed")), applied.join(" | "));
+  assert.ok(applied.includes("S-0002 not kept: the phase commit failed"), applied.join(" | "));
+  assert.deepEqual(scenarioFiles(), ["S-0001.md"]);
+  assert.equal(readFileSync(join(root, SCENARIOS, "S-0001.md"), "utf8"), committed);
+  assert.equal(scenarioStatus, "");
+});
+
+test("a failed phase commit writes back the card a candidate deprecated and leaves it active", (t) => {
+  const { root, applied, committed, scenarioFiles, scenarioStatus } = failingPhaseCommit(t, [candidate("passed", "S-0001")]);
+  assert.ok(applied.includes("S-0001 left active: the phase commit failed"), applied.join(" | "));
+  assert.ok(applied.includes("S-0002 not kept: the phase commit failed"), applied.join(" | "));
+  const restored = readFileSync(join(root, SCENARIOS, "S-0001.md"), "utf8");
+  assert.equal(restored, committed);
+  const header = parseScenario(restored).card?.header;
+  assert.deepEqual([header?.status, header?.superseded_by], ["active", undefined]);
+  assert.deepEqual(scenarioFiles(), ["S-0001.md"]);
+  assert.equal(scenarioStatus, "");
+});
+
 test("a nested checkout that refuses the commit leaves the scenario folder unchanged (T-9.5)", (t) => {
   const { root, id, worktreeGit, worktree, hook } = worktreeItem(t);
   mkdirSync(join(root, SCENARIOS), { recursive: true });
