@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings, tableRows, writtenSpellings } from "#test/variants.mts";
+import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, interpreterArgv, interpreterRowSource, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, perlOpenModes, programFlagSpellings, programSeeds, quotedSpans, rowProblems, splitAlternatives, stdinSpellings, tableRows, writtenSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -231,15 +231,24 @@ test("pairNames refuses a seed that is not name=value", () => {
   assert.throws(() => pairNames.spell("password"), /a pair seed needs name=value, got password/);
 });
 
-test("programFlagSpellings spells the long form, the attached form, the cluster and leading flags (T-3.2)", () => {
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["node", "-e", "P"], heredocs: [] }), ["node --eval P", "node --eval=P", "node -pe P", "node --no-warnings -e P"]);
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["python3", "-c", "P"], heredocs: [] }), ["python3 -cP", "python3 -Bc P", "python3 -BcP", "python3 -X utf8 -c P"]);
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["ruby", "-e", "P"], heredocs: [] }), ["ruby -eP", "ruby -we P", "ruby -weP", "ruby -w -e P"]);
+const flagged = (interpreter, flag) => ({ interpreter, flag, program: "P" });
+const fed = (interpreter) => ({ interpreter, flag: null, program: "P" });
+
+test("programFlagSpellings spells the long, attached, cluster and leading forms, then the two repeated flags last (T-3.3)", () => {
+  assert.deepEqual(labels(programFlagSpellings, flagged("node", "-e")), ["node --eval P", "node --eval=P", "node -pe P", "node --no-warnings -e P", "node -e P -e1", "node -e P -e 1"]);
+  assert.deepEqual(labels(programFlagSpellings, flagged("php", "-r")), ["php -rP", "php -nr P", "php -nrP", "php -c php.ini -r P", "php -r P -r1", "php -r P -r 1"]);
+  assert.deepEqual(labels(programFlagSpellings, flagged("awk", "-e")), ["awk --source P", "awk --source=P", "awk -eP", "awk -be P", "awk -beP", "awk -F : -e P", "awk -e P -e1", "awk -e P -e 1"]);
+});
+
+test("programFlagSpellings spells python3, ruby and perl through their attached flag and cluster letter", () => {
+  assert.deepEqual(labels(programFlagSpellings, flagged("python3", "-c")).slice(0, 4), ["python3 -cP", "python3 -Bc P", "python3 -BcP", "python3 -X utf8 -c P"]);
+  assert.deepEqual(labels(programFlagSpellings, flagged("ruby", "-e")).slice(0, 4), ["ruby -eP", "ruby -we P", "ruby -weP", "ruby -w -e P"]);
+  assert.deepEqual(labels(programFlagSpellings, flagged("perl", "-e")).slice(0, 4), ["perl -eP", "perl -we P", "perl -weP", "perl -w -e P"]);
 });
 
 test("programFlagSpellings carries the program as its own word or attached to the long flag", () => {
-  const inputs = programFlagSpellings.spell({ argv: ["node", "-e", "P"], heredocs: [] }).map((spelling) => spelling.input);
-  assert.deepEqual(inputs, [
+  const inputs = programFlagSpellings.spell(flagged("node", "-e")).map((spelling) => spelling.input);
+  assert.deepEqual(inputs.slice(0, 4), [
     { argv: ["node", "--eval", "P"], heredocs: [] },
     { argv: ["node", "--eval=P"], heredocs: [] },
     { argv: ["node", "-pe", "P"], heredocs: [] },
@@ -247,41 +256,105 @@ test("programFlagSpellings carries the program as its own word or attached to th
   ]);
 });
 
-test("programFlagSpellings attaches the program to the flag and to the cluster for a row that opts in, and skips the cluster for a row without a letter", () => {
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["awk", "-e", "P"], heredocs: [] }), ["awk --source P", "awk --source=P", "awk -eP", "awk -be P", "awk -beP", "awk -F : -e P"]);
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["php", "-r", "P"], heredocs: [] }), ["php -rP", "php -nr P", "php -nrP", "php -c php.ini -r P"]);
-  assert.deepEqual(programFlagSpellings.spell({ argv: ["lua", "-e", "P"], heredocs: [] }).map((spelling) => spelling.input), [
-    { argv: ["lua", "-eP"], heredocs: [] },
-    { argv: ["lua", "-l", "mod", "-e", "P"], heredocs: [] },
-  ]);
+test("programFlagSpellings skips the cluster for a row without a letter, and spells bun's --print and deno's subcommand", () => {
+  assert.deepEqual(labels(programFlagSpellings, flagged("lua", "-e")).slice(0, 2), ["lua -eP", "lua -l mod -e P"]);
+  assert.deepEqual(labels(programFlagSpellings, flagged("bun", "-p")).slice(0, 3), ["bun --print P", "bun --print=P", "bun --smol -p P"]);
+  assert.deepEqual(labels(programFlagSpellings, flagged("deno", "eval")), ["deno -q eval P", "deno eval --quiet P"]);
 });
 
-test("programFlagSpellings spells perl's attached flag, its -w cluster and leading -w", () => {
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["perl", "-e", "P"], heredocs: [] }), ["perl -eP", "perl -we P", "perl -weP", "perl -w -e P"]);
-});
-
-test("programFlagSpellings returns nothing for a seed whose second word is not a program flag of its interpreter (T-1.3)", () => {
-  assert.deepEqual(programFlagSpellings.spell({ argv: ["awk", "BEGIN { }"], heredocs: [] }), []);
-  assert.deepEqual(programFlagSpellings.spell({ argv: ["node"], heredocs: ["P"] }), []);
-  assert.deepEqual(programFlagSpellings.spell({ argv: ["python3", "-e", "P"], heredocs: [] }), []);
+test("programFlagSpellings returns nothing for a stdin seed or a flag outside the vocabulary (T-1.3)", () => {
+  assert.deepEqual(programFlagSpellings.spell(fed("node")), []);
+  assert.deepEqual(programFlagSpellings.spell(flagged("python3", "-e")), []);
 });
 
 test("programFlagSpellings and stdinSpellings throw on an interpreter with no vocabulary row (T-1.3)", () => {
-  assert.throws(() => programFlagSpellings.spell({ argv: ["bash", "-c", "P"], heredocs: [] }), /no flag table row for the interpreter bash/);
-  assert.throws(() => stdinSpellings.spell({ argv: ["bash"], heredocs: ["P"] }), /no flag table row for the interpreter bash/);
-  assert.throws(() => stdinSpellings.spell({ argv: ["bash", "-c", "P"], heredocs: [] }), /no flag table row for the interpreter bash/);
+  assert.throws(() => programFlagSpellings.spell(flagged("bash", "-c")), /no flag table row for the interpreter bash/);
+  assert.throws(() => stdinSpellings.spell(fed("bash")), /no flag table row for the interpreter bash/);
+  assert.throws(() => stdinSpellings.spell(flagged("bash", "-c")), /no flag table row for the interpreter bash/);
 });
 
-test("stdinSpellings returns nothing for a seed with no heredoc (T-1.3)", () => {
-  assert.deepEqual(stdinSpellings.spell({ argv: ["python3", "-c", "P"], heredocs: [] }), []);
+test("stdinSpellings returns nothing for a seed with a program flag, or for an interpreter that reads no standard input (T-1.3)", () => {
+  assert.deepEqual(stdinSpellings.spell(flagged("python3", "-c")), []);
+  assert.deepEqual(stdinSpellings.spell(fed("bun")), []);
 });
 
-test("stdinSpellings feeds tclsh after its leading -encoding utf-8", () => {
-  assert.deepEqual(labels(stdinSpellings, { argv: ["tclsh"], heredocs: ["P"] }).at(-1), "tclsh -encoding utf-8 - << P");
+test("stdinSpellings feeds tclsh a standard input file, then after its leading -encoding utf-8", () => {
+  assert.deepEqual(labels(stdinSpellings, fed("tclsh")), ["tclsh /dev/stdin << P", "tclsh /dev/fd/0 << P", "tclsh /proc/self/fd/0 << P", "tclsh -encoding utf-8 /dev/stdin << P"]);
 });
 
-test("stdinSpellings reads the heredoc after - and each standard input path alone, then after the leading flags (T-3.4)", () => {
-  const spellings = stdinSpellings.spell({ argv: ["python3"], heredocs: ["P"] });
+test("stdinSpellings gives awk only script flags, never a bare -, and gives R's script flags to R", () => {
+  const awk = labels(stdinSpellings, fed("awk"));
+  assert.deepEqual(awk.slice(0, 4), ["awk -f - << P", "awk -f- << P", "awk -f /dev/stdin << P", "awk -f/dev/stdin << P"]);
+  assert.ok(awk.includes("awk --file=/dev/fd/0 << P") && awk.includes("awk -E /proc/self/fd/0 << P"));
+  assert.ok(!awk.includes("awk - << P"));
+  assert.deepEqual(labels(stdinSpellings, fed("Rscript")).slice(0, 4), ["Rscript - << P", "Rscript --vanilla - << P", "R -f - << P", "R -f- << P"]);
+});
+
+test("a stdin seed is written bare for an interpreter that reads standard input bare, else in its first reading", () => {
+  assert.deepEqual(writtenSpellings({ grammar: interpreterArgv, seeds: [fed("python3"), fed("awk"), flagged("node", "-e")] }).map((spelling) => spelling.label), ["python3 << P", "awk -f - << P", "node -e P"]);
+});
+
+test("programSeeds crosses each program flag and the subcommand with every sample, then feeds each sample on standard input", () => {
+  assert.deepEqual(programSeeds({ php: ["W"], deno: ["D"] }), [
+    { interpreter: "php", flag: "-r", program: "W" },
+    { interpreter: "php", flag: "-B", program: "W" },
+    { interpreter: "php", flag: "-R", program: "W" },
+    { interpreter: "php", flag: "-E", program: "W" },
+    { interpreter: "php", flag: null, program: "<?php W" },
+    { interpreter: "deno", flag: "eval", program: "D" },
+  ]);
+});
+
+test("perlOpenModes gives 72 spellings of the seed's path, open(F, M) first, and nothing for another interpreter (T-3.4)", () => {
+  const seed = { interpreter: "perl", flag: "-e", program: "open(F, '>src/a.pl')" };
+  const spelled = labels(perlOpenModes, seed);
+  assert.equal(spelled.length, 72);
+  assert.deepEqual(spelled.slice(0, 3), ["perl -e open(F, '>src/a.pl')", "perl -e open F, '>src/a.pl'", "perl -e open(my $f, '>', 'src/a.pl')"]);
+  assert.ok(spelled.includes("perl -e open F, '> src/a.pl'") && spelled.includes("perl -e open(my $f, \"+>\t\", \"src/a.pl\")"));
+  assert.deepEqual(perlOpenModes.spell({ ...seed, interpreter: "ruby" }), []);
+  assert.deepEqual(perlOpenModes.spell({ ...seed, program: "print 1" }), []);
+});
+
+const WRITE_CALL = String.raw`\.write\(|write_text\(|writeFileSync\(|writeFile\(|appendFileSync\(|File\.write|\bopen\([^)]*?(['"])[rbt]*[wa+][rwabt+]*\1|\bopen[ \t]*\(?[^;)\n'"]*['"](?:>|\+[<>])`;
+const PHP_WRITE_CALL = String.raw`\bfile_put_contents\(|\bfopen\([^)]*?(['"])[waxc][bt+]*\1`;
+const LUA_WRITE_CALL = String.raw`\bio\.open\([^)]*?(['"])[wa][b+]*\1|\bio\.output\(`;
+const R_WRITE_CALL = String.raw`\bwriteLines\(|\bwriteChar\(|\bwriteBin\(|\bwrite(?:\.\w+)?\(|\bsink\(|\bcat\([^)]*\bfile\s*=|\bfile\([^)]*?(['"])[wa][bt+]*\1`;
+
+test("splitAlternatives splits the write patterns at their top-level bars only (T-3.2)", () => {
+  assert.equal(splitAlternatives(WRITE_CALL).length, 8);
+  assert.deepEqual(splitAlternatives(PHP_WRITE_CALL), [String.raw`\bfile_put_contents\(`, String.raw`\bfopen\([^)]*?(['"])[waxc][bt+]*\1`]);
+  assert.equal(splitAlternatives(LUA_WRITE_CALL).length, 2);
+  assert.equal(splitAlternatives(R_WRITE_CALL).length, 7);
+});
+
+test("splitAlternatives keeps a bar inside a group, a class or after a backslash, and refuses an unclosed group", () => {
+  assert.deepEqual(splitAlternatives(String.raw`a(b|c)|[|]|\||d`), ["a(b|c)", "[|]", String.raw`\|`, "d"]);
+  assert.throws(() => splitAlternatives("(a|b"), /an unclosed group or class in \(a\|b/);
+});
+
+const fakeRow = (names, writeCall, more = {}) => ({ names, writeCall, ...more });
+
+function rowSourceOver(rows, writes) {
+  const byName = (name) => rows.find((row) => row.names.includes(name.toLowerCase()));
+  return interpreterRowSource({ table: "FAKE", path: "fake.mjs", rows, missing: null }, byName, writes);
+}
+
+test("interpreterRowSource fails a row no vocabulary interpreter maps to, naming it (T-3.1)", () => {
+  const rows = [fakeRow(["node"], /write\(/), fakeRow(["zsh"], /print/)];
+  const source = rowSourceOver(rows, { node: ["write('src/a.ts')"] });
+  assert.deepEqual(rowProblems(interpreterArgv, source), ["zsh has no seed", "zsh maps to no vocabulary interpreter"]);
+});
+
+test("interpreterRowSource fails a row flag the vocabulary does not spell, and an alternative no sample matches alone", () => {
+  const rows = [fakeRow(["php"], /put\(|File\.put/, { programFlags: ["-r", "-Z"] })];
+  const source = rowSourceOver(rows, { php: ["File.put(1)", "File.put 1"] });
+  assert.deepEqual(rowProblems(interpreterArgv, source), ["php flag -Z has no spelling in the vocabulary", String.raw`php write alternative put\( is matched alone by no sample`]);
+  const isolated = rowSourceOver(rows.map((row) => ({ ...row, programFlags: ["-r"] })), { php: ["File.put", "put(1)"] });
+  assert.deepEqual(rowProblems(interpreterArgv, isolated), []);
+});
+
+test("stdinSpellings reads the heredoc after - and each standard input path alone, then after the leading flags", () => {
+  const spellings = stdinSpellings.spell(fed("python3"));
   assert.deepEqual(spellings, [
     { label: "python3 - << P", input: { argv: ["python3", "-"], heredocs: ["P"] } },
     { label: "python3 /dev/stdin << P", input: { argv: ["python3", "/dev/stdin"], heredocs: ["P"] } },

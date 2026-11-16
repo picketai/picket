@@ -1,7 +1,8 @@
 import { guardOutput } from "#test/hook.mts";
 import { withProject } from "#test/project.mts";
-import { closureTests, interpreterArgv, shellCommands, type Invocation } from "#test/variants.mts";
+import { closureTests, interpreterArgv, interpreterRowSource, loadedExport, loadGuard, programSeeds, shellCommands, tableRows, type Invocation } from "#test/variants.mts";
 import { inPlaceTargets } from "./in-place.mts";
+import type { Family } from "./interpreters.mts";
 
 const NODE_WRITE = "require('fs').writeFileSync('src/a.ts','x')";
 const PYTHON_WRITE = "open('src/a.py','w').write('x')";
@@ -78,28 +79,29 @@ const REVIEW_PROBES = [
   inline("python3", "-Ecopen('src/a.py','w')"),
 ];
 
-const SEEDS = [
-  inline("node", "-e", NODE_WRITE),
-  inline("python3", "-c", PYTHON_WRITE),
-  inline("ruby", "-e", RUBY_WRITE),
-  inline("perl", "-e", PERL_WRITE),
-  inline("php", "-r", PHP_WRITE),
-  inline("lua", "-e", LUA_WRITE),
-  inline("awk", "-e", AWK_WRITE),
-  inline("awk", AWK_WRITE),
-  inline("python3", "-c", "open('src/a.py','w')"),
-  inline("ruby", "-e", "open('src/a.rb','w'){|f| f.puts 1}"),
-  fedOnStdin(NODE_WRITE, "node"),
-  fedOnStdin(PYTHON_WRITE, "python3"),
-  fedOnStdin(RUBY_WRITE, "ruby"),
-  fedOnStdin(TCL_WRITE, "tclsh"),
-];
+const WRITES: Record<string, string[]> = {
+  python3: [PYTHON_WRITE, "open('src/a.py','w')", "__import__('pathlib').Path('src/a.py').write_text('x')"],
+  node: [NODE_WRITE, "require('fs').writeFile('src/a.ts','x',()=>{})", "require('fs').appendFileSync('src/a.ts','x')", "require('fs').createWriteStream('src/a.ts').write('x')"],
+  perl: [PERL_WRITE, "open(F, '>src/a.pl')"],
+  ruby: [RUBY_WRITE, `File.write "src/a.rb", "x"`, "open('src/a.rb','w'){|f| f.puts 1}"],
+  bun: ["Bun.write('src/a.ts','x')", NODE_WRITE],
+  deno: ["Deno.writeFileSync('src/a.ts', new TextEncoder().encode('x'))"],
+  php: [PHP_WRITE, `$f = fopen("src/a.ts", "w");`],
+  lua: [LUA_WRITE, `io.output("src/a.ts")`],
+  Rscript: [R_WRITE, `writeChar("x", "src/a.ts")`, `writeBin(as.raw(1), "src/a.ts")`, `write("x", "src/a.ts")`, `sink("src/a.ts")`, `cat("x", file = "src/a.ts")`, `close(file("src/a.ts", "w"))`],
+  awk: [AWK_WRITE],
+  tclsh: [TCL_WRITE],
+};
+
+const interpreters = await loadGuard(() => import("./interpreters.mts"), "src/lib/hooks/guard/bash/interpreters.mts");
+const familyOf = (name: string) => loadedExport(interpreters, "familyOf")(name);
 
 closureTests({
   guard: "in-place guard",
   grammar: interpreterArgv,
-  seeds: SEEDS,
+  seeds: programSeeds(WRITES),
   probes: REVIEW_PROBES,
+  rows: [interpreterRowSource(tableRows<Family>(interpreters, "FAMILIES"), familyOf, WRITES)],
   run: ({ argv, heredocs }: Invocation) => inPlaceTargets(argv, heredocs),
   closed: (targets) => targets.some((target) => target.startsWith("src/a.")),
 });

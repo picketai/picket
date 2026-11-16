@@ -16,7 +16,7 @@ export type Loaded<M> = { path: string; module: Partial<M> | null; missing: stri
 
 export type TableRows<Row> = { table: string; path: string; rows: readonly Row[]; missing: string | null };
 
-export type RowSource<Row, S> = { table: TableRows<Row>; key: (row: Row) => string; seedsOf: (row: Row) => S[] };
+export type RowSource<Row, S> = { table: TableRows<Row>; key: (row: Row) => string; seedsOf: (row: Row) => S[]; problems?: (row: Row) => string[] };
 
 export type Closure<S, I, R> = {
   guard: string;
@@ -162,23 +162,42 @@ export const jsonBodies: Grammar<string, string> = {
 
 export type Invocation = { argv: string[]; heredocs: string[] };
 
-type InterpreterFlags = { programFlags: string[]; long: Record<string, string>; attached?: true; clusterLetter?: string; leading: string[] };
+export type ProgramSeed = { interpreter: string; flag: string | null; program: string };
 
-const INTERPRETER_FLAGS: Record<string, InterpreterFlags> = {
-  node: { programFlags: ["-e"], long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
-  python3: { programFlags: ["-c"], long: {}, attached: true, clusterLetter: "B", leading: ["-X", "utf8"] },
-  ruby: { programFlags: ["-e"], long: {}, attached: true, clusterLetter: "w", leading: ["-w"] },
-  perl: { programFlags: ["-e"], long: {}, attached: true, clusterLetter: "w", leading: ["-w"] },
-  php: { programFlags: ["-r"], long: {}, attached: true, clusterLetter: "n", leading: ["-c", "php.ini"] },
-  lua: { programFlags: ["-e"], long: {}, attached: true, leading: ["-l", "mod"] },
-  awk: { programFlags: ["-e"], long: { "-e": "--source" }, attached: true, clusterLetter: "b", leading: ["-F", ":"] },
-  tclsh: { programFlags: [], long: {}, leading: ["-encoding", "utf-8"] },
+type StdinReading = { bare: boolean; paths: string[]; scriptFlags?: string[]; scriptName?: string; prefix?: string };
+
+type Vocabulary = {
+  programFlags: string[];
+  long?: Record<string, string>;
+  attached?: true;
+  clusterLetter?: string;
+  leading: string[];
+  subcommand?: { name: string; before: string[]; after: string[] };
+  stdin?: StdinReading;
 };
 
-function flagsOf(interpreter: string): InterpreterFlags {
-  const flags = INTERPRETER_FLAGS[interpreter];
-  if (flags === undefined) throw new Error(`no flag table row for the interpreter ${interpreter}`);
-  return flags;
+const STDIN_PATHS = ["-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"];
+const STDIN_FILES = STDIN_PATHS.slice(1);
+const ANY_STDIN: StdinReading = { bare: true, paths: STDIN_PATHS };
+
+const VOCABULARY: Record<string, Vocabulary> = {
+  node: { programFlags: ["-e"], long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"], stdin: ANY_STDIN },
+  python3: { programFlags: ["-c"], attached: true, clusterLetter: "B", leading: ["-X", "utf8"], stdin: ANY_STDIN },
+  ruby: { programFlags: ["-e"], attached: true, clusterLetter: "w", leading: ["-w"], stdin: ANY_STDIN },
+  perl: { programFlags: ["-e"], attached: true, clusterLetter: "w", leading: ["-w"], stdin: ANY_STDIN },
+  bun: { programFlags: ["-e", "-p"], long: { "-e": "--eval", "-p": "--print" }, leading: ["--smol"] },
+  deno: { programFlags: [], leading: [], subcommand: { name: "eval", before: ["-q"], after: ["--quiet"] } },
+  php: { programFlags: ["-r", "-B", "-R", "-E"], attached: true, clusterLetter: "n", leading: ["-c", "php.ini"], stdin: { bare: true, paths: STDIN_FILES, prefix: "<?php " } },
+  lua: { programFlags: ["-e"], attached: true, leading: ["-l", "mod"], stdin: ANY_STDIN },
+  Rscript: { programFlags: ["-e"], attached: true, leading: ["--vanilla"], stdin: { bare: false, paths: ["-"], scriptFlags: ["-f", "--file"], scriptName: "R" } },
+  awk: { programFlags: ["-e"], long: { "-e": "--source" }, attached: true, clusterLetter: "b", leading: ["-F", ":"], stdin: { bare: false, paths: [], scriptFlags: ["-f", "--file", "-E"] } },
+  tclsh: { programFlags: [], leading: ["-encoding", "utf-8"], stdin: { bare: true, paths: STDIN_FILES } },
+};
+
+function vocabularyOf(interpreter: string): Vocabulary {
+  const vocabulary = VOCABULARY[interpreter];
+  if (vocabulary === undefined) throw new Error(`no flag table row for the interpreter ${interpreter}`);
+  return vocabulary;
 }
 
 export function invocationLabel({ argv, heredocs }: Invocation): string {
@@ -192,38 +211,107 @@ function invocations(argvs: string[][], heredocs: string[]): Spelling<Invocation
   });
 }
 
+function scriptReadings(interpreter: string, { scriptFlags = [], scriptName = interpreter }: StdinReading): string[][] {
+  return scriptFlags.flatMap((flag) => STDIN_PATHS.flatMap((path) => [[scriptName, flag, path], [scriptName, flag.startsWith("--") ? `${flag}=${path}` : `${flag}${path}`]]));
+}
+
+function stdinReadings(interpreter: string, { leading, stdin }: Vocabulary): string[][] {
+  if (stdin === undefined) return [];
+  const alone = stdin.paths.map((path) => [interpreter, path]);
+  const afterLeading = stdin.paths.length === 0 ? [] : [[interpreter, ...leading, stdin.paths[0]]];
+  return [...alone, ...afterLeading, ...scriptReadings(interpreter, stdin)];
+}
+
+function writtenStdin(interpreter: string, vocabulary: Vocabulary): string[] {
+  if (vocabulary.stdin?.bare) return [interpreter];
+  const first = stdinReadings(interpreter, vocabulary)[0];
+  if (first === undefined) throw new Error(`the interpreter ${interpreter} reads no standard input in the vocabulary`);
+  return first;
+}
+
+export function programInvocation({ interpreter, flag, program }: ProgramSeed): Invocation {
+  if (flag !== null) return { argv: [interpreter, flag, program], heredocs: [] };
+  return { argv: writtenStdin(interpreter, vocabularyOf(interpreter)), heredocs: [program] };
+}
+
+function withProgram(seed: ProgramSeed, programs: string[]): Spelling<Invocation>[] {
+  return programs.map((program) => {
+    const input = programInvocation({ ...seed, program });
+    return { label: invocationLabel(input), input };
+  });
+}
+
 function longSpellings(interpreter: string, long: string | undefined, program: string): string[][] {
   return long === undefined ? [] : [[interpreter, long, program], [interpreter, `${long}=${program}`]];
 }
 
-function clusterSpellings(interpreter: string, flag: string, program: string, { attached, clusterLetter }: InterpreterFlags): string[][] {
+function clusterSpellings(interpreter: string, flag: string, program: string, { attached, clusterLetter }: Vocabulary): string[][] {
   if (clusterLetter === undefined) return [];
   const cluster = `-${clusterLetter}${flag.slice(1)}`;
   return [[interpreter, cluster, program], ...(attached ? [[interpreter, `${cluster}${program}`]] : [])];
 }
 
-export const programFlagSpellings: Family<Invocation, Invocation> = {
+function flagArgvs(interpreter: string, flag: string, program: string, vocabulary: Vocabulary): string[][] {
+  return [
+    ...longSpellings(interpreter, vocabulary.long?.[flag], program),
+    ...(vocabulary.attached ? [[interpreter, `${flag}${program}`]] : []),
+    ...clusterSpellings(interpreter, flag, program, vocabulary),
+    [interpreter, ...vocabulary.leading, flag, program],
+    [interpreter, flag, program, `${flag}1`],
+    [interpreter, flag, program, flag, "1"],
+  ];
+}
+
+function subcommandArgvs(interpreter: string, program: string, { name, before, after }: NonNullable<Vocabulary["subcommand"]>): string[][] {
+  return [[interpreter, ...before, name, program], [interpreter, name, ...after, program]];
+}
+
+export const programFlagSpellings: Family<ProgramSeed, Invocation> = {
   name: "program flag spellings",
-  spell: ({ argv: [interpreter, flag, program] }) => {
-    const flags = flagsOf(interpreter);
-    if (!flags.programFlags.includes(flag)) return [];
-    return invocations([
-      ...longSpellings(interpreter, flags.long[flag], program),
-      ...(flags.attached ? [[interpreter, `${flag}${program}`]] : []),
-      ...clusterSpellings(interpreter, flag, program, flags),
-      [interpreter, ...flags.leading, flag, program],
-    ], []);
+  spell: ({ interpreter, flag, program }) => {
+    const vocabulary = vocabularyOf(interpreter);
+    if (flag === null) return [];
+    if (flag === vocabulary.subcommand?.name) return invocations(subcommandArgvs(interpreter, program, vocabulary.subcommand), []);
+    if (!vocabulary.programFlags.includes(flag)) return [];
+    return invocations(flagArgvs(interpreter, flag, program, vocabulary), []);
   },
 };
 
-const STDIN_PATHS = ["-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"];
-
-export const stdinSpellings: Family<Invocation, Invocation> = {
+export const stdinSpellings: Family<ProgramSeed, Invocation> = {
   name: "stdin spellings",
-  spell: ({ argv: [interpreter], heredocs }) => {
-    const { leading } = flagsOf(interpreter);
-    if (heredocs.length === 0) return [];
-    return invocations([...STDIN_PATHS.map((path) => [interpreter, path]), [interpreter, ...leading, "-"]], heredocs);
+  spell: ({ interpreter, flag, program }) => {
+    const vocabulary = vocabularyOf(interpreter);
+    if (flag !== null) return [];
+    return invocations(stdinReadings(interpreter, vocabulary), [program]);
+  },
+};
+
+const PERL_MODES = [">", ">>", "+<", "+>"];
+const PERL_QUOTES = ["'", "\""];
+const PERL_GAPS = ["", " ", "\t"];
+const PERL_OPEN_FORMS: ((quote: string, mode: string, path: string) => string)[] = [
+  (quote, mode, path) => `open(F, ${quote}${mode}${path}${quote})`,
+  (quote, mode, path) => `open F, ${quote}${mode}${path}${quote}`,
+  (quote, mode, path) => `open(my $f, ${quote}${mode}${quote}, ${quote}${path}${quote})`,
+];
+const QUOTED = /(['"])([^'"]*)\1/g;
+const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])[ \t]*/;
+
+function openedPath(program: string): string | null {
+  if (!/\bopen\b/.test(program)) return null;
+  const path = [...program.matchAll(QUOTED)].at(-1)?.[2].replace(PERL_MODE_PREFIX, "") ?? "";
+  return path === "" ? null : path;
+}
+
+function perlOpens(path: string): string[] {
+  return PERL_MODES.flatMap((mode) => PERL_QUOTES.flatMap((quote) => PERL_GAPS.flatMap((gap) => PERL_OPEN_FORMS.map((form) => form(quote, `${mode}${gap}`, path)))));
+}
+
+export const perlOpenModes: Family<ProgramSeed, Invocation> = {
+  name: "perl open modes",
+  spell: (seed) => {
+    const path = seed.interpreter === "perl" ? openedPath(seed.program) : null;
+    return path === null ? [] : withProgram(seed, perlOpens(path));
   },
 };
 
@@ -236,6 +324,9 @@ const INTERPRETER_NAMES: Record<string, string[]> = {
   lua: ["lua5.4", "luajit"],
   awk: ["gawk", "mawk", "nawk"],
   tclsh: ["tclsh8.6"],
+  bun: [],
+  deno: [],
+  Rscript: ["R"],
 };
 
 function namesOf(interpreter: string): string[] {
@@ -249,17 +340,96 @@ function nameSpellings(interpreter: string): string[] {
   return [...names.slice(1), ...names.flatMap((name) => [`/usr/bin/${name}`, `${name}.exe`])];
 }
 
-export const interpreterNames: Family<Invocation, Invocation> = {
+export const interpreterNames: Family<ProgramSeed, Invocation> = {
   name: "interpreter names",
-  spell: ({ argv: [interpreter, ...rest], heredocs }) => invocations(nameSpellings(interpreter).map((name) => [name, ...rest]), heredocs),
+  spell: (seed) => {
+    const { argv: [, ...rest], heredocs } = programInvocation(seed);
+    return invocations(nameSpellings(seed.interpreter).map((name) => [name, ...rest]), heredocs);
+  },
 };
 
-export const interpreterArgv: Grammar<Invocation, Invocation> = {
+export const interpreterArgv: Grammar<ProgramSeed, Invocation> = {
   name: "interpreter argv",
-  written: (invocation) => invocation,
+  written: programInvocation,
   label: invocationLabel,
-  families: [programFlagSpellings, stdinSpellings, interpreterNames],
+  families: [programFlagSpellings, stdinSpellings, interpreterNames, perlOpenModes],
 };
+
+export function programSeeds(writes: Record<string, string[]>): ProgramSeed[] {
+  return Object.entries(writes).flatMap(([interpreter, samples]) => {
+    const vocabulary = vocabularyOf(interpreter);
+    const flags = [...vocabulary.programFlags, ...(vocabulary.subcommand === undefined ? [] : [vocabulary.subcommand.name])];
+    const flagged = flags.flatMap((flag) => samples.map((program) => ({ interpreter, flag, program })));
+    const stdin = vocabulary.stdin;
+    const fed = stdin === undefined ? [] : samples.map((program) => ({ interpreter, flag: null, program: `${stdin.prefix ?? ""}${program}` }));
+    return [...flagged, ...fed];
+  });
+}
+
+function spelledFlags(interpreter: string): string[] {
+  const { programFlags, long = {}, subcommand, stdin } = vocabularyOf(interpreter);
+  return [...programFlags, ...Object.values(long), ...(stdin?.scriptFlags ?? []), ...(subcommand === undefined ? [] : [subcommand.name])];
+}
+
+export function splitAlternatives(source: string): string[] {
+  const alternatives: string[] = [];
+  let depth = 0;
+  let inClass = false;
+  let start = 0;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (char === "\\") i++;
+    else if (inClass) inClass = char !== "]";
+    else if (char === "[") inClass = true;
+    else if (char === "(") depth++;
+    else if (char === ")") depth--;
+    else if (char === "|" && depth === 0) {
+      alternatives.push(source.slice(start, i));
+      start = i + 1;
+    }
+    if (depth < 0) throw new Error(`an unopened group at ${i} in ${source}`);
+  }
+  if (depth !== 0 || inClass) throw new Error(`an unclosed group or class in ${source}`);
+  return [...alternatives, source.slice(start)];
+}
+
+export type InterpreterRow = { names: readonly string[]; programFlags?: readonly string[]; scriptFlags?: readonly string[]; subcommand?: string; writeCall: RegExp };
+
+function aloneMatches(pattern: RegExp, samples: string[]): string[] {
+  const alternatives = splitAlternatives(pattern.source);
+  const matchers = alternatives.map((alternative) => new RegExp(alternative, pattern.flags));
+  const matchedAlone = (k: number) => samples.some((sample) => matchers.every((matcher, j) => matcher.test(sample) === (j === k)));
+  return alternatives.filter((_, k) => !matchedAlone(k));
+}
+
+function writeProblems<Row extends InterpreterRow>(row: Row, familyOf: (name: string) => Row | undefined, writes: Record<string, string[]>): string[] {
+  const samples = Object.entries(writes).filter(([interpreter]) => familyOf(interpreter)?.writeCall.source === row.writeCall.source).flatMap(([, programs]) => programs);
+  try {
+    return aloneMatches(row.writeCall, samples).map((alternative) => `${row.names[0]} write alternative ${alternative} is matched alone by no sample`);
+  } catch (error) {
+    return [`${row.names[0]} write pattern does not split: ${error instanceof Error ? error.message : String(error)}`];
+  }
+}
+
+function flagProblems<Row extends InterpreterRow>(row: Row, interpreters: string[]): string[] {
+  const spelled = new Set(interpreters.flatMap(spelledFlags));
+  const needed = [...(row.programFlags ?? []), ...(row.scriptFlags ?? []), ...(row.subcommand === undefined ? [] : [row.subcommand])];
+  return needed.filter((flag) => !spelled.has(flag)).map((flag) => `${row.names[0]} flag ${flag} has no spelling in the vocabulary`);
+}
+
+export function interpreterRowSource<Row extends InterpreterRow>(table: TableRows<Row>, familyOf: (name: string) => Row | undefined, writes: Record<string, string[]>): RowSource<Row, ProgramSeed> {
+  const interpretersOf = (row: Row) => Object.keys(writes).filter((interpreter) => familyOf(interpreter) === row);
+  return {
+    table,
+    key: (row) => row.names[0],
+    seedsOf: (row) => programSeeds(Object.fromEntries(interpretersOf(row).map((interpreter) => [interpreter, writes[interpreter]]))),
+    problems: (row) => {
+      const interpreters = interpretersOf(row);
+      if (interpreters.length === 0) return [`${row.names[0]} maps to no vocabulary interpreter`];
+      return [...flagProblems(row, interpreters), ...writeProblems(row, familyOf, writes)];
+    },
+  };
+}
 
 export const shellCommands: Grammar<string, string> = {
   name: "shell commands",
@@ -433,6 +603,7 @@ export function rowProblems<S, I>(grammar: Grammar<S, I>, source: RowSource<any,
     ...(source.table.missing === null ? [] : [source.table.missing]),
     ...unseeded.map((row) => `${source.key(row)} has no seed`),
     ...unspelled.map((row) => `${source.key(row)} has seeds no family spells`),
+    ...source.table.rows.flatMap((row) => source.problems?.(row) ?? []),
   ];
 }
 

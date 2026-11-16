@@ -28,8 +28,13 @@ function everyFlagProgram(family: Family, programFlags: readonly string[], args:
   return programs.length === 0 ? null : programs.join("\n");
 }
 
+function subcommandProgram(args: string[]): string | null {
+  const words = args.slice(1).filter((word) => !word.startsWith("-"));
+  return words.length === 0 ? null : words.join("\n");
+}
+
 function inlineProgram(family: Family, args: string[]): string | null {
-  if (family.subcommand !== undefined && args[0] === family.subcommand) return args[1] ?? null;
+  if (family.subcommand !== undefined && args[0] === family.subcommand) return subcommandProgram(args);
   const attached = args.map((word) => ATTACHED_PROGRAM.exec(word)?.[1]).find((program) => program !== undefined);
   if (attached !== undefined) return attached;
   if (family.programFlags !== undefined) return everyFlagProgram(family, family.programFlags, args);

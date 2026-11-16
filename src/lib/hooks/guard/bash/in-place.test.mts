@@ -21,8 +21,19 @@ test("an inline program with a write call yields its quoted literals", () => {
   assert.deepEqual(inPlaceTargets(["ruby", "-e", "File.write('src/a.rb', 'x')"], []), ["src/a.rb", "x"]);
 });
 
-test("deno eval takes the word after the subcommand as the program", () => {
+test("deno eval reads every word after the subcommand that is not a flag as program text", () => {
   assert.deepEqual(inPlaceTargets(["deno", "eval", "require('fs').writeFileSync('src/a.ts','x')", "-p", "1"], []), ["fs", "src/a.ts", "x"]);
+});
+
+test("deno eval finds the write after --quiet, after --ext ts, and as the only word (T-3.5)", () => {
+  const write = "Deno.writeFileSync('src/a.ts', new TextEncoder().encode('x'))";
+  assert.deepEqual(inPlaceTargets(["deno", "eval", "--quiet", write], []), ["src/a.ts", "x"]);
+  assert.deepEqual(inPlaceTargets(["deno", "eval", "--ext", "ts", write], []), ["src/a.ts", "x"]);
+  assert.deepEqual(inPlaceTargets(["deno", "eval", write], []), ["src/a.ts", "x"]);
+});
+
+test("deno eval with no program word yields nothing", () => {
+  assert.deepEqual(inPlaceTargets(["deno", "eval", "--quiet"], []), []);
 });
 
 test("an attached --eval= program and a flag cluster ending in c, e or p carry the program", () => {
