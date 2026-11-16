@@ -28,4 +28,5 @@
 - [Bench runner drive safety](bench-runner-drive-safety.md): run.mjs runs main at import; drives use --dry or --runs 0 with a temp --out; routing idf for vocabulary checks
 - [npm OIDC dist-tag](npm-oidc-dist-tag.md): dist-tag does the OIDC exchange from npm 11.21.0 only; machine npm is 11.20.0; npm view and pack reach the registry
 - [Guard on probe paths](guard-bash-probe-paths.md): a Bash heredoc naming a src code file is denied as a code write; write probes with Write
+- [Guard write paths](guard-write-paths.md): protect a folder in guard.scope; shell writes to non-code files already prompt; verify must not start stacks
 - [Compose model facts](compose-model-facts.md): config JSON drops profile-disabled services and service-level x- keys; global flags only before the subcommand; podman compose wrapper line last on stderr; info JSON fields

@@ -22,4 +22,6 @@
 - [Probe declared checks as pure code](probe-declared-checks-pure.md) — readChecks/compareChecks/correctCheckPath via node -e; npm test mods step red at base
 - [node --test prints spec, not TAP](node-test-prints-spec-not-tap.md) — drive contains "# pass 1" never matches; env engine tests run in ~80s
 - [Bench paths in this checkout](bench-paths-in-this-checkout.md) — bench drive needs --harness plugin; craft TK1 flags all bench/; replay-rejected probe
+- [Probe scenario URL joins](probe-scenario-url-joins.md) — rule 1 checks only the {service} token; fetch refuses credential URLs
+- [Attached open( in the fallback](probe-attached-open-in-fallback.md) — probe -weopen(...) and wrapped echo on in-place guard changes; echo | bash -c python3 still passes
 - [Reproduce red in a scratch copy](reproduce-red-in-scratch-copy.md) — git archive HEAD to scratch, swap one base file via archive|tar, node --test there
