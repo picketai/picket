@@ -94,3 +94,11 @@ test("affected keeps the cards naming a changed app, or all when the environment
   assert.deepEqual(affected([orders, billing], { ...ordersChanged, env: "e2" }, base), [orders, billing]);
   assert.deepEqual(affected([orders, billing], base, base), []);
 });
+
+test("affected keeps every card that does not parse, whether or not a key changed", () => {
+  const orders = saved("S-0001", ["request GET {orders}/health"]);
+  const broken: SavedScenario = { path: ".picket/env/scenarios/S-0002.md", id: "S-0002", card: null, problems: ["header: a card starts with a --- header block"], fingerprint: "sha256:x", byHand: true };
+  const base: ContentKey = { env: "e1", apps: { orders: "t1" } };
+  assert.deepEqual(affected([orders, broken], base, base), [broken]);
+  assert.deepEqual(affected([orders, broken], { ...base, env: "e2" }, base), [orders, broken]);
+});

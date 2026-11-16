@@ -62,5 +62,5 @@ function targetServices(card: Card): string[] {
 export function affected(scenarios: SavedScenario[], working: ContentKey, base: ContentKey): SavedScenario[] {
   if (working.env !== base.env) return scenarios;
   const changed = new Set(Object.keys(working.apps).filter((app) => working.apps[app] !== base.apps[app]));
-  return scenarios.filter((scenario) => scenario.card !== null && targetServices(scenario.card).some((service) => changed.has(service)));
+  return scenarios.filter((scenario) => scenario.card === null || targetServices(scenario.card).some((service) => changed.has(service)));
 }

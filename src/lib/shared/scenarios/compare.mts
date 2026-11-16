@@ -12,8 +12,8 @@ function againstBase(base: ResultRow | null): ResultClass {
 }
 
 export function classify(item: { outcome: ScenarioOutcome; unstable: boolean }, base: ResultRow | null, replaced: boolean): ResultClass {
-  if (item.outcome === "passed") return "passed";
   if (item.unstable) return "unstable";
+  if (item.outcome === "passed") return "passed";
   if (item.outcome === "blocked" || item.outcome === "not run") return item.outcome;
   if (replaced) return "replaced by this item";
   return againstBase(base);

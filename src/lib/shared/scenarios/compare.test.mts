@@ -11,7 +11,9 @@ const FAILED = { outcome: "failed" as const, unstable: false };
 
 const CASES: { name: string; cls: ResultClass; blamed: boolean; got: ResultClass }[] = [
   { name: "a pass", cls: "passed", blamed: false, got: classify({ outcome: "passed", unstable: false }, base("failed"), false) },
-  { name: "a failure the base passed", cls: "new failure", blamed: true, got: classify(FAILED, base("passed"), false) },
+  { name: "a pass the base passed too", cls: "passed", blamed: false, got: classify({ outcome: "passed", unstable: false }, base("passed"), false) },
+  { name: "a pass after a failed first attempt", cls: "unstable", blamed: false, got: classify({ outcome: "passed", unstable: true }, base("passed"), false) },
+  { name: "a failure the base passed",cls: "new failure", blamed: true, got: classify(FAILED, base("passed"), false) },
   { name: "a failure the base failed too", cls: "failing before the item", blamed: false, got: classify(FAILED, base("failed"), false) },
   { name: "a failure with no base row", cls: "no base result", blamed: true, got: classify(FAILED, null, false) },
   { name: "a failure with a blocked base row", cls: "no base result", blamed: true, got: classify(FAILED, base("blocked"), false) },

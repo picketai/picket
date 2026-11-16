@@ -141,6 +141,36 @@ test("with no engine a run row with the reason is stored and the replay fails (T
   assert.deepEqual(row.type === "run" && [row.item, row.mode, row.reason], [id, "full", "no container engine"]);
 });
 
+test("with no engine an affected replay stores a run row of mode affected with the reason", async (t) => {
+  const { ctx, id } = project(t);
+  const { code, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, () => ({ status: 1, stdout: "", stderr: "" })), { id, mode: "affected", only: null });
+  assert.equal(code, 2);
+  assert.equal(text, "not replayed: no container engine");
+  const rows = readResults(ctx.root);
+  assert.deepEqual(rows.map((row) => row.type === "run" && [row.item, row.mode, row.reason]), [[id, "affected", "no container engine"]]);
+});
+
+test("a pass after a failed first attempt prints as unstable, counts as unstable and is stored as an unstable pass", async (t) => {
+  const { ctx, id } = project(t);
+  const statuses = [500, 200];
+  const flaky: HttpAdapter = async () => ({ status: statuses.shift() ?? 200, headers: {}, text: "ok", error: null });
+  const { code, report, text } = await replay(ctx, deps(ctx.root, flaky), full(id));
+  assert.equal(code, 0);
+  assert.equal(report.ok, true);
+  assert.equal(text, "S-0001 unstable: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 unstable");
+  const result = readResults(ctx.root).find((row) => row.type === "result");
+  assert.ok(result && result.type === "result");
+  assert.deepEqual([result.scenario, result.outcome, result.unstable, result.class, result.attempts], ["S-0001", "passed", true, "unstable", 2]);
+});
+
+test("--affected with no app change still replays a card that does not parse, as blocked", async (t) => {
+  const { ctx, id } = project(t);
+  writeFileSync(join(ctx.root, ".picket/env/scenarios/S-0002.md"), "request GET {orders}/health\n");
+  const { code, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), { id, mode: "affected", only: null });
+  assert.equal(code, 0);
+  assert.equal(text, "S-0002 blocked: header: a card starts with a --- header block · changed by hand\nreplayed 1 on picket-proj-481: 1 blocked");
+});
+
 test("a failure the stored base passed is a new failure and exits 2; one the base failed exits 0 (T-4.6)", async (t) => {
   const failing = project(t);
   storeBase(failing.ctx, failing.id, "passed");
