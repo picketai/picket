@@ -1,4 +1,4 @@
-import { asWritten, closureTests, distractorSentences, quotedSpans } from "#test/variants.mts";
+import { closureTests, requestProse } from "#test/variants.mts";
 import { signalsOf } from "./signals.mts";
 
 const REVIEW_PROBES = [
@@ -22,11 +22,9 @@ const CREDENTIAL_SENTENCES = [
 
 closureTests({
   guard: "admit security",
+  grammar: requestProse("Rename the verdict token constant"),
+  seeds: CREDENTIAL_SENTENCES,
+  probes: REVIEW_PROBES,
   run: (text: string) => signalsOf(text, [], [], ["src/auth/"]),
   closed: (signals) => signals.security,
-  checks: [
-    { family: asWritten((text: string) => text), seeds: REVIEW_PROBES },
-    { family: distractorSentences("Rename the verdict token constant"), seeds: CREDENTIAL_SENTENCES },
-    { family: quotedSpans, seeds: CREDENTIAL_SENTENCES },
-  ],
 });

@@ -1,6 +1,6 @@
 import { guardOutput } from "#test/hook.mts";
 import { withProject } from "#test/project.mts";
-import { asWritten, closureTests, interpreterNames, invocationLabel, programFlagSpellings, stdinSpellings, type Invocation } from "#test/variants.mts";
+import { closureTests, interpreterArgv, shellCommands, type Invocation } from "#test/variants.mts";
 import { inPlaceTargets } from "./in-place.mts";
 
 const NODE_WRITE = "require('fs').writeFileSync('src/a.ts','x')";
@@ -18,7 +18,7 @@ const R_WRITE = `writeLines("x", "src/a.ts")`;
 const AWK_WRITE = `BEGIN { print "x" > "src/a.ts" }`;
 const TCL_WRITE = "set f [open src/a.ts w]";
 
-const AS_WRITTEN_SEEDS = [
+const REVIEW_PROBES = [
   inline("node", `--eval=${NODE_WRITE}`),
   inline("node", "-pe", NODE_WRITE),
   inline("python3", "-Bc", PYTHON_WRITE),
@@ -78,28 +78,30 @@ const AS_WRITTEN_SEEDS = [
   inline("python3", "-Ecopen('src/a.py','w')"),
 ];
 
+const SEEDS = [
+  inline("node", "-e", NODE_WRITE),
+  inline("python3", "-c", PYTHON_WRITE),
+  inline("ruby", "-e", RUBY_WRITE),
+  inline("perl", "-e", PERL_WRITE),
+  inline("php", "-r", PHP_WRITE),
+  inline("lua", "-e", LUA_WRITE),
+  inline("awk", "-e", AWK_WRITE),
+  inline("awk", AWK_WRITE),
+  inline("python3", "-c", "open('src/a.py','w')"),
+  inline("ruby", "-e", "open('src/a.rb','w'){|f| f.puts 1}"),
+  fedOnStdin(NODE_WRITE, "node"),
+  fedOnStdin(PYTHON_WRITE, "python3"),
+  fedOnStdin(RUBY_WRITE, "ruby"),
+  fedOnStdin(TCL_WRITE, "tclsh"),
+];
+
 closureTests({
   guard: "in-place guard",
+  grammar: interpreterArgv,
+  seeds: SEEDS,
+  probes: REVIEW_PROBES,
   run: ({ argv, heredocs }: Invocation) => inPlaceTargets(argv, heredocs),
   closed: (targets) => targets.some((target) => target.startsWith("src/a.")),
-  checks: [
-    { family: asWritten(invocationLabel), seeds: AS_WRITTEN_SEEDS },
-    {
-      family: programFlagSpellings,
-      seeds: [
-        inline("node", "-e", NODE_WRITE),
-        inline("python3", "-c", PYTHON_WRITE),
-        inline("ruby", "-e", RUBY_WRITE),
-        inline("php", "-r", PHP_WRITE),
-        inline("lua", "-e", LUA_WRITE),
-        inline("awk", "-e", AWK_WRITE),
-        inline("python3", "-c", "open('src/a.py','w')"),
-        inline("ruby", "-e", "open('src/a.rb','w'){|f| f.puts 1}"),
-      ],
-    },
-    { family: stdinSpellings, seeds: [fedOnStdin(NODE_WRITE, "node"), fedOnStdin(PYTHON_WRITE, "python3"), fedOnStdin(RUBY_WRITE, "ruby")] },
-    { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE), inline("php", "-r", PHP_WRITE), inline("lua", "-e", LUA_WRITE), inline("awk", AWK_WRITE), fedOnStdin(TCL_WRITE, "tclsh")] },
-  ],
 });
 
 const PIPED_PROGRAM_SEEDS = [
@@ -119,7 +121,9 @@ const PIPED_PROGRAM_SEEDS = [
 
 closureTests({
   guard: "in-place guard on piped programs",
+  grammar: shellCommands,
+  seeds: [],
+  probes: PIPED_PROGRAM_SEEDS,
   run: (command: string, t) => guardOutput(command, { root: withProject(t, { host: true, picket: false }), tool: "Bash" }),
   closed: (out) => out?.permissionDecision === "deny" && out.permissionDecisionReason.startsWith("guard.bash: src/a."),
-  checks: [{ family: asWritten((command: string) => command), seeds: PIPED_PROGRAM_SEEDS }],
 });

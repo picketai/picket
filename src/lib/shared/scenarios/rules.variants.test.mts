@@ -1,4 +1,4 @@
-import { asWritten, closureTests, jsonKeySpellings, jsonPlaces, jsonSecretSeeds } from "#test/variants.mts";
+import { closureTests, jsonBodies, jsonSecretSeeds } from "#test/variants.mts";
 import type { Card } from "./format.mts";
 import { scenarioProblems } from "./rules.mts";
 
@@ -13,11 +13,8 @@ function postingCard(body: string): Card {
 
 closureTests({
   guard: "scenarioProblems",
+  grammar: jsonBodies,
+  seeds: jsonSecretSeeds,
   run: (body: string) => scenarioProblems(postingCard(body), ["orders"]),
   closed: (problems) => problems.some((problem) => problem.includes(LITERAL_SECRET)),
-  checks: [
-    { family: asWritten((body: string) => body), seeds: jsonSecretSeeds },
-    { family: jsonPlaces, seeds: jsonSecretSeeds },
-    { family: jsonKeySpellings, seeds: jsonSecretSeeds },
-  ],
 });

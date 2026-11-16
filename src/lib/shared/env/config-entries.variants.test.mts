@@ -1,4 +1,4 @@
-import { asWritten, closureTests, pairNames, pairPlaces } from "#test/variants.mts";
+import { closureTests, pairs } from "#test/variants.mts";
 import { masked } from "./config-entries.mts";
 
 const REVIEW_PROBES = [
@@ -20,11 +20,9 @@ const FAMILY_SEEDS = SECRET_WORDS.map((word) => `${word}=${FAMILY_VALUE}`);
 
 closureTests({
   guard: "masked",
+  grammar: pairs,
+  seeds: FAMILY_SEEDS,
+  probes: REVIEW_PROBES,
   run: (value: string) => masked("Url", value),
   closed: (output) => output !== null && !SECRET_VALUES.some((secret) => output.includes(secret)),
-  checks: [
-    { family: asWritten((value: string) => value), seeds: REVIEW_PROBES },
-    { family: pairPlaces, seeds: FAMILY_SEEDS },
-    { family: pairNames, seeds: FAMILY_SEEDS },
-  ],
 });

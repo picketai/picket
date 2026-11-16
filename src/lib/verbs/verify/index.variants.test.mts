@@ -1,7 +1,7 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { asWritten, closureTests, listPlacements, type ListSeed } from "#test/variants.mts";
+import { closureTests, declaredLists, type ListSeed } from "#test/variants.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { stateDir, statePath, STATE_FILES } from "../../shared/paths.mts";
 import { verify } from "./index.mts";
@@ -39,10 +39,9 @@ test("verify passes the valid check alone with its row logged, so a closed outco
 
 closureTests({
   guard: "verify",
-  run: (seed: ListSeed, t) => verifyWithDriveBlock(seed.lines, t),
+  grammar: declaredLists(VALID_CHECK),
+  seeds: MALFORMED_ITEMS,
+  probes: [{ label: "drive: []", lines: ["    drive: []"] }],
+  run: (input: ListSeed, t) => verifyWithDriveBlock(input.lines, t),
   closed: (report) => !report.ok,
-  checks: [
-    { family: asWritten((seed: ListSeed) => seed.label), seeds: [{ label: "drive: []", lines: ["    drive: []"] }] },
-    { family: listPlacements(VALID_CHECK), seeds: MALFORMED_ITEMS },
-  ],
 });

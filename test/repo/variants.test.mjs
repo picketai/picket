@@ -3,28 +3,46 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { asWritten, closureFailure, distractorSentences, listPlacements, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings } from "#test/variants.mts";
+import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, numbers, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings, writtenSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
+const nonPositive = { name: "non-positive", written: (n) => n, label: String, families: [] };
+
 function positiveOnly(seeds) {
   return {
     guard: "g",
+    grammar: nonPositive,
+    seeds,
     run: (n) => (n > 0 ? null : "refused"),
     closed: (output) => output !== null,
-    checks: [{ family: asWritten(String), seeds }],
   };
 }
 
-function closureTestSource(seeds) {
+const SHIFTS_GRAMMAR = [
+  "const shifts = {",
+  '  name: "shifts",',
+  "  written: (n) => n,",
+  "  label: String,",
+  "  families: [",
+  '    { name: "plus ten", spell: (n) => [{ label: `${n}+10`, input: n + 10 }] },',
+  '    { name: "plus five", spell: (n) => [{ label: `${n}+5`, input: n + 5 }] },',
+  "  ],",
+  "};",
+];
+
+function closureTestSource({ seeds, probes }) {
   return [
-    `import { asWritten, closureTests } from ${JSON.stringify(HELPER_URL)};`,
+    `import { closureTests } from ${JSON.stringify(HELPER_URL)};`,
+    ...SHIFTS_GRAMMAR,
     "closureTests({",
     '  guard: "g",',
+    "  grammar: shifts,",
+    `  seeds: ${JSON.stringify(seeds)},`,
+    `  probes: ${JSON.stringify(probes)},`,
     '  run: (n) => (n > 0 ? null : "refused"),',
     "  closed: (output) => output !== null,",
-    `  checks: [{ family: asWritten(String), seeds: ${JSON.stringify(seeds)} }],`,
     "});",
   ].join("\n");
 }
@@ -35,40 +53,66 @@ function childEnv() {
   return env;
 }
 
-function runClosureTest(t, seeds) {
+function runClosureTest(t, closure) {
   const file = join(withProject(t, { picket: false }), "guard.variants.test.mjs");
-  writeFileSync(file, closureTestSource(seeds));
+  writeFileSync(file, closureTestSource(closure));
   return spawnSync(process.execPath, ["--test", "--test-reporter=tap", file], { encoding: "utf8", env: childEnv() });
 }
 
-test("openSpellings returns exactly the open spellings in family order (T-1.1)", (t) => {
-  const closure = positiveOnly([-1, 0, 2]);
-  const open = openSpellings(closure, closure.checks[0], t);
-  assert.deepEqual(open, [{ label: "2", input: 2 }]);
+function testLines(stdout) {
+  return stdout.split("\n").filter((line) => /^(not )?ok \d+ - /.test(line));
+}
+
+function failureOf(stdout, familyName) {
+  const header = `g is open under ${familyName} for:`;
+  const start = stdout.indexOf(header);
+  if (start < 0) return null;
+  const lines = stdout.slice(start).split("\n").slice(1).map((line) => line.trim());
+  return lines.slice(0, lines.indexOf("+ actual - expected"));
+}
+
+test("openSpellings returns exactly the open spellings in the order given", (t) => {
+  const closure = positiveOnly([]);
+  const spellings = [-1, 0, 2, 5].map((n) => ({ label: String(n), input: n }));
+  assert.deepEqual(openSpellings(closure, spellings, t), [{ label: "2", input: 2 }, { label: "5", input: 5 }]);
 });
 
-test("openSpellings visits every spelling of every seed in order", (t) => {
+test("familySpellings visits every spelling of every seed in order and drops repeated labels", () => {
   const twice = { name: "twice", spell: (n) => [{ label: `${n}a`, input: n }, { label: `${n}b`, input: n + 10 }] };
-  const closure = { ...positiveOnly([]), checks: [{ family: twice, seeds: [-20, -5] }] };
-  assert.deepEqual(openSpellings(closure, closure.checks[0], t).map((s) => s.label), ["-5b"]);
+  assert.deepEqual(familySpellings(twice, [-20, -5, -20]).map((s) => s.label), ["-20a", "-20b", "-5a", "-5b"]);
 });
 
-test("closureFailure names the guard and family, then one label per line (T-1.2)", () => {
+test("writtenSpellings writes the seeds through the grammar, then the probes as given, dropping repeated labels", () => {
+  const doubling = { ...nonPositive, written: (n) => n * 2 };
+  assert.deepEqual(writtenSpellings({ grammar: doubling, seeds: [1, 3], probes: [7, 2] }), [
+    { label: "2", input: 2 },
+    { label: "6", input: 6 },
+    { label: "7", input: 7 },
+  ]);
+});
+
+test("closureFailure names the guard and family, then one label per line", () => {
   assert.equal(closureFailure("g", "f", ["a", "b"]), "g is open under f for:\na\nb");
 });
 
-test("a closure test with an open seed fails and names the open label (T-1.3)", (t) => {
-  const child = runClosureTest(t, [-1, 7]);
+test("a closure test reports one as-written test and one per family, each family naming the open spellings of both seeds (T-1.1)", (t) => {
+  const child = runClosureTest(t, { seeds: [-1, -4], probes: [] });
   assert.equal(child.status, 1, child.stdout);
-  assert.match(child.stdout, /g stays closed under as written/);
-  assert.match(child.stdout, /g is open under as written for:/);
-  assert.match(child.stdout, /^\s*7$/m);
+  assert.deepEqual(testLines(child.stdout), ["ok 1 - g stays closed as written", "not ok 2 - g stays closed under plus ten", "not ok 3 - g stays closed under plus five"]);
+  assert.deepEqual(failureOf(child.stdout, "plus ten"), ["-1+10", "-4+10"]);
+  assert.deepEqual(failureOf(child.stdout, "plus five"), ["-1+5", "-4+5"]);
 });
 
-test("a closure test with no open seed passes (T-1.3)", (t) => {
-  const child = runClosureTest(t, [-1, 0]);
+test("a probe a family would open fails only the as-written test (T-1.2)", (t) => {
+  const child = runClosureTest(t, { seeds: [-20], probes: [-5, 3] });
+  assert.equal(child.status, 1, child.stdout);
+  assert.deepEqual(testLines(child.stdout), ["not ok 1 - g stays closed as written", "ok 2 - g stays closed under plus ten", "ok 3 - g stays closed under plus five"]);
+  assert.deepEqual(failureOf(child.stdout, "as written"), ["3"]);
+});
+
+test("a closure test with no open spelling passes", (t) => {
+  const child = runClosureTest(t, { seeds: [-20, -11], probes: [-5] });
   assert.equal(child.status, 0, child.stdout);
-  assert.match(child.stdout, /ok 1 - g stays closed under as written/);
 });
 
 function labels(family, seed) {
@@ -128,8 +172,28 @@ test("programFlagSpellings attaches the program to the flag and to the cluster f
   ]);
 });
 
-test("programFlagSpellings throws on an interpreter missing from the table (T-3.3)", () => {
-  assert.throws(() => programFlagSpellings.spell({ argv: ["perl", "-e", "P"], heredocs: [] }), /no flag table row for the interpreter perl/);
+test("programFlagSpellings spells perl's attached flag, its -w cluster and leading -w", () => {
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["perl", "-e", "P"], heredocs: [] }), ["perl -eP", "perl -we P", "perl -weP", "perl -w -e P"]);
+});
+
+test("programFlagSpellings returns nothing for a seed whose second word is not a program flag of its interpreter (T-1.3)", () => {
+  assert.deepEqual(programFlagSpellings.spell({ argv: ["awk", "BEGIN { }"], heredocs: [] }), []);
+  assert.deepEqual(programFlagSpellings.spell({ argv: ["node"], heredocs: ["P"] }), []);
+  assert.deepEqual(programFlagSpellings.spell({ argv: ["python3", "-e", "P"], heredocs: [] }), []);
+});
+
+test("programFlagSpellings and stdinSpellings throw on an interpreter with no vocabulary row (T-1.3)", () => {
+  assert.throws(() => programFlagSpellings.spell({ argv: ["bash", "-c", "P"], heredocs: [] }), /no flag table row for the interpreter bash/);
+  assert.throws(() => stdinSpellings.spell({ argv: ["bash"], heredocs: ["P"] }), /no flag table row for the interpreter bash/);
+  assert.throws(() => stdinSpellings.spell({ argv: ["bash", "-c", "P"], heredocs: [] }), /no flag table row for the interpreter bash/);
+});
+
+test("stdinSpellings returns nothing for a seed with no heredoc (T-1.3)", () => {
+  assert.deepEqual(stdinSpellings.spell({ argv: ["python3", "-c", "P"], heredocs: [] }), []);
+});
+
+test("stdinSpellings feeds tclsh after its leading -encoding utf-8", () => {
+  assert.deepEqual(labels(stdinSpellings, { argv: ["tclsh"], heredocs: ["P"] }).at(-1), "tclsh -encoding utf-8 - << P");
 });
 
 test("stdinSpellings reads the heredoc after - and each standard input path alone, then after the leading flags (T-3.4)", () => {
@@ -177,14 +241,29 @@ test("outOfDomainNumbers spells NaN, both zeros, the negation and both infinitie
   assert.deepEqual(spellings.map((spelling) => spelling.input), [NaN, 0, -0, -2, Infinity, -Infinity]);
 });
 
+test("numbers writes a seed as its negation, the first value outside a positive domain", () => {
+  assert.deepEqual(writtenSpellings({ grammar: numbers, seeds: [2, 0] }), [{ label: "-2", input: -2 }, { label: "-0", input: -0 }]);
+});
+
+test("editPaths writes a seed as its relative path and spells five other forms, each labelled with the tool", () => {
+  const seed = { tool: "Edit", rel: "a/b.md" };
+  assert.deepEqual(writtenSpellings({ grammar: editPaths, seeds: [seed] }), [{ label: "Edit a/b.md", input: { ...seed, form: "relative" } }]);
+  assert.deepEqual(familySpellings(editPaths.families[0], [seed]), [
+    { label: "Edit absolute a/b.md", input: { ...seed, form: "absolute" } },
+    { label: "Edit ./a/b.md", input: { ...seed, form: "dot" } },
+    { label: "Edit services/../a/b.md", input: { ...seed, form: "parent" } },
+    { label: "Edit upper-case folder on win32 a/b.md", input: { ...seed, form: "upper-case on win32" } },
+    { label: "Edit symbolic link a/b.md", input: { ...seed, form: "symbolic link" } },
+  ]);
+});
+
 test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {
   const closure = {
     guard: "semicolon masker",
     run: (value) => value.replace(/;(\w+)=[^;]*/g, ";$1=***"),
     closed: (output) => !output.includes("K"),
-    checks: [{ family: pairPlaces, seeds: ["password=K"] }],
   };
-  assert.deepEqual(openSpellings(closure, closure.checks[0], t).map((spelling) => spelling.label), [
+  assert.deepEqual(openSpellings(closure, familySpellings(pairPlaces, ["password=K"]), t).map((spelling) => spelling.label), [
     "https://a.example.com/x?password=K",
     "https://a.example.com/x?a=1&password=K",
     "jdbc:postgresql://h/db?user=a&password=K",

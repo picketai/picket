@@ -17,13 +17,14 @@ function guardSource(refusesAtOrBelow) {
 
 function closureTestSource() {
   return [
-    'import { asWritten, closureTests } from "./support/variants.mts";',
+    'import { closureTests } from "./support/variants.mts";',
     'import { refusal } from "../guard.mjs";',
     "closureTests({",
     '  guard: "refusal",',
+    '  grammar: { name: "integers", written: (n) => n, label: String, families: [] },',
+    "  seeds: [-1, 0],",
     "  run: refusal,",
     "  closed: (output) => output !== null,",
-    "  checks: [{ family: asWritten(String), seeds: [-1, 0] }],",
     "});",
   ].join("\n");
 }

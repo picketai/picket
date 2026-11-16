@@ -1,26 +1,31 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 
-export type Spelling<T> = { label: string; input: T };
+export type Spelling<I> = { label: string; input: I };
 
-export type Family<T> = { name: string; spell: (seed: T) => Spelling<T>[] };
+export type Family<S, I> = { name: string; spell: (seed: S) => Spelling<I>[] };
 
-export type ClosureCheck<T> = { family: Family<T>; seeds: T[] };
-
-export type Closure<T, R> = {
-  guard: string;
-  run: (input: T, t: TestContext) => R;
-  closed: (output: R) => boolean;
-  checks: ClosureCheck<T>[];
+export type Grammar<S, I> = {
+  name: string;
+  written: (seed: S) => I;
+  label: (input: I) => string;
+  families: readonly Family<S, I>[];
 };
 
-export function asWritten<T>(show: (input: T) => string): Family<T> {
-  return { name: "as written", spell: (seed) => [{ label: show(seed), input: seed }] };
-}
+export type Closure<S, I, R> = {
+  guard: string;
+  grammar: Grammar<S, I>;
+  seeds: S[];
+  probes?: I[];
+  run: (input: I, t: TestContext) => R;
+  closed: (output: R) => boolean;
+};
 
 function spelled(inputs: string[]): Spelling<string>[] {
   return inputs.map((input) => ({ label: input, input }));
 }
+
+const verbatim = (text: string): string => text;
 
 const PAIR_ADDRESSES: ((pair: string) => string)[] = [
   (pair) => `https://a.example.com/x?${pair}`,
@@ -30,7 +35,7 @@ const PAIR_ADDRESSES: ((pair: string) => string)[] = [
   (pair) => `redis://h:6379?${pair}`,
 ];
 
-export const pairPlaces: Family<string> = {
+export const pairPlaces: Family<string, string> = {
   name: "pair places",
   spell: (pair) => spelled(PAIR_ADDRESSES.map((place) => place(pair))),
 };
@@ -43,13 +48,20 @@ function splitPair(pair: string): { name: string; value: string } {
   return { name: pair.slice(0, at), value: pair.slice(at + 1) };
 }
 
-export const pairNames: Family<string> = {
+export const pairNames: Family<string, string> = {
   name: "pair names",
   spell: (pair) => {
     const { name, value } = splitPair(pair);
     const names = [...NAME_PREFIXES.map((prefix) => `${prefix}${name}`), name.toUpperCase()];
     return spelled(names.map((spelledName) => `https://a.example.com/x?${spelledName}=${value}`));
   },
+};
+
+export const pairs: Grammar<string, string> = {
+  name: "pairs",
+  written: (pair) => `https://a.example.com/x?${pair}`,
+  label: verbatim,
+  families: [pairPlaces, pairNames],
 };
 
 export const JSON_SECRET_VALUE = "Kval9";
@@ -65,12 +77,12 @@ const NESTED_SECRET_PAIRS = [
 export const jsonSecretSeeds: string[] = [...JSON_SECRET_KEYS.map((key) => ({ [key]: JSON_SECRET_VALUE })), ...NESTED_SECRET_PAIRS].map((pair) => JSON.stringify(pair));
 
 function onlyPair(seed: string): [string, unknown] {
-  const pairs = Object.entries(JSON.parse(seed) as Record<string, unknown>);
-  if (pairs.length !== 1) throw new Error(`a JSON seed holds one key, got ${seed}`);
-  return pairs[0];
+  const entries = Object.entries(JSON.parse(seed) as Record<string, unknown>);
+  if (entries.length !== 1) throw new Error(`a JSON seed holds one key, got ${seed}`);
+  return entries[0];
 }
 
-export const jsonPlaces: Family<string> = {
+export const jsonPlaces: Family<string, string> = {
   name: "JSON places",
   spell: (seed) => {
     const [key, value] = onlyPair(seed);
@@ -85,7 +97,7 @@ export const jsonPlaces: Family<string> = {
   },
 };
 
-export const jsonKeySpellings: Family<string> = {
+export const jsonKeySpellings: Family<string, string> = {
   name: "key spellings",
   spell: (seed) => {
     const [key, value] = onlyPair(seed);
@@ -94,17 +106,26 @@ export const jsonKeySpellings: Family<string> = {
   },
 };
 
+export const jsonBodies: Grammar<string, string> = {
+  name: "JSON bodies",
+  written: verbatim,
+  label: verbatim,
+  families: [jsonPlaces, jsonKeySpellings],
+};
+
 export type Invocation = { argv: string[]; heredocs: string[] };
 
-type InterpreterFlags = { long: Record<string, string>; attached?: true; clusterLetter?: string; leading: string[] };
+type InterpreterFlags = { programFlags: string[]; long: Record<string, string>; attached?: true; clusterLetter?: string; leading: string[] };
 
 const INTERPRETER_FLAGS: Record<string, InterpreterFlags> = {
-  node: { long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
-  python3: { long: {}, attached: true, clusterLetter: "B", leading: ["-X", "utf8"] },
-  ruby: { long: {}, attached: true, clusterLetter: "w", leading: ["-w"] },
-  php: { long: {}, attached: true, clusterLetter: "n", leading: ["-c", "php.ini"] },
-  lua: { long: {}, attached: true, leading: ["-l", "mod"] },
-  awk: { long: { "-e": "--source" }, attached: true, clusterLetter: "b", leading: ["-F", ":"] },
+  node: { programFlags: ["-e"], long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
+  python3: { programFlags: ["-c"], long: {}, attached: true, clusterLetter: "B", leading: ["-X", "utf8"] },
+  ruby: { programFlags: ["-e"], long: {}, attached: true, clusterLetter: "w", leading: ["-w"] },
+  perl: { programFlags: ["-e"], long: {}, attached: true, clusterLetter: "w", leading: ["-w"] },
+  php: { programFlags: ["-r"], long: {}, attached: true, clusterLetter: "n", leading: ["-c", "php.ini"] },
+  lua: { programFlags: ["-e"], long: {}, attached: true, leading: ["-l", "mod"] },
+  awk: { programFlags: ["-e"], long: { "-e": "--source" }, attached: true, clusterLetter: "b", leading: ["-F", ":"] },
+  tclsh: { programFlags: [], long: {}, leading: ["-encoding", "utf-8"] },
 };
 
 function flagsOf(interpreter: string): InterpreterFlags {
@@ -134,10 +155,11 @@ function clusterSpellings(interpreter: string, flag: string, program: string, { 
   return [[interpreter, cluster, program], ...(attached ? [[interpreter, `${cluster}${program}`]] : [])];
 }
 
-export const programFlagSpellings: Family<Invocation> = {
+export const programFlagSpellings: Family<Invocation, Invocation> = {
   name: "program flag spellings",
   spell: ({ argv: [interpreter, flag, program] }) => {
     const flags = flagsOf(interpreter);
+    if (!flags.programFlags.includes(flag)) return [];
     return invocations([
       ...longSpellings(interpreter, flags.long[flag], program),
       ...(flags.attached ? [[interpreter, `${flag}${program}`]] : []),
@@ -149,10 +171,11 @@ export const programFlagSpellings: Family<Invocation> = {
 
 const STDIN_PATHS = ["-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"];
 
-export const stdinSpellings: Family<Invocation> = {
+export const stdinSpellings: Family<Invocation, Invocation> = {
   name: "stdin spellings",
   spell: ({ argv: [interpreter], heredocs }) => {
     const { leading } = flagsOf(interpreter);
+    if (heredocs.length === 0) return [];
     return invocations([...STDIN_PATHS.map((path) => [interpreter, path]), [interpreter, ...leading, "-"]], heredocs);
   },
 };
@@ -179,9 +202,23 @@ function nameSpellings(interpreter: string): string[] {
   return [...names.slice(1), ...names.flatMap((name) => [`/usr/bin/${name}`, `${name}.exe`])];
 }
 
-export const interpreterNames: Family<Invocation> = {
+export const interpreterNames: Family<Invocation, Invocation> = {
   name: "interpreter names",
   spell: ({ argv: [interpreter, ...rest], heredocs }) => invocations(nameSpellings(interpreter).map((name) => [name, ...rest]), heredocs),
+};
+
+export const interpreterArgv: Grammar<Invocation, Invocation> = {
+  name: "interpreter argv",
+  written: (invocation) => invocation,
+  label: invocationLabel,
+  families: [programFlagSpellings, stdinSpellings, interpreterNames],
+};
+
+export const shellCommands: Grammar<string, string> = {
+  name: "shell commands",
+  written: verbatim,
+  label: verbatim,
+  families: [],
 };
 
 function sentenceParts(sentence: string): { inner: string; bare: string } {
@@ -190,7 +227,7 @@ function sentenceParts(sentence: string): { inner: string; bare: string } {
   return { inner, bare: inner.slice(0, -1) };
 }
 
-export function distractorSentences(distractor: string): Family<string> {
+export function distractorSentences(distractor: string): Family<string, string> {
   return {
     name: "distractor sentences",
     spell: (sentence) => {
@@ -202,7 +239,7 @@ export function distractorSentences(distractor: string): Family<string> {
 
 const QUOTES: [string, string][] = [["\"", "\""], ["`", "`"], ["“", "”"], ["'", "'"]];
 
-export const quotedSpans: Family<string> = {
+export const quotedSpans: Family<string, string> = {
   name: "quoted spans",
   spell: (sentence) => {
     const { bare } = sentenceParts(sentence);
@@ -211,12 +248,25 @@ export const quotedSpans: Family<string> = {
   },
 };
 
+export function requestProse(distractor: string): Grammar<string, string> {
+  return {
+    name: "request prose",
+    written: verbatim,
+    label: verbatim,
+    families: [distractorSentences(distractor), quotedSpans],
+  };
+}
+
 export type ListSeed = { label: string; lines: string[] };
 
 const DRIVE_HEADER = "    drive:";
 
-export function listPlacements(valid: string[]): Family<ListSeed> {
-  const placed = (label: string, lines: string[]): Spelling<ListSeed> => ({ label, input: { label, lines: [DRIVE_HEADER, ...lines] } });
+function driveList(label: string, lines: string[]): ListSeed {
+  return { label, lines: [DRIVE_HEADER, ...lines] };
+}
+
+export function listPlacements(valid: string[]): Family<ListSeed, ListSeed> {
+  const placed = (label: string, lines: string[]): Spelling<ListSeed> => ({ label, input: driveList(label, lines) });
   return {
     name: "list placements",
     spell: ({ label, lines }) => [
@@ -227,17 +277,86 @@ export function listPlacements(valid: string[]): Family<ListSeed> {
   };
 }
 
+export function declaredLists(valid: string[]): Grammar<ListSeed, ListSeed> {
+  return {
+    name: "declared lists",
+    written: ({ label, lines }) => driveList(label, lines),
+    label: (input) => input.label,
+    families: [listPlacements(valid)],
+  };
+}
+
 function numberLabel(n: number): string {
   return Object.is(n, -0) ? "-0" : String(n);
 }
 
-export const outOfDomainNumbers: Family<number> = {
+export const outOfDomainNumbers: Family<number, number> = {
   name: "out-of-domain numbers",
   spell: (n) => [NaN, 0, -0, -n, Infinity, -Infinity].map((input) => ({ label: numberLabel(input), input })),
 };
 
-export function openSpellings<T, R>(closure: Closure<T, R>, check: ClosureCheck<T>, t: TestContext): Spelling<T>[] {
-  const spellings = check.seeds.flatMap((seed) => check.family.spell(seed));
+export const numbers: Grammar<number, number> = {
+  name: "numbers",
+  written: (n) => -n,
+  label: numberLabel,
+  families: [outOfDomainNumbers],
+};
+
+export type EditSeed = { tool: "Edit" | "Write"; rel: string };
+
+export type EditPathForm = "relative" | "absolute" | "dot" | "parent" | "upper-case on win32" | "symbolic link";
+
+export type EditInput = EditSeed & { form: EditPathForm };
+
+const EDIT_PATH_LABELS: Record<EditPathForm, (rel: string) => string> = {
+  relative: (rel) => rel,
+  absolute: (rel) => `absolute ${rel}`,
+  dot: (rel) => `./${rel}`,
+  parent: (rel) => `services/../${rel}`,
+  "upper-case on win32": (rel) => `upper-case folder on win32 ${rel}`,
+  "symbolic link": (rel) => `symbolic link ${rel}`,
+};
+
+function editPathLabel({ tool, rel, form }: EditInput): string {
+  return `${tool} ${EDIT_PATH_LABELS[form](rel)}`;
+}
+
+const SPELLED_EDIT_FORMS: EditPathForm[] = ["absolute", "dot", "parent", "upper-case on win32", "symbolic link"];
+
+export const editPathSpellings: Family<EditSeed, EditInput> = {
+  name: "path spellings",
+  spell: (seed) => SPELLED_EDIT_FORMS.map((form) => {
+    const input = { ...seed, form };
+    return { label: editPathLabel(input), input };
+  }),
+};
+
+export const editPaths: Grammar<EditSeed, EditInput> = {
+  name: "edit paths",
+  written: (seed) => ({ ...seed, form: "relative" }),
+  label: editPathLabel,
+  families: [editPathSpellings],
+};
+
+function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
+  const seen = new Set<string>();
+  return spellings.filter(({ label }) => {
+    if (seen.has(label)) return false;
+    seen.add(label);
+    return true;
+  });
+}
+
+export function writtenSpellings<S, I>({ grammar, seeds, probes = [] }: Pick<Closure<S, I, unknown>, "grammar" | "seeds" | "probes">): Spelling<I>[] {
+  const inputs = [...seeds.map(grammar.written), ...probes];
+  return distinctByLabel(inputs.map((input) => ({ label: grammar.label(input), input })));
+}
+
+export function familySpellings<S, I>(family: Family<S, I>, seeds: S[]): Spelling<I>[] {
+  return distinctByLabel(seeds.flatMap((seed) => family.spell(seed)));
+}
+
+export function openSpellings<S, I, R>(closure: Closure<S, I, R>, spellings: Spelling<I>[], t: TestContext): Spelling<I>[] {
   return spellings.filter((spelling) => !closure.closed(closure.run(spelling.input, t)));
 }
 
@@ -245,11 +364,16 @@ export function closureFailure(guard: string, familyName: string, labels: string
   return [`${guard} is open under ${familyName} for:`, ...labels].join("\n");
 }
 
-export function closureTests<T, R>(closure: Closure<T, R>): void {
-  for (const check of closure.checks) {
-    test(`${closure.guard} stays closed under ${check.family.name}`, (t) => {
-      const labels = openSpellings(closure, check, t).map((spelling) => spelling.label);
-      assert.deepEqual(labels, [], closureFailure(closure.guard, check.family.name, labels));
-    });
+const AS_WRITTEN = "as written";
+
+function assertClosed<S, I, R>(closure: Closure<S, I, R>, familyName: string, spellings: Spelling<I>[], t: TestContext): void {
+  const labels = openSpellings(closure, spellings, t).map((spelling) => spelling.label);
+  assert.deepEqual(labels, [], closureFailure(closure.guard, familyName, labels));
+}
+
+export function closureTests<S, I, R>(closure: Closure<S, I, R>): void {
+  test(`${closure.guard} stays closed ${AS_WRITTEN}`, (t) => assertClosed(closure, AS_WRITTEN, writtenSpellings(closure), t));
+  for (const family of closure.grammar.families) {
+    test(`${closure.guard} stays closed under ${family.name}`, (t) => assertClosed(closure, family.name, familySpellings(family, closure.seeds), t));
   }
 }

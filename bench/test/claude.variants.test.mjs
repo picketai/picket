@@ -1,4 +1,4 @@
-import { closureTests, outOfDomainNumbers } from "#test/variants.mts";
+import { closureTests, numbers } from "#test/variants.mts";
 import { claudeArgs } from "../lib/claude.mjs";
 
 function throws(call) {
@@ -12,7 +12,8 @@ function throws(call) {
 
 closureTests({
   guard: "claudeArgs --max-budget-usd",
+  grammar: numbers,
+  seeds: [2],
   run: (maxBudgetUsd) => throws(() => claudeArgs({ maxBudgetUsd })),
   closed: (threw) => threw,
-  checks: [{ family: outOfDomainNumbers, seeds: [2] }],
 });
