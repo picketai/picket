@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { repoRelative } from "../../shared/paths.mts";
 import type { HookContext, PayloadOf } from "../hook-spec.mts";
 
@@ -16,10 +17,20 @@ function stringField(input: Record<string, unknown> | undefined, key: string): s
   return typeof value === "string" ? value : "";
 }
 
-export function editTarget(event: EditEvent, ctx: HookContext): EditTarget | null {
+export function realPath(path: string): string {
+  try {
+    return realpathSync.native(path);
+  } catch {
+    const parent = dirname(path);
+    return parent === path ? path : join(realPath(parent), basename(path));
+  }
+}
+
+export function editTarget(event: EditEvent, ctx: Pick<HookContext, "root">): EditTarget | null {
   const filePath = event.tool_input?.file_path;
   if (!filePath) return null;
-  const { abs, rel, outside } = repoRelative(event, filePath, ctx.root);
+  const { abs } = repoRelative(event, filePath, ctx.root);
+  const { rel, outside } = repoRelative(null, realPath(abs), realPath(ctx.root));
   return { filePath, abs, rel, outside };
 }
 

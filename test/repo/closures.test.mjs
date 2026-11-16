@@ -35,6 +35,7 @@ export const GUARDS = [
   { guard: "guard.bash escalation outside an asking mode", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash escalation of more than one command", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash on PowerShell", module: "src/lib/hooks/guard/bash/powershell.mts", closure: "src/lib/hooks/guard/bash/powershell.variants.test.mts", tables: [{ module: BASH_RULES, name: "DENIED_NAMES" }] },
+  { guard: "edit target", module: "src/lib/hooks/guard/edit-target.mts", closure: "src/lib/hooks/guard/edit-target.variants.test.mts", tables: [] },
   { guard: "guard.scope", module: "src/lib/hooks/guard/scope/index.mts", closure: "src/lib/hooks/guard/scope/index.variants.test.mts", tables: [] },
   { guard: "admit security", module: "src/lib/shared/admission/signals.mts", closure: "src/lib/shared/admission/signals.variants.test.mts", tables: [] },
   { guard: "maskedBody", module: "src/lib/shared/drive-log.mts", closure: "src/lib/shared/drive-log.variants.test.mts", tables: SECRET_WORDS },

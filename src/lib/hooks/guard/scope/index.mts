@@ -1,5 +1,4 @@
-import { existsSync, realpathSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { existsSync } from "node:fs";
 import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, isPrTicketRel, stateRel } from "../../../shared/paths.mts";
 import { SCENARIO_DIR } from "../../../shared/env/standard.mts";
 import { sourceRoots, underSource } from "../../../shared/sources/protection.mts";
@@ -21,15 +20,6 @@ const EXTENSIONS_PREFIX = `${PICKET_DIR}/extensions/`;
 const CONFIG_REL = configRel();
 const SCENARIO_PREFIX = `${SCENARIO_DIR}/`;
 const PREFIX = "guard.scope: ";
-
-function realPath(path: string): string {
-  try {
-    return realpathSync.native(path);
-  } catch {
-    const parent = dirname(path);
-    return parent === path ? path : join(realPath(parent), basename(path));
-  }
-}
 
 function samePathCase(rel: string, platform: NodeJS.Platform): string {
   return platform === "win32" ? rel.toLowerCase() : rel;
@@ -81,7 +71,7 @@ function denialReason(event: EditEvent, ctx: HookContext, target: EditTarget, re
 export function guardScope(event: EditEvent, ctx: HookContext): PermissionOutput | null {
   const target = editTarget(event, ctx);
   if (!target) return null;
-  const rel = relative(realPath(ctx.root), realPath(target.abs)).replaceAll("\\", "/");
+  const { rel } = target;
   const denial = denialReason(event, ctx, target, rel);
   if (denial) return deny(`${PREFIX}${denial}`);
   const confirm = confirmationReason(rel, ctx.platform);

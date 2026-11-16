@@ -436,7 +436,7 @@ test("numbers writes a seed as its negation, the first value outside a positive 
   assert.deepEqual(writtenSpellings({ grammar: numbers, seeds: [2, 0] }), [{ label: "-2", input: -2 }, { label: "-0", input: -0 }]);
 });
 
-test("editPaths writes a seed as its relative path and spells five other forms, each labelled with the tool", () => {
+test("editPaths writes a seed as its relative path and spells six other forms, each labelled with the tool", () => {
   const seed = { tool: "Edit", rel: "a/b.md" };
   assert.deepEqual(writtenSpellings({ grammar: editPaths, seeds: [seed] }), [{ label: "Edit a/b.md", input: { ...seed, form: "relative" } }]);
   assert.deepEqual(familySpellings(editPaths.families[0], [seed]), [
@@ -445,6 +445,7 @@ test("editPaths writes a seed as its relative path and spells five other forms, 
     { label: "Edit services/../a/b.md", input: { ...seed, form: "parent" } },
     { label: "Edit upper-case folder on win32 a/b.md", input: { ...seed, form: "upper-case on win32" } },
     { label: "Edit symbolic link a/b.md", input: { ...seed, form: "symbolic link" } },
+    { label: "Edit symbolic link from outside a/b.md", input: { ...seed, form: "symbolic link from outside" } },
   ]);
 });
 

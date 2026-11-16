@@ -540,7 +540,7 @@ export const numbers: Grammar<number, number> = {
 
 export type EditSeed = { tool: "Edit" | "Write"; rel: string };
 
-export type EditPathForm = "relative" | "absolute" | "dot" | "parent" | "upper-case on win32" | "symbolic link";
+export type EditPathForm = "relative" | "absolute" | "dot" | "parent" | "upper-case on win32" | "symbolic link" | "symbolic link from outside";
 
 export type EditInput = EditSeed & { form: EditPathForm };
 
@@ -551,13 +551,14 @@ const EDIT_PATH_LABELS: Record<EditPathForm, (rel: string) => string> = {
   parent: (rel) => `services/../${rel}`,
   "upper-case on win32": (rel) => `upper-case folder on win32 ${rel}`,
   "symbolic link": (rel) => `symbolic link ${rel}`,
+  "symbolic link from outside": (rel) => `symbolic link from outside ${rel}`,
 };
 
 function editPathLabel({ tool, rel, form }: EditInput): string {
   return `${tool} ${EDIT_PATH_LABELS[form](rel)}`;
 }
 
-const SPELLED_EDIT_FORMS: EditPathForm[] = ["absolute", "dot", "parent", "upper-case on win32", "symbolic link"];
+const SPELLED_EDIT_FORMS: EditPathForm[] = ["absolute", "dot", "parent", "upper-case on win32", "symbolic link", "symbolic link from outside"];
 
 export const editPathSpellings: Family<EditSeed, EditInput> = {
   name: "path spellings",
