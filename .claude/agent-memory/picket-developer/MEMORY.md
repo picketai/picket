@@ -21,4 +21,12 @@
 - [tsc lib before ES2023](tsc-lib-before-es2023.md) — findLast/findLastIndex pass node --test but fail typecheck
 - [Bench tasks pin admit](bench-tasks-pin-admit.md) — bench/test/tasks.test.mjs checks admit lanes via dist; admission changes break it
 - [Entry fields pinned](entry-fields-pinned.md) — agents.test.mjs ties shell Entry fields to sendsFor; a new send line needs a fixture
+- [Mods host type drift](mods-validate-fails-2-1-323.md) — mods match 2.1.325; a later host's drift is named by the mods step header
+- [Drive needs fresh dist](drive-needs-fresh-dist.md) — picket on PATH is dist; npm run build before every drive, fresh scratch dir per drive
+- [Declared run checks need picket drive](declared-run-checks-need-picket-drive.md) — verify's check:T-x.y reads only `picket drive --run` rows
+- [Declared check reads latest row](declared-check-reads-latest-row.md) — a later failing drive of the same command overrides the pass; drive the pass last
 - [One hooks module per plugin](one-hooks-module-per-plugin.md) — 2.1.319 refuses two `modules` entries and a repeated unmatched session.start
+- [new Date( is scanned](new-date-scan.md) — conventions test flags the text even for date math; use Date.UTC + Intl
+- [No-removed-line check counts imports](no-removed-line-check-counts-imports.md) — pinned test files: add imports on new lines, never widen one
+- [init test and TMPDIR under home](init-test-tmpdir-under-home.md) — product step fails when TMPDIR sits under the home folder; use a scratch TMPDIR
+- [Podman pasta signal denied](podman-pasta-signal-denied.md) — host AppArmor can block `env stop`; fixed on the dev machine, real-engine tests pass since 2026-11-15
