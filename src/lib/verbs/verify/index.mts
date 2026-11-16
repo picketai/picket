@@ -6,10 +6,9 @@ import { runStep } from "../../shared/checks.mts";
 import { readDriveLog, type DriveRow } from "../../shared/drive-log.mts";
 import { machineCheck, readModelJson, realRunner, type Engine, type EngineRunner } from "../../shared/env/engine.mts";
 import { locatedFindings, splitByChange, type LocatedFinding } from "../../shared/env/instep.mts";
-import { sourceFor } from "../../shared/env/build-plan.mts";
 import { readModel, type EnvModel } from "../../shared/env/model.mts";
-import { baseKey, keyId, workingKey } from "../../shared/scenarios/keys.mts";
-import { readResults, replaySummary, summaryText, type RunRow } from "../../shared/scenarios/results.mts";
+import { baseKey, changedSinceReplay, keyId, workingKey } from "../../shared/scenarios/keys.mts";
+import { readResults, replaySummary, summaryText } from "../../shared/scenarios/results.mts";
 import { scanUmbrella } from "../../shared/env/scan.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
 import { changedSince } from "../../shared/git.mts";
@@ -150,12 +149,6 @@ function scenarioResult(ok: boolean, detail: string): VerifyResult {
   return { name: "scenarios", ok, detail };
 }
 
-function changedSinceReplay(root: string, snap: WorkSnapshot, model: EnvModel, run: RunRow, env: NodeJS.ProcessEnv): string {
-  const apps = model.services.filter((service) => service.role === "app" && service.build !== null && service.profiles.length === 0);
-  const changed = apps.filter((service) => run.versions[service.name] !== sourceFor(root, snap.layout, service, env).version).map((service) => service.name);
-  return changed.length ? changed.join(", ") : "the environment";
-}
-
 function scenariosCheck(root: string, snap: WorkSnapshot, model: EnvModel, env: NodeJS.ProcessEnv): VerifyResult {
   const working = keyId(workingKey(root, snap.layout, model, env));
   if (working === keyId(baseKey(root, snap.layout, snap.state.base ?? null, model))) return scenarioResult(true, "no app or environment change since the base");
@@ -163,7 +156,7 @@ function scenariosCheck(root: string, snap: WorkSnapshot, model: EnvModel, env: 
   const summary = replaySummary(readResults(root), snap.state.id);
   if (summary.run === null) return scenarioResult(false, `not replayed: ${replay}`);
   if (summary.run.reason !== undefined) return scenarioResult(false, `not replayed: ${summary.run.reason}; ${replay}`);
-  if (summary.run.key !== working) return scenarioResult(false, `stale: ${changedSinceReplay(root, snap, model, summary.run, env)} changed since the replay; ${replay}`);
+  if (summary.run.key !== working) return scenarioResult(false, `stale: ${changedSinceReplay(root, snap.layout, model, summary.run, env)} changed since the replay; ${replay}`);
   if (summary.blamed.length) return scenarioResult(false, summary.blamed.map((entry) => `${entry.scenario} ${entry.class}`).join("; "));
   return scenarioResult(true, summaryText(summary));
 }

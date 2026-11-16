@@ -1,9 +1,13 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { parseArgs, UsageError } from "../../util/args.mts";
+import { sourceFor } from "../../shared/env/build-plan.mts";
 import type { EngineRunner } from "../../shared/env/engine.mts";
+import { readModel } from "../../shared/env/model.mts";
+import { readLayout } from "../../shared/repos.mts";
+import { keyId, workingKey } from "../../shared/scenarios/keys.mts";
 import { readStacks, recordStack } from "../../shared/env/stacks.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readState, writeState, type Lane } from "../../shared/work/state.mts";
@@ -326,15 +330,85 @@ test("a latest affected run with a new failure refuses naming the scenario and t
   assert.equal(readState(root, id).status, "open");
 });
 
-test("an affected run with only passes and old failures, or with no engine, lets the close commit (T-10.2)", (t) => {
-  for (const write of [(root: string, id: WorkId) => affectedRun(root, id, ["passed", "failing before the item"]), (root: string, id: WorkId) => affectedRun(root, id, [], "no container engine")]) {
-    const { root, id, head } = fastItem(t);
-    const before = head();
-    write(root, id);
-    const result = closeFast(root, id);
-    assert.equal(result.status, "done");
-    assert.notEqual(head(), before);
-  }
+test("an affected run with no engine lets the close commit (T-10.2)", (t) => {
+  const { root, id, head } = fastItem(t);
+  const before = head();
+  affectedRun(root, id, [], "no container engine");
+  const result = closeFast(root, id);
+  assert.equal(result.status, "done");
+  assert.notEqual(head(), before);
+});
+
+const RECORDED_MODEL = readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8");
+const VALUE_FLAGS = ["-p", "--project-directory", "-f", "--profile"];
+
+function umbrellaModelAt(root: string): string {
+  return RECORDED_MODEL.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`);
+}
+
+function umbrellaEngine(root: string): EngineRunner {
+  return (_program, args) => {
+    const words = args.filter((arg, i) => !VALUE_FLAGS.includes(arg) && !VALUE_FLAGS.includes(args[i - 1]));
+    const call = words.join(" ");
+    if (call === "info --format json") return { status: 0, stdout: '{"OSType":"linux"}', stderr: "" };
+    if (call === "compose version --format json") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
+    if (call === "compose config --profiles") return { status: 0, stdout: "picket-data\n", stderr: "" };
+    if (words[1] === "config") return { status: 0, stdout: umbrellaModelAt(root), stderr: "" };
+    return { status: 0, stdout: "", stderr: "" };
+  };
+}
+
+const UMBRELLA_ENV = { ...process.env, ...COMMITTER };
+
+function umbrellaItem(t: TestContext): { root: string; id: WorkId; head: () => string } {
+  const root = realpathSync(gitRepo(t, { files: { "README.md": "u\n" } }));
+  cpSync(resolve("test/fixtures/env/umbrella"), root, { recursive: true });
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "umbrella");
+  const { id } = openItem(root, { lane: "fast", title: "Orders", source: "PROJ-481" });
+  return { root, id, head: () => gitOut(root, "rev-parse", "HEAD") };
+}
+
+function keyedAffectedRun(root: string, id: WorkId, classes: ResultClass[]): void {
+  const model = readModel(JSON.parse(umbrellaModelAt(root)));
+  const layout = readLayout(root, id);
+  const key = keyId(workingKey(root, layout, model, UMBRELLA_ENV));
+  const versions = Object.fromEntries(model.services.filter((service) => service.role === "app" && service.build !== null && service.profiles.length === 0).map((service) => [service.name, sourceFor(root, layout, service, UMBRELLA_ENV).version]));
+  const run: ScenarioRow = { type: "run", run: "r-keyed", item: id, mode: "affected", key, versions };
+  const results = classes.map((cls, at): ScenarioRow => ({ type: "result", run: run.run, scenario: `S-000${at + 1}`, fingerprint: "sha256:f", key, versions, outcome: cls === "passed" ? "passed" : "failed", attempts: 1, unstable: false, class: cls, detail: "" }));
+  appendRows(root, [run, ...results]);
+}
+
+function closeUmbrella(root: string, id: WorkId, runner: EngineRunner): CloseResult {
+  return close(root, id, {}, { now: new Date("2026-11-15T10:00:00Z"), env: UMBRELLA_ENV, cwd: root, runner });
+}
+
+test("an affected run on the working key with only passes and old failures lets the close commit", (t) => {
+  const { root, id, head } = umbrellaItem(t);
+  const before = head();
+  keyedAffectedRun(root, id, ["passed", "failing before the item"]);
+  const result = closeUmbrella(root, id, umbrellaEngine(root));
+  assert.equal(result.status, "done");
+  assert.notEqual(head(), before);
+});
+
+test("an app edited after the affected run refuses the close as stale, naming the app", (t) => {
+  const { root, id, head } = umbrellaItem(t);
+  keyedAffectedRun(root, id, ["passed"]);
+  writeFileSync(join(root, "services", "orders", "server.mjs"), "edited after the replay\n");
+  const before = head();
+  assert.equal(refusal(() => closeUmbrella(root, id, umbrellaEngine(root))), `stale: orders changed since the affected replay; run picket env replay ${id} --affected`);
+  assert.equal(readState(root, id).status, "open");
+  assert.equal(head(), before);
+});
+
+test("a keyed affected run with no engine at close refuses because the replay cannot be checked", (t) => {
+  const { root, id, head } = umbrellaItem(t);
+  keyedAffectedRun(root, id, ["passed"]);
+  const before = head();
+  assert.equal(refusal(() => closeUmbrella(root, id, engine(false).runner)), `the affected replay cannot be checked against the working tree: no container engine; run picket env replay ${id} --affected`);
+  assert.equal(readState(root, id).status, "open");
+  assert.equal(head(), before);
 });
 
 test("an order item, and a fast item without the environment or an active scenario, close as before (T-10.3)", (t) => {

@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
 import { gitRead } from "../../util/git.mts";
 import { locate, type Located } from "../checkouts.mts";
-import { workingTree } from "../env/build-plan.mts";
+import { sourceFor, workingTree } from "../env/build-plan.mts";
 import type { EnvModel, EnvService } from "../env/model.mts";
 import { ENV_DIR } from "../env/standard.mts";
 import { repoPrefix } from "../git.mts";
 import type { ItemLayout } from "../repos.mts";
+import type { RunRow } from "./results.mts";
 
 export type ContentKey = { env: string; apps: Record<string, string | null> };
 
@@ -59,6 +60,11 @@ function treeAt(checkout: string, base: string | null, rel: string): string | nu
 function repoBase(layout: ItemLayout, repo: string | null, rootBase: string | null): string | null {
   if (repo === null) return rootBase;
   return layout.repos.find((entry) => entry.path === repo)?.base ?? null;
+}
+
+export function changedSinceReplay(root: string, layout: ItemLayout, model: EnvModel, run: Pick<RunRow, "versions">, env: NodeJS.ProcessEnv): string {
+  const changed = model.services.filter(isBuiltApp).filter((service) => run.versions[service.name] !== sourceFor(root, layout, service, env).version);
+  return changed.length ? changed.map((service) => service.name).join(", ") : "the environment";
 }
 
 export function baseKey(root: string, layout: ItemLayout, base: string | null, model: EnvModel): ContentKey {

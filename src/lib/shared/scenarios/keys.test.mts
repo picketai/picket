@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { gitIn, gitOut, gitRepo, writeIn } from "#test/git.mts";
+import { sourceFor } from "../env/build-plan.mts";
 import type { EnvModel, EnvService } from "../env/model.mts";
 import type { ItemLayout } from "../repos.mts";
-import { baseKey, keyId, workingKey } from "./keys.mts";
+import { baseKey, changedSinceReplay, keyId, workingKey } from "./keys.mts";
 
 const ENV = { PATH: process.env.PATH ?? "", SYSTEMROOT: process.env.SYSTEMROOT ?? "" };
 const NO_REPOS: ItemLayout = { nested: [], worktrees: null, repos: [] };
@@ -48,6 +49,16 @@ test("a clean tree gives equal working and base keys; an app edit changes only t
   assert.equal(edited.env, clean.env);
   writeIn(root, "README.md", "outside every context\n");
   assert.deepEqual(workingKey(root, NO_REPOS, model, ENV), edited);
+});
+
+test("changedSinceReplay names an app edited after the run's versions, and the environment when no app changed", (t) => {
+  const { root, model } = project(t);
+  const orders = model.services[0];
+  const versions = { orders: sourceFor(root, NO_REPOS, orders, ENV).version };
+  assert.equal(changedSinceReplay(root, NO_REPOS, model, { versions }, ENV), "the environment");
+  writeIn(root, "services/orders/server.mjs", "changed\n");
+  assert.equal(changedSinceReplay(root, NO_REPOS, model, { versions }, ENV), "orders");
+  assert.equal(changedSinceReplay(root, NO_REPOS, model, { versions: {} }, ENV), "orders");
 });
 
 test("the env part ignores the scenario folder and follows the rest of .picket/env (T-3.2)", (t) => {

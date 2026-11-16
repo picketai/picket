@@ -1,14 +1,16 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Refused } from "../../shared/action.mts";
-import { machineCheck, type EngineRunner } from "../../shared/env/engine.mts";
+import { machineCheck, readModelJson, type EngineRunner } from "../../shared/env/engine.mts";
+import { readModel, type EnvModel } from "../../shared/env/model.mts";
 import { foreignClaim, purgeStack, type Resources } from "../../shared/env/purge.mts";
 import { readStacks } from "../../shared/env/stacks.mts";
 import { COMPOSE_FILE, ENV_DIR, itemKey, stackName } from "../../shared/env/standard.mts";
 import { dropItemChecks } from "../../shared/check-log.mts";
 import { isBlamed } from "../../shared/scenarios/compare.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
-import { latestRun, readResults, type ResultRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
+import { changedSinceReplay, keyId, workingKey } from "../../shared/scenarios/keys.mts";
+import { latestRun, readResults, type ResultRow, type RunRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
@@ -114,16 +116,38 @@ function blamedResults(rows: ScenarioRow[], run: string): ResultRow[] {
   return rows.filter((row): row is ResultRow => row.type === "result" && row.run === run && isBlamed(row.class));
 }
 
-function refuseUnreplayedFastClose(root: string, { id, lane, status }: WorkState): void {
+function workingModel(root: string, { env, cwd, runner }: CloseContext): EnvModel | string {
+  const { engine, machine } = machineCheck(env, cwd, root, runner);
+  if (!engine || !machine.ok) return machine.missing[0]?.split(":")[0] ?? "no container engine";
+  try {
+    return readModel(readModelJson(engine, root));
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+}
+
+function refuseStaleAffectedRun(root: string, snap: WorkSnapshot, run: RunRow, closeCtx: CloseContext): void {
+  const id = snap.state.id;
+  const replay = `run picket env replay ${id} --affected`;
+  const model = workingModel(root, closeCtx);
+  if (typeof model === "string") throw new Refused(`the affected replay cannot be checked against the working tree: ${model}; ${replay}`, { id });
+  if (run.key === keyId(workingKey(root, snap.layout, model, closeCtx.env))) return;
+  throw new Refused(`stale: ${changedSinceReplay(root, snap.layout, model, run, closeCtx.env)} changed since the affected replay; ${replay}`, { id });
+}
+
+function refuseUnreplayedFastClose(root: string, snap: WorkSnapshot, closeCtx: CloseContext): void {
+  const { id, lane, status } = snap.state;
   if (lane !== "fast" || status === "done" || !hasActiveScenario(root)) return;
   const rows = readResults(root);
   const run = latestRun(rows, id, ["affected"]);
   if (run === null) throw new Refused(`run picket env replay ${id} --affected before closing`, { id });
   if (run.reason !== undefined) return;
   const blamed = blamedResults(rows, run.run);
-  if (blamed.length === 0) return;
-  const named = blamed.map((row) => `${row.scenario} ${row.class}`).join(", ");
-  throw new Refused(`${named} after this change: fix the change, or, if the request changes this behaviour on purpose, run picket set ${id} status=abandoned and take it to the order lane`, { id });
+  if (blamed.length > 0) {
+    const named = blamed.map((row) => `${row.scenario} ${row.class}`).join(", ");
+    throw new Refused(`${named} after this change: fix the change, or, if the request changes this behaviour on purpose, run picket set ${id} status=abandoned and take it to the order lane`, { id });
+  }
+  refuseStaleAffectedRun(root, snap, run, closeCtx);
 }
 
 function markDone(root: string, state: WorkState, now: Date): WorkState {
@@ -262,7 +286,7 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const { now, env } = closeCtx;
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
-  refuseUnreplayedFastClose(root, snap.state);
+  refuseUnreplayedFastClose(root, snap, closeCtx);
   const audit = auditLine(snap.state, snap.phases.length, readLedger(root).rows);
   const commitMessage = checkedCloseMessage(message, snap.state);
   const repeats = ownRepeats(root, id);
