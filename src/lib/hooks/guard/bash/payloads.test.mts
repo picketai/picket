@@ -323,6 +323,22 @@ test("a program echoed or printed into an interpreter, directly or through bash 
   }
 });
 
+test("a perl or ruby program attached to a flag cluster, and an echo behind command or a brace group, are in-place code-write denials for the lead and an agent", (t) => {
+  const root = project(t);
+  for (const [command, path] of [
+    [`perl -we'open(F,">src/a.pl"); print F "x"'`, "src/a.pl"],
+    [`ruby -we'open("src/a.rb","w"){|f| f.puts 1}'`, "src/a.rb"],
+    [`command echo 'open("src/a.py","w").write("x")' | python3`, "src/a.py"],
+    [`{ echo 'open("src/a.py","w").write("x")'; } | python3`, "src/a.py"],
+  ]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+    }
+  }
+});
+
 test("a program echoed into python3 from PowerShell is denied (T-3.4)", (t) => {
   const out = guardOutput(`echo "open('src/a.py','w').write('x')" | python3`, { root: project(t), tool: "PowerShell" });
   assert.equal(out?.permissionDecision, "deny");

@@ -100,8 +100,8 @@ type InterpreterFlags = { long: Record<string, string>; attached?: true; cluster
 
 const INTERPRETER_FLAGS: Record<string, InterpreterFlags> = {
   node: { long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
-  python3: { long: {}, clusterLetter: "B", leading: ["-X", "utf8"] },
-  ruby: { long: {}, clusterLetter: "w", leading: ["-w"] },
+  python3: { long: {}, attached: true, clusterLetter: "B", leading: ["-X", "utf8"] },
+  ruby: { long: {}, attached: true, clusterLetter: "w", leading: ["-w"] },
   php: { long: {}, attached: true, clusterLetter: "n", leading: ["-c", "php.ini"] },
   lua: { long: {}, attached: true, leading: ["-l", "mod"] },
   awk: { long: { "-e": "--source" }, attached: true, clusterLetter: "b", leading: ["-F", ":"] },

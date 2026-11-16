@@ -74,6 +74,8 @@ const AS_WRITTEN_SEEDS = [
   fedOnStdin(PHP_SCRIPT, "php", "/proc/self/fd/0"),
   fedOnStdin(LUA_WRITE, "lua", "/dev/stdin"),
   fedOnStdin(AWK_WRITE, "gawk", "-f", "/proc/self/fd/0"),
+  inline("perl", `-weopen(F,">src/a.pl"); print F "x"`),
+  inline("python3", "-Ecopen('src/a.py','w')"),
 ];
 
 closureTests({
@@ -91,6 +93,8 @@ closureTests({
         inline("php", "-r", PHP_WRITE),
         inline("lua", "-e", LUA_WRITE),
         inline("awk", "-e", AWK_WRITE),
+        inline("python3", "-c", "open('src/a.py','w')"),
+        inline("ruby", "-e", "open('src/a.rb','w'){|f| f.puts 1}"),
       ],
     },
     { family: stdinSpellings, seeds: [fedOnStdin(NODE_WRITE, "node"), fedOnStdin(PYTHON_WRITE, "python3"), fedOnStdin(RUBY_WRITE, "ruby")] },
@@ -107,6 +111,10 @@ const PIPED_PROGRAM_SEEDS = [
   `echo 'File.write("src/a.rb","x")' | ruby`,
   `bash -c "echo 'open(\\"src/a.py\\",\\"w\\").write(\\"x\\")' | python3"`,
   `cat <<'EOF' | python3\nopen("src/a.py","w").write("x")\nEOF`,
+  `command echo 'open("src/a.py","w").write("x")' | python3`,
+  `builtin echo 'open("src/a.py","w").write("x")' | python3`,
+  `env -i echo 'open("src/a.py","w").write("x")' | python3`,
+  `{ echo 'open("src/a.py","w").write("x")'; } | python3`,
 ];
 
 closureTests({

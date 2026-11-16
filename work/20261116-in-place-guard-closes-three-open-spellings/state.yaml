@@ -1,9 +1,8 @@
 id: 20261116-in-place-guard-closes-three-open-spellings
 lane: order
 title: In-place guard closes three open spellings
-status: open
+status: done
 created: 2026-11-16T08:47:25.831Z
-updated: 2026-11-16T10:23:00.796Z
+updated: 2026-11-16T11:12:15.006Z
 session: d09e885b-38d7-46ab-90a1-fca179743a5f
 base: 4584e7792964bc66c04899b3ad6c2e8d8552981b
-run_through: 3

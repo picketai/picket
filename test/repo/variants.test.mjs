@@ -105,7 +105,8 @@ test("pairNames refuses a seed that is not name=value", () => {
 
 test("programFlagSpellings spells the long form, the attached form, the cluster and leading flags (T-3.2)", () => {
   assert.deepEqual(labels(programFlagSpellings, { argv: ["node", "-e", "P"], heredocs: [] }), ["node --eval P", "node --eval=P", "node -pe P", "node --no-warnings -e P"]);
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["python3", "-c", "P"], heredocs: [] }), ["python3 -Bc P", "python3 -X utf8 -c P"]);
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["python3", "-c", "P"], heredocs: [] }), ["python3 -cP", "python3 -Bc P", "python3 -BcP", "python3 -X utf8 -c P"]);
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["ruby", "-e", "P"], heredocs: [] }), ["ruby -eP", "ruby -we P", "ruby -weP", "ruby -w -e P"]);
 });
 
 test("programFlagSpellings carries the program as its own word or attached to the long flag", () => {

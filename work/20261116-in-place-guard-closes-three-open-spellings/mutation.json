@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-16T10:44:45.098Z",
+  "base": "4584e7792964bc66c04899b3ad6c2e8d8552981b",
+  "mutant": {
+    "path": "src/lib/hooks/guard/bash/in-place.mts",
+    "line": 23,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 146739
+}

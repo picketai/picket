@@ -197,6 +197,24 @@ test("stdinTexts gives the heredocs, then the words of every echo or printf join
   assert.deepEqual(stdinTexts([["cat", "fix.py"], ["python3"]], []), []);
 });
 
+test("stdinTexts reads an echo behind a wrapper word or a brace group", () => {
+  assert.deepEqual(stdinTexts([["command", "echo", "P"], ["builtin", "echo", "P"], ["env", "-i", "FOO=1", "echo", "P"], ["nice", "-n", "5", "echo", "P"]], []), ["P", "P", "P", "P"]);
+  assert.deepEqual(stdinTexts([["{", "echo", "P"], ["}"], ["python3"]], []), ["P"]);
+});
+
+test("a perl, ruby or python3 program attached to a flag cluster writes its target", () => {
+  assert.ok(inPlaceTargets(["perl", `-weopen(F,">src/a.pl"); print F "x"`], []).includes("src/a.pl"));
+  assert.ok(inPlaceTargets(["ruby", `-weopen("src/a.rb","w"){|f| f.puts 1}`], []).includes("src/a.rb"));
+  assert.ok(inPlaceTargets(["python3", "-copen('src/a.py','w')"], []).includes("src/a.py"));
+  assert.ok(inPlaceTargets(["python3", "-Ecopen('src/a.py','w')"], []).includes("src/a.py"));
+});
+
+test("a python3 or perl cluster that attaches no write yields nothing", () => {
+  for (const argv of [["python3", "-cprint(open('src/a.py').read())"], ["python3", "-Werror", "fix.py"], ["python3", "-Eutf-8", "fix.py"], ["perl", "-ne", "print", "src/a.pl"], ["perl", "-pi.bak", "-e", "s/a/b/"]]) {
+    assert.deepEqual(inPlaceTargets(argv, []), [], argv.join(" "));
+  }
+});
+
 test("a command that is not an interpreter yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["cat", "-"], ["open('src/a.py','w').write('x')"]), []);
 });

@@ -5,6 +5,7 @@ import type { Segment } from "./rules.mts";
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
 const QUOTED_LITERAL = /(['"])((?:(?:\+[<>]|>>|[<>])[ \t]*)?[^'"\s]+)\1/g;
 const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])[ \t]*/;
+const ASCII_LETTER = /^[A-Za-z]$/;
 const STDIN_PATHS: ReadonlySet<string> = new Set(["-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"]);
 
 function wordsOf(seg: Segment): string[] {
@@ -68,12 +69,30 @@ function operandProgram(family: Family, args: string[], heredocs: readonly strin
   return "";
 }
 
-function programText(family: Family, args: string[], heredocs: readonly string[]): string {
+function wordProgram(family: Family, args: string[], heredocs: readonly string[]): string {
   const inline = inlineProgram(family, args);
   if (inline !== null) return inline;
   if (family.programOperand) return operandProgram(family, args, heredocs);
   const hereStrings = args.filter((word) => family.writeCall.test(word));
   return [...(readsStdin(family, args) ? heredocs : []), ...hereStrings].join("\n");
+}
+
+function clusterReadings(family: Family, word: string): string[] {
+  if (!word.startsWith("-") || word.startsWith("--")) return [];
+  const readings: string[] = [];
+  for (let end = 2; end < word.length && ASCII_LETTER.test(word[end - 1]); end++) {
+    if (family.takesProgram(word.slice(0, end))) readings.push(word.slice(end));
+  }
+  return readings;
+}
+
+function attachedPrograms(family: Family, args: string[]): string[] {
+  if (family.programFlags !== undefined) return [];
+  return args.flatMap((word) => clusterReadings(family, word));
+}
+
+function programText(family: Family, args: string[], heredocs: readonly string[]): string {
+  return [wordProgram(family, args, heredocs), ...attachedPrograms(family, args)].join("\n");
 }
 
 function withoutModePrefix(literal: string): string {
@@ -89,8 +108,9 @@ function programWrites(family: Family, program: string): string[] {
 const VISIBLE_WRITERS: ReadonlySet<string> = new Set(["echo", "printf"]);
 
 function visibleText(seg: Segment): string[] {
-  const [first, ...rest] = wordsOf(seg);
-  return VISIBLE_WRITERS.has(normalizeRoot(first ?? "").toLowerCase()) ? [rest.join(" ")] : [];
+  const words = wordsOf(seg);
+  const writer = words.findIndex((word) => VISIBLE_WRITERS.has(normalizeRoot(word).toLowerCase()));
+  return writer === -1 ? [] : [words.slice(writer + 1).join(" ")];
 }
 
 export function stdinTexts(segments: readonly Segment[], heredocs: readonly string[]): string[] {
