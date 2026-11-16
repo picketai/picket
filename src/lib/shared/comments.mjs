@@ -1,12 +1,30 @@
 const AFTER_WHITESPACE = /\s/;
 const AFTER_STATEMENT = /[\s;)}\]]/;
 
-const C_STYLE = { line: "//", lineAfter: AFTER_STATEMENT, block: { open: "/*", close: "*/", stars: true } };
-const HASH = { line: "#", lineAfter: AFTER_WHITESPACE, block: null };
+const AFTER_LABEL = /[\s:]/;
+
+const SLASHES = { token: /\/\//g, after: AFTER_STATEMENT };
+const HASH_TOKEN = { token: /#/g, after: AFTER_WHITESPACE };
+const C_BLOCK = { open: "/*", close: "*/", stars: true };
+
+const C_STYLE = { lines: [SLASHES], blocks: [C_BLOCK] };
+const HASH = { lines: [HASH_TOKEN], blocks: [] };
 const PYTHON = { ...HASH, docstring: true };
-const SQL = { line: "--", lineAfter: AFTER_STATEMENT, block: C_STYLE.block };
-const BASIC = { line: "'", lineAfter: AFTER_WHITESPACE, block: null };
-export const MARKUP = { line: null, block: { open: "<!--", close: "-->", stars: false } };
+const RUBY = { lines: [HASH_TOKEN], blocks: [{ open: "=begin", close: "=end", stars: false, lineStart: true }] };
+const PERL = { lines: [HASH_TOKEN], blocks: [{ open: "=pod", close: "=cut", stars: false, lineStart: true }] };
+const POWERSHELL = { lines: [HASH_TOKEN], blocks: [{ open: "<#", close: "#>", stars: false }] };
+const PHP = { lines: [SLASHES, { token: /#(?!\[)/g, after: AFTER_STATEMENT }], blocks: [C_BLOCK] };
+const SQL = { lines: [{ token: /--/g, after: AFTER_STATEMENT }], blocks: [C_BLOCK] };
+const BASIC = { lines: [{ token: /'/g, after: AFTER_WHITESPACE }, { token: /\bREM(?=\s|$)/gi, after: AFTER_LABEL }], blocks: [] };
+export const MARKUP = { lines: [], blocks: [{ open: "<!--", close: "-->", stars: false }] };
+
+const STYLE = { lines: [], blocks: [C_BLOCK] };
+const EMBEDDED_REGIONS = [
+  { open: /<script\b[^>]*>/i, close: /<\/script\s*>/i, lang: C_STYLE },
+  { open: /<style\b[^>]*>/i, close: /<\/style\s*>/i, lang: STYLE },
+];
+const MARKUP_WITH_SCRIPTS = { ...MARKUP, regions: EMBEDDED_REGIONS };
+const RAZOR = { ...MARKUP, blocks: [...MARKUP.blocks, { open: "@*", close: "*@", stars: false }] };
 
 function each(extensions, lang) {
   return Object.fromEntries(extensions.split(" ").map((ext) => [ext, lang]));
@@ -15,13 +33,26 @@ function each(extensions, lang) {
 export const LANGS = {
   ...each(".js .mjs .cjs .jsx .ts .mts .cts .tsx", C_STYLE),
   ...each(".cs .java .kt .kts .go .rs .swift .scala", C_STYLE),
-  ...each(".c .h .cpp .hpp .cc .php .dart .groovy", C_STYLE),
+  ...each(".c .h .cpp .hpp .cc .dart .groovy", C_STYLE),
+  ".php": PHP,
   ".py": PYTHON,
-  ...each(".rb .sh .bash .ps1 .pl .r", HASH),
+  ".rb": RUBY,
+  ".pl": PERL,
+  ".ps1": POWERSHELL,
+  ...each(".sh .bash .r", HASH),
   ".sql": SQL,
   ".vb": BASIC,
   ...each(".html .htm .xml .xaml .cshtml .razor .vue .svelte", MARKUP),
 };
+
+const DOCUMENT_ROWS = {
+  ...each(".html .htm .vue .svelte", MARKUP_WITH_SCRIPTS),
+  ...each(".cshtml .razor", RAZOR),
+};
+
+function documentRow(ext) {
+  return Object.hasOwn(DOCUMENT_ROWS, ext) ? DOCUMENT_ROWS[ext] : Object.hasOwn(LANGS, ext) ? LANGS[ext] : null;
+}
 
 export const COMMENT_SUPPRESSION_MARKERS = [
   /eslint-disable/i, /@ts-(ignore|expect-error|nocheck)/i, /biome-ignore/i, /istanbul ignore/i,
@@ -52,33 +83,42 @@ export function maskStrings(s) {
   );
 }
 
-function lineTokenAt(masked, lang) {
-  if (!lang.line) return -1;
-  for (let i = masked.indexOf(lang.line); i >= 0; i = masked.indexOf(lang.line, i + 1)) {
-    if (i === 0 || lang.lineAfter.test(masked[i - 1])) return i;
+function firstLineToken(masked, { token, after }) {
+  for (const match of masked.matchAll(token)) {
+    if (match.index === 0 || after.test(masked[match.index - 1])) return { idx: match.index, token: match[0] };
   }
-  return -1;
+  return null;
+}
+
+function blockOpenAt(masked, block) {
+  if (block.lineStart) return masked.startsWith(block.open) ? 0 : -1;
+  return masked.indexOf(block.open);
+}
+
+function earliest(found) {
+  return found.filter(Boolean).reduce((first, next) => (first === null || next.idx < first.idx ? next : first), null);
+}
+
+function lineComment(text, { idx, token }) {
+  const body = text.slice(idx + token.length);
+  const isDoc = /^[/!*]/.test(body) || (token === "#" && /^#/.test(body));
+  return { body, isDoc, inline: text.slice(0, idx).trim().length > 0, col: idx, closer: null };
+}
+
+function blockComment(text, { idx, block: { open, close } }) {
+  const rest = text.slice(idx + open.length);
+  const end = rest.indexOf(close);
+  const body = end < 0 ? rest : rest.slice(0, end);
+  return { body, isDoc: /^[*!]/.test(rest), inline: text.slice(0, idx).trim().length > 0, col: idx, closer: end < 0 ? close : null };
 }
 
 export function commentOf(text, lang) {
   const masked = maskStrings(text);
-  const idx = lineTokenAt(masked, lang);
-  if (idx >= 0) {
-    const before = text.slice(0, idx).trim();
-    const body = text.slice(idx + lang.line.length);
-    const isDoc = /^[/!*]/.test(body) || (lang.line === "#" && /^#/.test(body));
-    return { body, isDoc, inline: before.length > 0, col: idx, closer: null };
-  }
-  if (!lang.block) return null;
-  const { open, close, stars } = lang.block;
-  const b = masked.indexOf(open);
-  if (b >= 0) {
-    const rest = text.slice(b + open.length);
-    const end = rest.indexOf(close);
-    const body = end < 0 ? rest : rest.slice(0, end);
-    return { body, isDoc: /^[*!]/.test(rest), inline: text.slice(0, b).trim().length > 0, col: b, closer: end < 0 ? close : null };
-  }
-  if (stars && /^\s*\*(?!\/)/.test(text)) return { body: text.replace(/^\s*\*/, ""), isDoc: true, inline: false, col: 0, closer: null };
+  const line = earliest(lang.lines.map((token) => firstLineToken(masked, token)));
+  const block = earliest(lang.blocks.map((candidate) => ({ idx: blockOpenAt(masked, candidate), block: candidate })).filter(({ idx }) => idx >= 0));
+  if (line && (!block || line.idx < block.idx)) return lineComment(text, line);
+  if (block) return blockComment(text, block);
+  if (lang.blocks.some(({ stars }) => stars) && /^\s*\*(?!\/)/.test(text)) return { body: text.replace(/^\s*\*/, ""), isDoc: true, inline: false, col: 0, closer: null };
   return null;
 }
 
@@ -124,14 +164,41 @@ function blockContinuation(line, open) {
   return { body: body !== null && isDirective(body) ? null : body, open: end < 0 ? open : null };
 }
 
+function scanned(line, lang, open) {
+  return open ? blockContinuation(line, open) : lineStart(line, lang);
+}
+
+function insideRegion(line, { region, open }) {
+  const close = region.close.exec(line);
+  if (!close) return { ...scanned(line, region.lang, open), region };
+  return { body: scanned(line.slice(0, close.index), region.lang, open).body, open: null, region: null };
+}
+
+function enteringRegion(line, regions) {
+  for (const region of regions) {
+    const opened = region.open.exec(line);
+    if (!opened) continue;
+    const rest = line.slice(opened.index + opened[0].length);
+    const close = region.close.exec(rest);
+    return { ...lineStart(close ? rest.slice(0, close.index) : rest, region.lang), region: close ? null : region };
+  }
+  return null;
+}
+
+function lineStep(line, lang, state) {
+  if (state.region) return insideRegion(line, state);
+  const entered = state.open ? null : enteringRegion(line, lang.regions ?? []);
+  return entered ?? { ...scanned(line, lang, state.open), region: null };
+}
+
 export function commentLines(text, ext) {
-  const lang = LANGS[ext];
+  const lang = documentRow(ext);
   if (!lang) return [];
   const bodies = [];
-  let open = null;
+  let state = { open: null, region: null };
   for (const line of text.split(/\r?\n/)) {
-    const step = open ? blockContinuation(line, open) : lineStart(line, lang);
-    open = step.open;
+    const step = lineStep(line, lang, state);
+    state = { open: step.open, region: step.region };
     const body = step.body === null ? "" : normalise(step.body);
     if (body) bodies.push(body);
   }

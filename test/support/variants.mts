@@ -24,7 +24,7 @@ export type Closure<S, I, R> = {
   seeds: S[];
   probes?: I[];
   rows?: RowSource<any, S>[];
-  run: (input: I, t: TestContext) => R;
+  run: (input: I, t: TestContext) => R | Promise<R>;
   closed: (output: R) => boolean;
 };
 
@@ -48,10 +48,15 @@ export function loadedExport<M extends object, K extends keyof M>(loaded: Loaded
   return value as M[K];
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Object.getPrototypeOf(value) === Object.prototype;
+}
+
 function rowsOf(value: unknown): readonly unknown[] | null {
   if (Array.isArray(value)) return value;
   if (value instanceof Set) return [...value];
   if (value instanceof Map) return [...value.keys()];
+  if (isPlainObject(value)) return Object.keys(value);
   return null;
 }
 
@@ -60,7 +65,7 @@ export function tableRows<Row>(loaded: Loaded<object>, name: string): TableRows<
   const { value, missing } = exportOf(loaded, name);
   if (missing !== null) return { ...table, rows: [], missing };
   const rows = rowsOf(value);
-  if (rows === null) return { ...table, rows: [], missing: `${name} in ${loaded.path} is not an array, a Set or a Map` };
+  if (rows === null) return { ...table, rows: [], missing: `${name} in ${loaded.path} is not an array, a Set, a Map or a plain object` };
   return { ...table, rows: rows as Row[], missing: null };
 }
 
@@ -880,6 +885,113 @@ export const powerShellCommands: Grammar<string, string> = {
   families: [powerShellNames, powerShellPlaces],
 };
 
+export type CommentSeed = { ext: string; text: string; trails: boolean };
+
+export type CommentEdit = { tool: "Write" | "Edit"; rel: string; before: string; input: Record<string, string | boolean> };
+
+type CommentForm = { text: string; trails: boolean };
+
+type CommentRow = { statement: string; head?: string; forms: CommentForm[] };
+
+const trailing = (text: string): CommentForm => ({ text, trails: true });
+const ownLine = (text: string): CommentForm => ({ text, trails: false });
+
+const C_COMMENTS = [trailing("// note"), trailing("/* note */"), trailing("/** note */"), ownLine("/*\n * note\n */")];
+const HASH_COMMENTS = [trailing("# note")];
+const MARKUP_COMMENTS = [trailing("<!-- note -->")];
+const SCRIPT_COMMENTS = [ownLine("<script>\n// note\n</script>"), ownLine("<script>\n/* note */\n</script>"), ownLine("<style>\n/* note */\n</style>")];
+
+function rowsFor(extensions: string, row: CommentRow): Record<string, CommentRow> {
+  return Object.fromEntries(extensions.split(" ").map((ext) => [ext, row]));
+}
+
+export const COMMENT_SYNTAX: Record<string, CommentRow> = {
+  ...rowsFor(".js .mjs .cjs .jsx .ts .mts .cts .tsx", { statement: "const a = 1;", forms: C_COMMENTS }),
+  ".cs": { statement: "var a = 1;", forms: [...C_COMMENTS, trailing("/// note")] },
+  ".java": { statement: "int a = 1;", forms: C_COMMENTS },
+  ...rowsFor(".kt .kts", { statement: "val a = 1", forms: C_COMMENTS }),
+  ".go": { statement: "var a = 1", forms: C_COMMENTS },
+  ".rs": { statement: "const A: i32 = 1;", forms: [...C_COMMENTS, trailing("/// note"), trailing("//! note")] },
+  ".swift": { statement: "let a = 1", forms: [...C_COMMENTS, trailing("/// note")] },
+  ".scala": { statement: "val a = 1", forms: C_COMMENTS },
+  ...rowsFor(".c .h .cpp .hpp .cc", { statement: "int a = 1;", forms: C_COMMENTS }),
+  ".dart": { statement: "var a = 1;", forms: [...C_COMMENTS, trailing("/// note")] },
+  ".groovy": { statement: "def a = 1", forms: C_COMMENTS },
+  ".php": { head: "<?php", statement: "$a = 1;", forms: [trailing("// note"), trailing("# note"), trailing("/* note */")] },
+  ".py": { statement: "a = 1", forms: [...HASH_COMMENTS, ownLine('"""note"""')] },
+  ".rb": { statement: "a = 1", forms: [...HASH_COMMENTS, ownLine("=begin\nnote\n=end")] },
+  ".pl": { statement: "my $a = 1;", forms: [...HASH_COMMENTS, ownLine("=pod\nnote\n=cut")] },
+  ".ps1": { statement: "$a = 1", forms: [...HASH_COMMENTS, trailing("<# note #>")] },
+  ...rowsFor(".sh .bash", { statement: "a=1", forms: HASH_COMMENTS }),
+  ".r": { statement: "a <- 1", forms: HASH_COMMENTS },
+  ".sql": { statement: "SELECT 1;", forms: [trailing("-- note"), trailing("/* note */")] },
+  ".vb": { statement: "Dim a = 1", forms: [trailing("' note"), ownLine("REM note")] },
+  ...rowsFor(".html .htm .vue .svelte", { statement: "<p>a</p>", forms: [...MARKUP_COMMENTS, ...SCRIPT_COMMENTS] }),
+  ...rowsFor(".xml .xaml", { statement: "<p>a</p>", forms: MARKUP_COMMENTS }),
+  ...rowsFor(".cshtml .razor", { statement: "<p>a</p>", forms: [...MARKUP_COMMENTS, trailing("@* note *@")] }),
+};
+
+export function commentSeeds(ext: string): CommentSeed[] {
+  return Object.hasOwn(COMMENT_SYNTAX, ext) ? COMMENT_SYNTAX[ext].forms.map(({ text, trails }) => ({ ext, text, trails })) : [];
+}
+
+function syntaxOf(ext: string): CommentRow {
+  if (!Object.hasOwn(COMMENT_SYNTAX, ext)) throw new Error(`no comment syntax row for ${ext}`);
+  return COMMENT_SYNTAX[ext];
+}
+
+function fileOf(head: string | undefined, lines: string[], end = "\n"): string {
+  return [...(head === undefined ? [] : [head]), ...lines].map((line) => `${line}${end}`).join("");
+}
+
+function commentRel(ext: string): string {
+  return `src/a${ext}`;
+}
+
+function written(ext: string, content: string): CommentEdit {
+  return { tool: "Write", rel: commentRel(ext), before: "", input: { content } };
+}
+
+function editedIn(ext: string, before: string, statement: string, text: string, replaceAll: boolean): CommentEdit {
+  const input = { old_string: statement, new_string: `${statement}\n${text}`, ...(replaceAll ? { replace_all: true } : {}) };
+  return { tool: "Edit", rel: commentRel(ext), before, input };
+}
+
+const STARTS_AT_COLUMN_ZERO = /^(=|""")/;
+
+function indented(text: string, indent: string): string {
+  return text.split("\n").map((line) => `${indent}${line}`).join("\n");
+}
+
+function commentPlacement({ ext, text, trails }: CommentSeed): { name: string; edit: CommentEdit }[] {
+  const { head, statement } = syntaxOf(ext);
+  const indentable = !STARTS_AT_COLUMN_ZERO.test(text);
+  return [
+    ...(indentable ? [{ name: "indented by four spaces", edit: written(ext, fileOf(head, [statement, indented(text, "    ")])) }] : []),
+    ...(indentable ? [{ name: "indented by a tab", edit: written(ext, fileOf(head, [statement, indented(text, "\t")])) }] : []),
+    ...(trails ? [{ name: "after the statement", edit: written(ext, fileOf(head, [`${statement} ${text}`])) }] : []),
+    { name: "with CRLF line ends", edit: written(ext, fileOf(head, [statement, ...text.split("\n")], "\r\n")) },
+    { name: "added by an Edit", edit: editedIn(ext, fileOf(head, [statement]), statement, text, false) },
+    { name: "added by an Edit with replace_all", edit: editedIn(ext, fileOf(head, [statement, statement]), statement, text, true) },
+  ];
+}
+
+function commentLabel({ ext, text }: CommentSeed, placement: string): string {
+  return `${ext} ${JSON.stringify(text)} ${placement}`;
+}
+
+export const commentPlacements: Family<CommentSeed, CommentEdit> = {
+  name: "comment placements",
+  spell: (seed) => commentPlacement(seed).map(({ name, edit }) => ({ label: commentLabel(seed, name), input: edit })),
+};
+
+export const codeComments: Grammar<CommentSeed, CommentEdit> = {
+  name: "code comments",
+  written: ({ ext, text }) => written(ext, fileOf(syntaxOf(ext).head, [syntaxOf(ext).statement, text])),
+  label: (edit) => `${edit.tool} ${edit.rel} ${JSON.stringify(edit.input)}`,
+  families: [commentPlacements],
+};
+
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
   const seen = new Set<string>();
   return spellings.filter(({ label }) => {
@@ -898,8 +1010,12 @@ export function familySpellings<S, I>(family: Family<S, I>, seeds: S[]): Spellin
   return distinctByLabel(seeds.flatMap((seed) => family.spell(seed)));
 }
 
-export function openSpellings<S, I, R>(closure: Closure<S, I, R>, spellings: Spelling<I>[], t: TestContext): Spelling<I>[] {
-  return spellings.filter((spelling) => !closure.closed(closure.run(spelling.input, t)));
+export async function openSpellings<S, I, R>(closure: Closure<S, I, R>, spellings: Spelling<I>[], t: TestContext): Promise<Spelling<I>[]> {
+  const open: Spelling<I>[] = [];
+  for (const spelling of spellings) {
+    if (!closure.closed(await closure.run(spelling.input, t))) open.push(spelling);
+  }
+  return open;
 }
 
 export function closureFailure(guard: string, familyName: string, labels: string[]): string {
@@ -908,8 +1024,8 @@ export function closureFailure(guard: string, familyName: string, labels: string
 
 const AS_WRITTEN = "as written";
 
-function assertClosed<S, I, R>(closure: Closure<S, I, R>, familyName: string, spellings: Spelling<I>[], t: TestContext): void {
-  const labels = openSpellings(closure, spellings, t).map((spelling) => spelling.label);
+async function assertClosed<S, I, R>(closure: Closure<S, I, R>, familyName: string, spellings: Spelling<I>[], t: TestContext): Promise<void> {
+  const labels = (await openSpellings(closure, spellings, t)).map((spelling) => spelling.label);
   assert.deepEqual(labels, [], closureFailure(closure.guard, familyName, labels));
 }
 

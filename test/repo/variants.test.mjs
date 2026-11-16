@@ -8,6 +8,7 @@ import { withProject } from "#test/project.mts";
 import { commandLines, commandPaths, commandPlaces, wordQuotings } from "#test/variants.mts";
 import { commandWrappers, kernelCalls, kernelLaunchers } from "#test/variants.mts";
 import { powerShellCommands, powerShellNames, powerShellPlaces, sourceCommands, sourcePathSpellings } from "#test/variants.mts";
+import { codeComments, COMMENT_SYNTAX, commentPlacements, commentSeeds } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -95,10 +96,10 @@ function linesAfter(stdout, header) {
   return lines.slice(0, lines.indexOf("+ actual - expected"));
 }
 
-test("openSpellings returns exactly the open spellings in the order given", (t) => {
+test("openSpellings returns exactly the open spellings in the order given", async (t) => {
   const closure = positiveOnly([]);
   const spellings = [-1, 0, 2, 5].map((n) => ({ label: String(n), input: n }));
-  assert.deepEqual(openSpellings(closure, spellings, t), [{ label: "2", input: 2 }, { label: "5", input: 5 }]);
+  assert.deepEqual(await openSpellings(closure, spellings, t), [{ label: "2", input: 2 }, { label: "5", input: 5 }]);
 });
 
 test("familySpellings visits every spelling of every seed in order and drops repeated labels", () => {
@@ -185,7 +186,7 @@ test("tableRows reads an array, a Set and a Map's keys", async () => {
 
 test("tableRows names an export that is not a table, and the load failure of a module that does not load", async () => {
   const loaded = await loadGuard(() => Promise.resolve({ N: 3 }), "m.mjs");
-  assert.deepEqual(tableRows(loaded, "N"), { table: "N", path: "m.mjs", rows: [], missing: "N in m.mjs is not an array, a Set or a Map" });
+  assert.deepEqual(tableRows(loaded, "N"), { table: "N", path: "m.mjs", rows: [], missing: "N in m.mjs is not an array, a Set, a Map or a plain object" });
   const failed = await loadGuard(() => Promise.reject(new Error("boom")), "m.mjs");
   assert.deepEqual(failed, { path: "m.mjs", module: null, missing: "m.mjs does not load: boom" });
   assert.deepEqual(tableRows(failed, "N"), { table: "N", path: "m.mjs", rows: [], missing: "m.mjs does not load: boom" });
@@ -449,13 +450,13 @@ test("editPaths writes a seed as its relative path and spells six other forms, e
   ]);
 });
 
-test("a guard that masks only after ; leaves the other pair places open (T-2.4)", (t) => {
+test("a guard that masks only after ; leaves the other pair places open (T-2.4)", async (t) => {
   const closure = {
     guard: "semicolon masker",
     run: (value) => value.replace(/;(\w+)=[^;]*/g, ";$1=***"),
     closed: (output) => !output.includes("K"),
   };
-  assert.deepEqual(openSpellings(closure, familySpellings(pairPlaces, ["password=K"]), t).map((spelling) => spelling.label), [
+  assert.deepEqual((await openSpellings(closure, familySpellings(pairPlaces, ["password=K"]), t)).map((spelling) => spelling.label), [
     "https://a.example.com/x?password=K",
     "https://a.example.com/x?a=1&password=K",
     "jdbc:postgresql://h/db?user=a&password=K",
@@ -543,6 +544,38 @@ test("powerShellNames spells the name in both cases, through the call and dot op
 test("powerShellPlaces puts the command in the eight places PowerShell runs it, in order (T-3.1)", () => {
   assert.deepEqual(labels(powerShellPlaces, "rm x"), ["$true; rm x", "rm x | Out-Null", "(rm x)", "$(rm x)", "@(rm x)", "if ($true) { rm x }", "Write-Output 1 | rm x", "1 | % { rm x }"]);
   assert.deepEqual(powerShellCommands.families.map((family) => family.name), ["PowerShell names", "PowerShell places"]);
+});
+
+test("commentPlacements puts a trailing comment in six places, each a Write or an Edit of src/a<ext> (T-5.1)", () => {
+  const seed = { ext: ".ts", text: "// note", trails: true };
+  assert.deepEqual(commentPlacements.spell(seed), [
+    { label: '.ts "// note" indented by four spaces', input: { tool: "Write", rel: "src/a.ts", before: "", input: { content: "const a = 1;\n    // note\n" } } },
+    { label: '.ts "// note" indented by a tab', input: { tool: "Write", rel: "src/a.ts", before: "", input: { content: "const a = 1;\n\t// note\n" } } },
+    { label: '.ts "// note" after the statement', input: { tool: "Write", rel: "src/a.ts", before: "", input: { content: "const a = 1; // note\n" } } },
+    { label: '.ts "// note" with CRLF line ends', input: { tool: "Write", rel: "src/a.ts", before: "", input: { content: "const a = 1;\r\n// note\r\n" } } },
+    { label: '.ts "// note" added by an Edit', input: { tool: "Edit", rel: "src/a.ts", before: "const a = 1;\n", input: { old_string: "const a = 1;", new_string: "const a = 1;\n// note" } } },
+    { label: '.ts "// note" added by an Edit with replace_all', input: { tool: "Edit", rel: "src/a.ts", before: "const a = 1;\nconst a = 1;\n", input: { old_string: "const a = 1;", new_string: "const a = 1;\n// note", replace_all: true } } },
+  ]);
+});
+
+test("commentPlacements leaves out the trailing place for an own-line form and indentation for a column-zero form", () => {
+  assert.deepEqual(labels(commentPlacements, { ext: ".rb", text: "=begin\nnote\n=end", trails: false }), [
+    '.rb "=begin\\nnote\\n=end" with CRLF line ends', '.rb "=begin\\nnote\\n=end" added by an Edit', '.rb "=begin\\nnote\\n=end" added by an Edit with replace_all',
+  ]);
+  assert.equal(commentPlacements.spell({ ext: ".php", text: "# note", trails: true })[2].input.input.content, "<?php\n$a = 1; # note\n");
+});
+
+test("COMMENT_SYNTAX has a row for every LANGS extension, and commentSeeds reads its forms", async () => {
+  const { LANGS } = await import("../../src/lib/shared/comments.mjs");
+  assert.deepEqual(Object.keys(LANGS).filter((ext) => !Object.hasOwn(COMMENT_SYNTAX, ext)), []);
+  assert.deepEqual(commentSeeds(".vb"), [{ ext: ".vb", text: "' note", trails: true }, { ext: ".vb", text: "REM note", trails: false }]);
+  assert.deepEqual(commentSeeds(".md"), []);
+});
+
+test("tableRows reads the own keys of a plain object as its rows (T-5.1)", async () => {
+  const loaded = await loadGuard(() => Promise.resolve({ O: { ".a": 1, ".b": 2 } }), "m.mjs");
+  assert.deepEqual(tableRows(loaded, "O"), { table: "O", path: "m.mjs", rows: [".a", ".b"], missing: null });
+  assert.deepEqual(codeComments.families.map((family) => family.name), ["comment placements"]);
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

@@ -73,6 +73,32 @@ test("a recorded one-line block comment approval matches the comment it approves
   assert.deepEqual(addedComments({ ext: ".mjs", before: "", after: approval }), [normalise(approval)]);
 });
 
+test("a language row reads every comment form it defines, beside its first one (T-5.2)", () => {
+  assert.deepEqual(commentLines(lines("Dim a = 1", "REM note", "rem lower : REM after", "Dim REMOVE = 2"), ".vb"), ["note", "lower : REM after"]);
+  assert.deepEqual(commentLines(lines("<?php $a = 1; # note", "// slashes", "#[Attribute]", "/* block */"), ".php"), ["note", "slashes", "block"]);
+  assert.deepEqual(commentLines(lines("a = 1", "=begin", "note", "=end", "  =begin not a block"), ".rb"), ["note"]);
+  assert.deepEqual(commentLines(lines("my $a = 1;", "=pod", "note", "=cut"), ".pl"), ["note"]);
+  assert.deepEqual(commentLines(lines("$a = 1 <# trailing #>", "<#", "note", "#>"), ".ps1"), ["trailing", "note"]);
+});
+
+test("a PHP attribute is no comment (T-5.2)", () => {
+  assert.deepEqual(commentLines("#[Attribute]", ".php"), []);
+});
+
+test("markup rows read comments inside script and style elements, and Razor comments (T-5.2)", () => {
+  const vue = lines("<template><p>a</p></template>", '<script setup lang="ts">', "// note", "const a = 1; /* block */", "</script>", "<style>", "/* style note */", "</style>", "<p>// text, not code</p>");
+  assert.deepEqual(commentLines(vue, ".vue"), ["note", "block", "style note"]);
+  assert.deepEqual(commentLines("<script>// inline</script>", ".svelte"), ["inline"]);
+  assert.deepEqual(commentLines(lines("<script>", "/* a", "b */", "</script>"), ".html"), ["a", "b"]);
+  assert.deepEqual(commentLines(lines("<p>a</p>@* note *@", "@*", "more", "*@"), ".razor"), ["note", "more"]);
+  assert.deepEqual(commentLines("<p>a</p>@* note *@", ".cshtml"), ["note"]);
+  assert.deepEqual(commentLines(lines("<script>", "// x", "</script>"), ".xml"), []);
+});
+
+test("the earlier of a line token and a block opener starts the comment", () => {
+  assert.deepEqual(commentLines("/* a */ const b = 1; // c", ".ts"), ["a"]);
+});
+
 test("addedComments is a multiset difference, so kept and moved comments never count", () => {
   const before = lines("// keep", "const a = 1;", "// keep", "// moved");
   const after = lines("// moved", "// keep", "const a = 2;", "// keep", "// keep", "// new one");
