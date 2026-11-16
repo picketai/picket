@@ -5,8 +5,7 @@ import type { Segment } from "./rules.mts";
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
 const QUOTED_LITERAL = /(['"])((?:(?:\+[<>]|>>|[<>])[ \t]*)?[^'"\s]+)\1/g;
 const PERL_MODE_PREFIX = /^(?:\+[<>]|>>|[<>])[ \t]*/;
-const STDIN_OPERAND = "-";
-const STDIN_SCRIPTS: ReadonlySet<string> = new Set([STDIN_OPERAND, "/dev/stdin"]);
+const STDIN_PATHS: ReadonlySet<string> = new Set(["-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"]);
 
 function wordsOf(seg: Segment): string[] {
   return seg.filter((t): t is string => typeof t === "string");
@@ -52,17 +51,17 @@ function scriptAt(family: Family, args: string[], i: number): string | undefined
 }
 
 function readsStdinScript(family: Family, args: string[]): boolean {
-  return args.some((_, i) => STDIN_SCRIPTS.has(scriptAt(family, args, i) ?? ""));
+  return args.some((_, i) => STDIN_PATHS.has(scriptAt(family, args, i) ?? ""));
 }
 
 function readsStdin(family: Family, args: string[]): boolean {
-  return args.includes(STDIN_OPERAND) || readsStdinScript(family, args) || !namesScriptFile(family, args);
+  return args.some((arg) => STDIN_PATHS.has(arg)) || readsStdinScript(family, args) || !namesScriptFile(family, args);
 }
 
 function operandProgram(family: Family, args: string[], heredocs: readonly string[]): string {
   for (let i = 0; i < args.length; i++) {
     const script = scriptAt(family, args, i);
-    if (script !== undefined) return STDIN_SCRIPTS.has(script) ? heredocs.join("\n") : "";
+    if (script !== undefined) return STDIN_PATHS.has(script) ? heredocs.join("\n") : "";
     if (family.valueFlags.has(args[i])) i++;
     else if (!args[i].startsWith("-")) return args[i];
   }

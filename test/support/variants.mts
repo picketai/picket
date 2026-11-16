@@ -147,11 +147,13 @@ export const programFlagSpellings: Family<Invocation> = {
   },
 };
 
+const STDIN_PATHS = ["-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"];
+
 export const stdinSpellings: Family<Invocation> = {
   name: "stdin spellings",
   spell: ({ argv: [interpreter], heredocs }) => {
     const { leading } = flagsOf(interpreter);
-    return invocations([[interpreter, "-"], [interpreter, ...leading, "-"]], heredocs);
+    return invocations([...STDIN_PATHS.map((path) => [interpreter, path]), [interpreter, ...leading, "-"]], heredocs);
   },
 };
 

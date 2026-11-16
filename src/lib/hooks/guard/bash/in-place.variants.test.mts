@@ -67,6 +67,11 @@ const AS_WRITTEN_SEEDS = [
   fedOnStdin(TCL_WRITE, "tclsh"),
   fedOnStdin(`set f [open "src/a.ts" a]`, "tclsh"),
   fedOnStdin("set f [open src/a.ts {WRONLY CREAT}]", "tclsh"),
+  fedOnStdin(TCL_WRITE, "tclsh", "/dev/stdin"),
+  fedOnStdin(PERL_WRITE, "perl", "/dev/fd/0"),
+  fedOnStdin(PHP_SCRIPT, "php", "/proc/self/fd/0"),
+  fedOnStdin(LUA_WRITE, "lua", "/dev/stdin"),
+  fedOnStdin(AWK_WRITE, "gawk", "-f", "/proc/self/fd/0"),
 ];
 
 closureTests({

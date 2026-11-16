@@ -131,10 +131,13 @@ test("programFlagSpellings throws on an interpreter missing from the table (T-3.
   assert.throws(() => programFlagSpellings.spell({ argv: ["perl", "-e", "P"], heredocs: [] }), /no flag table row for the interpreter perl/);
 });
 
-test("stdinSpellings reads the heredoc after - alone and after the leading flags (T-3.4)", () => {
+test("stdinSpellings reads the heredoc after - and each standard input path alone, then after the leading flags (T-3.4)", () => {
   const spellings = stdinSpellings.spell({ argv: ["python3"], heredocs: ["P"] });
   assert.deepEqual(spellings, [
     { label: "python3 - << P", input: { argv: ["python3", "-"], heredocs: ["P"] } },
+    { label: "python3 /dev/stdin << P", input: { argv: ["python3", "/dev/stdin"], heredocs: ["P"] } },
+    { label: "python3 /dev/fd/0 << P", input: { argv: ["python3", "/dev/fd/0"], heredocs: ["P"] } },
+    { label: "python3 /proc/self/fd/0 << P", input: { argv: ["python3", "/proc/self/fd/0"], heredocs: ["P"] } },
     { label: "python3 -X utf8 - << P", input: { argv: ["python3", "-X", "utf8", "-"], heredocs: ["P"] } },
   ]);
 });

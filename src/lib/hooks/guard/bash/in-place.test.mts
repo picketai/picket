@@ -50,6 +50,23 @@ test("a - operand after a flag value reads the heredoc, and a here-string with a
   assert.ok(inPlaceTargets(["python3", "open('src/a.py','w').write('x')"], []).includes("src/a.py"));
 });
 
+test("a standard input path operand reads the heredoc for every row (T-2.4)", () => {
+  const pythonWrite = "open('src/a.py','w').write('x')";
+  for (const path of ["/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"]) {
+    assert.ok(inPlaceTargets(["python3", path], [pythonWrite]).includes("src/a.py"), path);
+  }
+  assert.ok(inPlaceTargets(["tclsh", "/dev/stdin"], ["set f [open src/a.ts w]"]).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["perl", "/dev/fd/0"], ["open(my $f, '>', 'src/a.pl')"]).includes("src/a.pl"));
+  assert.ok(inPlaceTargets(["gawk", "-f", "/dev/fd/0"], [`BEGIN { print "x" > "src/a.ts" }`]).includes("src/a.ts"));
+});
+
+test("a script file or a stdin read keeps a heredoc harmless, and a stdin path after a script file reads it (T-2.5)", () => {
+  const write = "open('src/a.py','w').write('x')";
+  assert.deepEqual(inPlaceTargets(["python3", "fix.py"], [write]), []);
+  assert.deepEqual(inPlaceTargets(["python3", "/dev/stdin"], ["open('src/a.py').read()"]), []);
+  assert.ok(inPlaceTargets(["python3", "fix.py", "/dev/stdin"], [write]).includes("src/a.py"));
+});
+
 test("a Perl open with a write mode yields the path without its mode prefix (T-1.3)", () => {
   assert.deepEqual(inPlaceTargets(["perl", "-e", "open(F, '>src/a.pl')"], []), ["src/a.pl"]);
   assert.deepEqual(inPlaceTargets(["perl", "-e", "open(my $f, '+<', 'src/a.pl')"], []), ["src/a.pl"]);

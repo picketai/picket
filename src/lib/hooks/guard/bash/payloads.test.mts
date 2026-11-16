@@ -294,6 +294,20 @@ test("a gawk or R script read from /dev/stdin in a quoted heredoc is an in-place
   }
 });
 
+test("a python3 or node program read from /dev/stdin in a quoted heredoc is an in-place code-write denial for the lead and an agent (T-2.6)", (t) => {
+  const root = project(t);
+  for (const [command, path] of [
+    ["python3 /dev/stdin <<'EOF'\nopen('src/a.py','w').write('x')\nEOF", "src/a.py"],
+    ["node /dev/stdin <<'EOF'\nrequire('fs').writeFileSync('src/a.ts','x')\nEOF", "src/a.ts"],
+  ]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+    }
+  }
+});
+
 test("an awk redirect, a gawk inplace edit and a tclsh open for writing are in-place code-write denials for the lead and an agent", (t) => {
   const root = project(t);
   for (const command of [`awk 'BEGIN { print "x" > "src/a.ts" }'`, "gawk -i inplace '{ print }' src/a.ts", "tclsh <<'EOF'\nset f [open src/a.ts w]\nEOF"]) {
