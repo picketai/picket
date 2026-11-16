@@ -655,10 +655,19 @@ function hexOf(char: string): string {
   return (char.codePointAt(0) as number).toString(16).padStart(2, "0");
 }
 
+const LEADING_PLACEHOLDER = /^\{[a-z]+\}/;
+
+function splitFirst(word: string): { first: string; rest: string; hexed: string | null } {
+  const placeholder = LEADING_PLACEHOLDER.exec(word)?.[0];
+  if (placeholder === undefined) return { first: word[0], rest: word.slice(1), hexed: `\\x${hexOf(word[0])}${word.slice(1)}` };
+  const rest = word.slice(placeholder.length);
+  return { first: placeholder, rest, hexed: rest === "" ? null : `${placeholder}\\x${hexOf(rest[0])}${rest.slice(1)}` };
+}
+
 function plainQuotings(word: string): string[] {
   if (!PLAIN_WORD.test(word)) return [];
-  const [first, rest] = [word[0], word.slice(1)];
-  return [`'${word}'`, `"${word}"`, `\\${word}`, `${first}''${rest}`, `$'${word}'`, `$'\\x${hexOf(first)}${rest}'`, `$"${word}"`];
+  const { first, rest, hexed } = splitFirst(word);
+  return [`'${word}'`, `"${word}"`, `\\${word}`, `${first}''${rest}`, `$'${word}'`, ...(hexed === null ? [] : [`$'${hexed}'`]), `$"${word}"`];
 }
 
 export const wordQuotings: Family<string, string> = {
@@ -786,6 +795,88 @@ export const kernelCalls: Grammar<string, string> = {
   written: verbatim,
   label: verbatim,
   families: [kernelLaunchers, wordQuotings, commandPlaces, commandWrappers],
+};
+
+export const SOURCE_PLACEHOLDER = "{source}";
+
+const TARGET_DIRECTORY_COMMANDS = new Set(["cp", "mv"]);
+
+function targetDirectorySpelling(parts: ShellPart[], at: number): string[] {
+  const words = parts.filter((part) => part.kind === "word").map((part) => part.text);
+  const sourceWord = parts[at].text;
+  const isLastWord = words.at(-1) === sourceWord && parts.every((part) => part.kind !== "op");
+  if (!TARGET_DIRECTORY_COMMANDS.has(words[0]) || !isLastWord || !sourceWord.startsWith(`${SOURCE_PLACEHOLDER}/`)) return [];
+  return [[words[0], `--target-directory=${SOURCE_PLACEHOLDER}`, ...words.slice(1, -1)].join(" ")];
+}
+
+export const sourcePathSpellings: Family<string, string> = {
+  name: "source path spellings",
+  spell: (seed) => {
+    const parts = shellParts(seed);
+    const at = parts.findIndex((part) => part.kind === "word" && part.text.includes(SOURCE_PLACEHOLDER));
+    if (at < 0) return [];
+    const word = parts[at].text;
+    const inSource = (path: string) => respelled(parts, at, word.replace(SOURCE_PLACEHOLDER, path));
+    return spelled([
+      inSource(`${SOURCE_PLACEHOLDER}/.`),
+      inSource(`${SOURCE_PLACEHOLDER}/sub/..`),
+      ...(word === SOURCE_PLACEHOLDER ? [inSource(`${SOURCE_PLACEHOLDER}/`)] : []),
+      respelled(parts, at, `"${word}"`),
+      ...targetDirectorySpelling(parts, at),
+    ]);
+  },
+};
+
+export const sourceCommands: Grammar<string, string> = {
+  name: "source commands",
+  written: verbatim,
+  label: verbatim,
+  families: [wordQuotings, commandPaths, commandPlaces, sourcePathSpellings],
+};
+
+const CMDLET_MODULES: Record<string, string> = {
+  "Format-Volume": "Storage",
+  "Clear-Disk": "Storage",
+};
+const MANAGEMENT_MODULE = "Microsoft.PowerShell.Management";
+const VERB_NOUN = /^[A-Z][a-z]+-[A-Z][A-Za-z]+$/;
+
+function splitCommandWord(command: string): { name: string; rest: string } {
+  const space = command.indexOf(" ");
+  return space < 0 ? { name: command, rest: "" } : { name: command.slice(0, space), rest: command.slice(space) };
+}
+
+export const powerShellNames: Family<string, string> = {
+  name: "PowerShell names",
+  spell: (command) => {
+    const { name, rest } = splitCommandWord(command);
+    const qualified = VERB_NOUN.test(name) ? [`${CMDLET_MODULES[name] ?? MANAGEMENT_MODULE}\\${name}`] : [];
+    const names = [name.toLowerCase(), name.toUpperCase(), `& ${name}`, `& '${name}'`, `. ${name}`, ...qualified];
+    return spelled(names.filter((spelledName) => spelledName !== name).map((spelledName) => `${spelledName}${rest}`));
+  },
+};
+
+const POWERSHELL_PLACES: ((command: string) => string)[] = [
+  (command) => `$true; ${command}`,
+  (command) => `${command} | Out-Null`,
+  (command) => `(${command})`,
+  (command) => `$(${command})`,
+  (command) => `@(${command})`,
+  (command) => `if ($true) { ${command} }`,
+  (command) => `Write-Output 1 | ${command}`,
+  (command) => `1 | % { ${command} }`,
+];
+
+export const powerShellPlaces: Family<string, string> = {
+  name: "PowerShell places",
+  spell: (command) => spelled(POWERSHELL_PLACES.map((place) => place(command))),
+};
+
+export const powerShellCommands: Grammar<string, string> = {
+  name: "PowerShell commands",
+  written: verbatim,
+  label: verbatim,
+  families: [powerShellNames, powerShellPlaces],
 };
 
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {

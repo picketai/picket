@@ -7,6 +7,7 @@ import { closureFailure, distractorSentences, editPaths, familySpellings, listPl
 import { withProject } from "#test/project.mts";
 import { commandLines, commandPaths, commandPlaces, wordQuotings } from "#test/variants.mts";
 import { commandWrappers, kernelCalls, kernelLaunchers } from "#test/variants.mts";
+import { powerShellCommands, powerShellNames, powerShellPlaces, sourceCommands, sourcePathSpellings } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -514,6 +515,33 @@ test("commandWrappers keeps leading assignments in front and drops a text wrappe
 test("kernelCalls writes a seed as given and runs the launchers, quotings, places and wrappers", () => {
   assert.deepEqual(kernelCalls.families.map((family) => family.name), ["kernel launchers", "word quotings", "command places", "command wrappers"]);
   assert.deepEqual(writtenSpellings({ grammar: kernelCalls, seeds: ["picket comment x"] }), [{ label: "picket comment x", input: "picket comment x" }]);
+});
+
+test("sourcePathSpellings respells the source word through ./, sub/.., quotes and --target-directory, and nothing without the placeholder (T-3.1)", () => {
+  assert.deepEqual(labels(sourcePathSpellings, "cp a {source}/b"), ["cp a {source}/./b", "cp a {source}/sub/../b", "cp a \"{source}/b\"", "cp --target-directory={source} a"]);
+  assert.deepEqual(labels(sourcePathSpellings, "git -C {source} commit -m x"), ["git -C {source}/. commit -m x", "git -C {source}/sub/.. commit -m x", "git -C {source}/ commit -m x", "git -C \"{source}\" commit -m x"]);
+  assert.deepEqual(labels(sourcePathSpellings, "touch a"), []);
+});
+
+test("wordQuotings keeps a leading placeholder whole when it splits a word's first character", () => {
+  const spelled = labels(wordQuotings, "touch {source}/a");
+  assert.deepEqual(spelled.slice(7), ["touch '{source}/a'", "touch \"{source}/a\"", "touch \\{source}/a", "touch {source}''/a", "touch $'{source}/a'", "touch $'{source}\\x2fa'", "touch $\"{source}/a\""]);
+  assert.deepEqual(labels(wordQuotings, "cd {source}").slice(7), ["cd '{source}'", "cd \"{source}\"", "cd \\{source}", "cd {source}''", "cd $'{source}'", "cd $\"{source}\""]);
+});
+
+test("sourceCommands runs the three command line families, then the source path spellings", () => {
+  assert.deepEqual(sourceCommands.families.map((family) => family.name), ["word quotings", "command paths", "command places", "source path spellings"]);
+});
+
+test("powerShellNames spells the name in both cases, through the call and dot operators, and module-qualified for a cmdlet (T-3.1)", () => {
+  assert.deepEqual(labels(powerShellNames, "Remove-Item x"), ["remove-item x", "REMOVE-ITEM x", "& Remove-Item x", "& 'Remove-Item' x", ". Remove-Item x", "Microsoft.PowerShell.Management\\Remove-Item x"]);
+  assert.deepEqual(labels(powerShellNames, "Format-Volume x").at(-1), "Storage\\Format-Volume x");
+  assert.deepEqual(labels(powerShellNames, "rm x"), ["RM x", "& rm x", "& 'rm' x", ". rm x"]);
+});
+
+test("powerShellPlaces puts the command in the eight places PowerShell runs it, in order (T-3.1)", () => {
+  assert.deepEqual(labels(powerShellPlaces, "rm x"), ["$true; rm x", "rm x | Out-Null", "(rm x)", "$(rm x)", "@(rm x)", "if ($true) { rm x }", "Write-Output 1 | rm x", "1 | % { rm x }"]);
+  assert.deepEqual(powerShellCommands.families.map((family) => family.name), ["PowerShell names", "PowerShell places"]);
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

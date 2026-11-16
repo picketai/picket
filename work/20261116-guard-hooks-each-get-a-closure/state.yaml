@@ -3,6 +3,7 @@ lane: design
 title: Guard hooks each get a closure
 status: open
 created: 2026-11-16T14:25:27.214Z
-updated: 2026-11-16T14:25:27.214Z
+updated: 2026-11-16T19:41:54.656Z
 session: d09e885b-38d7-46ab-90a1-fca179743a5f
 base: fdd3a2fa972c3835b3b48ae87a3eedf4625b595e
+run_through: 10
