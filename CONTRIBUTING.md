@@ -148,7 +148,7 @@ No check covers these; they stay with the author and the reviewer:
 - Naming the spellings of a grammar no family covers yet, such as a new config format or PowerShell's `-Command`. A family checks only the spellings someone wrote down.
 - A guard that reads state a lower-trust actor can change. Whether a caller may trust a piece of state is a judgement per caller.
 - A decision that is itself wrong. A closure test pins the guard's decision as written, so a spelling the decision leaves open stays open.
-- What the in-place guard does not name. It refuses only the interpreters its family table (`src/lib/hooks/guard/bash/interpreters.mts`) has a row for, through the write forms each row lists. An interpreter with no row (`julia -e 'write("src/a.ts", "x")'`), a write API outside a row's forms (`shutil.copy('x.txt', 'src/a.py')`), a program piped in from another command (`echo "..." | python3`) and a program that shells out all pass.
+- What the in-place guard does not name. It refuses only the interpreters its family table (`src/lib/hooks/guard/bash/interpreters.mts`) has a row for, through the write forms each row lists. An interpreter with no row (`julia -e 'write("src/a.ts", "x")'`), a write API outside a row's forms (`shutil.copy('x.txt', 'src/a.py')`), a program piped in from anything but a visible `echo`, `printf` or heredoc (`cat fix.py | python3`) and a program that shells out all pass.
 
 ## Markdown
 

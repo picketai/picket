@@ -308,6 +308,34 @@ test("a python3 or node program read from /dev/stdin in a quoted heredoc is an i
   }
 });
 
+test("a program echoed or printed into an interpreter, directly or through bash -c, is an in-place code-write denial for the lead and an agent (T-3.4)", (t) => {
+  const root = project(t);
+  for (const [command, path] of [
+    [`echo 'open("src/a.py","w").write("x")' | python3`, "src/a.py"],
+    [`bash -c "echo 'open(\\"src/a.py\\",\\"w\\").write(\\"x\\")' | python3"`, "src/a.py"],
+    [`printf '%s' 'require("fs").writeFileSync("src/a.ts","x")' | node`, "src/a.ts"],
+  ]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL(path)), out?.permissionDecisionReason);
+    }
+  }
+});
+
+test("a program echoed into python3 from PowerShell is denied (T-3.4)", (t) => {
+  const out = guardOutput(`echo "open('src/a.py','w').write('x')" | python3`, { root: project(t), tool: "PowerShell" });
+  assert.equal(out?.permissionDecision, "deny");
+  assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL("src/a.py")), out?.permissionDecisionReason);
+});
+
+test("an echo beside a python3 script file and a cat piped into python3 are no denial for the lead (T-3.5)", (t) => {
+  const root = project(t);
+  for (const command of [`echo 'open("src/a.py","w").write("x")' | python3 fix.py`, "cat fix.py | python3"]) {
+    assert.notEqual(guardOutput(command, { root, tool: "Bash" })?.permissionDecision, "deny", command);
+  }
+});
+
 test("an awk redirect, a gawk inplace edit and a tclsh open for writing are in-place code-write denials for the lead and an agent", (t) => {
   const root = project(t);
   for (const command of [`awk 'BEGIN { print "x" > "src/a.ts" }'`, "gawk -i inplace '{ print }' src/a.ts", "tclsh <<'EOF'\nset f [open src/a.ts w]\nEOF"]) {

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inPlaceTargets } from "./in-place.mts";
+import { stdinTexts } from "./in-place.mts";
 import { clusterFlag } from "./interpreters.mts";
 
 const words = (command: string) => command.split(" ");
@@ -187,6 +188,13 @@ test("gawk with the inplace library edits the file operands after its program (T
 
 test("a tcl open for writing yields its bare, quoted or braced path alone", () => {
   assert.deepEqual(inPlaceTargets(["tclsh"], [`set f [open src/a.ts w]\nset g [open "src/b.ts" a+]\nset h [open {src/c.ts} {WRONLY CREAT}]\n`]), ["src/a.ts", "src/b.ts", "src/c.ts"]);
+});
+
+test("stdinTexts gives the heredocs, then the words of every echo or printf joined by a space (T-3.3)", () => {
+  assert.deepEqual(stdinTexts([["echo", "-n", "P"], ["python3"]], ["H"]), ["H", "-n P"]);
+  assert.deepEqual(stdinTexts([["printf", "%s", "Q"], ["node"]], []), ["%s Q"]);
+  assert.deepEqual(stdinTexts([["/usr/bin/echo", "P"], ["python3"]], []), ["P"]);
+  assert.deepEqual(stdinTexts([["cat", "fix.py"], ["python3"]], []), []);
 });
 
 test("a command that is not an interpreter yields nothing", () => {

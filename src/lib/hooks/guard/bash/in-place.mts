@@ -86,6 +86,17 @@ function programWrites(family: Family, program: string): string[] {
   return [...program.matchAll(QUOTED_LITERAL)].map((match) => withoutModePrefix(match[2])).filter((literal) => literal !== "");
 }
 
+const VISIBLE_WRITERS: ReadonlySet<string> = new Set(["echo", "printf"]);
+
+function visibleText(seg: Segment): string[] {
+  const [first, ...rest] = wordsOf(seg);
+  return VISIBLE_WRITERS.has(normalizeRoot(first ?? "").toLowerCase()) ? [rest.join(" ")] : [];
+}
+
+export function stdinTexts(segments: readonly Segment[], heredocs: readonly string[]): string[] {
+  return [...heredocs, ...segments.flatMap(visibleText)];
+}
+
 export function inPlaceTargets(seg: Segment, heredocs: readonly string[]): string[] {
   const [first, ...args] = wordsOf(seg);
   const family = familyOf(normalizeRoot(first ?? ""));

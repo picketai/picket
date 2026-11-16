@@ -8,7 +8,7 @@ import type { SourceRoot } from "../../../shared/sources/protection.mts";
 import { parseArgs } from "../../../util/args.mts";
 import { parse, type ParseEntry } from "../../../util/vendor/shell-quote-parse.mjs";
 import { hasHiddenExecution, isOpaqueWord, markVariable, MAX_SUBSTITUTION_DEPTH, nodePath, shellText, splitIntoSegments, textClassifier } from "./bash.mts";
-import { inPlaceTargets } from "./in-place.mts";
+import { inPlaceTargets, stdinTexts } from "./in-place.mts";
 import { isLeadOnly, wrappedCommands } from "./kernel.mts";
 import { classifySegment, type Refusal, type Segment, type Token } from "./rules.mts";
 import { redirectSource, segmentSource, sourceAllowed, sourceDenial } from "./sources.mts";
@@ -271,7 +271,8 @@ export function codeWritesInside(seg: Segment, cwds: (string | null)[], root: st
   if ("tail" in payload) return codeWritesInTail(payload.tail, cwds, root, heredocs, depth);
   const parsed = payloadParse(payload.text, payload.dialect);
   if (!parsed) return [];
-  const inner = parsed.segments.flatMap((s) => [...codeWritesIn(s, cwds, root, parsed.heredocs), ...codeWritesInside(s, cwds, root, parsed.heredocs, depth + 1)]);
+  const stdin = stdinTexts(parsed.segments, parsed.heredocs);
+  const inner = parsed.segments.flatMap((s) => [...codeWritesIn(s, cwds, root, stdin), ...codeWritesInside(s, cwds, root, stdin, depth + 1)]);
   return [...inner, ...redirectCodeWrites(parsed.redirectTargets, cwds, root)];
 }
 

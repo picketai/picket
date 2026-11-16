@@ -1,3 +1,5 @@
+import { guardOutput } from "#test/hook.mts";
+import { withProject } from "#test/project.mts";
 import { asWritten, closureTests, interpreterNames, invocationLabel, programFlagSpellings, stdinSpellings, type Invocation } from "#test/variants.mts";
 import { inPlaceTargets } from "./in-place.mts";
 
@@ -94,4 +96,22 @@ closureTests({
     { family: stdinSpellings, seeds: [fedOnStdin(NODE_WRITE, "node"), fedOnStdin(PYTHON_WRITE, "python3"), fedOnStdin(RUBY_WRITE, "ruby")] },
     { family: interpreterNames, seeds: [inline("python3", "-c", PYTHON_WRITE), inline("node", "-e", NODE_WRITE), inline("ruby", "-e", RUBY_WRITE), inline("perl", "-e", PERL_WRITE), inline("php", "-r", PHP_WRITE), inline("lua", "-e", LUA_WRITE), inline("awk", AWK_WRITE), fedOnStdin(TCL_WRITE, "tclsh")] },
   ],
+});
+
+const PIPED_PROGRAM_SEEDS = [
+  `echo 'open("src/a.py","w").write("x")' | python3`,
+  `echo -n 'open("src/a.py","w").write("x")' | python3 -`,
+  `printf '%s' 'require("fs").writeFileSync("src/a.ts","x")' | node`,
+  `printf 'require("fs").writeFileSync("src/a.ts","x")' |& node`,
+  `echo 'BEGIN { print "x" > "src/a.ts" }' | gawk -f /dev/stdin`,
+  `echo 'File.write("src/a.rb","x")' | ruby`,
+  `bash -c "echo 'open(\\"src/a.py\\",\\"w\\").write(\\"x\\")' | python3"`,
+  `cat <<'EOF' | python3\nopen("src/a.py","w").write("x")\nEOF`,
+];
+
+closureTests({
+  guard: "in-place guard on piped programs",
+  run: (command: string, t) => guardOutput(command, { root: withProject(t, { host: true, picket: false }), tool: "Bash" }),
+  closed: (out) => out?.permissionDecision === "deny" && out.permissionDecisionReason.startsWith("guard.bash: src/a."),
+  checks: [{ family: asWritten((command: string) => command), seeds: PIPED_PROGRAM_SEEDS }],
 });
