@@ -110,7 +110,7 @@ function programWrites(family: Family, program: string): string[] {
   return [...program.matchAll(QUOTED_LITERAL)].map((match) => withoutModePrefix(match[2])).filter((literal) => literal !== "");
 }
 
-const VISIBLE_WRITERS: ReadonlySet<string> = new Set(["echo", "printf"]);
+export const VISIBLE_WRITERS: ReadonlySet<string> = new Set(["echo", "printf"]);
 
 function visibleText(seg: Segment): string[] {
   const words = wordsOf(seg);

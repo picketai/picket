@@ -216,8 +216,8 @@ Se4 reached review in seven items because a closure test (CONTRIBUTING.md:101) r
 **Decision:** Infrastructural decision. `loadGuard(() => import(...), path)` and `tableRows(loaded, name)` in `variants.mts` turn a missing module or export into one failing row test that names it (`FAMILIES is not exported by src/lib/hooks/guard/bash/interpreters.mts`), while the family tests still run. A closure therefore keeps seeds that do not depend on the table (the family vocabulary, the shared secret names, its malformed items), and the rows only add seeds and check coverage. Replaying `bench/test/spend.variants.test.mjs` at 83ac0811 today ends in a SyntaxError naming `runRefusal` and no spelling; a closure that reads a table, or a guard export absent from a rejected tree, loads it this way.
 **Instead of:** copying today's guard modules into the replayed tree: the replay would then test today's code, not the rejected code.
 
-### D-004: Families own the program's grammar; three new spellings
-**Decision:** Infrastructural decision. How a program spells flags, names, standard input, wrappers, Perl modes and secret names describes the program the guard reads, so it stays in the family vocabulary; the guard table decides which rows must be reached. Every `FAMILIES` row gets a vocabulary entry: flag rows for perl, bun, deno, Rscript and tclsh, name rows for bun, deno and Rscript. New spellings: `programFlagSpellings` adds a repeated program flag after the program (`-e1` and `-e 1`, the 20261115 hole `gawk -e W -e1`); `perlOpenModes` spells the modes `>`, `>>`, `+<`, `+>` in both quotes with no gap, a space or a tab, in `open(F, M)`, `open F, M` and `open(my $f, M, P)` (the 20261114 hole `open(F, "> src/a.pl")`); `writerWrappers` puts a visible writer behind `command`, `builtin`, `env`, `env -i`, `exec`, `nice`, `nohup`, `time`, a brace group and a subshell, piped with `|` and `|&` (the 20261116 hole). A vocabulary lists only spellings the real program accepts: `awk - << W` stays out, because awk reads `-` as program text.
+### D-004 (r2): Families own the program's grammar; three new spellings
+**Decision:** Infrastructural decision. How a program spells flags, names, standard input, wrappers, Perl modes and secret names describes the program the guard reads, so it stays in the family vocabulary; the guard table decides which rows must be reached. Every `FAMILIES` row gets a vocabulary entry: flag rows for perl, bun, deno, Rscript and tclsh, name rows for bun, deno and Rscript, and standard input through the `run` subcommand for bun and deno (`bun run -`, `deno run -`, `deno run -A -`), on the user's ruling at the phase 3 gate. New spellings: `programFlagSpellings` adds a repeated program flag after the program (`-e1` and `-e 1`, the 20261115 hole `gawk -e W -e1`); `perlOpenModes` spells the modes `>`, `>>`, `+<`, `+>` in both quotes with no gap, a space or a tab, in `open(F, M)`, `open F, M` and `open(my $f, M, P)` (the 20261114 hole `open(F, "> src/a.pl")`); `writerWrappers` puts a visible writer behind `command`, `builtin`, `env`, `env -i`, `exec`, `nice`, `nohup`, `time`, a brace group and a subshell, piped with `|` and `|&` (the 20261116 hole). A vocabulary lists only spellings the real program accepts: `awk - << W` stays out, because awk reads `-` as program text.
 **Instead of:** deriving spellings from the guard's regexes: a regex says what the guard already matches, so spellings built from it are closed by construction and find nothing.
 
 ### D-005: A registry names every guard, its closure and its tables
@@ -365,11 +365,13 @@ The closures:
 
 **Touch set:**
 - `src/lib/hooks/guard/bash/in-place.mts`: export `VISIBLE_WRITERS` only
-- `test/support/variants.mts`: `writerWrappers`, piped seed shape
-- `test/repo/variants.test.mjs`: wrapper spelling test
+- `test/support/variants.mts`: `writerWrappers`, piped seed shape, bun and deno stdin
+- `test/repo/variants.test.mjs`: wrapper and stdin spelling tests
 - `src/lib/hooks/guard/bash/in-place.variants.test.mts`: piped closure rows
 
 **Changes:** `PipedSeed = { writer: string; program: string; interpreter: string }`; `shellCommands` writes it as `<writer> '<program>' | <interpreter>` and gains `writerWrappers` (family name `writer wrappers`): the writer behind `command`, `builtin`, `env`, `env -i`, `exec`, `nice`, `nohup` and `time`, inside a brace group and a subshell, and piped with `|&`, eleven spellings in that order. The piped closure seeds `echo` with today's python3 program, takes rows from `VISIBLE_WRITERS` (each writer gives the same program), and keeps `PIPED_PROGRAM_SEEDS` as probes.
+
+The bun and deno vocabulary rows gain standard input readings behind the `run` subcommand (D-004 r2): `bun run -`, `deno run -` and `deno run -A -`, so the in-place closure gets stdin seeds for both. Bare `bun` and `bun -` stay out, because bun does not read a program from them. All five readings the lead and the architect probed (`bun run -`, `bun run --smol -`, `deno run -`, `deno run -A -`, `deno -q run -`, each fed a `writeFileSync` heredoc) are refused at aa4b8c7d.
 
 **Done when:**
 - **T-4.1** `writerWrappers` spells exactly the eleven forms, in order, for `{ writer: "echo", program: "P", interpreter: "python3" }` (unit test).
@@ -377,6 +379,7 @@ The closures:
 - **T-4.3** `in-place guard on piped programs stays closed under writer wrappers` and `covers every row of VISIBLE_WRITERS` pass at HEAD for `echo` and `printf`.
 - **T-4.4** Replaying 49c9d9fe exits 1 and names `nohup echo` under writer wrappers.
 - **T-4.5** `npm test` passes.
+- **T-4.6** `stdinSpellings` spells exactly `bun run - << P` for a bun seed and `deno run - << P` then `deno run -A - << P` for a deno seed (unit tests), and `in-place guard stays closed under stdin spellings` passes at HEAD.
 
 ## Phase 5: The guard registry
 
@@ -415,3 +418,5 @@ The closures:
 - **OQ-003** The brief puts "new interpreter rows" out of scope; this record reads that as rows of `FAMILIES` in `interpreters.mts`, not vocabulary rows in `variants.mts`. Owner: the user. Fallback: vocabulary rows are added (D-004) and `FAMILIES` is unchanged.
 
 ## Revision log
+
+- 2026-11-16: D-004 (r2): bun and deno read standard input through `run -`; phase 4 adds the readings and T-4.6; user ruling at the phase 3 gate.

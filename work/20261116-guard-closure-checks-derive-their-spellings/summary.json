@@ -1,0 +1,63 @@
+{
+  "work_id": "20261116-guard-closure-checks-derive-their-spellings",
+  "base": "29346d5babab722b294df7484ba5b47d8e974ca0",
+  "request": "work/20261116-guard-closure-checks-derive-their-spellings/request.md",
+  "size": "large",
+  "changed_files": [
+    "bench/test/claude.variants.test.mjs",
+    "bench/test/spend.variants.test.mjs",
+    "src/lib/hooks/guard/bash/in-place.mts",
+    "src/lib/hooks/guard/bash/in-place.test.mts",
+    "src/lib/hooks/guard/bash/in-place.variants.test.mts",
+    "src/lib/hooks/guard/scope/index.variants.test.mts",
+    "src/lib/shared/admission/signals.variants.test.mts",
+    "src/lib/shared/drive-log.variants.test.mts",
+    "src/lib/shared/env/config-entries.mts",
+    "src/lib/shared/env/config-entries.variants.test.mts",
+    "src/lib/shared/scenarios/rules.variants.test.mts",
+    "src/lib/shared/work/declared-checks.mts",
+    "src/lib/verbs/verify/index.variants.test.mts",
+    "test/repo/replay-rejected.test.mjs",
+    "test/repo/variants.test.mjs",
+    "test/support/variants.mts"
+  ],
+  "lines_added": 939,
+  "lines_removed": 276,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 6,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

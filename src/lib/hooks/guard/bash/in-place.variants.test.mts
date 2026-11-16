@@ -1,6 +1,6 @@
 import { guardOutput } from "#test/hook.mts";
 import { withProject } from "#test/project.mts";
-import { closureTests, interpreterArgv, interpreterRowSource, loadedExport, loadGuard, programSeeds, shellCommands, tableRows, type Invocation } from "#test/variants.mts";
+import { closureTests, interpreterArgv, interpreterRowSource, loadedExport, loadGuard, programSeeds, shellCommands, tableRows, type Invocation, type PipedSeed } from "#test/variants.mts";
 import { inPlaceTargets } from "./in-place.mts";
 import type { Family } from "./interpreters.mts";
 
@@ -121,11 +121,17 @@ const PIPED_PROGRAM_SEEDS = [
   `{ echo 'open("src/a.py","w").write("x")'; } | python3`,
 ];
 
+const PIPED_PYTHON_WRITE = `open("src/a.py","w").write("x")`;
+const pipedPython = (writer: string): PipedSeed => ({ writer, program: PIPED_PYTHON_WRITE, interpreter: "python3" });
+
+const inPlace = await loadGuard(() => import("./in-place.mts"), "src/lib/hooks/guard/bash/in-place.mts");
+
 closureTests({
   guard: "in-place guard on piped programs",
   grammar: shellCommands,
-  seeds: [],
+  seeds: [pipedPython("echo")],
   probes: PIPED_PROGRAM_SEEDS,
+  rows: [{ table: tableRows<string>(inPlace, "VISIBLE_WRITERS"), key: (writer) => writer, seedsOf: (writer) => [pipedPython(writer)] }],
   run: (command: string, t) => guardOutput(command, { root: withProject(t, { host: true, picket: false }), tool: "Bash" }),
   closed: (out) => out?.permissionDecision === "deny" && out.permissionDecisionReason.startsWith("guard.bash: src/a."),
 });

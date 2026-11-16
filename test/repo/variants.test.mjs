@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, interpreterArgv, interpreterRowSource, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, perlOpenModes, programFlagSpellings, programSeeds, quotedSpans, rowProblems, splitAlternatives, stdinSpellings, tableRows, writtenSpellings } from "#test/variants.mts";
+import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, interpreterArgv, interpreterRowSource, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, perlOpenModes, programFlagSpellings, programSeeds, quotedSpans, rowProblems, shellCommands, splitAlternatives, stdinSpellings, tableRows, writerWrappers, writtenSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -351,6 +351,26 @@ test("interpreterRowSource fails a row flag the vocabulary does not spell, and a
   assert.deepEqual(rowProblems(interpreterArgv, source), ["php flag -Z has no spelling in the vocabulary", String.raw`php write alternative put\( is matched alone by no sample`]);
   const isolated = rowSourceOver(rows.map((row) => ({ ...row, programFlags: ["-r"] })), { php: ["File.put", "put(1)"] });
   assert.deepEqual(rowProblems(interpreterArgv, isolated), []);
+});
+
+test("writerWrappers spells the eleven wrapped forms in order (T-4.1)", () => {
+  assert.deepEqual(labels(writerWrappers, { writer: "echo", program: "P", interpreter: "python3" }), [
+    "command echo 'P' | python3",
+    "builtin echo 'P' | python3",
+    "env echo 'P' | python3",
+    "env -i echo 'P' | python3",
+    "exec echo 'P' | python3",
+    "nice echo 'P' | python3",
+    "nohup echo 'P' | python3",
+    "time echo 'P' | python3",
+    "{ echo 'P'; } | python3",
+    "(echo 'P') | python3",
+    "echo 'P' |& python3",
+  ]);
+});
+
+test("shellCommands writes a piped seed as the writer, the quoted program and the interpreter", () => {
+  assert.deepEqual(writtenSpellings({ grammar: shellCommands, seeds: [{ writer: "printf", program: "P", interpreter: "node" }] }), [{ label: "printf 'P' | node", input: "printf 'P' | node" }]);
 });
 
 test("stdinSpellings reads the heredoc after - and each standard input path alone, then after the leading flags", () => {

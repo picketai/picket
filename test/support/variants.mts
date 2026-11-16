@@ -431,11 +431,29 @@ export function interpreterRowSource<Row extends InterpreterRow>(table: TableRow
   };
 }
 
-export const shellCommands: Grammar<string, string> = {
+export type PipedSeed = { writer: string; program: string; interpreter: string };
+
+const WRAPPER_WORDS = ["command", "builtin", "env", "env -i", "exec", "nice", "nohup", "time"];
+
+function pipedCommand({ writer, program, interpreter }: PipedSeed, wrap: (written: string) => string = verbatim, pipe = "|"): string {
+  return `${wrap(`${writer} '${program}'`)} ${pipe} ${interpreter}`;
+}
+
+export const writerWrappers: Family<PipedSeed, string> = {
+  name: "writer wrappers",
+  spell: (seed) => spelled([
+    ...WRAPPER_WORDS.map((word) => pipedCommand(seed, (written) => `${word} ${written}`)),
+    pipedCommand(seed, (written) => `{ ${written}; }`),
+    pipedCommand(seed, (written) => `(${written})`),
+    pipedCommand(seed, verbatim, "|&"),
+  ]),
+};
+
+export const shellCommands: Grammar<PipedSeed, string> = {
   name: "shell commands",
-  written: verbatim,
+  written: (seed) => pipedCommand(seed),
   label: verbatim,
-  families: [],
+  families: [writerWrappers],
 };
 
 function sentenceParts(sentence: string): { inner: string; bare: string } {
