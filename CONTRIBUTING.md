@@ -98,7 +98,7 @@ The rules below are the conventions of the refactor. Each ends with its id; `art
 - Put the test of one module beside it as `<module>.test.mts`, keep tests of `dist/` and of the repository in `test/`, take shared helpers from `#test/*`, and remove temp folders through `t.after` (C-017).
 - List every mod in `src/lib/mods.mts`, one folder `src/mods/<name>/` each; mods read Picket data only through the kernel and keep Claude Code mod style (C-018).
 - Give every instruction fact one owner: a step lives in the step file of the skill that runs it, step and checklist files are kebab-case `<name>.md` with no number prefix, and no Markdown holds an em or en dash (C-019).
-- Give every guard (a function whose closed outcome other code trusts: a refusal, a denial, a mask, a failed check) a closure test `<module>.variants.test.mts` beside it, built with `#test/variants.mts`; a change to a guard adds its new seeds, and a guard over an input grammar no family covers adds the family (C-020).
+- Give every guard (a function whose closed outcome other code trusts: a refusal, a denial, a mask, a failed check) a closure test `<module>.variants.test.mts` beside it, built with `#test/variants.mts`, that declares its grammar, its seeds and the guard tables it reads through `tableRows`, and an entry in `test/repo/closures.test.mjs`; a change to a guard adds its new seeds, and a guard over a grammar no family covers adds the grammar (C-020).
 
 ### Foundation modules
 
@@ -128,15 +128,20 @@ The libraries the hooks share: `src/lib/shared/transcript/` reads a transcript (
 
 ## Guards
 
-A guard is right for the spellings its author wrote down and open for their siblings: another separator, a flag cluster, a quoted span, an out-of-range number, a malformed list item. A closure test (C-020) runs each seed the guard must close on through a family of spellings and fails naming every spelling that came out open, so `npm test` asks for the siblings before review does.
+A guard is right for the spellings its author wrote down and open for their siblings: another separator, a flag cluster, a quoted span, an out-of-range number, a malformed list item. A closure test (C-020) names a grammar, and `closureTests` runs every seed as written and through every family of that grammar, and the review's probes as written only. It fails naming every spelling that came out open, so `npm test` asks for the siblings before review does, and no closure picks which families its seeds go through.
 
-The helper and the families live in `test/support/variants.mts`, grouped by the grammar they spell:
+The helper, the grammars and their families live in `test/support/variants.mts`:
 
-- pairs: `pairPlaces` and `pairNames` place a `name=value` pair in addresses and vary its name.
-- interpreter arguments: `programFlagSpellings`, `stdinSpellings` and `interpreterNames` spell a program flag, a program read from standard input, and the interpreter's versioned names, aliases, a full path and an `.exe` suffix.
-- request prose: `distractorSentences` and `quotedSpans` put a sentence beside a distractor or inside quotes.
-- declared lists: `listPlacements` puts a malformed item alone, before and after a valid one.
-- numbers: `outOfDomainNumbers` spells `NaN`, both zeros, the negation and both infinities.
+- `pairs`: `pairPlaces` and `pairNames` place a `name=value` pair in addresses and vary its name.
+- `jsonBodies`: `jsonPlaces` and `jsonKeySpellings` move a secret key around a JSON body and vary its name.
+- `interpreterArgv`: `programFlagSpellings`, `stdinSpellings`, `interpreterNames` and `perl open modes` spell a program flag (long, attached, clustered, after leading flags, repeated), a program read from standard input, the interpreter's versioned names, aliases, a full path and an `.exe` suffix, and every Perl write mode in every `open` form.
+- `shellCommands`: `writer wrappers` puts a visible writer behind `command`, `env`, `nohup` and the other wrapper words, in a brace group or a subshell, and pipes it with `|&`.
+- `requestProse`: `distractorSentences` and `quotedSpans` put a sentence beside a distractor or inside quotes.
+- `declaredLists`: `listPlacements` puts a malformed item alone, before and after a valid one.
+- `numbers`: `outOfDomainNumbers` spells `NaN`, both zeros, the negation and both infinities.
+- `editPaths`: `path spellings` names a file by its absolute path, after a leading dot folder, through a parent folder, upper-cased on Windows and through a symbolic link.
+
+A family describes how the program spells its input, so its vocabulary stays in the helper; the guard's own tables decide which rows must be reached. A closure reads a table through `loadGuard` and `tableRows`, and `closureTests` adds `<guard> covers every row of <table>`: it fails naming a row with no seed, a row whose seeds no family spells, and for interpreter rows a flag the vocabulary does not spell or a write pattern alternative no sample matches alone. Modules and tables load at test time, so a tree without the table fails only the row test and the families still run. `test/repo/closures.test.mjs` lists every closure guard with its closure file and tables, and fails on a closure file with no entry, a guard name its file does not hold, and a table that is not exported or not read through `tableRows`.
 
 A closure test proves itself on the code a review rejected: `node scripts/replay-rejected.mjs <rev> <test-file>` exports the tree at `<rev>` into a temporary folder, copies the helper and the named test files from the working tree into it, and runs them there. It exits 0 when the tests pass at that revision, 1 when they fail, and 2 for a usage error, an unknown revision or a tree it cannot export.
 
@@ -144,7 +149,8 @@ Seeds come from the inputs the review probed and from what the guard's recorded 
 
 No check covers these; they stay with the author and the reviewer:
 
-- Recognising that a function is a guard. Nothing marks one, so a new guard without a closure test passes every check until a reviewer sees it.
+- A guard missing from the registry. Nothing marks a function as a guard, so a new guard with no entry in `test/repo/closures.test.mjs` and no closure test passes every check until a reviewer sees it.
+- Which constants count as a guard's tables. The registry checks the tables it lists; a table nobody lists feeds no seeds.
 - Naming the spellings of a grammar no family covers yet, such as a new config format or PowerShell's `-Command`. A family checks only the spellings someone wrote down.
 - A guard that reads state a lower-trust actor can change. Whether a caller may trust a piece of state is a judgement per caller.
 - A decision that is itself wrong. A closure test pins the guard's decision as written, so a spelling the decision leaves open stays open.
