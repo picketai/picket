@@ -1,7 +1,7 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { closureTests, declaredLists, loadGuard, tableRows, type ListSeed } from "#test/variants.mts";
+import { closureTests, declaredLists, loadGuard, tableRows, type ListSeed, type TableRows } from "#test/variants.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { stateDir, statePath, STATE_FILES } from "../../shared/paths.mts";
 import { verify } from "./index.mts";
@@ -34,7 +34,7 @@ const itemsKeyedBy = (field: string): ListSeed[] => MALFORMED_ITEMS.filter((item
 
 const declaredChecks = await loadGuard(() => import("../../shared/work/declared-checks.mts"), "src/lib/shared/work/declared-checks.mts");
 
-const keyRows = (table: string) => ({ table: tableRows<string>(declaredChecks, table), key: (field: string) => field, seedsOf: itemsKeyedBy });
+const keyRows = (table: TableRows<string>) => ({ table, key: (field: string) => field, seedsOf: itemsKeyedBy });
 
 function verifyWithDriveBlock(driveBlock: string[], t: TestContext) {
   const root = withProject(t, { picket: false });
@@ -57,7 +57,7 @@ closureTests({
   grammar: declaredLists(VALID_CHECK),
   seeds: MALFORMED_ITEMS,
   probes: [{ label: "drive: []", lines: ["    drive: []"] }],
-  rows: [keyRows("HTTP_KEYS"), keyRows("RUN_KEYS")],
+  rows: [keyRows(tableRows(declaredChecks, "HTTP_KEYS")), keyRows(tableRows(declaredChecks, "RUN_KEYS"))],
   run: (input: ListSeed, t) => verifyWithDriveBlock(input.lines, t),
   closed: (report) => !report.ok,
 });
