@@ -8,7 +8,7 @@ type Pair = { key: string; value: string };
 
 const MASK = "***";
 const CONFIG_NAME = /(?:appsettings|settings|config|configuration|application)/i;
-const SECRET_WORDS = ["password", "passwd", "pwd", "secret", "token", "apikey", "credential", "privatekey", "sas", "signature", "sig", "code", "accountkey", "sharedaccesskey"];
+export const SECRET_WORDS = ["password", "passwd", "pwd", "secret", "token", "apikey", "credential", "privatekey", "sas", "signature", "sig", "code", "accountkey", "sharedaccesskey"];
 const ORDINARY_CODE_NAMES = ["countrycode", "postalcode", "postcode", "zipcode", "statuscode", "errorcode", "currencycode", "languagecode", "regioncode", "exitcode"];
 const NAME_SEPARATORS = /[\s_.-]+/g;
 const ADDRESS_KEY_ENDINGS = ["url", "uri", "endpoint", "host", "address", "connectionstring", "dsn"];

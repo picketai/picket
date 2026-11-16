@@ -9,8 +9,8 @@ export type ReadChecks = { checks: DeclaredCheck[]; problems: string[] };
 
 type Fields = Record<string, unknown>;
 
-const HTTP_KEYS = ["covers", "method", "path", "status", "contains", "service", "replaces"];
-const RUN_KEYS = ["covers", "command", "exit_code", "contains"];
+export const HTTP_KEYS = ["covers", "method", "path", "status", "contains", "service", "replaces"];
+export const RUN_KEYS = ["covers", "command", "exit_code", "contains"];
 const COVERS = /^T-(\d+)\.\d+$/;
 const METHOD = /^[A-Z]+$/;
 const SERVICE = /^[a-z0-9][a-z0-9_.-]*$/;

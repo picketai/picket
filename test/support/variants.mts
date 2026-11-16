@@ -12,14 +12,57 @@ export type Grammar<S, I> = {
   families: readonly Family<S, I>[];
 };
 
+export type Loaded<M> = { path: string; module: Partial<M> | null; missing: string | null };
+
+export type TableRows<Row> = { table: string; path: string; rows: readonly Row[]; missing: string | null };
+
+export type RowSource<Row, S> = { table: TableRows<Row>; key: (row: Row) => string; seedsOf: (row: Row) => S[] };
+
 export type Closure<S, I, R> = {
   guard: string;
   grammar: Grammar<S, I>;
   seeds: S[];
   probes?: I[];
+  rows?: RowSource<any, S>[];
   run: (input: I, t: TestContext) => R;
   closed: (output: R) => boolean;
 };
+
+export async function loadGuard<M>(load: () => Promise<M>, path: string): Promise<Loaded<M>> {
+  try {
+    return { path, module: await load(), missing: null };
+  } catch (error) {
+    return { path, module: null, missing: `${path} does not load: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+function exportOf(loaded: Loaded<object>, name: string): { value: unknown; missing: string | null } {
+  if (loaded.module === null) return { value: undefined, missing: loaded.missing };
+  const value = (loaded.module as Record<string, unknown>)[name];
+  return value === undefined ? { value, missing: `${name} is not exported by ${loaded.path}` } : { value, missing: null };
+}
+
+export function loadedExport<M extends object, K extends keyof M>(loaded: Loaded<M>, name: K & string): M[K] {
+  const { value, missing } = exportOf(loaded, name);
+  if (missing !== null) throw new Error(missing);
+  return value as M[K];
+}
+
+function rowsOf(value: unknown): readonly unknown[] | null {
+  if (Array.isArray(value)) return value;
+  if (value instanceof Set) return [...value];
+  if (value instanceof Map) return [...value.keys()];
+  return null;
+}
+
+export function tableRows<Row>(loaded: Loaded<object>, name: string): TableRows<Row> {
+  const table = { table: name, path: loaded.path };
+  const { value, missing } = exportOf(loaded, name);
+  if (missing !== null) return { ...table, rows: [], missing };
+  const rows = rowsOf(value);
+  if (rows === null) return { ...table, rows: [], missing: `${name} in ${loaded.path} is not an array, a Set or a Map` };
+  return { ...table, rows: rows as Row[], missing: null };
+}
 
 function spelled(inputs: string[]): Spelling<string>[] {
   return inputs.map((input) => ({ label: input, input }));
@@ -66,7 +109,7 @@ export const pairs: Grammar<string, string> = {
 
 export const JSON_SECRET_VALUE = "Kval9";
 
-const JSON_SECRET_KEYS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "credential", "accountkey", "sharedaccesskey", "authCode", "passcode", "code", "auth_code", "code_verifier"];
+export const JSON_SECRET_KEYS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "credential", "accountkey", "sharedaccesskey", "authCode", "passcode", "code", "auth_code", "code_verifier"];
 
 const NESTED_SECRET_PAIRS = [
   { secret: { value: JSON_SECRET_VALUE } },
@@ -74,7 +117,11 @@ const NESTED_SECRET_PAIRS = [
   { password: { items: [{ v: JSON_SECRET_VALUE }] } },
 ];
 
-export const jsonSecretSeeds: string[] = [...JSON_SECRET_KEYS.map((key) => ({ [key]: JSON_SECRET_VALUE })), ...NESTED_SECRET_PAIRS].map((pair) => JSON.stringify(pair));
+export function jsonSecretSeed(key: string): string {
+  return JSON.stringify({ [key]: JSON_SECRET_VALUE });
+}
+
+export const jsonSecretSeeds: string[] = [...JSON_SECRET_KEYS.map(jsonSecretSeed), ...NESTED_SECRET_PAIRS.map((pair) => JSON.stringify(pair))];
 
 function onlyPair(seed: string): [string, unknown] {
   const entries = Object.entries(JSON.parse(seed) as Record<string, unknown>);
@@ -371,9 +418,38 @@ function assertClosed<S, I, R>(closure: Closure<S, I, R>, familyName: string, sp
   assert.deepEqual(labels, [], closureFailure(closure.guard, familyName, labels));
 }
 
+function rowSeeds<S>(source: RowSource<any, S>): S[] {
+  return source.table.rows.flatMap((row) => source.seedsOf(row));
+}
+
+export function rowProblems<S, I>(grammar: Grammar<S, I>, source: RowSource<any, S>): string[] {
+  const unseeded = source.table.rows.filter((row) => source.seedsOf(row).length === 0);
+  const spellingsOf = (seeds: S[]) => seeds.flatMap((seed) => grammar.families.flatMap((family) => family.spell(seed)));
+  const unspelled = source.table.rows.filter((row) => {
+    const seeds = source.seedsOf(row);
+    return seeds.length > 0 && spellingsOf(seeds).length === 0;
+  });
+  return [
+    ...(source.table.missing === null ? [] : [source.table.missing]),
+    ...unseeded.map((row) => `${source.key(row)} has no seed`),
+    ...unspelled.map((row) => `${source.key(row)} has seeds no family spells`),
+  ];
+}
+
+function coverageTest<S, I, R>(closure: Closure<S, I, R>, source: RowSource<any, S>): void {
+  const { table, path } = source.table;
+  test(`${closure.guard} covers every row of ${table}`, () => {
+    const problems = rowProblems(closure.grammar, source);
+    assert.deepEqual(problems, [], [`${closure.guard} does not cover every row of ${table} in ${path}:`, ...problems].join("\n"));
+  });
+}
+
 export function closureTests<S, I, R>(closure: Closure<S, I, R>): void {
-  test(`${closure.guard} stays closed ${AS_WRITTEN}`, (t) => assertClosed(closure, AS_WRITTEN, writtenSpellings(closure), t));
+  const rows = closure.rows ?? [];
+  const seeded = { ...closure, seeds: [...closure.seeds, ...rows.flatMap(rowSeeds)] };
+  test(`${closure.guard} stays closed ${AS_WRITTEN}`, (t) => assertClosed(closure, AS_WRITTEN, writtenSpellings(seeded), t));
   for (const family of closure.grammar.families) {
-    test(`${closure.guard} stays closed under ${family.name}`, (t) => assertClosed(closure, family.name, familySpellings(family, closure.seeds), t));
+    test(`${closure.guard} stays closed under ${family.name}`, (t) => assertClosed(closure, family.name, familySpellings(family, seeded.seeds), t));
   }
+  for (const source of rows) coverageTest(closure, source);
 }

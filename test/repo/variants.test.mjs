@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, numbers, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings, writtenSpellings } from "#test/variants.mts";
+import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, programFlagSpellings, quotedSpans, stdinSpellings, tableRows, writtenSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
@@ -26,21 +26,33 @@ const SHIFTS_GRAMMAR = [
   "  written: (n) => n,",
   "  label: String,",
   "  families: [",
-  '    { name: "plus ten", spell: (n) => [{ label: `${n}+10`, input: n + 10 }] },',
-  '    { name: "plus five", spell: (n) => [{ label: `${n}+5`, input: n + 5 }] },',
+  '    { name: "plus ten", spell: (n) => (n < UNSPELLED_BELOW ? [] : [{ label: `${n}+10`, input: n + 10 }]) },',
+  '    { name: "plus five", spell: (n) => (n < UNSPELLED_BELOW ? [] : [{ label: `${n}+5`, input: n + 5 }]) },',
   "  ],",
   "};",
 ];
 
-function closureTestSource({ seeds, probes }) {
+const UNSPELLED_BELOW = -100;
+
+function rowsSource(table, seedsOf) {
   return [
-    `import { closureTests } from ${JSON.stringify(HELPER_URL)};`,
+    'const loaded = await loadGuard(() => import("./guard.mjs"), "guard.mjs");',
+    `const rows = [{ table: tableRows(loaded, ${JSON.stringify(table)}), key: String, seedsOf: ${seedsOf} }];`,
+  ];
+}
+
+function closureTestSource({ seeds, probes = [], rows = null }) {
+  return [
+    `import { closureTests, loadGuard, tableRows } from ${JSON.stringify(HELPER_URL)};`,
+    `const UNSPELLED_BELOW = ${UNSPELLED_BELOW};`,
     ...SHIFTS_GRAMMAR,
+    ...(rows === null ? ["const rows = [];"] : rowsSource(rows.table, rows.seedsOf)),
     "closureTests({",
     '  guard: "g",',
     "  grammar: shifts,",
     `  seeds: ${JSON.stringify(seeds)},`,
     `  probes: ${JSON.stringify(probes)},`,
+    "  rows,",
     '  run: (n) => (n > 0 ? null : "refused"),',
     "  closed: (output) => output !== null,",
     "});",
@@ -53,9 +65,11 @@ function childEnv() {
   return env;
 }
 
-function runClosureTest(t, closure) {
-  const file = join(withProject(t, { picket: false }), "guard.variants.test.mjs");
+function runClosureTest(t, closure, guardModule = null) {
+  const root = withProject(t, { picket: false });
+  const file = join(root, "guard.variants.test.mjs");
   writeFileSync(file, closureTestSource(closure));
+  if (guardModule !== null) writeFileSync(join(root, "guard.mjs"), guardModule);
   return spawnSync(process.execPath, ["--test", "--test-reporter=tap", file], { encoding: "utf8", env: childEnv() });
 }
 
@@ -64,7 +78,14 @@ function testLines(stdout) {
 }
 
 function failureOf(stdout, familyName) {
-  const header = `g is open under ${familyName} for:`;
+  return linesAfter(stdout, `g is open under ${familyName} for:`);
+}
+
+function rowFailureOf(stdout, table) {
+  return linesAfter(stdout, `g does not cover every row of ${table} in guard.mjs:`);
+}
+
+function linesAfter(stdout, header) {
   const start = stdout.indexOf(header);
   if (start < 0) return null;
   const lines = stdout.slice(start).split("\n").slice(1).map((line) => line.trim());
@@ -108,6 +129,69 @@ test("a probe a family would open fails only the as-written test (T-1.2)", (t) =
   assert.equal(child.status, 1, child.stdout);
   assert.deepEqual(testLines(child.stdout), ["not ok 1 - g stays closed as written", "ok 2 - g stays closed under plus ten", "ok 3 - g stays closed under plus five"]);
   assert.deepEqual(failureOf(child.stdout, "as written"), ["3"]);
+});
+
+const WORDS_MODULE = "export const WORDS = [-30, -40];\n";
+const ROW_TESTS = ["ok 1 - g stays closed as written", "ok 2 - g stays closed under plus ten", "ok 3 - g stays closed under plus five"];
+
+test("a row with no seed fails the row test naming its key (T-2.1)", (t) => {
+  const child = runClosureTest(t, { seeds: [], rows: { table: "WORDS", seedsOf: "(row) => (row === -40 ? [] : [row])" } }, WORDS_MODULE);
+  assert.equal(child.status, 1, child.stdout);
+  assert.deepEqual(testLines(child.stdout), [...ROW_TESTS, "not ok 4 - g covers every row of WORDS"]);
+  assert.deepEqual(rowFailureOf(child.stdout, "WORDS"), ["-40 has no seed"]);
+});
+
+test("a seed for every row passes the row test, and the row seeds join every family test", (t) => {
+  const child = runClosureTest(t, { seeds: [], rows: { table: "WORDS", seedsOf: "(row) => [row + 35]" } }, WORDS_MODULE);
+  assert.equal(child.status, 1, child.stdout);
+  assert.deepEqual(testLines(child.stdout), ["not ok 1 - g stays closed as written", "not ok 2 - g stays closed under plus ten", "not ok 3 - g stays closed under plus five", "ok 4 - g covers every row of WORDS"]);
+  assert.deepEqual(failureOf(child.stdout, "as written"), ["5"]);
+  assert.deepEqual(failureOf(child.stdout, "plus ten"), ["5+10", "-5+10"]);
+});
+
+test("a closure whose import rejects fails only its row test, naming the module, and its families still name open spellings (T-2.2)", (t) => {
+  const child = runClosureTest(t, { seeds: [-1], rows: { table: "WORDS", seedsOf: "(row) => [row]" } });
+  assert.equal(child.status, 1, child.stdout);
+  assert.deepEqual(testLines(child.stdout), ["ok 1 - g stays closed as written", "not ok 2 - g stays closed under plus ten", "not ok 3 - g stays closed under plus five", "not ok 4 - g covers every row of WORDS"]);
+  assert.deepEqual(failureOf(child.stdout, "plus ten"), ["-1+10"]);
+  assert.match(rowFailureOf(child.stdout, "WORDS")[0], /^guard\.mjs does not load: /);
+});
+
+test("a closure whose table export is absent fails only its row test, naming the export and the module (T-2.2)", (t) => {
+  const child = runClosureTest(t, { seeds: [-20], rows: { table: "WORDS", seedsOf: "(row) => [row]" } }, "export const OTHER = [];\n");
+  assert.equal(child.status, 1, child.stdout);
+  assert.deepEqual(testLines(child.stdout), [...ROW_TESTS, "not ok 4 - g covers every row of WORDS"]);
+  assert.deepEqual(rowFailureOf(child.stdout, "WORDS"), ["WORDS is not exported by guard.mjs"]);
+});
+
+test("a row whose seeds no family spells fails the row test naming the row (T-2.3)", (t) => {
+  const child = runClosureTest(t, { seeds: [], rows: { table: "WORDS", seedsOf: `(row) => [row === -40 ? ${UNSPELLED_BELOW - 1} : row]` } }, WORDS_MODULE);
+  assert.equal(child.status, 1, child.stdout);
+  assert.deepEqual(testLines(child.stdout), [...ROW_TESTS, "not ok 4 - g covers every row of WORDS"]);
+  assert.deepEqual(rowFailureOf(child.stdout, "WORDS"), ["-40 has seeds no family spells"]);
+});
+
+test("tableRows reads an array, a Set and a Map's keys", async () => {
+  const loaded = await loadGuard(() => Promise.resolve({ A: ["x"], S: new Set(["y"]), M: new Map([["z", 1]]) }), "m.mjs");
+  assert.deepEqual(["A", "S", "M"].map((name) => tableRows(loaded, name)), [
+    { table: "A", path: "m.mjs", rows: ["x"], missing: null },
+    { table: "S", path: "m.mjs", rows: ["y"], missing: null },
+    { table: "M", path: "m.mjs", rows: ["z"], missing: null },
+  ]);
+});
+
+test("tableRows names an export that is not a table, and the load failure of a module that does not load", async () => {
+  const loaded = await loadGuard(() => Promise.resolve({ N: 3 }), "m.mjs");
+  assert.deepEqual(tableRows(loaded, "N"), { table: "N", path: "m.mjs", rows: [], missing: "N in m.mjs is not an array, a Set or a Map" });
+  const failed = await loadGuard(() => Promise.reject(new Error("boom")), "m.mjs");
+  assert.deepEqual(failed, { path: "m.mjs", module: null, missing: "m.mjs does not load: boom" });
+  assert.deepEqual(tableRows(failed, "N"), { table: "N", path: "m.mjs", rows: [], missing: "m.mjs does not load: boom" });
+});
+
+test("loadedExport returns an export and throws naming one that is absent", async () => {
+  const loaded = await loadGuard(() => Promise.resolve({ f: Math.abs }), "m.mjs");
+  assert.equal(loadedExport(loaded, "f"), Math.abs);
+  assert.throws(() => loadedExport(loaded, "g"), /^Error: g is not exported by m\.mjs$/);
 });
 
 test("a closure test with no open spelling passes", (t) => {

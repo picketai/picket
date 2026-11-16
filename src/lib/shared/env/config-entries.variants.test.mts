@@ -1,4 +1,4 @@
-import { closureTests, pairs } from "#test/variants.mts";
+import { closureTests, JSON_SECRET_KEYS, loadGuard, pairs, tableRows } from "#test/variants.mts";
 import { masked } from "./config-entries.mts";
 
 const REVIEW_PROBES = [
@@ -14,15 +14,17 @@ const REVIEW_PROBES = [
 ];
 
 const FAMILY_VALUE = "Kval9";
-const SECRET_WORDS = ["password", "pwd", "secret", "token", "api_key", "apikey", "signature", "sig", "credential", "accountkey", "sharedaccesskey", "code", "authcode", "passcode"];
 const SECRET_VALUES = ["abc123", "hunter2", "zzz", "SECRETSIG", "K1", "K2", "K3", "K4", "K5", FAMILY_VALUE];
-const FAMILY_SEEDS = SECRET_WORDS.map((word) => `${word}=${FAMILY_VALUE}`);
+const pairOf = (word: string) => `${word}=${FAMILY_VALUE}`;
+
+const configEntries = await loadGuard(() => import("./config-entries.mts"), "src/lib/shared/env/config-entries.mts");
 
 closureTests({
   guard: "masked",
   grammar: pairs,
-  seeds: FAMILY_SEEDS,
+  seeds: JSON_SECRET_KEYS.map(pairOf),
   probes: REVIEW_PROBES,
+  rows: [{ table: tableRows<string>(configEntries, "SECRET_WORDS"), key: (word) => word, seedsOf: (word) => [pairOf(word)] }],
   run: (value: string) => masked("Url", value),
   closed: (output) => output !== null && !SECRET_VALUES.some((secret) => output.includes(secret)),
 });
