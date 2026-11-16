@@ -1,0 +1,63 @@
+{
+  "work_id": "20261115-close-saved-scenario-review-follow-ups",
+  "base": "d8635b8f1743c361dbb98092f0c174cf57be27bd",
+  "request": "work/20261115-close-saved-scenario-review-follow-ups/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/lib/shared/drive-log.mts",
+    "src/lib/shared/drive-log.test.mts",
+    "src/lib/shared/drive-log.variants.test.mts",
+    "src/lib/shared/env/config-entries.mts",
+    "src/lib/shared/env/config-entries.test.mts",
+    "src/lib/shared/env/config-entries.variants.test.mts",
+    "src/lib/shared/scenarios/compare.mts",
+    "src/lib/shared/scenarios/compare.test.mts",
+    "src/lib/shared/scenarios/keep.test.mts",
+    "src/lib/shared/scenarios/replay.mts",
+    "src/lib/shared/scenarios/replay.test.mts",
+    "src/lib/shared/scenarios/rules.mts",
+    "src/lib/shared/scenarios/rules.test.mts",
+    "src/lib/shared/scenarios/rules.variants.test.mts",
+    "src/lib/verbs/env/replay.test.mts",
+    "test/support/variants.mts"
+  ],
+  "lines_added": 213,
+  "lines_removed": 72,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 6,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

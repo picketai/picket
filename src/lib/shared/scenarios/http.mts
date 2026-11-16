@@ -2,9 +2,14 @@ export type HttpRequest = { method: string; url: string; headers: Record<string,
 export type HttpAnswer = { status: number | null; headers: Record<string, string>; text: string; error: string | null };
 export type HttpAdapter = (request: HttpRequest) => Promise<HttpAnswer>;
 
+function causeCode(cause: unknown): string | null {
+  if (typeof cause !== "object" || cause === null || !("code" in cause)) return null;
+  return typeof cause.code === "string" ? cause.code : null;
+}
+
 function failureCode(err: unknown): string {
-  const failure = err as { cause?: { code?: string }; name?: string; message?: string };
-  return failure.cause?.code ?? failure.name ?? String(failure.message);
+  if (!(err instanceof Error)) return String(err);
+  return causeCode(err.cause) ?? err.name;
 }
 
 export function httpAdapter(fetchImpl: typeof fetch = fetch): HttpAdapter {

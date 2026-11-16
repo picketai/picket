@@ -1,14 +1,14 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { existsSync } from "node:fs";
+import { join, relative } from "node:path";
 import { action, done, failed, Refused, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
-import { overrideDoc, REVISION_LABEL, sourceFor, type ServiceSource } from "../../shared/env/build-plan.mts";
-import { failureCause, jsonRecords, machineCheck, readModelJson, realRunner, runCompose, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
-import { readModel, type EnvModel, type EnvService } from "../../shared/env/model.mts";
+import { overrideDoc, sourceFor, type ServiceSource } from "../../shared/env/build-plan.mts";
+import { failureCause, machineCheck, readModelJson, realRunner, runCompose, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
+import { readModel, type EnvModel } from "../../shared/env/model.mts";
 import { hasError, staticFindings } from "../../shared/env/rules.mts";
+import { serviceEndpoints, unprovedBuild, writeOverride } from "../../shared/env/stack-start.mts";
 import { activeClaim, readStacks, recordStack } from "../../shared/env/stacks.mts";
-import { COMPOSE_FILE, ENV_DIR, imageName, itemKey, stackName, urlVariable } from "../../shared/env/standard.mts";
-import { statePath } from "../../shared/paths.mts";
+import { COMPOSE_FILE, ENV_DIR, itemKey, stackName, urlVariable } from "../../shared/env/standard.mts";
 import { readLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
@@ -21,8 +21,6 @@ export type StartReport = { ok: boolean; machine: MachineReport; stack: string |
 export type StartedStack = { report: StartReport; model: EnvModel; key: string };
 
 const CLOSED_STATUSES = ["done", "abandoned"];
-const ANY_ADDRESS = new Set(["", "0.0.0.0", "[::]", "::"]);
-const LOCALHOST = "127.0.0.1";
 
 function openState(root: string, id: WorkId): WorkState {
   const state = readState(root, id);
@@ -43,50 +41,15 @@ function checkedModel(engine: Engine, root: string): EnvModel {
   return model;
 }
 
-function writeOverride(root: string, stack: string, doc: object): string {
-  const path = statePath(root, `env/${stack}/compose.picket.yaml`);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
-  return path;
-}
-
 function composeOrRefuse(engine: Engine, root: string, stack: string, files: string[], args: string[]): string {
   const result = runCompose(engine, root, stack, files, args);
   if (result.status !== 0) throw new Refused(`compose ${args[0]} failed: ${failureCause(result)}`);
   return result.stdout;
 }
 
-function builtRevision(engine: Engine, image: string): string | null {
-  const result = engine.run(["image", "inspect", image]);
-  if (result.status !== 0) return null;
-  const [record] = jsonRecords(result.stdout) as { Config?: { Labels?: Record<string, string> } }[];
-  return record?.Config?.Labels?.[REVISION_LABEL] ?? null;
-}
-
-function provedBuilds(engine: Engine, sources: ServiceSource[], key: string): void {
-  for (const source of sources) {
-    const image = imageName(source.service, key, source.version);
-    if (builtRevision(engine, image) !== source.version) throw new Refused(`${image} was not built from ${source.version}`);
-  }
-}
-
-function hostUrl(published: string): string | null {
-  const line = published.trim().split(/\r?\n/)[0];
-  const at = line.lastIndexOf(":");
-  if (at < 0) return null;
-  const host = line.slice(0, at);
-  return `http://${ANY_ADDRESS.has(host) ? LOCALHOST : host}:${line.slice(at + 1)}`;
-}
-
-function serviceEndpoints(engine: Engine, root: string, stack: string, files: string[], services: EnvService[]): Record<string, string> {
-  const endpoints = services.flatMap((service): [string, string][] => {
-    const [port] = service.ports;
-    if (port === undefined) return [];
-    const result = runCompose(engine, root, stack, files, ["port", service.name, String(port.target)]);
-    const url = result.status === 0 ? hostUrl(result.stdout) : null;
-    return url === null ? [] : [[service.name, url]];
-  });
-  return Object.fromEntries(endpoints);
+function refuseUnprovedBuild(engine: Engine, sources: ServiceSource[], key: string): void {
+  const unproved = unprovedBuild(engine, sources, key);
+  if (unproved !== null) throw new Refused(unproved);
 }
 
 function urlVariables(endpoints: Record<string, string>): Record<string, string> {
@@ -106,7 +69,7 @@ export function startStack(ctx: Context, engine: Engine, machine: MachineReport,
   const sources = apps.map((service) => sourceFor(root, layout, service, env));
   const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, id))];
   composeOrRefuse(engine, root, stack, files, ["build", ...apps.map((s) => s.name)]);
-  provedBuilds(engine, sources, key);
+  refuseUnprovedBuild(engine, sources, key);
   recordStack(root, stack, { item: id, session, files, engine: { name: engine.name, program: engine.program, prefix: engine.prefix }, started: now().toISOString() });
   composeOrRefuse(engine, root, stack, files, ["up", "--detach", "--wait"]);
   const built = sources.map(({ service, checkout, version }) => ({ service, checkout: relative(root, checkout).replaceAll("\\", "/") || ".", version }));

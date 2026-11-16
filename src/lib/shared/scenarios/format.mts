@@ -198,7 +198,7 @@ function readFront(text: string): { front: YamlMap; body: string } | { problem: 
   try {
     return frontmatter(text);
   } catch (error) {
-    return { problem: `header: ${(error as Error).message}` };
+    return { problem: `header: ${error instanceof Error ? error.message : String(error)}` };
   }
 }
 

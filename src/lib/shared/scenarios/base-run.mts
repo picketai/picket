@@ -1,9 +1,10 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { rmSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { gitRead, gitRun } from "../../util/git.mts";
-import { overrideDoc, REVISION_LABEL, type ServiceSource } from "../env/build-plan.mts";
-import { failureCause, jsonRecords, readModelJson, runCompose, type Engine } from "../env/engine.mts";
+import { overrideDoc, type ServiceSource } from "../env/build-plan.mts";
+import { failureCause, readModelJson, runCompose, type Engine } from "../env/engine.mts";
 import { readModel, type EnvModel, type EnvService } from "../env/model.mts";
+import { serviceEndpoints, unprovedBuild, writeOverride } from "../env/stack-start.mts";
 import { COMPOSE_FILE, ENV_DIR, imageName, stackName } from "../env/standard.mts";
 import { repoPrefix } from "../git.mts";
 import { statePath } from "../paths.mts";
@@ -31,8 +32,6 @@ type Built = { baseRoot: string | null; files: string[]; images: string[] };
 const BASE_FOLDER = "env/base";
 const ROOT_FOLDER = "root";
 const SHORT = 7;
-const ANY_ADDRESS = new Set(["", "0.0.0.0", "[::]", "::"]);
-const LOCALHOST = "127.0.0.1";
 
 class BaseFailure extends Error {}
 
@@ -101,39 +100,9 @@ function compose(engine: Engine, baseRoot: string, stack: string, files: string[
   return result.stdout;
 }
 
-function proveBuilds(engine: Engine, sources: ServiceSource[], key: string): void {
-  for (const source of sources) {
-    const image = imageName(source.service, key, source.version);
-    const result = engine.run(["image", "inspect", image]);
-    const [record] = (result.status === 0 ? jsonRecords(result.stdout) : []) as { Config?: { Labels?: Record<string, string> } }[];
-    if (record?.Config?.Labels?.[REVISION_LABEL] !== source.version) throw new BaseFailure(`${image} was not built from ${source.version}`);
-  }
-}
-
-function hostUrl(published: string): string | null {
-  const line = published.trim().split(/\r?\n/)[0];
-  const at = line.lastIndexOf(":");
-  if (at < 0) return null;
-  const host = line.slice(0, at);
-  return `http://${ANY_ADDRESS.has(host) ? LOCALHOST : host}:${line.slice(at + 1)}`;
-}
-
-function endpoints(engine: Engine, baseRoot: string, stack: string, files: string[], model: EnvModel): Record<string, string> {
-  const started = model.services.filter((service) => service.profiles.length === 0 && service.ports.length > 0);
-  return Object.fromEntries(
-    started.flatMap((service): [string, string][] => {
-      const result = runCompose(engine, baseRoot, stack, files, ["port", service.name, String(service.ports[0].target)]);
-      const url = result.status === 0 ? hostUrl(result.stdout) : null;
-      return url === null ? [] : [[service.name, url]];
-    }),
-  );
-}
-
-function writeOverride(root: string, stack: string, doc: object): string {
-  const path = statePath(root, `env/${stack}/compose.picket.yaml`);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
-  return path;
+function refuseUnprovedBuild(engine: Engine, sources: ServiceSource[], key: string): void {
+  const unproved = unprovedBuild(engine, sources, key);
+  if (unproved !== null) throw new BaseFailure(unproved);
 }
 
 async function startAndReplay(input: BaseInput, checkouts: BaseCheckout[], stack: string, built: Built): Promise<BaseOutcome> {
@@ -146,9 +115,10 @@ async function startAndReplay(input: BaseInput, checkouts: BaseCheckout[], stack
   built.files.push(join(baseRoot, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, state.id)));
   built.images.push(...sources.map((source) => imageName(source.service, key, source.version)));
   compose(engine, baseRoot, stack, built.files, ["build", ...sources.map((source) => source.service)]);
-  proveBuilds(engine, sources, key);
+  refuseUnprovedBuild(engine, sources, key);
   compose(engine, baseRoot, stack, built.files, ["up", "--detach", "--wait"]);
-  const urls = endpoints(engine, baseRoot, stack, built.files, model);
+  const started = model.services.filter((service) => service.profiles.length === 0);
+  const urls = serviceEndpoints(engine, baseRoot, stack, built.files, started);
   const runs = await replayScenarios({ ...input.replay, scenarios, services: model.services.map((service) => service.name), urls });
   return { runs, versions: Object.fromEntries(sources.map((source) => [source.service, source.version])) };
 }
@@ -170,7 +140,7 @@ export async function runBase(input: BaseInput): Promise<BaseOutcome> {
     checkouts = addBaseWorktrees(input.root, input.layout, input.state, stack);
     return await startAndReplay(input, checkouts, stack, built);
   } catch (err) {
-    return { failure: (err as Error).message };
+    return { failure: err instanceof Error ? err.message : String(err) };
   } finally {
     cleanUp(input, checkouts, stack, built);
   }

@@ -93,6 +93,10 @@ test("an unknown, missing or invalid header key is a header problem (T-1.3)", ()
   assert.deepEqual(parseScenario("request GET {orders}/health\n").problems, ["header: a card starts with a --- header block"]);
 });
 
+test("a header line that is not a pair is a header problem naming the line", () => {
+  assert.deepEqual(parseScenario(withHeader(["id: S-0001", "kind: smoke", "not a pair"])).problems, ['header: yaml-lite: expected "key: value" at line 4: not a pair']);
+});
+
 test("an expect or a capture before any request is a step problem (T-1.3)", () => {
   assert.deepEqual(problemsOf(["expect status 200", "request GET {orders}/health"]), ["step 1: expect comes before any request"]);
   assert.deepEqual(problemsOf(["capture id json id", "request GET {orders}/health"]), ["step 1: capture comes before any request"]);
