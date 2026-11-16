@@ -102,9 +102,9 @@ const INTERPRETER_FLAGS: Record<string, InterpreterFlags> = {
   node: { long: { "-e": "--eval" }, clusterLetter: "p", leading: ["--no-warnings"] },
   python3: { long: {}, clusterLetter: "B", leading: ["-X", "utf8"] },
   ruby: { long: {}, clusterLetter: "w", leading: ["-w"] },
-  php: { long: {}, attached: true, leading: ["-c", "php.ini"] },
+  php: { long: {}, attached: true, clusterLetter: "n", leading: ["-c", "php.ini"] },
   lua: { long: {}, attached: true, leading: ["-l", "mod"] },
-  awk: { long: { "-e": "--source" }, attached: true, leading: ["-F", ":"] },
+  awk: { long: { "-e": "--source" }, attached: true, clusterLetter: "b", leading: ["-F", ":"] },
 };
 
 function flagsOf(interpreter: string): InterpreterFlags {
@@ -128,15 +128,21 @@ function longSpellings(interpreter: string, long: string | undefined, program: s
   return long === undefined ? [] : [[interpreter, long, program], [interpreter, `${long}=${program}`]];
 }
 
+function clusterSpellings(interpreter: string, flag: string, program: string, { attached, clusterLetter }: InterpreterFlags): string[][] {
+  if (clusterLetter === undefined) return [];
+  const cluster = `-${clusterLetter}${flag.slice(1)}`;
+  return [[interpreter, cluster, program], ...(attached ? [[interpreter, `${cluster}${program}`]] : [])];
+}
+
 export const programFlagSpellings: Family<Invocation> = {
   name: "program flag spellings",
   spell: ({ argv: [interpreter, flag, program] }) => {
-    const { long, attached, clusterLetter, leading } = flagsOf(interpreter);
+    const flags = flagsOf(interpreter);
     return invocations([
-      ...longSpellings(interpreter, long[flag], program),
-      ...(attached ? [[interpreter, `${flag}${program}`]] : []),
-      ...(clusterLetter === undefined ? [] : [[interpreter, `-${clusterLetter}${flag.slice(1)}`, program]]),
-      [interpreter, ...leading, flag, program],
+      ...longSpellings(interpreter, flags.long[flag], program),
+      ...(flags.attached ? [[interpreter, `${flag}${program}`]] : []),
+      ...clusterSpellings(interpreter, flag, program, flags),
+      [interpreter, ...flags.leading, flag, program],
     ], []);
   },
 };

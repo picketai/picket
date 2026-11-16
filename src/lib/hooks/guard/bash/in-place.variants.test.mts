@@ -56,6 +56,8 @@ const AS_WRITTEN_SEEDS = [
   inline("gawk", "-i", "inplace", "-e{ print }", "src/a.ts"),
   fedOnStdin(AWK_WRITE, "gawk", "--file=/dev/stdin"),
   fedOnStdin(AWK_WRITE, "gawk", "-f/dev/stdin"),
+  fedOnStdin(AWK_WRITE, "gawk", "-bf/dev/stdin"),
+  inline("gawk", "-i", "inplace", "-be{ print }", "src/a.ts"),
   fedOnStdin(R_WRITE, "R", "--no-save", "-f", "/dev/stdin"),
   inline("gawk", "-i", "inplace", "--file=fix.awk", "src/a.ts"),
   inline("gawk", "-e", AWK_WRITE, "-e1"),

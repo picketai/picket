@@ -118,9 +118,9 @@ test("programFlagSpellings carries the program as its own word or attached to th
   ]);
 });
 
-test("programFlagSpellings attaches the program to the flag for a row that opts in, and skips the cluster for a row without a letter", () => {
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["awk", "-e", "P"], heredocs: [] }), ["awk --source P", "awk --source=P", "awk -eP", "awk -F : -e P"]);
-  assert.deepEqual(labels(programFlagSpellings, { argv: ["php", "-r", "P"], heredocs: [] }), ["php -rP", "php -c php.ini -r P"]);
+test("programFlagSpellings attaches the program to the flag and to the cluster for a row that opts in, and skips the cluster for a row without a letter", () => {
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["awk", "-e", "P"], heredocs: [] }), ["awk --source P", "awk --source=P", "awk -eP", "awk -be P", "awk -beP", "awk -F : -e P"]);
+  assert.deepEqual(labels(programFlagSpellings, { argv: ["php", "-r", "P"], heredocs: [] }), ["php -rP", "php -nr P", "php -nrP", "php -c php.ini -r P"]);
   assert.deepEqual(programFlagSpellings.spell({ argv: ["lua", "-e", "P"], heredocs: [] }).map((spelling) => spelling.input), [
     { argv: ["lua", "-eP"], heredocs: [] },
     { argv: ["lua", "-l", "mod", "-e", "P"], heredocs: [] },

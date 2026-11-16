@@ -1,5 +1,5 @@
 import { normalizeRoot } from "../../../shared/shell/kernel-call.mts";
-import { attachedValue, familyOf, type Family } from "./interpreters.mts";
+import { clusterFlag, familyOf, type Family } from "./interpreters.mts";
 import type { Segment } from "./rules.mts";
 
 const ATTACHED_PROGRAM = /^--(?:eval|print)=([\s\S]*)$/;
@@ -12,12 +12,18 @@ function wordsOf(seg: Segment): string[] {
   return seg.filter((t): t is string => typeof t === "string");
 }
 
-function everyFlagProgram(programFlags: readonly string[], args: string[]): string | null {
+function clusterStops(family: Family): ReadonlySet<string> {
+  return new Set([...family.valueFlags, ...(family.programFlags ?? []), ...(family.scriptFlags ?? [])]);
+}
+
+function everyFlagProgram(family: Family, programFlags: readonly string[], args: string[]): string | null {
+  const stops = clusterStops(family);
   const programs: string[] = [];
   for (let i = 0; i < args.length; i++) {
-    const attached = attachedValue(args[i], programFlags);
-    if (attached !== undefined) programs.push(attached);
-    else if (programFlags.includes(args[i]) && i + 1 < args.length) programs.push(args[++i]);
+    const program = clusterFlag(args[i], programFlags, stops);
+    if (program === undefined) continue;
+    if (program.rest !== "") programs.push(program.rest);
+    else if (i + 1 < args.length) programs.push(args[++i]);
   }
   return programs.length === 0 ? null : programs.join("\n");
 }
@@ -26,7 +32,7 @@ function inlineProgram(family: Family, args: string[]): string | null {
   if (family.subcommand !== undefined && args[0] === family.subcommand) return args[1] ?? null;
   const attached = args.map((word) => ATTACHED_PROGRAM.exec(word)?.[1]).find((program) => program !== undefined);
   if (attached !== undefined) return attached;
-  if (family.programFlags !== undefined) return everyFlagProgram(family.programFlags, args);
+  if (family.programFlags !== undefined) return everyFlagProgram(family, family.programFlags, args);
   const at = args.findIndex(family.takesProgram);
   return at === -1 ? null : (args[at + 1] ?? null);
 }
@@ -40,9 +46,9 @@ function namesScriptFile(family: Family, args: string[]): boolean {
 }
 
 function scriptAt(family: Family, args: string[], i: number): string | undefined {
-  const scriptFlags = family.scriptFlags ?? [];
-  if (scriptFlags.includes(args[i])) return args[i + 1] ?? "";
-  return attachedValue(args[i], scriptFlags);
+  const script = clusterFlag(args[i], family.scriptFlags ?? [], clusterStops(family));
+  if (script === undefined) return undefined;
+  return script.rest === "" ? (args[i + 1] ?? "") : script.rest;
 }
 
 function readsStdinScript(family: Family, args: string[]): boolean {

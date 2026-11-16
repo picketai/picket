@@ -269,6 +269,17 @@ test("a php, lua or gawk program attached to its flag is an in-place code-write 
   }
 });
 
+test("a php or gawk cluster ending in its program flag is an in-place code-write denial for the lead and an agent (T-1.6)", (t) => {
+  const root = project(t);
+  for (const command of [`php -nr'file_put_contents("src/a.ts","x");'`, `gawk -be'BEGIN { print "x" > "src/a.ts" }'`]) {
+    for (const agent of [undefined, "picket:developer"]) {
+      const out = guardOutput(command, { root, tool: "Bash", agent });
+      assert.equal(out?.permissionDecision, "deny", `${agent ?? "lead"}: ${command}`);
+      assert.ok(out?.permissionDecisionReason.startsWith(CODE_WRITE_DENIAL("src/a.ts")), out?.permissionDecisionReason);
+    }
+  }
+});
+
 test("a gawk or R script read from /dev/stdin in a quoted heredoc is an in-place code-write denial for the lead and an agent", (t) => {
   const root = project(t);
   for (const [command, path] of [

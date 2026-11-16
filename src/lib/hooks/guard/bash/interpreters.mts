@@ -28,12 +28,31 @@ const VERSIONED_NAME = /^([a-z]+?)(?:-?\d+(?:\.\d+)*[a-z]?)?$/;
 const takesProgramFlag = (word: string): boolean => PROGRAM_CLUSTER.test(word) || PROGRAM_LONG_FLAGS.has(word);
 const takesEditorProgram = (word: string): boolean => EDITOR_PROGRAM_CLUSTER.test(word);
 
-export function attachedValue(word: string, flags: readonly string[]): string | undefined {
-  for (const flag of flags) {
-    if (flag.startsWith("--") && word.startsWith(`${flag}=`)) return word.slice(flag.length + 1);
-    if (flag.length === 2 && word.length > 2 && word.startsWith(flag)) return word.slice(2);
+export type ClusterFlag = { flag: string; rest: string };
+
+const ASCII_LETTER = /^[A-Za-z]$/;
+
+function longFlag(word: string, flags: readonly string[]): ClusterFlag | undefined {
+  for (const flag of flags.filter((listed) => listed.startsWith("--"))) {
+    if (word === flag) return { flag, rest: "" };
+    if (word.startsWith(`${flag}=`)) return { flag, rest: word.slice(flag.length + 1) };
   }
   return undefined;
+}
+
+function shortCluster(word: string, flags: readonly string[], stops: ReadonlySet<string>): ClusterFlag | undefined {
+  for (let i = 1; i < word.length; i++) {
+    if (!ASCII_LETTER.test(word[i])) return undefined;
+    const flag = `-${word[i]}`;
+    if (flags.includes(flag)) return { flag, rest: word.slice(i + 1) };
+    if (stops.has(flag)) return undefined;
+  }
+  return undefined;
+}
+
+export function clusterFlag(word: string, flags: readonly string[], stops: ReadonlySet<string>): ClusterFlag | undefined {
+  if (word.startsWith("--")) return longFlag(word, flags);
+  return word.startsWith("-") ? shortCluster(word, flags, stops) : undefined;
 }
 
 const listedProgramFlags = (...flags: string[]): Pick<Family, "takesProgram" | "programFlags"> => ({
@@ -58,6 +77,7 @@ const AWK_PROGRAM_FLAGS = ["-e", "--source"];
 const AWK_SCRIPT_FLAGS = ["-f", "--file", "-E"];
 const AWK_PROGRAM_SOURCES = [...AWK_PROGRAM_FLAGS, ...AWK_SCRIPT_FLAGS];
 const AWK_VALUE_FLAGS: ReadonlySet<string> = new Set(["-F", "-v", "-f", "-i", "-l", "-E", "--field-separator", "--assign", "--file", "--include", "--load"]);
+const AWK_CLUSTER_STOPS: ReadonlySet<string> = new Set([...AWK_VALUE_FLAGS, ...AWK_PROGRAM_FLAGS]);
 const INPLACE_LIBRARY = /^inplace(?:\.awk)?$/;
 const ATTACHED_INPLACE = /^(?:-i|--include=)inplace(?:\.awk)?$/;
 
@@ -69,11 +89,11 @@ function awkFileOperands(args: string[]): string[] {
   const operands: string[] = [];
   let programGiven = false;
   for (let i = 0; i < args.length; i++) {
-    if (AWK_PROGRAM_SOURCES.includes(args[i])) {
+    const source = clusterFlag(args[i], AWK_PROGRAM_SOURCES, AWK_CLUSTER_STOPS);
+    if (source !== undefined) {
       programGiven = true;
-      i++;
-    } else if (attachedValue(args[i], AWK_PROGRAM_SOURCES) !== undefined) programGiven = true;
-    else if (AWK_VALUE_FLAGS.has(args[i])) i++;
+      if (source.rest === "") i++;
+    } else if (AWK_VALUE_FLAGS.has(args[i])) i++;
     else if (!args[i].startsWith("-")) operands.push(args[i]);
   }
   return programGiven ? operands : operands.slice(1);

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { inPlaceTargets } from "./in-place.mts";
+import { clusterFlag } from "./interpreters.mts";
 
 const words = (command: string) => command.split(" ");
 
@@ -111,6 +112,27 @@ test("every program flag value joins the program, so a later harmless program hi
   assert.deepEqual(inPlaceTargets(["gawk", "-e", `BEGIN { print "x" > "src/a.ts" }`, "-e1"], []), ["x", "src/a.ts"]);
   assert.ok(inPlaceTargets(["php", "-B", `file_put_contents("src/a.ts","x");`, "-Recho 1;"], []).includes("src/a.ts"));
   assert.ok(inPlaceTargets(["Rscript", "-e1", "-e", `writeLines("x", "src/a.ts")`], []).includes("src/a.ts"));
+});
+
+test("a php or gawk cluster ending in a program or script flag writes its target (T-1.4)", () => {
+  const awkWrite = `BEGIN { print "x" > "src/a.ts" }`;
+  assert.ok(inPlaceTargets(["php", `-nrfile_put_contents("src/a.ts","x");`], []).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["gawk", `-be${awkWrite}`], []).includes("src/a.ts"));
+  assert.ok(inPlaceTargets(["gawk", "-bf/dev/stdin"], [awkWrite]).includes("src/a.ts"));
+  assert.deepEqual(inPlaceTargets(["gawk", "-i", "inplace", "-be{ print }", "src/a.ts"], []), ["src/a.ts"]);
+});
+
+test("clusterFlag ends a cluster at a listed flag letter and gives up at a value flag or the end (T-1.5)", () => {
+  const flags = ["-e", "--source"];
+  const stops = new Set(["-F", "-v", "-f"]);
+  assert.deepEqual(clusterFlag("-beX", flags, stops), { flag: "-e", rest: "X" });
+  assert.deepEqual(clusterFlag("-be", flags, stops), { flag: "-e", rest: "" });
+  assert.deepEqual(clusterFlag("--source=X", flags, stops), { flag: "--source", rest: "X" });
+  for (const word of ["-Fe", "-vex=1", "-b"]) assert.equal(clusterFlag(word, flags, stops), undefined, word);
+});
+
+test("a php read in a cluster ending in its program flag yields nothing (T-1.5)", () => {
+  assert.deepEqual(inPlaceTargets(["php", `-nrecho file_get_contents("src/a.ts");`], []), []);
 });
 
 test("a php, lua or awk read attached to its program flag yields nothing", () => {
