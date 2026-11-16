@@ -70,6 +70,16 @@ test("every launcher form of a lead-only verb is denied to a spawned agent", (t)
   assert.notEqual(outcome("npx picket state x", "picket:developer")?.permissionDecision, "deny", "a read verb through npx");
 });
 
+test("the kernel script run directly and npm exec are launchers of a lead-only verb: denied to a spawned agent, no decision for the lead (T-2.2)", (t) => {
+  const root = project(t);
+  const decide = (command: string, agent?: string) => decision(command, { root, tool: "Bash", agent });
+  for (const command of ["dist/bin/picket.mjs waive x", "./dist/bin/picket.mjs comment x", "picket.mjs comment x", "npm exec -- picket reply x", "npm exec picket waive x"]) {
+    assert.equal(decide(command, "picket:developer"), "deny", command);
+    assert.equal(decide(command), null, `lead: ${command}`);
+  }
+  assert.notEqual(decide("npm exec -- picket state x", "picket:developer"), "deny", "a read verb through npm exec");
+});
+
 test("a variable standing for picket is never allowed to a spawned agent", (t) => {
   const root = project(t);
   for (const command of ["p=picket; $p uninstall --yes", "$P uninstall --yes"]) {

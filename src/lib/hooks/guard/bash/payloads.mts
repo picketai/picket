@@ -49,7 +49,8 @@ const POWERSHELL_VALUE_PARAMS = /^-(value|encoding|inputobject|width|stream)$/i;
 const SED_SCRIPT_FLAGS = new Set(["-e", "--expression", "-f", "--file"]);
 const WRAPPED_QUOTE_CHARS = 60;
 const PACKAGE_RUNNERS = new Set(["npx", "pnpx", "bunx"]);
-const LAUNCHER_SCRIPT = /\.(cmd|ps1|bat)$/i;
+const NPM_EXEC = ["npm", "exec"];
+const LAUNCHER_SCRIPT = /\.(cmd|ps1|bat|mjs)$/i;
 const BOOLEAN_GLOBALS = new Set(["--human", "--pretty", "--json"]);
 
 export function isSpawnedAgent(agent: string | null): boolean {
@@ -70,9 +71,15 @@ function launcherAt(seg: Segment): number {
   return at === -1 ? seg.length : at;
 }
 
+function runnerWords(seg: Segment, at: number): number {
+  if (PACKAGE_RUNNERS.has(String(normalizeRoot(seg[at])))) return 1;
+  return String(normalizeRoot(seg[at])) === NPM_EXEC[0] && seg[at + 1] === NPM_EXEC[1] ? NPM_EXEC.length : 0;
+}
+
 function withoutPackageRunner(seg: Segment, at: number): Segment {
-  if (!PACKAGE_RUNNERS.has(String(normalizeRoot(seg[at])))) return seg;
-  let next = at + 1;
+  const runner = runnerWords(seg, at);
+  if (runner === 0) return seg;
+  let next = at + runner;
   while (typeof seg[next] === "string" && (seg[next] as string).startsWith("-")) next++;
   return [...seg.slice(0, at), ...seg.slice(next)];
 }

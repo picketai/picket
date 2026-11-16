@@ -25,8 +25,10 @@ export function kernelClass(verb: unknown, subverb: unknown): "safe" | "kernel" 
   return entry.readOnly ? "safe" : "kernel";
 }
 
+export const LEAD_ONLY_VERBS: ReadonlySet<string> = new Set(Object.keys(VERBS).filter((verb) => VERBS[verb].leadOnly === true));
+
 export function isLeadOnly(verb: unknown): boolean {
-  return entryOf(verb)?.leadOnly === true;
+  return typeof verb === "string" && LEAD_ONLY_VERBS.has(verb);
 }
 
 export function wrappedCommands(seg: readonly unknown[]): string[] {

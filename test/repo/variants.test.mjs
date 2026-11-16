@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, interpreterArgv, interpreterRowSource, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, perlOpenModes, programFlagSpellings, programSeeds, quotedSpans, rowProblems, shellCommands, splitAlternatives, stdinSpellings, tableRows, writerWrappers, writtenSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
 import { commandLines, commandPaths, commandPlaces, wordQuotings } from "#test/variants.mts";
+import { commandWrappers, kernelCalls, kernelLaunchers } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -485,6 +486,34 @@ test("commandPlaces puts the command in the 24 places bash runs it, in order (T-
     "2>/dev/null rm -rf build", "</dev/null rm -rf build", ">/dev/null rm -rf build", "! rm -rf build", "time rm -rf build", "time -p rm -rf build",
     "{ rm -rf build; }", "if true; then rm -rf build; fi", "if rm -rf build; then :; fi", "while rm -rf build; do :; done", "until rm -rf build; do :; done", "for i in 1; do rm -rf build; done",
   ]);
+});
+
+test("kernelLaunchers respells the picket command word fifteen ways, and nothing for another command (T-2.1)", () => {
+  assert.deepEqual(labels(kernelLaunchers, "picket comment x"), [
+    "/usr/local/bin/picket comment x", "picket.cmd comment x", "picket.exe comment x", "node dist/bin/picket.mjs comment x", "node ./dist/bin/picket.mjs comment x",
+    "dist/bin/picket.mjs comment x", "picket.mjs comment x", "npx picket comment x", "npx --yes picket comment x", "pnpx picket comment x", "bunx picket comment x",
+    "npm exec -- picket comment x", "picket --human comment x", "picket --json comment x", "picket --root . comment x",
+  ]);
+  assert.deepEqual(labels(kernelLaunchers, "rm -rf build"), []);
+});
+
+test("commandWrappers runs the command behind nine argv wrappers, then inside six text wrappers (T-2.1)", () => {
+  assert.deepEqual(labels(commandWrappers, "picket comment x"), [
+    "command picket comment x", "env picket comment x", "env -i picket comment x", "exec picket comment x", "nice picket comment x", "nohup picket comment x",
+    "time picket comment x", "timeout 5 picket comment x", "echo x | xargs picket comment x",
+    "bash -c 'picket comment x'", "sh -c \"picket comment x\"", "eval 'picket comment x'", "cmd /c picket comment x", "pwsh -c 'picket comment x'", "powershell -Command \"picket comment x\"",
+  ]);
+});
+
+test("commandWrappers keeps leading assignments in front and drops a text wrapper whose quote the seed holds", () => {
+  const wrapped = labels(commandWrappers, "A=1 picket drive x --run 'ls'");
+  assert.equal(wrapped[0], "A=1 command picket drive x --run 'ls'");
+  assert.deepEqual(wrapped.slice(9), ["sh -c \"A=1 picket drive x --run 'ls'\"", "cmd /c A=1 picket drive x --run 'ls'", "powershell -Command \"A=1 picket drive x --run 'ls'\""]);
+});
+
+test("kernelCalls writes a seed as given and runs the launchers, quotings, places and wrappers", () => {
+  assert.deepEqual(kernelCalls.families.map((family) => family.name), ["kernel launchers", "word quotings", "command places", "command wrappers"]);
+  assert.deepEqual(writtenSpellings({ grammar: kernelCalls, seeds: ["picket comment x"] }), [{ label: "picket comment x", input: "picket comment x" }]);
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

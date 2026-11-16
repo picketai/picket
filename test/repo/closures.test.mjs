@@ -18,6 +18,7 @@ const SPEND = "bench/lib/spend.mjs";
 const SPEND_CLOSURE = "bench/test/spend.variants.test.mjs";
 const SECRET_WORDS = [{ module: CONFIG_ENTRIES, name: "SECRET_WORDS" }];
 const BASH_RULES = "src/lib/hooks/guard/bash/rules.mts";
+const BASH_KERNEL = "src/lib/hooks/guard/bash/kernel.mts";
 const DESTRUCTIVE_TABLES = ["DENIED_NAMES", "DENY_GIT_SUBCOMMANDS", "NPM_DENY_SUBCOMMANDS"].map((name) => ({ module: BASH_RULES, name }));
 
 const spendGuard = (guard) => ({ guard, module: SPEND, closure: SPEND_CLOSURE, tables: [] });
@@ -26,6 +27,8 @@ export const GUARDS = [
   { guard: "in-place guard", module: IN_PLACE, closure: IN_PLACE_CLOSURE, tables: [{ module: INTERPRETERS, name: "FAMILIES" }] },
   { guard: "in-place guard on piped programs", module: IN_PLACE, closure: IN_PLACE_CLOSURE, tables: [{ module: IN_PLACE, name: "VISIBLE_WRITERS" }] },
   { guard: "guard.bash destructive roots", module: "src/lib/hooks/guard/bash/judge.mts", closure: "src/lib/hooks/guard/bash/judge.variants.test.mts", tables: DESTRUCTIVE_TABLES },
+  { guard: "guard.bash lead-only verbs", module: "src/lib/hooks/guard/bash/payloads.mts", closure: "src/lib/hooks/guard/bash/payloads.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "LEAD_ONLY_VERBS" }] },
+  { guard: "guard.bash wrapped kernel commands", module: BASH_KERNEL, closure: "src/lib/hooks/guard/bash/kernel.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "WRAPPING_FLAGS" }] },
   { guard: "guard.scope", module: "src/lib/hooks/guard/scope/index.mts", closure: "src/lib/hooks/guard/scope/index.variants.test.mts", tables: [] },
   { guard: "admit security", module: "src/lib/shared/admission/signals.mts", closure: "src/lib/shared/admission/signals.variants.test.mts", tables: [] },
   { guard: "maskedBody", module: "src/lib/shared/drive-log.mts", closure: "src/lib/shared/drive-log.variants.test.mts", tables: SECRET_WORDS },

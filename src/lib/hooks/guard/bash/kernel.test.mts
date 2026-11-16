@@ -2,6 +2,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { classifyKernelCall, isLeadOnly, kernelClass, WRAPPING_FLAGS } from "./kernel.mts";
+import { LEAD_ONLY_VERBS } from "./kernel.mts";
 import { VERB_NAMES } from "../../../verbs.mts";
 import { writeLayout } from "../../../shared/repos.mts";
 import { openItem, withProject, writeArtifact, writeConfig } from "#test/project.mts";
@@ -51,6 +52,11 @@ test("kernelClass is safe for today's read verbs and subverbs and kernel for eve
   assert.equal(kernelClass("nosuchverb", undefined), "kernel");
   assert.equal(kernelClass("constructor", undefined), "kernel");
   assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "reply", "uninstall", "waive"]);
+});
+
+test("LEAD_ONLY_VERBS holds exactly the verbs whose entry is lead-only, and isLeadOnly reads it (T-2.5)", () => {
+  assert.deepEqual([...LEAD_ONLY_VERBS].sort(), ["comment", "reply", "uninstall", "waive"]);
+  assert.deepEqual(["comment", "state", "constructor", 3].map(isLeadOnly), [true, false, false, false]);
 });
 
 test("env check and env status are safe reads and env without a subverb is a kernel call (T-1.7, T-7.5)", () => {

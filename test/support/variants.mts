@@ -673,13 +673,17 @@ export const wordQuotings: Family<string, string> = {
   },
 };
 
+function commandWordAt(parts: ShellPart[]): number {
+  return wordRoles(parts).indexOf("command");
+}
+
 const COMMAND_PATHS: ((word: string) => string)[] = [(word) => `/bin/${word}`, (word) => `/usr/bin/${word}`, (word) => `${word}.exe`];
 
 export const commandPaths: Family<string, string> = {
   name: "command paths",
   spell: (seed) => {
     const parts = shellParts(seed);
-    const at = wordRoles(parts).indexOf("command");
+    const at = commandWordAt(parts);
     if (at < 0 || !PLAIN_WORD.test(parts[at].text)) return [];
     return spelled(COMMAND_PATHS.map((path) => respelled(parts, at, path(parts[at].text))));
   },
@@ -722,6 +726,66 @@ export const commandLines: Grammar<string, string> = {
   written: verbatim,
   label: verbatim,
   families: [wordQuotings, commandPaths, commandPlaces],
+};
+
+const KERNEL_COMMAND = "picket";
+
+const KERNEL_LAUNCHERS = [
+  "/usr/local/bin/picket",
+  "picket.cmd",
+  "picket.exe",
+  "node dist/bin/picket.mjs",
+  "node ./dist/bin/picket.mjs",
+  "dist/bin/picket.mjs",
+  "picket.mjs",
+  "npx picket",
+  "npx --yes picket",
+  "pnpx picket",
+  "bunx picket",
+  "npm exec -- picket",
+  "picket --human",
+  "picket --json",
+  "picket --root .",
+];
+
+export const kernelLaunchers: Family<string, string> = {
+  name: "kernel launchers",
+  spell: (seed) => {
+    const parts = shellParts(seed);
+    const at = commandWordAt(parts);
+    if (at < 0 || parts[at].text !== KERNEL_COMMAND) return [];
+    return spelled(KERNEL_LAUNCHERS.map((launcher) => respelled(parts, at, launcher)));
+  },
+};
+
+const ARGV_WRAPPERS = ["command", "env", "env -i", "exec", "nice", "nohup", "time", "timeout 5", "echo x | xargs"];
+
+const TEXT_WRAPPERS: { quote: string; wrap: (command: string) => string }[] = [
+  { quote: "'", wrap: (command) => `bash -c '${command}'` },
+  { quote: '"', wrap: (command) => `sh -c "${command}"` },
+  { quote: "'", wrap: (command) => `eval '${command}'` },
+  { quote: "", wrap: (command) => `cmd /c ${command}` },
+  { quote: "'", wrap: (command) => `pwsh -c '${command}'` },
+  { quote: '"', wrap: (command) => `powershell -Command "${command}"` },
+];
+
+export const commandWrappers: Family<string, string> = {
+  name: "command wrappers",
+  spell: (seed) => {
+    const parts = shellParts(seed);
+    const at = commandWordAt(parts);
+    if (at < 0) return [];
+    const argvWrapped = ARGV_WRAPPERS.map((wrapper) => respelled(parts, at, `${wrapper} ${parts[at].text}`));
+    const textWrapped = TEXT_WRAPPERS.filter(({ quote }) => quote === "" || !seed.includes(quote)).map(({ wrap }) => wrap(seed));
+    return spelled([...argvWrapped, ...textWrapped]);
+  },
+};
+
+export const kernelCalls: Grammar<string, string> = {
+  name: "kernel calls",
+  written: verbatim,
+  label: verbatim,
+  families: [kernelLaunchers, wordQuotings, commandPlaces, commandWrappers],
 };
 
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
