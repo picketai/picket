@@ -273,9 +273,19 @@ test("programFlagSpellings and stdinSpellings throw on an interpreter with no vo
   assert.throws(() => stdinSpellings.spell(flagged("bash", "-c")), /no flag table row for the interpreter bash/);
 });
 
-test("stdinSpellings returns nothing for a seed with a program flag, or for an interpreter that reads no standard input (T-1.3)", () => {
+test("stdinSpellings returns nothing for a seed with a program flag (T-1.3)", () => {
   assert.deepEqual(stdinSpellings.spell(flagged("python3", "-c")), []);
-  assert.deepEqual(stdinSpellings.spell(fed("bun")), []);
+});
+
+test("stdinSpellings feeds bun and deno only through their run subcommand (T-4.6)", () => {
+  assert.deepEqual(labels(stdinSpellings, fed("bun")), ["bun run - << P"]);
+  assert.deepEqual(labels(stdinSpellings, fed("deno")), ["deno run - << P", "deno run -A - << P"]);
+});
+
+test("programSeeds feeds bun and deno samples on standard input, written through run -", () => {
+  const seeds = programSeeds({ bun: ["W"], deno: ["D"] });
+  assert.deepEqual(seeds.filter((seed) => seed.flag === null), [{ interpreter: "bun", flag: null, program: "W" }, { interpreter: "deno", flag: null, program: "D" }]);
+  assert.deepEqual(writtenSpellings({ grammar: interpreterArgv, seeds: [fed("bun"), fed("deno")] }).map((spelling) => spelling.label), ["bun run - << P", "deno run - << P"]);
 });
 
 test("stdinSpellings feeds tclsh a standard input file, then after its leading -encoding utf-8", () => {
@@ -302,6 +312,7 @@ test("programSeeds crosses each program flag and the subcommand with every sampl
     { interpreter: "php", flag: "-E", program: "W" },
     { interpreter: "php", flag: null, program: "<?php W" },
     { interpreter: "deno", flag: "eval", program: "D" },
+    { interpreter: "deno", flag: null, program: "D" },
   ]);
 });
 

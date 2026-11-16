@@ -164,7 +164,7 @@ export type Invocation = { argv: string[]; heredocs: string[] };
 
 export type ProgramSeed = { interpreter: string; flag: string | null; program: string };
 
-type StdinReading = { bare: boolean; paths: string[]; scriptFlags?: string[]; scriptName?: string; prefix?: string };
+type StdinReading = { bare: boolean; paths: string[]; scriptFlags?: string[]; scriptName?: string; prefix?: string; subcommandReadings?: string[][] };
 
 type Vocabulary = {
   programFlags: string[];
@@ -185,8 +185,8 @@ const VOCABULARY: Record<string, Vocabulary> = {
   python3: { programFlags: ["-c"], attached: true, clusterLetter: "B", leading: ["-X", "utf8"], stdin: ANY_STDIN },
   ruby: { programFlags: ["-e"], attached: true, clusterLetter: "w", leading: ["-w"], stdin: ANY_STDIN },
   perl: { programFlags: ["-e"], attached: true, clusterLetter: "w", leading: ["-w"], stdin: ANY_STDIN },
-  bun: { programFlags: ["-e", "-p"], long: { "-e": "--eval", "-p": "--print" }, leading: ["--smol"] },
-  deno: { programFlags: [], leading: [], subcommand: { name: "eval", before: ["-q"], after: ["--quiet"] } },
+  bun: { programFlags: ["-e", "-p"], long: { "-e": "--eval", "-p": "--print" }, leading: ["--smol"], stdin: { bare: false, paths: [], subcommandReadings: [["run", "-"]] } },
+  deno: { programFlags: [], leading: [], subcommand: { name: "eval", before: ["-q"], after: ["--quiet"] }, stdin: { bare: false, paths: [], subcommandReadings: [["run", "-"], ["run", "-A", "-"]] } },
   php: { programFlags: ["-r", "-B", "-R", "-E"], attached: true, clusterLetter: "n", leading: ["-c", "php.ini"], stdin: { bare: true, paths: STDIN_FILES, prefix: "<?php " } },
   lua: { programFlags: ["-e"], attached: true, leading: ["-l", "mod"], stdin: ANY_STDIN },
   Rscript: { programFlags: ["-e"], attached: true, leading: ["--vanilla"], stdin: { bare: false, paths: ["-"], scriptFlags: ["-f", "--file"], scriptName: "R" } },
@@ -219,7 +219,8 @@ function stdinReadings(interpreter: string, { leading, stdin }: Vocabulary): str
   if (stdin === undefined) return [];
   const alone = stdin.paths.map((path) => [interpreter, path]);
   const afterLeading = stdin.paths.length === 0 ? [] : [[interpreter, ...leading, stdin.paths[0]]];
-  return [...alone, ...afterLeading, ...scriptReadings(interpreter, stdin)];
+  const throughSubcommand = (stdin.subcommandReadings ?? []).map((reading) => [interpreter, ...reading]);
+  return [...alone, ...afterLeading, ...scriptReadings(interpreter, stdin), ...throughSubcommand];
 }
 
 function writtenStdin(interpreter: string, vocabulary: Vocabulary): string[] {

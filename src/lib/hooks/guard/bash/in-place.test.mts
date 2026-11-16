@@ -32,6 +32,10 @@ test("deno eval finds the write after --quiet, after --ext ts, and as the only w
   assert.deepEqual(inPlaceTargets(["deno", "eval", write], []), ["src/a.ts", "x"]);
 });
 
+test("deno eval reads a quoted path from a later program word than the write call", () => {
+  assert.deepEqual(inPlaceTargets(["deno", "eval", "Deno.writeFileSync(f, d)", "'src/a.ts'"], []), ["src/a.ts"]);
+});
+
 test("deno eval with no program word yields nothing", () => {
   assert.deepEqual(inPlaceTargets(["deno", "eval", "--quiet"], []), []);
 });

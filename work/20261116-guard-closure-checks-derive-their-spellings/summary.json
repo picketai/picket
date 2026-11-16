@@ -4,6 +4,7 @@
   "request": "work/20261116-guard-closure-checks-derive-their-spellings/request.md",
   "size": "large",
   "changed_files": [
+    "CONTRIBUTING.md",
     "bench/test/claude.variants.test.mjs",
     "bench/test/spend.variants.test.mjs",
     "src/lib/hooks/guard/bash/in-place.mts",
@@ -17,12 +18,13 @@
     "src/lib/shared/scenarios/rules.variants.test.mts",
     "src/lib/shared/work/declared-checks.mts",
     "src/lib/verbs/verify/index.variants.test.mts",
+    "test/repo/closures.test.mjs",
     "test/repo/replay-rejected.test.mjs",
     "test/repo/variants.test.mjs",
     "test/support/variants.mts"
   ],
-  "lines_added": 939,
-  "lines_removed": 276,
+  "lines_added": 1188,
+  "lines_removed": 301,
   "frameworks": [
     "typescript"
   ],
@@ -35,14 +37,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-16T14:00:55.327Z",
+    "base": "29346d5babab722b294df7484ba5b47d8e974ca0",
+    "mutant": {
+      "path": "src/lib/hooks/guard/bash/in-place.mts",
+      "line": 33,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "survived",
+    "rebuild": "passed",
+    "ms": 292812
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
