@@ -5,6 +5,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { closureFailure, distractorSentences, editPaths, familySpellings, listPlacements, loadedExport, loadGuard, numbers, interpreterArgv, interpreterRowSource, openSpellings, outOfDomainNumbers, pairNames, pairPlaces, perlOpenModes, programFlagSpellings, programSeeds, quotedSpans, rowProblems, shellCommands, splitAlternatives, stdinSpellings, tableRows, writerWrappers, writtenSpellings } from "#test/variants.mts";
 import { withProject } from "#test/project.mts";
+import { commandLines, commandPaths, commandPlaces, wordQuotings } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -457,4 +458,36 @@ test("a guard that masks only after ; leaves the other pair places open (T-2.4)"
     "jdbc:postgresql://h/db?user=a&password=K",
     "redis://h:6379?password=K",
   ]);
+});
+
+test("wordQuotings respells each word of the seed seven ways, in word order (T-1.1)", () => {
+  assert.deepEqual(labels(wordQuotings, "rm -rf build"), [
+    "'rm' -rf build", "\"rm\" -rf build", "\\rm -rf build", "r''m -rf build", "$'rm' -rf build", "$'\\x72m' -rf build", "$\"rm\" -rf build",
+    "rm '-rf' build", "rm \"-rf\" build", "rm \\-rf build", "rm -''rf build", "rm $'-rf' build", "rm $'\\x2drf' build", "rm $\"-rf\" build",
+    "rm -rf 'build'", "rm -rf \"build\"", "rm -rf \\build", "rm -rf b''uild", "rm -rf $'build'", "rm -rf $'\\x62uild'", "rm -rf $\"build\"",
+  ]);
+});
+
+test("wordQuotings leaves a leading assignment as written and respells a quoted word only in the other quote forms", () => {
+  assert.deepEqual(labels(wordQuotings, "A=1 x 'a b'"), ["A=1 'x' 'a b'", "A=1 \"x\" 'a b'", "A=1 \\x 'a b'", "A=1 x'' 'a b'", "A=1 $'x' 'a b'", "A=1 $'\\x78' 'a b'", "A=1 $\"x\" 'a b'", "A=1 x \"a b\"", "A=1 x $'a b'", "A=1 x $\"a b\""]);
+});
+
+test("commandPaths spells the command word after the leading assignments, and nothing for an assignment alone (T-1.1)", () => {
+  assert.deepEqual(labels(commandPaths, "rm -rf build"), ["/bin/rm -rf build", "/usr/bin/rm -rf build", "rm.exe -rf build"]);
+  assert.deepEqual(labels(commandPaths, "A=\"a b\" rm a; rm b"), ["A=\"a b\" /bin/rm a; rm b", "A=\"a b\" /usr/bin/rm a; rm b", "A=\"a b\" rm.exe a; rm b"]);
+  assert.deepEqual(labels(commandPaths, "A=1"), []);
+});
+
+test("commandPlaces puts the command in the 24 places bash runs it, in order (T-1.1)", () => {
+  assert.deepEqual(labels(commandPlaces, "rm -rf build"), [
+    "true && rm -rf build", "false || rm -rf build", "true; rm -rf build", "echo x | rm -rf build", "echo x |& rm -rf build", "true\nrm -rf build",
+    "true & rm -rf build", "rm -rf build &", "(rm -rf build)", "echo $(rm -rf build)", "echo \"$(rm -rf build)\"", "A=1 rm -rf build",
+    "2>/dev/null rm -rf build", "</dev/null rm -rf build", ">/dev/null rm -rf build", "! rm -rf build", "time rm -rf build", "time -p rm -rf build",
+    "{ rm -rf build; }", "if true; then rm -rf build; fi", "if rm -rf build; then :; fi", "while rm -rf build; do :; done", "until rm -rf build; do :; done", "for i in 1; do rm -rf build; done",
+  ]);
+});
+
+test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {
+  assert.deepEqual(writtenSpellings({ grammar: commandLines, seeds: ["rm -rf build"] }), [{ label: "rm -rf build", input: "rm -rf build" }]);
+  assert.throws(() => wordQuotings.spell("rm 'a"), /an unclosed quote at 3 in the seed rm 'a/);
 });

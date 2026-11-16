@@ -574,6 +574,156 @@ export const editPaths: Grammar<EditSeed, EditInput> = {
   families: [editPathSpellings],
 };
 
+type ShellPart = { kind: "word" | "gap" | "op"; text: string };
+type WordRole = "assignment" | "command" | "argument";
+
+const SHELL_GAP = /^[ \t]+/;
+const SHELL_OP = /^(?:\|\||&&|\|&|;;|>>|[;&|()<>\n])/;
+const WORD_STOP = /[ \t;&|()<>\n]/;
+const PLAIN_WORD = /^[^'"\\$`]+$/;
+const ASSIGNED_NAME = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const COMMAND_STARTS = new Set([";", ";;", "&", "&&", "|", "||", "|&", "(", "\n"]);
+
+function quoteClose(text: string, open: number, quote: string, escapes: boolean): number {
+  for (let i = open + 1; i < text.length; i++) {
+    if (escapes && text[i] === "\\") i++;
+    else if (text[i] === quote) return i;
+  }
+  throw new Error(`an unclosed quote at ${open} in the seed ${text}`);
+}
+
+function wordEnd(text: string, start: number): number {
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\\") i++;
+    else if (ch === "$" && text[i + 1] === "'") i = quoteClose(text, i + 1, "'", true);
+    else if (ch === "'") i = quoteClose(text, i, "'", false);
+    else if (ch === '"') i = quoteClose(text, i, '"', true);
+    else if (WORD_STOP.test(ch)) return i;
+  }
+  return text.length;
+}
+
+function shellParts(seed: string): ShellPart[] {
+  const parts: ShellPart[] = [];
+  for (let i = 0; i < seed.length; ) {
+    const rest = seed.slice(i);
+    const gap = SHELL_GAP.exec(rest)?.[0];
+    const op = gap === undefined ? SHELL_OP.exec(rest)?.[0] : undefined;
+    const text = gap ?? op ?? seed.slice(i, wordEnd(seed, i));
+    parts.push({ kind: gap !== undefined ? "gap" : op !== undefined ? "op" : "word", text });
+    i += text.length;
+  }
+  return parts;
+}
+
+function wordRoles(parts: ShellPart[]): (WordRole | null)[] {
+  let atCommand = true;
+  return parts.map(({ kind, text }) => {
+    if (kind === "op") atCommand ||= COMMAND_STARTS.has(text);
+    if (kind !== "word") return null;
+    if (atCommand && ASSIGNED_NAME.test(text)) return "assignment";
+    const role = atCommand ? "command" : "argument";
+    atCommand = false;
+    return role;
+  });
+}
+
+function respelled(parts: ShellPart[], at: number, text: string): string {
+  return parts.map((part, i) => (i === at ? text : part.text)).join("");
+}
+
+type QuoteForm = { form: string; open: RegExp; spell: (content: string) => string | null };
+
+const EXPANDS_IN_DOUBLE = /["\\$`]/;
+
+const QUOTE_FORMS: QuoteForm[] = [
+  { form: "single", open: /^'([^']*)'$/s, spell: (content) => (content.includes("'") ? null : `'${content}'`) },
+  { form: "double", open: /^"([^"\\$`]*)"$/s, spell: (content) => (EXPANDS_IN_DOUBLE.test(content) ? null : `"${content}"`) },
+  { form: "ANSI-C", open: /^\$'([^'\\]*)'$/s, spell: (content) => (/['\\]/.test(content) ? null : `$'${content}'`) },
+  { form: "locale", open: /^\$"([^"\\$`]*)"$/s, spell: (content) => (EXPANDS_IN_DOUBLE.test(content) ? null : `$"${content}"`) },
+];
+
+function otherQuotings(word: string): string[] | null {
+  const quoted = QUOTE_FORMS.find(({ open }) => open.test(word));
+  if (quoted === undefined) return null;
+  const content = (quoted.open.exec(word) as RegExpExecArray)[1];
+  return QUOTE_FORMS.filter((form) => form !== quoted).flatMap((form) => form.spell(content) ?? []);
+}
+
+function hexOf(char: string): string {
+  return (char.codePointAt(0) as number).toString(16).padStart(2, "0");
+}
+
+function plainQuotings(word: string): string[] {
+  if (!PLAIN_WORD.test(word)) return [];
+  const [first, rest] = [word[0], word.slice(1)];
+  return [`'${word}'`, `"${word}"`, `\\${word}`, `${first}''${rest}`, `$'${word}'`, `$'\\x${hexOf(first)}${rest}'`, `$"${word}"`];
+}
+
+export const wordQuotings: Family<string, string> = {
+  name: "word quotings",
+  spell: (seed) => {
+    const parts = shellParts(seed);
+    const roles = wordRoles(parts);
+    return spelled(parts.flatMap((part, at) => {
+      if (roles[at] === null || roles[at] === "assignment") return [];
+      return (otherQuotings(part.text) ?? plainQuotings(part.text)).map((text) => respelled(parts, at, text));
+    }));
+  },
+};
+
+const COMMAND_PATHS: ((word: string) => string)[] = [(word) => `/bin/${word}`, (word) => `/usr/bin/${word}`, (word) => `${word}.exe`];
+
+export const commandPaths: Family<string, string> = {
+  name: "command paths",
+  spell: (seed) => {
+    const parts = shellParts(seed);
+    const at = wordRoles(parts).indexOf("command");
+    if (at < 0 || !PLAIN_WORD.test(parts[at].text)) return [];
+    return spelled(COMMAND_PATHS.map((path) => respelled(parts, at, path(parts[at].text))));
+  },
+};
+
+const COMMAND_PLACES: ((command: string) => string)[] = [
+  (command) => `true && ${command}`,
+  (command) => `false || ${command}`,
+  (command) => `true; ${command}`,
+  (command) => `echo x | ${command}`,
+  (command) => `echo x |& ${command}`,
+  (command) => `true\n${command}`,
+  (command) => `true & ${command}`,
+  (command) => `${command} &`,
+  (command) => `(${command})`,
+  (command) => `echo $(${command})`,
+  (command) => `echo "$(${command})"`,
+  (command) => `A=1 ${command}`,
+  (command) => `2>/dev/null ${command}`,
+  (command) => `</dev/null ${command}`,
+  (command) => `>/dev/null ${command}`,
+  (command) => `! ${command}`,
+  (command) => `time ${command}`,
+  (command) => `time -p ${command}`,
+  (command) => `{ ${command}; }`,
+  (command) => `if true; then ${command}; fi`,
+  (command) => `if ${command}; then :; fi`,
+  (command) => `while ${command}; do :; done`,
+  (command) => `until ${command}; do :; done`,
+  (command) => `for i in 1; do ${command}; done`,
+];
+
+export const commandPlaces: Family<string, string> = {
+  name: "command places",
+  spell: (command) => spelled(COMMAND_PLACES.map((place) => place(command))),
+};
+
+export const commandLines: Grammar<string, string> = {
+  name: "command lines",
+  written: verbatim,
+  label: verbatim,
+  families: [wordQuotings, commandPaths, commandPlaces],
+};
+
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
   const seen = new Set<string>();
   return spellings.filter(({ label }) => {

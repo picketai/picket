@@ -53,6 +53,26 @@ test("guardBash treats a redirect into /dev/null as a discard and splits command
   assert.equal(decide("cat x ;; rm -rf y"), "deny");
 });
 
+test("guardBash reads an ANSI-C or locale quoted word as the text bash runs", (t) => {
+  const { decide } = bashProject(t);
+  for (const command of ["$'\\x72m' -rf build", "$'\\162m' -rf build", "$'\\u0072m' -rf build", "$\"rm\" -rf build", "git $'push' origin"]) {
+    assert.equal(decide(command), "deny", command);
+  }
+  assert.equal(decide("echo $'\\x24(rm -rf x)'"), "allow");
+  assert.equal(decide("echo $'a\\nb' $\"c\""), "allow");
+});
+
+test("guardBash reads past leading reserved words and redirections to the command they run", (t) => {
+  const { decide, lastOutcome } = bashProject(t);
+  for (const command of ["time -p rm -rf build", "2>/dev/null rm -rf build", "</dev/null rm -rf build", "! rm -rf build", "{ rm -rf build; }", "if true; then rm -rf build; fi", "while rm -rf build; do :; done", "for i in 1; do git push; done"]) {
+    assert.equal(decide(command), "deny", command);
+  }
+  assert.equal(decide("2 >x rm -rf build"), "deny");
+  assert.equal(decide("time git status"), "allow");
+  assert.equal(decide("{ ls; }"), null);
+  assert.equal(lastOutcome(), "fallthrough:unknown-segments:[safe,unknown]");
+});
+
 test("guardBash classifies each $(...) body and lets its output reach only inert roots", (t) => {
   const { decide, lastOutcome } = bashProject(t);
   for (const command of ['grep -rn "Headers" $(grep -rln "class AuthorizeApiKey" --include=*.cs . | grep -v /obj/) | head', 'cat "$(git rev-parse --show-toplevel)/package.json"', "grep '$(x)' f", 'echo "$(echo "$(ls)")"']) {

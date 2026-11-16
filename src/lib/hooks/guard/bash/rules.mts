@@ -59,9 +59,9 @@ const SAFE_GIT_SUBCOMMANDS = new Set([
   "config",
 ]);
 
-const DENY_GIT_SUBCOMMANDS = new Set(["push", "reset", "rebase", "checkout", "merge", "clean", "branch"]);
+export const DENY_GIT_SUBCOMMANDS = new Set(["push", "reset", "rebase", "checkout", "merge", "clean", "branch"]);
 
-const DENIED_NAMES = [
+export const DENIED_NAMES = [
   "sudo", "rm", "rmdir", "chmod", "chown", "chgrp", "dd", "mkfs",
   "shutdown", "reboot", "kill", "killall", "del", "erase",
   "Remove-Item", "ri",
@@ -127,7 +127,7 @@ const SED_QUIET_FLAGS = ["-n", "--quiet", "--silent"];
 const SED_ADDRESS = String.raw`(\d+|\$|\/[^/]*\/)`;
 const SED_PRINT = new RegExp(`^(${SED_ADDRESS}(,${SED_ADDRESS})?)?[p=]$`);
 const DOTNET_SAFE_SUBCOMMANDS = new Set(["build", "test", "restore", "clean", "list", "--version", "--info", "--list-sdks", "--list-runtimes"]);
-const NPM_DENY_SUBCOMMANDS = new Set(["publish", "unpublish", "deprecate", "owner", "adduser", "login", "logout", "token"]);
+export const NPM_DENY_SUBCOMMANDS = new Set(["publish", "unpublish", "deprecate", "owner", "adduser", "login", "logout", "token"]);
 const NPM_READ_SUBCOMMANDS = new Set(["list", "ls", "outdated", "view", "why", "--version", "-v"]);
 const NPM_SCRIPT_ALIASES = new Set(["run", "run-script", "test", "start", "build"]);
 

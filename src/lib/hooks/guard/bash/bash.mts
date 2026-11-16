@@ -40,6 +40,13 @@ const SHELL_BEHAVIOUR_NAMES = new Set(["PATH", "CDPATH", "IFS", "BASH_ENV", "ENV
 const CHAIN_OPS = new Set(["&&", "||", ";", "|", "|&", ";;"]);
 const WRITE_REDIRECT_OPS = new Set([">", ">>"]);
 const DISCARD_TARGET = "/dev/null";
+const ANSI_SIMPLE_ESCAPES: Readonly<Record<string, string>> = { n: "\n", t: "\t", r: "\r", a: "\x07", b: "\b", e: "\x1b", E: "\x1b", f: "\f", v: "\v", "\\": "\\", "'": "'", '"': '"', "?": "?" };
+const ANSI_NUMERIC_ESCAPE = /^(?:x([0-9A-Fa-f]{1,2})|u([0-9A-Fa-f]{1,4})|([0-7]{1,3}))/;
+const LEADING_RESERVED_WORDS = new Set(["!", "{", "if", "then", "elif", "else", "do", "while", "until", "time"]);
+const TIME_POSIX_FLAG = "-p";
+const DESCRIPTOR = /^\d+$/;
+const REDIRECT_OPS = new Set([">", ">>", ">&", "<"]);
+const INPUT_REDIRECT_OP = "<";
 export const LEAVE_HINT = 'Cleanup after the work is never escalated: record it with `picket leave <id> --command "<command>"` and it is listed when the item closes.';
 const ESCALATE_HINT = `If the user asked for this action in this session or the work cannot continue without it, run it alone as \`PICKET_ESCALATE="<why>" <command>\` and the user decides in the dialog. ${LEAVE_HINT}`;
 const DESTRUCTIVE_DENIAL = `guard.bash: command contains a destructive sub-command (e.g. rm, sudo, git push/reset/rebase/checkout/merge/clean). ${ESCALATE_HINT}`;
@@ -70,6 +77,33 @@ function readHeredocBody(raw: string, start: number, { delimiter, stripTabs }: P
   return null;
 }
 
+function ansiEscape(raw: string, at: number): { text: string; length: number } {
+  const simple = ANSI_SIMPLE_ESCAPES[raw[at]];
+  if (simple !== undefined) return { text: simple, length: 1 };
+  const numeric = ANSI_NUMERIC_ESCAPE.exec(raw.slice(at, at + 5));
+  if (!numeric) return { text: `\\${raw[at] ?? ""}`, length: 1 };
+  const [whole, hex, unicode, octal] = numeric;
+  const code = octal === undefined ? parseInt(hex ?? unicode, 16) : parseInt(octal, 8);
+  return { text: String.fromCodePoint(code), length: whole.length };
+}
+
+function ansiQuoted(raw: string, start: number): { text: string; end: number } | null {
+  let text = "";
+  for (let i = start + 2; i < raw.length; ) {
+    if (raw[i] === "'") return { text, end: i + 1 };
+    if (raw[i] === "\\") {
+      const escape = ansiEscape(raw, i + 1);
+      text += escape.text;
+      i += 1 + escape.length;
+    } else text += raw[i++];
+  }
+  return null;
+}
+
+function singleQuoted(text: string): string {
+  return `'${text.replaceAll("'", "'\\''")}'`;
+}
+
 export function shellText(raw: string): ShellText | null {
   let command = "";
   let expanded = "";
@@ -78,7 +112,15 @@ export function shellText(raw: string): ShellText | null {
   let i = 0;
   while (i < raw.length) {
     const ch = raw[i];
-    if (ch === "'" || ch === '"' || (ch === "$" && raw[i + 1] === "'")) {
+    const ansi = ch === "$" && raw[i + 1] === "'" ? ansiQuoted(raw, i) : null;
+    if (ansi) {
+      command += singleQuoted(ansi.text);
+      i = ansi.end;
+    } else if (ch === "$" && raw[i + 1] === '"') {
+      const end = quotedEnd(raw, i + 1);
+      command += raw.slice(i + 1, end);
+      i = end;
+    } else if (ch === "'" || ch === '"' || (ch === "$" && raw[i + 1] === "'")) {
       const end = quotedEnd(raw, i);
       command += raw.slice(i, end);
       i = end;
@@ -285,6 +327,18 @@ function redirectTarget(next: ParseEntry | undefined, split: Split): number {
   return 0;
 }
 
+function opensRedirect(token: ParseEntry | undefined): boolean {
+  return [...REDIRECT_OPS].some((op) => isOp(token, op));
+}
+
+function leadingWordCount(tokens: ParseEntry[], i: number): number {
+  const tok = tokens[i];
+  if (typeof tok !== "string") return 0;
+  if (tok === "time" && tokens[i + 1] === TIME_POSIX_FLAG) return 2;
+  if (LEADING_RESERVED_WORDS.has(tok)) return 1;
+  return DESCRIPTOR.test(tok) && opensRedirect(tokens[i + 1]) ? 1 : 0;
+}
+
 export function splitIntoSegments(tokens: ParseEntry[]): Split {
   const split: Split = { segments: [], sawWriteRedirect: false, sawBackground: false, redirectTargets: [] };
   let current: Segment = [];
@@ -295,12 +349,18 @@ export function splitIntoSegments(tokens: ParseEntry[]): Split {
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i];
     if (typeof tok !== "object" || !("op" in tok) || !tok.op) {
-      current.push(tok);
+      const leading = current.length ? 0 : leadingWordCount(tokens, i);
+      if (leading) i += leading - 1;
+      else current.push(tok);
       continue;
     }
     if (tok.op === "(" || tok.op === ")") continue;
     if (opensHeredoc(tokens, i)) {
       i += 2;
+      continue;
+    }
+    if (tok.op === INPUT_REDIRECT_OP && !current.length) {
+      if (typeof tokens[i + 1] === "string") i++;
       continue;
     }
     if (tok.op === ">&") {
