@@ -447,3 +447,35 @@ test("state files, docs, discards, stream plumbing and code outside the project 
     assert.doesNotMatch(reason(command), /is code; a shell write/, command);
   }
 });
+
+const TESTER_REASON = "guard.bash: the tester runs only picket test, env start, env replay, env status and state, written out plainly; it reads files with Read, and never the item's own files";
+const CASE_CALL = "picket test case 20261117-x --criterion T-2.1 --kind normal --intent x <<'EOF'\nrequest GET {orders}/orders\nexpect status 200\nEOF";
+const READING_COMMANDS: [string, "allow" | null][] = [
+  ["cat src/a.mts", "allow"],
+  ["git diff", "allow"],
+  ["picket summary 20261117-x", "allow"],
+  ['picket drive --run "cat src/a.mts"', null],
+  ['picket test note 20261117-x T-2.1 normal blocked --why "$(cat src/a.mts)"', null],
+];
+
+test("the tester's case call with a quoted heredoc of steps is not denied (T-4.4)", (t) => {
+  assert.notEqual(decision(CASE_CALL, { root: project(t), tool: "Bash", agent: "abcd-tester" }), "deny");
+});
+
+test("the tester is denied every reading command with the tester reason (T-4.4)", (t) => {
+  const root = project(t);
+  for (const [command] of READING_COMMANDS) {
+    const out = guardOutput(command, { root, tool: "Bash", agent: "abcd-tester" });
+    assert.deepEqual([out?.permissionDecision, out?.permissionDecisionReason], ["deny", TESTER_REASON], command);
+  }
+});
+
+test("the developer keeps the decision each command had on the base, before the tester guard (T-4.4)", (t) => {
+  const root = project(t);
+  const base: [string, "allow" | null][] = [...READING_COMMANDS, [CASE_CALL, null]];
+  for (const [command, before] of base) assert.equal(decision(command, { root, tool: "Bash", agent: "picket:developer" }), before, command);
+});
+
+test("the tester is denied any PowerShell command, even a picket call", (t) => {
+  assert.equal(decision("picket state 20261117-x", { root: project(t), tool: "PowerShell", agent: "abcd-tester" }), "deny");
+});

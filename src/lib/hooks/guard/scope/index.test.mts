@@ -38,6 +38,17 @@ test("guardScope decides the same whatever form the root and the target path tak
   if (process.platform === "win32") assert.equal(decide(root, join(root, "Work", s.id, "State.yaml")), "deny");
 });
 
+test("guardScope denies a Write of the tester's results and an Edit of the test report as kernel-owned (T-4.6)", (t) => {
+  const root = project(t);
+  const s = openItem(root, { lane: "design", title: "Tested" });
+  const results = scopeWrite(root, join(root, "work", s.id, "test", "results.jsonl"));
+  assert.equal(results?.permissionDecision, "deny");
+  assert.match(results?.permissionDecisionReason ?? "", /is kernel-owned/);
+  const report = guardScope({ hook_event_name: "PreToolUse", tool_name: "Edit", tool_input: { file_path: join(root, "work", s.id, "test.md"), old_string: "a", new_string: "b" }, cwd: root }, hookContext(root))?.hookSpecificOutput;
+  assert.equal(report?.permissionDecision, "deny");
+  assert.match(report?.permissionDecisionReason ?? "", /is kernel-owned/);
+});
+
 test("guardScope denies the legacy state folder and hook state in any case, not look-alikes (T-1.1, T-1.2, T-1.3)", (t) => {
   const root = project(t);
   const guard = (tool_name: string, rel: string) => guardScope({ hook_event_name: "PreToolUse", tool_name, tool_input: { file_path: join(root, rel) }, cwd: root }, hookContext(root))?.hookSpecificOutput ?? null;

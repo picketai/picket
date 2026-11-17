@@ -26,7 +26,7 @@ export const HOOKS = {
     on: [{ event: "UserPromptSubmit" }],
   },
   "guard.scope": {
-    summary: "denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `waivers.jsonl`, `.picket/state/` except `branching.yaml`); denies an Edit on a file this transcript never read",
+    summary: "denies writes to kernel-owned files (`work/*/state.yaml`, `phases/`, `verdicts.jsonl`, `comments.jsonl`, `waivers.jsonl`, the tester's `test/` and `test.md`, `.picket/state/` except `branching.yaml`); denies an Edit on a file this transcript never read",
     on: [{ event: "PreToolUse", matcher: "Write|Edit" }],
   },
   "guard.comments": {
@@ -40,6 +40,10 @@ export const HOOKS = {
   "guard.bash": {
     summary: "the command evaluator: read-only commands allowed, destructive roots denied, compound and redirected commands prompt; PowerShell is only ever denied or passed on; lead-only verbs and agent shell writes to code are denied; `PICKET_ESCALATE` asks",
     on: [{ event: "PreToolUse", matcher: "Bash|PowerShell" }],
+  },
+  "guard.blackbox": {
+    summary: "for the tester only, denies a Read of a file the item under test owns (plan paths, block files, fix files, its worktrees, `work/<id>/` outside `work/<id>/test/`) and a Grep that reaches one; a send naming no work item denies every Read and Grep",
+    on: [{ event: "PreToolUse", matcher: "Read|Grep" }],
   },
   "lint.schema": {
     summary: "order and design artifacts: frontmatter, phase headings, decision ids, caps, placeholders, revision protocol against git HEAD; reports: kind, confidence, one marker per finding, finding and summary caps, placeholders",

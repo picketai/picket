@@ -2,7 +2,7 @@ import { carriesMarker, leadingAssignments, withoutMarker } from "../../../share
 import { maskEnvValues } from "../../../shared/drive-log.mts";
 import { judgeEscalation, logEscalation, markerReason } from "./escalation.mts";
 import { stdinTexts } from "./in-place.mts";
-import { codeWriteDenial, codeWritesIn, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
+import { codeWriteDenial, codeWritesIn, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, isTester, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, TESTER_REFUSAL, testerRefusal, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
 import { decide, fallThrough, isSanctionedLogSink, LOG_SINK_DIR, type Classification, type Dialect, type GuardContext, type Judgement, type Reading, type Refusal, type Segment } from "./rules.mts";
 import { redirectSource, sourceCheck, sourceDenial } from "./sources.mts";
 
@@ -78,7 +78,16 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
   return fallThrough(`unknown-segments:[${classifications.join(",")}]`);
 }
 
+function testerJudgement(read: Reading<unknown> | Judgement, ctx: GuardContext, dialect: Dialect<unknown>): Judgement | null {
+  const agent = ctx.escalation.agent;
+  if (!isTester(agent)) return null;
+  const refusal = "segments" in read && dialect.name === "bash" ? testerRefusal(read, agent) : TESTER_REFUSAL;
+  return refusal ? decide("deny", refusal.reason) : null;
+}
+
 export function judgeCommand(command: string, ctx: GuardContext, dialect: Dialect<unknown>): Judgement {
   const read = dialect.read(command, ctx);
+  const tester = testerJudgement(read, ctx, dialect);
+  if (tester) return tester;
   return "segments" in read ? judgeSegments(read, ctx, dialect) : read;
 }

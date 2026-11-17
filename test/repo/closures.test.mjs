@@ -39,6 +39,8 @@ export const GUARDS = [
     tables: DESTRUCTIVE_TABLES,
   },
   { guard: "guard.bash lead-only verbs", module: "src/lib/hooks/guard/bash/payloads.mts", closure: "src/lib/hooks/guard/bash/payloads.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "LEAD_ONLY_VERBS" }] },
+  { guard: "guard.bash tester commands", module: "src/lib/hooks/guard/bash/payloads.mts", closure: "src/lib/hooks/guard/bash/tester.variants.test.mts", tables: [{ module: "src/lib/hooks/guard/bash/payloads.mts", name: "TESTER_VERBS" }] },
+  { guard: "guard.blackbox", module: "src/lib/hooks/guard/blackbox/index.mts", closure: "src/lib/hooks/guard/blackbox/index.variants.test.mts", tables: [] },
   { guard: "guard.bash wrapped kernel commands", module: BASH_KERNEL, closure: "src/lib/hooks/guard/bash/kernel.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "WRAPPING_FLAGS" }] },
   { guard: "guard.bash sources", module: "src/lib/hooks/guard/bash/sources.mts", closure: "src/lib/hooks/guard/bash/sources.variants.test.mts", tables: [] },
   { guard: "guard.bash escalation outside an asking mode", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },

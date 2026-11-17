@@ -20,6 +20,13 @@ test("picketRole names the role of a plugin type and of a teammate instance name
   assert.equal(picketRole("analyst"), "analyst");
 });
 
+test("a tester instance, a numbered tester and the plugin type all read back as the role tester", () => {
+  assert.equal(bareAgentName("abcd-tester"), "tester");
+  assert.equal(bareAgentName("abcd-tester-2"), "tester");
+  assert.equal(picketRole("picket:tester"), "tester");
+  assert.equal(picketRole("abcd-tester"), "tester");
+});
+
 test("picketRole is null for an agent that is not one of picket's four", () => {
   assert.equal(picketRole("Explore"), null);
   assert.equal(picketRole("general-purpose"), null);

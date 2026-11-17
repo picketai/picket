@@ -10,7 +10,7 @@ import { parse, type ParseEntry } from "../../../util/vendor/shell-quote-parse.m
 import { hasHiddenExecution, isOpaqueWord, markVariable, MAX_SUBSTITUTION_DEPTH, nodePath, shellText, splitIntoSegments, textClassifier } from "./bash.mts";
 import { inPlaceTargets, stdinTexts } from "./in-place.mts";
 import { isLeadOnly, wrappedCommands } from "./kernel.mts";
-import { classifySegment, type Refusal, type Segment, type Token } from "./rules.mts";
+import { classifySegment, type Reading, type Refusal, type Segment, type Token } from "./rules.mts";
 import { redirectSource, segmentSource, sourceAllowed, sourceDenial } from "./sources.mts";
 
 type PayloadDialect = "sh" | "ps";
@@ -24,7 +24,15 @@ export type CodeWrite = { rel: string; inPlace: boolean };
 
 export const KERNEL_MENTION = /(?:^|[\s;&|(`'"=\\/])picket(?:\.mjs|\.cmd)?(?=$|[\s;&|)`'"])/i;
 
-const SPAWNED_AGENTS = new Set(["analyst", "architect", "developer", "reviewer"]);
+const SPAWNED_AGENTS = new Set(["analyst", "architect", "developer", "reviewer", "tester"]);
+const TESTER = "tester";
+export const TESTER_VERBS = ["test", "env start", "env replay", "env status", "state"];
+export const TESTER_REFUSAL: Refusal = Object.freeze({
+  why: "tester",
+  reason: "guard.bash: the tester runs only picket test, env start, env replay, env status and state, written out plainly; it reads files with Read, and never the item's own files",
+});
+const TESTER_CHAIN_OPS = new Set(["&&", "||", ";"]);
+const TESTER_EXPANSION = /\$\(|\$\{|`/;
 const HIDDEN_PAYLOAD_REFUSAL: Refusal = Object.freeze({
   why: "lead_only",
   reason: "guard.bash: a spawned agent's command runs a picket call inside a wrapper whose payload cannot be read (an expansion, an unparsable string, or a verb read from input); `picket waive` and `picket comment` are the lead's, so write the picket call out in full.",
@@ -55,6 +63,53 @@ const BOOLEAN_GLOBALS = new Set(["--human", "--pretty", "--json"]);
 
 export function isSpawnedAgent(agent: string | null): boolean {
   return agent !== null && SPAWNED_AGENTS.has(agent);
+}
+
+export function isTester(agent: string | null): boolean {
+  return agent === TESTER;
+}
+
+function plainWords(seg: Segment): boolean {
+  return seg.every((token) => typeof token === "string" && !isOpaqueWord(token));
+}
+
+function testerVerb(seg: Segment): boolean {
+  if (kernelVerbStart(seg) !== 1) return false;
+  const [verb, sub] = stringWords(seg.slice(1, 3));
+  return verb !== undefined && (TESTER_VERBS.includes(verb) || TESTER_VERBS.includes(`${verb} ${sub}`));
+}
+
+function opensHeredocAt(tokens: ParseEntry[], at: number): boolean {
+  const isLess = (token: ParseEntry | undefined) => typeof token === "object" && "op" in token && token.op === "<";
+  return isLess(tokens[at]) && isLess(tokens[at + 1]) && typeof tokens[at + 2] === "string";
+}
+
+function chainOnly(tokens: ParseEntry[]): boolean {
+  for (let at = 0; at < tokens.length; at++) {
+    const token = tokens[at];
+    if (typeof token === "string") continue;
+    if (opensHeredocAt(tokens, at)) at += 2;
+    else if (!("op" in token) || !TESTER_CHAIN_OPS.has(token.op)) return false;
+  }
+  return true;
+}
+
+function joinsCallsOnly(command: string): boolean {
+  const shell = shellText(command);
+  if (!shell) return false;
+  try {
+    return chainOnly(parse(shell.command, markVariable));
+  } catch {
+    return false;
+  }
+}
+
+export function testerRefusal(reading: Reading<unknown>, agent: string | null): Refusal | null {
+  if (!isTester(agent)) return null;
+  const { command, segments } = reading;
+  if (TESTER_EXPANSION.test(command) || reading.hiddenExecution || reading.sawWriteRedirect || reading.sawBackground) return TESTER_REFUSAL;
+  if (segments.length === 0 || !segments.every((seg) => plainWords(seg) && testerVerb(seg))) return TESTER_REFUSAL;
+  return joinsCallsOnly(command) ? null : TESTER_REFUSAL;
 }
 
 function stringWords(seg: readonly Token[]): string[] {
