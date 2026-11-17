@@ -1249,6 +1249,117 @@ export const thresholdEdits: Grammar<ThresholdSeed, ThresholdSeed> = {
   families: [thresholdSpellings],
 };
 
+export type BlockSeed = { role: string; lines: string[] };
+
+const BLOCK_WORK_ID = "20261116-x";
+
+const BLOCK_HEADINGS_BY_ROLE: Record<string, string> = {
+  developer: `## Phase 1 of ${BLOCK_WORK_ID}: A`,
+  reviewer: `## Review: ${BLOCK_WORK_ID} · phase 1`,
+  architect: `## Design: ${BLOCK_WORK_ID}`,
+  analyst: `## Report: ${BLOCK_WORK_ID}`,
+};
+
+const PHASE_FIELDS = {
+  Files: "src/a.ts, src/b.ts",
+  Verified: "no drivable surface: docs only",
+  Red: "n/a: docs only",
+  "Root cause": "none",
+  Commit: "docs(a): one line",
+};
+
+type PhaseField = keyof typeof PHASE_FIELDS;
+
+function phaseBlock(fields: Partial<Record<PhaseField, string | null>>, { body = ["Done."], last = "PHASE DONE" }: { body?: string[]; last?: string } = {}): BlockSeed {
+  const values = { ...PHASE_FIELDS, ...fields };
+  const fieldLines = Object.entries(values).flatMap(([label, value]) => (value === null ? [] : [`${label}: ${value}`]));
+  return { role: "developer", lines: [BLOCK_HEADINGS_BY_ROLE.developer, "", ...body, "", ...fieldLines, "", last] };
+}
+
+const OVER_BUDGET_BODY = Array.from({ length: 41 }, (_, n) => `Detail ${n + 1}.`);
+
+export const BLOCK_PROBLEM_SEEDS: BlockSeed[] = [
+  phaseBlock({}, { last: "I think this is done." }),
+  phaseBlock({}, { body: OVER_BUDGET_BODY }),
+  phaseBlock({ Files: "src/a.ts, src/b.ts (+3 more)" }),
+  phaseBlock({ Red: null }),
+  phaseBlock({ Red: "maybe" }),
+  phaseBlock({ "Root cause": null }),
+  phaseBlock({ "Root cause": "flaky" }),
+  phaseBlock({ Verified: "blocked" }),
+  phaseBlock({ Commit: "did stuff" }),
+  { role: "developer", lines: ["I looked at the file."] },
+];
+
+export function blockRole(text: string): string {
+  return Object.keys(BLOCK_HEADINGS_BY_ROLE).find((role) => text.startsWith(BLOCK_HEADINGS_BY_ROLE[role])) ?? "developer";
+}
+
+export function verdictSeed(token: string, role: string): BlockSeed[] {
+  const heading = Object.hasOwn(BLOCK_HEADINGS_BY_ROLE, role) ? BLOCK_HEADINGS_BY_ROLE[role] : BLOCK_HEADINGS_BY_ROLE.developer;
+  return [{ role, lines: [heading, "", "Done.", "", `${token}.`] }];
+}
+
+export function blockedKindSeed(kind: string): BlockSeed[] {
+  return [phaseBlock({ Verified: `blocked: ${kind}` })];
+}
+
+function blockText({ lines }: BlockSeed, end = "\n"): string {
+  return lines.join(end);
+}
+
+function blockSpelling(seed: BlockSeed, name: string, lines: string[], end = "\n"): Spelling<string> {
+  return { label: `${seed.role} ${JSON.stringify(blockText(seed))} ${name}`, input: lines.join(end) };
+}
+
+export const lineEndings: Family<BlockSeed, string> = {
+  name: "line endings",
+  spell: (seed) => [
+    blockSpelling(seed, "with CRLF line ends", seed.lines, "\r\n"),
+    blockSpelling(seed, "with trailing spaces", seed.lines.map((line) => `${line}  `)),
+  ],
+};
+
+const FIELD_LINE = new RegExp(`^(?<label>${Object.keys(PHASE_FIELDS).join("|")}): (?<value>.*)$`);
+
+const FIELD_LABEL_FORMS: [string, (label: string) => string][] = [
+  ["bold", (label) => `**${label}:**`],
+  ["listed", (label) => `- ${label}:`],
+  ["listed bold", (label) => `- **${label}:**`],
+  ["starred", (label) => `* ${label}:`],
+];
+
+export const fieldLabels: Family<BlockSeed, string> = {
+  name: "field labels",
+  spell: (seed) => {
+    if (!seed.lines.some((line) => FIELD_LINE.test(line))) return [];
+    return FIELD_LABEL_FORMS.map(([name, form]) =>
+      blockSpelling(seed, `with ${name} labels`, seed.lines.map((line) => line.replace(FIELD_LINE, (_, label: string, value: string) => `${form(label)} ${value}`))),
+    );
+  },
+};
+
+const FILES_LINE = /^Files: (?<paths>.*)$/;
+const WRITTEN_FOLD = /[,\s]*(?:\(\+?\d+ more\)|\+\s*\d+ more|and \d+ more|…)$/;
+const FOLD_SPELLINGS = [" (+3 more)", ", + 3 more", " and 3 more", " (3 more)", ", …"];
+
+export const foldSpellings: Family<BlockSeed, string> = {
+  name: "fold spellings",
+  spell: (seed) => {
+    if (!seed.lines.some((line) => FILES_LINE.test(line))) return [];
+    return FOLD_SPELLINGS.map((fold) =>
+      blockSpelling(seed, `folded as ${JSON.stringify(fold.trim())}`, seed.lines.map((line) => line.replace(FILES_LINE, (_, paths: string) => `Files: ${paths.replace(WRITTEN_FOLD, "")}${fold}`))),
+    );
+  },
+};
+
+export const agentBlocks: Grammar<BlockSeed, string> = {
+  name: "agent blocks",
+  written: (seed) => blockText(seed),
+  label: (text) => JSON.stringify(text),
+  families: [lineEndings, fieldLabels, foldSpellings],
+};
+
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
   const seen = new Set<string>();
   return spellings.filter(({ label }) => {

@@ -64,6 +64,18 @@ test("guard.block rejects a PHASE DONE block that folds Files: into +n more and 
   assert.equal(blockVerdict(root, `## Phase 1 of ${id}: A\n\nStuck.\n\nFiles: src/a.ts (+3 more)\n\nPHASE STALLED`), null, "a stalled block is not checked");
 });
 
+test("guard.block bounces every fold spelling of Files: and passes the two paths it lists (T-9.2)", (t) => {
+  const { root, id } = hookProject(t);
+  const phase = (files) => [`## Phase 1 of ${id}: A`, "", "Done.", "", `Files: ${files}`, "Red: n/a: docs only", "Root cause: none", COMMIT, "", "PHASE DONE"].join("\n");
+  for (const folded of ["src/a.ts, src/b.ts (+3 more)", "src/a.ts, src/b.ts, + 3 more", "src/a.ts, src/b.ts and 3 more", "src/a.ts, src/b.ts (3 more)", "src/a.ts, src/b.ts, …"]) {
+    const out = blockVerdict(root, phase(folded));
+    assert.equal(out?.decision, "block", folded);
+    assert.match(out.reason, /folds paths into "\+<n> more"; list every staged path on Files:/, folded);
+  }
+  assert.equal(blockVerdict(root, phase("src/a.ts, src/b.ts")), null);
+  assert.equal(blockVerdict(root, phase("src/more.ts, src/3-more.ts, docs/command.md")), null, "a path naming more is no fold");
+});
+
 test("guard.block does not ask a stalled block or another agent's block for proof lines (T-4.2)", (t) => {
   const { root, id } = hookProject(t);
   assert.equal(blockVerdict(root, `## Phase 1 of ${id}: A\n\nCannot meet T-1.2.\n\nPHASE STALLED`), null, "stalled");

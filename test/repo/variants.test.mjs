@@ -12,6 +12,7 @@ import { codeComments, COMMENT_SYNTAX, commentPlacements, commentSeeds } from "#
 import { memberSpellings, silencedLines, SKIP_APIS, skipSeeds, testFileNames } from "#test/variants.mts";
 import { SUPPRESSIONS, suppressionPlaces, suppressionSeeds } from "#test/variants.mts";
 import { THRESHOLD_EDITS, thresholdEdits, thresholdSeeds, thresholdSpellings } from "#test/variants.mts";
+import { agentBlocks, BLOCK_PROBLEM_SEEDS, blockRole, fieldLabels, foldSpellings, lineEndings } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -642,6 +643,25 @@ test("thresholdSpellings writes -1 for --max-warnings, a colon for an INI key an
   assert.deepEqual(respelled(THRESHOLD_EDITS["coverage fail_under"]), ["[coverage:report]\nfail_under = 80.0\n", "[coverage:report]\nfail_under = 8e1\n", "[coverage:report]\nfail_under = .5\n", "[coverage:report]\nfail_under:80\n"]);
   assert.deepEqual(respelled({ rel: "pyproject.toml", before: "fail_under = 90\n", after: "fail_under = 80\n" }), ["fail_under = 80.0\n", "fail_under = 8e1\n"]);
   assert.deepEqual(thresholdSeeds("no such tool"), []);
+});
+
+const RED_MAYBE = BLOCK_PROBLEM_SEEDS.find((seed) => seed.lines.includes("Red: maybe"));
+const linesHolding = (family, seed, word) => family.spell(seed).map((spelling) => spelling.input.split(/\r?\n/).filter((line) => line.includes(word)));
+
+test("agentBlocks respells the Red: maybe seed's line endings, field labels and Files: folds (T-9.1)", () => {
+  assert.deepEqual(lineEndings.spell(RED_MAYBE).map((spelling) => spelling.input), [RED_MAYBE.lines.join("\r\n"), RED_MAYBE.lines.map((line) => `${line}  `).join("\n")]);
+  assert.deepEqual(linesHolding(fieldLabels, RED_MAYBE, "maybe"), [["**Red:** maybe"], ["- Red: maybe"], ["- **Red:** maybe"], ["* Red: maybe"]]);
+  assert.deepEqual(linesHolding(foldSpellings, RED_MAYBE, "Files"), [
+    ["Files: src/a.ts, src/b.ts (+3 more)"], ["Files: src/a.ts, src/b.ts, + 3 more"], ["Files: src/a.ts, src/b.ts and 3 more"], ["Files: src/a.ts, src/b.ts (3 more)"], ["Files: src/a.ts, src/b.ts, …"],
+  ]);
+  assert.deepEqual(agentBlocks.families.map((family) => family.name), ["line endings", "field labels", "fold spellings"]);
+});
+
+test("foldSpellings gives nothing for a seed with no Files: line, and blockRole reads the role from the heading (T-9.1)", () => {
+  assert.deepEqual(foldSpellings.spell({ role: "developer", lines: ["I looked at the file."] }), []);
+  assert.deepEqual(foldSpellings.spell({ role: "reviewer", lines: ["## Review: 20261116-x · phase 1", "", "APPROVED."] }), []);
+  assert.equal(blockRole("## Review: 20261116-x · phase 1\r\n\r\nAPPROVED."), "reviewer");
+  assert.equal(blockRole("I looked at the file."), "developer");
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

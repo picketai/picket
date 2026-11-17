@@ -39,6 +39,12 @@ export const GUARDS = [
   { guard: "guard.comments", module: "src/lib/hooks/guard/comments/index.mts", closure: "src/lib/hooks/guard/comments/index.variants.test.mts", tables: [{ module: "src/lib/shared/comments.mjs", name: "LANGS" }] },
   { guard: "guard.silenced", module: "src/lib/hooks/guard/silenced/index.mts", closure: "src/lib/hooks/guard/silenced/index.variants.test.mts", tables: [{ module: "src/lib/shared/silenced.mjs", name: "TEST_MOVES" }, { module: "src/lib/shared/comments.mjs", name: "LANGS" }] },
   { guard: "guard.silenced thresholds", module: "src/lib/hooks/guard/silenced/index.mts", closure: "src/lib/hooks/guard/silenced/index.variants.test.mts", tables: [{ module: "src/lib/shared/silenced.mjs", name: "THRESHOLDS" }] },
+  {
+    guard: "guard.block",
+    module: "src/lib/hooks/guard/block/index.mts",
+    closure: "src/lib/hooks/guard/block/index.variants.test.mts",
+    tables: [{ module: "src/lib/shared/verdicts.mjs", name: "VERDICTS" }, { module: "src/lib/hooks/guard/block/index.mts", name: "BLOCKED_KINDS" }],
+  },
   { guard: "guard.scope", module: "src/lib/hooks/guard/scope/index.mts", closure: "src/lib/hooks/guard/scope/index.variants.test.mts", tables: [] },
   { guard: "admit security", module: "src/lib/shared/admission/signals.mts", closure: "src/lib/shared/admission/signals.variants.test.mts", tables: [] },
   { guard: "maskedBody", module: "src/lib/shared/drive-log.mts", closure: "src/lib/shared/drive-log.variants.test.mts", tables: SECRET_WORDS },
