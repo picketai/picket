@@ -21,6 +21,11 @@ import { gitAt, umbrella } from "#test/git.mts";
 import { fingerprintMatches, parseScenario, writeScenario, type Card } from "../../shared/scenarios/format.mts";
 import { storeCandidates, type Candidate } from "../../shared/scenarios/keep.mts";
 import { openItem, withProject } from "#test/project.mts";
+import { appendRows } from "../../shared/scenarios/results.mts";
+import { deriveVerdict } from "../../shared/testing/derive.mts";
+import { testFacts } from "../../shared/testing/facts.mts";
+import { renderReport } from "../../shared/testing/report.mts";
+import { appendTestRow, type TestEntry } from "../../shared/testing/results.mts";
 
 type Routed = Partial<RouteInput> & { id: WorkId; verdict: string; agent: string; root: string; classes?: string[] };
 
@@ -886,4 +891,54 @@ test("a nested checkout that refuses the commit leaves the scenario folder uncha
   const r = route({ id, verdict: "approved", agent: "user", phase: 1, root });
   assert.ok(r.applied.includes(`${WORKTREE} refused the commit: blocked by hook`), r.applied.join(" | "));
   assert.deepEqual(fs.readdirSync(join(root, SCENARIOS)), []);
+});
+
+const TESTED_DESIGN = "---\nlane: design\nphases:\n  - n: 2\n    files: [src/orders.mjs]\n    drive:\n      - covers: T-2.3\n        method: POST\n        path: /orders\n        status: 201\n---\n# D\n\n## Phase 2: Orders\n\n- **T-2.3** an order is placed\n";
+
+function testedItem(t: TestContext): { root: string; id: WorkId } {
+  const root = hostRoot(t);
+  const s = openItem(root, { lane: "design", title: "Tested" });
+  writeFileSync(join(root, "work", s.id, "design.md"), TESTED_DESIGN);
+  return { root, id: s.id };
+}
+
+function failedCase(id: string): TestEntry {
+  return { round: 1, type: "case", case: id, criterion: "T-2.3", kind: "boundary", intent: "x", steps: "request POST {orders}/orders", outcome: "failed", attempts: 2, unstable: false, detail: "step 2: expected status 201, got 500", mocks: [] };
+}
+
+function verdictLines(root: string, id: WorkId): Record<string, unknown>[] {
+  const path = join(root, "work", id, "verdicts.jsonl");
+  return existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
+}
+
+test("a tester APPROVED the results do not derive is refused with the derived token and reason, and no row lands (T-5.1)", (t) => {
+  const { root, id } = testedItem(t);
+  assert.throws(() => route({ id, verdict: "APPROVED", agent: "abcd-tester", root }), { message: "the recorded results derive CHANGES REQUIRED (T-2.3 has no passed case); end the block with CHANGES REQUIRED" });
+  assert.deepEqual(verdictLines(root, id), []);
+});
+
+test("a tester CHANGES REQUIRED the results derive records the round, route and replay run and writes the report (T-5.2)", (t) => {
+  const { root, id } = testedItem(t);
+  appendRows(root, [{ type: "run", run: "r-full-1", item: id, mode: "full", key: "k1", versions: {} }]);
+  const facts = testFacts(root, readSnapshot(root, id));
+  const r = route({ id, verdict: "CHANGES REQUIRED", agent: "abcd-tester", root });
+  const [row] = verdictLines(root, id);
+  assert.deepEqual([row.agent, row.verdict, row.scope, row.phase, row.round, row.test_route, row.replay_run], ["tester", "CHANGES REQUIRED", "test", null, 1, "user", "r-full-1"]);
+  const expected = renderReport({ id, round: 1, derived: deriveVerdict(facts), rows: facts.rows, criteria: facts.criteria });
+  assert.equal(readFileSync(join(root, "work", id, "test.md"), "utf8"), expected);
+  assert.ok(r.applied.includes(`work/${id}/test.md written`), r.applied.join(" | "));
+  assert.ok(r.applied.includes("test round 1: CHANGES REQUIRED (route user)"), r.applied.join(" | "));
+});
+
+test("a tester verdict with an unclassified failure is refused naming picket test classify (T-5.3)", (t) => {
+  const { root, id } = testedItem(t);
+  appendTestRow(root, id, failedCase("C-01"), new Date("2026-11-17T10:00:00.000Z"));
+  assert.throws(() => route({ id, verdict: "CHANGES REQUIRED", agent: "abcd-tester", root }), /run picket test classify .* C-01 <product\|test\|environment>/);
+  assert.deepEqual(verdictLines(root, id), []);
+});
+
+test("a tester PHASE DONE or ALIGNED is refused as not the tester's (T-5.3)", (t) => {
+  const { root, id } = testedItem(t);
+  assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "abcd-tester", root }), { message: '"PHASE DONE" may only come from developer, not tester' });
+  assert.throws(() => route({ id, verdict: "ALIGNED", agent: "picket:tester", root }), { message: '"ALIGNED" may only come from reviewer, not tester' });
 });

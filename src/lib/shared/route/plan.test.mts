@@ -5,7 +5,9 @@ import { checkGate, ownGate, type RunChecks } from "../work/gate.mts";
 import type { CheckOutcome, CheckResult, DeclaredCheck } from "../work/declared-checks.mts";
 import { phaseOf, type WorkSnapshot } from "../work/snapshot.mts";
 import { Refused } from "../action.mts";
-import { VERDICTS } from "../verdicts.mjs";
+import { TESTER_VERDICTS, VERDICTS } from "../verdicts.mjs";
+import type { Derived, DeriveInput } from "../testing/derive.mts";
+import { renderReport } from "../testing/report.mts";
 import { snapshotOf } from "#test/snapshot.mts";
 import type { Candidate } from "../scenarios/keep.mts";
 
@@ -228,6 +230,25 @@ test("AMENDED with a different record, or none, adds no unchanged note", () => {
   assert.deepEqual(plan("AMENDED", snapshotOf({ verdicts: [asking(RECORD)] }), {}), []);
 });
 
-test("every effect in VERDICTS has a plan", () => {
+test("every effect in VERDICTS and TESTER_VERDICTS has a plan (T-5.7)", () => {
   for (const { effect } of Object.values(VERDICT_TABLE)) assert.equal(typeof EFFECTS[effect], "function", effect);
+  for (const effect of Object.values(TESTER_VERDICTS)) assert.equal(typeof EFFECTS[effect as Effect], "function", effect);
+});
+
+const TESTED_INPUT: DeriveInput = { criteria: ["T-2.1"], rows: [], round: 2, replay: { run: "r2", passed: [], blamed: [] }, previousReplay: { run: "r1", passed: [] } };
+const NO_PASS: Derived = { verdict: "CHANGES REQUIRED", route: "user", reasons: ["T-2.1 has no passed case"], unclassified: [] };
+
+test("a tester verdict plans the report of its round and a note naming the route (T-5.7)", () => {
+  const snap = snapshotOf({ lane: "design" });
+  const changes = EFFECTS.tested(snap, { id: snap.state.id, verdict: "CHANGES REQUIRED", agent: "tester", phase: null, marks: { done: false, approved: false } }, () => null, { tested: { input: TESTED_INPUT, derived: NO_PASS } });
+  const report = renderReport({ id: snap.state.id, round: 2, derived: NO_PASS, rows: [], criteria: ["T-2.1"] });
+  assert.deepEqual(changes, [
+    { kind: "test_report", text: report, line: `work/${snap.state.id}/test.md written` },
+    { kind: "note", line: "test round 2: CHANGES REQUIRED (route user)" },
+  ]);
+});
+
+test("a tester verdict with no recorded round is refused", () => {
+  const snap = snapshotOf({ lane: "design" });
+  assert.throws(() => EFFECTS.tested(snap, { id: snap.state.id, verdict: "APPROVED", agent: "tester", phase: null, marks: { done: false, approved: false } }, () => null), Refused);
 });

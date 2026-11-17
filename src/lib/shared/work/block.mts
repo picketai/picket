@@ -4,7 +4,7 @@ import { readText } from "../../util/io.mts";
 import { phaseMarker, type WorkId } from "./files.mts";
 import { hasMarker } from "./markers.mts";
 
-export type BlockKind = "phase" | "review" | "artifact" | "report" | "expedited";
+export type BlockKind = "phase" | "review" | "artifact" | "report" | "expedited" | "test";
 
 export type ReviewScope = "crosscheck" | "phase" | "cumulative" | "checkpoint" | "pr";
 export type BlockHeading = { kind: BlockKind; id: string; phase: number | null; scope: ReviewScope | null; index: number };
@@ -15,6 +15,7 @@ export const BLOCK_HEADINGS: readonly (readonly [BlockKind, RegExp])[] = [
   ["artifact", /^##\s+(?:Order|Design|Amendment):\s+(?<id>[a-z0-9-]+)/m],
   ["report", /^##\s+Report:\s+(?<id>[a-z0-9-]+)/m],
   ["expedited", /^##\s+Expedited:\s+(?<id>[a-z0-9-]+)/m],
+  ["test", /^##\s+Test:\s+(?<id>[a-z0-9-]+)/m],
 ];
 
 export function detectBlock(text: string | null | undefined): BlockKind | null {
@@ -47,6 +48,7 @@ export const BLOCK_FIELDS = {
   artifact: ["Artifact"],
   report: ["Report"],
   expedited: ["Decisions", "Waivers"],
+  test: ["Report"],
 } as const satisfies Readonly<Record<BlockKind, readonly string[]>>;
 
 export type BlockField<K extends BlockKind = BlockKind> = (typeof BLOCK_FIELDS)[K][number];

@@ -188,7 +188,13 @@ test("BLOCK_FIELDS lists the labels kernel code reads from each block kind", () 
     artifact: ["Artifact"],
     report: ["Report"],
     expedited: ["Decisions", "Waivers"],
+    test: ["Report"],
   });
+});
+
+test("readHeading reads a tester heading's id, with no phase and no scope (T-5.4)", () => {
+  assert.deepEqual(pick("## Test: x-1 · round 2\n\nReport: work/x-1/test.md\n\nCHANGES REQUIRED"), { kind: "test", id: "x-1", phase: null, scope: null });
+  assert.equal(detectBlock("## Test: x-1 · round 2"), "test");
 });
 
 test("blockField reads a listed label's value, Root cause included", () => {

@@ -9,8 +9,10 @@ import type { WorkSnapshot } from "../work/snapshot.mts";
 import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "../work/stall.mts";
 import { ARTIFACT_BY_LANE, type WorkState } from "../work/state.mts";
 import { isUnchangedAmendment } from "../work/amendment.mts";
+import type { Derived, DeriveInput, TestRoute } from "../testing/derive.mts";
+import { renderReport } from "../testing/report.mts";
 
-export type Effect = "phase_done" | "phase_approved" | "phase_reviewed" | "rejection" | "drift" | "stall" | "crosscheck_ok" | "artifact" | "amended";
+export type Effect = "phase_done" | "phase_approved" | "phase_reviewed" | "rejection" | "drift" | "stall" | "crosscheck_ok" | "artifact" | "amended" | "tested";
 
 export type RouteInput = {
   id: WorkId;
@@ -29,7 +31,9 @@ export type RouteInput = {
 };
 
 export type MarksOnDisk = { done: boolean; approved: boolean };
-export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk; record?: string; frame?: string };
+export type TestStamp = { round: number; route: TestRoute | null; replayRun: string | null };
+export type PlannedVerdict = Omit<RouteInput, "phase"> & { phase: number | null; marks: MarksOnDisk; record?: string; frame?: string; test?: TestStamp };
+export type TestedRound = { input: DeriveInput; derived: Derived };
 
 export type Change =
   | { kind: "marker"; phase: number; mark: PhaseMark; line: string | null }
@@ -38,12 +42,13 @@ export type Change =
   | { kind: "commit"; phase: number }
   | { kind: "publish"; from: string; to: string; line: string }
   | { kind: "correct"; phase: number; index: number; covers: string; from: string; to: string; line: string }
-  | { kind: "keep"; phase: number; candidates: Candidate[]; line: string | null };
+  | { kind: "keep"; phase: number; candidates: Candidate[]; line: string | null }
+  | { kind: "test_report"; text: string; line: string };
 
 export type GateOf = (n: number) => Gate | null;
 export type CorrectionsOf = (n: number) => CheckResult[];
 export type KeepsOf = (n: number) => Candidate[];
-export type Lookups = { correctionsOf?: CorrectionsOf; keepsOf?: KeepsOf };
+export type Lookups = { correctionsOf?: CorrectionsOf; keepsOf?: KeepsOf; tested?: TestedRound };
 
 const NO_CORRECTIONS: CorrectionsOf = () => [];
 const NO_KEEPS: KeepsOf = () => [];
@@ -133,6 +138,18 @@ function unchangedNote(snap: WorkSnapshot, { record }: PlannedVerdict): Change[]
 
 const amended: Plan = (snap, planned) => [...unchangedNote(snap, planned), ...reopenChanges(snap)];
 
+const tested: Plan = (snap, { verdict }, _gateOf, { tested: round } = {}) => {
+  if (round === undefined) throw new Refused(`a tester ${verdict} needs the recorded results of its round`);
+  const { input, derived } = round;
+  const id = snap.state.id;
+  const text = renderReport({ id, round: input.round, derived, rows: input.rows, criteria: input.criteria });
+  const routed = derived.route === null ? "" : ` (route ${derived.route})`;
+  return [
+    { kind: "test_report", text, line: `${workRel(id)}test.md written` },
+    { kind: "note", line: `test round ${input.round}: ${verdict}${routed}` },
+  ];
+};
+
 export const EFFECTS: Record<Effect, Plan> = {
   phase_done: phaseDone,
   phase_approved: phaseApproved,
@@ -143,4 +160,5 @@ export const EFFECTS: Record<Effect, Plan> = {
   crosscheck_ok: unchanged,
   artifact: unchanged,
   amended,
+  tested,
 };

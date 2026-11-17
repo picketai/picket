@@ -25,7 +25,7 @@ type Outcome = { text: string; notice: string | null };
 type Parties = { agent: string; scope: string | undefined };
 type Routing = { event: PayloadOf<StopEvent>; info: BlockInfo | null; hints: Hints; id: string; verdict: string; phase: number | undefined; text: string; ctx: HookContext };
 
-const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst" };
+const AGENT_OF: Partial<Record<BlockKind, string>> = { phase: "developer", review: "reviewer", artifact: "architect", report: "analyst", test: "tester" };
 const DEVELOPER_VERDICTS = ["PHASE DONE", "PHASE STALLED"];
 const WRITTEN: Partial<Record<string, string>> = { "ARTIFACT WRITTEN": "written", AMENDED: "amended", "REPORT WRITTEN": "written" };
 const ARTIFACT: BlockField<"artifact"> = "Artifact";

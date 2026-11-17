@@ -54,7 +54,11 @@ export const GUARDS = [
     guard: "guard.block",
     module: "src/lib/hooks/guard/block/index.mts",
     closure: "src/lib/hooks/guard/block/index.variants.test.mts",
-    tables: [{ module: "src/lib/shared/verdicts.mjs", name: "VERDICTS" }, { module: "src/lib/hooks/guard/block/index.mts", name: "BLOCKED_KINDS" }],
+    tables: [
+      { module: "src/lib/shared/verdicts.mjs", name: "VERDICTS" },
+      { module: "src/lib/shared/verdicts.mjs", name: "TESTER_VERDICTS" },
+      { module: "src/lib/hooks/guard/block/index.mts", name: "BLOCKED_KINDS" },
+    ],
   },
   { guard: "guard.scope", module: "src/lib/hooks/guard/scope/index.mts", closure: "src/lib/hooks/guard/scope/index.variants.test.mts", tables: [] },
   { guard: "admit security", module: "src/lib/shared/admission/signals.mts", closure: "src/lib/shared/admission/signals.variants.test.mts", tables: [] },

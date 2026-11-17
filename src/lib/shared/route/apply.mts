@@ -7,6 +7,7 @@ import type { WorkSnapshot } from "../work/snapshot.mts";
 import { isSessionId, writeState, type WorkState } from "../work/state.mts";
 import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
 import { keepCandidates, restoreKept, type KeptFiles } from "../scenarios/keep.mts";
+import { testReportPath } from "../testing/facts.mts";
 import { commitCheckouts, commitPhase, phaseCommitMessage } from "./commit.mts";
 import type { Change } from "./plan.mts";
 
@@ -63,6 +64,16 @@ function appliedLine(change: Change): string | null {
 type CommitChange = Extract<Change, { kind: "commit" }>;
 type KeepChange = Extract<Change, { kind: "keep" }>;
 type CorrectChange = Extract<Change, { kind: "correct" }>;
+
+type TestReportChange = Extract<Change, { kind: "test_report" }>;
+
+function writeTestReport(root: string, snap: WorkSnapshot, changes: Change[]): void {
+  const report = changes.find((change): change is TestReportChange => change.kind === "test_report");
+  if (report === undefined) return;
+  const path = testReportPath(root, snap.state.id);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, report.text);
+}
 
 function isCorrectChange(change: Change): change is CorrectChange {
   return change.kind === "correct";
@@ -136,6 +147,7 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   const published = changes.filter(isPublishChange).map((change) => publish(root, id, change));
   for (const change of changes) if (change.kind === "marker") setMarker(root, id, change.phase, change.mark, now);
   writeCorrections(snap, changes, now);
+  writeTestReport(root, snap, changes);
   const state = changedState(snap.state, changes, session);
   if (state) writeState(root, state, now);
   if (!isRefusedApproval(nested, row)) appendVerdict(root, id, row, now);

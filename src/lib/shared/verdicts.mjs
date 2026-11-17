@@ -12,6 +12,12 @@ export const VERDICTS = Object.freeze({
   rejected: { agent: "user", effect: "rejection" },
 });
 
+export const TESTER_VERDICTS = Object.freeze({
+  APPROVED: "tested",
+  "CHANGES REQUIRED": "tested",
+  "DRIFT DETECTED": "tested",
+});
+
 const TOKEN_RE = new RegExp(`^\\s*(${Object.keys(VERDICTS).map((k) => k.replace(/ /g, "\\s+")).join("|")})\\b`, "m");
 
 export function findVerdict(text) {

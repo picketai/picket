@@ -11,6 +11,7 @@ import { appendReply } from "../../../shared/work/replies.mts";
 import { readSnapshot } from "../../../shared/work/snapshot.mts";
 import { readState, writeState } from "../../../shared/work/state.mts";
 import { route } from "../../../verbs/route/index.mts";
+import { appendTestRow } from "../../../shared/testing/results.mts";
 import { hookContext } from "#test/context.mts";
 import { gitAt } from "#test/git.mts";
 import { assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
@@ -540,4 +541,21 @@ test("the reviewing skill's plan-wording finding example routes as plan-only (T-
   assert.ok(example, "the skill holds a finding example citing work/<id>/order.md");
   const row = routedCumulative(t, (id) => `Findings: 1 minor\n${example.replaceAll("<id>", id)}`, "AMENDMENT NEEDED: T-1.2 the criterion names the wrong file");
   assert.equal(row.plan_only, true);
+});
+
+const TESTED_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/orders.mjs]\n    drive:\n      - covers: T-1.1\n        method: POST\n        path: /orders\n        status: 201\n---\n# D\n\n## Phase 1: Orders\n\n- **T-1.1** an order is placed fast\n";
+
+test("a tester's ## Test: block ending DRIFT DETECTED that its rows derive is routed as a tester row and leaves the item open (T-5.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const s = openItem(root, { lane: "design", title: "Tested" });
+  writeFileSync(join(root, "work", s.id, "design.md"), TESTED_DESIGN);
+  appendTestRow(root, s.id, { round: 1, type: "untestable", criterion: "T-1.1", why: "fast is not a number" }, new Date("2026-11-17T10:00:00.000Z"));
+  const block = `## Test: ${s.id} · round 1\n\nT-1.1 cannot be tested as written.\n\nReport: work/${s.id}/test.md\n\nDRIFT DETECTED`;
+  const tp = transcript(root, [user(`work: ${s.id}`), assistant(block)]);
+  const out = routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: "abcd-tester" }, hookContext(root));
+  assert.match(out.hookSpecificOutput.additionalContext, /DRIFT DETECTED applied/);
+  const [row] = verdictRows(root, s.id);
+  assert.deepEqual([row.agent, row.verdict, row.scope, row.round], ["tester", "DRIFT DETECTED", "test", 1]);
+  assert.equal(readState(root, s.id).status, "open");
+  assert.equal(existsSync(join(root, "work", s.id, "test.md")), true);
 });
