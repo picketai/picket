@@ -98,7 +98,7 @@ The rules below are the conventions of the refactor. Each ends with its id; `art
 - Put the test of one module beside it as `<module>.test.mts`, keep tests of `dist/` and of the repository in `test/`, take shared helpers from `#test/*`, and remove temp folders through `t.after` (C-017).
 - List every mod in `src/lib/mods.mts`, one folder `src/mods/<name>/` each; mods read Picket data only through the kernel and keep Claude Code mod style (C-018).
 - Give every instruction fact one owner: a step lives in the step file of the skill that runs it, step and checklist files are kebab-case `<name>.md` with no number prefix, and no Markdown holds an em or en dash (C-019).
-- Give every guard (a function whose closed outcome other code trusts: a refusal, a denial, a mask, a failed check) a closure test `<module>.variants.test.mts` beside it, built with `#test/variants.mts`, that declares its grammar, its seeds and the guard tables it reads through `tableRows`, and an entry in `test/repo/closures.test.mjs`; a change to a guard adds its new seeds, and a guard over a grammar no family covers adds the grammar (C-020).
+- Give every guard (a function whose closed outcome other code trusts: a refusal, a denial, a mask, a failed check) a closure test `<module>.variants.test.mts` beside it, built with `#test/variants.mts`, that declares its grammar, its seeds and the guard tables it reads through `tableRows`, and an entry in `test/repo/closures.test.mjs`; every module under `src/lib/hooks/guard/` is an entry's module, one of its parts or the module of one of its tables; a change to a guard adds its new seeds, and a guard over a grammar no family covers adds the grammar (C-020).
 
 ### Foundation modules
 
@@ -139,9 +139,17 @@ The helper, the grammars and their families live in `test/support/variants.mts`:
 - `requestProse`: `distractorSentences` and `quotedSpans` put a sentence beside a distractor or inside quotes.
 - `declaredLists`: `listPlacements` puts a malformed item alone, before and after a valid one.
 - `numbers`: `outOfDomainNumbers` spells `NaN`, both zeros, the negation and both infinities.
-- `editPaths`: `path spellings` names a file by its absolute path, after a leading dot folder, through a parent folder, upper-cased on Windows and through a symbolic link.
+- `editPaths`: `path spellings` names a file by its absolute path, after a leading dot folder, through a parent folder, upper-cased on Windows, through a symbolic link and through a symbolic link from outside the project.
+- `commandLines`: `word quotings`, `command paths` and `command places` respell each word of a shell command, name its program by a path, and put it after an operator, a keyword, an assignment or a redirection, inside a group, a subshell or a substitution.
+- `sourceCommands`: the three `commandLines` families and `source path spellings`, which name a source folder through a leading dot folder, a parent folder, a trailing slash, quotes and `--target-directory=`.
+- `kernelCalls`: `kernel launchers` and `command wrappers` beside `word quotings` and `command places` run `picket` by its script, a package runner or a flag, behind an argument wrapper and inside a text wrapper.
+- `powerShellCommands`: `PowerShell names` and `PowerShell places` spell a command in both cases, through the call and dot operators and module-qualified, and run it in a pipeline, a subexpression or a script block.
+- `codeComments`: `comment placements` writes each comment form of a language indented, after a statement, with CRLF line ends and through an Edit.
+- `silencedLines`: `test file names`, `member spellings` and `suppression places` rename a test file by its language's conventions, respell a test call's member, and put a checker suppression on its own line, after a statement and in a block comment.
+- `thresholdEdits`: `threshold spellings` respells a lowered coverage or warning bar as a decimal, an exponent, a leading-dot fraction, `key:value`, a value on the next line and `-1` for `--max-warnings`.
+- `agentBlocks`: `line endings`, `field labels` and `fold spellings` write an agent's block with CRLF and trailing spaces, with bold and list labels, and with `Files:` folded five ways.
 
-A family describes how the program spells its input, so its vocabulary stays in the helper; the guard's own tables decide which rows must be reached. A closure reads a table through `loadGuard` and `tableRows`, and `closureTests` adds `<guard> covers every row of <table>`: it fails naming a row with no seed, a row whose seeds no family spells, and for interpreter rows a flag the vocabulary does not spell or a write pattern alternative no sample matches alone. Modules and tables load at test time, so a tree without the table fails only the row test and the families still run. `test/repo/closures.test.mjs` lists every closure guard with its closure file and tables, and fails on a closure file with no entry, a guard name its file does not hold, and a table that is not exported or not read through `tableRows`.
+A family describes how the program spells its input, so its vocabulary stays in the helper; the guard's own tables decide which rows must be reached. A closure reads a table through `loadGuard` and `tableRows`, and `closureTests` adds `<guard> covers every row of <table>`: it fails naming a row with no seed, a row whose seeds no family spells, and for interpreter rows a flag the vocabulary does not spell or a write pattern alternative no sample matches alone. Modules and tables load at test time, so a tree without the table fails only the row test and the families still run. `test/repo/closures.test.mjs` lists every closure guard with its module, the other modules whose decision its closure pins (`parts`), its closure file and its tables, and fails on a closure file with no entry, a module under `src/lib/hooks/guard/` that no entry names as its module, a part or a table's module, a module or part that does not exist, a guard name its file does not hold, and a table that is not exported or not read through `tableRows`.
 
 A closure test proves itself on the code a review rejected: `node scripts/replay-rejected.mjs <rev> <test-file>` exports the tree at `<rev>` into a temporary folder, copies the helper and the named test files from the working tree into it, and runs them there. It exits 0 when the tests pass at that revision, 1 when they fail, and 2 for a usage error, an unknown revision or a tree it cannot export.
 
@@ -149,7 +157,9 @@ Seeds come from the inputs the review probed and from what the guard's recorded 
 
 No check covers these; they stay with the author and the reviewer:
 
-- A guard missing from the registry. Nothing marks a function as a guard, so a new guard with no entry in `test/repo/closures.test.mjs` and no closure test passes every check until a reviewer sees it.
+- A guard outside `src/lib/hooks/guard/` missing from the registry. Nothing marks a function elsewhere as a guard, so a new guard there with no entry in `test/repo/closures.test.mjs` and no closure test passes every check until a reviewer sees it.
+- A module listed only as a part. A new module named in an existing entry's `parts` passes the registry with no closure reaching its code; the reviewer sees the `parts` line in the diff.
+- A destructive root behind a wrapper (`env rm`, `sh -c 'rm …'`, `eval`, `xargs`), in hidden execution (backticks, `<( )`), in a `case` arm or in a function body. These stay at the prompt by decision, so `commandLines` has no family for them.
 - Which constants count as a guard's tables. The registry checks the tables it lists; a table nobody lists feeds no seeds.
 - Naming the spellings of a grammar no family covers yet, such as a new config format or PowerShell's `-Command`. A family checks only the spellings someone wrote down.
 - A guard that reads state a lower-trust actor can change. Whether a caller may trust a piece of state is a judgement per caller.
