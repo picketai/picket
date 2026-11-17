@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-17T17:10:48.457Z",
+  "base": "041506fac774672aed1728aee07f92301623d4bb",
+  "mutant": {
+    "path": "src/lib/hooks/guard/bash/judge.mts",
+    "line": 84,
+    "from": "&&",
+    "to": "||"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 152935
+}
