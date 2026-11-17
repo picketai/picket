@@ -121,6 +121,38 @@ test("an unknown file never yields a threshold move", () => {
   assert.deepEqual(kinds("src/coverage.ts", "const lines = { lines: 80 };", "const lines = { lines: 10 };"), []);
 });
 
+for (const [rel, added, kind] of [
+  ["test/a.test.ts", 'it?.skip("a", () => {});', "skipped-test"],
+  ["test/a.test.ts", 'it .skip("a", () => {});', "skipped-test"],
+  ["test/a.test.ts", 'it["skip"]("a", () => {});', "skipped-test"],
+  ["test/a.test.ts", "it['only']('a', () => {});", "focused-test"],
+  ["test/a.test.ts", '  .skip("a", () => {});', "skipped-test"],
+  ["test/a.test.ts", '?.only("a", () => {});', "focused-test"],
+  ["test/a.test.ts", 'it.skipIf(true)("a", () => {});', "skipped-test"],
+  ["test/a.test.mjs", 'test("a", { skip: true }, () => {});', "skipped-test"],
+  ["test/a.test.mjs", 'test("a", { skip: "why" }, () => {});', "skipped-test"],
+  ["test/a.test.mjs", 'test("a", { todo: true }, () => {});', "skipped-test"],
+  ["test/a.test.mjs", 'test("a", { only: true }, () => {});', "focused-test"],
+  ["test/a.test.mjs", "t.skip();", "skipped-test"],
+  ["test/a.test.mjs", "t.todo();", "skipped-test"],
+  ["tests/test_a.py", '    pytest.skip("x")', "skipped-test"],
+  ["tests/test_a.py", '        self.skipTest("x")', "skipped-test"],
+  ["src/test/java/ATest.java", "@Ignore", "skipped-test"],
+  ["tests/a.rs", "#[ignore]", "skipped-test"],
+]) {
+  test(`${rel}: "${added}" is a ${kind} (T-6.2)`, () => {
+    assert.deepEqual(silencedMoves({ rel, before: "a();", after: lines(added, "a();") }), [{ kind, text: normaliseLine(added) }]);
+  });
+}
+
+test("a test option set to false, a skip word in a string and an unrelated object field are no test move", () => {
+  assert.deepEqual(kinds("test/a.test.mjs", "", 'test("a", { skip: false }, () => {});'), []);
+  assert.deepEqual(kinds("test/a.test.ts", "", 'const s = it["skipped"];'), []);
+  assert.deepEqual(kinds("test/a.test.ts", "", "const page = { skip: 10, take: 5 };"), []);
+  assert.deepEqual(kinds("test/a.test.ts", "", 'const s = \'it["skip"](\';'), []);
+  assert.deepEqual(kinds("tests/test_a.py", "", '    .only("id")'), [], "a Python query chain");
+});
+
 test("scansPath covers code files and threshold files only", () => {
   assert.ok(scansPath("src/a.ts"));
   assert.ok(scansPath("package.json"));

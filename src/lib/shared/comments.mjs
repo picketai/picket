@@ -168,39 +168,63 @@ function scanned(line, lang, open) {
   return open ? blockContinuation(line, open) : lineStart(line, lang);
 }
 
-function insideRegion(line, { region, open }) {
-  const close = region.close.exec(line);
-  if (!close) return { ...scanned(line, region.lang, open), region };
-  return { body: scanned(line.slice(0, close.index), region.lang, open).body, open: null, region: null };
+const MARKUP_COMMENT_SPAN = /<!--[\s\S]*?(?:-->|$)/g;
+const OUTSIDE = { open: null, region: null };
+
+function regionOpening(text, regions) {
+  const visible = text.replace(MARKUP_COMMENT_SPAN, (span) => " ".repeat(span.length));
+  return earliest(regions.map((region) => {
+    const opened = region.open.exec(visible);
+    return opened && { idx: opened.index, end: opened.index + opened[0].length, region };
+  }));
 }
 
-function enteringRegion(line, regions) {
-  for (const region of regions) {
-    const opened = region.open.exec(line);
-    if (!opened) continue;
-    const rest = line.slice(opened.index + opened[0].length);
-    const close = region.close.exec(rest);
-    return { ...lineStart(close ? rest.slice(0, close.index) : rest, region.lang), region: close ? null : region };
+function regionPart(text, { region, open }) {
+  const close = region.close.exec(text);
+  const step = scanned(close ? text.slice(0, close.index) : text, region.lang, open);
+  if (!close) return { body: step.body, state: { open: step.open, region }, rest: null };
+  return { body: step.body, state: OUTSIDE, rest: text.slice(close.index + close[0].length) };
+}
+
+function closedCommentPart(text, open) {
+  const step = blockContinuation(text, open);
+  if (step.open) return { body: step.body, state: { open: step.open, region: null }, rest: null };
+  return { body: step.body, state: OUTSIDE, rest: text.slice(text.indexOf(open.close) + open.close.length) };
+}
+
+function markupPart(text, lang, state) {
+  if (state.open) return closedCommentPart(text, state.open);
+  const opening = regionOpening(text, lang.regions);
+  const step = lineStart(opening ? text.slice(0, opening.idx) : text, lang);
+  if (!opening) return { body: step.body, state: { open: step.open, region: null }, rest: null };
+  return { body: step.body, state: { open: null, region: opening.region }, rest: text.slice(opening.end) };
+}
+
+function regionLineBodies(line, lang, state) {
+  const bodies = [];
+  let part = { state, rest: line };
+  while (part.rest !== null) {
+    part = part.state.region ? regionPart(part.rest, part.state) : markupPart(part.rest, lang, part.state);
+    bodies.push(part.body);
   }
-  return null;
+  return { bodies, state: part.state };
 }
 
-function lineStep(line, lang, state) {
-  if (state.region) return insideRegion(line, state);
-  const entered = state.open ? null : enteringRegion(line, lang.regions ?? []);
-  return entered ?? { ...scanned(line, lang, state.open), region: null };
+function lineBodies(line, lang, state) {
+  if (lang.regions) return regionLineBodies(line, lang, state);
+  const step = scanned(line, lang, state.open);
+  return { bodies: [step.body], state: { open: step.open, region: null } };
 }
 
 export function commentLines(text, ext) {
   const lang = documentRow(ext);
   if (!lang) return [];
   const bodies = [];
-  let state = { open: null, region: null };
+  let state = OUTSIDE;
   for (const line of text.split(/\r?\n/)) {
-    const step = lineStep(line, lang, state);
-    state = { open: step.open, region: step.region };
-    const body = step.body === null ? "" : normalise(step.body);
-    if (body) bodies.push(body);
+    const read = lineBodies(line, lang, state);
+    state = read.state;
+    for (const body of read.bodies.map((found) => (found === null ? "" : normalise(found)))) if (body) bodies.push(body);
   }
   return bodies;
 }

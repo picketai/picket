@@ -1,0 +1,72 @@
+{
+  "work_id": "20261116-guard-hooks-each-get-a-closure",
+  "base": "fdd3a2fa972c3835b3b48ae87a3eedf4625b595e",
+  "request": "work/20261116-guard-hooks-each-get-a-closure/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/lib/hooks/guard/bash/bash.mts",
+    "src/lib/hooks/guard/bash/bash.test.mts",
+    "src/lib/hooks/guard/bash/escalation.variants.test.mts",
+    "src/lib/hooks/guard/bash/judge.variants.test.mts",
+    "src/lib/hooks/guard/bash/kernel.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/hooks/guard/bash/kernel.variants.test.mts",
+    "src/lib/hooks/guard/bash/payloads.mts",
+    "src/lib/hooks/guard/bash/payloads.test.mts",
+    "src/lib/hooks/guard/bash/payloads.variants.test.mts",
+    "src/lib/hooks/guard/bash/powershell.variants.test.mts",
+    "src/lib/hooks/guard/bash/rules.mts",
+    "src/lib/hooks/guard/bash/sources.variants.test.mts",
+    "src/lib/hooks/guard/comments/index.variants.test.mts",
+    "src/lib/hooks/guard/edit-target.mts",
+    "src/lib/hooks/guard/edit-target.test.mts",
+    "src/lib/hooks/guard/edit-target.variants.test.mts",
+    "src/lib/hooks/guard/scope/index.mts",
+    "src/lib/hooks/guard/scope/index.variants.test.mts",
+    "src/lib/hooks/guard/silenced/index.test.mts",
+    "src/lib/shared/comments.mjs",
+    "test/kernel/comments.test.mjs",
+    "test/repo/closures.test.mjs",
+    "test/repo/variants.test.mjs",
+    "test/support/variants.mts"
+  ],
+  "lines_added": 1287,
+  "lines_removed": 111,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 10,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

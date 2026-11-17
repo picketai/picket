@@ -20,13 +20,41 @@ function isSuppression(text, lang) {
   return STATEMENT_SUPPRESSION_MARKERS.some((re) => re.test(masked));
 }
 
-const TEST_MOVES = [
-  { kind: "focused-test", re: /\b(it|test|describe|context|suite)\.only\b|\b(fit|fdescribe)\s*\(/ },
+const TEST_OBJECT = String.raw`\b(?:it|test|describe|context|suite|t)`;
+const TEST_CALL_OPTIONS = String.raw`\b(?:it|test|describe|suite)\s*\([^)]*\{[^}]*`;
+
+const SCRIPT_FILE = /\.[cm]?[jt]sx?$/i;
+
+function memberMove(members) {
+  const dotted = new RegExp(String.raw`${TEST_OBJECT}\s*\??\.\s*(?:${members})\b`);
+  const chained = new RegExp(String.raw`^\s*\??\.\s*(?:${members})\s*\(`);
+  const bracketed = new RegExp(String.raw`${TEST_OBJECT}\s*(?:\?\.)?\[\s*(["'\x60])(?:${members})\1\s*\]`);
+  const bracketOutsideString = new RegExp(String.raw`${TEST_OBJECT}\s*(?:\?\.)?\[`);
+  return ({ masked, text, rel }) => dotted.test(masked) || (SCRIPT_FILE.test(rel) && chained.test(masked)) || (bracketOutsideString.test(masked) && bracketed.test(text));
+}
+
+function patternMove(re) {
+  return ({ masked }) => re.test(masked);
+}
+
+function anyMove(...tests) {
+  return (line) => tests.some((matches) => matches(line));
+}
+
+export const TEST_MOVES = [
+  {
+    kind: "focused-test",
+    test: anyMove(memberMove("only"), patternMove(new RegExp(String.raw`\b(fit|fdescribe)\s*\(|${TEST_CALL_OPTIONS}\bonly\s*:\s*true\b`))),
+  },
   {
     kind: "skipped-test",
-    re: /\b(it|test|describe|context|suite)\.(skip|todo)\b|\b(xit|xdescribe|xtest)\s*\(|\[Ignore\b|\[(Fact|Theory)\s*\([^\]]*\bSkip\s*=|@pytest\.mark\.(skip|skipif|xfail)\b|@unittest\.skip|@Disabled\b|\bt\.Skip(Now|f)?\(/,
+    test: anyMove(
+      memberMove("skip|todo|skipIf"),
+      patternMove(new RegExp(String.raw`${TEST_CALL_OPTIONS}\b(?:skip\s*:\s*(?:true\b|["'\x60])|todo\s*:\s*true\b)`)),
+      patternMove(/\b(xit|xdescribe|xtest)\s*\(|\[Ignore\b|@Ignore\b|#\[ignore\b|\[(Fact|Theory)\s*\([^\]]*\bSkip\s*=|@pytest\.mark\.(skip|skipif|xfail)\b|\bpytest\.(skip|xfail)\s*\(|@unittest\.skip|\.skipTest\s*\(|@Disabled\b|\bt\.Skip(Now|f)?\(/),
+    ),
   },
-].map(({ kind, re }) => ({ kind, test: (masked) => re.test(masked) }));
+];
 
 const COVERAGE_KEY = /["']?\b(?<name>lines|statements|functions|branches)\b["']?\s*:\s*(?<value>\d+(?:\.\d+)?)/g;
 const COVERAGE_FLAG = /--(?<name>lines|statements|functions|branches)[=\s]+(?<value>\d+(?:\.\d+)?)/g;
@@ -73,7 +101,7 @@ function codeMoves(rel, added) {
   const testMoves = lang !== MARKUP && isTestPath(rel) ? TEST_MOVES : [];
   return added.flatMap((text) => {
     const masked = maskStrings(text);
-    const kinds = testMoves.filter((move) => move.test(masked)).map((move) => move.kind);
+    const kinds = testMoves.filter((move) => move.test({ masked, text, rel })).map((move) => move.kind);
     if (isSuppression(text, lang)) kinds.push("suppression");
     return kinds.map((kind) => ({ kind, text }));
   });

@@ -9,6 +9,7 @@ import { commandLines, commandPaths, commandPlaces, wordQuotings } from "#test/v
 import { commandWrappers, kernelCalls, kernelLaunchers } from "#test/variants.mts";
 import { powerShellCommands, powerShellNames, powerShellPlaces, sourceCommands, sourcePathSpellings } from "#test/variants.mts";
 import { codeComments, COMMENT_SYNTAX, commentPlacements, commentSeeds } from "#test/variants.mts";
+import { memberSpellings, silencedLines, SKIP_APIS, skipSeeds, testFileNames } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -576,6 +577,30 @@ test("tableRows reads the own keys of a plain object as its rows (T-5.1)", async
   const loaded = await loadGuard(() => Promise.resolve({ O: { ".a": 1, ".b": 2 } }), "m.mjs");
   assert.deepEqual(tableRows(loaded, "O"), { table: "O", path: "m.mjs", rows: [".a", ".b"], missing: null });
   assert.deepEqual(codeComments.families.map((family) => family.name), ["comment placements"]);
+});
+
+test("memberSpellings respells a script test call's member five ways, and nothing for a Python seed (T-6.1)", () => {
+  assert.deepEqual(memberSpellings.spell({ rel: "test/a.test.ts", line: 'it.skip("a", () => {});' }).map((spelling) => spelling.input.line), [
+    'it .skip("a", () => {});', 'it?.skip("a", () => {});', 'it["skip"]("a", () => {});', "it['skip'](\"a\", () => {});", 'it\n.skip("a", () => {});',
+  ]);
+  assert.deepEqual(memberSpellings.spell({ rel: "tests/test_a.py", line: 'self.skipTest("x")' }), []);
+  assert.deepEqual(memberSpellings.spell({ rel: "test/a.test.ts", line: 'xit("a", () => {});' }), []);
+});
+
+test("testFileNames renames the seed's file by its language's test conventions, leaving out the seed's own path", () => {
+  assert.deepEqual(labels(testFileNames, { rel: "test/a.test.js", line: "x" }), [
+    'test/a.js: "x"', 'tests/a.js: "x"', 'src/__tests__/a.js: "x"', 'spec/a.js: "x"', 'src/a.test.js: "x"', 'src/a.spec.js: "x"',
+  ]);
+  assert.deepEqual(labels(testFileNames, { rel: "tests/test_a.py", line: "x" }), ['test/test_a.py: "x"', 'src/test_a.py: "x"', 'src/a_test.py: "x"', 'tests/a.py: "x"']);
+  assert.deepEqual(labels(testFileNames, { rel: "tests/a.md", line: "x" }), []);
+});
+
+test("skipSeeds gives every framework's lines of a TEST_MOVES kind at that framework's test path", () => {
+  assert.deepEqual(skipSeeds("focused-test").filter((seed) => seed.rel === "spec/a.spec.js"), [{ rel: "spec/a.spec.js", line: 'fit("a", () => {});' }, { rel: "spec/a.spec.js", line: 'fdescribe("a", () => {});' }]);
+  assert.ok(skipSeeds("skipped-test").some((seed) => seed.rel === "tests/a.rs" && seed.line === "#[ignore]"));
+  assert.deepEqual(skipSeeds("nothing"), []);
+  assert.deepEqual(silencedLines.families.map((family) => family.name), ["test file names", "member spellings"]);
+  assert.ok(Object.keys(SKIP_APIS).includes("node:test"));
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

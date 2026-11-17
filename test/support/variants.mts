@@ -899,7 +899,14 @@ const ownLine = (text: string): CommentForm => ({ text, trails: false });
 const C_COMMENTS = [trailing("// note"), trailing("/* note */"), trailing("/** note */"), ownLine("/*\n * note\n */")];
 const HASH_COMMENTS = [trailing("# note")];
 const MARKUP_COMMENTS = [trailing("<!-- note -->")];
-const SCRIPT_COMMENTS = [ownLine("<script>\n// note\n</script>"), ownLine("<script>\n/* note */\n</script>"), ownLine("<style>\n/* note */\n</style>")];
+const SCRIPT_COMMENTS = [
+  ownLine("<script>\n// note\n</script>"),
+  ownLine("<script>\n/* note */\n</script>"),
+  ownLine("<style>\n/* note */\n</style>"),
+  trailing("<!-- note --><script>a()</script>"),
+  trailing("<style>a{}</style><!-- note -->"),
+  ownLine("<script>\na();\n</script><!-- note -->"),
+];
 
 function rowsFor(extensions: string, row: CommentRow): Record<string, CommentRow> {
   return Object.fromEntries(extensions.split(" ").map((ext) => [ext, row]));
@@ -990,6 +997,96 @@ export const codeComments: Grammar<CommentSeed, CommentEdit> = {
   written: ({ ext, text }) => written(ext, fileOf(syntaxOf(ext).head, [syntaxOf(ext).statement, text])),
   label: (edit) => `${edit.tool} ${edit.rel} ${JSON.stringify(edit.input)}`,
   families: [commentPlacements],
+};
+
+export type SilencedSeed = { rel: string; line: string };
+
+type TestApi = { rel: string; skipped: string[]; focused: string[] };
+
+const MOCHA_SKIPS = ['it.skip("a", () => {});', 'describe.skip("a", () => {});'];
+const MOCHA_FOCUSES = ['it.only("a", () => {});', 'describe.only("a", () => {});'];
+
+export const SKIP_APIS: Record<string, TestApi> = {
+  mocha: { rel: "test/a.test.js", skipped: MOCHA_SKIPS, focused: MOCHA_FOCUSES },
+  jest: { rel: "src/__tests__/a.test.ts", skipped: [...MOCHA_SKIPS, 'test.todo("a");'], focused: MOCHA_FOCUSES },
+  vitest: { rel: "src/a.test.ts", skipped: [...MOCHA_SKIPS, 'test.todo("a");', 'it.skipIf(true)("a", () => {});'], focused: MOCHA_FOCUSES },
+  jasmine: { rel: "spec/a.spec.js", skipped: ['xit("a", () => {});'], focused: ['fit("a", () => {});', 'fdescribe("a", () => {});'] },
+  "node:test": {
+    rel: "test/a.test.mjs",
+    skipped: ['test("a", { skip: true }, () => {});', 'test("a", { skip: "why" }, () => {});', 'test("a", { todo: true }, () => {});', "t.skip();", "t.todo();"],
+    focused: ['test("a", { only: true }, () => {});'],
+  },
+  pytest: { rel: "tests/test_a.py", skipped: ["@pytest.mark.skip", "@pytest.mark.xfail", 'pytest.skip("x")'], focused: [] },
+  unittest: { rel: "tests/test_a.py", skipped: ['@unittest.skip("x")', 'self.skipTest("x")'], focused: [] },
+  NUnit: { rel: "tests/ATests.cs", skipped: ['[Ignore("x")]'], focused: [] },
+  xUnit: { rel: "tests/ATests.cs", skipped: ['[Fact(Skip = "x")]'], focused: [] },
+  "JUnit 5": { rel: "src/test/java/ATest.java", skipped: ["@Disabled"], focused: [] },
+  "JUnit 4": { rel: "src/test/java/ATest.java", skipped: ["@Ignore"], focused: [] },
+  Go: { rel: "pkg/a_test.go", skipped: ["t.Skip()"], focused: [] },
+  Rust: { rel: "tests/a.rs", skipped: ["#[ignore]"], focused: [] },
+};
+
+const TEST_MOVE_LISTS: Record<string, keyof Pick<TestApi, "skipped" | "focused">> = { "skipped-test": "skipped", "focused-test": "focused" };
+
+export function skipSeeds(kind: string): SilencedSeed[] {
+  if (!Object.hasOwn(TEST_MOVE_LISTS, kind)) return [];
+  return Object.values(SKIP_APIS).flatMap((api) => api[TEST_MOVE_LISTS[kind]].map((line) => ({ rel: api.rel, line })));
+}
+
+const SCRIPT_EXTENSION = /\.[cm]?[jt]sx?$/;
+
+const TEST_FILE_CONVENTIONS: { ext: RegExp; paths: (stem: string, ext: string) => string[] }[] = [
+  { ext: SCRIPT_EXTENSION, paths: (stem, ext) => [`test/${stem}${ext}`, `tests/${stem}${ext}`, `src/__tests__/${stem}${ext}`, `spec/${stem}${ext}`, `src/${stem}.test${ext}`, `src/${stem}.spec${ext}`] },
+  { ext: /\.py$/, paths: (stem) => [`tests/test_${stem}.py`, `test/test_${stem}.py`, `src/test_${stem}.py`, `src/${stem}_test.py`, `tests/${stem}.py`] },
+  { ext: /\.go$/, paths: (stem) => [`pkg/${stem}_test.go`, `${stem}_test.go`] },
+  { ext: /\.cs$/, paths: (stem) => [`tests/${stem}Tests.cs`, `tests/${stem}.cs`, `src/${stem}Tests.cs`, `src/${stem}Test.cs`, `src/${stem}.Tests.cs`] },
+  { ext: /\.java$/, paths: (stem) => [`src/test/java/${stem}Test.java`, `src/test/java/${stem}Tests.java`, `test/${stem}Test.java`] },
+  { ext: /\.rs$/, paths: (stem) => [`tests/${stem}.rs`, `tests/${stem}_test.rs`] },
+];
+
+function fileStem(rel: string): { stem: string; ext: string } {
+  const name = rel.slice(rel.lastIndexOf("/") + 1);
+  const dot = name.lastIndexOf(".");
+  const stem = name.slice(0, dot).replace(/\.(test|spec)$/, "").replace(/^test_/, "").replace(/_test$/, "").replace(/Tests?$/, "");
+  return { stem, ext: name.slice(dot) };
+}
+
+function silencedLabel({ rel, line }: SilencedSeed): string {
+  return `${rel}: ${JSON.stringify(line)}`;
+}
+
+function silencedSpellings(seeds: SilencedSeed[]): Spelling<SilencedSeed>[] {
+  return seeds.map((seed) => ({ label: silencedLabel(seed), input: seed }));
+}
+
+export const testFileNames: Family<SilencedSeed, SilencedSeed> = {
+  name: "test file names",
+  spell: ({ rel, line }) => {
+    const { stem, ext } = fileStem(rel);
+    const convention = TEST_FILE_CONVENTIONS.find((row) => row.ext.test(ext));
+    const renamed = convention === undefined ? [] : convention.paths(stem, ext).filter((path) => path !== rel);
+    return silencedSpellings(renamed.map((path) => ({ rel: path, line })));
+  },
+};
+
+const MEMBER_CALL = /^(\s*)([A-Za-z_$][\w$]*)\.(\w+)(\(.*)$/s;
+
+export const memberSpellings: Family<SilencedSeed, SilencedSeed> = {
+  name: "member spellings",
+  spell: ({ rel, line }) => {
+    const call = SCRIPT_EXTENSION.test(rel) ? MEMBER_CALL.exec(line) : null;
+    if (call === null) return [];
+    const [, indent, object, member, rest] = call;
+    const members = [` .${member}`, `?.${member}`, `["${member}"]`, `['${member}']`, `\n.${member}`];
+    return silencedSpellings(members.map((spelled) => ({ rel, line: `${indent}${object}${spelled}${rest}` })));
+  },
+};
+
+export const silencedLines: Grammar<SilencedSeed, SilencedSeed> = {
+  name: "silenced lines",
+  written: (seed) => seed,
+  label: silencedLabel,
+  families: [testFileNames, memberSpellings],
 };
 
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {

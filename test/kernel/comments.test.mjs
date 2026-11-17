@@ -95,6 +95,15 @@ test("markup rows read comments inside script and style elements, and Razor comm
   assert.deepEqual(commentLines(lines("<script>", "// x", "</script>"), ".xml"), []);
 });
 
+test("an HTML comment beside a script or style element on the same line is still a comment", () => {
+  assert.deepEqual(commentLines("<!-- note --><script>a()</script>", ".html"), ["note"]);
+  assert.deepEqual(commentLines("<style>a{}</style><!-- note -->", ".htm"), ["note"]);
+  assert.deepEqual(commentLines(lines("<script>", "a();", "</script><!-- note2 -->"), ".vue"), ["note2"]);
+  assert.deepEqual(commentLines("<!-- a --><script>// b</script><!-- c -->", ".svelte"), ["a", "b", "c"]);
+  assert.deepEqual(commentLines(lines("<!--", "x --><script>// y", "</script>"), ".html"), ["x", "y"]);
+  assert.deepEqual(commentLines("<!-- <script> --><p>// text</p>", ".html"), ["<script>"]);
+});
+
 test("the earlier of a line token and a block opener starts the comment", () => {
   assert.deepEqual(commentLines("/* a */ const b = 1; // c", ".ts"), ["a"]);
 });
