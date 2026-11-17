@@ -29,9 +29,10 @@ export function realPath(path: string): string {
 export function editTarget(event: EditEvent, ctx: Pick<HookContext, "root">): EditTarget | null {
   const filePath = event.tool_input?.file_path;
   if (!filePath) return null;
-  const { abs } = repoRelative(event, filePath, ctx.root);
-  const { rel, outside } = repoRelative(null, realPath(abs), realPath(ctx.root));
-  return { filePath, abs, rel, outside };
+  const byEvent = repoRelative(event, filePath, ctx.root);
+  const byRealPath = repoRelative(null, realPath(byEvent.abs), realPath(ctx.root));
+  const { rel, outside } = byRealPath.outside && !byEvent.outside ? byEvent : byRealPath;
+  return { filePath, abs: byEvent.abs, rel, outside };
 }
 
 function editedFile(current: string, from: string, to: string, all: boolean): EditTexts {

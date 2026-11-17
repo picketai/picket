@@ -4,6 +4,7 @@
   "request": "work/20261116-guard-hooks-each-get-a-closure/request.md",
   "size": "large",
   "changed_files": [
+    "CONTRIBUTING.md",
     "src/lib/hooks/guard/bash/bash.mts",
     "src/lib/hooks/guard/bash/bash.test.mts",
     "src/lib/hooks/guard/bash/escalation.variants.test.mts",
@@ -17,6 +18,8 @@
     "src/lib/hooks/guard/bash/powershell.variants.test.mts",
     "src/lib/hooks/guard/bash/rules.mts",
     "src/lib/hooks/guard/bash/sources.variants.test.mts",
+    "src/lib/hooks/guard/block/index.mts",
+    "src/lib/hooks/guard/block/index.variants.test.mts",
     "src/lib/hooks/guard/comments/index.variants.test.mts",
     "src/lib/hooks/guard/edit-target.mts",
     "src/lib/hooks/guard/edit-target.test.mts",
@@ -24,14 +27,18 @@
     "src/lib/hooks/guard/scope/index.mts",
     "src/lib/hooks/guard/scope/index.variants.test.mts",
     "src/lib/hooks/guard/silenced/index.test.mts",
+    "src/lib/hooks/guard/silenced/index.variants.test.mts",
     "src/lib/shared/comments.mjs",
+    "src/lib/shared/silenced.mjs",
+    "test/hooks/guard.block.test.mjs",
     "test/kernel/comments.test.mjs",
+    "test/kernel/silenced.test.mjs",
     "test/repo/closures.test.mjs",
     "test/repo/variants.test.mjs",
     "test/support/variants.mts"
   ],
-  "lines_added": 1287,
-  "lines_removed": 111,
+  "lines_added": 2093,
+  "lines_removed": 151,
   "frameworks": [
     "typescript"
   ],
@@ -44,14 +51,30 @@
   "repos": [],
   "sources": [],
   "silenced": [],
-  "mutation": null,
-  "scope": "checkpoint",
+  "mutation": {
+    "ts": "2026-11-17T13:07:39.437Z",
+    "base": "fdd3a2fa972c3835b3b48ae87a3eedf4625b595e",
+    "mutant": {
+      "path": "src/lib/hooks/guard/bash/bash.mts",
+      "line": 82,
+      "from": "!==",
+      "to": "==="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 152863
+  },
+  "scope": "cumulative",
   "checklists": [
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
     },
     {
       "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"

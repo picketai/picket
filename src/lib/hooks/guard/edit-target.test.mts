@@ -41,6 +41,15 @@ test("editTarget reads a Write through a link from outside the root as inside it
   assert.deepEqual(targetOf(root, join(elsewhere, "outside", "a.test.ts")), { rel: "test/a.test.ts", outside: false });
 });
 
+test("editTarget reads a Write through a project link that points out of the root by its event path, as inside (D-005 r2)", (t) => {
+  const { root, elsewhere } = linkedProject(t);
+  mkdirSync(join(elsewhere, "shared", "test"), { recursive: true });
+  symlinkSync(join(elsewhere, "shared"), join(root, "shared"), LINK_TYPE);
+  assert.deepEqual(targetOf(root, join(root, "shared", "test", "a.test.ts")), { rel: "shared/test/a.test.ts", outside: false });
+  assert.deepEqual(targetOf(root, "shared/test/a.test.ts"), { rel: "shared/test/a.test.ts", outside: false });
+  assert.equal(targetOf(root, join(elsewhere, "shared", "test", "a.test.ts"))?.outside, true, "the same file by its own path stays outside");
+});
+
 test("editTarget keeps a new file under a missing folder inside, and a path outside the root outside", (t) => {
   const { root, elsewhere } = linkedProject(t);
   assert.deepEqual(targetOf(root, "src/new/a.ts"), { rel: "src/new/a.ts", outside: false });
