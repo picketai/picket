@@ -8,7 +8,7 @@ This guide is for a developer installing the alpha in their own project. It cove
 
 Picket is one Claude Code plugin, `picket@picketai`, published as the npm package `@picketai/picket`. Nothing is installed globally.
 
-The **plugin** carries four agents (analyst, architect, developer, reviewer), the skills that drive them, the hooks that guard every tool call, and the response style. Everything it adds is named `picket:<name>`, for example `picket:ordering` or `picket:developer`. [The agents](reference/agents.md) reference says what each agent does and when it runs, and [the skills](reference/skills.md) reference does the same for each skill.
+The **plugin** carries five agents (analyst, architect, developer, reviewer, tester), the skills that drive them, the hooks that guard every tool call, and the response style. Everything it adds is named `picket:<name>`, for example `picket:ordering` or `picket:developer`. [The agents](reference/agents.md) reference says what each agent does and when it runs, and [the skills](reference/skills.md) reference does the same for each skill.
 
 The **`picket` command** is the kernel, and it ships inside the plugin. It decides everything that code can decide: which lane a request takes, what the next step is, whether a phase is verified, and how a verdict changes state. The agents call it, and so can you, from the Bash or PowerShell tool of a session where the plugin is enabled. Outside a session, run a verb through npx, for example `npx @picketai/picket@alpha list`.
 
@@ -296,6 +296,8 @@ Agents read a source with `picket source find specs <name>` and `picket source g
 `extensions` enables and orders your extensions.
 
 `quality` records the bar your checks must hold: `coverage_min` (0 to 100) and `max_warnings` (0 or more). A hook denies any edit that makes a known threshold weaker, either than its value before the edit or than this bar. Example: with `coverage_min: 85`, writing `lines: 80` in `vitest.config.ts` is denied, and so is changing `--max-warnings 0` to `--max-warnings 5` in `package.json`. The same hook denies a new suppression (`eslint-disable`, `@ts-ignore`, `noqa`) and a new skipped or focused test. When you accept one, reply `w <n>` to the proposal on the block's `Waivers:` line.
+
+`testing` decides which finished items the tester checks after the final review: `design` (the default) tests design items, `all` tests order and design items, and `off` tests none. An item is tested only when its plan declares a check against an HTTP endpoint and the project has a test environment in `.picket/env/compose.yaml`. The tester runs cases on the item's own stack without reading the change, and the kernel derives its verdict. The closing block's `Tested:` line says what came of it: `APPROVED in round 2 · 5 passed, 1 not covered`, the criteria you accepted as not verified, or why the item was not tested, such as `no environment`. A `Not verified end to end:` line names each real service a mock stood in for.
 
 ### Extensions
 

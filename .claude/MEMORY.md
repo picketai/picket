@@ -1,6 +1,6 @@
 # Project Understanding
 
-PicketAI (repository still named AISpec) is a software-development harness for Claude Code: four lanes, four agents, one kernel, and a benchmark that measures the harness itself. It is being reshaped into an installable product called Picket.
+PicketAI (repository still named AISpec) is a software-development harness for Claude Code: four lanes, five agents, one kernel, and a benchmark that measures the harness itself. It is being reshaped into an installable product called Picket.
 
 ## Language
 

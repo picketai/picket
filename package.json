@@ -2,7 +2,7 @@
   "name": "@picketai/picket",
   "version": "1.0.0-alpha.6",
   "private": true,
-  "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel.",
+  "description": "Picket: a software-development workflow for Claude Code with four lanes, five agents and one kernel.",
   "homepage": "https://github.com/picketai/picket#readme",
   "bugs": {
     "url": "https://github.com/picketai/picket/issues"

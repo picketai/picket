@@ -1,7 +1,7 @@
 {
   "name": "picket",
   "version": "1.0.0-alpha.6",
-  "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel.",
+  "description": "Picket: a software-development workflow for Claude Code with four lanes, five agents and one kernel.",
   "author": { "name": "Vlad Apetre" },
   "types": "./hooks/mods/types/index.d.ts",
   "skills": [

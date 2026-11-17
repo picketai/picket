@@ -8,7 +8,7 @@
     {
       "name": "picket",
       "source": "./dist",
-      "description": "Picket: a software-development workflow for Claude Code with four lanes, four agents and one kernel."
+      "description": "Picket: a software-development workflow for Claude Code with four lanes, five agents and one kernel."
     }
   ]
 }

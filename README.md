@@ -1,6 +1,6 @@
 # Picket
 
-Picket is a software-development workflow for Claude Code: four lanes, four agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag. Set up a project from its root with `npx @picketai/picket@alpha init`; nothing is installed globally.
+Picket is a software-development workflow for Claude Code: four lanes, five agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag. Set up a project from its root with `npx @picketai/picket@alpha init`; nothing is installed globally.
 
 To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md). The reference pages in `docs/reference/` cover [the agents](docs/reference/agents.md), [the skills](docs/reference/skills.md), [the commands](docs/reference/cli.md), [the hooks](docs/reference/hooks.md) and [the mods](docs/reference/mods.md). What changed in each release is in the [changelog](CHANGELOG.md).
 

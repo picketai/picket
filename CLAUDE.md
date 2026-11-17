@@ -1,6 +1,6 @@
 # Picket
 
-Four lanes, four agents, one kernel. Code decides what code can decide; the model fills the rest.
+Four lanes, five agents, one kernel. Code decides what code can decide; the model fills the rest.
 
 ## Every request
 
