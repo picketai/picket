@@ -404,6 +404,22 @@ Record a question on a tested criterion, with two to four choices.
 picket test ask <id> <criterion> --question <text> --choices "<a> | <b>" [--default <choice> --basis <text>]
 ```
 
+### picket test case
+
+Run one case, its step lines on stdin, on the item's stack and record the run.
+
+```sh
+picket test case <id> --criterion <T-N.x> --kind <kind> --intent <words>, with the step lines on stdin
+```
+
+### picket test rerun
+
+Run every case of the previous round again under the same case ids.
+
+```sh
+picket test rerun <id>
+```
+
 ## picket summary
 
 Summarize a work item's diff, or a commit range, for the reviewer.

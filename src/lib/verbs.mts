@@ -75,6 +75,8 @@ export const VERB_NAMES = {
       classify: { summary: "class a failed case as product, test or environment, with evidence", readOnly: false },
       note: { summary: "record a cell the tester did not run, or a criterion that cannot be tested as written", readOnly: false },
       ask: { summary: "record a question on a tested criterion, with two to four choices", readOnly: false },
+      case: { summary: "run one case, its step lines on stdin, on the item's stack and record the run", readOnly: false },
+      rerun: { summary: "run every case of the previous round again under the same case ids", readOnly: false },
     },
   },
   summary: { summary: "summarize a work item's diff, or a commit range, for the reviewer", readOnly: true },
