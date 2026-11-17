@@ -69,6 +69,11 @@ test("env replay starts a stack and writes results, so it is a kernel call (T-4.
   assert.equal(kernelClass("env", "replay"), "kernel");
 });
 
+test("the test verbs write the item's results, so each is a kernel call (T-2.7)", () => {
+  for (const sub of ["brief", "report", "classify", "note", "ask"]) assert.equal(kernelClass("test", sub), "kernel", `test ${sub}`);
+  assert.equal(kernelClass("test", undefined), "kernel");
+});
+
 test("picket verify is safe only when every checkout's test command is safe in its own folder (T-3.5)", (t) => {
   const unsafe = worktreeItem(t, "node wt.js");
   assert.deepEqual(classifyVerify(unsafe.root, unsafe.id, "1"), { verdict: "unknown", seen: ["dotnet test @ <root>", `node wt.js @ ${WORKTREE}`] });

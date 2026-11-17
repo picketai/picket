@@ -100,6 +100,11 @@
       "description": "The Picket version whose picket init last refreshed this project. Init writes it; the session start tells the user to run init when the running Picket is newer.",
       "type": ["string", "null"],
       "default": null
+    },
+    "testing": {
+      "description": "Which lanes the tester checks after the cumulative review: all for order and design items, design for design items only, off for none. A design or order item is tested only when it declares an HTTP check and the project has .picket/env/compose.yaml.",
+      "enum": ["all", "design", "off"],
+      "default": "design"
     }
   },
   "additionalProperties": false

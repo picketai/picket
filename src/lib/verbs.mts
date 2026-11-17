@@ -67,6 +67,16 @@ export const VERB_NAMES = {
       remove: { summary: "remove the styling items you choose, or all of them with --all", readOnly: false },
     },
   },
+  test: {
+    summary: "record the tester's cases, classes, cells and questions and derive the report",
+    subverbs: {
+      brief: { summary: "print the tester's brief for a work item; --save writes it to the test folder", readOnly: false },
+      report: { summary: "write the test report from the recorded rows and print the derived verdict", readOnly: false },
+      classify: { summary: "class a failed case as product, test or environment, with evidence", readOnly: false },
+      note: { summary: "record a cell the tester did not run, or a criterion that cannot be tested as written", readOnly: false },
+      ask: { summary: "record a question on a tested criterion, with two to four choices", readOnly: false },
+    },
+  },
   summary: { summary: "summarize a work item's diff, or a commit range, for the reviewer", readOnly: true },
   uninstall: { summary: "remove Picket from a project: what init added, its state and, if chosen, work/", readOnly: false, leadOnly: true },
   verify: { summary: "check one phase against its must_haves", readOnly: true },

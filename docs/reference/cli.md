@@ -360,6 +360,50 @@ Remove the styling items you choose, or all of them with --all.
 picket style remove [--all [--dry-run]] [--yes]
 ```
 
+## picket test
+
+Record the tester's cases, classes, cells and questions and derive the report.
+
+### picket test brief
+
+Print the tester's brief for a work item; --save writes it to the test folder.
+
+```sh
+picket test brief <id> [--save]
+```
+
+### picket test report
+
+Write the test report from the recorded rows and print the derived verdict.
+
+```sh
+picket test report <id>
+```
+
+### picket test classify
+
+Class a failed case as product, test or environment, with evidence.
+
+```sh
+picket test classify <id> <case> <product|test|environment> --evidence <text>
+```
+
+### picket test note
+
+Record a cell the tester did not run, or a criterion that cannot be tested as written.
+
+```sh
+picket test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why <text>, or test note <id> <criterion> untestable --why <text>
+```
+
+### picket test ask
+
+Record a question on a tested criterion, with two to four choices.
+
+```sh
+picket test ask <id> <criterion> --question <text> --choices "<a> | <b>" [--default <choice> --basis <text>]
+```
+
 ## picket summary
 
 Summarize a work item's diff, or a commit range, for the reviewer.

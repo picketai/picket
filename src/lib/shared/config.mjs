@@ -12,7 +12,10 @@ export const CONFIG_FILE = configRel();
 
 export const CONFIG_VERSION = 1;
 
-export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods", "picket_version"]);
+export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods", "picket_version", "testing"]);
+
+export const TESTING_SETTINGS = Object.freeze(["all", "design", "off"]);
+export const DEFAULT_TESTING = "design";
 
 export const DEFAULT_LANES = Object.freeze({
   fast: Object.freeze({ max_files: 3 }),
@@ -32,6 +35,7 @@ export const CONFIG_DEFAULTS = Object.freeze({
   quality: {},
   mods: {},
   picket_version: null,
+  testing: DEFAULT_TESTING,
 });
 
 export const QUALITY_FIELDS = Object.freeze({
@@ -182,6 +186,13 @@ function checkPicketVersion(value, warn) {
   return value || null;
 }
 
+function checkTesting(value, warn) {
+  if (value === undefined) return DEFAULT_TESTING;
+  if (TESTING_SETTINGS.includes(value)) return value;
+  warn(`testing must be all, design or off; using ${DEFAULT_TESTING}`);
+  return DEFAULT_TESTING;
+}
+
 function commandProblem(name, command) {
   if (!COMMAND_NAMES.includes(name)) return `unknown key "commands.${name}"`;
   if (typeof command !== "string" || !command.trim()) return `commands.${name} must be a non-empty string; detection stands`;
@@ -205,7 +216,8 @@ export function loadConfig(root, env = process.env) {
   const quality = checkQuality(raw.quality, warn);
   const mods = checkMods(raw.mods, warn);
   const picket_version = checkPicketVersion(raw.picket_version, warn);
-  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, picket_version, error, warnings };
+  const testing = checkTesting(raw.testing, warn);
+  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, picket_version, testing, error, warnings };
 }
 
 function resolveSource(name, decl, env) {

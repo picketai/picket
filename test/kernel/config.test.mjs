@@ -94,7 +94,7 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", (t) => {
 
 test("no config file is the defaults with no error and no warning", (t) => {
   withConfig(t,undefined, (root) => {
-    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, picket_version: null, error: null, warnings: [] });
+    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, picket_version: null, testing: "design", error: null, warnings: [] });
   });
 });
 
@@ -114,6 +114,25 @@ test("picket_version loads as the recorded string, null when absent, and null wi
     assert.equal(config.picket_version, null);
     assert.deepEqual(config.warnings, ["picket_version must be a string; reading it as not recorded"]);
   });
+});
+
+test("testing loads as set, defaults to design, and falls back to design with a warning on another value (T-2.1)", (t) => {
+  withConfig(t, { version: 1, testing: "all" }, (root) => {
+    const config = loadConfig(root, {});
+    assert.equal(config.testing, "all");
+    assert.deepEqual(config.warnings, []);
+  });
+  withConfig(t, { version: 1 }, (root) => {
+    const config = loadConfig(root, {});
+    assert.equal(config.testing, "design");
+    assert.deepEqual(config.warnings, []);
+  });
+  withConfig(t, { version: 1, testing: "sometimes" }, (root) => {
+    const config = loadConfig(root, {});
+    assert.equal(config.testing, "design");
+    assert.deepEqual(config.warnings, ["testing must be all, design or off; using design"]);
+  });
+  assert.deepEqual(SCHEMA.properties.testing.enum, ["all", "design", "off"]);
 });
 
 test("the published schema names the loader's keys and carries its defaults (T-5.2)", (t) => {
