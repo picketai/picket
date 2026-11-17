@@ -444,7 +444,8 @@ test("a design close lists each deferred criterion of its record, after the Phas
   assert.deepEqual(picket(root, "close", id).json.closing.deferred, [{ id: "T-1.3", owner: "QA", gate: "before go-live" }]);
   const human = picket(root, "close", id, "--human");
   assert.equal(human.code, 0, human.stdout);
-  assert.equal(human.stdout.split("\n")[3], "Deferred: T-1.3 QA, before go-live");
+  assert.equal(human.stdout.split("\n")[2], "Tested: no environment");
+  assert.equal(human.stdout.split("\n")[4], "Deferred: T-1.3 QA, before go-live");
 });
 
 test("a fast close carries no deferred criteria and prints no Deferred line", (t) => {

@@ -30,6 +30,11 @@ function countsLine(cases: CaseRow[], cells: CellRow[]): string {
   return parts.length ? parts.join(", ") : "no cases recorded";
 }
 
+export function roundCounts(rows: readonly TestRow[], round: number): string {
+  const inRound = roundRows(rows, round);
+  return countsLine(latestCases(inRound), cellsOf(inRound));
+}
+
 function verdictLine(round: number, derived: Derived): string {
   return `Round ${round} · ${derived.verdict}${derived.route ? ` · route ${derived.route}` : ""}`;
 }

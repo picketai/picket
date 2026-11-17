@@ -21,12 +21,18 @@ import { closingBlock } from "./block.mts";
 import { close, defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
 import { checkCommitMessage } from "../../shared/commit-message.mts";
 import { verb } from "./index.mts";
+import { fingerprintMatches } from "../../shared/scenarios/format.mts";
+import { listScenarios } from "../../shared/scenarios/files.mts";
+import { appendTestRow, type CaseKind, type CaseRow, type TestEntry } from "../../shared/testing/results.mts";
+import { setMarker } from "../../shared/work/markers.mts";
+import { appendReply, type ReplyEntry } from "../../shared/work/replies.mts";
+import { appendVerdict, type VerdictEntry } from "../../shared/work/verdict-log.mts";
 
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
 const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0";
-const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [] };
+const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -417,4 +423,79 @@ test("an order item, and a fast item without the environment or an active scenar
     if (options.lane === "order") writeState(root, { ...readState(root, id), status: "done" }, new Date());
     assert.equal(closeFast(root, id).status, "done", JSON.stringify(options));
   }
+});
+
+const TESTED_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/a.js]\n  - n: 2\n    files: [src/b.js]\n    drive:\n      - covers: T-2.1\n        method: GET\n        path: /orders\n        status: 200\n      - covers: T-2.3\n        method: POST\n        path: /orders\n        status: 201\n---\n# D\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\n- **T-2.1** orders are listed\n- **T-2.3** an order is placed\n";
+const STAGE_TS = (minute: number) => new Date(`2026-11-17T10:${String(minute).padStart(2, "0")}:00.000Z`);
+const GET_STEPS = "request GET {orders}/orders\nexpect status 200\n";
+const OWNED_POST = 'request POST {orders}/orders\n  body {"reference": "PKT-{run}"}\nexpect status 201\n';
+const UNOWNED_POST = 'request POST {orders}/orders\n  body {"reference": "a"}\nexpect status 201\n';
+
+type StageSetup = { lane?: Lane; environment?: boolean; verdicts?: [string, string, string | null, Partial<VerdictEntry>?][]; cases?: TestEntry[]; replies?: ReplyEntry[]; done?: boolean };
+
+function testCase(id: string, kind: CaseKind, steps: string, fields: Partial<CaseRow> = {}): TestEntry {
+  return { round: 2, type: "case", case: id, criterion: "T-2.1", kind, intent: "orders are listed", steps, outcome: "passed", attempts: 1, unstable: false, detail: "", mocks: [], ...fields };
+}
+
+function testedItem(t: TestContext, { lane = "design", environment = true, verdicts = [], cases = [], replies = [], done = false }: StageSetup = {}): { root: string; id: WorkId } {
+  const root = gitRepo(t, { files: { "README.md": "u\n" } });
+  if (environment) {
+    writeIn(root, ".picket/env/compose.yaml", "services: {}\n");
+    const card: Card = { header: { id: "S-0002", kind: "smoke", covers: [], intent: "health", status: "active", format: 1 }, steps: [{ word: "request", line: 1, method: "GET", target: "{orders}/health", headers: [], body: null }] };
+    writeIn(root, ".picket/env/scenarios/S-0002.md", writeScenario(card));
+  }
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "--allow-empty", "-m", "environment");
+  const { id } = openItem(root, { lane, title: "Orders" });
+  writeIn(root, `work/${id}/${lane}.md`, TESTED_DESIGN.replace("lane: design", `lane: ${lane}`));
+  for (const n of [1, 2]) for (const mark of ["done", "approved", "reviewed"] as const) setMarker(root, id, n, mark, STAGE_TS(0));
+  verdicts.forEach(([agent, verdict, scope, extra = {}], at) => appendVerdict(root, id, { agent, verdict, phase: agent === "tester" ? null : 2, scope, through: null, ...extra }, STAGE_TS(at + 1)));
+  for (const entry of cases) appendTestRow(root, id, entry, STAGE_TS(20));
+  for (const entry of replies) appendReply(root, id, entry, STAGE_TS(30));
+  if (done) writeState(root, { ...readState(root, id), status: "done" }, new Date());
+  return { root, id };
+}
+
+const blockLines = (result: CloseResult) => closingBlock(result).split("\n");
+
+test("a tester APPROVED in round 2 prints its counts, the mocked service and the kept cases (T-9.1, T-9.4, T-9.5)", (t) => {
+  const cases = [
+    testCase("C-01", "normal", GET_STEPS, { mocks: ["payments-mock"] }),
+    testCase("C-02", "boundary", OWNED_POST),
+    testCase("C-03", "state", GET_STEPS, { unstable: true, attempts: 2 }),
+    testCase("C-04", "negative", UNOWNED_POST),
+    testCase("C-05", "permission", "request GET {orders}/orders\n  header x-key: ***\nexpect status 200\n"),
+    { round: 2, type: "cell", criterion: "T-2.3", kind: "state", outcome: "not covered", why: "the cap is reached" } as TestEntry,
+  ];
+  const verdicts: StageSetup["verdicts"] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "user" }], ["tester", "APPROVED", "test", { round: 2 }]];
+  const replies: ReplyEntry[] = [{ action: "resolve_tests", phase: null, reply: "t: yes", choice: "answers", answers: "yes" }];
+  const { root, id } = testedItem(t, { verdicts, cases, replies });
+  const result = closeFast(root, id);
+  const lines = blockLines(result);
+  assert.ok(lines.includes("Tested: APPROVED in round 2 · 5 passed, 1 not covered"), lines.join("\n"));
+  assert.ok(lines.includes("Not verified end to end: payments"), lines.join("\n"));
+  assert.ok(lines.includes("Kept: S-0003 (T-2.1 normal), S-0004 (T-2.1 boundary)"), lines.join("\n"));
+  for (const file of ["S-0003.md", "S-0004.md"]) {
+    const path = `.picket/env/scenarios/${file}`;
+    assert.ok(result.committed.includes(path), result.committed.join(", "));
+    assert.ok(fingerprintMatches(readFileSync(join(root, path), "utf8")), file);
+  }
+  assert.equal(listScenarios(root).length, 3);
+});
+
+test("an item accepted at resolve_tests names each criterion not verified with its why (T-9.2)", (t) => {
+  const cases = [testCase("C-01", "normal", GET_STEPS, { round: 1 }), { round: 1, type: "cell", criterion: "T-2.3", kind: "normal", outcome: "blocked", why: "no matching data" } as TestEntry];
+  const verdicts: StageSetup["verdicts"] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "user" }]];
+  const replies: ReplyEntry[] = [{ action: "resolve_tests", phase: null, reply: "n", choice: "accept" }];
+  const { root, id } = testedItem(t, { verdicts, cases, replies });
+  assert.ok(blockLines(closeFast(root, id)).includes("Tested: accepted by the user, not verified: T-2.3 (no matching data)"));
+});
+
+test("an untested item says why on its Tested line, and a fast item prints none (T-9.3)", (t) => {
+  const noEnvironment = testedItem(t, { environment: false, done: true });
+  assert.ok(blockLines(closeFast(noEnvironment.root, noEnvironment.id)).includes("Tested: no environment"));
+  const order = testedItem(t, { lane: "order", done: true });
+  assert.ok(blockLines(closeFast(order.root, order.id)).includes("Tested: off for the order lane (testing: design)"));
+  const fast = fastItem(t, { scenario: null });
+  assert.ok(!blockLines(closeFast(fast.root, fast.id)).some((line) => line.startsWith("Tested:")));
 });

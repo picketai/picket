@@ -38,6 +38,14 @@ function laneLine(v: CloseResult): string | null {
   return phasesLine(v.closing);
 }
 
+function testedLines({ tested, unproved, kept }: Closing): string[] {
+  return [
+    ...(tested === null ? [] : [`Tested: ${tested}`]),
+    ...(unproved.length ? [`Not verified end to end: ${unproved.join(", ")}`] : []),
+    ...(kept.length ? [`Kept: ${kept.join(", ")}`] : []),
+  ];
+}
+
 function leftForYou({ command, why }: LeftEntry): string {
   return `Left for you: ${command}${why ? ` (${why})` : ""}`;
 }
@@ -71,6 +79,7 @@ export function closingBlock(v: CloseResult): string {
   const lines = [
     `## ${HEADING[v.lane]} closed: ${v.id}`,
     laneLine(v),
+    ...testedLines(v.closing),
     `Audit: ${v.closing.audit}`,
     v.closing.questions && `Questions: ${v.closing.questions}`,
     ...v.closing.deferred.map(({ id, owner, gate }) => `Deferred: ${id} ${owner}, ${gate}`),

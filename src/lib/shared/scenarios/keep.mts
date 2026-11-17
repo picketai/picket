@@ -73,6 +73,10 @@ function cardOf(input: CandidateInput, check: HttpCheck, hit: DriveHit, service:
   return { header: header(input, check), steps: [request, status, ...contains] };
 }
 
+export function writesUnownedData(card: Card): boolean {
+  return card.steps.some((step) => step.word === "request" && CHANGING_METHODS.includes(step.method) && !`${step.target}${step.body ?? ""}`.includes(RUN_PREFIX));
+}
+
 export function candidateCard(input: CandidateInput): { card: Card } | { notKept: string } {
   const { check, outcome, ran } = input.result;
   if (!("path" in check)) return notKept("a run check is never kept; only an HTTP check becomes a saved scenario");
@@ -80,8 +84,9 @@ export function candidateCard(input: CandidateInput): { card: Card } | { notKept
   if (ran.body?.includes(MASK)) return notKept("the logged body holds a masked secret");
   const service = serviceFor(check, input.apps, input.files);
   if (service === null) return notKept("the phase's files sit in no app or in several; name one with service");
-  if (CHANGING_METHODS.includes(check.method) && !`${ran.path}${ran.body ?? ""}`.includes(RUN_PREFIX)) return notKept(`${check.method} changes data it did not create; create it with a ${RUN_PREFIX} prefix`);
-  return { card: cardOf(input, check, ran, service) };
+  const card = cardOf(input, check, ran, service);
+  if (writesUnownedData(card)) return notKept(`${check.method} changes data it did not create; create it with a ${RUN_PREFIX} prefix`);
+  return { card };
 }
 
 export function criterionText(body: string, covers: string): string {

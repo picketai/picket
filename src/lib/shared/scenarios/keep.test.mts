@@ -9,6 +9,7 @@ import { writeScenarioFile } from "./files.mts";
 import { fingerprintMatches, parseScenario, writeScenario, type Card } from "./format.mts";
 import { candidateCard, criterionText, deprecate, keepCandidates, keepText, readCandidates, restoreKept, storeCandidates, type Candidate, type CandidateInput } from "./keep.mts";
 import { scenarioProblems } from "./rules.mts";
+import { writesUnownedData } from "./keep.mts";
 
 const CHECK: HttpCheck = { covers: "T-1.1", method: "POST", path: "/orders", status: 201, contains: ["id"] };
 const HIT = { method: "POST", path: "/api/orders", status: 201, ms: 3, body: '{"sku":"PKT-test-1","due":"2026-11-22"}' };
@@ -148,4 +149,16 @@ test("deprecate sets the status and the successor and keeps the fingerprint matc
   assert.ok(text !== null && fingerprintMatches(text));
   assert.deepEqual([parseScenario(text).card?.header.status, parseScenario(text).card?.header.superseded_by], ["deprecated", "S-0004"]);
   assert.equal(deprecate("not a card", "S-0004"), null);
+});
+
+function postCard(body: string): Card {
+  const parsed = parseScenario(`---\nid: S-0000\nkind: normal\ncovers: ["x/T-1.1"]\nintent: an order\nformat: 1\n---\nrequest POST {orders}/orders\n  body ${body}\nexpect status 201\n`).card;
+  assert.ok(parsed);
+  return parsed;
+}
+
+test("a changing request writes unowned data unless its target or body carries PKT- (T-9.6)", () => {
+  assert.equal(writesUnownedData(postCard('{"sku":"a"}')), true);
+  assert.equal(writesUnownedData(postCard('{"sku":"PKT-{run}-1"}')), false);
+  assert.equal(writesUnownedData(card()), false);
 });

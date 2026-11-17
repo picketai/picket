@@ -24,7 +24,13 @@ import { reportFindings, type ReportFindings } from "../../shared/work/report.mt
 import { reviewQuestions } from "../../shared/work/reviews.mts";
 import { readSnapshot, type WorkSnapshot } from "../../shared/work/snapshot.mts";
 import { listWork, writeState, type Lane, type WorkState } from "../../shared/work/state.mts";
-import { readVerdicts } from "../../shared/work/verdict-log.mts";
+import { readVerdicts, type VerdictRow } from "../../shared/work/verdict-log.mts";
+import { restoreKept, type KeptFiles } from "../../shared/scenarios/keep.mts";
+import { testedCriteria } from "../../shared/testing/derive.mts";
+import { keepFinalCases, notProven, type KeptCases } from "../../shared/testing/keep-cases.mts";
+import { roundCounts } from "../../shared/testing/report.mts";
+import { latestCases, readTestRows, roundRows, testRound, type TestRow } from "../../shared/testing/results.mts";
+import { testApplies } from "../../shared/work/test-stage.mts";
 import { auditLine } from "./audit.mts";
 
 export type Repeat = { class: string; items: WorkId[] };
@@ -42,6 +48,9 @@ export type Closing = {
   deferred: Deferral[];
   report: ReportFindings | null;
   strategic: string[];
+  tested: string | null;
+  unproved: string[];
+  kept: string[];
 };
 export type CloseResult = WorkState & {
   commit: string | null;
@@ -201,14 +210,56 @@ function publishedPaths(snap: WorkSnapshot): string[] {
   return [...new Set(snap.verdicts.flatMap((row) => (typeof row.published === "string" ? [row.published] : [])))];
 }
 
-function commitClose(root: string, snap: WorkSnapshot, message: string, touched: string[], env: NodeJS.ProcessEnv): CommitResult {
+function commitClose(root: string, snap: WorkSnapshot, message: string, touched: string[], env: NodeJS.ProcessEnv, kept: KeptFiles): CommitResult {
   const id = snap.state.id;
-  const published = publishedPaths(snap);
+  const added = [...publishedPaths(snap), ...kept.paths];
   try {
-    return commitOwned(root, message, { add: [workRel(id), ...published], owns: itemOwner(root, snap, [...touched, ...published]), env });
+    return commitOwned(root, message, { add: [workRel(id), ...added], owns: itemOwner(root, snap, [...touched, ...added]), env });
   } catch (err) {
+    restoreKept(root, kept);
     throw new Refused((err as Error).message, { id });
   }
+}
+
+type TestStage = { tested: string | null; passed: boolean; round: number | null };
+
+const NO_KEPT: KeptCases = { files: { paths: [], lines: [], before: [] }, labels: [] };
+const TESTER = "tester";
+
+function isAcceptedAfter(snap: WorkSnapshot, tester: VerdictRow): boolean {
+  return snap.replies.some((reply) => reply.action === "resolve_tests" && reply.choice === "accept" && Date.parse(reply.ts) > Date.parse(tester.ts));
+}
+
+function unprovedWhy(rows: readonly TestRow[], criterion: string): string {
+  const cells = rows.flatMap((row) => (row.type === "cell" && row.criterion === criterion ? [row.why] : []));
+  const cases = latestCases(rows).filter((row) => row.criterion === criterion).map((row) => `${row.case} ${row.outcome}`);
+  return [...cells, ...cases].join("; ") || "no case ran";
+}
+
+function unprovedCriteria(snap: WorkSnapshot, rows: readonly TestRow[], round: number): string {
+  const inRound = roundRows(rows, round);
+  const passed = new Set(latestCases(inRound).filter((row) => row.outcome === "passed").map((row) => row.criterion));
+  return testedCriteria(snap.phases)
+    .filter((criterion) => !passed.has(criterion))
+    .map((criterion) => `${criterion} (${unprovedWhy(inRound, criterion)})`)
+    .join(", ");
+}
+
+function testStage(snap: WorkSnapshot, rows: readonly TestRow[]): TestStage {
+  if (!PHASED_LANES.includes(snap.state.lane)) return { tested: null, passed: false, round: null };
+  const applies = testApplies(snap);
+  if (!applies.applies) return { tested: applies.why, passed: false, round: null };
+  const tester = snap.verdicts.filter((row) => row.agent === TESTER).at(-1);
+  if (tester === undefined) return { tested: "not tested", passed: false, round: null };
+  const round = tester.round ?? testRound(snap.verdicts) - 1;
+  if (tester.verdict === "APPROVED") return { tested: `APPROVED in round ${round} · ${roundCounts(rows, round)}`, passed: true, round };
+  if (isAcceptedAfter(snap, tester)) return { tested: `accepted by the user, not verified: ${unprovedCriteria(snap, rows, round)}`, passed: true, round };
+  return { tested: `not tested: round ${round} ended ${tester.verdict}`, passed: false, round };
+}
+
+function keptCases(root: string, snap: WorkSnapshot, rows: readonly TestRow[], stage: TestStage): KeptCases {
+  if (!stage.passed || stage.round === null) return NO_KEPT;
+  return keepFinalCases(root, snap.state.id, rows, stage.round);
 }
 
 function approvalCommit(root: string, id: WorkId, phase: number): string | null {
@@ -227,7 +278,13 @@ function cumulativeVerdict(snap: WorkSnapshot): string | null {
   return snap.verdicts.filter((row) => row.agent === "reviewer" && row.scope === "cumulative").at(-1)?.verdict ?? null;
 }
 
-function closingFacts(root: string, snap: WorkSnapshot, audit: string, closeCommit: string | null): Closing {
+type TestedFacts = Pick<Closing, "tested" | "unproved" | "kept">;
+
+function testedFacts(stage: TestStage, rows: readonly TestRow[], kept: KeptCases): TestedFacts {
+  return { tested: stage.tested, unproved: stage.round === null ? [] : notProven(rows, stage.round), kept: kept.labels };
+}
+
+function closingFacts(root: string, snap: WorkSnapshot, audit: string, closeCommit: string | null, tested: TestedFacts): Closing {
   const { id, lane } = snap.state;
   const body = snap.artifact?.body ?? "";
   const report = lane === "research" ? reportFindings(body) : null;
@@ -241,6 +298,7 @@ function closingFacts(root: string, snap: WorkSnapshot, audit: string, closeComm
     deferred: PHASED_LANES.includes(lane) ? deferredCriteria(body) : [],
     report,
     strategic: report?.strategic_review ?? recordStrategicIds(lane, body),
+    ...tested,
   };
 }
 
@@ -293,18 +351,23 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   recordRepeats(root, id, repeats, now);
   const worktrees = recordedWorktrees(snap);
   dropItemChecks(root, id);
+  const rows = readTestRows(root, id);
+  const stage = testStage(snap, rows);
   if (!isRepo(root)) {
     const state = markDone(root, snap.state, now);
     writeAudit(root, id, audit);
     const environment = purgeOnClose(root, state, closeCtx);
-    return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing: closingFacts(root, snap, audit, null), worktrees, environment };
+    const closing = closingFacts(root, snap, audit, null, testedFacts(stage, rows, NO_KEPT));
+    return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing, worktrees, environment };
   }
   refuseUntouchedFastClose(root, snap.state, touched);
   const state = markDone(root, snap.state, now);
   writeAudit(root, id, audit);
-  const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env);
+  const kept = keptCases(root, snap, rows, stage);
+  const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env, kept.files);
   if (commit) recordAccept(root, id, commit, null, now);
   const committed = commit ? filesInCommit(root, commit) : [];
   const environment = purgeOnClose(root, state, closeCtx);
-  return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing: closingFacts(root, snap, audit, commit), worktrees, environment };
+  const closing = closingFacts(root, snap, audit, commit, testedFacts(stage, rows, kept));
+  return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing, worktrees, environment };
 }
