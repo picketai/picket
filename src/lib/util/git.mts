@@ -18,7 +18,7 @@ export function gitRead(root: string, args: string[], options: GitReadOptions & 
 export function gitRead(root: string, args: string[], options?: GitReadOptions & { buffer?: false }): string | null;
 export function gitRead(root: string, args: string[], { maxBuffer, buffer = false }: GitReadOptions = {}): string | Buffer | null {
   try {
-    const bytes = execFileSync("git", ["-C", root, ...args], { stdio: ["ignore", "pipe", "ignore"], maxBuffer });
+    const bytes = execFileSync("git", ["--no-optional-locks", "-C", root, ...args], { stdio: ["ignore", "pipe", "ignore"], maxBuffer });
     return buffer ? bytes : bytes.toString("utf8").trimEnd();
   } catch {
     return null;

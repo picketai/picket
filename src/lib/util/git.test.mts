@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { GitFailed, gitRead, gitRun } from "./git.mts";
 import { gitIn, gitOut, gitRepo } from "#test/git.mts";
@@ -31,6 +31,16 @@ test("gitRead with buffer returns a CRLF blob byte for byte, and null for a miss
   assert.ok(Buffer.isBuffer(bytes));
   assert.deepEqual(bytes, Buffer.from("one\r\ntwo\r\n\r\n"));
   assert.equal(gitRead(root, ["cat-file", "blob", "HEAD:missing.txt"], { buffer: true }), null);
+});
+
+test("gitRead of status leaves the index file as it was when a tracked file's timestamp moved", (t) => {
+  const root = gitRepo(t);
+  const index = join(root, ".git", "index");
+  const before = readFileSync(index);
+  const earlier = new Date("2001-01-01T00:00:00Z");
+  utimesSync(join(root, "a.txt"), earlier, earlier);
+  assert.equal(gitRead(root, ["status", "--porcelain"]), "");
+  assert.deepEqual(readFileSync(index), before);
 });
 
 test("gitRun returns the output of an allowed exit code and throws GitFailed on any other (T-4.4)", (t) => {

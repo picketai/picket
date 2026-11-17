@@ -1,0 +1,1 @@
+Make Picket's read-only git calls stop taking the optional index lock: pass --no-optional-locks on the git calls made by gitRead in src/lib/util/git.mts, so the status line's periodic git status no longer collides with a git write such as a phase commit or picket close.

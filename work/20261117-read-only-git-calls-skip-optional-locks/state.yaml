@@ -1,0 +1,8 @@
+id: 20261117-read-only-git-calls-skip-optional-locks
+lane: fast
+title: Read-only git calls skip optional locks
+status: done
+created: 2026-11-17T14:05:53.005Z
+updated: 2026-11-17T14:10:43.943Z
+session: 6d023c31-cd4a-4008-9bd5-6310224f190e
+base: 6d94f40f380b807962f4903992252bb8aaf2766d
