@@ -7,7 +7,7 @@ import { VERDICTS } from "./verdicts.mjs";
 export const SUPPORTED_SCHEMAS = Object.freeze([1]);
 export const MANIFEST_FILE = "extension.json";
 export const MANIFEST_KEYS = Object.freeze(["name", "version", "schema", "description", "rules", "agents", "review_steps", "preflight"]);
-export const AGENT_ROLES = Object.freeze(["lead", "analyst", "architect", "developer", "reviewer"]);
+export const AGENT_ROLES = Object.freeze(["lead", "analyst", "architect", "developer", "reviewer", "tester"]);
 export const REVIEW_SIZES = Object.freeze(["small", "medium", "large"]);
 export const PREFLIGHT_KINDS = Object.freeze(["path_exists", "env_set", "command_on_path"]);
 export const PREFLIGHT_LEVELS = Object.freeze(["warn", "fail"]);

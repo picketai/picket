@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { bodyOf, fences, frontmatterFields, sections } from "#test/instructions.mts";
 import { BLOCK_FIELDS, detectBlock } from "../../src/lib/shared/work/block.mts";
 import { WORK_FILES } from "../../src/lib/shared/work/files.mts";
-import { VERDICTS } from "../../src/lib/shared/verdicts.mjs";
+import { TESTER_VERDICTS, VERDICTS } from "../../src/lib/shared/verdicts.mjs";
 import { sendsFor } from "../../src/lib/shared/work/send.mts";
 import { snapshotOf } from "#test/snapshot.mts";
 
@@ -63,6 +63,14 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ lane: "design", phases: approved }), { action: "review_checkpoint", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases: approved }), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), { action: "review_crosscheck", actor: "reviewer", detail: "d", delta: ["D-002"] }, FIXTURE_SESSION),
+    ];
+  },
+  tester: () => {
+    const reviewed = [{ n: 1, done: true, approved: true, reviewed: true }];
+    const testerRow = { ts: FIXTURE_TS, agent: "tester", verdict: "CHANGES REQUIRED", phase: null, scope: "test", through: null, session: FIXTURE_SESSION };
+    return [
+      ...sendsFor(snapshotOf({ lane: "design", phases: reviewed }), { action: "test_item", actor: "tester", round: 1, detail: "d" }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "design", phases: reviewed, verdicts: [testerRow] }), { action: "test_item", actor: "tester", round: 2, detail: "d" }, FIXTURE_SESSION),
     ];
   },
 };
@@ -165,7 +173,8 @@ function contractProblems(fence, agent, extraLabels = []) {
   const kind = detectBlock(filledHeading(fence.lines[0] ?? ""));
   if (kind === null) return { kind, problems: [`the Output fence heading "${fence.lines[0]}" matches no BLOCK_HEADINGS entry`] };
   const last = fence.lines.filter((line) => line.trim()).at(-1)?.trim() ?? "";
-  const verdict = VERDICTS[last]?.agent === agent ? [] : [`the Output fence ends with "${last}", not a verdict of ${agent}`];
+  const owned = agent === "tester" ? Object.hasOwn(TESTER_VERDICTS, last) : VERDICTS[last]?.agent === agent;
+  const verdict = owned ? [] : [`the Output fence ends with "${last}", not a verdict of ${agent}`];
   const wanted = [...new Set([...BLOCK_FIELDS[kind], ...extraLabels])];
   const labels = wanted.filter((label) => !fence.lines.some((line) => line.startsWith(`${label}:`))).map((label) => `the ${kind} block has no "${label}:" line`);
   return { kind, problems: [...verdict, ...labels] };
@@ -288,7 +297,7 @@ test("each shell's Output fence, or its template's, opens with a block heading, 
     assert.deepEqual(problems, [], path);
     return kind;
   });
-  assert.deepEqual(kinds.sort(), ["artifact", "phase", "report", "review"]);
+  assert.deepEqual(kinds.sort(), ["artifact", "phase", "report", "review", "test"]);
 });
 
 test("a template fence without Waivers: fails, and so does a template that never names the fast-lane heading", () => {
@@ -301,7 +310,7 @@ test("a template fence without Waivers: fails, and so does a template that never
 test("every shell outside PENDING has Entry fixtures", () => {
   const converted = agentFiles().filter(({ path }) => !PENDING.includes(path)).map(({ text }) => frontmatterFields(text).name);
   assert.deepEqual(converted.filter((agent) => !(agent in ENTRY_FIXTURES)), []);
-  assert.deepEqual(Object.keys(ENTRY_FIXTURES).sort(), ["analyst", "architect", "developer", "reviewer"]);
+  assert.deepEqual(Object.keys(ENTRY_FIXTURES).sort(), ["analyst", "architect", "developer", "reviewer", "tester"]);
 });
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
@@ -309,6 +318,7 @@ test("each shell outside PENDING names in ## Entry exactly the fields picket nex
   assert.deepEqual(sentKeys("architect"), ["amend", "checks", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "review", "reword", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
   assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);
+  assert.deepEqual(sentKeys("tester"), ["brief", "round", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
   }
@@ -328,6 +338,13 @@ test("a review fence without Classes: fails, and a fence ending on another agent
   assert.deepEqual(outputProblems(fence("APPROVED", "Classes: none"), "reviewer").problems, []);
   assert.deepEqual(outputProblems(fence("APPROVED"), "reviewer").problems, ['the review block has no "Classes:" line']);
   assert.deepEqual(outputProblems(fence("PHASE DONE", "Classes: none"), "reviewer").problems, ['the Output fence ends with "PHASE DONE", not a verdict of reviewer']);
+});
+
+test("a test fence ends on a token of TESTER_VERDICTS and carries Report: (T-6.1)", () => {
+  const fence = (last, ...fields) => `${IDENTITY}\n## Output\n\n\`\`\`\n## Test: <id> · round <n>\n\nOne line.\n\n${fields.join("\n")}\n\n${last}\n\`\`\`\n`;
+  assert.deepEqual(outputProblems(fence("DRIFT DETECTED", "Report: work/<id>/test.md"), "tester").problems, []);
+  assert.deepEqual(outputProblems(fence("PHASE DONE", "Report: work/<id>/test.md"), "tester").problems, ['the Output fence ends with "PHASE DONE", not a verdict of tester']);
+  assert.deepEqual(outputProblems(fence("APPROVED"), "tester").problems, ['the test block has no "Report:" line']);
 });
 
 function markdownPaths(text) {

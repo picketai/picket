@@ -19,6 +19,7 @@ type Role = { type: AgentType; owns: (row: VerdictRow) => boolean };
 
 const FRESH_REVIEW = "You are reviewing a change you did not write. You have no context beyond what is below.";
 const REWORD_LINE = "reword: approved by the user at the amendment gate";
+const TEST_BRIEF = "test/brief.md";
 const TAG_LENGTH = 4;
 const FIRST_LETTER = "a".charCodeAt(0);
 
@@ -29,6 +30,7 @@ const ROLES = {
   architect: { type: "picket:architect", owns: (row) => row.agent === "architect" },
   reviewer: { type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope !== "cumulative" },
   "cumulative-reviewer": { type: "picket:reviewer", owns: (row) => isReviewer(row) && row.scope === "cumulative" },
+  tester: { type: "picket:tester", owns: (row) => row.agent === "tester" },
 } satisfies Record<string, Role>;
 
 export const NO_FILES: HasFile = () => false;
@@ -191,6 +193,11 @@ function amendSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "amend"
   return send(snap, instance(snap, "architect"), session, () => [workLine(snap), `amend: ${step.detail}`, ...reviewLines, ...reword]);
 }
 
+function testSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "test_item" }>, session: string | null): SendView {
+  const id = snap.state.id;
+  return send(snap, instance(snap, "tester"), session, () => [workLine(snap), `round: ${step.round}`, `brief: ${itemFile(snap, TEST_BRIEF)}`], { first: [`picket test brief ${id} --save`] });
+}
+
 function renderSend(s: SendView): string {
   const heading = `${s.tool} ${s.to} · ${s.type}${s.model ? ` · model ${s.model}` : ""}`;
   return [heading, ...(s.first ?? []).map((command) => `first: ${command}`), "```text", s.message, "```"].join("\n");
@@ -221,6 +228,8 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
       return [amendSend(snap, step, session)];
     case "review_crosscheck":
       return [recheckSend(snap, step.delta, session)];
+    case "test_item":
+      return [testSend(snap, step, session)];
     default:
       return [];
   }

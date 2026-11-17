@@ -89,6 +89,14 @@
     ]
   },
   {
+    "skill": "testing",
+    "positive": ["black-box test the finished item against its request", "write boundary and negative test cases for each tested criterion", "classify the failed case as product, test or environment", "retest the finished item after the fix round"],
+    "negative": [
+      { "prompt": "debug why the export throws and find the root cause", "owner": "debugging" },
+      { "prompt": "review the diff and give a verdict", "owner": "reviewing" }
+    ]
+  },
+  {
     "skill": "ticketing",
     "positive": ["log a bug in Jira", "pull JIRA-123", "draft an epic for the backlog"],
     "negative": [

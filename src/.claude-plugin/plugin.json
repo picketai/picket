@@ -20,6 +20,7 @@
     "./skills/resuming",
     "./skills/reviewing",
     "./skills/summarizing",
+    "./skills/testing",
     "./skills/ticketing"
   ]
 }

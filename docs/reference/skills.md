@@ -20,6 +20,7 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 | `picket:documenting` | used by agents | templates for every structured document | agents, or `/picket:documenting <kind> <subject>` |
 | `picket:reviewing` | used by agents | review checklist and pull request review | the reviewer, or `/picket:reviewing <pull request URL>` |
 | `picket:implementing` | used by agents | prove, check and drive a change, and the developer block | the developer and the fast lane; you never run it |
+| `picket:testing` | used by agents | black-box cases on the item's stack, classes and questions | the tester; you never run it |
 
 ## picket:expediting
 
@@ -148,3 +149,10 @@ How a change is made and proven: the kind of change named first, a red test befo
 **How you reach it.** You never invoke it. The [developer](agents.md#picketdeveloper) preloads it for every phase, and the fast lane loads it before its first edit.
 
 **Where it fits.** It decides what the block's `Red:`, `Root cause:`, `Tests:`, `Lint:` and `Verified:` lines say. A bug handed over by `picket:debugging` keeps its red test: the lane runs that test first instead of writing another. The fast lane prints the same block under `## Expedited: <id>` and ends it with `[c] commit   [x] discard: <why>` instead of a verdict.
+## picket:testing
+
+How a finished item is checked from the outside: a matrix of the tested criteria by case kind, one case per risk run on the item's own stack, the saved scenarios replayed, every failure classified with runtime evidence, and at most three questions for you.
+
+**How you reach it.** You never invoke it. The [tester](agents.md#pickettester) preloads it for every round of the test stage.
+
+**Where it fits.** The tested criteria are the checks the plan declared against an HTTP endpoint; the request is context, not a list of extra criteria. Each case is a short card of requests and expectations that `picket test case` runs twice before a failure counts. The skill decides what the tester records: which cell of the matrix gets a case, the class of each failure (`product`, `test` or `environment`), why a cell was not run, and the question. The kernel counts the records, writes `work/<id>/test.md` and derives the verdict, so the report never says more than the cases proved.

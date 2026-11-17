@@ -86,9 +86,9 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with fix_findings, amend, review_crosscheck, create_worktrees and approve_amendment, fifteen in all (T-6.6)", () => {
-  assert.equal(NEXT_ACTIONS.length, 15);
-  assert.deepEqual(NEXT_ACTIONS.slice(-5), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment"]);
+test("the actions end with fix_findings, amend, review_crosscheck, create_worktrees, approve_amendment and test_item, sixteen in all (T-6.6)", () => {
+  assert.equal(NEXT_ACTIONS.length, 16);
+  assert.deepEqual(NEXT_ACTIONS.slice(-6), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item"]);
 });
 
 const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };

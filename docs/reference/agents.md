@@ -8,6 +8,7 @@ The agents are teammates that the lead (the main Claude Code session) spawns for
 | `picket:architect` | writes the plan for a change | the order and design lanes |
 | `picket:developer` | implements one phase at a time | the order and design lanes |
 | `picket:reviewer` | checks plans, phases and pull requests | the order and design lanes, `/picket:reviewing <pull request URL>` |
+| `picket:tester` | checks a finished item from the outside, against its request | the order and design lanes, after the final review |
 
 The fast lane uses none of them: the main session makes the change itself.
 
@@ -42,3 +43,11 @@ The reviewer is a read-only, adversarial checker: it tries to break the work and
 **How you reach it.** In the design lane, the lane spawns it to cross-check the plan against its own decisions while the developer starts phase 1. In the design lane, a plan of 6 or more phases also gets a checkpoint review before the phase after the midpoint. In the order and design lanes, once every phase is approved, a fresh reviewer reviews the whole change. You can also run it yourself on a pull request with `/picket:reviewing <pull request URL>`; it posts nothing to the pull request until you answer `p`, and posting works on Azure DevOps only.
 
 **Where it fits.** It writes nothing at all; its findings live in its reply and the kernel records the verdict. It judges the change against the plan's checks and decisions, and does not penalise what the plan asked for. The final review of the whole change uses a fresh reviewer, on the `opus` model, that has not seen the earlier verdicts, so it reads your original request before the plan. Other reviews run on the `sonnet` model. A plan review ends with `ALIGNED` or `DRIFT DETECTED`; a checkpoint, final or pull request review ends with `APPROVED` or `CHANGES REQUIRED`.
+
+## picket:tester
+
+The tester checks a finished item the way its users will meet it: on a running copy of the system, against what you asked for, without reading the change.
+
+**How you reach it.** The kernel sends it once the final review of an order or design item passes, when the project's `testing` setting covers the lane (`design` by default; `all` or `off`), the plan declares at least one HTTP check, and the project has a test environment in `.picket/env/compose.yaml`. The same tester retests after each fix round.
+
+**Where it fits.** It is a black box: hooks deny it any read of the item's own files, and its shell runs only the test verbs (`picket test case`, `picket test report` and their kin), `picket env start`, `picket env replay`, `picket env status` and `picket state`. It writes one case per risk, runs each on the item's stack, replays the saved scenarios, and classifies every failure as a product, test or environment problem with the answer it saw. It asks you at most three questions, each a choice. The kernel, not the tester, counts the results, writes `work/<id>/test.md` and derives the verdict. It runs on the `sonnet` model and ends each round with `APPROVED`, `CHANGES REQUIRED` or `DRIFT DETECTED`, the token the kernel derived.

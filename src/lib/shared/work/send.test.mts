@@ -298,3 +298,20 @@ test("no worktrees line without a branch, with worktrees: none, or with no neste
   assert.equal(carriesLine({ ...item, layout: { ...ORDERS_LAYOUT, worktrees: "none" } }), false);
   assert.equal(carriesLine({ ...item, phases: [{ n: 1, done: true, approved: true, entry: { n: 1, files: ["README.md"] } }, { n: 2 }] }), false);
 });
+
+const testItem = (round: number): NextStep => ({ action: "test_item", actor: "tester", round, detail: "d" });
+const TESTED: SnapshotInput = { lane: "design", phases: [{ n: 1, done: true, approved: true, reviewed: true }] };
+
+test("the first round spawns the tester with the brief saved first and three message lines (T-6.2)", () => {
+  assert.deepEqual(sends(TESTED, testItem(1)), [
+    { tool: "Agent", to: named("tester"), type: "picket:tester", first: [`picket test brief ${ID} --save`], message: `work: ${ID}\nround: 1\nbrief: work/${ID}/test/brief.md` },
+  ]);
+});
+
+test("a tester row of this session continues the same tester for the next round (T-6.2)", () => {
+  const row = { ...verdictRow("tester", "CHANGES REQUIRED", "test", S), phase: null };
+  const [send] = sends({ ...TESTED, verdicts: [row] }, testItem(2));
+  assert.deepEqual([send.tool, send.to, send.message], ["SendMessage", named("tester"), `work: ${ID}\nround: 2\nbrief: work/${ID}/test/brief.md`]);
+  const [fresh] = sends({ ...TESTED, verdicts: [{ ...row, session: "other" }] }, testItem(2));
+  assert.equal(fresh.tool, "Agent");
+});

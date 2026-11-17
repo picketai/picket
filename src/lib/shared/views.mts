@@ -28,7 +28,7 @@ export type StateView = {
   warnings?: string[];
 };
 
-export type AgentType = "picket:analyst" | "picket:architect" | "picket:developer" | "picket:reviewer";
+export type AgentType = "picket:analyst" | "picket:architect" | "picket:developer" | "picket:reviewer" | "picket:tester";
 
 export type SendView = { tool: "Agent" | "SendMessage"; to: string; type: AgentType; model?: "opus"; first?: string[]; message: string };
 

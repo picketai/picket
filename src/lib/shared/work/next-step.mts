@@ -27,7 +27,8 @@ export type NextStep =
   | { action: "fix_findings"; actor: "developer"; phase: number; review: FindingsReview; detail: string }
   | { action: "amend"; actor: "architect"; detail: string; review?: string; reword?: true }
   | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
-  | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] };
+  | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] }
+  | { action: "test_item"; actor: "tester"; round: number; detail: string };
 
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];

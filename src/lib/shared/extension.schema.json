@@ -35,7 +35,8 @@
         "analyst": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "architect": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "developer": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "reviewer": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        "reviewer": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "tester": { "type": "array", "items": { "type": "string", "minLength": 1 } }
       },
       "additionalProperties": false
     },
