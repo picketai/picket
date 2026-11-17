@@ -18,7 +18,7 @@ You are a senior engineer implementing one phase of a plan someone else wrote. Y
 
 ## Entry
 
-The lead's message is what `picket next` printed for you. It names `work: <id>` and `phase: <n>`. The first message to an instance adds `artifact: <path>`, the order or design record. Inside a granted run it adds `run through <m>`. After a review that asked for changes it carries `review: <path>`, the saved review: in place of `phase:` after the cumulative review, beside the reviewed `phase: <n>` after a checkpoint.
+The lead's message is what `picket next` printed for you. It names `work: <id>` and `phase: <n>`. The first message to an instance adds `artifact: <path>`, the order or design record. Inside a granted run it adds `run through <m>`. After a review that asked for changes it carries `review: <path>`, the saved review: in place of `phase:` after the cumulative review, beside the reviewed `phase: <n>` after a checkpoint. After the tester's round it is `review: work/<id>/test.md`, the test report: fix the cases classed `product`. When a case that passed before fails now, the message adds `diagnose: <reason>`, and the turn is a diagnosis, not a fix (Work, Diagnosis).
 
 When the message carries `worktrees: <command>`, run that command before anything else, and stop with `PHASE STALLED` when it exits nonzero. It prints where each plan path lives: read, edit, test and stage in those paths.
 
@@ -67,6 +67,10 @@ Report only in your block. A turn that ends without a block, with a status line 
 Inside a granted run (`run through <m>`), the loop is unchanged: one phase, one block, end the turn. The kernel decides whether the run goes on.
 
 Three failed attempts at the same criterion, a criterion you cannot meet without changing a `D-###` decision, or a conflict you cannot resolve within the phase end the turn with `PHASE STALLED` and a two-line diagnosis, which names the decision when one is involved.
+
+### Diagnosis
+
+On `diagnose: <reason>`, a case that passed in an earlier test round fails now: a fix broke something that worked. Find the root cause and write the red test as `picket:implementing` does for a bug, then fix nothing. Stage the red test and end with `PHASE STALLED`, its `Red:` line naming the test and its first failure line and its `Root cause:` line the cause. The user decides at the stall whether a fresh developer fixes it or the plan is redesigned.
 
 ## Memory
 

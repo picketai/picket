@@ -315,3 +315,15 @@ test("a tester row of this session continues the same tester for the next round 
   const [fresh] = sends({ ...TESTED, verdicts: [{ ...row, session: "other" }] }, testItem(2));
   assert.equal(fresh.tool, "Agent");
 });
+
+test("a test fix names the report, and a diagnosis adds its reason after it", () => {
+  const fix: NextStep = { action: "fix_findings", actor: "developer", phase: 1, review: "test", detail: "d", diagnose: "C-02 T-1.1 normal passed in round 1 and fails now" };
+  assert.equal(sends(TESTED, fix)[0].message, `work: ${ID}\nreview: work/${ID}/test.md\ndiagnose: C-02 T-1.1 normal passed in round 1 and fails now\nartifact: work/${ID}/design.md`);
+});
+
+test("a cumulative re-review after test fixes names the round on a fixes line", () => {
+  const review: NextStep = { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d", fixes: 2 };
+  const [send] = sends(TESTED, review);
+  assert.equal(send.to, named("cumulative-reviewer"));
+  assert.match(send.message, /\nsummary: .*\nfixes: test round 2$/);
+});

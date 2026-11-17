@@ -10,21 +10,24 @@ import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "./stal
 import { ARTIFACT_BY_LANE, type Lane } from "./state.mts";
 import type { VerdictRow } from "./verdict-log.mts";
 import type { WorkId } from "./files.mts";
+import { STALL_OPTIONS } from "./action-text.mts";
+import { testApplies, testStageStep } from "./test-stage.mts";
 
 export { NEXT_ACTIONS, type NextAction } from "./action-text.mts";
 
-export type FindingsReview = "checkpoint" | "cumulative";
+export type FindingsReview = "checkpoint" | "cumulative" | "test";
 
 export type NextStep =
   | { action: "none"; actor: null; detail: string }
-  | { action: "resolve_block" | "resolve_rejections" | "approve_amendment"; actor: "user"; detail: string; options: string[] }
+  | { action: "resolve_block" | "resolve_rejections" | "approve_amendment" | "resolve_tests" | "approve_fixes"; actor: "user"; detail: string; options: string[] }
   | { action: "resolve_sources"; actor: "user"; detail: string; options: string[] }
   | { action: "write_artifact"; actor: "architect" | "analyst"; detail: string }
   | { action: "implement_phase"; actor: "developer"; phase: number; detail: string }
   | { action: "approve_phase"; actor: "user"; phase: number; detail: string; options: string[]; own_gate?: Gate | null }
-  | { action: "review_checkpoint" | "review_cumulative"; actor: "reviewer"; phase: number; detail: string }
+  | { action: "review_checkpoint"; actor: "reviewer"; phase: number; detail: string }
+  | { action: "review_cumulative"; actor: "reviewer"; phase: number; detail: string; fixes?: number }
   | { action: "close"; actor: "lead"; detail: string }
-  | { action: "fix_findings"; actor: "developer"; phase: number; review: FindingsReview; detail: string }
+  | { action: "fix_findings"; actor: "developer"; phase: number; review: FindingsReview; detail: string; diagnose?: string }
   | { action: "amend"; actor: "architect"; detail: string; review?: string; reword?: true }
   | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
   | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] }
@@ -36,7 +39,6 @@ const MIDPOINT_MIN_PHASES = 6;
 const ISO_DAY = "YYYY-MM-DD".length;
 const DECISION_ANCHOR = /#(D-\d{3})$/;
 const OUT_OF_FRAME_FINDING = "the architect's amendment changed the frontmatter beyond the declared checks it names";
-const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 const BLOCK_OPTIONS = ["[c] continue", "[x] abandon"];
 const IRREVERSIBLE_OPTIONS = ["[i] confirm the irreversible step", "[x] reject: <why>"];
 
@@ -210,13 +212,15 @@ function planAmendStep(snap: WorkSnapshot): NextStep | null {
   return answeredAmendment(snap, answer.choice, review, after);
 }
 
+const CLOSE_STEP: NextStep = { action: "close", actor: "lead", detail: "cumulative review passed; close and print the closing block" };
+
 function allApprovedStep(snap: WorkSnapshot): NextStep {
-  if (isCumulativelyReviewed(snap)) return { action: "close", actor: "lead", detail: "cumulative review passed; close and print the closing block" };
+  if (isCumulativelyReviewed(snap)) return testApplies(snap).applies ? (testStageStep(snap) ?? CLOSE_STEP) : CLOSE_STEP;
   return rejectionsStep(snap) ?? planAmendStep(snap) ?? amendStep(snap) ?? findingsStep(snap) ?? cumulativeReviewStep(snap, "all phases approved; one cumulative review remains");
 }
 
 function isRepeatStall(verdicts: readonly VerdictRow[]): boolean {
-  const drifts = verdicts.filter((v) => v.verdict === "DRIFT DETECTED").length;
+  const drifts = verdicts.filter((v) => v.verdict === "DRIFT DETECTED" && v.agent === "reviewer").length;
   return drifts >= STALL_REPEATS || amendmentsAnsweringBlocks(verdicts).length >= STALL_REPEATS;
 }
 

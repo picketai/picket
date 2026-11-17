@@ -43,6 +43,7 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ phases, run_through: 2 }), implement, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases, verdicts: [developerRow(1)] }), implement, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases: [{ n: 1, done: true, approved: true }] }), fix, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1, done: true, approved: true }] }), { ...fix, phase: 1, review: "test", diagnose: "C-02 T-1.1 normal passed in round 1 and fails now" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ branch: "RMS-12", layout: FIXTURE_LAYOUT, phases: [{ n: 1, entry: { n: 1, files: ["src/Orders/pricing.cs"] } }] }), { ...implement, phase: 1 }, FIXTURE_SESSION),
     ];
   },
@@ -62,6 +63,7 @@ const ENTRY_FIXTURES = {
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }, { n: 2 }] }), { action: "implement_phase", actor: "developer", phase: 1, detail: "d" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ lane: "design", phases: approved }), { action: "review_checkpoint", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ phases: approved }), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d" }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "design", phases: approved }), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "d", fixes: 1 }, FIXTURE_SESSION),
       ...sendsFor(snapshotOf({ lane: "design", phases: [{ n: 1 }] }), { action: "review_crosscheck", actor: "reviewer", detail: "d", delta: ["D-002"] }, FIXTURE_SESSION),
     ];
   },
@@ -314,10 +316,10 @@ test("every shell outside PENDING has Entry fixtures", () => {
 });
 
 test("each shell outside PENDING names in ## Entry exactly the fields picket next sends it", () => {
-  assert.deepEqual(sentKeys("developer"), ["artifact", "phase", "review", "run through", "work", "worktrees"]);
+  assert.deepEqual(sentKeys("developer"), ["artifact", "diagnose", "phase", "review", "run through", "work", "worktrees"]);
   assert.deepEqual(sentKeys("architect"), ["amend", "checks", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "review", "reword", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
-  assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "phase", "scope", "summary", "work"]);
+  assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "fixes", "phase", "scope", "summary", "work"]);
   assert.deepEqual(sentKeys("tester"), ["brief", "round", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);

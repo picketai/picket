@@ -5,7 +5,7 @@ import { namedChecks } from "./amendment.mts";
 import { phasePaths } from "./artifact.mts";
 import { briefLines } from "./brief.mts";
 import { workRel, type WorkFile } from "./files.mts";
-import type { NextStep } from "./next-step.mts";
+import type { FindingsReview, NextStep } from "./next-step.mts";
 import { freshReplies } from "./replies.mts";
 import { reviewRel } from "./reviews.mts";
 import { currentPhase, phaseOf, type WorkSnapshot } from "./snapshot.mts";
@@ -20,6 +20,7 @@ type Role = { type: AgentType; owns: (row: VerdictRow) => boolean };
 const FRESH_REVIEW = "You are reviewing a change you did not write. You have no context beyond what is below.";
 const REWORD_LINE = "reword: approved by the user at the amendment gate";
 const TEST_BRIEF = "test/brief.md";
+const TEST_REPORT = "test.md";
 const TAG_LENGTH = 4;
 const FIRST_LETTER = "a".charCodeAt(0);
 
@@ -164,18 +165,25 @@ function checkpointSend(snap: WorkSnapshot, phase: number, session: string | nul
   return send(snap, instance(snap, "reviewer"), session, () => [workLine(snap), "scope: checkpoint", `phase: ${phase}`, ...summaryLines(snap)], { first: [saveSummary(snap)] });
 }
 
-function cumulativeSend(snap: WorkSnapshot, session: string | null): SendView {
+function cumulativeSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "review_cumulative" }>, session: string | null): SendView {
   const reviewer = instance(snap, "cumulative-reviewer");
   const reviewed = snap.verdicts.some(reviewer.owns);
   const first = [...(reviewed ? [] : [`picket mutate ${snap.state.id}`]), saveSummary(snap)];
-  return send(snap, reviewer, session, (tool) => [...(tool === "Agent" ? [FRESH_REVIEW] : []), workLine(snap), "scope: cumulative", ...summaryLines(snap)], { model: "opus", first });
+  const fixes = step.fixes === undefined ? [] : [`fixes: test round ${step.fixes}`];
+  return send(snap, reviewer, session, (tool) => [...(tool === "Agent" ? [FRESH_REVIEW] : []), workLine(snap), "scope: cumulative", ...summaryLines(snap), ...fixes], { model: "opus", first });
+}
+
+function findingsReviewRel(snap: WorkSnapshot, review: FindingsReview): string {
+  return review === "test" ? itemFile(snap, TEST_REPORT) : reviewRel(snap.state.id, review, null);
 }
 
 function findingsSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "fix_findings" }>, session: string | null): SendView {
   const phaseLines = step.review === "checkpoint" ? [`phase: ${step.phase}`] : [];
+  const diagnose = step.diagnose === undefined ? [] : [`diagnose: ${step.diagnose}`];
   return send(snap, developer(snap), session, (tool) => [
     workLine(snap),
-    `review: ${reviewRel(snap.state.id, step.review, null)}`,
+    `review: ${findingsReviewRel(snap, step.review)}`,
+    ...diagnose,
     ...phaseLines,
     ...worktreesLines(snap),
     ...(tool === "Agent" ? [artifactLine(snap)] : []),
@@ -221,7 +229,7 @@ export function sendsFor(snap: WorkSnapshot, step: NextStep, session: string | n
     case "review_checkpoint":
       return [checkpointSend(snap, step.phase, session)];
     case "review_cumulative":
-      return [cumulativeSend(snap, session)];
+      return [cumulativeSend(snap, step, session)];
     case "fix_findings":
       return [findingsSend(snap, step, session)];
     case "amend":

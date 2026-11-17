@@ -1,4 +1,6 @@
-export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none", "fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item"] as const;
+export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none", "fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item", "resolve_tests", "approve_fixes"] as const;
+
+export const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 
 export type NextAction = (typeof NEXT_ACTIONS)[number];
 
@@ -23,6 +25,8 @@ export const ACTION_TEXT: Readonly<Record<NextAction, (step: ActionStep, voice: 
   create_worktrees: (_step, voice) => (voice === "user" ? "you name the worktree branch" : "waits for a worktree branch name"),
   approve_amendment: (_step, voice) => (voice === "user" ? "you approve a plan amendment" : "waits for approval of a plan amendment"),
   test_item: () => "tester tests the finished item",
+  resolve_tests: (_step, voice) => (voice === "user" ? "you answer the tester" : "waits for answers to the tester"),
+  approve_fixes: (_step, voice) => (voice === "user" ? "you approve the test fixes" : "waits for approval of the test fixes"),
 };
 
 const ACTIONS: readonly string[] = NEXT_ACTIONS;

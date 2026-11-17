@@ -86,9 +86,9 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with fix_findings, amend, review_crosscheck, create_worktrees, approve_amendment and test_item, sixteen in all (T-6.6)", () => {
-  assert.equal(NEXT_ACTIONS.length, 16);
-  assert.deepEqual(NEXT_ACTIONS.slice(-6), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item"]);
+test("the actions end with the test stage's test_item, resolve_tests and approve_fixes, eighteen in all", () => {
+  assert.equal(NEXT_ACTIONS.length, 18);
+  assert.deepEqual(NEXT_ACTIONS.slice(-8), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item", "resolve_tests", "approve_fixes"]);
 });
 
 const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };
@@ -292,6 +292,15 @@ test("every phase reviewed, or a cumulative APPROVED row, lets the lead close", 
   assert.deepEqual(step({ phases: numbered(2, { done: true, approved: true, reviewed: true }) }), close);
   const cumulative = { ts: "2026-10-23T10:00:00.000Z", agent: "reviewer", verdict: "APPROVED", phase: 2, scope: "cumulative", through: null };
   assert.deepEqual(step({ phases: numbered(2, { done: true, approved: true }), verdicts: [cumulative] }), close);
+});
+
+test("a cumulative APPROVED on a design item the test stage covers sends the tester, not the lead (T-7.2)", () => {
+  const drive = [{ covers: "T-1.1", method: "GET", path: "/orders", status: 200 }];
+  const phases = [{ n: 1, done: true, approved: true, entry: { n: 1, files: ["src/a.mjs"], drive } }];
+  const cumulative = { ts: "2026-10-23T10:00:00.000Z", agent: "reviewer", verdict: "APPROVED", phase: 1, scope: "cumulative", through: null };
+  const snap = { ...snapshotOf({ lane: "design", phases, verdicts: [cumulative] }), testing: { setting: "design" as const, environment: true, reasons: [] } };
+  assert.equal(nextStep(snap, SECURITY_PATHS).action, "test_item");
+  assert.equal(nextStep({ ...snap, testing: { ...snap.testing, environment: false } }, SECURITY_PATHS).action, "close");
 });
 
 test("phase 4 of a six-phase design starts with a checkpoint on phase 3", () => {
