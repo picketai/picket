@@ -56,17 +56,18 @@ export const TEST_MOVES = [
   },
 ];
 
-const COVERAGE_KEY = /["']?\b(?<name>lines|statements|functions|branches)\b["']?\s*:\s*(?<value>\d+(?:\.\d+)?)/g;
-const COVERAGE_FLAG = /--(?<name>lines|statements|functions|branches)[=\s]+(?<value>\d+(?:\.\d+)?)/g;
+const NUMBER = String.raw`(?<value>-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)`;
+const COVERAGE_KEY = new RegExp(String.raw`["']?\b(?<name>lines|statements|functions|branches)\b["']?\s*:\s*${NUMBER}`, "g");
+const COVERAGE_FLAG = new RegExp(String.raw`--(?<name>lines|statements|functions|branches)[=\s]+${NUMBER}`, "g");
 const PYTHON_CONFIG = /(^|\/)(pytest\.ini|setup\.cfg|pyproject\.toml|tox\.ini|\.coveragerc)$/i;
 
 export const THRESHOLDS = [
   { tool: "vitest, jest, c8 or nyc config", file: /(^|\/)((vitest|vite|jest)\.config\.[cm]?[jt]s|package\.json|\.c8rc(\.json)?|\.nycrc(\.json)?)$/i, key: COVERAGE_KEY, stricter: "higher", bar: "coverage_min" },
   { tool: "c8 or nyc --check-coverage", file: /(^|\/)package\.json$/i, key: COVERAGE_FLAG, stricter: "higher", bar: "coverage_min" },
-  { tool: "pytest --cov-fail-under", file: PYTHON_CONFIG, key: /--cov-fail-under[=\s]+(?<value>\d+(?:\.\d+)?)/g, stricter: "higher", bar: "coverage_min" },
-  { tool: "coverage fail_under", file: PYTHON_CONFIG, key: /\bfail_under\s*=\s*(?<value>\d+(?:\.\d+)?)/g, stricter: "higher", bar: "coverage_min" },
-  { tool: "coverlet Threshold", file: /\.(csproj|props|targets)$/i, key: /(?:<Threshold>\s*|\/p:Threshold=)(?<value>\d+(?:\.\d+)?)/g, stricter: "higher", bar: "coverage_min" },
-  { tool: "eslint --max-warnings", file: /(^|\/)package\.json$/i, key: /--max-warnings[=\s]+(?<value>\d+)/g, stricter: "lower", bar: "max_warnings" },
+  { tool: "pytest --cov-fail-under", file: PYTHON_CONFIG, key: new RegExp(String.raw`--cov-fail-under[=\s]+${NUMBER}`, "g"), stricter: "higher", bar: "coverage_min" },
+  { tool: "coverage fail_under", file: PYTHON_CONFIG, key: new RegExp(String.raw`\bfail_under\s*[=:]\s*${NUMBER}`, "g"), stricter: "higher", bar: "coverage_min" },
+  { tool: "coverlet Threshold", file: /\.(csproj|props|targets)$/i, key: new RegExp(String.raw`(?:<Threshold>\s*|\/p:Threshold=)${NUMBER}`, "g"), stricter: "higher", bar: "coverage_min" },
+  { tool: "eslint --max-warnings", file: /(^|\/)package\.json$/i, key: new RegExp(String.raw`--max-warnings[=\s]+${NUMBER}`, "g"), stricter: "lower", bar: "max_warnings", negativeIsNoLimit: true },
 ];
 
 export function hasThresholds(rel) {
@@ -113,9 +114,26 @@ function readings(rows, line) {
   );
 }
 
+function limitOf(row, value) {
+  return row.negativeIsNoLimit && value < 0 ? Infinity : value;
+}
+
 function weaker(row, value, than) {
   if (typeof than !== "number") return false;
-  return row.stricter === "higher" ? value < than : value > than;
+  const [mine, theirs] = [limitOf(row, value), limitOf(row, than)];
+  return row.stricter === "higher" ? mine < theirs : mine > theirs;
+}
+
+const KEY_AWAITING_VALUE = /[:=]$/;
+
+function withValuesOnTheirKeyLine(lines) {
+  const joined = [];
+  for (const line of lines) {
+    const last = joined.length - 1;
+    if (last >= 0 && KEY_AWAITING_VALUE.test(joined[last])) joined[last] = `${joined[last]} ${line}`;
+    else joined.push(line);
+  }
+  return joined;
 }
 
 function thresholdMoves(rel, removed, added, bar) {
@@ -135,7 +153,7 @@ export function deletedTestMoves(paths) {
 export function silencedMoves({ rel, before = "", after = "", bar = {} }) {
   const beforeLines = linesOf(before);
   const afterLines = linesOf(after);
-  const added = difference(afterLines, beforeLines);
-  const removed = difference(beforeLines, afterLines);
-  return [...codeMoves(rel, added), ...thresholdMoves(rel, removed, added, bar ?? {})];
+  const [beforeKeyed, afterKeyed] = [withValuesOnTheirKeyLine(beforeLines), withValuesOnTheirKeyLine(afterLines)];
+  const thresholds = thresholdMoves(rel, difference(beforeKeyed, afterKeyed), difference(afterKeyed, beforeKeyed), bar ?? {});
+  return [...codeMoves(rel, difference(afterLines, beforeLines)), ...thresholds];
 }

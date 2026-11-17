@@ -11,6 +11,7 @@ import { powerShellCommands, powerShellNames, powerShellPlaces, sourceCommands, 
 import { codeComments, COMMENT_SYNTAX, commentPlacements, commentSeeds } from "#test/variants.mts";
 import { memberSpellings, silencedLines, SKIP_APIS, skipSeeds, testFileNames } from "#test/variants.mts";
 import { SUPPRESSIONS, suppressionPlaces, suppressionSeeds } from "#test/variants.mts";
+import { THRESHOLD_EDITS, thresholdEdits, thresholdSeeds, thresholdSpellings } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -625,6 +626,22 @@ test("SUPPRESSIONS has a row for every LANGS extension, and suppressionSeeds wri
   assert.deepEqual(Object.keys(LANGS).filter((ext) => !Object.hasOwn(SUPPRESSIONS, ext)), []);
   assert.deepEqual(suppressionSeeds(".py"), [{ rel: "src/a.py", line: "# noqa: E501" }, { rel: "src/a.py", line: "# pyright: ignore" }]);
   assert.deepEqual(suppressionSeeds(".md"), []);
+});
+
+const respelled = (seed) => thresholdSpellings.spell(seed).map((spelling) => spelling.input.after);
+
+test("thresholdSpellings respells the vitest row's new value five ways (T-8.1)", () => {
+  const config = (value) => `export default { test: { coverage: { thresholds: { lines${value} } } } };\n`;
+  assert.deepEqual(respelled(THRESHOLD_EDITS["vitest, jest, c8 or nyc config"]), [config(": 80.0"), config(": 8e1"), config(": .5"), config(":80"), config(":\n  80")]);
+  assert.deepEqual(thresholdEdits.families.map((family) => family.name), ["threshold spellings"]);
+});
+
+test("thresholdSpellings writes -1 for --max-warnings, a colon for an INI key and a leading dot only inside a TOML string", () => {
+  const lint = (flag) => `{ "scripts": { "lint": "eslint . --max-warnings${flag}" } }\n`;
+  assert.deepEqual(respelled(THRESHOLD_EDITS["eslint --max-warnings"]), [lint(" 5.0"), lint(" 5e0"), lint(" -1"), lint("=-1")]);
+  assert.deepEqual(respelled(THRESHOLD_EDITS["coverage fail_under"]), ["[coverage:report]\nfail_under = 80.0\n", "[coverage:report]\nfail_under = 8e1\n", "[coverage:report]\nfail_under = .5\n", "[coverage:report]\nfail_under:80\n"]);
+  assert.deepEqual(respelled({ rel: "pyproject.toml", before: "fail_under = 90\n", after: "fail_under = 80\n" }), ["fail_under = 80.0\n", "fail_under = 8e1\n"]);
+  assert.deepEqual(thresholdSeeds("no such tool"), []);
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

@@ -108,6 +108,28 @@ for (const [rel, before, after] of [
   });
 }
 
+const vitestConfig = (value) => `export default { test: { coverage: { thresholds: { lines: ${value} } } } };`;
+const lintScript = (flag) => lines("{", `  "scripts": { "lint": "eslint . ${flag}" }`, "}");
+
+test("a leading-dot fraction, a value on the line after its key and --max-warnings -1 are threshold moves (T-8.2)", () => {
+  assert.deepEqual(kinds("vitest.config.ts", vitestConfig(90), vitestConfig(".5")), ["threshold"]);
+  assert.deepEqual(kinds("vitest.config.ts", vitestConfig(90), lines("export default { test: { coverage: { thresholds: { lines:", "  80 } } } };")), ["threshold"]);
+  assert.deepEqual(kinds("package.json", lintScript("--max-warnings 0"), lintScript("--max-warnings -1")), ["threshold"]);
+  assert.deepEqual(kinds("package.json", lintScript("--max-warnings 0"), lintScript("--max-warnings=-1")), ["threshold"]);
+  assert.deepEqual(kinds("package.json", "", lintScript("--max-warnings -1"), { max_warnings: 10 }), ["threshold"]);
+});
+
+test("--max-warnings 0 written over 5 or over -1 tightens the bar and is no move (T-8.3)", () => {
+  assert.deepEqual(kinds("package.json", lintScript("--max-warnings 5"), lintScript("--max-warnings 0")), []);
+  assert.deepEqual(kinds("package.json", lintScript("--max-warnings -1"), lintScript("--max-warnings 0")), []);
+});
+
+test("a threshold value reads as the tool parses it, exponents and INI colons included", () => {
+  assert.deepEqual(kinds("vitest.config.ts", vitestConfig(80), vitestConfig("9e1")), [], "9e1 is 90, a raise");
+  assert.deepEqual(kinds("vitest.config.ts", vitestConfig(90), vitestConfig("8e1")), ["threshold"]);
+  assert.deepEqual(kinds("setup.cfg", lines("[coverage:report]", "fail_under = 90"), lines("[coverage:report]", "fail_under:80")), ["threshold"]);
+});
+
 test("every THRESHOLDS row names a direction and a quality bar key", () => {
   for (const row of THRESHOLDS) {
     assert.ok(["higher", "lower"].includes(row.stricter), row.tool);

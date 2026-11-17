@@ -1163,6 +1163,92 @@ export const silencedLines: Grammar<SilencedSeed, SilencedSeed> = {
   families: [testFileNames, memberSpellings, suppressionPlaces],
 };
 
+export type ThresholdSeed = { rel: string; before: string; after: string };
+
+const thresholdEdit = (rel: string, written: (value: string) => string, from: string, to: string): ThresholdSeed => ({ rel, before: written(from), after: written(to) });
+
+export const THRESHOLD_EDITS: Record<string, ThresholdSeed> = {
+  "vitest, jest, c8 or nyc config": thresholdEdit("vitest.config.ts", (v) => `export default { test: { coverage: { thresholds: { lines: ${v} } } } };\n`, "90", "80"),
+  "c8 or nyc --check-coverage": thresholdEdit("package.json", (v) => `{ "scripts": { "test": "c8 --check-coverage --lines ${v} node --test" } }\n`, "90", "80"),
+  "pytest --cov-fail-under": thresholdEdit("pyproject.toml", (v) => `[tool.pytest.ini_options]\naddopts = "--cov-fail-under=${v}"\n`, "90", "80"),
+  "coverage fail_under": thresholdEdit("setup.cfg", (v) => `[coverage:report]\nfail_under = ${v}\n`, "90", "80"),
+  "coverlet Threshold": thresholdEdit("tests/A.Tests.csproj", (v) => `<Project><PropertyGroup><Threshold>${v}</Threshold></PropertyGroup></Project>\n`, "90", "80"),
+  "eslint --max-warnings": thresholdEdit("package.json", (v) => `{ "scripts": { "lint": "eslint . --max-warnings ${v}" } }\n`, "0", "5"),
+};
+
+export function thresholdSeeds(tool: string): ThresholdSeed[] {
+  return Object.hasOwn(THRESHOLD_EDITS, tool) ? [THRESHOLD_EDITS[tool]] : [];
+}
+
+type WrittenValue = { head: string; value: string; tail: string };
+
+const NUMBER_CHAR = /[\d.eE+-]/;
+const LEADING_NUMBER = /^-?[\d.]+(?:[eE][+-]?\d+)?/;
+
+function writtenValue({ before, after }: ThresholdSeed): WrittenValue {
+  let start = 0;
+  while (start < after.length && after[start] === before[start]) start += 1;
+  while (start > 0 && NUMBER_CHAR.test(after[start - 1])) start -= 1;
+  const value = LEADING_NUMBER.exec(after.slice(start))?.[0];
+  if (value === undefined) throw new Error(`no changed number in the threshold seed ${JSON.stringify(after)}`);
+  return { head: after.slice(0, start), value, tail: after.slice(start + value.length) };
+}
+
+const SCRIPT_CONFIG = /\.[cm]?[jt]s$/;
+const INI_CONFIG = /(^|\/)(setup\.cfg|tox\.ini|pytest\.ini|\.coveragerc)$/;
+const TOML_CONFIG = /\.toml$/;
+
+function lineHead(head: string): string {
+  return head.slice(head.lastIndexOf("\n") + 1);
+}
+
+function insideQuotes(head: string): boolean {
+  return (lineHead(head).match(/"/g) ?? []).length % 2 === 1;
+}
+
+function takesLeadingDot(rel: string, head: string): boolean {
+  return SCRIPT_CONFIG.test(rel) || INI_CONFIG.test(rel) || (TOML_CONFIG.test(rel) && insideQuotes(head));
+}
+
+function exponentOf(value: string): string {
+  return Number(value).toExponential().replace("+", "");
+}
+
+const COLON_KEY = /:\s+$/;
+const INI_KEY = /\s*=\s*$/;
+const MAX_WARNINGS_FLAG = /--max-warnings\s+$/;
+
+function respelledValues(rel: string, { head, value }: WrittenValue): { head: string; value: string }[] {
+  const plain = [{ head, value: `${value}.0` }, { head, value: exponentOf(value) }];
+  const leadingDot = takesLeadingDot(rel, head) ? [{ head, value: ".5" }] : [];
+  const tight = COLON_KEY.test(head) ? [{ head: head.replace(COLON_KEY, ":"), value }] : INI_CONFIG.test(rel) && INI_KEY.test(head) ? [{ head: head.replace(INI_KEY, ":"), value }] : [];
+  const nextLine = SCRIPT_CONFIG.test(rel) && COLON_KEY.test(head) ? [{ head: head.replace(COLON_KEY, ":\n  "), value }] : [];
+  const noLimit = MAX_WARNINGS_FLAG.test(head) ? [{ head, value: "-1" }, { head: head.replace(/\s+$/, "="), value: "-1" }] : [];
+  return [...plain, ...leadingDot, ...tight, ...nextLine, ...noLimit];
+}
+
+function thresholdLabel({ rel, after }: ThresholdSeed): string {
+  return `${rel}: ${JSON.stringify(after)}`;
+}
+
+export const thresholdSpellings: Family<ThresholdSeed, ThresholdSeed> = {
+  name: "threshold spellings",
+  spell: (seed) => {
+    const written = writtenValue(seed);
+    return respelledValues(seed.rel, written).map(({ head, value }) => {
+      const input = { ...seed, after: `${head}${value}${written.tail}` };
+      return { label: thresholdLabel(input), input };
+    });
+  },
+};
+
+export const thresholdEdits: Grammar<ThresholdSeed, ThresholdSeed> = {
+  name: "threshold edits",
+  written: (seed) => seed,
+  label: thresholdLabel,
+  families: [thresholdSpellings],
+};
+
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
   const seen = new Set<string>();
   return spellings.filter(({ label }) => {

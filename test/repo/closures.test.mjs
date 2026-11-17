@@ -38,6 +38,7 @@ export const GUARDS = [
   { guard: "edit target", module: "src/lib/hooks/guard/edit-target.mts", closure: "src/lib/hooks/guard/edit-target.variants.test.mts", tables: [] },
   { guard: "guard.comments", module: "src/lib/hooks/guard/comments/index.mts", closure: "src/lib/hooks/guard/comments/index.variants.test.mts", tables: [{ module: "src/lib/shared/comments.mjs", name: "LANGS" }] },
   { guard: "guard.silenced", module: "src/lib/hooks/guard/silenced/index.mts", closure: "src/lib/hooks/guard/silenced/index.variants.test.mts", tables: [{ module: "src/lib/shared/silenced.mjs", name: "TEST_MOVES" }, { module: "src/lib/shared/comments.mjs", name: "LANGS" }] },
+  { guard: "guard.silenced thresholds", module: "src/lib/hooks/guard/silenced/index.mts", closure: "src/lib/hooks/guard/silenced/index.variants.test.mts", tables: [{ module: "src/lib/shared/silenced.mjs", name: "THRESHOLDS" }] },
   { guard: "guard.scope", module: "src/lib/hooks/guard/scope/index.mts", closure: "src/lib/hooks/guard/scope/index.variants.test.mts", tables: [] },
   { guard: "admit security", module: "src/lib/shared/admission/signals.mts", closure: "src/lib/shared/admission/signals.variants.test.mts", tables: [] },
   { guard: "maskedBody", module: "src/lib/shared/drive-log.mts", closure: "src/lib/shared/drive-log.variants.test.mts", tables: SECRET_WORDS },
