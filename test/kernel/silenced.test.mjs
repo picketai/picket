@@ -145,6 +145,31 @@ for (const [rel, added, kind] of [
   });
 }
 
+for (const [rel, added] of [
+  ["src/A.java", '@SuppressWarnings("unchecked")'],
+  ["src/a.kt", '@Suppress("UNUSED")'],
+  ["src/a.rs", "#[allow(dead_code)]"],
+  ["src/a.swift", "// swiftlint:disable force_cast"],
+  ["src/a.scala", "@nowarn"],
+  ["src/a.php", "// phpcs:ignore"],
+  ["src/a.dart", "// ignore: unused_local_variable"],
+  ["src/a.rb", "# rubocop:disable Style/X"],
+  ["src/a.sh", "# shellcheck disable=SC2086"],
+  ["src/a.pl", "my $a = 1; ## no critic"],
+  ["src/a.vb", "#Disable Warning BC42024"],
+  ["src/a.py", "x = f()  # pyright: ignore"],
+]) {
+  test(`${rel}: "${added}" is a suppression (T-7.2)`, () => {
+    assert.deepEqual(silencedMoves({ rel, before: "a();", after: lines(added, "a();") }), [{ kind: "suppression", text: normaliseLine(added) }]);
+  });
+}
+
+test("a prose comment that only shares a word with a suppression marker is no move", () => {
+  assert.deepEqual(kinds("src/a.dart", "", "// ignore: later, once the API settles"), []);
+  assert.deepEqual(kinds("src/a.pl", "", "# the reviewer had no critic for this"), []);
+  assert.deepEqual(kinds("src/a.kt", "", "val suppressed = isSuppressed(x)"), []);
+});
+
 test("a test option set to false, a skip word in a string and an unrelated object field are no test move", () => {
   assert.deepEqual(kinds("test/a.test.mjs", "", 'test("a", { skip: false }, () => {});'), []);
   assert.deepEqual(kinds("test/a.test.ts", "", 'const s = it["skipped"];'), []);

@@ -57,9 +57,13 @@ function documentRow(ext) {
 export const COMMENT_SUPPRESSION_MARKERS = [
   /eslint-disable/i, /@ts-(ignore|expect-error|nocheck)/i, /biome-ignore/i, /istanbul ignore/i,
   /c8 ignore/i, /\bnoqa\b/i, /pylint:\s*disable/i, /mypy:\s*ignore/i, /type:\s*ignore/i, /nolint/i,
+  /pyright:\s*ignore/i, /swiftlint:disable/i, /phpcs:(ignore|disable)/i, /rubocop:(disable|todo)/i, /shellcheck\s+disable=/i,
+  /^\s*ignore(_for_file)?:\s*[a-z_]+(\s*,\s*[a-z_]+)*\s*$/, /^\s*#\s*no\s+critic\b/i,
 ];
 
-export const STATEMENT_SUPPRESSION_MARKERS = [/#pragma warning disable/i, /SuppressMessage/i];
+export const STATEMENT_SUPPRESSION_MARKERS = [
+  /#pragma warning disable/i, /SuppressMessage/i, /@SuppressWarnings\b/, /@(file:)?Suppress\s*\(/, /#!?\[allow\s*\(/, /@nowarn\b/, /#Disable\s+Warning\b/i,
+];
 
 export const SUPPRESSION_MARKERS = [...COMMENT_SUPPRESSION_MARKERS, ...STATEMENT_SUPPRESSION_MARKERS];
 

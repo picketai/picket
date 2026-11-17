@@ -51,6 +51,11 @@ test("licence and justification markers exempt only their header and attribute f
   ]);
 });
 
+test("a suppression marker line is a directive, not a comment (T-7.3)", () => {
+  assert.deepEqual(commentLines("# rubocop:disable Style/X", ".rb"), []);
+  assert.deepEqual(commentLines(lines("// swiftlint:disable force_cast", "// ignore: unused_local_variable", "// ignore: later, once the API settles"), ".dart"), ["ignore: later, once the API settles"]);
+});
+
 test("craft-lint-allow is not an exemption for the hook", () => {
   assert.deepEqual(commentLines("// craft-lint-allow: CD2 because", ".ts"), ["craft-lint-allow: CD2 because"]);
 });

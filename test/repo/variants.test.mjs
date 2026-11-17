@@ -10,6 +10,7 @@ import { commandWrappers, kernelCalls, kernelLaunchers } from "#test/variants.mt
 import { powerShellCommands, powerShellNames, powerShellPlaces, sourceCommands, sourcePathSpellings } from "#test/variants.mts";
 import { codeComments, COMMENT_SYNTAX, commentPlacements, commentSeeds } from "#test/variants.mts";
 import { memberSpellings, silencedLines, SKIP_APIS, skipSeeds, testFileNames } from "#test/variants.mts";
+import { SUPPRESSIONS, suppressionPlaces, suppressionSeeds } from "#test/variants.mts";
 
 const HELPER_URL = new URL("../support/variants.mts", import.meta.url).href;
 
@@ -599,8 +600,31 @@ test("skipSeeds gives every framework's lines of a TEST_MOVES kind at that frame
   assert.deepEqual(skipSeeds("focused-test").filter((seed) => seed.rel === "spec/a.spec.js"), [{ rel: "spec/a.spec.js", line: 'fit("a", () => {});' }, { rel: "spec/a.spec.js", line: 'fdescribe("a", () => {});' }]);
   assert.ok(skipSeeds("skipped-test").some((seed) => seed.rel === "tests/a.rs" && seed.line === "#[ignore]"));
   assert.deepEqual(skipSeeds("nothing"), []);
-  assert.deepEqual(silencedLines.families.map((family) => family.name), ["test file names", "member spellings"]);
+  assert.deepEqual(silencedLines.families.map((family) => family.name), ["test file names", "member spellings", "suppression places"]);
   assert.ok(Object.keys(SKIP_APIS).includes("node:test"));
+});
+
+const placedLines = (seed) => suppressionPlaces.spell(seed).map((spelling) => spelling.input.line);
+
+test("suppressionPlaces puts a line-comment marker on its own line, after the statement and in a block comment (T-7.1)", () => {
+  assert.deepEqual(placedLines({ rel: "src/a.ts", line: "// eslint-disable-next-line" }), [
+    "    // eslint-disable-next-line", "const a = 1; // eslint-disable-next-line", "/* eslint-disable-next-line */",
+  ]);
+});
+
+test("suppressionPlaces keeps a statement on its own line and a marker where its tool reads it", () => {
+  assert.deepEqual(placedLines({ rel: "src/A.java", line: '@SuppressWarnings("unchecked")' }), ['    @SuppressWarnings("unchecked")']);
+  assert.deepEqual(placedLines({ rel: "src/a.sh", line: "# shellcheck disable=SC2086" }), ["    # shellcheck disable=SC2086"]);
+  assert.deepEqual(placedLines({ rel: "src/a.go", line: "//nolint" }), ["    //nolint", "var a = 1 //nolint"]);
+  assert.deepEqual(placedLines({ rel: "src/a.vue", line: "<!-- eslint-disable -->" }), ["    <!-- eslint-disable -->", "<p>a</p> <!-- eslint-disable -->"]);
+  assert.deepEqual(placedLines({ rel: "src/a.pl", line: "## no critic" }), ["    ## no critic", "my $a = 1; ## no critic"]);
+});
+
+test("SUPPRESSIONS has a row for every LANGS extension, and suppressionSeeds writes them to src/a<ext>", async () => {
+  const { LANGS } = await import("../../src/lib/shared/comments.mjs");
+  assert.deepEqual(Object.keys(LANGS).filter((ext) => !Object.hasOwn(SUPPRESSIONS, ext)), []);
+  assert.deepEqual(suppressionSeeds(".py"), [{ rel: "src/a.py", line: "# noqa: E501" }, { rel: "src/a.py", line: "# pyright: ignore" }]);
+  assert.deepEqual(suppressionSeeds(".md"), []);
 });
 
 test("commandLines writes a seed as given and refuses one with an unclosed quote", () => {

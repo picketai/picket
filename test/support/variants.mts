@@ -908,7 +908,7 @@ const SCRIPT_COMMENTS = [
   ownLine("<script>\na();\n</script><!-- note -->"),
 ];
 
-function rowsFor(extensions: string, row: CommentRow): Record<string, CommentRow> {
+function rowsFor<Row>(extensions: string, row: Row): Record<string, Row> {
   return Object.fromEntries(extensions.split(" ").map((ext) => [ext, row]));
 }
 
@@ -1082,11 +1082,85 @@ export const memberSpellings: Family<SilencedSeed, SilencedSeed> = {
   },
 };
 
+const SCRIPT_SUPPRESSIONS = ["// eslint-disable-next-line", "// @ts-expect-error"];
+
+export const SUPPRESSIONS: Record<string, string[]> = {
+  ...rowsFor(".js .mjs .cjs .jsx .ts .mts .cts .tsx", SCRIPT_SUPPRESSIONS),
+  ".cs": ["#pragma warning disable CS0168"],
+  ...rowsFor(".java .groovy", ['@SuppressWarnings("unchecked")']),
+  ...rowsFor(".kt .kts", ['@Suppress("UNUSED")']),
+  ".go": ["//nolint"],
+  ".rs": ["#[allow(dead_code)]"],
+  ".swift": ["// swiftlint:disable force_cast"],
+  ".scala": ["@nowarn"],
+  ...rowsFor(".c .h .cpp .hpp .cc", ["// NOLINT"]),
+  ".php": ["// phpcs:ignore"],
+  ".dart": ["// ignore: unused_local_variable"],
+  ".py": ["# noqa: E501", "# pyright: ignore"],
+  ".rb": ["# rubocop:disable Style/X"],
+  ...rowsFor(".sh .bash", ["# shellcheck disable=SC2086"]),
+  ".ps1": ["[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]"],
+  ".pl": ["## no critic"],
+  ".r": ["# nolint"],
+  ".sql": ["-- noqa"],
+  ".vb": ["#Disable Warning BC42024"],
+  ...rowsFor(".html .htm .xml .xaml .cshtml .razor .vue .svelte", ["<!-- eslint-disable -->"]),
+};
+
+export function suppressionSeeds(ext: string): SilencedSeed[] {
+  return Object.hasOwn(SUPPRESSIONS, ext) ? SUPPRESSIONS[ext].map((line) => ({ rel: `src/a${ext}`, line })) : [];
+}
+
+const SUPPRESSIONS_READ_ONLY_ON_THEIR_OWN_LINE = new Set([".sh", ".bash"]);
+const SUPPRESSIONS_READ_ONLY_IN_LINE_COMMENTS = new Set([".go", ".dart", ".swift", ".sql"]);
+
+const PLAIN_COMMENT_FORM = /^(?<open>\S+) note(?: (?<close>\S+))?$/;
+
+type CommentWrapper = { open: string; close?: string };
+
+function plainCommentForms(ext: string): CommentWrapper[] {
+  if (!Object.hasOwn(COMMENT_SYNTAX, ext)) return [];
+  return COMMENT_SYNTAX[ext].forms.flatMap(({ text }) => {
+    const groups = PLAIN_COMMENT_FORM.exec(text)?.groups;
+    return groups === undefined ? [] : [{ open: groups.open, close: groups.close }];
+  });
+}
+
+type SuppressionShape = { comment: boolean; body: string | null };
+
+function suppressionShape(ext: string, line: string): SuppressionShape {
+  const forms = plainCommentForms(ext);
+  const lineToken = forms.find(({ open, close }) => close === undefined && line.startsWith(open));
+  if (lineToken !== undefined) return { comment: true, body: line.slice(lineToken.open.length).trim() };
+  const wrapped = forms.some(({ open, close }) => close !== undefined && line.startsWith(open) && line.endsWith(close));
+  return { comment: wrapped, body: null };
+}
+
+function blockCommented(ext: string, body: string | null): string[] {
+  const block = plainCommentForms(ext).find(({ close }) => close !== undefined);
+  if (body === null || block === undefined || SUPPRESSIONS_READ_ONLY_IN_LINE_COMMENTS.has(ext)) return [];
+  return [`${block.open} ${body} ${block.close}`];
+}
+
+function suppressionPlacements(rel: string, line: string): string[] {
+  const { ext } = fileStem(rel);
+  const own = [`    ${line}`];
+  const { comment, body } = suppressionShape(ext, line);
+  if (!comment) return own;
+  const trailing = SUPPRESSIONS_READ_ONLY_ON_THEIR_OWN_LINE.has(ext) ? [] : [`${COMMENT_SYNTAX[ext].statement} ${line}`];
+  return [...own, ...trailing, ...blockCommented(ext, body)];
+}
+
+export const suppressionPlaces: Family<SilencedSeed, SilencedSeed> = {
+  name: "suppression places",
+  spell: ({ rel, line }) => silencedSpellings(suppressionPlacements(rel, line).map((placed) => ({ rel, line: placed }))),
+};
+
 export const silencedLines: Grammar<SilencedSeed, SilencedSeed> = {
   name: "silenced lines",
   written: (seed) => seed,
   label: silencedLabel,
-  families: [testFileNames, memberSpellings],
+  families: [testFileNames, memberSpellings, suppressionPlaces],
 };
 
 function distinctByLabel<I>(spellings: Spelling<I>[]): Spelling<I>[] {
