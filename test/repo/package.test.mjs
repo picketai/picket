@@ -9,6 +9,7 @@ import { MODS } from "../../src/lib/mods.mts";
 const SHIPPED = [
   "package.json",
   ".claude-plugin/plugin.json",
+  ".claude-plugin/icon.png",
   "bin/picket",
   "bin/picket.cmd",
   "bin/picket.mjs",

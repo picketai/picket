@@ -176,6 +176,14 @@ const developer = (): AgentInfo => ({
   name: 'developer',
   status: 'running',
   description: 'implement phase 1',
+  kind: 'local_agent',
+  taskStatus: 'running',
+  label: 'developer',
+  startTime: NOW,
+  cwd: 'D:/repo',
+  tokenCount: 0,
+  tokenSamples: [],
+  hasRow: true,
 })
 
 const SPAWN = {
