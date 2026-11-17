@@ -1,0 +1,1 @@
+Small fix: regenerate `src/.claude-plugin/icon.png` without the metadata the image tool added (the cHRM, bKGD, tIME chunks and the three tEXt date chunks date:create, date:modify, date:timestamp). Same pixels: the logo `assets/Pixel Corgi PicketAI Logo.png` padded with transparent rows above and below to 1312 x 1312. The file must carry no timestamp.
