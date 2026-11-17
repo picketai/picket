@@ -89,3 +89,13 @@ test("the brief lists the previous round's cases and the questions asked so far"
   assert.ok(text.includes("\nC-01 T-2.1 boundary failed\n"));
   assert.ok(text.includes("\nquestions: 1 of 3 asked\n"));
 });
+
+test("the user's answers to the tester appear under Answers, and no answer gives no section (T-8.1)", (t) => {
+  const { root, id } = designItem(t);
+  const snap = readSnapshot(root, id);
+  const reply = (answers: string) => ({ ts: "2026-11-17T10:00:00.000Z", action: "resolve_tests" as const, phase: null, reply: `t: ${answers}`, choice: "answers" as const, answers });
+  const answered = { ...snap, replies: [reply("keep the old rounding"), reply("refuse an empty basket")] };
+  const text = compileBrief(answered, testFacts(root, snap), [], { request: null, story: null });
+  assert.ok(text.includes("\n## Answers\n\nkeep the old rounding\nrefuse an empty basket\n"), text);
+  assert.ok(!compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }).includes("## Answers"));
+});

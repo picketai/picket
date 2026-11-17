@@ -72,7 +72,7 @@ const ENTRY_FIXTURES = {
     const testerRow = { ts: FIXTURE_TS, agent: "tester", verdict: "CHANGES REQUIRED", phase: null, scope: "test", through: null, session: FIXTURE_SESSION };
     return [
       ...sendsFor(snapshotOf({ lane: "design", phases: reviewed }), { action: "test_item", actor: "tester", round: 1, detail: "d" }, FIXTURE_SESSION),
-      ...sendsFor(snapshotOf({ lane: "design", phases: reviewed, verdicts: [testerRow] }), { action: "test_item", actor: "tester", round: 2, detail: "d" }, FIXTURE_SESSION),
+      ...sendsFor(snapshotOf({ lane: "design", phases: reviewed, verdicts: [testerRow] }), { action: "test_item", actor: "tester", round: 2, detail: "d", answers: "keep the old rounding" }, FIXTURE_SESSION),
     ];
   },
 };
@@ -320,7 +320,7 @@ test("each shell outside PENDING names in ## Entry exactly the fields picket nex
   assert.deepEqual(sentKeys("architect"), ["amend", "checks", "in scope", "lane", "out of scope", "preflight", "purpose", "request", "review", "reword", "sources", "work"]);
   assert.deepEqual(sentKeys("analyst"), ["in scope", "out of scope", "pass", "purpose", "request", "work"]);
   assert.deepEqual(sentKeys("reviewer"), ["artifact", "delta", "fixes", "phase", "scope", "summary", "work"]);
-  assert.deepEqual(sentKeys("tester"), ["brief", "round", "work"]);
+  assert.deepEqual(sentKeys("tester"), ["answers", "brief", "round", "work"]);
   for (const { path, text } of agentFiles().filter(({ path }) => !PENDING.includes(path))) {
     assert.deepEqual(entryProblems(bodyOf(text), sentKeys(frontmatterFields(text).name)), [], path);
   }

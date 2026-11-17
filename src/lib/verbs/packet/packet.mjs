@@ -16,6 +16,10 @@ import { nestedCheckoutPaths, phaseCommitMessage } from "../../shared/route/comm
 import { planWorktrees, ticketKey } from "../../shared/checkouts.mts";
 import { readDriveLog } from "../../shared/drive-log.mts";
 import { carriedResults, mismatchText, phaseCheckProblems, phaseCheckResults } from "../../shared/work/declared-checks.mts";
+import { testFixCommit, testFixPaths } from "../../shared/route/apply.mts";
+import { listedPathMatcher, stagedFiles } from "../../shared/git.mts";
+import { testedCriteria } from "../../shared/testing/derive.mts";
+import { latestCases, readTestRows, roundRows, testRound } from "../../shared/testing/results.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -182,6 +186,37 @@ function keepLines(root, snap, phase, width) {
   return listField("keeps", items, width);
 }
 
+const INDENT = `  ${"".padEnd(LABEL)}`;
+
+function questionLines(question, width) {
+  const choices = question.choices.map((choice) => `${INDENT}· ${cut(`${choice}${choice === question.default ? " (default)" : ""}`, width - INDENT.length - 2)}`);
+  const basis = question.basis === null ? [] : [`${INDENT}${cut(`Basis: ${question.basis}`, width - INDENT.length)}`];
+  return [field("question", `${question.criterion}: ${question.question}`, width), ...choices, ...basis];
+}
+
+function unprovedWhy(rows, criterion) {
+  const cells = rows.filter((row) => row.type === "cell" && row.criterion === criterion).map((row) => `${row.kind} ${row.outcome}: ${row.why}`);
+  const cases = latestCases(rows).filter((row) => row.criterion === criterion).map((row) => `${row.case} ${row.kind} ${row.outcome}`);
+  return [...cases, ...cells].join("; ") || "no case ran";
+}
+
+function resolveTestsLines(root, snap, width) {
+  const id = snap.state.id;
+  const rows = roundRows(readTestRows(root, id), testRound(snap.verdicts) - 1);
+  const passed = new Set(latestCases(rows).filter((row) => row.outcome === "passed").map((row) => row.criterion));
+  const questions = rows.filter((row) => row.type === "question").flatMap((question) => questionLines(question, width));
+  const unproved = testedCriteria(snap.phases).filter((criterion) => !passed.has(criterion)).map((criterion) => `${criterion}: ${unprovedWhy(rows, criterion)}`);
+  return [...questions, ...listField("unproved", unproved, width), field("report", `work/${id}/test.md`, width)];
+}
+
+function approveFixesLines(root, snap, width) {
+  const owns = listedPathMatcher(root, [`work/${snap.state.id}/`, ...testFixPaths(root, snap)]);
+  const staged = stagedFiles(root).filter((path) => owns(path));
+  const checked = testFixCommit(root, snap);
+  const commit = "problem" in checked ? `not committable: ${checked.problem}` : checked.message.split("\n")[0];
+  return [...listField("staged", staged.length ? staged : ["nothing staged"], width), field("commit", commit, width)];
+}
+
 export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
   const snap = readSnapshot(root, id);
   const s = stateView(snap);
@@ -256,6 +291,15 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(`▶ blocked · ${id}`);
     lines.push(`  ${cut(s.blocked_reason ?? n.detail, width - 2)}`);
     if (b.headline) lines.push("", field("developer", firstSentence(b.headline, width - 2 - LABEL), width));
+  } else if (n.action === "resolve_tests") {
+    lines.push(actionHeading(n, id));
+    lines.push("");
+    lines.push(...resolveTestsLines(root, snap, width));
+  } else if (n.action === "approve_fixes") {
+    lines.push(actionHeading(n, id));
+    lines.push(`  ${cut(n.detail, width - 2)}`);
+    lines.push("");
+    lines.push(...approveFixesLines(root, snap, width));
   } else if (n.action === "approve_amendment") {
     lines.push(actionHeading(n, id));
     lines.push(...wrap(n.detail, width - 2).map((line) => `  ${line}`));

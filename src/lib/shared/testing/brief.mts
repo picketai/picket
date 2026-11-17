@@ -37,6 +37,11 @@ function earlierLines(facts: DeriveInput): string[] {
   return latestCases(roundRows(facts.rows, facts.round - 1)).map((row) => `${row.case} ${row.criterion} ${row.kind} ${row.outcome}`);
 }
 
+function answersSection(snap: WorkSnapshot): string[] {
+  const answers = snap.replies.flatMap((reply) => (reply.choice === "answers" && reply.answers !== undefined ? [reply.answers] : []));
+  return answers.length ? section("Answers", answers) : [];
+}
+
 function limitLines(facts: DeriveInput): string[] {
   const asked = facts.rows.filter((row) => row.type === "question").length;
   return [`cases per round: at most ${caseCap(facts.criteria)}`, `questions: ${asked} of ${MAX_QUESTIONS} asked`];
@@ -53,6 +58,7 @@ export function compileBrief(snap: WorkSnapshot, facts: DeriveInput, scenarios: 
     ...section("Environment", [`run picket env start ${id}; it prints PICKET_URL_<SERVICE> for each service`]),
     ...section("Saved scenarios", scenarios.flatMap(scenarioLine)),
     ...section("Earlier rounds", earlierLines(facts)),
+    ...answersSection(snap),
     ...section("Limits", limitLines(facts)),
   ];
   return `${lines.join("\n")}\n`;

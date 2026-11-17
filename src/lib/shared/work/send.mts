@@ -203,7 +203,8 @@ function amendSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "amend"
 
 function testSend(snap: WorkSnapshot, step: Extract<NextStep, { action: "test_item" }>, session: string | null): SendView {
   const id = snap.state.id;
-  return send(snap, instance(snap, "tester"), session, () => [workLine(snap), `round: ${step.round}`, `brief: ${itemFile(snap, TEST_BRIEF)}`], { first: [`picket test brief ${id} --save`] });
+  const answers = step.answers === undefined ? [] : [`answers: ${step.answers}`];
+  return send(snap, instance(snap, "tester"), session, () => [workLine(snap), `round: ${step.round}`, `brief: ${itemFile(snap, TEST_BRIEF)}`, ...answers], { first: [`picket test brief ${id} --save`] });
 }
 
 function renderSend(s: SendView): string {

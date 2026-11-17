@@ -3,7 +3,7 @@ import { documentRel, documentSlug } from "../document-path.mts";
 import { isOutOfFrameAmendment, isUnchangedAmendment } from "./amendment.mts";
 import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
-import { freshReplies, type AmendmentChoice } from "./replies.mts";
+import { amendmentChoice, freshReplies, type AmendmentChoice } from "./replies.mts";
 import { reviewRel } from "./reviews.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
 import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "./stall.mts";
@@ -31,7 +31,7 @@ export type NextStep =
   | { action: "amend"; actor: "architect"; detail: string; review?: string; reword?: true }
   | { action: "review_crosscheck"; actor: "reviewer"; detail: string; delta: string[] }
   | { action: "create_worktrees"; actor: "user"; phase: number; detail: string; options: string[] }
-  | { action: "test_item"; actor: "tester"; round: number; detail: string };
+  | { action: "test_item"; actor: "tester"; round: number; detail: string; answers?: string };
 
 const HEAVY: readonly Lane[] = ["design"];
 const PHASED: readonly Lane[] = ["order", "design"];
@@ -206,10 +206,11 @@ function planAmendStep(snap: WorkSnapshot): NextStep | null {
   const at = lastIndexWhere(snap.verdicts, (v) => v.agent === "reviewer" && v.scope === "cumulative");
   const review = snap.verdicts[at];
   if (!isGatedReview(review)) return null;
-  const answer = snap.replies.filter((r) => r.action === "approve_amendment" && r.choice !== undefined && isAfter(r, review)).at(-1);
-  if (!answer?.choice) return amendmentGate(snap, review, gateFinding(review));
+  const answer = snap.replies.filter((r) => r.action === "approve_amendment" && amendmentChoice(r) !== null && isAfter(r, review)).at(-1);
+  const choice = answer ? amendmentChoice(answer) : null;
+  if (!answer || !choice) return amendmentGate(snap, review, gateFinding(review));
   const after = snap.verdicts.slice(at + 1).filter((v) => isAfter(v, answer));
-  return answeredAmendment(snap, answer.choice, review, after);
+  return answeredAmendment(snap, choice, review, after);
 }
 
 const CLOSE_STEP: NextStep = { action: "close", actor: "lead", detail: "cumulative review passed; close and print the closing block" };

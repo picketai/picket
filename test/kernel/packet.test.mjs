@@ -12,6 +12,8 @@ import { writeLayout } from "../../dist/lib/shared/repos.mjs";
 import { appendRows } from "../../dist/lib/shared/scenarios/results.mjs";
 import { storeCandidates } from "../../dist/lib/shared/scenarios/keep.mjs";
 import { openItem, withProject, writeConfig } from "#test/project.mts";
+import { appendVerdict } from "../../dist/lib/shared/work/verdict-log.mjs";
+import { appendTestRow } from "../../dist/lib/shared/testing/results.mjs";
 import { gitOut, umbrella } from "#test/git.mts";
 
 // The block the user's screenshot came from, in the developer's contract shape.
@@ -549,6 +551,48 @@ test("the packet for a done phase reads state.yaml and order.md once each", (t) 
   assert.equal(result.next.action, "approve_phase");
   assert.equal(counts["state.yaml"], 1);
   assert.equal(counts["order.md"], 1);
+});
+
+const TESTED_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/a.js]\n    drive:\n      - covers: T-1.1\n        method: POST\n        path: /orders\n        status: 201\n---\n# D\n\n## Phase 1: A\n\n- **T-1.1** an order is placed\n";
+const stageTs = (minute) => new Date(`2026-11-17T10:${String(minute).padStart(2, "0")}:00.000Z`);
+
+function testStage(t, rows) {
+  const root = withProject(t, { host: true, picket: false });
+  gitOut(root, "init", "-q");
+  fs.mkdirSync(join(root, ".picket", "env"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
+  const { id } = openItem(root, { lane: "design", title: "Tested" });
+  writeFileSync(join(root, "work", id, "design.md"), TESTED_DESIGN);
+  for (const mark of ["done", "approved", "reviewed"]) setMarker(root, id, 1, mark, stageTs(0));
+  rows.forEach(([agent, verdict, scope, extra = {}], at) => appendVerdict(root, id, { agent, verdict, phase: agent === "tester" ? null : 1, scope, through: null, ...extra }, stageTs(at + 1)));
+  return { root, id };
+}
+
+test("the resolve_tests packet prints the question with its choices and basis, the unproved criterion with its why, and the report (T-8.6)", (t) => {
+  const { root, id } = testStage(t, [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "user" }]]);
+  appendTestRow(root, id, { round: 1, type: "question", criterion: "T-1.1", question: "Is an empty basket an error?", choices: ["yes", "no"], default: "yes", basis: "T-1.1 needs items" }, stageTs(10));
+  appendTestRow(root, id, { round: 1, type: "cell", criterion: "T-1.1", kind: "normal", outcome: "blocked", why: "no fixture user" }, stageTs(10));
+  const { text, next } = packet(id, root);
+  assert.equal(next.action, "resolve_tests");
+  assert.match(text, /question {2}T-1\.1: Is an empty basket an error\?/);
+  assert.match(text, /· yes \(default\)\n {12}· no\n {12}Basis: T-1\.1 needs items/);
+  assert.match(text, /unproved {2}T-1\.1: normal blocked: no fixture user/);
+  assert.match(text, new RegExp(`report {4}work/${id}/test\\.md`));
+  assert.match(text, /\[t\] tell the tester: <answers>/);
+});
+
+test("the approve_fixes packet prints the staged fix paths and the proposed subject (T-8.6)", (t) => {
+  const { root, id } = testStage(t, [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "fix" }], ["developer", "PHASE DONE", null], ["reviewer", "APPROVED", "cumulative"], ["tester", "APPROVED", "test", { round: 2 }]]);
+  saveBlock(root, id, 1, `## Phase 1 of ${id}: A\n\nFixed.\n\nFiles: src/a.js\nCommit: fix(orders): keep the totals whole\n\nPHASE DONE`);
+  fs.mkdirSync(join(root, "src"));
+  writeFileSync(join(root, "src", "a.js"), "fixed\n");
+  writeFileSync(join(root, "src", "z.js"), "other\n");
+  gitOut(root, "add", "src/a.js", "src/z.js");
+  const { text, next } = packet(id, root);
+  assert.equal(next.action, "approve_fixes");
+  assert.match(text, /staged {4}src\/a\.js\n/);
+  assert.doesNotMatch(text, /z\.js/);
+  assert.match(text, /commit {4}fix\(orders\): keep the totals whole/);
 });
 
 test("cut keeps short strings and ends long ones with an ellipsis inside the limit", () => {

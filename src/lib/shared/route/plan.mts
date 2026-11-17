@@ -43,7 +43,8 @@ export type Change =
   | { kind: "publish"; from: string; to: string; line: string }
   | { kind: "correct"; phase: number; index: number; covers: string; from: string; to: string; line: string }
   | { kind: "keep"; phase: number; candidates: Candidate[]; line: string | null }
-  | { kind: "test_report"; text: string; line: string };
+  | { kind: "test_report"; text: string; line: string }
+  | { kind: "commit_fixes"; line: null };
 
 export type GateOf = (n: number) => Gate | null;
 export type CorrectionsOf = (n: number) => CheckResult[];
@@ -51,6 +52,7 @@ export type KeepsOf = (n: number) => Candidate[];
 export type Lookups = { correctionsOf?: CorrectionsOf; keepsOf?: KeepsOf; tested?: TestedRound };
 
 const NO_CORRECTIONS: CorrectionsOf = () => [];
+const TEST_SCOPE = "test";
 const NO_KEEPS: KeepsOf = () => [];
 
 type Plan = (snap: WorkSnapshot, planned: PlannedVerdict, gateOf: GateOf, lookups?: Lookups) => Change[];
@@ -99,6 +101,7 @@ function correctChange(result: CheckResult, approvedPhase: number): Change[] {
 
 const phaseApproved: Plan = (snap, planned, _gateOf, { correctionsOf = NO_CORRECTIONS, keepsOf = NO_KEEPS } = {}) => {
   if (snap.state.lane === "research") return planned.publish ? [publishChange(snap)] : [];
+  if (planned.scope === TEST_SCOPE) return [{ kind: "commit_fixes", line: null }];
   const n = needPhase(planned);
   if (!planned.marks.done) throw new Refused(`phase ${n} is not done; cannot approve`);
   const grant: Change[] = planned.through && planned.through > n ? [{ kind: "state", set: { run_through: planned.through }, line: `run_through=${planned.through}` }] : [];

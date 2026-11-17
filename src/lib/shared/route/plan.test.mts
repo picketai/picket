@@ -252,3 +252,8 @@ test("a tester verdict with no recorded round is refused", () => {
   const snap = snapshotOf({ lane: "design" });
   assert.throws(() => EFFECTS.tested(snap, { id: snap.state.id, verdict: "APPROVED", agent: "tester", phase: null, marks: { done: false, approved: false } }, () => null), Refused);
 });
+
+test("a user approval of the test fixes plans one fix commit and no marker", () => {
+  const snap = snapshotOf({ lane: "design", phases: [{ n: 1, done: true, approved: true, reviewed: true }] });
+  assert.deepEqual(plan("approved", snap, { scope: "test" }), [{ kind: "commit_fixes", line: null }]);
+});

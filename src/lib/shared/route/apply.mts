@@ -8,6 +8,12 @@ import { isSessionId, writeState, type WorkState } from "../work/state.mts";
 import { appendVerdict, type VerdictEntry } from "../work/verdict-log.mts";
 import { keepCandidates, restoreKept, type KeptFiles } from "../scenarios/keep.mts";
 import { testReportPath } from "../testing/facts.mts";
+import { checkBlockCommit, type CheckedCommitMessage } from "../commit-message.mts";
+import { commitOwned, listedPathMatcher, type CommitResult } from "../git.mts";
+import { recordAccept } from "../ledger.mts";
+import { phasePaths } from "../work/artifact.mts";
+import { blockFiles, fixesFiles, latestSavedBlock } from "../work/block.mts";
+import { workRel } from "../work/files.mts";
 import { commitCheckouts, commitPhase, phaseCommitMessage } from "./commit.mts";
 import type { Change } from "./plan.mts";
 
@@ -66,6 +72,37 @@ type KeepChange = Extract<Change, { kind: "keep" }>;
 type CorrectChange = Extract<Change, { kind: "correct" }>;
 
 type TestReportChange = Extract<Change, { kind: "test_report" }>;
+
+export function testFixPaths(root: string, snap: WorkSnapshot): string[] {
+  const id = snap.state.id;
+  return snap.phases.flatMap((phase) => [...phasePaths(phase), ...blockFiles(root, id, phase.n), ...fixesFiles(root, id, phase.n)]);
+}
+
+export function testFixCommit(root: string, snap: WorkSnapshot): CheckedCommitMessage {
+  const last = snap.phases.at(-1);
+  return checkBlockCommit(last === undefined ? "" : (latestSavedBlock(root, snap.state.id, last.n) ?? ""));
+}
+
+function fixesMessage(root: string, snap: WorkSnapshot, changes: Change[]): string | null {
+  if (!changes.some((change) => change.kind === "commit_fixes")) return null;
+  const checked = testFixCommit(root, snap);
+  if ("problem" in checked) throw new Refused(`the test fixes are not committed: ${checked.problem}`, { id: snap.state.id });
+  return checked.message;
+}
+
+function commitFixes(root: string, snap: WorkSnapshot, message: string, { env, now }: Pick<ApplyOptions, "env" | "now">): string[] {
+  const id = snap.state.id;
+  let result: CommitResult;
+  try {
+    result = commitOwned(root, message, { add: [workRel(id)], owns: listedPathMatcher(root, testFixPaths(root, snap)), env });
+  } catch (err) {
+    return [err instanceof Error ? err.message : String(err)];
+  }
+  if (result.sha === null) return ["nothing staged to commit"];
+  recordAccept(root, id, result.sha, null, now);
+  const left = result.left_staged.length ? [`left staged, not part of the test fixes: ${result.left_staged.join(", ")}`] : [];
+  return [`committed ${result.sha}: ${message.split("\n")[0]}`, ...left, ...result.warnings];
+}
 
 function writeTestReport(root: string, snap: WorkSnapshot, changes: Change[]): void {
   const report = changes.find((change): change is TestReportChange => change.kind === "test_report");
@@ -142,6 +179,7 @@ function isRefusedApproval(nested: NestedOutcome, row: VerdictEntry): boolean {
 
 export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[], { now, env, session, row }: ApplyOptions): string[] {
   const id = snap.state.id;
+  const fixes = fixesMessage(root, snap, planned);
   const nested = commitNestedFirst(root, snap, planned, env);
   const changes = nested.changes;
   const published = changes.filter(isPublishChange).map((change) => publish(root, id, change));
@@ -154,5 +192,6 @@ export function applyChanges(root: string, snap: WorkSnapshot, planned: Change[]
   const kept = writeKept(root, changes, nested.message !== null);
   const applied = [...published, ...nested.lines, ...changes.map(appliedLine).filter((line): line is string => line !== null), ...kept.lines];
   for (const change of changes) if (change.kind === "commit" && nested.message !== null) applied.push(...committedOrRestored(root, snap, change.phase, nested.message, { env, now }, kept));
+  if (fixes !== null) applied.push(...commitFixes(root, snap, fixes, { env, now }));
   return applied;
 }

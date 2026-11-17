@@ -26,6 +26,8 @@ import { deriveVerdict } from "../../shared/testing/derive.mts";
 import { testFacts } from "../../shared/testing/facts.mts";
 import { renderReport } from "../../shared/testing/report.mts";
 import { appendTestRow, type TestEntry } from "../../shared/testing/results.mts";
+import { setMarker } from "../../shared/work/markers.mts";
+import { appendVerdict, type VerdictEntry } from "../../shared/work/verdict-log.mts";
 
 type Routed = Partial<RouteInput> & { id: WorkId; verdict: string; agent: string; root: string; classes?: string[] };
 
@@ -941,4 +943,57 @@ test("a tester PHASE DONE or ALIGNED is refused as not the tester's (T-5.3)", (t
   const { root, id } = testedItem(t);
   assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "abcd-tester", root }), { message: '"PHASE DONE" may only come from developer, not tester' });
   assert.throws(() => route({ id, verdict: "ALIGNED", agent: "picket:tester", root }), { message: '"ALIGNED" may only come from reviewer, not tester' });
+});
+
+const FIXED_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/a.js]\n    drive:\n      - covers: T-1.1\n        method: POST\n        path: /orders\n        status: 201\n  - n: 2\n    files: [src/b.js]\n---\n# D\n\n## Phase 1: A\n\n- **T-1.1** an order is placed\n\n## Phase 2: B\n\nt\n";
+const STAGE_TS = (minute: number) => new Date(`2026-11-17T10:${String(minute).padStart(2, "0")}:00.000Z`);
+
+function testedFixes(t: TestContext, commit: string | null) {
+  const root = hostRoot(t);
+  const git = gitAt(root);
+  git("init", "-q");
+  writeFileSync(join(root, ".gitignore"), ".picket/state/\n");
+  mkdirSync(join(root, "src"));
+  mkdirSync(join(root, ".picket", "env"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
+  for (const name of ["a", "b", "c"]) writeFileSync(join(root, "src", `${name}.js`), `${name}\n`);
+  const { id } = openItem(root, { lane: "design", title: "Fixed" });
+  writeFileSync(join(root, "work", id, "design.md"), FIXED_DESIGN);
+  for (const n of [1, 2]) for (const mark of ["done", "approved", "reviewed"] as const) setMarker(root, id, n, mark, STAGE_TS(0));
+  git("add", "-A");
+  git("commit", "-q", "-m", "base");
+  const rows: [string, string, string | null, Partial<VerdictEntry>][] = [
+    ["reviewer", "APPROVED", "cumulative", {}],
+    ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "fix" }],
+    ["developer", "PHASE DONE", null, {}],
+    ["reviewer", "APPROVED", "cumulative", {}],
+    ["tester", "APPROVED", "test", { round: 2 }],
+  ];
+  rows.forEach(([agent, verdict, scope, extra], at) => appendVerdict(root, id, { agent, verdict, phase: agent === "tester" ? null : 2, scope, through: null, ...extra }, STAGE_TS(at + 1)));
+  saveBlock(root, id, 2, `## Phase 2 of ${id}: B\n\nFixed.\n\nFiles: src/a.js, src/b.js\n${commit === null ? "" : `Commit: ${commit}\n`}\nPHASE DONE`);
+  stage(root, git, { "src/a.js": "a fixed\n", "src/b.js": "b fixed\n", "src/c.js": "not a fix\n" });
+  return { root, id, git };
+}
+
+test("approving the test fixes commits the files of both phases and the work folder in one commit, then closes (T-8.3)", (t) => {
+  const { root, id, git } = testedFixes(t, "fix(orders): keep the totals whole");
+  const r = route({ id, verdict: "approved", agent: "user", scope: "test", root });
+  const committed = r.applied.find((line) => line.startsWith("committed "));
+  assert.match(committed ?? "", /^committed [0-9a-f]+: fix\(orders\): keep the totals whole$/, r.applied.join(" | "));
+  const files = lines(git("show", "--name-only", "--format=", "HEAD"));
+  assert.ok(files.includes("src/a.js") && files.includes("src/b.js"), files.join(", "));
+  assert.ok(files.some((path) => path.startsWith(`work/${id}/`)), files.join(", "));
+  assert.ok(!files.includes("src/c.js"), files.join(", "));
+  assert.equal(git("log", "-1", "--format=%s"), "fix(orders): keep the totals whole");
+  assert.deepEqual(lines(git("diff", "--cached", "--name-only")), ["src/c.js"]);
+  assert.equal(readNext(root, id, null).action, "close");
+  assert.equal(acceptRows(root).at(-1)?.phase, null);
+});
+
+test("a fix block with no Commit: line refuses the approval and commits nothing (T-8.5)", (t) => {
+  const { root, id, git } = testedFixes(t, null);
+  const before = git("rev-parse", "HEAD");
+  assert.throws(() => route({ id, verdict: "approved", agent: "user", scope: "test", root }), /the test fixes are not committed: the block has no "Commit:" line/);
+  assert.equal(git("rev-parse", "HEAD"), before);
+  assert.equal(readNext(root, id, null).action, "approve_fixes");
 });

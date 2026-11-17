@@ -4,7 +4,7 @@ import { STALL_OPTIONS } from "./action-text.mts";
 import { isOutOfFrameAmendment, isUnchangedAmendment } from "./amendment.mts";
 import { workRel } from "./files.mts";
 import type { NextStep } from "./next-step.mts";
-import { freshReplies } from "./replies.mts";
+import { amendmentChoice, freshReplies, type ReplyRow } from "./replies.mts";
 import type { WorkSnapshot } from "./snapshot.mts";
 import { ARTIFACT_BY_LANE } from "./state.mts";
 import { STALL_REPEATS } from "./stall.mts";
@@ -16,6 +16,7 @@ type Stamped = { ts: string };
 type FixCycle = { tester: VerdictRow; rows: VerdictRow[]; diagnose: string | null };
 
 const TESTER = "tester";
+const TEST_SCOPE = "test";
 const RESOLVE_TESTS_OPTIONS = ["[t] tell the tester: <answers>", "[n] accept the unproved criteria as not verified", "[x] abandon"];
 const APPROVE_FIXES_OPTIONS = ["[a] approve and commit the fixes", "[x] reject: <why>"];
 const SEE_REPORT = "see the test report";
@@ -46,14 +47,14 @@ function firstReason(snap: WorkSnapshot): string {
   return snap.testing?.reasons[0] ?? SEE_REPORT;
 }
 
-function testStep(snap: WorkSnapshot): NextStep {
+function testStep(snap: WorkSnapshot, answers?: string): NextStep {
   const round = testRound(snap.verdicts);
   const detail = round === 1 ? "the cumulative review passed; the tester checks the finished item" : `the tester retests the finished item, round ${round}`;
-  return { action: "test_item", actor: TESTER, round, detail };
+  return { action: "test_item", actor: TESTER, round, detail, ...(answers === undefined ? {} : { answers }) };
 }
 
-function fixStep(snap: WorkSnapshot, diagnose: string | null): NextStep {
-  const detail = diagnose === null ? "the tester found product failures; fix them" : "a case that passed before fails now; find the root cause and write a red test, fix nothing";
+function fixStep(snap: WorkSnapshot, diagnose: string | null, why = "the tester found product failures; fix them"): NextStep {
+  const detail = diagnose === null ? why : "a case that passed before fails now; find the root cause and write a red test, fix nothing";
   return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "test", detail, ...(diagnose === null ? {} : { diagnose }) };
 }
 
@@ -123,20 +124,35 @@ function amendmentGate(snap: WorkSnapshot): NextStep {
 }
 
 function driftStep(snap: WorkSnapshot, stage: VerdictRow[], tester: VerdictRow): NextStep {
-  const answer = snap.replies.filter((reply) => reply.action === "approve_amendment" && reply.choice !== undefined && isAfter(reply, tester)).at(-1);
-  if (!answer?.choice) return amendmentGate(snap);
+  const answer = snap.replies.filter((reply) => reply.action === "approve_amendment" && amendmentChoice(reply) !== null && isAfter(reply, tester)).at(-1);
+  if (answer === undefined) return amendmentGate(snap);
   const rows = rowsAfter(rowsAfterTester(stage, tester), answer);
-  if (answer.choice === "fix") return fixCycleStep(snap, { tester, rows, diagnose: null });
+  if (amendmentChoice(answer) === "fix") return fixCycleStep(snap, { tester, rows, diagnose: null });
   if (rows.some((row) => isCountedAmended(stage, row))) return testStep(snap);
   return { action: "amend", actor: "architect", detail: `AMENDMENT NEEDED: ${firstReason(snap)}`, review: reportRel(snap), reword: true };
 }
 
+function userAnswerToFixes(stage: VerdictRow[]): VerdictRow | null {
+  const doneAt = lastIndexWhere(stage, (row) => isDeveloper(row) && row.verdict === "PHASE DONE");
+  return stage.slice(doneAt + 1).filter((row) => row.agent === "user" && row.scope === TEST_SCOPE).at(-1) ?? null;
+}
+
 function approvedStep(snap: WorkSnapshot, stage: VerdictRow[], tester: VerdictRow): NextStep | null {
   if (!stage.some((row) => isDeveloper(row) && row.verdict === "PHASE DONE")) return null;
+  const answer = userAnswerToFixes(stage);
+  if (answer?.verdict === "approved") return null;
+  if (answer?.verdict === "rejected") return fixStep(snap, null, "the user rejected the test fixes; fix what the reason names");
   return { action: "approve_fixes", actor: "user", detail: `the tester approved round ${tester.round ?? testRound(snap.verdicts) - 1}; the fixes of the test stage await your approval`, options: APPROVE_FIXES_OPTIONS };
 }
 
-function userStep(snap: WorkSnapshot): NextStep {
+function testAnswer(snap: WorkSnapshot, tester: VerdictRow): ReplyRow | null {
+  return snap.replies.filter((reply) => reply.action === "resolve_tests" && (reply.choice === "answers" || reply.choice === "accept") && isAfter(reply, tester)).at(-1) ?? null;
+}
+
+function userStep(snap: WorkSnapshot, stage: VerdictRow[], tester: VerdictRow): NextStep | null {
+  const answer = testAnswer(snap, tester);
+  if (answer?.choice === "accept") return approvedStep(snap, stage, tester);
+  if (answer?.choice === "answers") return testStep(snap, answer.answers ?? answer.reply);
   return { action: "resolve_tests", actor: "user", detail: `the tester needs your answers: ${firstReason(snap)}; report: ${reportRel(snap)}`, options: RESOLVE_TESTS_OPTIONS };
 }
 
@@ -147,5 +163,5 @@ export function testStageStep(snap: WorkSnapshot): NextStep | null {
   if (tester.verdict === "APPROVED") return approvedStep(snap, stage, tester);
   if (tester.verdict === "DRIFT DETECTED") return driftStep(snap, stage, tester);
   if (tester.test_route === "fix" || tester.test_route === "breaker") return changesStep(snap, stage, tester);
-  return userStep(snap);
+  return userStep(snap, stage, tester);
 }

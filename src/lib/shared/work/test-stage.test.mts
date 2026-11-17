@@ -131,6 +131,29 @@ test("a tester APPROVED after fixes asks to approve them; with no fix the item c
   assert.equal(stepOf([cumulative("APPROVED"), tester("APPROVED", 1)]).action, "close");
 });
 
+const answered = (choice: "answers" | "accept", answers?: string): ReplyRow => ({ ts: at(), session: S, action: "resolve_tests", phase: null, reply: choice === "answers" ? `t: ${answers}` : "n", choice, ...(answers ? { answers } : {}) });
+
+test("answers to the tester send it the next round with the answers (T-8.1)", () => {
+  const rows = [cumulative("APPROVED"), tester("CHANGES REQUIRED", 1, "user")];
+  const step = stepOf(rows, { replies: [answered("answers", "keep the old rounding")] });
+  assert.deepEqual(step, { action: "test_item", actor: "tester", round: 2, detail: "the tester retests the finished item, round 2", answers: "keep the old rounding" });
+  assert.match(sendOf(rows, step).message, /^answers: keep the old rounding$/m);
+});
+
+test("accepting the unproved criteria passes the stage: fixes await approval, no fixes close (T-8.2)", () => {
+  const fixed = [cumulative("APPROVED"), tester("CHANGES REQUIRED", 1, "fix"), developer(), cumulative("APPROVED"), tester("CHANGES REQUIRED", 2, "user")];
+  assert.equal(stepOf(fixed, { replies: [answered("accept")] }).action, "approve_fixes");
+  assert.equal(stepOf([cumulative("APPROVED"), tester("CHANGES REQUIRED", 1, "user")], { replies: [answered("accept")] }).action, "close");
+});
+
+test("the user's answer at the fix approval closes or sends the developer back (T-8.3, T-8.4)", () => {
+  const fixed = [cumulative("APPROVED"), tester("CHANGES REQUIRED", 1, "fix"), developer(), cumulative("APPROVED"), tester("APPROVED", 2)];
+  assert.equal(stepOf([...fixed, row("user", "approved", { scope: "test", phase: null })]).action, "close");
+  const rejected = [...fixed, row("user", "rejected", { scope: "test", phase: null })];
+  assert.deepEqual(stepOf(rejected), { action: "fix_findings", actor: "developer", phase: 1, review: "test", detail: "the user rejected the test fixes; fix what the reason names" });
+  assert.equal(stepOf([...rejected, developer()]).action, "approve_fixes");
+});
+
 test("a tester drift does not count toward the reviewer's repeated drifts", () => {
   const drifts = [tester("DRIFT DETECTED", 1), tester("DRIFT DETECTED", 2), tester("DRIFT DETECTED", 3)];
   const blocked = stepOf(drifts, { status: "blocked", blocked_reason: "x" });

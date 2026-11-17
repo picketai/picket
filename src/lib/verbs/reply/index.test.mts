@@ -14,6 +14,10 @@ import { fixedContext } from "#test/context.mts";
 import { readLayout } from "../../shared/repos.mts";
 import { gitAt, gitIn, umbrella } from "#test/git.mts";
 import { openItem, withProject } from "#test/project.mts";
+import type { VerdictEntry } from "../../shared/work/verdict-log.mts";
+import { readSnapshot } from "../../shared/work/snapshot.mts";
+import { compileBrief } from "../../shared/testing/brief.mts";
+import { testFacts } from "../../shared/testing/facts.mts";
 
 const SESSION = "S";
 
@@ -288,4 +292,62 @@ test("p on a research item whose title gives no file name is refused saying why 
   const { root, id } = researchItem(t, "Of the");
   assert.equal(await refused(root, id, "p"), `publish is not offered: the title "Of the" gives no file name; rename the item with picket set ${id} --title, then reply p`);
   assert.equal(existsSync(join(root, "artifacts")), false);
+});
+
+const TESTED_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/a.ts]\n    drive:\n      - covers: T-1.1\n        method: POST\n        path: /orders\n        status: 201\n---\n# D\n\n## Phase 1: A\n\n- **T-1.1** an order total is rounded\n";
+const STAGE_TS = (minute: number) => new Date(`2026-11-17T10:${String(minute).padStart(2, "0")}:00.000Z`);
+type StageRow = [agent: string, verdict: string, scope: string | null, extra?: Partial<VerdictEntry>];
+
+function testStage(t: TestContext, rows: StageRow[]) {
+  const root = withProject(t, { host: true, picket: false });
+  gitAt(root)("init", "-q");
+  mkdirSync(join(root, ".picket", "env"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "compose.yaml"), "services: {}\n");
+  const { id } = openItem(root, { lane: "design", title: "Tested" });
+  writeFileSync(join(root, "work", id, "design.md"), TESTED_DESIGN);
+  for (const mark of ["done", "approved", "reviewed"] as const) setMarker(root, id, 1, mark, STAGE_TS(0));
+  rows.forEach(([agent, verdict, scope, extra = {}], at) => appendVerdict(root, id, { agent, verdict, phase: agent === "tester" ? null : 1, scope, through: null, session: SESSION, ...extra }, STAGE_TS(at + 1)));
+  return { root, id };
+}
+
+const ASKED: StageRow[] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "user" }]];
+const FIXED: StageRow[] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "fix" }], ["developer", "PHASE DONE", null], ["reviewer", "APPROVED", "cumulative"]];
+
+test("t: <text> at resolve_tests records the answers and sends the same tester round 2 with them (T-8.1)", async (t) => {
+  const { root, id } = testStage(t, ASKED);
+  const result = await applied(root, id, "t: keep the old rounding");
+  const row = replyRows(root, id).at(-1);
+  assert.deepEqual([row.action, row.choice, row.answers], ["resolve_tests", "answers", "keep the old rounding"]);
+  const [send] = result.send;
+  assert.deepEqual([send.tool, send.to], ["SendMessage", `${instanceTag(id)}-tester`]);
+  assert.match(send.message, /^round: 2$/m);
+  assert.match(send.message, /^answers: keep the old rounding$/m);
+  const snap = readSnapshot(root, id);
+  assert.match(compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }), /\n## Answers\n\nkeep the old rounding\n/);
+});
+
+test("n at resolve_tests accepts the unproved criteria: close without fixes, approve_fixes with them (T-8.2)", async (t) => {
+  const plain = testStage(t, ASKED);
+  const accepted = await applied(plain.root, plain.id, "n");
+  assert.equal(replyRows(plain.root, plain.id).at(-1).choice, "accept");
+  assert.equal(accepted.next.action, "close");
+  const fixed = testStage(t, [...FIXED, ["tester", "CHANGES REQUIRED", "test", { round: 2, test_route: "user" }]]);
+  assert.equal((await applied(fixed.root, fixed.id, "accept")).next.action, "approve_fixes");
+});
+
+test("x: <why> at approve_fixes commits nothing, records the rejection and sends the developer back (T-8.4)", async (t) => {
+  const { root, id } = testStage(t, [...FIXED, ["tester", "APPROVED", "test", { round: 2 }]]);
+  saveBlock(root, id, 1, `## Phase 1 of ${id}: A\n\nFixed.\n\nFiles: src/a.ts\nCommit: fix(orders): round once\n\nPHASE DONE`);
+  const result = await applied(root, id, "x: wrong currency");
+  const last = lastVerdict(root, id);
+  assert.deepEqual([last.agent, last.verdict, last.scope], ["user", "rejected", "test"]);
+  assert.match(result.send[0].message, /^rejected: wrong currency$/m);
+  assert.doesNotMatch(result.send[0].message, /^phase:/m);
+  assert.equal(result.next.action, "fix_findings");
+  assert.throws(() => gitAt(root)("rev-parse", "--verify", "-q", "HEAD"));
+});
+
+test("yes at resolve_tests matches no option and lists them (T-8.6)", async (t) => {
+  const { root, id } = testStage(t, ASKED);
+  assert.match(await refused(root, id, "yes"), /matches no option at resolve_tests; options: \[t\] tell the tester: <answers> · \[n\] accept the unproved criteria as not verified · \[x\] abandon/);
 });
