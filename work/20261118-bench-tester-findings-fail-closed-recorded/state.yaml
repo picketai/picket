@@ -1,8 +1,8 @@
 id: 20261118-bench-tester-findings-fail-closed-recorded
 lane: order
 title: "Bench tester findings fail closed, recorded"
-status: open
+status: done
 created: 2026-11-18T09:39:01.810Z
-updated: 2026-11-18T10:02:55.854Z
+updated: 2026-11-18T10:10:19.471Z
 session: a2798d68-7fee-4cd5-9e8c-4ee0e429153d
 base: 4e67fa6dac61a4ee78c9089ce33f3b09f3014bca
