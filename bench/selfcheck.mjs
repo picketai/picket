@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { buildTemplate, materializeRun } from "./lib/fixture.mjs";
 import { loadTasks } from "./lib/tasks.mjs";
 import { seedTesterTask } from "./lib/tester-seed.mjs";
+import { isGreen, keyOutcome } from "./lib/key-outcome.mjs";
 
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const KEY_TEST = "key.test.ts";
@@ -26,16 +27,6 @@ function placeHidden(repo, folder) {
   const target = join(repo, "test", "hidden");
   rmSync(target, { recursive: true, force: true });
   cpSync(folder, target, { recursive: true });
-}
-
-function isGreen(r) {
-  return !r.missing && r.failed === 0 && (r.suitesFailed ?? 0) === 0 && r.total > 0;
-}
-
-function keyOutcome(kind, keyRun) {
-  if (kind === "defect") return { ok: !isGreen(keyRun), label: "defect live" };
-  if (kind === "trap") return { ok: isGreen(keyRun), label: "trap holds" };
-  return { ok: true, label: "seeded" };
 }
 
 function checkTesterTask(template, task) {
