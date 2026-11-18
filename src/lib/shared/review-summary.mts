@@ -12,10 +12,10 @@ import { nestedRepos, readLayout, type ItemLayout } from "./repos.mts";
 import { securityPathOf } from "./security-paths.mts";
 import { deletedTestMoves, normaliseLine, scansPath, silencedMoves } from "./silenced.mjs";
 import type { Approval } from "./work/approvals.mts";
-import { phasePaths, type ArtifactPhase } from "./work/artifact.mts";
-import { blockFiles, fixesFiles } from "./work/block.mts";
 import { workRel, type WorkId } from "./work/files.mts";
 import type { WorkState } from "./work/state.mts";
+
+export { itemOwnedPaths } from "./work/owned-paths.mts";
 
 export type Size = "small" | "medium" | "large";
 export type QualityBar = Record<string, unknown>;
@@ -206,11 +206,6 @@ type OwnedParts = { commits: OwnedCommit[]; dirty: string[] };
 export type OwnedRootChange = { files: string[]; before: string };
 
 const productPath = (path: string) => !git.isNonProduct(path);
-
-export function itemOwnedPaths(root: string, id: WorkId, phases: readonly ArtifactPhase[]): string[] | null {
-  if (!phases.length) return null;
-  return phases.flatMap((phase) => [...phasePaths(phase), ...blockFiles(root, id, phase.n), ...fixesFiles(root, id, phase.n)]);
-}
 
 function ownedParts(root: string, id: WorkId, base: string, owned: readonly string[], isProduct: (path: string) => boolean): OwnedParts {
   const commits = ownCommits(root, id, base).map((sha) => ({ sha, files: git.filesInCommit(root, sha).filter(isProduct) }));

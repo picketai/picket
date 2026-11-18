@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { HOOKS } from "../../../hooks.mts";
+import { saveBlock } from "../../../shared/work/block.mts";
+import { workId } from "../../../shared/work/files.mts";
+import { setMarker } from "../../../shared/work/markers.mts";
 import { hookContext } from "#test/context.mts";
 import { userEntry, writeTranscript } from "#test/hook.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
@@ -11,7 +14,14 @@ import { blackboxDenial } from "./index.mts";
 const PLAN_PATH = "src/orders/api.mts";
 const DESIGN = `---\nlane: design\nphases:\n  - n: 1\n    files: [${PLAN_PATH}]\n---\n# D\n\n## Phase 1: Orders\n\n**Touch set:**\n- \`${PLAN_PATH}\`: the route\n`;
 
+const FIX_PATH = "src/orders/fix.mts";
+
 type Item = { root: string; id: string; transcript: string };
+
+function saveFixesEntry(root: string, id: string): void {
+  setMarker(root, workId(id), 1, "approved", hookContext(root).now());
+  saveBlock(root, workId(id), 1, `## Phase 1 of ${id}: Orders\n\nFiles: ${FIX_PATH}\n\nPHASE DONE\n`);
+}
 
 function item(t: TestContext, send = (id: string) => `work: ${id}\nphase: 1`): Item {
   const root = withProject(t, { host: true });
@@ -65,6 +75,15 @@ test("guard.blackbox runs on Read and Grep, and not on Glob (T-4.2)", () => {
 test("a tester whose send names no work item is denied every read (T-4.3)", (t) => {
   const it = item(t, () => "check the orders service");
   assert.equal(denial(it, "Read", { file_path: join(it.root, "README.md") }), "guard.blackbox: the tester's send names no work item, so every read is refused");
+});
+
+test("a tester Read of a file a fix after approval names is denied once the fixes entry is saved", (t) => {
+  const it = item(t);
+  const fixed = join(it.root, ...FIX_PATH.split("/"));
+  writeFileSync(fixed, "z\n");
+  assert.equal(denial(it, "Read", { file_path: fixed }), null);
+  saveFixesEntry(it.root, it.id);
+  assert.match(denial(it, "Read", { file_path: fixed }) ?? "", /black box/);
 });
 
 test("a tester whose send names an item that cannot be read is denied every read", (t) => {

@@ -1,10 +1,9 @@
 import { isAbsolute, resolve } from "node:path";
 import { bareAgentName } from "../../../shared/agent-name.mts";
-import { phasePaths, type ArtifactPhase } from "../../../shared/work/artifact.mts";
-import { blockFiles, fixesFiles } from "../../../shared/work/block.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
 import { latestHints } from "../../../shared/transcript/entries.mts";
 import { isWorkId, workRel, type WorkId } from "../../../shared/work/files.mts";
+import { itemOwnedPaths } from "../../../shared/work/owned-paths.mts";
 import { readSnapshot } from "../../../shared/work/snapshot.mts";
 import type { HookContext, HookSpec, PayloadOf } from "../../hook-spec.mts";
 import { deny, type PermissionOutput } from "../../output.mts";
@@ -27,14 +26,10 @@ function holds(folder: string, path: string): boolean {
   return path === folder || path.startsWith(`${folder}/`);
 }
 
-function ownedPaths(root: string, id: WorkId, phases: readonly ArtifactPhase[]): string[] {
-  return phases.flatMap((phase) => [...phasePaths(phase), ...blockFiles(root, id, phase.n), ...fixesFiles(root, id, phase.n)]);
-}
-
 function itemFence(ctx: HookContext, id: WorkId): Fence {
   const snap = readSnapshot(ctx.root, id);
   const worktrees = snap.layout.repos.flatMap((repo) => (repo.worktree === undefined ? [] : [repo.worktree]));
-  const owned = [...ownedPaths(ctx.root, id, snap.phases), workRel(id), ...worktrees];
+  const owned = [...(itemOwnedPaths(ctx.root, id, snap.phases) ?? []), workRel(id), ...worktrees];
   const absolute = (rel: string) => comparable(resolve(ctx.root, rel), ctx.platform);
   return { root: comparable(ctx.root, ctx.platform), denied: owned.map(absolute), allowed: [absolute(`${workRel(id)}${TEST_FOLDER}`)] };
 }

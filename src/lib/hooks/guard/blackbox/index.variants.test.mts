@@ -5,6 +5,9 @@ import { hookContext } from "#test/context.mts";
 import { userEntry, writeTranscript } from "#test/hook.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { closureTests, type Family, type Grammar } from "#test/variants.mts";
+import { saveBlock } from "../../../shared/work/block.mts";
+import { workId } from "../../../shared/work/files.mts";
+import { setMarker } from "../../../shared/work/markers.mts";
 import { blackboxDenial } from "./index.mts";
 
 type ReadSeed = { tool: "Read" | "Grep"; rel: string };
@@ -14,12 +17,14 @@ type Project = { root: string; id: string; transcript: string };
 
 const ITEM = "{item}";
 const PLAN_PATH = "src/orders/api.mts";
+const FIX_PATH = "src/orders/fix.mts";
 const LINKED_SRC = "srclink";
 const DESIGN = `---\nlane: design\nphases:\n  - n: 1\n    files: [${PLAN_PATH}]\n---\n# D\n\n## Phase 1: Orders\n`;
 const LINK_TYPE = process.platform === "win32" ? "junction" : "dir";
 
 const SEEDS: ReadSeed[] = [
   { tool: "Read", rel: PLAN_PATH },
+  { tool: "Read", rel: FIX_PATH },
   { tool: "Read", rel: `work/${ITEM}/design.md` },
   { tool: "Read", rel: `work/${ITEM}/state.yaml` },
   { tool: "Grep", rel: PLAN_PATH },
@@ -51,6 +56,9 @@ function project(t: TestContext): Project {
   writeArtifact(root, id, "design.md", DESIGN);
   mkdirSync(join(root, "src", "orders"), { recursive: true });
   writeFileSync(join(root, PLAN_PATH), "x\n");
+  writeFileSync(join(root, FIX_PATH), "z\n");
+  setMarker(root, workId(id), 1, "approved", hookContext(root).now());
+  saveBlock(root, workId(id), 1, `## Phase 1 of ${id}: Orders\n\nFiles: ${FIX_PATH}\n\nPHASE DONE\n`);
   symlinkSync(join(root, "src"), join(root, LINKED_SRC), LINK_TYPE);
   return { root, id, transcript: writeTranscript(root, [userEntry(`work: ${id}`)]) };
 }
