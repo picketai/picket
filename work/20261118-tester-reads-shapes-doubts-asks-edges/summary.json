@@ -1,0 +1,66 @@
+{
+  "work_id": "20261118-tester-reads-shapes-doubts-asks-edges",
+  "base": "08da31326124bd227f22f303fc5db74f023bcab4",
+  "request": "work/20261118-tester-reads-shapes-doubts-asks-edges/request.md",
+  "size": "medium",
+  "changed_files": [
+    "src/lib/verbs/test/skill-examples.test.mts",
+    "src/skills/testing/steps/cases.md",
+    "src/skills/testing/steps/matrix.md",
+    "src/skills/testing/steps/results.md"
+  ],
+  "lines_added": 119,
+  "lines_removed": 16,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-18T11:26:20.915Z",
+    "base": "08da31326124bd227f22f303fc5db74f023bcab4",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 14471
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
