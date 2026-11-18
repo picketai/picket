@@ -935,7 +935,7 @@ test("a tester CHANGES REQUIRED the results derive records the round, route and 
 test("a tester verdict with an unclassified failure is refused naming picket test classify (T-5.3)", (t) => {
   const { root, id } = testedItem(t);
   appendTestRow(root, id, failedCase("C-01"), new Date("2026-11-17T10:00:00.000Z"));
-  assert.throws(() => route({ id, verdict: "CHANGES REQUIRED", agent: "abcd-tester", root }), /run picket test classify .* C-01 <product\|test\|environment>/);
+  assert.throws(() => route({ id, verdict: "CHANGES REQUIRED", agent: "abcd-tester", root }), /run picket test classify .* C-01 <product\|test\|environment> --evidence "<why>"$/);
   assert.deepEqual(verdictLines(root, id), []);
 });
 

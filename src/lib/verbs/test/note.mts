@@ -11,7 +11,7 @@ export type NoteRow = CellRow | UntestableRow;
 
 const OUTCOME_WORDS: ReadonlyMap<string, CellOutcome> = new Map(CELL_OUTCOMES.map((outcome) => [outcome.replaceAll(" ", "-"), outcome]));
 const UNTESTABLE = "untestable";
-const USAGE = `test note <id> <criterion> <kind> <${[...OUTCOME_WORDS.keys()].join("|")}> --why <text>, or test note <id> <criterion> ${UNTESTABLE} --why <text>`;
+const USAGE = `test note <id> <criterion> <kind> <${[...OUTCOME_WORDS.keys()].join("|")}> --why "<text>", or test note <id> <criterion> ${UNTESTABLE} --why "<text>"`;
 
 export const note = action<NoteInput, NoteRow>(async (input, { root, now }) => {
   const { snap, criteria } = openTestItem(root, input.id);

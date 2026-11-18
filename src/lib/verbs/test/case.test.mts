@@ -95,7 +95,7 @@ test("with one tested criterion the seventh case of a round is refused with the 
   const { ctx, id } = item(t);
   for (let run = 0; run < 6; run++) assert.equal((await recordCase(ctx, deps(answering(201)), caseInput(id))).status, "done");
   const message = await refusal(recordCase(ctx, deps(answering(201)), caseInput(id, "T-1.1", STEPS, "state")));
-  assert.equal(message, `the cap of 6 cases this round is reached; record what is left with picket test note ${id} T-1.1 state not-covered --why <why>`);
+  assert.equal(message, `the cap of 6 cases this round is reached; record what is left with picket test note ${id} T-1.1 state not-covered --why "<why>"`);
   assert.equal(readTestRows(ctx.root, id).length, 6);
 });
 

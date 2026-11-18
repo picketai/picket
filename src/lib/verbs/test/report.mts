@@ -24,7 +24,7 @@ export const report = action<ReportInput, ReportOutput>(async ({ id }, { root })
 
 function verdictText({ id, derived }: ReportOutput): string {
   const [unclassified] = derived.unclassified;
-  if (unclassified !== undefined) return `unclassified: ${derived.unclassified.join(", ")}; run picket test classify ${id} ${unclassified} <product|test|environment> --evidence <why>`;
+  if (unclassified !== undefined) return `unclassified: ${derived.unclassified.join(", ")}; run picket test classify ${id} ${unclassified} <product|test|environment> --evidence "<why>"`;
   return `verdict: ${derived.verdict}${derived.route === null ? "" : ` · route ${derived.route}`}`;
 }
 

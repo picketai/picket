@@ -57,6 +57,6 @@ test("a case failing then passing is unstable (T-3.2)", async () => {
 
 test("the case line names the mock and the classify command for a failure", () => {
   const row = { case: "C-04", criterion: "T-2.1", kind: "boundary" as const, outcome: "failed" as const, detail: "step 2: expected status 200, got 500", mocks: ["payments-mock"] };
-  assert.equal(caseLine(ITEM, row), `C-04 T-2.1 boundary failed: step 2: expected status 200, got 500 · through a mock: payments-mock\nclassify it: picket test classify ${ITEM} C-04 <product|test|environment> --evidence <why>`);
+  assert.equal(caseLine(ITEM, row), `C-04 T-2.1 boundary failed: step 2: expected status 200, got 500 · through a mock: payments-mock\nclassify it: picket test classify ${ITEM} C-04 <product|test|environment> --evidence "<why>"`);
   assert.equal(caseLine(ITEM, { ...row, outcome: "passed", detail: "", mocks: [] }), "C-04 T-2.1 boundary passed");
 });

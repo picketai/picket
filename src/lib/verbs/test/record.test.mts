@@ -100,7 +100,16 @@ test("note's parse refuses an unknown kind and an unknown outcome", () => {
 });
 
 test("note's usage names the three cell outcomes and untestable", () => {
-  assert.equal(note.usage, "test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why <text>, or test note <id> <criterion> untestable --why <text>");
+  assert.equal(note.usage, "test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why \"<text>\", or test note <id> <criterion> untestable --why \"<text>\"");
+});
+
+test("classify's usage shows the evidence in double quotes", () => {
+  assert.equal(classify.usage, 'test classify <id> <case> <product|test|environment> --evidence "<text>"');
+});
+
+test("classify's parse refuses evidence the shell split into words and keeps quoted evidence whole", () => {
+  assert.throws(() => classify.parse(parseArgs(["x-12", "C-01", "product", "--evidence", "POST", "/orders", "answered", "500"])), (error) => error instanceof UsageError && error.message === classify.usage);
+  assert.deepEqual(classify.parse(parseArgs(["x-12", "C-01", "product", "--evidence", "POST /orders answered 500"])), { id: "x-12", case: "C-01", class: "product", evidence: "POST /orders answered 500" });
 });
 
 test("note's parse maps each hyphenated outcome word to its cell outcome", () => {
@@ -151,7 +160,7 @@ test("report names the unclassified case and the classify command", async (t) =>
   seed(root, id, [caseEntry("C-01", "failed")]);
   const outcome = await report.run({ id }, fixedContext(root));
   assert.ok(outcome.status === "done");
-  assert.equal(report.render(outcome.value), `1 failed\nunclassified: C-01; run picket test classify ${id} C-01 <product|test|environment> --evidence <why>`);
+  assert.equal(report.render(outcome.value), `1 failed\nunclassified: C-01; run picket test classify ${id} C-01 <product|test|environment> --evidence "<why>"`);
 });
 
 test("report of a round with no rows prints no cases recorded first", async (t) => {

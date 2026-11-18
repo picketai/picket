@@ -61,7 +61,7 @@ function testedRound(root: string, snap: WorkSnapshot, verdict: string): TestedR
   const derived = deriveVerdict(input);
   const [unclassified] = derived.unclassified;
   if (unclassified !== undefined) {
-    throw new Refused(`unclassified: ${derived.unclassified.join(", ")}; run picket test classify ${snap.state.id} ${unclassified} <product|test|environment> --evidence <why>`);
+    throw new Refused(`unclassified: ${derived.unclassified.join(", ")}; run picket test classify ${snap.state.id} ${unclassified} <product|test|environment> --evidence "<why>"`);
   }
   if (derived.verdict !== verdict) {
     throw new Refused(`the recorded results derive ${derived.verdict} (${derived.reasons[0] ?? "every tested criterion has a passed case"}); end the block with ${derived.verdict}`);

@@ -1,0 +1,6 @@
+Fix picket test classify so it refuses extra words: when --evidence is not quoted the shell splits the text, classify keeps the first word ("POST"), ignores the rest and saves the row with one-word evidence. picket test note already refuses extra words. Make classify answer a usage error and save nothing, and change the kernel's own hints to print the flag text in double quotes (--evidence "<why>", --why "<text>") in src/lib/verbs/test/classify.mts, note.mts, case.mts, report.mts, src/lib/shared/route/route.mts and src/lib/shared/testing/cases.mts, so a tester that copies a hint gets a command that keeps its text.
+
+## Brief
+purpose: Stop the tester's failure evidence from being cut to one word, and make every hint the kernel prints a command that keeps its text when copied.
+in scope: src/lib/verbs/test/classify.mts (refuse extra words), the hint texts in src/lib/verbs/test/note.mts, case.mts, report.mts, src/lib/shared/route/route.mts and src/lib/shared/testing/cases.mts, and their unit tests including src/lib/verbs/test/skill-examples.test.mts
+out of scope: The testing skill's step files; the bench grader and keys; any paid benchmark run; rows already saved with one-word evidence; the setting testing

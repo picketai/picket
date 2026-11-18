@@ -88,9 +88,6 @@ test("the unquoted note the benchmark tester ran is refused", () => {
   assert.throws(() => exampleProblems("picket test note <id> T-1.1 permission not-run --why the request names no roles or login"), UsageError);
 });
 
-test("the unquoted classify the benchmark tester ran is reported, since its evidence parses to the first word", () => {
-  assert.deepEqual(exampleProblems("picket test classify <id> C-01 product --evidence POST /orders answered 500"), [
-    "--evidence text is not in double quotes",
-    '--evidence parsed as "POST", the line gives "POST /orders answered 500"',
-  ]);
+test("the unquoted classify the benchmark tester ran is refused", () => {
+  assert.throws(() => exampleProblems("picket test classify <id> C-01 product --evidence POST /orders answered 500"), UsageError);
 });

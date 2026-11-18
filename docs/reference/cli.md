@@ -385,7 +385,7 @@ picket test report <id>
 Class a failed case as product, test or environment, with evidence.
 
 ```sh
-picket test classify <id> <case> <product|test|environment> --evidence <text>
+picket test classify <id> <case> <product|test|environment> --evidence "<text>"
 ```
 
 ### picket test note
@@ -393,7 +393,7 @@ picket test classify <id> <case> <product|test|environment> --evidence <text>
 Record a cell the tester did not run, or a criterion that cannot be tested as written.
 
 ```sh
-picket test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why <text>, or test note <id> <criterion> untestable --why <text>
+picket test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why "<text>", or test note <id> <criterion> untestable --why "<text>"
 ```
 
 ### picket test ask
@@ -409,7 +409,7 @@ picket test ask <id> <criterion> --question <text> --choices "<a> | <b>" [--defa
 Run one case, its step lines on stdin, on the item's stack and record the run.
 
 ```sh
-picket test case <id> --criterion <T-N.x> --kind <kind> --intent <words>, with the step lines on stdin
+picket test case <id> --criterion <T-N.x> --kind <kind> --intent "<words>", with the step lines on stdin
 ```
 
 ### picket test rerun

@@ -7,7 +7,7 @@ import { need, UsageError, type Args } from "../../util/args.mts";
 
 export type ClassifyInput = { id: WorkId; case: string; class: FailureClass; evidence: string };
 
-const USAGE = "test classify <id> <case> <product|test|environment> --evidence <text>";
+const USAGE = "test classify <id> <case> <product|test|environment> --evidence \"<text>\"";
 
 export const classify = action<ClassifyInput, ClassRow>(async (input, { root, now }) => {
   const { snap } = openTestItem(root, input.id);
@@ -26,8 +26,8 @@ function isFailureClass(text: string | undefined): text is FailureClass {
 }
 
 function parseClassify(args: Args): ClassifyInput {
-  const [id, caseId, cls] = args.pos;
-  if (!id || !caseId || !isFailureClass(cls)) throw new UsageError(USAGE);
+  const [id, caseId, cls, ...rest] = args.pos;
+  if (!id || !caseId || !isFailureClass(cls) || rest.length) throw new UsageError(USAGE);
   const evidence = need(args, "evidence").trim();
   if (!evidence) throw new UsageError("--evidence must not be empty");
   return { id: workId(id), case: caseId, class: cls, evidence };

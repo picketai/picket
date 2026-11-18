@@ -73,6 +73,6 @@ export async function runCase(card: Card, input: RunCaseInput): Promise<CaseRun>
 export function caseLine(id: string, row: Pick<CaseRow, "case" | "criterion" | "kind" | "outcome" | "detail" | "mocks">): string {
   const head = `${row.case} ${row.criterion} ${row.kind} ${row.outcome}${row.outcome === "passed" || row.detail === "" ? "" : `: ${row.detail}`}`;
   const mocks = row.mocks.length ? ` · through a mock: ${row.mocks.join(", ")}` : "";
-  const classify = row.outcome === "failed" ? [`classify it: picket test classify ${id} ${row.case} <product|test|environment> --evidence <why>`] : [];
+  const classify = row.outcome === "failed" ? [`classify it: picket test classify ${id} ${row.case} <product|test|environment> --evidence "<why>"`] : [];
   return [`${head}${mocks}`, ...classify].join("\n");
 }

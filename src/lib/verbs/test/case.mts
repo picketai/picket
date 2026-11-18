@@ -17,7 +17,7 @@ import { need, UsageError, type Args } from "../../util/args.mts";
 export type CaseInput = { id: WorkId; spec: CaseSpec; steps: string };
 export type CaseResult = { id: WorkId; row: CaseRow };
 
-const USAGE = "test case <id> --criterion <T-N.x> --kind <kind> --intent <words>, with the step lines on stdin";
+const USAGE = "test case <id> --criterion <T-N.x> --kind <kind> --intent \"<words>\", with the step lines on stdin";
 
 export const REAL_CASE_DEPS: CaseDeps = { runner: realRunner, adapter: httpAdapter(), sleep: (ms) => delay(ms), random: (size) => randomBytes(size) };
 
@@ -27,7 +27,7 @@ function refuseCriterion(criterion: string, criteria: string[], id: WorkId): voi
 
 function refuseCap(id: WorkId, spec: CaseSpec, cap: number, cases: number): void {
   if (cases < cap) return;
-  throw new Refused(`the cap of ${cap} cases this round is reached; record what is left with picket test note ${id} ${spec.criterion} ${spec.kind} not-covered --why <why>`, { id });
+  throw new Refused(`the cap of ${cap} cases this round is reached; record what is left with picket test note ${id} ${spec.criterion} ${spec.kind} not-covered --why "<why>"`, { id });
 }
 
 function refuseProblems(problems: string[], id: WorkId): void {
