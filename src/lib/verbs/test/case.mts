@@ -61,8 +61,8 @@ function isCaseKind(text: string): text is CaseKind {
 }
 
 function parseCase(args: Args): CaseInput {
-  const [id] = args.pos;
-  if (!id) throw new UsageError(USAGE);
+  const [id, ...rest] = args.pos;
+  if (!id || rest.length) throw new UsageError(USAGE);
   const kind = need(args, "kind");
   if (!isCaseKind(kind)) throw new UsageError(`--kind must be one of ${CASE_KINDS.join(", ")}, got "${kind}"`);
   const intent = need(args, "intent").trim();

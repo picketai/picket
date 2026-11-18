@@ -14,6 +14,7 @@ import { appendVerdict } from "../../shared/work/verdict-log.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readState } from "../../shared/work/state.mts";
 import { parseArgs } from "../../util/args.mts";
+import { UsageError } from "../../util/args.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { recordCase, verb as caseVerb, type CaseInput } from "./case.mts";
 import { rerunCases, verb as rerunVerb } from "./rerun.mts";
@@ -110,6 +111,12 @@ test("test case parses its flags and reads the steps from stdin", () => {
   assert.deepEqual(input, { id: "20261117-orders", spec: { criterion: "T-1.1", kind: "boundary", intent: "edge" }, steps: STEPS });
   assert.throws(() => caseVerb.parse(parseArgs(["20261117-orders", "--criterion", "T-1.1", "--kind", "smoke", "--intent", "x"], () => STEPS)), /--kind must be one of/);
   assert.throws(() => caseVerb.parse(parseArgs(["20261117-orders", "--criterion", "T-1.1", "--kind", "normal", "--intent", "x"])), /reads its step lines on stdin/);
+});
+
+test("test case refuses an intent the shell split into words and keeps a quoted intent whole", () => {
+  const argv = ["20261117-orders", "--criterion", "T-1.1", "--kind", "boundary", "--intent"];
+  assert.throws(() => caseVerb.parse(parseArgs([...argv, "an", "empty", "basket"], () => STEPS)), (error) => error instanceof UsageError && error.message === caseVerb.usage);
+  assert.deepEqual(caseVerb.parse(parseArgs([...argv, "an empty basket"], () => STEPS)), { id: "20261117-orders", spec: { criterion: "T-1.1", kind: "boundary", intent: "an empty basket" }, steps: STEPS });
 });
 
 test("test rerun runs the previous round's cases again under the same ids (T-3.5)", async (t) => {

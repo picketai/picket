@@ -134,6 +134,16 @@ test("ask refuses a fourth question of the item (T-2.5)", async (t) => {
   assert.equal(await refusal(ask.run(input, fixedContext(root))), "at most 3 questions per item (draft section 4.5)");
 });
 
+test("ask's parse refuses a question or a basis the shell split into words", () => {
+  const refusedWithUsage = (error: unknown) => error instanceof UsageError && error.message === ask.usage;
+  assert.throws(() => ask.parse(parseArgs(["x-12", "T-1.1", "--question", "Is", "an", "empty", "basket", "an", "error?", "--choices", "yes | no"])), refusedWithUsage);
+  assert.throws(() => ask.parse(parseArgs(["x-12", "T-1.1", "--question", "q", "--choices", "yes | no", "--default", "no", "--basis", "the", "request", "says", "nothing"])), refusedWithUsage);
+});
+
+test("ask's usage shows the question and the basis in double quotes", () => {
+  assert.equal(ask.usage, 'test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default <choice> --basis "<text>"]');
+});
+
 test("ask's parse refuses a default outside the choices, a default without a basis, and one choice, each with its own text (T-2.5)", () => {
   const parse = (...extra: string[]) => () => ask.parse(parseArgs(["x-12", "T-1.1", "--question", "q", ...extra]));
   assert.throws(parse("--choices", "a | b", "--default", "c", "--basis", "why"), { message: 'the default "c" is not one of the choices: a | b' });

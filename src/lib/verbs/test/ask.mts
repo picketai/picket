@@ -8,7 +8,7 @@ import { need, str, UsageError, type Args } from "../../util/args.mts";
 
 export type AskInput = { id: WorkId; criterion: string; question: string; choices: string[]; default: string | null; basis: string | null };
 
-const USAGE = 'test ask <id> <criterion> --question <text> --choices "<a> | <b>" [--default <choice> --basis <text>]';
+const USAGE = 'test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default <choice> --basis "<text>"]';
 const MIN_CHOICES = 2;
 const MAX_CHOICES = 4;
 
@@ -42,8 +42,8 @@ function defaultOf(args: Args, choices: string[]): Pick<AskInput, "default" | "b
 }
 
 function parseAsk(args: Args): AskInput {
-  const [id, criterion] = args.pos;
-  if (!id || !criterion) throw new UsageError(USAGE);
+  const [id, criterion, ...rest] = args.pos;
+  if (!id || !criterion || rest.length) throw new UsageError(USAGE);
   const question = need(args, "question").trim();
   if (!question) throw new UsageError("--question must not be empty");
   const choices = choicesOf(need(args, "choices"));

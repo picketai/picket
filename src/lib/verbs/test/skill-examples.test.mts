@@ -91,3 +91,7 @@ test("the unquoted note the benchmark tester ran is refused", () => {
 test("the unquoted classify the benchmark tester ran is refused", () => {
   assert.throws(() => exampleProblems("picket test classify <id> C-01 product --evidence POST /orders answered 500"), UsageError);
 });
+
+test("an unquoted ask question is refused", () => {
+  assert.throws(() => exampleProblems('picket test ask <id> T-2.1 --question Is an order with an empty basket an error --choices "yes, refuse it | no, store it as a draft"'), UsageError);
+});

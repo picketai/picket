@@ -1,6 +1,6 @@
 # Testing: results
 
-The runner decided each outcome. These records say what only you can know, each through one verb: `picket test classify`, `picket test note` or `picket test ask`. Put the text after `--why`, `--evidence`, `--question`, `--choices` and `--basis` in double quotes: unquoted, `note` refuses the extra words and `classify` keeps only the first one.
+The runner decided each outcome. These records say what only you can know, each through one verb: `picket test classify`, `picket test note` or `picket test ask`. Put the text after `--why`, `--evidence`, `--question`, `--choices` and `--basis` in double quotes: unquoted, each of these verbs refuses the extra words and saves nothing.
 
 1. Classify every failed case of the round, for example `picket test classify <id> C-03 product --evidence "POST /orders with an empty basket answered 201; T-2.1 says it is refused"`. The class is one of three:
    - `product`: the item does not do what the criterion says, on a request whose shape came from a source (step 2 of `steps/cases.md`) or from a passed case, checked against the criterion's words. Evidence: the request, the answer and the criterion's words it contradicts, as in the example above.
