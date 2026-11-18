@@ -10,6 +10,7 @@ import { hasError, type Finding } from "../../shared/env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR, SCENARIO_DIR } from "../../shared/env/standard.mts";
 import { trialFinding } from "../../shared/env/trial.mts";
 import { environmentStubs } from "../../shared/mocks/stub.mts";
+import { entryFindings } from "../../shared/catalog/entry.mts";
 import { listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
 import { scenarioProblems } from "../../shared/scenarios/rules.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -21,6 +22,7 @@ export type EnvCheckReport = { ok: boolean; machine: MachineReport; environment:
 const GIB = 1024 ** 3;
 const COMPOSE_PATH = `${ENV_DIR}/${COMPOSE_FILE}`;
 const SCENARIO_RULE = "E11";
+const ENTRY_RULE = "E13";
 const CARD_EXTENSION = ".md";
 
 function scenarioFindings(scenario: SavedScenario, services: string[]): Finding[] {
@@ -34,26 +36,27 @@ function countByStatus(scenarios: SavedScenario[]): ScenarioCount {
   return { active: statuses.filter((status) => status === "active").length, deprecated: statuses.filter((status) => status === "deprecated").length };
 }
 
-function scenarioCheck(root: string, model: EnvModel): { findings: Finding[]; scenarios: ScenarioCount | null } {
-  if (!existsSync(join(root, SCENARIO_DIR))) return { findings: [], scenarios: null };
-  const services = model.services.map((service) => service.name);
+function scenarioCheck(root: string, model: EnvModel, env: NodeJS.ProcessEnv): { findings: Finding[]; scenarios: ScenarioCount | null } {
   const scenarios = listScenarios(root);
-  return { findings: scenarios.flatMap((scenario) => scenarioFindings(scenario, services)), scenarios: countByStatus(scenarios) };
+  const catalog = entryFindings(root, model, scenarios, env, ENTRY_RULE);
+  if (!existsSync(join(root, SCENARIO_DIR))) return { findings: catalog, scenarios: null };
+  const services = model.services.map((service) => service.name);
+  return { findings: [...scenarios.flatMap((scenario) => scenarioFindings(scenario, services)), ...catalog], scenarios: countByStatus(scenarios) };
 }
 
-function environmentReport(engine: Engine, machine: MachineReport, root: string): EnvCheckReport {
+function environmentReport(engine: Engine, machine: MachineReport, root: string, env: NodeJS.ProcessEnv): EnvCheckReport {
   if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) return { ok: false, machine, environment: "missing", findings: [], scenarios: null };
   const modelJson = readModelJson(engine, root);
   const model = readModel(modelJson);
   const trial = trialFinding(root, modelJson);
-  const saved = scenarioCheck(root, model);
+  const saved = scenarioCheck(root, model, env);
   const findings = [...environmentStubs(root, model).findings, ...inStepFindings(scanUmbrella(root), model, root), ...(trial ? [trial] : []), ...saved.findings];
   return { ok: !hasError(findings), machine, environment: "present", findings, scenarios: saved.scenarios };
 }
 
 export function checkEnvironment({ env, cwd, root }: Context, runner: EngineRunner): Outcome<EnvCheckReport> {
   const { engine, machine } = machineCheck(env, cwd, root, runner);
-  const report: EnvCheckReport = engine && machine.ok ? environmentReport(engine, machine, root) : { ok: false, machine, environment: null, findings: [], scenarios: null };
+  const report: EnvCheckReport = engine && machine.ok ? environmentReport(engine, machine, root, env) : { ok: false, machine, environment: null, findings: [], scenarios: null };
   return report.ok ? done(report) : failed(report);
 }
 

@@ -215,6 +215,29 @@ test("a stubbed mock without a healthcheck gets no E3 line", (t) => {
   assert.ok(!renderCheck(report(outcome)).split("\n").some((line) => line.startsWith("E3")));
 });
 
+function withEntry(ctx: Context, name: string, text: string): Context {
+  mkdirSync(join(ctx.root, ".picket", "env", "catalog"), { recursive: true });
+  writeFileSync(join(ctx.root, ".picket", "env", "catalog", name), text);
+  return ctx;
+}
+
+const FIND_ENTRY = "---\nkind: find\nneed: an open order\nformat: 1\n---\nrequest GET {orders}/orders\ncapture id json 0.id\n";
+
+test("a catalog entry that breaks its kind fails the check with an E13 line under its name", (t) => {
+  const ctx = withEntry(umbrellaContext(t), "open-order.md", FIND_ENTRY.replace("request GET", "request POST"));
+  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  assert.equal(describeExit(outcome).code, 2);
+  const lines = renderCheck(report(outcome)).split("\n");
+  assert.deepEqual(lines.filter((line) => line.startsWith("E13")), ["E13 open-order: step 1: a find entry sends only GET requests, not POST"]);
+});
+
+test("a valid catalog entry adds no E13 line", (t) => {
+  const ctx = withEntry(umbrellaContext(t), "open-order.md", FIND_ENTRY);
+  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  assert.equal(describeExit(outcome).code, EXIT.done);
+  assert.ok(!renderCheck(report(outcome)).includes("E13"));
+});
+
 test("the fixture card is written in canonical form and its fingerprint matches", () => {
   const text = readFileSync(resolve("test/fixtures/env/umbrella/.picket/env/scenarios/S-0001.md"), "utf8");
   const { card, problems } = parseScenario(text);

@@ -168,7 +168,7 @@ function attachLine(request: RequestStep, text: string): string | null {
 
 type StepsRead = { steps: Step[]; problems: string[] };
 
-function readSteps(body: string): StepsRead {
+export function readSteps(body: string): StepsRead {
   const steps: Step[] = [];
   const problems: string[] = [];
   let line = 0;
