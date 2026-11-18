@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-18T09:14:14.999Z",
+  "base": "a993b62bb2745279ca7cca55669c2eab31ac7b93",
+  "mutant": {
+    "path": "bench/lib/tasks.mjs",
+    "line": 15,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 162696
+}

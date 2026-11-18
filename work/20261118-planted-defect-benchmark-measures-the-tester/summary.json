@@ -1,0 +1,161 @@
+{
+  "work_id": "20261118-planted-defect-benchmark-measures-the-tester",
+  "base": "a993b62bb2745279ca7cca55669c2eab31ac7b93",
+  "request": "work/20261118-planted-defect-benchmark-measures-the-tester/request.md",
+  "size": "large",
+  "changed_files": [
+    "bench/fixture/.picket/env/compose.yaml",
+    "bench/fixture/.picket/env/docker/ledgerlite/Dockerfile",
+    "bench/fixture/.picket/env/docker/ledgerlite/config.json",
+    "bench/hidden/test-01-negative-quantity/key.json",
+    "bench/hidden/test-01-negative-quantity/key.test.ts",
+    "bench/hidden/test-02-page-size-boundary/key.json",
+    "bench/hidden/test-02-page-size-boundary/key.test.ts",
+    "bench/hidden/test-03-delete-unknown-invoice/key.json",
+    "bench/hidden/test-03-delete-unknown-invoice/key.test.ts",
+    "bench/hidden/test-04-replay-returns-200/key.json",
+    "bench/hidden/test-04-replay-returns-200/key.test.ts",
+    "bench/hidden/test-05-page-past-end/key.json",
+    "bench/hidden/test-05-page-past-end/key.test.ts",
+    "bench/hidden/test-06-credit-over-total/key.json",
+    "bench/lib/claude.mjs",
+    "bench/lib/fixture.mjs",
+    "bench/lib/tasks.mjs",
+    "bench/lib/tester-grade.mjs",
+    "bench/lib/tester-measures.mjs",
+    "bench/lib/tester-seed.mjs",
+    "bench/lib/tester-stop-hook.mjs",
+    "bench/report.mjs",
+    "bench/run.mjs",
+    "bench/seeds/test-01-negative-quantity/item/design.md",
+    "bench/seeds/test-01-negative-quantity/item/phases/1.approved",
+    "bench/seeds/test-01-negative-quantity/item/phases/1.done",
+    "bench/seeds/test-01-negative-quantity/item/phases/1.reviewed",
+    "bench/seeds/test-01-negative-quantity/item/request.md",
+    "bench/seeds/test-01-negative-quantity/item/state.yaml",
+    "bench/seeds/test-01-negative-quantity/item/verdicts.jsonl",
+    "bench/seeds/test-01-negative-quantity/repo/src/http/handlers.ts",
+    "bench/seeds/test-01-negative-quantity/repo/src/http/validation.ts",
+    "bench/seeds/test-01-negative-quantity/repo/test/validation.test.ts",
+    "bench/seeds/test-02-page-size-boundary/item/design.md",
+    "bench/seeds/test-02-page-size-boundary/item/phases/1.approved",
+    "bench/seeds/test-02-page-size-boundary/item/phases/1.done",
+    "bench/seeds/test-02-page-size-boundary/item/phases/1.reviewed",
+    "bench/seeds/test-02-page-size-boundary/item/request.md",
+    "bench/seeds/test-02-page-size-boundary/item/state.yaml",
+    "bench/seeds/test-02-page-size-boundary/item/verdicts.jsonl",
+    "bench/seeds/test-02-page-size-boundary/repo/src/http/handlers.ts",
+    "bench/seeds/test-02-page-size-boundary/repo/test/page-size.test.ts",
+    "bench/seeds/test-03-delete-unknown-invoice/item/design.md",
+    "bench/seeds/test-03-delete-unknown-invoice/item/phases/1.approved",
+    "bench/seeds/test-03-delete-unknown-invoice/item/phases/1.done",
+    "bench/seeds/test-03-delete-unknown-invoice/item/phases/1.reviewed",
+    "bench/seeds/test-03-delete-unknown-invoice/item/request.md",
+    "bench/seeds/test-03-delete-unknown-invoice/item/state.yaml",
+    "bench/seeds/test-03-delete-unknown-invoice/item/verdicts.jsonl",
+    "bench/seeds/test-03-delete-unknown-invoice/repo/src/http/handlers.ts",
+    "bench/seeds/test-03-delete-unknown-invoice/repo/src/storage/jsonRepository.ts",
+    "bench/seeds/test-03-delete-unknown-invoice/repo/test/delete.test.ts",
+    "bench/seeds/test-04-replay-returns-200/item/design.md",
+    "bench/seeds/test-04-replay-returns-200/item/phases/1.approved",
+    "bench/seeds/test-04-replay-returns-200/item/phases/1.done",
+    "bench/seeds/test-04-replay-returns-200/item/phases/1.reviewed",
+    "bench/seeds/test-04-replay-returns-200/item/request.md",
+    "bench/seeds/test-04-replay-returns-200/item/state.yaml",
+    "bench/seeds/test-04-replay-returns-200/item/verdicts.jsonl",
+    "bench/seeds/test-04-replay-returns-200/repo/src/http/handlers.ts",
+    "bench/seeds/test-04-replay-returns-200/repo/test/idempotency.test.ts",
+    "bench/seeds/test-05-page-past-end/item/design.md",
+    "bench/seeds/test-05-page-past-end/item/phases/1.approved",
+    "bench/seeds/test-05-page-past-end/item/phases/1.done",
+    "bench/seeds/test-05-page-past-end/item/phases/1.reviewed",
+    "bench/seeds/test-05-page-past-end/item/request.md",
+    "bench/seeds/test-05-page-past-end/item/state.yaml",
+    "bench/seeds/test-05-page-past-end/item/verdicts.jsonl",
+    "bench/seeds/test-05-page-past-end/repo/src/http/handlers.ts",
+    "bench/seeds/test-05-page-past-end/repo/test/pages.test.ts",
+    "bench/seeds/test-06-credit-over-total/item/design.md",
+    "bench/seeds/test-06-credit-over-total/item/phases/1.approved",
+    "bench/seeds/test-06-credit-over-total/item/phases/1.done",
+    "bench/seeds/test-06-credit-over-total/item/phases/1.reviewed",
+    "bench/seeds/test-06-credit-over-total/item/request.md",
+    "bench/seeds/test-06-credit-over-total/item/state.yaml",
+    "bench/seeds/test-06-credit-over-total/item/verdicts.jsonl",
+    "bench/seeds/test-06-credit-over-total/repo/src/http/credits.ts",
+    "bench/seeds/test-06-credit-over-total/repo/src/http/handlers.ts",
+    "bench/seeds/test-06-credit-over-total/repo/test/credits.test.ts",
+    "bench/selfcheck.mjs",
+    "bench/tasks/test-01-negative-quantity.json",
+    "bench/tasks/test-02-page-size-boundary.json",
+    "bench/tasks/test-03-delete-unknown-invoice.json",
+    "bench/tasks/test-04-replay-returns-200.json",
+    "bench/tasks/test-05-page-past-end.json",
+    "bench/tasks/test-06-credit-over-total.json",
+    "bench/test/claude.test.mjs",
+    "bench/test/fixtures/tester-baseline.json",
+    "bench/test/fixtures/tester-worse.json",
+    "bench/test/tasks.test.mjs",
+    "bench/test/tester-grade.test.mjs",
+    "bench/test/tester-measures.test.mjs",
+    "bench/test/tester-seed.test.mjs",
+    "bench/test/tester-stop-hook.test.mjs",
+    "src/lib/shared/env/instep.mts",
+    "src/lib/shared/env/instep.test.mts",
+    "test/repo/markdown-paths.test.mjs"
+  ],
+  "lines_added": 2116,
+  "lines_removed": 42,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-18T09:14:14.999Z",
+    "base": "a993b62bb2745279ca7cca55669c2eab31ac7b93",
+    "mutant": {
+      "path": "bench/lib/tasks.mjs",
+      "line": 15,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 162696
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
