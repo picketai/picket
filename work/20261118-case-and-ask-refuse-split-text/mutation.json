@@ -1,0 +1,9 @@
+{
+  "ts": "2026-11-18T16:29:32.055Z",
+  "base": "f89d608a3db5fbf2a0a277d0da6a0b8d25cd8c85",
+  "mutant": null,
+  "command": "npm test",
+  "outcome": "no candidate",
+  "rebuild": null,
+  "ms": 155317
+}
