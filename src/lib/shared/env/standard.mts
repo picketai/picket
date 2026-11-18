@@ -36,3 +36,7 @@ export function imageName(service: string, key: string, version: string): string
 export function urlVariable(service: string): string {
   return `PICKET_URL_${service.toUpperCase().replace(/[-.]/g, "_")}`;
 }
+
+export function dataVariable(service: string): string {
+  return `PICKET_DATA_${service.toUpperCase().replace(/[-.]/g, "_")}`;
+}

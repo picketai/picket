@@ -12,6 +12,7 @@ import { listScenarios } from "../../shared/scenarios/files.mts";
 import { changedSinceReplay, keyId, workingKey } from "../../shared/scenarios/keys.mts";
 import { itemMocks, latestRun, readResults, type ResultRow, type RunRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import { listMocks, realService } from "../../shared/mocks/definition.mts";
+import { itemDataRuns, type DataRun } from "../../shared/data/runs.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
@@ -52,6 +53,7 @@ export type Closing = {
   tested: string | null;
   unproved: string[];
   kept: string[];
+  data: DataRun[];
 };
 export type CloseResult = WorkState & {
   commit: string | null;
@@ -306,6 +308,7 @@ function closingFacts(root: string, snap: WorkSnapshot, audit: string, closeComm
     deferred: PHASED_LANES.includes(lane) ? deferredCriteria(body) : [],
     report,
     strategic: report?.strategic_review ?? recordStrategicIds(lane, body),
+    data: itemDataRuns(root, id),
     ...tested,
   };
 }

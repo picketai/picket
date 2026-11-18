@@ -1,3 +1,4 @@
+import type { DataRun } from "../../shared/data/runs.mts";
 import type { DecisionCounts } from "../../shared/work/artifact.mts";
 import { workRel } from "../../shared/work/files.mts";
 import type { LeftEntry } from "../../shared/work/left.mts";
@@ -46,6 +47,10 @@ function testedLines({ tested, unproved, kept }: Closing): string[] {
   ];
 }
 
+function dataLine({ entry, server, database, status }: DataRun): string {
+  return `Data: ${entry} ran on server ${server}, database ${database}, exit ${status}`;
+}
+
 function leftForYou({ command, why }: LeftEntry): string {
   return `Left for you: ${command}${why ? ` (${why})` : ""}`;
 }
@@ -80,6 +85,7 @@ export function closingBlock(v: CloseResult): string {
     `## ${HEADING[v.lane]} closed: ${v.id}`,
     laneLine(v),
     ...testedLines(v.closing),
+    ...v.closing.data.map(dataLine),
     `Audit: ${v.closing.audit}`,
     v.closing.questions && `Questions: ${v.closing.questions}`,
     ...v.closing.deferred.map(({ id, owner, gate }) => `Deferred: ${id} ${owner}, ${gate}`),

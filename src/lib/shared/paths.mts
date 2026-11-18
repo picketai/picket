@@ -25,6 +25,7 @@ export const STATE_FILES = Object.freeze({
   scenarioAccepted: "scenarios/accepted.json",
   scenarioCandidates: "scenarios/candidates",
   dataApprovals: "data/approvals.jsonl",
+  dataRuns: "data/runs.jsonl",
 });
 
 export const MODEL_WRITABLE_STATE_FILES = Object.freeze([STATE_FILES.branchingManifest]);

@@ -17,6 +17,7 @@ import { Refused } from "../../shared/action.mts";
 import type { ResultClass } from "../../shared/scenarios/compare.mts";
 import { writeScenario, type Card } from "../../shared/scenarios/format.mts";
 import { appendRows, type ScenarioRow } from "../../shared/scenarios/results.mts";
+import { appendDataRun } from "../../shared/data/runs.mts";
 import { closingBlock } from "./block.mts";
 import { close, defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
 import { checkCommitMessage } from "../../shared/commit-message.mts";
@@ -32,7 +33,7 @@ const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
 const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0";
-const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [] };
+const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [], data: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -464,6 +465,15 @@ test("the closing line names each mock's real service from its definition, else 
   writeIn(root, ".picket/env/mocks/payments-mock.md", "---\nreplaces: payments-api\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\nwhen GET /charges/*\n  status 200\n");
   const lines = blockLines(closeFast(root, id));
   assert.ok(lines.includes("Not verified end to end: ledger, payments-api"), lines.join("\n"));
+});
+
+test("each SQL run of the item prints a Data line with server, database and exit status after the tested lines (T-8.5)", (t) => {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  appendDataRun(root, { at: "2026-11-18T10:00:00.000Z", item: id, entry: "customer", path: "data/customer.sql", sha256: "a".repeat(64), server: "sql01", database: "orders_test", status: 0 });
+  appendDataRun(root, { at: "2026-11-18T10:00:00.000Z", item: "20261118-other", entry: "other", path: "data/other.sql", sha256: "b".repeat(64), server: "sql02", database: "x", status: 1 });
+  const lines = blockLines(closeFast(root, id));
+  assert.deepEqual(lines.filter((line) => line.startsWith("Data: ")), ["Data: customer ran on server sql01, database orders_test, exit 0"]);
+  assert.ok(lines.indexOf("Data: customer ran on server sql01, database orders_test, exit 0") > lines.findIndex((line) => line.startsWith("Tested: ")), lines.join("\n"));
 });
 
 test("an item with no tester verdict names the mocks of its latest full replay (T-4.4)", (t) => {

@@ -11,6 +11,7 @@ export const REGISTRY = {
   cost: () => import("../verbs/cost/index.mts"),
   "data show": () => import("../verbs/data/show.mts"),
   "data approve": () => import("../verbs/data/approve.mts"),
+  "data run": () => import("../verbs/data/run.mts"),
   drive: () => import("../verbs/drive/index.mts"),
   "env check": () => import("../verbs/env/check.mts"),
   "env init": () => import("../verbs/env/init.mts"),

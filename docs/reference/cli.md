@@ -86,6 +86,14 @@ Record the user's approval of a SQL file at the digest show printed.
 picket data approve <path> --sha256 <the 64 hex digits data show printed>
 ```
 
+### picket data run
+
+Run an approved sql entry's file through its data service on the item's stack.
+
+```sh
+picket data run <id> <entry>
+```
+
 ## picket drive
 
 Start the app or run a command, exercise it, stop it and log the evidence.
