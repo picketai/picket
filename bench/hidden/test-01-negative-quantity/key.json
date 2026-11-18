@@ -1,4 +1,5 @@
 {
   "kind": "defect",
-  "defect": { "criterion": "T-1.1", "method": "POST", "path": "^/invoices$", "status": 400 }
+  "defect": { "criterion": "T-1.1", "method": "POST", "path": "^/invoices$", "status": 400 },
+  "consequences": [{ "criterion": "T-1.2", "method": "POST", "path": "^/invoices$", "body": "\"quantity\"\\s*:\\s*-" }]
 }

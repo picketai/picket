@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { appendTestRow } from "../../dist/lib/shared/testing/results.mjs";
@@ -12,6 +12,18 @@ const DEFECT = { kind: "defect", defect: { criterion: "T-1.1", method: "POST", p
 const TRAP = { kind: "trap" };
 const SILENT = { kind: "silent", question: { criterion: "T-1.2" } };
 const NEGATIVE_POST = 'request POST {ledgerlite}/invoices\n  body {"customer":"PKT-a","currency":"EUR","lines":[{"description":"a","quantity":-1,"unitPriceCents":5}]}\nexpect status 400';
+const C09 = [
+  "request GET {ledgerlite}/invoices",
+  "expect status 200",
+  "capture before json total",
+  "request POST {ledgerlite}/invoices",
+  "  header content-type: application/json",
+  '  body {"customer": "PKT-{run}", "currency": "EUR", "lines": [{"description": "item", "quantity": -1, "unitPriceCents": 150}]}',
+  "request GET {ledgerlite}/invoices",
+  "expect status 200",
+  'expect contains "\\"total\\":{before}"',
+].join("\n");
+const TEST_01_KEY = JSON.parse(readFileSync(new URL("../hidden/test-01-negative-quantity/key.json", import.meta.url), "utf8"));
 const PAGE_PAST_END = "request GET {ledgerlite}/invoices?page=99\nexpect status 404";
 const ROUND_ONE = "# Test report\n\nRound 1 · CHANGES REQUIRED · route fix\n";
 const readers = await loadKernelReaders(resolve("dist"));
@@ -118,4 +130,44 @@ test("without test.md the report check fails, the verdict is null and the run fa
   const graded = grade(repo, DEFECT);
   assert.deepEqual(graded.checks[0], { name: "report_exists", ok: false, detail: `work/${ITEM}/test.md` });
   assert.deepEqual([graded.tester.verdict, graded.tester.found, graded.tester.false_alarms, graded.pass], [null, true, 0, false]);
+});
+
+test("the shipped test-01 key adds one T-1.2 consequence beside an unchanged defect (T-2.1)", () => {
+  assert.deepEqual(TEST_01_KEY, {
+    kind: "defect",
+    defect: { criterion: "T-1.1", method: "POST", path: "^/invoices$", status: 400 },
+    consequences: [{ criterion: "T-1.2", method: "POST", path: "^/invoices$", body: '"quantity"\\s*:\\s*-' }],
+  });
+});
+
+test("with the shipped test-01 key a T-1.2 case posting a negative quantity counts as the defect beside the T-1.1 case (T-2.2)", (t) => {
+  const repo = item(t);
+  failedCase(repo, { id: "C-02", steps: NEGATIVE_POST });
+  failedCase(repo, { id: "C-09", steps: C09, criterion: "T-1.2" });
+  const graded = grade(repo, TEST_01_KEY);
+  assert.deepEqual(graded.tester, { verdict: "CHANGES REQUIRED", found: true, false_alarms: 0, questions_right: null, signature: "found=true false_alarms=0 questions_right=null" });
+  assert.equal(graded.pass, true);
+  assert.deepEqual(graded.checks[1], { name: "defect_found", ok: true, detail: "C-02, C-09" });
+});
+
+test("with the shipped test-01 key the T-1.2 consequence alone finds the defect (T-2.3)", (t) => {
+  const repo = item(t);
+  failedCase(repo, { id: "C-09", steps: C09, criterion: "T-1.2" });
+  const graded = grade(repo, TEST_01_KEY);
+  assert.deepEqual(graded.tester, { verdict: "CHANGES REQUIRED", found: true, false_alarms: 0, questions_right: null, signature: "found=true false_alarms=0 questions_right=null" });
+  assert.equal(graded.pass, true);
+});
+
+test("with the shipped test-01 key a positive quantity or the consequence under T-1.1 is a false alarm (T-2.4)", (t) => {
+  const cases = [
+    { id: "C-09", steps: C09.replace('"quantity": -1', '"quantity": 1'), criterion: "T-1.2" },
+    { id: "C-09", steps: C09, criterion: "T-1.1" },
+  ];
+  for (const spec of cases) {
+    const repo = item(t);
+    failedCase(repo, spec);
+    const graded = grade(repo, TEST_01_KEY);
+    assert.deepEqual(graded.tester, { verdict: "CHANGES REQUIRED", found: false, false_alarms: 1, questions_right: null, signature: "found=false false_alarms=1 questions_right=null" }, spec.criterion);
+    assert.equal(graded.pass, false, spec.criterion);
+  }
 });

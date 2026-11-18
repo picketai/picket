@@ -31,9 +31,24 @@ function expectedStatusAfter(steps, at) {
   return null;
 }
 
+function isRequestTo(step, method, path) {
+  return step.word === "request" && step.method === method && path.test(step.target.replace(SERVICE_PREFIX, ""));
+}
+
 function showsDefect(steps, defect) {
   const path = new RegExp(defect.path);
-  return steps.some((step, at) => step.word === "request" && step.method === defect.method && path.test(step.target.replace(SERVICE_PREFIX, "")) && expectedStatusAfter(steps, at) === defect.status);
+  return steps.some((step, at) => isRequestTo(step, defect.method, path) && expectedStatusAfter(steps, at) === defect.status);
+}
+
+function showsConsequence(row, steps, consequence) {
+  if (row.criterion !== consequence.criterion) return false;
+  const path = new RegExp(consequence.path);
+  const body = new RegExp(consequence.body);
+  return steps.some((step) => isRequestTo(step, consequence.method, path) && step.body !== null && body.test(step.body));
+}
+
+function showsPlantedDefect(row, steps, key) {
+  return showsDefect(steps, key.defect) || (key.consequences ?? []).some((consequence) => showsConsequence(row, steps, consequence));
 }
 
 function roundOne(readers, repo, item) {
@@ -49,7 +64,7 @@ function reportVerdict(reportPath) {
 }
 
 function defectGrade(readers, item, key, { products }) {
-  const matching = products.filter((row) => showsDefect(cardSteps(readers, item, row), key.defect));
+  const matching = products.filter((row) => showsPlantedDefect(row, cardSteps(readers, item, row), key));
   const falseAlarms = products.length - matching.length;
   return {
     checks: [check("defect_found", matching.length > 0, matching.map((row) => row.case).join(", ")), check("no_false_alarm", falseAlarms === 0, `${falseAlarms} unmatched product failure(s)`)],
