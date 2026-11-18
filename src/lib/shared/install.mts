@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { join, posix, win32 } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { configRel, HOST_DIR, hostRel, pluginRoot, stateRel } from "./paths.mts";
@@ -106,6 +106,14 @@ function comparable(path: string, platform: NodeJS.Platform): string {
   return platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
+function realOrGiven(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
 export function isHomeFolder(root: string, home: string, platform: NodeJS.Platform): boolean {
-  return comparable(root, platform) === comparable(home, platform);
+  return comparable(realOrGiven(root), platform) === comparable(realOrGiven(home), platform);
 }

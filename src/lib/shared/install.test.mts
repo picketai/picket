@@ -1,6 +1,6 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { claudeBlockSpan, DATA_FOLDER_STATUS_LINE, holdsPicketStatusLine, INSTALL, isHomeFolder, isPicketStatusLine, LEGACY_STATUS_LINE, oldStatusLineNote, pluginId, readTemplate, userSettingsPath } from "./install.mts";
@@ -27,6 +27,20 @@ test("isHomeFolder ignores case and a trailing separator on win32 only", () => {
   assert.equal(isHomeFolder("C:\\Users\\Ana\\project", "C:\\Users\\Ana", "win32"), false);
   assert.equal(isHomeFolder("/home/Ana", "/home/ana", "linux"), false);
   assert.equal(isHomeFolder("/home/ana/", "/home/ana", "linux"), true);
+});
+
+test("isHomeFolder is true when one path is a symlink to the other, and false for a folder beside it", (t) => {
+  const base = mkdtempSync(join(tmpdir(), "picket-home-"));
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  const real = join(base, "real");
+  const link = join(base, "link");
+  const beside = join(base, "beside");
+  mkdirSync(real);
+  mkdirSync(beside);
+  symlinkSync(real, link, "junction");
+  assert.equal(isHomeFolder(real, link, process.platform), true);
+  assert.equal(isHomeFolder(link, real, process.platform), true);
+  assert.equal(isHomeFolder(beside, link, process.platform), false);
 });
 
 test("the init status line runs the project copy through the braced CLAUDE_PROJECT_DIR (T-2.2)", () => {
