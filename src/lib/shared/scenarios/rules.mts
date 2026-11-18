@@ -9,6 +9,7 @@ const SERVICE_NAME = /^[a-z0-9][a-z0-9_.-]*$/;
 const RUN_KEY = "run";
 const TEST_USER = /^user:[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const RELATIVE_DATE = /^date:[+-]\d+d$/;
+const CATALOG_VALUE = /^data:[a-z][a-z0-9-]*\.[a-z][a-z0-9_]*$/;
 const FIXED_DATE = /\b\d{4}-\d{2}-\d{2}(?=T|\b)/g;
 const SECRET_HEADERS = ["authorization", "proxy-authorization", "cookie"];
 const AUTH_SCHEME = /^\s*(?:bearer|basic|digest|token)\b/i;
@@ -23,14 +24,14 @@ function braced(text: string): string[] {
 }
 
 function isSource(name: string, captured: Set<string>): boolean {
-  return name === RUN_KEY || captured.has(name) || TEST_USER.test(name) || RELATIVE_DATE.test(name);
+  return name === RUN_KEY || captured.has(name) || TEST_USER.test(name) || RELATIVE_DATE.test(name) || CATALOG_VALUE.test(name);
 }
 
 function valueProblems(line: number, texts: string[], captured: Set<string>): string[] {
   return texts.flatMap((text) => [
     ...braced(text)
       .filter((name) => !isSource(name, captured))
-      .map((name) => `rule 3: step ${line} takes {${name}}, which is no capture before it, the run key, a test user or a relative date`),
+      .map((name) => `rule 3: step ${line} takes {${name}}, which is no capture before it, the run key, a test user, a catalog entry or a relative date`),
     ...[...text.matchAll(FIXED_DATE)].map(([date]) => `step ${line}: fixed date ${date}; write {date:+Nd}`),
   ]);
 }

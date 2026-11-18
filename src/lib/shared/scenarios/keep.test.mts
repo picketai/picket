@@ -158,9 +158,9 @@ function postCard(body: string): Card {
 }
 
 test("a changing request writes unowned data unless its target or body carries PKT- (T-9.6)", () => {
-  assert.equal(writesUnownedData(postCard('{"sku":"a"}')), true);
-  assert.equal(writesUnownedData(postCard('{"sku":"PKT-{run}-1"}')), false);
-  assert.equal(writesUnownedData(card()), false);
+  assert.equal(writesUnownedData(postCard('{"sku":"a"}'), []), true);
+  assert.equal(writesUnownedData(postCard('{"sku":"PKT-{run}-1"}'), []), false);
+  assert.equal(writesUnownedData(card(), []), false);
 });
 
 const LOGIN = 'request POST {orders}/login\n  body {"user": "{user:buyer.name}", "password": "{user:buyer.password}"}\nexpect status 200\n';
@@ -177,11 +177,18 @@ function ordersPost(body: string): string {
 }
 
 test("a first request with {user: placeholders and a capture after it is a login, not an unowned write", () => {
-  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${CAPTURE}${ordersPost('{"reference": "PKT-{run}", "items": []}')}`)), false);
+  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${CAPTURE}${ordersPost('{"reference": "PKT-{run}", "items": []}')}`), []), false);
 });
 
 test("a login still leaves every other changing request to the PKT- rule", () => {
-  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${CAPTURE}${ordersPost('{"reference": "a"}')}`)), true);
-  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${ordersPost('{"reference": "PKT-{run}", "items": []}')}`)), true);
-  assert.equal(writesUnownedData(stepsCard(`request GET {orders}/health\nexpect status 200\n${LOGIN}${CAPTURE}`)), true);
+  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${CAPTURE}${ordersPost('{"reference": "a"}')}`), []), true);
+  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${ordersPost('{"reference": "PKT-{run}", "items": []}')}`), []), true);
+  assert.equal(writesUnownedData(stepsCard(`request GET {orders}/health\nexpect status 200\n${LOGIN}${CAPTURE}`), []), true);
+});
+
+test("a change to data a create entry made is owned; the same change to a find entry's data is not (T-6.5)", () => {
+  const put = stepsCard('request PUT {orders}/customers/{data:customer.id}\n  body {"name":"renamed"}\nexpect status 200\n');
+  assert.equal(writesUnownedData(put, ["customer"]), false);
+  assert.equal(writesUnownedData(put, []), true);
+  assert.equal(writesUnownedData(put, ["customer-archive"]), true);
 });

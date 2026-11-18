@@ -147,7 +147,7 @@ export function listEntries(root: string): EntryFile[] {
   });
 }
 
-function asCard(steps: Step[]): Card {
+export function asCard(steps: Step[]): Card {
   return { header: { id: "", kind: "normal", covers: [], intent: "", status: "active", format: FORMAT }, steps };
 }
 

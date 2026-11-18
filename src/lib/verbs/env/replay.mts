@@ -5,6 +5,7 @@ import type { Context } from "../../shared/context.mts";
 import { machineCheck, realRunner, type Engine, type EngineRunner } from "../../shared/env/engine.mts";
 import { listMocks, realService, type MockFile } from "../../shared/mocks/definition.mts";
 import { stackMocks } from "../../shared/mocks/stub.mts";
+import { catalogOf } from "../../shared/catalog/resolve.mts";
 import { readLayout, type ItemLayout } from "../../shared/repos.mts";
 import { runBase, type BaseInput, type BaseOutcome } from "../../shared/scenarios/base-run.mts";
 import { classify, isBlamed, RESULT_CLASSES, type ResultClass } from "../../shared/scenarios/compare.mts";
@@ -132,7 +133,7 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const scenarios = selected(listScenarios(root), input, keys);
   const services = start.model.services.map((service) => service.name);
   const mockFiles = listMocks(root);
-  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...stackMocks(start.model, mockFiles, start.report.endpoints) });
+  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...stackMocks(start.model, mockFiles, start.report.endpoints), catalog: catalogOf(root) });
   const baseId = keyId(keys.base);
   const stored = readResults(root);
   const unmatched = new Set(runs.filter((scenarioRun) => !session.replaced.has(scenarioRun.id) && needsBase(scenarioRun, stored, baseId)).map((scenarioRun) => scenarioRun.id));
@@ -156,7 +157,7 @@ async function replayCandidate(candidate: CandidateInput, session: Session, serv
   const [problem] = scenarioProblems(built.card, services);
   if (problem !== undefined) return { ...base, outcome: "blocked", detail: problem, text };
   const { newRunKey: runKeyOf, ...replay } = replayDeps(session.ctx, session.deps);
-  const ran = await runScenario({ ...replay, card: built.card, urls: session.start.report.endpoints, runKey: runKeyOf() });
+  const ran = await runScenario({ ...replay, card: built.card, urls: session.start.report.endpoints, runKey: runKeyOf(), data: {} });
   return { ...base, outcome: ran.outcome, detail: ran.detail, text };
 }
 

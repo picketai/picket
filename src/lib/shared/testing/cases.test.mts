@@ -20,7 +20,7 @@ function answers(...statuses: number[]): HttpAdapter {
 
 function input(adapter: HttpAdapter): RunCaseInput {
   let key = 0;
-  return { services: ["orders"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-17", newRunKey: () => `k${key++}`, timeoutMs: 1000, sleep: async () => {}, stubs: {}, ownMocks: [] };
+  return { services: ["orders"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-17", newRunKey: () => `k${key++}`, timeoutMs: 1000, sleep: async () => {}, stubs: {}, ownMocks: [], catalog: [] };
 }
 
 test("a case card covers the item's criterion and passes the scenario rules (T-3.1)", () => {

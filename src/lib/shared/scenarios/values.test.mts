@@ -2,7 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { newRunKey, relativeDate, resolveText, userVariable, type ValueScope } from "./values.mts";
 
-const SCOPE: ValueScope = { run: "7f3a", captures: { order_id: "PKT-7f3a-1" }, env: {}, today: "2026-11-15" };
+const SCOPE: ValueScope = { run: "7f3a", captures: { order_id: "PKT-7f3a-1" }, data: { "customer.id": "c-41" }, env: {}, today: "2026-11-15" };
+
+test("a data placeholder reads the resolved catalog value, and a missing one blocks naming it", () => {
+  assert.deepEqual(resolveText("/customers/{data:customer.id}", SCOPE), { text: "/customers/c-41" });
+  assert.deepEqual(resolveText("/customers/{data:customer.ref}", SCOPE), { blocked: "{data:customer.ref} has no value" });
+});
 
 test("relative dates count UTC days from the run day (T-2.1)", () => {
   assert.deepEqual(resolveText("{date:+7d}", SCOPE), { text: "2026-11-22" });

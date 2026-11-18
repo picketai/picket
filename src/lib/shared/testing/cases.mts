@@ -6,6 +6,7 @@ import { serviceEndpoints } from "../env/stack-start.mts";
 import { readStacks } from "../env/stacks.mts";
 import { itemKey, stackName } from "../env/standard.mts";
 import { listMocks } from "../mocks/definition.mts";
+import { catalogOf } from "../catalog/resolve.mts";
 import { stackMocks, stubbedMocks, withStubPorts } from "../mocks/stub.mts";
 import { FORMAT, parseScenario, writeScenario, type Card, type ScenarioHeader } from "../scenarios/format.mts";
 import type { HttpAdapter } from "../scenarios/http.mts";
@@ -56,6 +57,7 @@ export function runCaseInput(ctx: Context, deps: CaseDeps, stack: ItemStack): Ru
     urls: stack.urls,
     stubs: stack.stubs,
     ownMocks: stack.ownMocks,
+    catalog: catalogOf(ctx.root),
     adapter: deps.adapter,
     env: ctx.env,
     today: ctx.now().toISOString().slice(0, DAY_LENGTH),

@@ -87,9 +87,13 @@ function loginIndex(steps: Card["steps"]): number {
   return signsIn && capturesBeforeNextRequest(steps, first) ? first : -1;
 }
 
-export function writesUnownedData(card: Card): boolean {
+function ownsData(text: string, created: readonly string[]): boolean {
+  return text.includes(RUN_PREFIX) || created.some((entry) => text.includes(`{data:${entry}.`));
+}
+
+export function writesUnownedData(card: Card, created: readonly string[]): boolean {
   const login = loginIndex(card.steps);
-  return card.steps.some((step, at) => at !== login && step.word === "request" && CHANGING_METHODS.includes(step.method) && !`${step.target}${step.body ?? ""}`.includes(RUN_PREFIX));
+  return card.steps.some((step, at) => at !== login && step.word === "request" && CHANGING_METHODS.includes(step.method) && !ownsData(`${step.target}${step.body ?? ""}`, created));
 }
 
 export function candidateCard(input: CandidateInput): { card: Card } | { notKept: string } {
@@ -100,7 +104,7 @@ export function candidateCard(input: CandidateInput): { card: Card } | { notKept
   const service = serviceFor(check, input.apps, input.files);
   if (service === null) return notKept("the phase's files sit in no app or in several; name one with service");
   const card = cardOf(input, check, ran, service);
-  if (writesUnownedData(card)) return notKept(`${check.method} changes data it did not create; create it with a ${RUN_PREFIX} prefix`);
+  if (writesUnownedData(card, [])) return notKept(`${check.method} changes data it did not create; create it with a ${RUN_PREFIX} prefix`);
   return { card };
 }
 

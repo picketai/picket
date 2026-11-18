@@ -1,0 +1,95 @@
+{
+  "work_id": "20261118-mock-format-stub-server-data-catalog",
+  "base": "c17d91d001285e1979e0624fa97e25fb8753f3bb",
+  "request": "work/20261118-mock-format-stub-server-data-catalog/request.md",
+  "size": "large",
+  "changed_files": [
+    "src/lib/shared/catalog/entry.mts",
+    "src/lib/shared/catalog/entry.test.mts",
+    "src/lib/shared/env/build-plan.mts",
+    "src/lib/shared/env/build-plan.test.mts",
+    "src/lib/shared/env/rules.mts",
+    "src/lib/shared/env/rules.test.mts",
+    "src/lib/shared/env/standard.mts",
+    "src/lib/shared/env/trial.mts",
+    "src/lib/shared/env/trial.test.mts",
+    "src/lib/shared/mocks/definition.mts",
+    "src/lib/shared/mocks/definition.test.mts",
+    "src/lib/shared/mocks/stub-server.mjs",
+    "src/lib/shared/mocks/stub-server.test.mts",
+    "src/lib/shared/mocks/stub.mts",
+    "src/lib/shared/mocks/stub.test.mts",
+    "src/lib/shared/scenarios/base-run.mts",
+    "src/lib/shared/scenarios/format.mts",
+    "src/lib/shared/scenarios/replay.mts",
+    "src/lib/shared/scenarios/replay.test.mts",
+    "src/lib/shared/scenarios/results.mts",
+    "src/lib/shared/scenarios/results.test.mts",
+    "src/lib/shared/testing/cases.mts",
+    "src/lib/shared/testing/cases.test.mts",
+    "src/lib/shared/testing/keep-cases.mts",
+    "src/lib/shared/testing/keep-cases.test.mts",
+    "src/lib/shared/testing/report.mts",
+    "src/lib/shared/testing/report.test.mts",
+    "src/lib/shared/testing/results.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/env/check.mts",
+    "src/lib/verbs/env/check.test.mts",
+    "src/lib/verbs/env/replay.mts",
+    "src/lib/verbs/env/replay.test.mts",
+    "src/lib/verbs/env/start.mts",
+    "src/lib/verbs/env/start.test.mts",
+    "src/lib/verbs/env/trial.mts",
+    "src/lib/verbs/test/case.mts",
+    "src/lib/verbs/test/case.test.mts",
+    "src/lib/verbs/test/classify.mts",
+    "src/lib/verbs/test/record.test.mts",
+    "src/lib/verbs/test/rerun.mts",
+    "test/fixtures/env/stubbed/.picket/env/catalog/customer.md",
+    "test/fixtures/env/stubbed/.picket/env/catalog/open-order.md",
+    "test/fixtures/env/stubbed/.picket/env/compose.yaml",
+    "test/fixtures/env/stubbed/.picket/env/mocks/fraud-mock.md",
+    "test/fixtures/env/stubbed/.picket/env/mocks/payments-mock.md",
+    "test/timing/budgets.test.mjs"
+  ],
+  "lines_added": 1631,
+  "lines_removed": 125,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 9,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": null,
+  "scope": "checkpoint",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

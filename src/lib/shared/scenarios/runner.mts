@@ -9,20 +9,23 @@ export type RunInput = {
   env: NodeJS.ProcessEnv;
   today: string;
   runKey: string;
+  data: Record<string, string>;
   timeoutMs: number;
   sleep: (ms: number) => Promise<void>;
 };
-export type RunOutcome = { outcome: "passed" | "failed" | "blocked"; step: number | null; detail: string };
+export type RunOutcome = { outcome: "passed" | "failed" | "blocked"; step: number | null; detail: string; captures: Record<string, string> };
+
+type Stop = Omit<RunOutcome, "captures">;
 
 type RunState = { scope: ValueScope; answer: HttpAnswer };
-type Prepared = { request: HttpRequest; service: string } | { stop: RunOutcome };
+type Prepared = { request: HttpRequest; service: string } | { stop: Stop };
 
 const SERVICE_TARGET = /^\{([^{}]+)\}(.*)$/;
 const NO_ANSWER: HttpAnswer = { status: null, headers: {}, text: "", error: null };
-const PASSED: RunOutcome = { outcome: "passed", step: null, detail: "" };
+const PASSED: Stop = { outcome: "passed", step: null, detail: "" };
 const SECOND_MS = 1000;
 
-function halt(outcome: "failed" | "blocked", step: Step, text: string): RunOutcome {
+function halt(outcome: "failed" | "blocked", step: Step, text: string): Stop {
   return { outcome, step: step.line, detail: `step ${step.line}: ${text}` };
 }
 
@@ -48,7 +51,7 @@ function prepare(step: RequestStep, input: RunInput, scope: ValueScope): Prepare
   return { request: { method: step.method, url: base + resolvedPath, headers, body, timeoutMs: input.timeoutMs }, service };
 }
 
-async function sendRequest(step: RequestStep, input: RunInput, state: RunState): Promise<RunOutcome | null> {
+async function sendRequest(step: RequestStep, input: RunInput, state: RunState): Promise<Stop | null> {
   const prepared = prepare(step, input, state.scope);
   if ("stop" in prepared) return prepared.stop;
   state.answer = await input.adapter(prepared.request);
@@ -56,7 +59,7 @@ async function sendRequest(step: RequestStep, input: RunInput, state: RunState):
   return null;
 }
 
-function checkExpect(step: ExpectStep, state: RunState): RunOutcome | null {
+function checkExpect(step: ExpectStep, state: RunState): Stop | null {
   if (step.what === "status") {
     return state.answer.status === step.status ? null : halt("failed", step, `expected status ${step.status}, got ${state.answer.status}`);
   }
@@ -85,14 +88,14 @@ function capturedValue(step: CaptureStep, answer: HttpAnswer): string | null {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : null;
 }
 
-function capture(step: CaptureStep, state: RunState): RunOutcome | null {
+function capture(step: CaptureStep, state: RunState): Stop | null {
   const value = capturedValue(step, state.answer);
   if (value === null) return halt("failed", step, `capture ${step.name}: no ${step.key} in the answer`);
   state.scope.captures[step.name] = value;
   return null;
 }
 
-async function runStep(step: Step, input: RunInput, state: RunState): Promise<RunOutcome | null> {
+async function runStep(step: Step, input: RunInput, state: RunState): Promise<Stop | null> {
   if (step.word === "request") return sendRequest(step, input, state);
   if (step.word === "expect") return checkExpect(step, state);
   if (step.word === "capture") return capture(step, state);
@@ -101,10 +104,10 @@ async function runStep(step: Step, input: RunInput, state: RunState): Promise<Ru
 }
 
 export async function runScenario(input: RunInput): Promise<RunOutcome> {
-  const state: RunState = { scope: { run: input.runKey, captures: {}, env: input.env, today: input.today }, answer: NO_ANSWER };
+  const state: RunState = { scope: { run: input.runKey, captures: {}, data: input.data, env: input.env, today: input.today }, answer: NO_ANSWER };
   for (const step of input.card.steps) {
     const outcome = await runStep(step, input, state);
-    if (outcome !== null) return outcome;
+    if (outcome !== null) return { ...outcome, captures: state.scope.captures };
   }
-  return PASSED;
+  return { ...PASSED, captures: state.scope.captures };
 }

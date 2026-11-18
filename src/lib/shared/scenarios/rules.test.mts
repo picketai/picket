@@ -5,7 +5,7 @@ import { placeholders, scenarioProblems } from "./rules.mts";
 
 const HEADER = ["---", "id: S-0002", "kind: normal", "covers: []", "intent: rules", "format: 1", "---"];
 const SERVICES = ["orders"];
-const RULE_3 = "which is no capture before it, the run key, a test user or a relative date";
+const RULE_3 = "which is no capture before it, the run key, a test user, a catalog entry or a relative date";
 
 function card(steps: string[]): Card {
   const { card: parsed, problems } = parseScenario([...HEADER, ...steps, ""].join("\n"));
@@ -52,6 +52,11 @@ test("the run key, a relative date, a test user and an earlier capture pass rule
     'expect contains "PKT-{run}"',
   ];
   assert.deepEqual(problems(steps), []);
+});
+
+test("a catalog value passes rule 3, and one not shaped <entry>.<capture> does not (T-6.4)", () => {
+  assert.deepEqual(problems(["request PUT {orders}/customers/{data:customer.id}", '  body {"tenant":"{data:demo-tenant.id}"}']), []);
+  assert.deepEqual(problems(["request GET {orders}/customers/{data:customer}"]), [`rule 3: step 1 takes {data:customer}, ${RULE_3}`]);
 });
 
 test("a fixed date in a body or a target is refused (T-1.5)", () => {

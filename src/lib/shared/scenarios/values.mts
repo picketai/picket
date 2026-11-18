@@ -1,11 +1,12 @@
 import { PLACEHOLDER } from "./rules.mts";
 
-export type ValueScope = { run: string; captures: Record<string, string>; env: NodeJS.ProcessEnv; today: string };
+export type ValueScope = { run: string; captures: Record<string, string>; data: Record<string, string>; env: NodeJS.ProcessEnv; today: string };
 export type Resolved = { text: string } | { blocked: string };
 
 const RUN_KEY = "run";
 const RUN_KEY_BYTES = 2;
 const USER_PREFIX = "user:";
+export const DATA_PREFIX = "data:";
 const RELATIVE_DATE = /^date:([+-]\d+)d$/;
 const UTC_DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "2-digit", day: "2-digit" });
 
@@ -32,11 +33,17 @@ function testUser(name: string, env: NodeJS.ProcessEnv): Resolved {
   return value === undefined || value === "" ? { blocked: `test user ${role} has no ${variable}` } : { text: value };
 }
 
+function catalogValue(reference: string, data: Record<string, string>): Resolved {
+  const value = data[reference];
+  return value === undefined ? { blocked: `{data:${reference}} has no value` } : { text: value };
+}
+
 function resolveName(name: string, scope: ValueScope): Resolved {
   if (name === RUN_KEY) return { text: scope.run };
   const date = name.match(RELATIVE_DATE);
   if (date) return { text: relativeDate(scope.today, Number(date[1])) };
   if (name.startsWith(USER_PREFIX)) return testUser(name, scope.env);
+  if (name.startsWith(DATA_PREFIX)) return catalogValue(name.slice(DATA_PREFIX.length), scope.data);
   const captured = scope.captures[name];
   return captured === undefined ? { blocked: `{${name}} has no value` } : { text: captured };
 }

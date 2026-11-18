@@ -1,3 +1,5 @@
+import { resolveData } from "../catalog/resolve.mts";
+import type { CatalogEntry } from "../catalog/entry.mts";
 import { readTraffic, trafficBetween } from "../mocks/stub.mts";
 import type { SavedScenario } from "./files.mts";
 import type { Card } from "./format.mts";
@@ -15,6 +17,7 @@ export type ReplayInput = {
   urls: Record<string, string>;
   stubs: Record<string, string>;
   ownMocks: string[];
+  catalog: CatalogEntry[];
   adapter: HttpAdapter;
   env: NodeJS.ProcessEnv;
   today: string;
@@ -33,9 +36,12 @@ function problemsOf(scenario: SavedScenario, services: string[]): string[] {
   return [...scenario.problems, ...(scenario.card ? scenarioProblems(scenario.card, services) : [])];
 }
 
-function attempt(card: Card, input: ReplayInput): Promise<RunOutcome> {
+async function attempt(card: Card, input: ReplayInput): Promise<RunOutcome> {
   const { urls, adapter, env, today, timeoutMs, sleep } = input;
-  return runScenario({ card, urls, adapter, env, today, runKey: input.newRunKey(), timeoutMs, sleep });
+  const run = { urls, adapter, env, today, runKey: input.newRunKey(), timeoutMs, sleep };
+  const resolved = await resolveData(card, input.catalog, run);
+  if ("blocked" in resolved) return { outcome: "blocked", step: null, detail: resolved.blocked, captures: {} };
+  return runScenario({ ...run, card, data: resolved.data });
 }
 
 async function confirmed(card: Card, input: ReplayInput): Promise<Pick<ScenarioRun, "outcome" | "attempts" | "unstable" | "detail">> {

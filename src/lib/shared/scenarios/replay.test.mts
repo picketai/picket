@@ -5,6 +5,7 @@ import { fingerprintOf, parseScenario, writeScenario } from "./format.mts";
 import type { HttpAdapter, HttpAnswer, HttpRequest } from "./http.mts";
 import type { ContentKey } from "./keys.mts";
 import { affected, replayScenarios, type ReplayInput } from "./replay.mts";
+import { parseEntry, type CatalogEntry } from "../catalog/entry.mts";
 
 function saved(id: string, steps: string[], { status = "active", byHand = false }: { status?: string; byHand?: boolean } = {}): SavedScenario {
   const text = ["---", `id: ${id}`, "kind: normal", "covers: []", "intent: replay", `status: ${status}`, "format: 1", "---", ...steps, ""].join("\n");
@@ -28,7 +29,7 @@ function scripted(statuses: number[]): { adapter: HttpAdapter; seen: HttpRequest
 
 function input(scenarios: SavedScenario[], adapter: HttpAdapter): ReplayInput {
   const keys = ["aaaa", "bbbb", "cccc", "dddd"];
-  return { scenarios, services: ["orders", "billing"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-15", newRunKey: () => keys.shift() ?? "ffff", timeoutMs: 20000, sleep: async () => {}, stubs: {}, ownMocks: [] };
+  return { scenarios, services: ["orders", "billing"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-15", newRunKey: () => keys.shift() ?? "ffff", timeoutMs: 20000, sleep: async () => {}, stubs: {}, ownMocks: [], catalog: [] };
 }
 
 test("a card failing twice is a confirmed failure with two attempts on different run keys (T-4.1)", async () => {
@@ -136,4 +137,45 @@ test("affected keeps every card that does not parse, whether or not a key change
   const base: ContentKey = { env: "e1", apps: { orders: "t1" } };
   assert.deepEqual(affected([orders, broken], base, base), [broken]);
   assert.deepEqual(affected([orders, broken], { ...base, env: "e2" }, base), [orders, broken]);
+});
+
+const ENTRY_HEADS: Record<string, string> = {
+  "open-order": "kind: find\nneed: an open order",
+  "demo-tenant": "kind: fixed\nneed: the demo tenant\nhow: made by hand",
+  "busy-customer": "kind: sql\nneed: a busy customer\nfile: data/busy.sql\nservice: orders-sql",
+};
+
+function catalogEntry(name: string, text: string): CatalogEntry {
+  const read = parseEntry(text, name);
+  assert.ok(read.entry, read.problems.join("; "));
+  return read.entry;
+}
+
+test("a failing entry blocks the scenario with its kind's text and never fails it (T-6.2)", async () => {
+  const cases: [string, string, string][] = [
+    ["open-order", `---\n${ENTRY_HEADS["open-order"]}\nformat: 1\n---\nrequest GET {orders}/orders\nexpect status 200\ncapture id json 0.id\n`, "no matching data: open-order"],
+    ["demo-tenant", `---\n${ENTRY_HEADS["demo-tenant"]}\nformat: 1\n---\nrequest GET {orders}/tenants/demo\nexpect status 200\ncapture id json id\n`, "data drift: demo-tenant is missing"],
+    ["busy-customer", `---\n${ENTRY_HEADS["busy-customer"]}\nformat: 1\n---\nrequest GET {orders}/customers\nexpect status 200\ncapture id json 0.id\n`, "no matching data: busy-customer; its SQL file runs with picket data run"],
+    ["customer", '---\nkind: create\nneed: a customer\nformat: 1\n---\nrequest POST {orders}/customers\n  body {"n":"PKT-{run}"}\nexpect status 201\ncapture id json id\n', "could not create data: customer"],
+  ];
+  for (const [name, text, detail] of cases) {
+    const { adapter } = scripted([404, 404]);
+    const [run] = await replayScenarios({ ...input([saved("S-0002", [`request GET {orders}/x/{data:${name}.id}`, "expect status 200"])], adapter), catalog: [catalogEntry(name, text)] });
+    assert.deepEqual([run.outcome, run.detail, run.attempts], ["blocked", detail, ["blocked"]], name);
+  }
+});
+
+test("an entry runs once per attempt, before the scenario, whose PUT goes to the captured id (T-6.1, T-6.3)", async () => {
+  const { adapter, seen } = scripted([201, 500, 201, 500]);
+  const entryText = '---\nkind: create\nneed: a customer\nformat: 1\n---\nrequest POST {orders}/customers\n  body {"n":"PKT-{run}"}\ncapture id header location\n';
+  const steps = ["request PUT {orders}/customers/{data:customer.id}", '  body {"again":"{data:customer.id}"}', "expect status 200"];
+  const answers: HttpAdapter = async (request) => {
+    const answer = await adapter(request);
+    return request.method === "POST" ? { ...answer, headers: { location: "c-1" } } : answer;
+  };
+  const [run] = await replayScenarios({ ...input([saved("S-0002", steps)], answers), catalog: [catalogEntry("customer", entryText)] });
+  assert.deepEqual([run.outcome, run.attempts], ["failed", ["failed", "failed"]]);
+  assert.deepEqual(seen.map((request) => request.method), ["POST", "PUT", "POST", "PUT"]);
+  assert.deepEqual([seen[0].body, seen[2].body], ['{"n":"PKT-aaaa"}', '{"n":"PKT-bbbb"}']);
+  assert.deepEqual([seen[1].url, seen[1].body], ["http://127.0.0.1:49153/customers/c-1", '{"again":"c-1"}']);
 });
