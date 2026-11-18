@@ -5,7 +5,9 @@ import { join, resolve } from "node:path";
 import { admit } from "../../dist/lib/verbs/admit/index.mjs";
 import { parseArtifact } from "../../dist/lib/shared/work/artifact.mjs";
 import { readChecks } from "../../dist/lib/shared/work/declared-checks.mjs";
-import { loadTasks } from "../lib/tasks.mjs";
+import { loadTasks, testerRefusal } from "../lib/tasks.mjs";
+import * as trunk from "../adapters/trunk.mjs";
+import * as plugin from "../adapters/plugin.mjs";
 
 const TASKS = resolve("bench", "tasks");
 const HIDDEN = resolve("bench", "hidden");
@@ -88,4 +90,18 @@ test("the keys hold three defects, two traps and one silent story, and no declar
     const showing = checks.filter((check) => check.method === key.defect.method && path.test(check.path) && check.status === key.defect.status);
     assert.deepEqual(showing, [], `${id}: a declared check already shows the defect`);
   }
+});
+
+test("a tester task is refused on a harness without a plugin directory and allowed on the plugin harness (T-1.2)", () => {
+  const testers = loadTasks("kind:tester");
+  assert.equal(testerRefusal(testers, trunk.pluginDir?.("/r")), "tester task test-01-negative-quantity needs a harness with a plugin directory; use --harness plugin");
+  assert.equal(testerRefusal(testers, plugin.pluginDir("/r")), null);
+});
+
+test("the request tasks are never refused for a missing plugin directory (T-1.3)", () => {
+  assert.equal(testerRefusal(loadTasks("all"), undefined), null);
+});
+
+test("the refusal names the first tester task among mixed tasks", () => {
+  assert.equal(testerRefusal(loadTasks("fast-01-pagination,test-03-delete-unknown-invoice"), undefined), "tester task test-03-delete-unknown-invoice needs a harness with a plugin directory; use --harness plugin");
 });

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { buildTemplate, materializeRun } from "./lib/fixture.mjs";
 import { runClaude } from "./lib/claude.mjs";
-import { loadTasks } from "./lib/tasks.mjs";
+import { TESTER_KIND, loadTasks, testerRefusal } from "./lib/tasks.mjs";
 import { gradeTester, loadKernelReaders } from "./lib/tester-grade.mjs";
 import { seedTesterTask } from "./lib/tester-seed.mjs";
 import { stopSettings } from "./lib/tester-stop-hook.mjs";
@@ -20,7 +20,6 @@ import { callLimit, charge, openLedger, plannedSpend, runRefusal, taskBudget } f
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(BENCH, "..");
 const HARNESSES = ["plugin", "trunk"];
-const TESTER_KIND = "tester";
 /** Errors that mean the account, not the harness, ran out: session, usage and rate limits. */
 const QUOTA = /session limit|usage limit|rate limit|quota|overloaded/i;
 
@@ -325,6 +324,12 @@ async function main() {
   const harnessRoot = resolve(args.harnessRoot ?? defaultHarnessRoot(args.harness));
   const tasks = loadTasks(args.tasks);
   if (!tasks.length) throw new Error(`no tasks match ${args.tasks}`);
+  const testerRefused = testerRefusal(tasks, adapter.pluginDir?.(harnessRoot));
+  if (testerRefused) {
+    console.error(`refused: ${testerRefused}`);
+    process.exitCode = 1;
+    return;
+  }
   const out = resolve(args.out ?? join(BENCH, "results", `${args.label ?? args.harness}-${new Date().toISOString().slice(0, 10)}.json`));
   const log = (m) => console.log(m);
 

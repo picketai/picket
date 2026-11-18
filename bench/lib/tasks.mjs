@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const TESTER_KIND = "tester";
+
 const TASKS = join(dirname(fileURLToPath(import.meta.url)), "..", "tasks");
 
 function readTasks() {
@@ -22,4 +24,10 @@ export function loadTasks(filter) {
   if (filter === "all") return all.filter((task) => task.kind === undefined);
   const wanted = filter.split(",").map((s) => s.trim());
   return all.filter((task) => wanted.some((word) => selects(word, task)));
+}
+
+export function testerRefusal(tasks, pluginDir) {
+  if (pluginDir) return null;
+  const tester = tasks.find((task) => task.kind === TESTER_KIND);
+  return tester ? `tester task ${tester.id} needs a harness with a plugin directory; use --harness plugin` : null;
 }
