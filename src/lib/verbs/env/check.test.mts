@@ -172,6 +172,29 @@ test("without the scenario folder no E11 line and no count line appear (T-1.6)",
   assert.ok(!renderCheck(report(outcome)).split("\n").some((line) => line.startsWith("E11") || line.startsWith("scenarios:")));
 });
 
+function withMock(ctx: Context, name: string, text: string): Context {
+  mkdirSync(join(ctx.root, ".picket", "env", "mocks"), { recursive: true });
+  writeFileSync(join(ctx.root, ".picket", "env", "mocks", name), text);
+  return ctx;
+}
+
+const MOCK_HEADER = "---\nreplaces: payments\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\n";
+
+test("a broken mock definition fails the check with an E12 line under its service (T-1.4)", (t) => {
+  const ctx = withMock(umbrellaContext(t), "payments-mock.md", `${MOCK_HEADER}when GET /payments?state=open\n  status 200\n`);
+  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  assert.equal(describeExit(outcome).code, 2);
+  const lines = renderCheck(report(outcome)).split("\n");
+  assert.deepEqual(lines.filter((line) => line.startsWith("E12")), ["E12 payments-mock: when 1: a path holds no ? or #: the query string is never matched"]);
+});
+
+test("a valid mock definition of a mock service adds no E12 line", (t) => {
+  const ctx = withMock(umbrellaContext(t), "payments-mock.md", `${MOCK_HEADER}when GET /payments/*\n  status 200\n`);
+  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  assert.equal(describeExit(outcome).code, EXIT.done);
+  assert.ok(!renderCheck(report(outcome)).split("\n").some((line) => line.startsWith("E12")));
+});
+
 test("the fixture card is written in canonical form and its fingerprint matches", () => {
   const text = readFileSync(resolve("test/fixtures/env/umbrella/.picket/env/scenarios/S-0001.md"), "utf8");
   const { card, problems } = parseScenario(text);
