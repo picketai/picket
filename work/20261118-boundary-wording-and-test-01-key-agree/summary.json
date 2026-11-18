@@ -1,0 +1,66 @@
+{
+  "work_id": "20261118-boundary-wording-and-test-01-key-agree",
+  "base": "aed758de04ac4351fcadb57cad6980ce3a537da1",
+  "request": "work/20261118-boundary-wording-and-test-01-key-agree/request.md",
+  "size": "medium",
+  "changed_files": [
+    "bench/hidden/test-01-negative-quantity/key.json",
+    "bench/lib/tester-grade.mjs",
+    "bench/test/tester-grade.test.mjs",
+    "src/skills/testing/steps/matrix.md"
+  ],
+  "lines_added": 73,
+  "lines_removed": 5,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-18T12:11:47.785Z",
+    "base": "aed758de04ac4351fcadb57cad6980ce3a537da1",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "baseline red",
+    "rebuild": null,
+    "ms": 14287
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
