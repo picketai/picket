@@ -1,9 +1,9 @@
 id: 20261118-tester-defects-left-by-its-reviews
 lane: order
 title: Tester defects left by its reviews
-status: open
+status: done
 created: 2026-11-18T07:10:46.088Z
-updated: 2026-11-18T07:55:26.293Z
+updated: 2026-11-18T08:17:09.418Z
 session: d09e885b-38d7-46ab-90a1-fca179743a5f
 base: 5e0830632ab80e045b8267e9473c37ecf1e4d587
 run_through: 3

@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-18T08:15:20.591Z",
+  "base": "5e0830632ab80e045b8267e9473c37ecf1e4d587",
+  "mutant": {
+    "path": "src/lib/shared/scenarios/keep.mts",
+    "line": 79,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 156247
+}
