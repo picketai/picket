@@ -72,6 +72,13 @@ test("the default request has a numbered step per service and per entry of a bui
   assert.ok(request.includes("Password=***"));
 });
 
+test("a host chosen as a mock names its definition file for Picket's stub and a pinned Node image (T-9.2)", () => {
+  const request = requestText(applyDecisions(SCAN, "H1=mock"), "setup", "2026-11-14");
+  const step = stepsOf(request).find((line) => line.includes("payments-mock")) ?? "";
+  assert.ok(step.includes("on a Node 22 or later image pinned by digest, with its answers in `.picket/env/mocks/payments-mock.md`, which Picket's stub serves"), step);
+  assert.ok(!request.includes("until Picket's stub server exists"));
+});
+
 test("H1=dependency names a payments dependency pinned by digest and no payments-mock (T-4.2)", () => {
   const request = requestText(applyDecisions(SCAN, "H1=dependency"), "setup", "2026-11-14");
   assert.ok(request.includes("add a `dependency` service `payments` on a ready image pinned by digest"));

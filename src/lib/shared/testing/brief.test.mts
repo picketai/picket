@@ -5,6 +5,9 @@ import { readSnapshot } from "../work/snapshot.mts";
 import type { WorkId } from "../work/files.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { compileBrief } from "./brief.mts";
+import { catalogOf } from "../catalog/resolve.mts";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { testFacts } from "./facts.mts";
 import { appendTestRow } from "./results.mts";
 
@@ -58,7 +61,7 @@ function designItem(t: TestContext): { root: string; id: WorkId } {
 test("the brief carries the criterion text, the check, the saved scenario and the cap, and no plan path (T-2.2)", (t) => {
   const { root, id } = designItem(t);
   const snap = readSnapshot(root, id);
-  const text = compileBrief(snap, testFacts(root, snap), [scenario("S-0002"), scenario("S-0003", "deprecated")], { request: "Let customers place orders.", story: null });
+  const text = compileBrief(snap, testFacts(root, snap), [scenario("S-0002"), scenario("S-0003", "deprecated")], { request: "Let customers place orders.", story: null }, []);
   assert.ok(text.startsWith(`# Test brief: ${id} · round 1\n`));
   assert.ok(text.includes("\nT-2.1: placing an order answers 201 with its id\n"));
   assert.ok(text.includes('\nT-2.1 POST /orders on orders: 201, contains "id"\n'));
@@ -73,7 +76,7 @@ test("the brief carries the criterion text, the check, the saved scenario and th
 test("the brief has exactly its eight sections, in order", (t) => {
   const { root, id } = designItem(t);
   const snap = readSnapshot(root, id);
-  const text = compileBrief(snap, testFacts(root, snap), [], { request: null, story: null });
+  const text = compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []);
   const headings = text.split("\n").filter((line) => line.startsWith("#"));
   assert.deepEqual(headings, [`# Test brief: ${id} · round 1`, "## Request", "## Criteria", "## Approved checks", "## Environment", "## Saved scenarios", "## Earlier rounds", "## Limits"]);
 });
@@ -85,7 +88,7 @@ test("the brief lists the previous round's cases and the questions asked so far"
   appendTestRow(root, id, { round: 1, type: "question", criterion: "T-2.1", question: "q", choices: ["a", "b"], default: null, basis: null }, now);
   const snap = readSnapshot(root, id);
   const facts = { ...testFacts(root, snap), round: 2 };
-  const text = compileBrief(snap, facts, [], { request: null, story: null });
+  const text = compileBrief(snap, facts, [], { request: null, story: null }, []);
   assert.ok(text.includes("\nC-01 T-2.1 boundary failed\n"));
   assert.ok(text.includes("\nquestions: 1 of 3 asked\n"));
 });
@@ -95,7 +98,18 @@ test("the user's answers to the tester appear under Answers, and no answer gives
   const snap = readSnapshot(root, id);
   const reply = (answers: string) => ({ ts: "2026-11-17T10:00:00.000Z", action: "resolve_tests" as const, phase: null, reply: `t: ${answers}`, choice: "answers" as const, answers });
   const answered = { ...snap, replies: [reply("keep the old rounding"), reply("refuse an empty basket")] };
-  const text = compileBrief(answered, testFacts(root, snap), [], { request: null, story: null });
+  const text = compileBrief(answered, testFacts(root, snap), [], { request: null, story: null }, []);
   assert.ok(text.includes("\n## Answers\n\nkeep the old rounding\nrefuse an empty basket\n"), text);
-  assert.ok(!compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }).includes("## Answers"));
+  assert.ok(!compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []).includes("## Answers"));
+});
+
+test("a catalog gives a Data catalog section, one line per entry, and none without one (T-9.1)", (t) => {
+  const { root, id } = designItem(t);
+  mkdirSync(join(root, ".picket", "env", "catalog"), { recursive: true });
+  writeFileSync(join(root, ".picket", "env", "catalog", "customer.md"), "---\nkind: create\nneed: a customer of its own\nformat: 1\n---\nrequest POST {orders}/customers\n  body {\"name\":\"PKT-{run}\"}\ncapture id json id\n");
+  writeFileSync(join(root, ".picket", "env", "catalog", "buyer.md"), "---\nkind: user\nneed: a buyer account\nrole: buyer\nfields: [name, password]\nformat: 1\n---\n");
+  const snap = readSnapshot(root, id);
+  const text = compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, catalogOf(root));
+  assert.ok(text.includes("\n## Data catalog\n\n- buyer (user): a buyer account; fields name, password as {user:buyer.<field>}\n- customer (create): a customer of its own; captures id\n"), text);
+  assert.ok(!compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []).includes("## Data catalog"));
 });

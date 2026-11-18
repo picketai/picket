@@ -1,3 +1,4 @@
+import type { CatalogEntry } from "../catalog/entry.mts";
 import { criterionText } from "../scenarios/keep.mts";
 import type { SavedScenario } from "../scenarios/files.mts";
 import { readChecks, type HttpCheck } from "../work/declared-checks.mts";
@@ -47,7 +48,16 @@ function limitLines(facts: DeriveInput): string[] {
   return [`cases per round: at most ${caseCap(facts.criteria)}`, `questions: ${asked} of ${MAX_QUESTIONS} asked`];
 }
 
-export function compileBrief(snap: WorkSnapshot, facts: DeriveInput, scenarios: readonly SavedScenario[], texts: BriefTexts): string {
+function catalogLine(entry: CatalogEntry): string {
+  if (entry.kind === "user") return `- ${entry.name} (user): ${entry.need}; fields ${entry.fields.join(", ")} as {user:${entry.role}.<field>}`;
+  return `- ${entry.name} (${entry.kind}): ${entry.need}; captures ${entry.captures.join(", ")}`;
+}
+
+function catalogSection(catalog: readonly CatalogEntry[]): string[] {
+  return catalog.length ? section("Data catalog", catalog.map(catalogLine)) : [];
+}
+
+export function compileBrief(snap: WorkSnapshot, facts: DeriveInput, scenarios: readonly SavedScenario[], texts: BriefTexts, catalog: readonly CatalogEntry[]): string {
   const id = snap.state.id;
   const body = snap.artifact?.body ?? "";
   const lines = [
@@ -57,6 +67,7 @@ export function compileBrief(snap: WorkSnapshot, facts: DeriveInput, scenarios: 
     ...section("Approved checks", httpChecks(snap).map(checkLine)),
     ...section("Environment", [`run picket env start ${id}; it prints PICKET_URL_<SERVICE> for each service`]),
     ...section("Saved scenarios", scenarios.flatMap(scenarioLine)),
+    ...catalogSection(catalog),
     ...section("Earlier rounds", earlierLines(facts)),
     ...answersSection(snap),
     ...section("Limits", limitLines(facts)),

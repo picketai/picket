@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { action, done } from "../../shared/action.mts";
+import { catalogOf } from "../../shared/catalog/resolve.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
 import { compileBrief } from "../../shared/testing/brief.mts";
 import { openTestItem, testBriefPath, testFacts } from "../../shared/testing/facts.mts";
@@ -14,7 +15,7 @@ export type BriefInput = { id: WorkId; save: boolean };
 export const brief = action<BriefInput, string>(async ({ id, save }, { root }) => {
   const { snap } = openTestItem(root, id);
   const texts = { request: readText(workFile(root, id, "request.md")), story: readText(workFile(root, id, "story.md")) };
-  const text = compileBrief(snap, testFacts(root, snap), listScenarios(root), texts);
+  const text = compileBrief(snap, testFacts(root, snap), listScenarios(root), texts, catalogOf(root));
   if (save) {
     const path = testBriefPath(root, id);
     mkdirSync(dirname(path), { recursive: true });

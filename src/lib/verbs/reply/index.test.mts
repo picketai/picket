@@ -323,7 +323,7 @@ test("t: <text> at resolve_tests records the answers and sends the same tester r
   assert.match(send.message, /^round: 2$/m);
   assert.match(send.message, /^answers: keep the old rounding$/m);
   const snap = readSnapshot(root, id);
-  assert.match(compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }), /\n## Answers\n\nkeep the old rounding\n/);
+  assert.match(compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []), /\n## Answers\n\nkeep the old rounding\n/);
 });
 
 test("n at resolve_tests accepts the unproved criteria: close without fixes, approve_fixes with them (T-8.2)", async (t) => {

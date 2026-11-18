@@ -109,7 +109,7 @@ function entryStep(e: DecidedEntry, hosts: DecidedHost[]): string {
 
 function hostStep(h: DecidedHost): string {
   const where = `${code(h.host)} (${h.id})`;
-  if (h.choice === "mock") return `${where}: add a ${code("mock")} service ${code(`${h.label}-mock`)}; until Picket's stub server exists, it is a container the project picks, pinned by digest.`;
+  if (h.choice === "mock") return `${where}: add a ${code("mock")} service ${code(`${h.label}-mock`)} on a Node 22 or later image pinned by digest, with its answers in ${code(`.picket/env/mocks/${h.label}-mock.md`)}, which Picket's stub serves; or a container the project picks, pinned by digest.`;
   if (h.choice === "dependency") return `${where}: add a ${code("dependency")} service ${code(h.label)} on a ready image pinned by digest.`;
   return `${where}: add ${code(`x-picket.shared.${h.label}.address`)} naming the variable ${code(sharedVariable(h.label))}.`;
 }
