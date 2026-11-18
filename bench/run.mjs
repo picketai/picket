@@ -8,6 +8,9 @@ import { execSync } from "node:child_process";
 import { buildTemplate, materializeRun } from "./lib/fixture.mjs";
 import { runClaude } from "./lib/claude.mjs";
 import { loadTasks } from "./lib/tasks.mjs";
+import { gradeTester, loadKernelReaders } from "./lib/tester-grade.mjs";
+import { seedTesterTask } from "./lib/tester-seed.mjs";
+import { stopSettings } from "./lib/tester-stop-hook.mjs";
 import { grade, changedFiles, linesAdded } from "./lib/grade.mjs";
 import { addUsage, cacheHitRatio, totalTokens, round } from "./lib/metrics.mjs";
 import { defaultExec, nextPort, parseNetstatListeners, runOrphans, stopProcesses } from "./lib/ports.mjs";
@@ -17,6 +20,7 @@ import { callLimit, charge, openLedger, plannedSpend, runRefusal, taskBudget } f
 const BENCH = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(BENCH, "..");
 const HARNESSES = ["plugin", "trunk"];
+const TESTER_KIND = "tester";
 /** Errors that mean the account, not the harness, ran out: session, usage and rate limits. */
 const QUOTA = /session limit|usage limit|rate limit|quota|overloaded/i;
 
@@ -103,11 +107,27 @@ function manifest(adapter, harnessRoot, fixtureHash, args) {
   };
 }
 
+function writeStopSettings(runDir) {
+  const path = join(runDir, "tester-settings.json");
+  writeFileSync(path, JSON.stringify(stopSettings(join(BENCH, "lib", "tester-stop-hook.mjs")), null, 2));
+  return path;
+}
+
+async function gradeTesterRun({ repo, task, adapter, harnessRoot }) {
+  const pluginDir = adapter.pluginDir?.(harnessRoot);
+  if (!pluginDir) throw new Error(`tester task ${task.id} needs a harness with a plugin directory; use --harness plugin`);
+  const key = JSON.parse(readFileSync(join(BENCH, "hidden", task.id, "key.json"), "utf8"));
+  return gradeTester({ repo, task, key, readers: await loadKernelReaders(pluginDir) });
+}
+
 async function runOnce({ task, run, adapter, harnessRoot, template, args, log, ledger }) {
   const runId = `${task.id}-r${run}-${Date.now().toString(36)}`;
   const runDir = join(BENCH, ".runs", runId);
   const { repo, sha } = materializeRun({ template, runDir });
+  const isTester = task.kind === TESTER_KIND;
+  if (isTester) seedTesterTask({ repo, task, seedDir: join(BENCH, "seeds", task.id), base: sha });
   adapter.install(repo, harnessRoot);
+  const settingsPath = isTester ? writeStopSettings(runDir) : undefined;
   const base = commitHarnessInstall(repo);
   const eventsPath = join(runDir, "events.jsonl");
   const promptLog = join(runDir, "prompts.jsonl");
@@ -121,6 +141,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log, l
   const t0 = Date.now();
   const record = {
     task: task.id,
+    ...(task.kind === undefined ? {} : { kind: task.kind }),
     lane_expected: task.lane,
     harness: adapter.name,
     run,
@@ -174,6 +195,7 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log, l
       maxBudgetUsd: limit,
       maxTurns: task.max_turns ?? 150,
       pluginDir: adapter.pluginDir?.(harnessRoot),
+      settings: settingsPath,
       model: adapter.model,
       timeoutMs,
       eventsPath,
@@ -261,8 +283,13 @@ async function runOnce({ task, run, adapter, harnessRoot, template, args, log, l
   record.changed_files = changedFiles(repo, base).filter((f) => !/^(test\/hidden\/|\.claude\/|\.picket\/|artifacts\/|work\/|\.bench-vitest\.json)/.test(f));
   record.lines_added = linesAdded(repo, base);
   record.signals = adapter.signals(record.texts, record);
-  record.grade = grade({ repo, task, hiddenDir: join(BENCH, "hidden", task.id), adapter, base });
-  record.pass = record.grade.pass && record.terminal === "completed";
+  if (isTester) {
+    record.grade = await gradeTesterRun({ repo, task, adapter, harnessRoot });
+    record.pass = record.grade.pass;
+  } else {
+    record.grade = grade({ repo, task, hiddenDir: join(BENCH, "hidden", task.id), adapter, base });
+    record.pass = record.grade.pass && record.terminal === "completed";
+  }
   record.finished = new Date().toISOString();
   record.texts = record.texts.map((t) => t.slice(0, 4000));
   record.run_dir = args.keep ? runDir : null;

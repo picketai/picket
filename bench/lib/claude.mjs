@@ -64,6 +64,7 @@ export function claudeArgs(o) {
   if (o.pluginDir) args.push("--plugin-dir", o.pluginDir);
   if (o.model) args.push("--model", o.model);
   if (o.settingSources) args.push("--setting-sources", o.settingSources);
+  if (o.settings) args.push("--settings", o.settings);
   if (o.approver) {
     // The scripted user's approve button: every prompt goes to the bench MCP server, which allows
     // and logs it. `--strict-mcp-config` keeps the fixture's own MCP servers out of the session.

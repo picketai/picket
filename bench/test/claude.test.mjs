@@ -8,6 +8,12 @@ test("settingSources passes --setting-sources with its value, and is absent when
   assert.equal(claudeArgs({}).includes("--setting-sources"), false);
 });
 
+test("settings passes --settings with its file, and is absent when unset (T-2.6)", () => {
+  const args = claudeArgs({ settings: "s.json" });
+  assert.deepEqual(args.slice(args.indexOf("--settings"), args.indexOf("--settings") + 2), ["--settings", "s.json"]);
+  assert.equal(claudeArgs({}).includes("--settings"), false);
+});
+
 test("a positive maxBudgetUsd passes --max-budget-usd with its value", () => {
   const args = claudeArgs({ maxBudgetUsd: 2 });
   assert.deepEqual(args.slice(args.indexOf("--max-budget-usd"), args.indexOf("--max-budget-usd") + 2), ["--max-budget-usd", "2"]);
