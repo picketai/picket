@@ -458,6 +458,26 @@ function testedItem(t: TestContext, { lane = "design", environment = true, verdi
 
 const blockLines = (result: CloseResult) => closingBlock(result).split("\n");
 
+test("the closing line names each mock's real service from its definition, else the name before -mock, sorted (T-4.3)", (t) => {
+  const cases = [testCase("C-01", "normal", GET_STEPS, { mocks: ["payments-mock"] }), testCase("C-02", "boundary", GET_STEPS, { mocks: ["ledger-mock", "payments-mock"] })];
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"], ["tester", "APPROVED", "test", { round: 2 }]], cases });
+  writeIn(root, ".picket/env/mocks/payments-mock.md", "---\nreplaces: payments-api\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\nwhen GET /charges/*\n  status 200\n");
+  const lines = blockLines(closeFast(root, id));
+  assert.ok(lines.includes("Not verified end to end: ledger, payments-api"), lines.join("\n"));
+});
+
+test("an item with no tester verdict names the mocks of its latest full replay (T-4.4)", (t) => {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  const rows: ScenarioRow[] = [
+    { type: "run", run: "r1", item: id, mode: "full", key: "k", versions: {} },
+    { type: "result", run: "r1", scenario: "S-0002", fingerprint: "sha256:f", key: "k", versions: {}, outcome: "passed", attempts: 1, unstable: false, class: "passed", detail: "", mocks: ["payments-mock"], gaps: [] },
+  ];
+  appendRows(root, rows);
+  const result = closeFast(root, id);
+  assert.equal(result.closing.tested, "not tested");
+  assert.ok(blockLines(result).includes("Not verified end to end: payments"), blockLines(result).join("\n"));
+});
+
 test("a tester APPROVED in round 2 prints its counts, the mocked service and the kept cases (T-9.1, T-9.4, T-9.5)", (t) => {
   const cases = [
     testCase("C-01", "normal", GET_STEPS, { mocks: ["payments-mock"] }),

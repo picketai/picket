@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EnvModel, EnvService } from "../env/model.mts";
-import { listMocks, mockFindings, parseMock } from "./definition.mts";
+import { listMocks, mockFindings, parseMock, realService } from "./definition.mts";
 
 const HEADER = "---\nreplaces: payments\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\n";
 const ANSWER = "when GET /payments/*\n  status 200\n";
@@ -146,4 +146,13 @@ test("a project with no mocks folder has no definitions and no findings (T-1.3)"
   const root = project(t, {});
   assert.deepEqual(listMocks(root), []);
   assert.deepEqual(mockFindings(root, MODEL), []);
+});
+
+test("the real service is the definition's replaces, else the name before -mock, else the name itself", (t) => {
+  const root = project(t, { "payments-mock.md": HEADER.replace("replaces: payments", "replaces: payments-api") + ANSWER, "broken-mock.md": "when GET /\n" });
+  const mocks = listMocks(root);
+  assert.equal(realService(mocks, "payments-mock"), "payments-api");
+  assert.equal(realService(mocks, "broken-mock"), "broken");
+  assert.equal(realService(mocks, "ledger-mock"), "ledger");
+  assert.equal(realService(mocks, "mailer"), "mailer");
 });

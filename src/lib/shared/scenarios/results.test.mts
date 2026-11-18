@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appendRows, lastKnown, latestRun, readResults, replaySummary, summaryText, type ResultRow, type RunMode, type RunRow } from "./results.mts";
+import { itemMocks } from "./results.mts";
 
 function scratch(t: TestContext): string {
   const root = mkdtempSync(join(tmpdir(), "picket-results-"));
@@ -25,6 +26,26 @@ test("a result row written and read back has exactly D-004's keys (T-3.7)", (t) 
   const rows = readResults(root);
   assert.deepEqual(rows, [run("r1", "full"), result("r1")]);
   assert.deepEqual(Object.keys(rows[1]).sort(), ["attempts", "class", "detail", "fingerprint", "key", "outcome", "run", "scenario", "type", "unstable", "versions"]);
+});
+
+test("item mocks come from the item's latest full or affected run; a row without mocks reads as none and a base run is ignored (T-4.5)", () => {
+  const rows = [
+    run("r1", "full"),
+    result("r1", { mocks: ["stock-mock"] }),
+    run("r2", "affected"),
+    result("r2", { mocks: ["payments-mock"] }),
+    result("r2", { scenario: "S-0002" }),
+    result("r2", { scenario: "S-0003", mocks: ["payments-mock", "ledger-mock"] }),
+    run("r3", "base"),
+    result("r3", { mocks: ["base-mock"] }),
+    run("r4", "only"),
+    result("r4", { mocks: ["only-mock"] }),
+    run("r5", "full", "20261115-other"),
+    result("r5", { mocks: ["other-mock"] }),
+  ];
+  assert.deepEqual(itemMocks(rows, "20261115-orders"), ["payments-mock", "ledger-mock"]);
+  assert.deepEqual(itemMocks([run("r1", "full"), result("r1")], "20261115-orders"), []);
+  assert.deepEqual(itemMocks([run("r1", "base"), result("r1", { mocks: ["base-mock"] })], "20261115-orders"), []);
 });
 
 test("reading a project with no results gives no rows", (t) => {

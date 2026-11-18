@@ -5,7 +5,6 @@ import { caseCard } from "./cases.mts";
 import { latestCases, roundRows, type CaseRow, type TestRow } from "./results.mts";
 
 const MASK = "***";
-const MOCK_SUFFIX = "-mock";
 
 function isKeepable(row: CaseRow): boolean {
   return row.outcome === "passed" && !row.unstable && !row.steps.includes(MASK);
@@ -23,13 +22,9 @@ export function caseCandidates(item: string, rows: readonly TestRow[], round: nu
     .flatMap((row, index) => candidateOf(item, row, index));
 }
 
-function realName(mock: string): string {
-  return mock.endsWith(MOCK_SUFFIX) ? mock.slice(0, -MOCK_SUFFIX.length) : mock;
-}
-
-export function notProven(rows: readonly TestRow[], round: number): string[] {
+export function notProven(rows: readonly TestRow[], round: number, real: (mock: string) => string): string[] {
   const mocks = latestCases(roundRows(rows, round)).flatMap((row) => row.mocks);
-  return [...new Set(mocks.map(realName))];
+  return [...new Set(mocks.map(real))];
 }
 
 export type KeptCases = { files: KeptFiles; labels: string[] };

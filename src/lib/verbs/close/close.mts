@@ -10,7 +10,8 @@ import { dropItemChecks } from "../../shared/check-log.mts";
 import { isBlamed } from "../../shared/scenarios/compare.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
 import { changedSinceReplay, keyId, workingKey } from "../../shared/scenarios/keys.mts";
-import { latestRun, readResults, type ResultRow, type RunRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
+import { itemMocks, latestRun, readResults, type ResultRow, type RunRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
+import { listMocks, realService } from "../../shared/mocks/definition.mts";
 import { checkCommitMessage, SUBJECT_LIMIT } from "../../shared/commit-message.mts";
 import { securityPaths } from "../../shared/config.mjs";
 import { commitOwned, dirtyPaths, filesInCommit, isRepo, lastCommitOf, listedPathMatcher, repoPrefix, stagedFiles, type CommitResult } from "../../shared/git.mts";
@@ -280,8 +281,15 @@ function cumulativeVerdict(snap: WorkSnapshot): string | null {
 
 type TestedFacts = Pick<Closing, "tested" | "unproved" | "kept">;
 
-function testedFacts(stage: TestStage, rows: readonly TestRow[], kept: KeptCases): TestedFacts {
-  return { tested: stage.tested, unproved: stage.round === null ? [] : notProven(rows, stage.round), kept: kept.labels };
+function unprovedServices(root: string, id: WorkId, stage: TestStage, rows: readonly TestRow[]): string[] {
+  const mocks = listMocks(root);
+  const real = (mock: string) => realService(mocks, mock);
+  const tested = stage.round === null ? [] : notProven(rows, stage.round, real);
+  return [...new Set([...tested, ...itemMocks(readResults(root), id).map(real)])].sort();
+}
+
+function testedFacts(root: string, id: WorkId, stage: TestStage, rows: readonly TestRow[], kept: KeptCases): TestedFacts {
+  return { tested: stage.tested, unproved: unprovedServices(root, id, stage, rows), kept: kept.labels };
 }
 
 function closingFacts(root: string, snap: WorkSnapshot, audit: string, closeCommit: string | null, tested: TestedFacts): Closing {
@@ -357,7 +365,7 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
     const state = markDone(root, snap.state, now);
     writeAudit(root, id, audit);
     const environment = purgeOnClose(root, state, closeCtx);
-    const closing = closingFacts(root, snap, audit, null, testedFacts(stage, rows, NO_KEPT));
+    const closing = closingFacts(root, snap, audit, null, testedFacts(root, id, stage, rows, NO_KEPT));
     return { ...state, commit: null, message: commitMessage, committed: [], left_staged: [], warnings: [], dirty: [], left: readLeft(root, id), repeats, closing, worktrees, environment };
   }
   refuseUntouchedFastClose(root, snap.state, touched);
@@ -368,6 +376,6 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   if (commit) recordAccept(root, id, commit, null, now);
   const committed = commit ? filesInCommit(root, commit) : [];
   const environment = purgeOnClose(root, state, closeCtx);
-  const closing = closingFacts(root, snap, audit, commit, testedFacts(stage, rows, kept));
+  const closing = closingFacts(root, snap, audit, commit, testedFacts(root, id, stage, rows, kept));
   return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing, worktrees, environment };
 }

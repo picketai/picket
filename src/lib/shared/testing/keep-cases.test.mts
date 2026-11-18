@@ -48,7 +48,7 @@ test("a case that logs in and then deletes data it did not create is not kept", 
   assert.deepEqual(caseCandidates(ITEM, [caseRow("C-01", "state", { steps })], 2), []);
 });
 
-test("the final round's mocks name the real services, the name before -mock (T-9.4)", () => {
+test("the final round's mocks are named through the given real-name map, once each (T-9.4)", () => {
   const rows: TestRow[] = [caseRow("C-01", "normal", { mocks: ["payments-mock", "mailer"] }), caseRow("C-02", "boundary", { mocks: ["payments-mock"] }), caseRow("C-03", "state", { round: 1, mocks: ["stock-mock"] })];
-  assert.deepEqual(notProven(rows, 2), ["payments", "mailer"]);
+  assert.deepEqual(notProven(rows, 2, (mock) => (mock === "payments-mock" ? "payments-api" : mock)), ["payments-api", "mailer"]);
 });

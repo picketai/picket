@@ -3,7 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { action, done, failed, Refused, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import { machineCheck, realRunner, type Engine, type EngineRunner } from "../../shared/env/engine.mts";
-import { listMocks } from "../../shared/mocks/definition.mts";
+import { listMocks, realService, type MockFile } from "../../shared/mocks/definition.mts";
 import { stackMocks } from "../../shared/mocks/stub.mts";
 import { readLayout, type ItemLayout } from "../../shared/repos.mts";
 import { runBase, type BaseInput, type BaseOutcome } from "../../shared/scenarios/base-run.mts";
@@ -29,9 +29,10 @@ import { startStack, type StartedStack } from "./start.mts";
 
 export type ReplayMode = Exclude<RunMode, "base">;
 export type ReplayInput = { id: WorkId; mode: ReplayMode; only: string | null };
-export type ReplayLine = { scenario: string; class: ResultClass; detail: string; byHand: boolean };
+export type ReplayLine = { scenario: string; class: ResultClass; detail: string; byHand: boolean; flow: string; mocks: string[] };
+export type MockedFlow = { flow: string; real: string[] };
 export type KeepLine = { covers: string; text: string };
-export type ReplayReport = { ok: boolean; stack: string | null; reason: string | null; lines: ReplayLine[]; keeps: KeepLine[] };
+export type ReplayReport = { ok: boolean; stack: string | null; reason: string | null; lines: ReplayLine[]; flows: MockedFlow[]; keeps: KeepLine[] };
 export type ReplayDeps = {
   runner: EngineRunner;
   adapter: HttpAdapter;
@@ -46,6 +47,8 @@ const NO_BASE_COMMIT = "the item has no base commit";
 const REQUEST_TIMEOUT_MS = 20_000;
 const RUN_KEY_BYTES = 2;
 const DAY_LENGTH = 10;
+const NO_FLOW = "(none)";
+const DETAIL_JOIN = " · ";
 
 type Keys = { working: ContentKey; base: ContentKey };
 type RunContext = { item: WorkId; run: string; mode: RunMode; key: string; versions: Versions };
@@ -68,8 +71,8 @@ function replacedByItem(root: string, id: WorkId): Set<string> {
 
 function resultRow(scenarioRun: ScenarioRun, rows: ScenarioRow[], context: RunContext, baseId: string, replaced = false): ResultRow {
   const cls = classify(scenarioRun, lastKnown(rows, scenarioRun.id, scenarioRun.fingerprint, baseId), replaced);
-  const { id: scenario, fingerprint, outcome, attempts, unstable, detail } = scenarioRun;
-  return { type: "result", run: context.run, scenario, fingerprint, key: context.key, versions: context.versions, outcome, attempts: attempts.length, unstable, class: cls, detail };
+  const { id: scenario, fingerprint, outcome, attempts, unstable, detail, mocks, gaps } = scenarioRun;
+  return { type: "result", run: context.run, scenario, fingerprint, key: context.key, versions: context.versions, outcome, attempts: attempts.length, unstable, class: cls, detail, mocks, gaps };
 }
 
 function selected(scenarios: SavedScenario[], input: ReplayInput, keys: Keys): SavedScenario[] {
@@ -80,8 +83,23 @@ function selected(scenarios: SavedScenario[], input: ReplayInput, keys: Keys): S
   return chosen;
 }
 
-function lineOf(run: ScenarioRun, row: ResultRow): ReplayLine {
-  return { scenario: run.id, class: row.class, detail: row.detail, byHand: run.byHand };
+function flowOf(scenarios: SavedScenario[], run: ScenarioRun): string {
+  return scenarios.find((scenario) => (scenario.id ?? scenario.path) === run.id)?.card?.header.flow ?? NO_FLOW;
+}
+
+function lineOf(run: ScenarioRun, row: ResultRow, flow: string): ReplayLine {
+  const detail = [row.detail, ...run.gaps.map((gap) => `gap: ${gap}`)].filter((part) => part !== "").join(DETAIL_JOIN);
+  return { scenario: run.id, class: row.class, detail, byHand: run.byHand, flow, mocks: run.mocks };
+}
+
+export function mockedFlows(lines: readonly ReplayLine[], mocks: readonly MockFile[]): MockedFlow[] {
+  const flows = new Map<string, Set<string>>();
+  for (const line of lines.filter((entry) => entry.mocks.length > 0)) {
+    const real = flows.get(line.flow) ?? new Set<string>();
+    for (const mock of line.mocks) real.add(realService(mocks, mock));
+    flows.set(line.flow, real);
+  }
+  return [...flows].map(([flow, real]) => ({ flow, real: [...real].sort() }));
 }
 
 function replayDeps(ctx: Context, deps: ReplayDeps): BaseInput["replay"] {
@@ -113,8 +131,8 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const keys = { working: workingKey(root, layout, start.model, env), base: baseKey(root, layout, state.base ?? null, start.model) };
   const scenarios = selected(listScenarios(root), input, keys);
   const services = start.model.services.map((service) => service.name);
-  const mocks = stackMocks(start.model, listMocks(root), start.report.endpoints);
-  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...mocks });
+  const mockFiles = listMocks(root);
+  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...stackMocks(start.model, mockFiles, start.report.endpoints) });
   const baseId = keyId(keys.base);
   const stored = readResults(root);
   const unmatched = new Set(runs.filter((scenarioRun) => !session.replaced.has(scenarioRun.id) && needsBase(scenarioRun, stored, baseId)).map((scenarioRun) => scenarioRun.id));
@@ -124,9 +142,9 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const rows = runs.map((scenarioRun) => noted(resultRow(scenarioRun, known, context, baseId, session.replaced.has(scenarioRun.id)), base.note, unmatched));
   appendRows(root, [...base.rows, runRow(context, null), ...rows]);
   for (const scenarioRun of runs) if (scenarioRun.byHand && scenarioRun.outcome !== "blocked") acceptFingerprint(root, scenarioRun.fingerprint);
-  const lines = runs.map((scenarioRun, at) => lineOf(scenarioRun, rows[at]));
+  const lines = runs.map((scenarioRun, at) => lineOf(scenarioRun, rows[at], flowOf(scenarios, scenarioRun)));
   const keeps = await replayCandidates(session, services);
-  return { ok: !lines.some((line) => isBlamed(line.class)), stack: start.report.stack, reason: null, lines, keeps };
+  return { ok: !lines.some((line) => isBlamed(line.class)), stack: start.report.stack, reason: null, lines, flows: mockedFlows(lines, mockFiles), keeps };
 }
 
 async function replayCandidate(candidate: CandidateInput, session: Session, services: string[]): Promise<Candidate> {
@@ -162,7 +180,7 @@ export async function replayEnvironment(ctx: Context, deps: ReplayDeps, input: R
   if (!engine || !machine.ok) {
     const reason = engine ? machine.missing.join("; ") : NO_ENGINE;
     appendRows(ctx.root, [runRow({ item: input.id, run, mode: input.mode, key: "", versions: {} }, reason)]);
-    return failed({ ok: false, stack: null, reason, lines: [], keeps: [] });
+    return failed({ ok: false, stack: null, reason, lines: [], flows: [], keeps: [] });
   }
   const start = startStack(ctx, engine, machine, input.id);
   const report = await replayStack({ ctx, deps, input, state, engine, start, layout: readLayout(ctx.root, input.id), run, replaced: replacedByItem(ctx.root, input.id) });
@@ -182,9 +200,13 @@ function summaryText(report: ReplayReport): string {
   return `replayed ${report.lines.length} on ${report.stack}: ${counts.join(", ")}`;
 }
 
+function flowText({ flow, real }: MockedFlow): string {
+  return `flow ${flow}: verified up to ${real.join(" and ")}, which ${real.length > 1 ? "are" : "is"} mocked`;
+}
+
 export function renderReplay(report: ReplayReport): string {
   if (report.reason !== null) return `not replayed: ${report.reason}`;
-  return [...report.lines.map(lineText), summaryText(report), ...report.keeps.map((keep) => `keep ${keep.covers}: ${keep.text}`)].join("\n");
+  return [...report.lines.map(lineText), summaryText(report), ...report.flows.map(flowText), ...report.keeps.map((keep) => `keep ${keep.covers}: ${keep.text}`)].join("\n");
 }
 
 function parseReplay(args: Args): ReplayInput {

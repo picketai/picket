@@ -10,6 +10,7 @@ export const MOCK_HEADER_KEYS = ["replaces", "source", "recorded", "api", "forma
 export const SOURCES = ["recorded", "api"] as const;
 export const RESERVED_PREFIX = "/__picket/";
 export const MOCK_RULE = "E12";
+export const MOCK_SUFFIX = "-mock";
 
 export type MockSource = (typeof SOURCES)[number];
 export type MockAnswer = { line: number; method: string; path: string; status: number; headers: [string, string][]; body: string | null };
@@ -194,4 +195,10 @@ export function mockFindings(root: string, model: EnvModel, mocks: MockFile[] = 
     const messages = [...mock.problems, ...serviceProblems(mock, model), ...apiProblems(root, mock.definition?.api ?? null)];
     return messages.map((message) => ({ rule: MOCK_RULE, service: mock.service, level: "error" as const, message }));
   });
+}
+
+export function realService(mocks: readonly MockFile[], mock: string): string {
+  const replaces = mocks.find((file) => file.service === mock)?.definition?.replaces;
+  if (replaces !== undefined) return replaces;
+  return mock.endsWith(MOCK_SUFFIX) ? mock.slice(0, -MOCK_SUFFIX.length) : mock;
 }

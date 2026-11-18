@@ -19,6 +19,8 @@ export type ResultRow = {
   unstable: boolean;
   class: ResultClass;
   detail: string;
+  mocks?: string[];
+  gaps?: string[];
 };
 export type ScenarioRow = RunRow | ResultRow;
 export type ReplaySummary = { run: RunRow | null; counts: Partial<Record<ResultClass, number>>; blamed: { scenario: string; class: ResultClass }[] };
@@ -56,6 +58,13 @@ export function lastKnown(rows: readonly ScenarioRow[], scenario: string, finger
 export function latestRun(rows: readonly ScenarioRow[], item: string, modes: readonly RunMode[]): RunRow | null {
   const runs = rows.filter((row): row is RunRow => row.type === "run" && row.item === item && modes.includes(row.mode));
   return runs.at(-1) ?? null;
+}
+
+export function itemMocks(rows: readonly ScenarioRow[], item: string): string[] {
+  const run = latestRun(rows, item, ["full", "affected"]);
+  if (run === null) return [];
+  const mocks = rows.flatMap((row) => (row.type === "result" && row.run === run.run ? (row.mocks ?? []) : []));
+  return [...new Set(mocks)];
 }
 
 export function replaySummary(rows: readonly ScenarioRow[], item: string): ReplaySummary {
