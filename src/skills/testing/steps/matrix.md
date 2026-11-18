@@ -5,7 +5,7 @@ The matrix has one row per tested criterion and one column per case kind. Each c
 1. List the tested criteria from the brief's `## Criteria`, with their text. A criterion whose text cannot be checked on a running system (it names no observable answer, or a word like "fast" with no number) is untestable: record it with a note such as `picket test note <id> T-3.1 untestable --why "fast names no number"` and give it no cases.
 2. Read each criterion against the six case kinds and mark the cells that carry a real risk:
    - `normal`: the main path the request describes works, with valid data.
-   - `boundary`: the edges of a value the request names: zero, one, the maximum, an empty list, the first and last day. A boundary the request gives no outcome for gets no case: it becomes a question, as step 4 of `steps/results.md` says.
+   - `boundary`: the edges of a value the request names: zero, one, the maximum, an empty list, the first and last day. A business boundary the request gives no outcome for gets no case: it becomes a question, as step 4 of `steps/results.md` says.
    - `negative`: invalid input is refused with the answer the request implies (a 400 with a reason), and nothing is stored.
    - `permission`: both ways. A user without the right is refused, and a user with it is let through. A refusal alone proves nothing if no one can pass.
    - `state`: the order of events matters: the same request twice, an action on something already closed or deleted.
