@@ -1,6 +1,6 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { cpSync, readFileSync, realpathSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describeExit, Refused } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
@@ -25,7 +25,7 @@ function modelAt(root: string): string {
   return RECORDED.replaceAll('"/umbrella/', `"${root.replaceAll("\\", "/")}/`);
 }
 
-function engine(root: string, { revision, published = "0.0.0.0:49153" }: { revision?: string; published?: string } = {}): Engine {
+function engine(root: string, { revision, published = "0.0.0.0:49153", model = modelAt(root) }: { revision?: string; published?: string; model?: string } = {}): Engine {
   const calls: string[] = [];
   const runner: EngineRunner = (_program, args) => {
     const words = args.filter((arg, i) => !VALUE_FLAGS.includes(arg) && !VALUE_FLAGS.includes(args[i - 1]));
@@ -34,7 +34,7 @@ function engine(root: string, { revision, published = "0.0.0.0:49153" }: { revis
     if (call === "compose version --format json") return { status: 0, stdout: '{"version":"2.29.1"}', stderr: "" };
     calls.push(words.slice(0, 2).join(" "));
     if (call === "compose config --profiles") return { status: 0, stdout: "picket-data\n", stderr: "" };
-    if (words[1] === "config") return { status: 0, stdout: modelAt(root), stderr: "" };
+    if (words[1] === "config") return { status: 0, stdout: model, stderr: "" };
     if (words[0] === "image") {
       const tag = words[2].slice(words[2].lastIndexOf(":") + 1);
       return { status: 0, stdout: JSON.stringify([{ Config: { Labels: { "org.opencontainers.image.revision": revision ?? tag } } }]), stderr: "" };
@@ -161,6 +161,43 @@ test("a stack already recorded for the starting item starts again (T-2.3)", (t) 
   const { runner } = engine(ctx.root);
   assert.equal(describeExit(startEnvironment(ctx, runner, id)).code, 0);
   assert.equal(readStacks(ctx.root)[SHARED_STACK].item, id);
+});
+
+const PAYMENTS_DEFINITION = "---\nreplaces: payments\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\nwhen POST /charges\n  status 201\n";
+
+function stubbedModel(root: string): string {
+  const model = JSON.parse(modelAt(root));
+  delete model.services["payments-mock"].ports;
+  delete model.services["payments-mock"].healthcheck;
+  return JSON.stringify(model);
+}
+
+test("start with a stubbed mock writes the stub files, names them in the override and finds the mock's endpoint (T-2.5)", (t) => {
+  const { ctx, id } = project(t);
+  mkdirSync(join(ctx.root, ".picket", "env", "mocks"));
+  writeFileSync(join(ctx.root, ".picket", "env", "mocks", "payments-mock.md"), PAYMENTS_DEFINITION);
+  const { runner } = engine(ctx.root, { model: stubbedModel(ctx.root) });
+  const outcome = startEnvironment(ctx, runner, id);
+  assert.equal(describeExit(outcome).code, 0);
+  const folder = join(ctx.root, ".picket", "state", "env", "picket-proj-481", "stub");
+  const program = join(folder, "stub-server.mjs");
+  const definition = join(folder, "payments-mock.json");
+  assert.ok(existsSync(program) && existsSync(definition));
+  const override = JSON.parse(readFileSync(readStacks(ctx.root)["picket-proj-481"].files[1], "utf8"));
+  assert.deepEqual(
+    override.services["payments-mock"].volumes.map((volume: { source: string }) => volume.source),
+    [program, definition],
+  );
+  assert.equal((describeExit(outcome).json as StartReport).endpoints["payments-mock"], "http://127.0.0.1:49153");
+});
+
+test("a stubbed mock that keeps its ports in compose.yaml refuses with E12 before any build", (t) => {
+  const { ctx, id } = project(t);
+  mkdirSync(join(ctx.root, ".picket", "env", "mocks"));
+  writeFileSync(join(ctx.root, ".picket", "env", "mocks", "payments-mock.md"), PAYMENTS_DEFINITION);
+  const { runner, calls } = engine(ctx.root);
+  assert.equal(refusal(() => startEnvironment(ctx, runner, id)), "the environment fails E12; run picket env check");
+  assert.ok(!calls.includes("compose build"));
 });
 
 test("no engine fails with the install line and starts nothing", (t) => {

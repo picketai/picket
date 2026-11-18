@@ -38,6 +38,16 @@ test("E3: a mock without a healthcheck is one finding, and so is a disabled one"
   assert.deepEqual(ruleAndService(changed("cache", (s) => ({ ...s, healthcheck: { test: ["CMD", "true"], disable: true } }))), ["E3 cache error"]);
 });
 
+test("E3: a stubbed mock with no healthcheck has no finding; an unstubbed one still has (T-2.4)", () => {
+  const model = changed("payments-mock", (s) => ({ ...s, healthcheck: null }));
+  assert.deepEqual(staticFindings(model, ["payments-mock"]), []);
+  assert.deepEqual(ruleAndService(model), ["E3 payments-mock error"]);
+  assert.deepEqual(
+    staticFindings(changed("cache", (s) => ({ ...s, healthcheck: null })), ["payments-mock"]).map((f) => `${f.rule} ${f.service}`),
+    ["E3 cache"],
+  );
+});
+
 test("E4: a published host port is one finding", () => {
   const model = changed("orders", (s) => ({ ...s, ports: [{ target: 8080, published: "8080" }] }));
   assert.deepEqual(staticFindings(model), [{ rule: "E4", service: "orders", level: "error", message: "port 8080 is published on host port 8080: leave the host port to the engine" }]);

@@ -5,10 +5,11 @@ import type { Context } from "../../shared/context.mts";
 import { overrideDoc, sourceFor, type ServiceSource } from "../../shared/env/build-plan.mts";
 import { failureCause, machineCheck, readModelJson, realRunner, runCompose, type Engine, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { readModel, type EnvModel } from "../../shared/env/model.mts";
-import { hasError, staticFindings } from "../../shared/env/rules.mts";
+import { hasError } from "../../shared/env/rules.mts";
 import { serviceEndpoints, unprovedBuild, writeOverride } from "../../shared/env/stack-start.mts";
 import { activeClaim, readStacks, recordStack } from "../../shared/env/stacks.mts";
 import { COMPOSE_FILE, ENV_DIR, itemKey, stackName, urlVariable } from "../../shared/env/standard.mts";
+import { environmentStubs, prepareStubs, withStubPorts, type EnvironmentStubs } from "../../shared/mocks/stub.mts";
 import { readLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
@@ -33,12 +34,13 @@ function refuseClaimedStack(root: string, stack: string, id: WorkId): void {
   if (claim !== null) throw new Refused(claim);
 }
 
-function checkedModel(engine: Engine, root: string): EnvModel {
+function checkedModel(engine: Engine, root: string): { model: EnvModel; stubs: EnvironmentStubs } {
   if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) throw new Refused(`no environment: ${ENV_DIR}/${COMPOSE_FILE} is missing`);
   const model = readModel(readModelJson(engine, root));
-  const errors = staticFindings(model);
+  const stubs = environmentStubs(root, model);
+  const errors = stubs.findings;
   if (hasError(errors)) throw new Refused(`the environment fails ${[...new Set(errors.map((f) => f.rule))].join(", ")}; run picket env check`);
-  return model;
+  return { model, stubs };
 }
 
 function composeOrRefuse(engine: Engine, root: string, stack: string, files: string[], args: string[]): string {
@@ -62,18 +64,18 @@ export function startStack(ctx: Context, engine: Engine, machine: MachineReport,
   const key = itemKey(state);
   const stack = stackName(key);
   refuseClaimedStack(root, stack, id);
-  const model = checkedModel(engine, root);
+  const { model, stubs } = checkedModel(engine, root);
   const layout = readLayout(root, id);
   const started = model.services.filter((s) => s.profiles.length === 0);
   const apps = started.filter((s) => s.role === "app" && s.build !== null);
   const sources = apps.map((service) => sourceFor(root, layout, service, env));
-  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, id))];
+  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, id, prepareStubs(root, stack, model, stubs.mocks)))];
   composeOrRefuse(engine, root, stack, files, ["build", ...apps.map((s) => s.name)]);
   refuseUnprovedBuild(engine, sources, key);
   recordStack(root, stack, { item: id, session, files, engine: { name: engine.name, program: engine.program, prefix: engine.prefix }, started: now().toISOString() });
   composeOrRefuse(engine, root, stack, files, ["up", "--detach", "--wait"]);
   const built = sources.map(({ service, checkout, version }) => ({ service, checkout: relative(root, checkout).replaceAll("\\", "/") || ".", version }));
-  const endpoints = serviceEndpoints(engine, root, stack, files, started);
+  const endpoints = serviceEndpoints(engine, root, stack, files, withStubPorts(started, stubs.stubbed));
   return { report: { ok: true, machine, stack, apps: built, urls: urlVariables(endpoints), endpoints }, model, key };
 }
 

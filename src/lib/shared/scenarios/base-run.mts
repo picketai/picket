@@ -5,8 +5,10 @@ import { overrideDoc, type ServiceSource } from "../env/build-plan.mts";
 import { failureCause, readModelJson, runCompose, type Engine } from "../env/engine.mts";
 import { readModel, type EnvModel, type EnvService } from "../env/model.mts";
 import { serviceEndpoints, unprovedBuild, writeOverride } from "../env/stack-start.mts";
+import { hasError } from "../env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR, imageName, stackName } from "../env/standard.mts";
 import { repoPrefix } from "../git.mts";
+import { environmentStubs, prepareStubs, withStubPorts, type EnvironmentStubs } from "../mocks/stub.mts";
 import { statePath } from "../paths.mts";
 import type { ItemLayout } from "../repos.mts";
 import type { WorkState } from "../work/state.mts";
@@ -105,20 +107,28 @@ function refuseUnprovedBuild(engine: Engine, sources: ServiceSource[], key: stri
   if (unproved !== null) throw new BaseFailure(unproved);
 }
 
+function checkedStubs(baseRoot: string, model: EnvModel): EnvironmentStubs {
+  const stubs = environmentStubs(baseRoot, model);
+  if (hasError(stubs.findings)) throw new BaseFailure(`the base environment fails ${[...new Set(stubs.findings.map((f) => f.rule))].join(", ")}`);
+  return stubs;
+}
+
 async function startAndReplay(input: BaseInput, checkouts: BaseCheckout[], stack: string, built: Built): Promise<BaseOutcome> {
   const { root, engine, state, scenarios } = input;
   const key = `${input.key}-base`;
   const baseRoot = join(checkouts.find((checkout) => checkout.dir === "")?.path ?? root, repoPrefix(root));
   const model = readModel(readModelJson(engine, baseRoot));
+  const stubs = checkedStubs(baseRoot, model);
   const sources = baseSources(baseRoot, model, checkouts);
   built.baseRoot = baseRoot;
-  built.files.push(join(baseRoot, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, state.id)));
+  const override = overrideDoc(model, sources, key, state.id, prepareStubs(root, stack, model, stubs.mocks));
+  built.files.push(join(baseRoot, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, override));
   built.images.push(...sources.map((source) => imageName(source.service, key, source.version)));
   compose(engine, baseRoot, stack, built.files, ["build", ...sources.map((source) => source.service)]);
   refuseUnprovedBuild(engine, sources, key);
   compose(engine, baseRoot, stack, built.files, ["up", "--detach", "--wait"]);
   const started = model.services.filter((service) => service.profiles.length === 0);
-  const urls = serviceEndpoints(engine, baseRoot, stack, built.files, started);
+  const urls = serviceEndpoints(engine, baseRoot, stack, built.files, withStubPorts(started, stubs.stubbed));
   const runs = await replayScenarios({ ...input.replay, scenarios, services: model.services.map((service) => service.name), urls });
   return { runs, versions: Object.fromEntries(sources.map((source) => [source.service, source.version])) };
 }

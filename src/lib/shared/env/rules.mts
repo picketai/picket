@@ -3,7 +3,7 @@ import { DATA_PROFILE, isRole, LONG_RUNNING, ROLE_LABEL, ROLES, X_PICKET } from 
 
 export type Finding = { rule: string; service: string | null; level: "error" | "pending"; message: string };
 
-type ServiceRule = { rule: string; check: (service: EnvService) => string[] };
+type ServiceRule = { rule: string; check: (service: EnvService, stubbed: readonly string[]) => string[] };
 
 const ADDRESS_VARIABLE = /^[A-Z_][A-Z0-9_]*$/;
 const PINNED = "@sha256:";
@@ -17,7 +17,7 @@ function healthy(service: EnvService): boolean {
 const SERVICE_RULES: ServiceRule[] = [
   { rule: "E1", check: (s) => (isRole(s.role) ? [] : [`label ${ROLE_LABEL} must be one of ${ROLES.join(", ")}`]) },
   { rule: "E2", check: (s) => (s.role === "app" && s.build === null ? ["an app is built from source: add build"] : []) },
-  { rule: "E3", check: (s) => (isRole(s.role) && LONG_RUNNING.includes(s.role) && !healthy(s) ? [`a ${s.role} needs a healthcheck with a test`] : []) },
+  { rule: "E3", check: (s, stubbed) => (isRole(s.role) && LONG_RUNNING.includes(s.role) && !stubbed.includes(s.name) && !healthy(s) ? [`a ${s.role} needs a healthcheck with a test`] : []) },
   { rule: "E4", check: (s) => s.ports.filter((p) => p.published !== null).map((p) => `port ${p.target} is published on host port ${p.published}: leave the host port to the engine`) },
   {
     rule: "E5",
@@ -50,8 +50,8 @@ function error(rule: string, service: string | null, message: string): Finding {
   return { rule, service, level: "error", message };
 }
 
-export function staticFindings(model: EnvModel): Finding[] {
-  const serviceFindings = SERVICE_RULES.flatMap(({ rule, check }) => model.services.flatMap((service) => check(service).map((message) => error(rule, service.name, message))));
+export function staticFindings(model: EnvModel, stubbed: readonly string[] = []): Finding[] {
+  const serviceFindings = SERVICE_RULES.flatMap(({ rule, check }) => model.services.flatMap((service) => check(service, stubbed).map((message) => error(rule, service.name, message))));
   return [...serviceFindings, ...xPicketMessages(model).map((message) => error(MODEL_RULE, null, message))];
 }
 

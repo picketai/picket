@@ -111,7 +111,7 @@ test("listMocks reads one entry per .md file in name order, the service taken fr
 test("mockFindings reports a missing service, a service that is no mock and an api path that does not exist (T-1.3)", (t) => {
   const apiHeader = HEADER.replace("source: recorded\nrecorded: 2026-11-18", "source: api\napi: docs/payments.yaml");
   const root = project(t, { "fraud-mock.md": `${HEADER}${ANSWER}`, "cache.md": `${HEADER}${ANSWER}`, "payments-mock.md": `${apiHeader}${ANSWER}` });
-  assert.deepEqual(mockFindings(root, MODEL, "E12"), [
+  assert.deepEqual(mockFindings(root, MODEL), [
     { rule: "E12", service: "cache", level: "error", message: ".picket/env/mocks/cache.md defines cache, whose role is dependency: a definition serves only a mock" },
     { rule: "E12", service: "fraud-mock", level: "error", message: ".picket/env/mocks/fraud-mock.md defines fraud-mock, which is no service of the environment" },
     { rule: "E12", service: "payments-mock", level: "error", message: "api docs/payments.yaml does not exist" },
@@ -123,16 +123,27 @@ test("an api path that exists passes and one outside the project is refused", (t
   const root = project(t, { "payments-mock.md": `${inside}${ANSWER}` });
   mkdirSync(join(root, "docs"));
   writeFileSync(join(root, "docs", "payments.yaml"), "openapi: 3.1.0\n");
-  assert.deepEqual(mockFindings(root, MODEL, "E12"), []);
+  assert.deepEqual(mockFindings(root, MODEL), []);
   writeFileSync(join(root, ".picket", "env", "mocks", "payments-mock.md"), `${inside.replace("docs/payments.yaml", "../payments.yaml")}${ANSWER}`);
   assert.deepEqual(
-    mockFindings(root, MODEL, "E12").map((finding) => finding.message),
+    mockFindings(root, MODEL).map((finding) => finding.message),
     ["api ../payments.yaml must be a path inside the project"],
   );
+});
+
+test("a defined mock that declares ports or volumes in compose.yaml gets E12 (T-2.4)", (t) => {
+  const root = project(t, { "payments-mock.md": `${HEADER}${ANSWER}` });
+  const declaring: EnvModel = {
+    ...MODEL,
+    services: [{ ...service("payments-mock", "mock"), ports: [{ target: 8080, published: null }], volumes: [{ type: "volume", source: "pay", target: "/data", read_only: false }] }],
+  };
+  assert.deepEqual(mockFindings(root, declaring), [
+    { rule: "E12", service: "payments-mock", level: "error", message: "payments-mock declares ports and volumes in compose.yaml; the stub owns its port and files: remove them" },
+  ]);
 });
 
 test("a project with no mocks folder has no definitions and no findings (T-1.3)", (t) => {
   const root = project(t, {});
   assert.deepEqual(listMocks(root), []);
-  assert.deepEqual(mockFindings(root, MODEL, "E12"), []);
+  assert.deepEqual(mockFindings(root, MODEL), []);
 });

@@ -41,7 +41,7 @@ function engine(failUpOnCall = 0): { engine: Engine; calls: string[]; stacks: st
 test("a trial builds, starts and removes the stack twice, then removes the trial images, all as picket-trial (T-6.1)", (t) => {
   const root = tempRoot(t);
   const { engine: e, calls, stacks } = engine();
-  const result = runTrial(e, root, readModel(MODEL_JSON), SOURCES);
+  const result = runTrial(e, root, readModel(MODEL_JSON), SOURCES, []);
   assert.deepEqual(result, { passed: true, rounds: 2, failure: null, removed_images: 2 });
   assert.deepEqual(calls, ["compose build", "compose up", "compose down", "compose build", "compose up", "compose down", "image ls", "image rm"]);
   assert.deepEqual([...new Set(stacks)], ["picket-trial"]);
@@ -53,7 +53,7 @@ test("a trial builds, starts and removes the stack twice, then removes the trial
 test("a failing second up still takes the stack down and fails the trial (T-6.2)", (t) => {
   const root = tempRoot(t);
   const { engine: e, calls } = engine(2);
-  const result = runTrial(e, root, readModel(MODEL_JSON), SOURCES);
+  const result = runTrial(e, root, readModel(MODEL_JSON), SOURCES, []);
   assert.deepEqual(result, { passed: false, rounds: 2, failure: "round 2: up failed: orders is unhealthy", removed_images: 2 });
   assert.deepEqual(calls, ["compose build", "compose up", "compose down", "compose build", "compose up", "compose down", "image ls", "image rm"]);
 });

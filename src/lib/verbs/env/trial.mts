@@ -4,9 +4,10 @@ import { action, done, failed, Refused, type Outcome } from "../../shared/action
 import type { Context } from "../../shared/context.mts";
 import { machineCheck, readModelJson, realRunner, type EngineRunner, type MachineReport } from "../../shared/env/engine.mts";
 import { readModel } from "../../shared/env/model.mts";
-import { hasError, staticFindings } from "../../shared/env/rules.mts";
+import { hasError } from "../../shared/env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
 import { recordTrial, runTrial, trialSources, type TrialResult } from "../../shared/env/trial.mts";
+import { environmentStubs } from "../../shared/mocks/stub.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 
 export type TrialInput = Record<string, never>;
@@ -19,9 +20,9 @@ export function trialEnvironment(ctx: Context, runner: EngineRunner): Outcome<Tr
   if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) throw new Refused(`no environment: ${ENV_DIR}/${COMPOSE_FILE} is missing`);
   const modelJson = readModelJson(engine, root);
   const model = readModel(modelJson);
-  const errors = staticFindings(model);
+  const { mocks, findings: errors } = environmentStubs(root, model);
   if (hasError(errors)) throw new Refused(`the environment fails ${[...new Set(errors.map((f) => f.rule))].join(", ")}; run picket env check`);
-  const trial = runTrial(engine, root, model, trialSources(root, model, env));
+  const trial = runTrial(engine, root, model, trialSources(root, model, env), mocks);
   recordTrial(root, modelJson, trial.passed, now());
   const report = { ok: trial.passed, machine, trial };
   return trial.passed ? done(report) : failed(report);

@@ -6,10 +6,10 @@ import { machineCheck, readModelJson, realRunner, type Engine, type EngineRunner
 import { inStepFindings } from "../../shared/env/instep.mts";
 import { readModel, type EnvModel } from "../../shared/env/model.mts";
 import { scanUmbrella } from "../../shared/env/scan.mts";
-import { hasError, staticFindings, type Finding } from "../../shared/env/rules.mts";
+import { hasError, type Finding } from "../../shared/env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR, SCENARIO_DIR } from "../../shared/env/standard.mts";
 import { trialFinding } from "../../shared/env/trial.mts";
-import { mockFindings } from "../../shared/mocks/definition.mts";
+import { environmentStubs } from "../../shared/mocks/stub.mts";
 import { listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
 import { scenarioProblems } from "../../shared/scenarios/rules.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -21,7 +21,6 @@ export type EnvCheckReport = { ok: boolean; machine: MachineReport; environment:
 const GIB = 1024 ** 3;
 const COMPOSE_PATH = `${ENV_DIR}/${COMPOSE_FILE}`;
 const SCENARIO_RULE = "E11";
-const MOCK_RULE = "E12";
 const CARD_EXTENSION = ".md";
 
 function scenarioFindings(scenario: SavedScenario, services: string[]): Finding[] {
@@ -48,7 +47,7 @@ function environmentReport(engine: Engine, machine: MachineReport, root: string)
   const model = readModel(modelJson);
   const trial = trialFinding(root, modelJson);
   const saved = scenarioCheck(root, model);
-  const findings = [...staticFindings(model), ...inStepFindings(scanUmbrella(root), model, root), ...(trial ? [trial] : []), ...saved.findings, ...mockFindings(root, model, MOCK_RULE)];
+  const findings = [...environmentStubs(root, model).findings, ...inStepFindings(scanUmbrella(root), model, root), ...(trial ? [trial] : []), ...saved.findings];
   return { ok: !hasError(findings), machine, environment: "present", findings, scenarios: saved.scenarios };
 }
 

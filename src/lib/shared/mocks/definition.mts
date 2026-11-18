@@ -9,6 +9,7 @@ export const MOCK_FORMAT = 1;
 export const MOCK_HEADER_KEYS = ["replaces", "source", "recorded", "api", "format"] as const;
 export const SOURCES = ["recorded", "api"] as const;
 export const RESERVED_PREFIX = "/__picket/";
+export const MOCK_RULE = "E12";
 
 export type MockSource = (typeof SOURCES)[number];
 export type MockAnswer = { line: number; method: string; path: string; status: number; headers: [string, string][]; body: string | null };
@@ -177,7 +178,9 @@ function insideRoot(root: string, path: string): boolean {
 function serviceProblems(mock: MockFile, model: EnvModel): string[] {
   const service = model.services.find((candidate) => candidate.name === mock.service);
   if (service === undefined) return [`${mock.path} defines ${mock.service}, which is no service of the environment`];
-  return service.role === "mock" ? [] : [`${mock.path} defines ${mock.service}, whose role is ${service.role ?? "unset"}: a definition serves only a mock`];
+  if (service.role !== "mock") return [`${mock.path} defines ${mock.service}, whose role is ${service.role ?? "unset"}: a definition serves only a mock`];
+  const owned = [...(service.ports.length > 0 ? ["ports"] : []), ...(service.volumes.length > 0 ? ["volumes"] : [])];
+  return owned.length === 0 ? [] : [`${mock.service} declares ${owned.join(" and ")} in compose.yaml; the stub owns its port and files: remove them`];
 }
 
 function apiProblems(root: string, api: string | null): string[] {
@@ -186,9 +189,9 @@ function apiProblems(root: string, api: string | null): string[] {
   return existsSync(join(root, api)) ? [] : [`api ${api} does not exist`];
 }
 
-export function mockFindings(root: string, model: EnvModel, rule: string): Finding[] {
-  return listMocks(root).flatMap((mock) => {
+export function mockFindings(root: string, model: EnvModel, mocks: MockFile[] = listMocks(root)): Finding[] {
+  return mocks.flatMap((mock) => {
     const messages = [...mock.problems, ...serviceProblems(mock, model), ...apiProblems(root, mock.definition?.api ?? null)];
-    return messages.map((message) => ({ rule, service: mock.service, level: "error" as const, message }));
+    return messages.map((message) => ({ rule: MOCK_RULE, service: mock.service, level: "error" as const, message }));
   });
 }

@@ -5,6 +5,8 @@ import { readModel } from "../env/model.mts";
 import { serviceEndpoints } from "../env/stack-start.mts";
 import { readStacks } from "../env/stacks.mts";
 import { itemKey, stackName } from "../env/standard.mts";
+import { listMocks } from "../mocks/definition.mts";
+import { stubbedMocks, withStubPorts } from "../mocks/stub.mts";
 import { FORMAT, parseScenario, writeScenario, type Card, type ScenarioHeader } from "../scenarios/format.mts";
 import type { HttpAdapter } from "../scenarios/http.mts";
 import { CANDIDATE_ID } from "../scenarios/keep.mts";
@@ -36,9 +38,11 @@ export function stackOf(root: string, engine: Engine, state: Pick<WorkState, "id
   const stack = stackName(itemKey(state));
   const entry = readStacks(root)[stack];
   if (entry === undefined) throw new Refused(`no stack for ${state.id}: run picket env start ${state.id}`, { id: state.id });
-  const started = readModel(readModelJson(engine, root)).services.filter((service) => service.profiles.length === 0);
+  const model = readModel(readModelJson(engine, root));
+  const started = model.services.filter((service) => service.profiles.length === 0);
+  const stubbed = stubbedMocks(model, listMocks(root));
   return {
-    urls: serviceEndpoints(engine, root, stack, entry.files, started),
+    urls: serviceEndpoints(engine, root, stack, entry.files, withStubPorts(started, stubbed)),
     services: started.map((service) => service.name),
     mocks: started.filter((service) => service.role === MOCK_ROLE).map((service) => service.name),
   };

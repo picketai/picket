@@ -3,6 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readJson } from "../../util/io.mts";
 import { STATE_FILES, statePath } from "../paths.mts";
+import type { MockFile } from "../mocks/definition.mts";
+import { prepareStubs } from "../mocks/stub.mts";
 import { nestedRepos, type ItemLayout } from "../repos.mts";
 import { overrideDoc, sourceFor, type ServiceSource } from "./build-plan.mts";
 import { failureCause, runCompose, type Engine } from "./engine.mts";
@@ -55,8 +57,9 @@ function removeTrialImages(engine: Engine): number {
   return engine.run(["image", "rm", "--force", ...ids]).status === 0 ? ids.length : 0;
 }
 
-export function runTrial(engine: Engine, root: string, model: EnvModel, sources: ServiceSource[]): TrialResult {
-  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, overrideDoc(model, sources, TRIAL_KEY, TRIAL_KEY))];
+export function runTrial(engine: Engine, root: string, model: EnvModel, sources: ServiceSource[], mocks: MockFile[]): TrialResult {
+  const stubs = prepareStubs(root, TRIAL_STACK, model, mocks);
+  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, overrideDoc(model, sources, TRIAL_KEY, TRIAL_KEY, stubs))];
   const apps = sources.map((s) => s.service);
   let failure: string | null = null;
   let rounds = 0;

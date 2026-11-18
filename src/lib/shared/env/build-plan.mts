@@ -81,10 +81,10 @@ function appOverride(source: ServiceSource, key: string, id: string): object {
   };
 }
 
-export function overrideDoc(model: EnvModel, sources: ServiceSource[], key: string, id: string): { services: Record<string, object> } {
+export function overrideDoc(model: EnvModel, sources: ServiceSource[], key: string, id: string, stubs: Record<string, object> = {}): { services: Record<string, object> } {
   const services = model.services.filter(isStarted).map((service): [string, object] => {
     const source = sources.find((s) => s.service === service.name);
-    return [service.name, source ? appOverride(source, key, id) : { labels: { [ITEM_LABEL]: id } }];
+    return [service.name, source ? appOverride(source, key, id) : { labels: { [ITEM_LABEL]: id }, ...stubs[service.name] }];
   });
   return { services: Object.fromEntries(services) };
 }

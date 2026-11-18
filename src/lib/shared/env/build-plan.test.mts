@@ -100,3 +100,20 @@ test("the override tags and labels each app and gives every other started servic
   assert.equal(doc.services["billing-db-client"], undefined, "a profile service is not started");
   assert.equal(REVISION_LABEL, "org.opencontainers.image.revision");
 });
+
+test("a stub fragment sits beside the item label of its mock; a mock with none keeps only the label (T-2.3)", () => {
+  const model = readModel(JSON.parse(readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8")));
+  const fragment = {
+    command: ["node", "/picket/stub-server.mjs", "/picket/mock.json"],
+    volumes: [
+      { type: "bind", source: "/s/stub-server.mjs", target: "/picket/stub-server.mjs", read_only: true },
+      { type: "bind", source: "/s/payments-mock.json", target: "/picket/mock.json", read_only: true },
+    ],
+    healthcheck: { test: ["CMD", "node", "/picket/stub-server.mjs", "--health"], interval: "2s", timeout: "2s", retries: 15 },
+    ports: [{ target: 8080 }],
+  };
+  const item = { "io.github.picketai.item": "20261114-orders" };
+  const stubbed = overrideDoc(model, [], "proj-481", "20261114-orders", { "payments-mock": fragment });
+  assert.deepEqual(stubbed.services["payments-mock"], { labels: item, ...fragment });
+  assert.deepEqual(overrideDoc(model, [], "proj-481", "20261114-orders").services["payments-mock"], { labels: item });
+});

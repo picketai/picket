@@ -178,11 +178,18 @@ function withMock(ctx: Context, name: string, text: string): Context {
   return ctx;
 }
 
+function stubbedModel(): Model {
+  const model = structuredClone(RECORDED);
+  delete model.services["payments-mock"].ports;
+  delete model.services["payments-mock"].healthcheck;
+  return model;
+}
+
 const MOCK_HEADER = "---\nreplaces: payments\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\n";
 
 test("a broken mock definition fails the check with an E12 line under its service (T-1.4)", (t) => {
   const ctx = withMock(umbrellaContext(t), "payments-mock.md", `${MOCK_HEADER}when GET /payments?state=open\n  status 200\n`);
-  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  const outcome = checkEnvironment(ctx, linuxDocker(stubbedModel()));
   assert.equal(describeExit(outcome).code, 2);
   const lines = renderCheck(report(outcome)).split("\n");
   assert.deepEqual(lines.filter((line) => line.startsWith("E12")), ["E12 payments-mock: when 1: a path holds no ? or #: the query string is never matched"]);
@@ -190,9 +197,22 @@ test("a broken mock definition fails the check with an E12 line under its servic
 
 test("a valid mock definition of a mock service adds no E12 line", (t) => {
   const ctx = withMock(umbrellaContext(t), "payments-mock.md", `${MOCK_HEADER}when GET /payments/*\n  status 200\n`);
-  const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
+  const outcome = checkEnvironment(ctx, linuxDocker(stubbedModel()));
   assert.equal(describeExit(outcome).code, EXIT.done);
   assert.ok(!renderCheck(report(outcome)).split("\n").some((line) => line.startsWith("E12")));
+});
+
+test("a stubbed mock that keeps its ports and healthcheck gets E12 for the ports and no E3 (T-2.4)", (t) => {
+  const ctx = withMock(umbrellaContext(t), "payments-mock.md", `${MOCK_HEADER}when GET /payments/*\n  status 200\n`);
+  const lines = renderCheck(report(checkEnvironment(ctx, linuxDocker(RECORDED)))).split("\n");
+  assert.deepEqual(lines.filter((line) => /^E(3|12) /.test(line)), ["E12 payments-mock: payments-mock declares ports in compose.yaml; the stub owns its port and files: remove them"]);
+});
+
+test("a stubbed mock without a healthcheck gets no E3 line", (t) => {
+  const ctx = withMock(umbrellaContext(t), "payments-mock.md", `${MOCK_HEADER}when GET /payments/*\n  status 200\n`);
+  const outcome = checkEnvironment(ctx, linuxDocker(stubbedModel()));
+  assert.equal(describeExit(outcome).code, EXIT.done);
+  assert.ok(!renderCheck(report(outcome)).split("\n").some((line) => line.startsWith("E3")));
 });
 
 test("the fixture card is written in canonical form and its fingerprint matches", () => {
