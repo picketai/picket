@@ -1,0 +1,69 @@
+{
+  "work_id": "20261118-five-small-tester-leftovers-are-closed",
+  "base": "06fc75399129da555d93bb5ad2287e3f8421c0f6",
+  "request": "work/20261118-five-small-tester-leftovers-are-closed/request.md",
+  "size": "medium",
+  "changed_files": [
+    "bench/report.mjs",
+    "docs/reference/cli.md",
+    "src/lib/verbs/test/ask.mts",
+    "src/lib/verbs/test/case.test.mts",
+    "src/lib/verbs/test/record.test.mts",
+    "src/skills/testing/steps/cases.md",
+    "src/skills/testing/steps/matrix.md"
+  ],
+  "lines_added": 8,
+  "lines_removed": 9,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 1,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-18T17:34:44.355Z",
+    "base": "06fc75399129da555d93bb5ad2287e3f8421c0f6",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "no candidate",
+    "rebuild": null,
+    "ms": 150988
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
