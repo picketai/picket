@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { agreement, cv, mean, passAt1, passHatK, percentile, round, stderr } from "./lib/metrics.mjs";
 import { laneMatches } from "./lib/lanes.mjs";
+import { TESTER_KIND } from "./lib/tasks.mjs";
 import { testerCheck, testerRow, testerSuite } from "./lib/tester-measures.mjs";
 
 function load(path) {
@@ -71,7 +72,6 @@ function table(rows) {
   return [head, sep, ...body].join("\n");
 }
 
-const TESTER_KIND = "tester";
 const yesNo = (x) => (x ? "yes" : "no");
 const share = (x) => (x === null ? "-" : pct(x));
 

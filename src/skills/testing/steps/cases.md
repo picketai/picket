@@ -2,7 +2,7 @@
 
 A case is a card in the saved-scenario grammar, run whole on the item's stack by `picket test case`. The kernel adds the header; you write the step lines.
 
-1. Name the case: `--criterion <T-N.x>` from the tested list, `--kind <kind>` from the matrix, and `--intent <words>` saying the one risk it checks, such as `a zero-price item gives a total of 0`.
+1. Name the case: `--criterion <T-N.x>` from the tested list, `--kind <kind>` from the matrix, and `--intent "<words>"` saying the one risk it checks, such as `a zero-price item gives a total of 0`.
 2. Take each request's method, path and body fields from a source: the brief, the request, or an unchanged document of the project (`README.md`, a `docs/` folder, an OpenAPI file). Find a document with Glob and open it with Read by path; a Grep from the project root is refused. Write no field name that no source shows. The normal case of an endpoint runs first; once it passes, each later case of that endpoint keeps its body and changes the one value it tests.
 3. Write the step lines, one per line:
    - `request <METHOD> {<service>}<path>` sends to a service of the environment, never to a host name. Under it, `  header <name>: <value>` and `  body <json>` lines, indented.

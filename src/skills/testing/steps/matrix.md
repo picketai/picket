@@ -1,6 +1,6 @@
 # Testing: matrix
 
-The matrix has one row per tested criterion and one column per case kind. Each cell gets a case, or a note that says why it has none.
+The matrix has one row per tested criterion and one column per case kind. Each cell gets a case, a note that says why it has none, or a question when it is a business boundary the request gives no outcome for (step 2).
 
 1. List the tested criteria from the brief's `## Criteria`, with their text. A criterion whose text cannot be checked on a running system (it names no observable answer, or a word like "fast" with no number) is untestable: record it with a note such as `picket test note <id> T-3.1 untestable --why "fast names no number"` and give it no cases.
 2. Read each criterion against the six case kinds and mark the cells that carry a real risk:

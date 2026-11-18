@@ -140,8 +140,8 @@ test("ask's parse refuses a question or a basis the shell split into words", () 
   assert.throws(() => ask.parse(parseArgs(["x-12", "T-1.1", "--question", "q", "--choices", "yes | no", "--default", "no", "--basis", "the", "request", "says", "nothing"])), refusedWithUsage);
 });
 
-test("ask's usage shows the question and the basis in double quotes", () => {
-  assert.equal(ask.usage, 'test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default <choice> --basis "<text>"]');
+test("ask's usage shows the question, the default and the basis in double quotes", () => {
+  assert.equal(ask.usage, 'test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default "<choice>" --basis "<text>"]');
 });
 
 test("ask's parse refuses a default outside the choices, a default without a basis, and one choice, each with its own text (T-2.5)", () => {

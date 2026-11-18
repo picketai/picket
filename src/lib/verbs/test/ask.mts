@@ -8,7 +8,7 @@ import { need, str, UsageError, type Args } from "../../util/args.mts";
 
 export type AskInput = { id: WorkId; criterion: string; question: string; choices: string[]; default: string | null; basis: string | null };
 
-const USAGE = 'test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default <choice> --basis "<text>"]';
+const USAGE = 'test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default "<choice>" --basis "<text>"]';
 const MIN_CHOICES = 2;
 const MAX_CHOICES = 4;
 

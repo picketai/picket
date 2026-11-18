@@ -401,7 +401,7 @@ picket test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why "<t
 Record a question on a tested criterion, with two to four choices.
 
 ```sh
-picket test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default <choice> --basis "<text>"]
+picket test ask <id> <criterion> --question "<text>" --choices "<a> | <b>" [--default "<choice>" --basis "<text>"]
 ```
 
 ### picket test case
