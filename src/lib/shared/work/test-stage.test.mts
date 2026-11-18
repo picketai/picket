@@ -23,7 +23,8 @@ let minute = 0;
 
 function at(): string {
   minute += 1;
-  return `2026-10-23T10:${String(minute).padStart(2, "0")}:00.000Z`;
+  const hour = 10 + Math.floor(minute / 60);
+  return `2026-10-23T${String(hour).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}:00.000Z`;
 }
 
 function row(agent: string, verdict: string, fields: Partial<VerdictRow> = {}): VerdictRow {
@@ -151,7 +152,56 @@ test("the user's answer at the fix approval closes or sends the developer back (
   assert.equal(stepOf([...fixed, row("user", "approved", { scope: "test", phase: null })]).action, "close");
   const rejected = [...fixed, row("user", "rejected", { scope: "test", phase: null })];
   assert.deepEqual(stepOf(rejected), { action: "fix_findings", actor: "developer", phase: 1, review: "test", detail: "the user rejected the test fixes; fix what the reason names" });
-  assert.equal(stepOf([...rejected, developer()]).action, "approve_fixes");
+  assert.equal(stepOf([...rejected, developer()]).action, "review_cumulative");
+});
+
+const stalledAtRound3 = () => {
+  const round = (n: number) => [tester("CHANGES REQUIRED", n, "fix"), developer(), cumulative("APPROVED")];
+  return [cumulative("APPROVED"), ...round(1), ...round(2), tester("CHANGES REQUIRED", 3, "fix")];
+};
+const redesignReply = (): ReplyRow => ({ ts: at(), session: S, action: "resolve_rejections", phase: null, reply: "d" });
+const amended = () => row("architect", "AMENDED", { record: "b".repeat(64) });
+
+test("a redesign reply at the third fix round holds the stop until the architect amends, then the developer fixes (T-1.1)", () => {
+  const rows = stalledAtRound3();
+  const replies = [redesignReply()];
+  assert.deepEqual(stepOf(rows, { replies }), { action: "resolve_rejections", actor: "user", detail: "3 test rounds returned CHANGES REQUIRED since the last approval", options: STALL_OPTIONS });
+  assert.deepEqual(stepOf([...rows, amended()], { replies }), { action: "fix_findings", actor: "developer", phase: 1, review: "test", detail: "the tester found product failures; fix them" });
+});
+
+test("after the amendment the fix runs the cumulative review, then the tester's round 4 (T-1.2)", () => {
+  const replies = [redesignReply()];
+  const done = [...stalledAtRound3(), amended(), developer()];
+  assert.deepEqual(stepOf(done, { replies }), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "the fixes of test round 3 are done; the cumulative review runs again", fixes: 3 });
+  assert.deepEqual(stepOf([...done, cumulative("APPROVED")], { replies }), { action: "test_item", actor: "tester", round: 4, detail: "the tester retests the finished item, round 4" });
+});
+
+const rejectedAtRound2 = () => [
+  cumulative("APPROVED"),
+  tester("CHANGES REQUIRED", 1, "fix"),
+  developer(),
+  cumulative("APPROVED"),
+  tester("APPROVED", 2),
+  row("user", "rejected", { scope: "test", phase: null }),
+];
+
+test("a rejected fix runs the developer, the cumulative review and the tester's next round (T-1.4)", () => {
+  const rejected = rejectedAtRound2();
+  assert.deepEqual(stepOf(rejected), { action: "fix_findings", actor: "developer", phase: 1, review: "test", detail: "the user rejected the test fixes; fix what the reason names" });
+  const reworked = [...rejected, developer()];
+  assert.deepEqual(stepOf(reworked), { action: "review_cumulative", actor: "reviewer", phase: 1, detail: "the fixes of test round 2 are done; the cumulative review runs again", fixes: 2 });
+  assert.deepEqual(stepOf([...reworked, cumulative("APPROVED")]), { action: "test_item", actor: "tester", round: 3, detail: "the tester retests the finished item, round 3" });
+});
+
+test("the tester's approval after a rejected fix asks for approval again, and approving closes (T-1.5)", () => {
+  const retested = [...rejectedAtRound2(), developer(), cumulative("APPROVED"), tester("APPROVED", 3)];
+  assert.deepEqual(stepOf(retested), { action: "approve_fixes", actor: "user", detail: "the tester approved round 3; the fixes of the test stage await your approval", options: ["[a] approve and commit the fixes", "[x] reject: <why>"] });
+  assert.equal(stepOf([...retested, row("user", "approved", { scope: "test", phase: null })]).action, "close");
+});
+
+test("a cumulative rejection of a reworked fix sends the developer to the cumulative findings (T-1.6)", () => {
+  const step = stepOf([...rejectedAtRound2(), developer(), cumulative("CHANGES REQUIRED")]);
+  assert.deepEqual([step.action, "review" in step && step.review], ["fix_findings", "cumulative"]);
 });
 
 test("a tester drift does not count toward the reviewer's repeated drifts", () => {

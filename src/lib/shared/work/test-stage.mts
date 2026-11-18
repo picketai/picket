@@ -13,13 +13,14 @@ import type { VerdictRow } from "./verdict-log.mts";
 export type Applicability = { applies: true } | { applies: false; why: string };
 
 type Stamped = { ts: string };
-type FixCycle = { tester: VerdictRow; rows: VerdictRow[]; diagnose: string | null };
+type FixCycle = { tester: VerdictRow; rows: VerdictRow[]; diagnose: string | null; why?: string };
 
 const TESTER = "tester";
 const TEST_SCOPE = "test";
 const RESOLVE_TESTS_OPTIONS = ["[t] tell the tester: <answers>", "[n] accept the unproved criteria as not verified", "[x] abandon"];
 const APPROVE_FIXES_OPTIONS = ["[a] approve and commit the fixes", "[x] reject: <why>"];
 const SEE_REPORT = "see the test report";
+const REJECTED_FIXES = "the user rejected the test fixes; fix what the reason names";
 
 export function testApplies(snap: WorkSnapshot): Applicability {
   const setting = snap.testing?.setting ?? "off";
@@ -66,15 +67,15 @@ function lastIndexWhere(rows: readonly VerdictRow[], matches: (row: VerdictRow) 
 const isDeveloper = (row: VerdictRow) => row.agent === "developer";
 const isCumulativeReview = (row: VerdictRow) => row.agent === "reviewer" && row.scope === "cumulative";
 
-function fixCycleStep(snap: WorkSnapshot, { tester, rows, diagnose }: FixCycle): NextStep {
+function fixCycleStep(snap: WorkSnapshot, { tester, rows, diagnose, why }: FixCycle): NextStep {
   const developerAt = lastIndexWhere(rows, isDeveloper);
   const reviewAt = lastIndexWhere(rows, isCumulativeReview);
-  if (developerAt < 0) return fixStep(snap, diagnose);
+  if (developerAt < 0) return fixStep(snap, diagnose, why);
   if (reviewAt > developerAt) {
     if (rows[reviewAt].verdict === "APPROVED") return testStep(snap);
     return { action: "fix_findings", actor: "developer", phase: snap.phases.length, review: "cumulative", detail: "the cumulative review of the test fixes returned CHANGES REQUIRED; fix its findings" };
   }
-  if (rows[developerAt].verdict !== "PHASE DONE") return fixStep(snap, null);
+  if (rows[developerAt].verdict !== "PHASE DONE") return fixStep(snap, null, why);
   const round = tester.round ?? testRound(snap.verdicts) - 1;
   return { action: "review_cumulative", actor: "reviewer", phase: snap.phases.length, detail: `the fixes of test round ${round} are done; the cumulative review runs again`, fixes: round };
 }
@@ -91,7 +92,7 @@ function rejectionsStep(snap: WorkSnapshot, stage: VerdictRow[], tester: Verdict
   if (tester.test_route !== "fix") return null;
   const rounds = fixRoundsSince(stage, latestFresh(snap, null));
   if (rounds < STALL_REPEATS || rounds % STALL_REPEATS !== 0) return null;
-  if (rowsAfterTester(stage, tester).some(isDeveloper)) return null;
+  if (rowsAfterTester(stage, tester).length > 0) return null;
   return { action: "resolve_rejections", actor: "user", detail: `${rounds} test rounds returned CHANGES REQUIRED since the last approval`, options: STALL_OPTIONS };
 }
 
@@ -132,16 +133,15 @@ function driftStep(snap: WorkSnapshot, stage: VerdictRow[], tester: VerdictRow):
   return { action: "amend", actor: "architect", detail: `AMENDMENT NEEDED: ${firstReason(snap)}`, review: reportRel(snap), reword: true };
 }
 
-function userAnswerToFixes(stage: VerdictRow[]): VerdictRow | null {
-  const doneAt = lastIndexWhere(stage, (row) => isDeveloper(row) && row.verdict === "PHASE DONE");
-  return stage.slice(doneAt + 1).filter((row) => row.agent === "user" && row.scope === TEST_SCOPE).at(-1) ?? null;
+function userAnswerToFixes(stage: VerdictRow[], tester: VerdictRow): VerdictRow | null {
+  return rowsAfterTester(stage, tester).filter((row) => row.agent === "user" && row.scope === TEST_SCOPE).at(-1) ?? null;
 }
 
 function approvedStep(snap: WorkSnapshot, stage: VerdictRow[], tester: VerdictRow): NextStep | null {
   if (!stage.some((row) => isDeveloper(row) && row.verdict === "PHASE DONE")) return null;
-  const answer = userAnswerToFixes(stage);
+  const answer = userAnswerToFixes(stage, tester);
   if (answer?.verdict === "approved") return null;
-  if (answer?.verdict === "rejected") return fixStep(snap, null, "the user rejected the test fixes; fix what the reason names");
+  if (answer?.verdict === "rejected") return fixCycleStep(snap, { tester, rows: rowsAfter(stage, answer), diagnose: null, why: REJECTED_FIXES });
   return { action: "approve_fixes", actor: "user", detail: `the tester approved round ${tester.round ?? testRound(snap.verdicts) - 1}; the fixes of the test stage await your approval`, options: APPROVE_FIXES_OPTIONS };
 }
 
