@@ -162,3 +162,26 @@ test("a changing request writes unowned data unless its target or body carries P
   assert.equal(writesUnownedData(postCard('{"sku":"PKT-{run}-1"}')), false);
   assert.equal(writesUnownedData(card()), false);
 });
+
+const LOGIN = 'request POST {orders}/login\n  body {"user": "{user:buyer.name}", "password": "{user:buyer.password}"}\nexpect status 200\n';
+const CAPTURE = "capture token json token\n";
+
+function stepsCard(steps: string): Card {
+  const parsed = parseScenario(`---\nid: S-0000\nkind: boundary\ncovers: ["x/T-2.1"]\nintent: an empty basket is refused\nformat: 1\n---\n${steps}`).card;
+  assert.ok(parsed, steps);
+  return parsed;
+}
+
+function ordersPost(body: string): string {
+  return `request POST {orders}/orders\n  header authorization: Bearer {token}\n  body ${body}\nexpect status 400\nexpect contains "items"\n`;
+}
+
+test("a first request with {user: placeholders and a capture after it is a login, not an unowned write", () => {
+  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${CAPTURE}${ordersPost('{"reference": "PKT-{run}", "items": []}')}`)), false);
+});
+
+test("a login still leaves every other changing request to the PKT- rule", () => {
+  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${CAPTURE}${ordersPost('{"reference": "a"}')}`)), true);
+  assert.equal(writesUnownedData(stepsCard(`${LOGIN}${ordersPost('{"reference": "PKT-{run}", "items": []}')}`)), true);
+  assert.equal(writesUnownedData(stepsCard(`request GET {orders}/health\nexpect status 200\n${LOGIN}${CAPTURE}`)), true);
+});

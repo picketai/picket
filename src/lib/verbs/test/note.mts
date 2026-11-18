@@ -1,6 +1,6 @@
 import { action, done, Refused } from "../../shared/action.mts";
 import { openTestItem } from "../../shared/testing/facts.mts";
-import { appendTestRow, CASE_KINDS, testRound, type CaseKind, type CellOutcome, type CellRow, type TestEntry, type UntestableRow } from "../../shared/testing/results.mts";
+import { appendTestRow, CASE_KINDS, CELL_OUTCOMES, testRound, type CaseKind, type CellOutcome, type CellRow, type TestEntry, type UntestableRow } from "../../shared/testing/results.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { need, UsageError, type Args } from "../../util/args.mts";
@@ -9,9 +9,9 @@ export type NoteMark = { kind: CaseKind; outcome: CellOutcome } | "untestable";
 export type NoteInput = { id: WorkId; criterion: string; mark: NoteMark; why: string };
 export type NoteRow = CellRow | UntestableRow;
 
-const USAGE = "test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why <text>, or test note <id> <criterion> untestable --why <text>";
-const OUTCOME_WORDS: Record<string, CellOutcome> = { blocked: "blocked", "not-run": "not run", "not-covered": "not covered" };
+const OUTCOME_WORDS: ReadonlyMap<string, CellOutcome> = new Map(CELL_OUTCOMES.map((outcome) => [outcome.replaceAll(" ", "-"), outcome]));
 const UNTESTABLE = "untestable";
+const USAGE = `test note <id> <criterion> <kind> <${[...OUTCOME_WORDS.keys()].join("|")}> --why <text>, or test note <id> <criterion> ${UNTESTABLE} --why <text>`;
 
 export const note = action<NoteInput, NoteRow>(async (input, { root, now }) => {
   const { snap, criteria } = openTestItem(root, input.id);
@@ -33,7 +33,7 @@ function isCaseKind(text: string | undefined): text is CaseKind {
 
 function parseMark(kind: string | undefined, outcome: string | undefined): NoteMark {
   if (kind === UNTESTABLE && outcome === undefined) return UNTESTABLE;
-  const cell = outcome === undefined ? undefined : OUTCOME_WORDS[outcome];
+  const cell = outcome === undefined ? undefined : OUTCOME_WORDS.get(outcome);
   if (!isCaseKind(kind) || cell === undefined) throw new UsageError(USAGE);
   return { kind, outcome: cell };
 }

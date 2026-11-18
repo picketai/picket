@@ -6,6 +6,7 @@ export const CASE_KINDS = ["normal", "boundary", "negative", "permission", "stat
 export const FAILURE_CLASSES = ["product", "test", "environment"] as const;
 export const CELL_OUTCOMES = ["blocked", "not run", "not covered"] as const;
 export const CASE_OUTCOMES = ["passed", "failed", "blocked"] as const;
+export const COUNTED_OUTCOMES: readonly (CaseOutcome | CellOutcome)[] = [...new Set([...CASE_OUTCOMES, ...CELL_OUTCOMES])];
 export const TEST_DIR = "test";
 
 export type CaseKind = (typeof CASE_KINDS)[number];

@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { workId } from "../work/files.mts";
 import { appendTestRow, nextCaseId, readTestRows, roundRows, testFolderRel, testRound, type TestEntry, type TestRow } from "./results.mts";
+import { roundCounts } from "./report.mts";
+import { COUNTED_OUTCOMES } from "./results.mts";
 
 const ID = workId("20261117-orders");
 const TS = "2026-11-17T10:00:00.000Z";
@@ -57,4 +59,15 @@ test("round rows keep only the named round", () => {
 
 test("the test folder sits in the work item", () => {
   assert.equal(testFolderRel(ID), "work/20261117-orders/test/");
+});
+
+test("the counted outcomes are the case outcomes then the cell outcomes, each once", () => {
+  assert.deepEqual(COUNTED_OUTCOMES, ["passed", "failed", "blocked", "not run", "not covered"]);
+});
+
+test("the counts line names each outcome once, passed first and not covered last", () => {
+  const cells: TestEntry[] = (["not covered", "not run", "blocked"] as const).map((outcome) => ({ round: 1, type: "cell", criterion: "T-2.1", kind: "state", outcome, why: "x" }));
+  const cases: TestEntry[] = (["blocked", "failed", "passed"] as const).map((outcome, at) => ({ ...caseEntry(`C-0${at + 1}`), outcome }) as TestEntry);
+  const rows = [...cells, ...cases].map((entry) => ({ ts: TS, ...entry }) as TestRow);
+  assert.equal(roundCounts(rows, 1), "1 passed, 1 failed, 2 blocked, 1 not run, 1 not covered");
 });

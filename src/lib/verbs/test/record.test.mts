@@ -99,6 +99,18 @@ test("note's parse refuses an unknown kind and an unknown outcome", () => {
   }
 });
 
+test("note's usage names the three cell outcomes and untestable", () => {
+  assert.equal(note.usage, "test note <id> <criterion> <kind> <blocked|not-run|not-covered> --why <text>, or test note <id> <criterion> untestable --why <text>");
+});
+
+test("note's parse maps each hyphenated outcome word to its cell outcome", () => {
+  const outcomeOf = (word: string) => {
+    const { mark } = note.parse(parseArgs(["x-12", "T-1.1", "normal", word, "--why", "x"]));
+    return mark === "untestable" ? mark : mark.outcome;
+  };
+  assert.deepEqual(["blocked", "not-run", "not-covered"].map(outcomeOf), ["blocked", "not run", "not covered"]);
+});
+
 test("ask appends a question row (T-2.5)", async (t) => {
   const { root, id } = item(t);
   const input = ask.parse(parseArgs([id, "T-1.1", "--question", "Is an empty basket an error?", "--choices", "yes | no", "--default", "no", "--basis", "the request says nothing"]));
@@ -140,6 +152,13 @@ test("report names the unclassified case and the classify command", async (t) =>
   const outcome = await report.run({ id }, fixedContext(root));
   assert.ok(outcome.status === "done");
   assert.equal(report.render(outcome.value), `1 failed\nunclassified: C-01; run picket test classify ${id} C-01 <product|test|environment> --evidence <why>`);
+});
+
+test("report of a round with no rows prints no cases recorded first", async (t) => {
+  const { root, id } = item(t);
+  const outcome = await report.run({ id }, fixedContext(root));
+  assert.ok(outcome.status === "done");
+  assert.equal(report.render(outcome.value).split("\n")[0], "no cases recorded");
 });
 
 test("every recording verb refuses a done item and an item with no HTTP check", async (t) => {

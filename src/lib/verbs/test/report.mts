@@ -3,15 +3,13 @@ import { dirname } from "node:path";
 import { action, done } from "../../shared/action.mts";
 import { deriveVerdict, type Derived } from "../../shared/testing/derive.mts";
 import { openTestItem, testFacts, testReportPath } from "../../shared/testing/facts.mts";
-import { renderReport } from "../../shared/testing/report.mts";
+import { renderReport, roundCounts } from "../../shared/testing/report.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { UsageError, type Args } from "../../util/args.mts";
 
 export type ReportInput = { id: WorkId };
 export type ReportOutput = { id: WorkId; counts: string; derived: Derived };
-
-const COUNTS_LINE = /^(no cases recorded|\d+ (passed|failed|blocked|not run|not covered)\b)/;
 
 export const report = action<ReportInput, ReportOutput>(async ({ id }, { root }) => {
   const { snap } = openTestItem(root, id);
@@ -21,7 +19,7 @@ export const report = action<ReportInput, ReportOutput>(async ({ id }, { root })
   const path = testReportPath(root, id);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text);
-  return done({ id, counts: text.split("\n").find((line) => COUNTS_LINE.test(line)) ?? "", derived });
+  return done({ id, counts: roundCounts(facts.rows, facts.round), derived });
 });
 
 function verdictText({ id, derived }: ReportOutput): string {

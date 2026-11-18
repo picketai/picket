@@ -1,9 +1,8 @@
 import type { Derived } from "./derive.mts";
-import { latestCases, latestClass, roundRows, type CaseRow, type CellRow, type QuestionRow, type TestRow } from "./results.mts";
+import { COUNTED_OUTCOMES, latestCases, latestClass, roundRows, type CaseRow, type CellRow, type QuestionRow, type TestRow } from "./results.mts";
 
 export type ReportInput = { id: string; round: number; derived: Derived; rows: TestRow[]; criteria: string[] };
 
-const COUNTED_OUTCOMES = ["passed", "failed", "blocked", "not run", "not covered"] as const;
 const TABLE_HEAD = ["| Criterion | Kind | Case | Outcome | Class | Mock | Detail |", "| --- | --- | --- | --- | --- | --- | --- |"];
 
 function cellsOf(rows: readonly TestRow[]): CellRow[] {

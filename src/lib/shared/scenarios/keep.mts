@@ -22,6 +22,7 @@ export const CANDIDATE_ID = "S-0000";
 const CHANGING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 const MASK = "***";
 const RUN_PREFIX = "PKT-";
+const USER_PLACEHOLDER = "{user:";
 const PKT = /PKT-[A-Za-z0-9]+/g;
 const FIXED_DATE = /\b\d{4}-\d{2}-\d{2}(?=T|\b)/g;
 const ERROR_STATUS = 400;
@@ -73,8 +74,22 @@ function cardOf(input: CandidateInput, check: HttpCheck, hit: DriveHit, service:
   return { header: header(input, check), steps: [request, status, ...contains] };
 }
 
+function capturesBeforeNextRequest(steps: Card["steps"], request: number): boolean {
+  const after = steps.slice(request + 1);
+  const nextRequest = after.findIndex((step) => step.word === "request");
+  return (nextRequest === -1 ? after : after.slice(0, nextRequest)).some((step) => step.word === "capture");
+}
+
+function loginIndex(steps: Card["steps"]): number {
+  const first = steps.findIndex((step) => step.word === "request");
+  const step = steps[first];
+  const signsIn = step?.word === "request" && (step.body ?? "").includes(USER_PLACEHOLDER);
+  return signsIn && capturesBeforeNextRequest(steps, first) ? first : -1;
+}
+
 export function writesUnownedData(card: Card): boolean {
-  return card.steps.some((step) => step.word === "request" && CHANGING_METHODS.includes(step.method) && !`${step.target}${step.body ?? ""}`.includes(RUN_PREFIX));
+  const login = loginIndex(card.steps);
+  return card.steps.some((step, at) => at !== login && step.word === "request" && CHANGING_METHODS.includes(step.method) && !`${step.target}${step.body ?? ""}`.includes(RUN_PREFIX));
 }
 
 export function candidateCard(input: CandidateInput): { card: Card } | { notKept: string } {
