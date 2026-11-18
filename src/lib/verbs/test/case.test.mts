@@ -77,7 +77,7 @@ test("test case records the run with its stdin steps and the stack's mocks (T-3.
   const outcome = await recordCase(ctx, deps(answering(201)), caseInput(id));
   assert.ok(outcome.status === "done");
   const [row] = readTestRows(ctx.root, id) as CaseRow[];
-  assert.deepEqual(row, { ts: NOW, round: 1, type: "case", case: "C-01", criterion: "T-1.1", kind: "normal", intent: "an order is read back", steps: STEPS, outcome: "passed", attempts: 1, unstable: false, detail: "", mocks: ["payments-mock"] });
+  assert.deepEqual(row, { ts: NOW, round: 1, type: "case", case: "C-01", criterion: "T-1.1", kind: "normal", intent: "an order is read back", steps: STEPS, outcome: "passed", attempts: 1, unstable: false, detail: "", mocks: ["payments-mock"], gaps: [] });
   assert.equal(caseVerb.render(outcome.value), "C-01 T-1.1 normal passed · through a mock: payments-mock");
 });
 

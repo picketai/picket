@@ -7,6 +7,8 @@ import { Refused } from "../action.mts";
 import type { EnvModel, EnvService } from "../env/model.mts";
 import { listMocks } from "./definition.mts";
 import { environmentStubs, prepareStubs, STUB_PORT, stubbedMocks, stubProgram, withStubPorts } from "./stub.mts";
+import { readTraffic, stackMocks, trafficBetween, type TrafficEntry } from "./stub.mts";
+import type { HttpAdapter, HttpRequest } from "../scenarios/http.mts";
 
 const HEADER = "---\nreplaces: payments\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\n";
 const VALID = `${HEADER}when POST /charges\n  status 201\n  header Content-Type: application/json\n  body {"id":"ch_1"}\n`;
@@ -74,4 +76,39 @@ test("environmentStubs lets a stubbed mock skip E3 and reports the other mocks a
     findings.map((finding) => `${finding.rule} ${finding.service}`),
     ["E3 fraud-mock", "E3 ledger-mock", "E3 cache", "E8 null", "E12 fraud-mock"],
   );
+});
+
+const CHARGE: TrafficEntry = { method: "POST", path: "/charges", answered: true };
+const REFUND: TrafficEntry = { method: "POST", path: "/refunds", answered: false };
+
+test("a log shorter after the run than before counts whole as the run's traffic (T-3.5)", () => {
+  const before = { "payments-mock": [CHARGE, CHARGE, CHARGE] };
+  assert.deepEqual(trafficBetween(before, { "payments-mock": [REFUND] }), { mocks: ["payments-mock"], gaps: ["payments-mock has no answer for POST /refunds"] });
+});
+
+test("only entries added during the run count, and a repeated gap is named once", () => {
+  const before = { "payments-mock": [REFUND], "fraud-mock": [CHARGE] };
+  const after = { "payments-mock": [REFUND, REFUND, REFUND, CHARGE], "fraud-mock": [CHARGE] };
+  assert.deepEqual(trafficBetween(before, after), { mocks: ["payments-mock"], gaps: ["payments-mock has no answer for POST /refunds"] });
+});
+
+test("readTraffic asks each stub for its log and reads a stub that does not answer as an empty log", async () => {
+  const seen: HttpRequest[] = [];
+  const adapter: HttpAdapter = async (request) => {
+    seen.push(request);
+    if (request.url.startsWith("http://pay")) return { status: 200, headers: {}, text: JSON.stringify([CHARGE, { method: "GET" }]), error: null };
+    return { status: null, headers: {}, text: "", error: "ECONNREFUSED" };
+  };
+  const traffic = await readTraffic(adapter, { "payments-mock": "http://pay:1", "fraud-mock": "http://fraud:2" }, 500);
+  assert.deepEqual(traffic, { "payments-mock": [CHARGE], "fraud-mock": [] });
+  assert.deepEqual(seen.map(({ method, url, timeoutMs }) => [method, url, timeoutMs]), [["GET", "http://pay:1/__picket/received", 500], ["GET", "http://fraud:2/__picket/received", 500]]);
+});
+
+test("stackMocks maps each stub to its endpoint and leaves every other started mock to the project", (t) => {
+  const root = project(t, { "payments-mock.md": VALID });
+  const model: EnvModel = { ...MODEL, services: [...MODEL.services, { ...service("audit-mock", "mock"), profiles: ["picket-data"] }] };
+  assert.deepEqual(stackMocks(model, listMocks(root), { "payments-mock": "http://127.0.0.1:4000", cache: "http://127.0.0.1:4001" }), {
+    stubs: { "payments-mock": "http://127.0.0.1:4000" },
+    ownMocks: ["fraud-mock", "ledger-mock"],
+  });
 });

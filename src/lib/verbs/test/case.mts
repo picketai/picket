@@ -50,7 +50,7 @@ export async function recordCase(ctx: Context, deps: CaseDeps, { id, spec, steps
   const stack = openItemStack(ctx, deps.runner, snap.state);
   refuseProblems(scenarioProblems(card, stack.services), id);
   const run = await runCase(card, runCaseInput(ctx, deps, stack));
-  const entry: Omit<CaseRow, "ts"> = { round, type: "case", case: nextCaseId(rows), ...spec, steps, ...run, mocks: stack.mocks };
+  const entry: Omit<CaseRow, "ts"> = { round, type: "case", case: nextCaseId(rows), ...spec, steps, ...run };
   const at = ctx.now();
   appendTestRow(ctx.root, id, entry, at);
   return done({ id, row: { ts: at.toISOString(), ...entry } });

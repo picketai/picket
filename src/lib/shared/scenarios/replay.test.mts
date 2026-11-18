@@ -28,7 +28,7 @@ function scripted(statuses: number[]): { adapter: HttpAdapter; seen: HttpRequest
 
 function input(scenarios: SavedScenario[], adapter: HttpAdapter): ReplayInput {
   const keys = ["aaaa", "bbbb", "cccc", "dddd"];
-  return { scenarios, services: ["orders", "billing"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-15", newRunKey: () => keys.shift() ?? "ffff", timeoutMs: 20000, sleep: async () => {} };
+  return { scenarios, services: ["orders", "billing"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-15", newRunKey: () => keys.shift() ?? "ffff", timeoutMs: 20000, sleep: async () => {}, stubs: {}, ownMocks: [] };
 }
 
 test("a card failing twice is a confirmed failure with two attempts on different run keys (T-4.1)", async () => {
@@ -42,6 +42,8 @@ test("a card failing twice is a confirmed failure with two attempts on different
     unstable: false,
     byHand: false,
     detail: "step 2: expected status 201, got 500",
+    mocks: [],
+    gaps: [],
   });
   assert.deepEqual(seen.map((request) => request.body), ['{"sku":"PKT-aaaa-1"}', '{"sku":"PKT-bbbb-1"}']);
 });
@@ -83,6 +85,39 @@ test("a hand-changed card is run and returned as changed by hand (T-4.3)", async
   const { adapter } = scripted([201]);
   const [run] = await replayScenarios(input([saved("S-0002", POST, { byHand: true })], adapter));
   assert.deepEqual([run.outcome, run.byHand], ["passed", true]);
+});
+
+type Entry = { method: string; path: string; answered: boolean };
+
+function withStubs(statuses: number[], logs: Record<string, Entry[][]>): HttpAdapter {
+  const reads: Record<string, number> = {};
+  const app = scripted(statuses).adapter;
+  return async (request) => {
+    const stub = Object.keys(logs).find((service) => request.url === `http://${service}.stub/__picket/received`);
+    if (stub === undefined) return app(request);
+    const at = reads[stub] ?? 0;
+    reads[stub] = at + 1;
+    return { status: 200, headers: {}, text: JSON.stringify(logs[stub][Math.min(at, logs[stub].length - 1)]), error: null };
+  };
+}
+
+const CHARGE: Entry = { method: "POST", path: "/charges", answered: true };
+const REFUND: Entry = { method: "POST", path: "/refunds", answered: false };
+
+test("a run lists the stubs whose log grew and every project-owned mock; a blocked run lists none (T-3.1)", async () => {
+  const adapter = withStubs([201], { "payments-mock": [[CHARGE], [CHARGE, CHARGE]], "fraud-mock": [[CHARGE], [CHARGE]] });
+  const stubs = { "payments-mock": "http://payments-mock.stub", "fraud-mock": "http://fraud-mock.stub" };
+  const runs = await replayScenarios({ ...input([saved("S-0002", POST), saved("S-0003", ["request GET {stock}/health"])], adapter), stubs, ownMocks: ["ledger-mock"] });
+  assert.deepEqual(runs.map(({ id, outcome, mocks, gaps }) => ({ id, outcome, mocks, gaps })), [
+    { id: "S-0002", outcome: "passed", mocks: ["payments-mock", "ledger-mock"], gaps: [] },
+    { id: "S-0003", outcome: "blocked", mocks: [], gaps: [] },
+  ]);
+});
+
+test("an unanswered request during the run is a gap on the run (T-3.2)", async () => {
+  const adapter = withStubs([201], { "payments-mock": [[], [CHARGE, REFUND]] });
+  const [run] = await replayScenarios({ ...input([saved("S-0002", POST)], adapter), stubs: { "payments-mock": "http://payments-mock.stub" } });
+  assert.deepEqual([run.mocks, run.gaps], [["payments-mock"], ["payments-mock has no answer for POST /refunds"]]);
 });
 
 test("affected keeps the cards naming a changed app, or all when the environment changed (T-4.4)", () => {

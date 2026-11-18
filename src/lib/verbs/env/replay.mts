@@ -3,6 +3,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import { action, done, failed, Refused, type Outcome } from "../../shared/action.mts";
 import type { Context } from "../../shared/context.mts";
 import { machineCheck, realRunner, type Engine, type EngineRunner } from "../../shared/env/engine.mts";
+import { listMocks } from "../../shared/mocks/definition.mts";
+import { stackMocks } from "../../shared/mocks/stub.mts";
 import { readLayout, type ItemLayout } from "../../shared/repos.mts";
 import { runBase, type BaseInput, type BaseOutcome } from "../../shared/scenarios/base-run.mts";
 import { classify, isBlamed, RESULT_CLASSES, type ResultClass } from "../../shared/scenarios/compare.mts";
@@ -111,7 +113,8 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const keys = { working: workingKey(root, layout, start.model, env), base: baseKey(root, layout, state.base ?? null, start.model) };
   const scenarios = selected(listScenarios(root), input, keys);
   const services = start.model.services.map((service) => service.name);
-  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints });
+  const mocks = stackMocks(start.model, listMocks(root), start.report.endpoints);
+  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...mocks });
   const baseId = keyId(keys.base);
   const stored = readResults(root);
   const unmatched = new Set(runs.filter((scenarioRun) => !session.replaced.has(scenarioRun.id) && needsBase(scenarioRun, stored, baseId)).map((scenarioRun) => scenarioRun.id));

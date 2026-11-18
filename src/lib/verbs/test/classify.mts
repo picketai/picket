@@ -9,12 +9,18 @@ export type ClassifyInput = { id: WorkId; case: string; class: FailureClass; evi
 
 const USAGE = "test classify <id> <case> <product|test|environment> --evidence \"<text>\"";
 
+function refuseProductGap(input: ClassifyInput, gaps: string[]): void {
+  if (input.class !== "product" || gaps.length === 0) return;
+  throw new Refused(`${input.case} met a gap in a mock (${gaps.join("; ")}); a gap is never a product defect: class it environment, or add the answer to the definition`, { id: input.id });
+}
+
 export const classify = action<ClassifyInput, ClassRow>(async (input, { root, now }) => {
   const { snap } = openTestItem(root, input.id);
   const round = testRound(snap.verdicts);
   const found = latestCases(roundRows(readTestRows(root, input.id), round)).find((row) => row.case === input.case);
   if (!found) throw new Refused(`no case ${input.case} in round ${round}`, { id: input.id });
   if (found.outcome !== "failed") throw new Refused(`${input.case} ${found.outcome}; only a failed case takes a class`, { id: input.id });
+  refuseProductGap(input, found.gaps ?? []);
   const entry: Omit<ClassRow, "ts"> = { round, type: "class", case: input.case, class: input.class, evidence: input.evidence };
   const at = now();
   appendTestRow(root, input.id, entry, at);

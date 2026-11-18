@@ -4,6 +4,7 @@ import { Refused } from "../action.mts";
 import type { EnvModel, EnvService } from "../env/model.mts";
 import { staticFindings, type Finding } from "../env/rules.mts";
 import { pluginRoot, statePath } from "../paths.mts";
+import type { HttpAdapter } from "../scenarios/http.mts";
 import { listMocks, mockFindings, type MockDefinition, type MockFile } from "./definition.mts";
 
 export type CompiledAnswer = { method: string; path: string; status: number; headers: [string, string][]; body: string | null };
@@ -15,6 +16,9 @@ export type StubFragment = {
   ports: { target: number }[];
 };
 export type EnvironmentStubs = { mocks: MockFile[]; stubbed: string[]; findings: Finding[] };
+export type TrafficEntry = { method: string; path: string; answered: boolean };
+export type Traffic = Record<string, TrafficEntry[]>;
+export type StackMocks = { stubs: Record<string, string>; ownMocks: string[] };
 
 export const STUB_PORT = 8080;
 const PROGRAM_NAME = "stub-server.mjs";
@@ -25,6 +29,8 @@ const HEALTH_INTERVAL = "2s";
 const HEALTH_TIMEOUT = "2s";
 const HEALTH_RETRIES = 15;
 const MOCK_ROLE = "mock";
+const RECEIVED_PATH = "/__picket/received";
+const OK = 200;
 
 export function stubProgram(): string {
   return join(pluginRoot(), "lib", "shared", "mocks", PROGRAM_NAME);
@@ -78,4 +84,45 @@ export function prepareStubs(root: string, stack: string, model: EnvModel, mocks
 
 export function withStubPorts(services: EnvService[], stubbed: readonly string[]): EnvService[] {
   return services.map((service) => (stubbed.includes(service.name) ? { ...service, ports: [{ target: STUB_PORT, published: null }] } : service));
+}
+
+export function stackMocks(model: EnvModel, mocks: MockFile[], endpoints: Record<string, string>): StackMocks {
+  const stubbed = stubbedMocks(model, mocks);
+  const started = model.services.filter((service) => service.role === MOCK_ROLE && service.profiles.length === 0).map((service) => service.name);
+  const stubs = Object.fromEntries(stubbed.flatMap((service) => (endpoints[service] === undefined ? [] : [[service, endpoints[service]]])));
+  return { stubs, ownMocks: started.filter((service) => !stubbed.includes(service)) };
+}
+
+function isEntry(value: unknown): value is TrafficEntry {
+  if (typeof value !== "object" || value === null) return false;
+  const entry = value as Record<string, unknown>;
+  return typeof entry.method === "string" && typeof entry.path === "string" && typeof entry.answered === "boolean";
+}
+
+function entriesOf(text: string): TrafficEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function readTraffic(adapter: HttpAdapter, stubs: Record<string, string>, timeoutMs: number): Promise<Traffic> {
+  const read = Object.entries(stubs).map(async ([service, url]): Promise<[string, TrafficEntry[]]> => {
+    const answer = await adapter({ method: "GET", url: `${url}${RECEIVED_PATH}`, headers: {}, body: null, timeoutMs });
+    return [service, answer.status === OK ? entriesOf(answer.text) : []];
+  });
+  return Object.fromEntries(await Promise.all(read));
+}
+
+function duringRun(before: TrafficEntry[], after: TrafficEntry[]): TrafficEntry[] {
+  return after.length < before.length ? after : after.slice(before.length);
+}
+
+export function trafficBetween(before: Traffic, after: Traffic): { mocks: string[]; gaps: string[] } {
+  const runs = Object.entries(after).map(([service, entries]) => ({ service, entries: duringRun(before[service] ?? [], entries) }));
+  const mocks = runs.filter(({ entries }) => entries.length > 0).map(({ service }) => service);
+  const gaps = runs.flatMap(({ service, entries }) => entries.filter((entry) => !entry.answered).map((entry) => `${service} has no answer for ${entry.method} ${entry.path}`));
+  return { mocks, gaps: [...new Set(gaps)] };
 }

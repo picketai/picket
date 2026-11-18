@@ -22,12 +22,14 @@ const BUDGETS = {
   scenario_core_lines: 600, // the replay core's landed 554 lines rounded up to 50 (design OQ-001)
   scenario_adapter_lines: 50, // the fetch adapter's landed 21 lines rounded up to 50 (design OQ-001)
   stub_server_lines: 100,
+  mock_adapter_lines: 150,
 };
 
 const SCENARIO_DIR = join(ROOT, "src", "lib", "shared", "scenarios");
 const SCENARIO_CORE = ["format.mts", "rules.mts", "values.mts", "runner.mts"];
 const SCENARIO_ADAPTER = "http.mts";
 const STUB_SERVER = join(ROOT, "src", "lib", "shared", "mocks", "stub-server.mjs");
+const MOCK_ADAPTER = join(ROOT, "src", "lib", "shared", "mocks", "stub.mts");
 
 const RULE_FOLDERS = [join(ROOT, ".claude", "rules"), join(ROOT, "src", "rules")];
 const SKILL_FOLDERS = [join(ROOT, "src", "skills"), join(ROOT, ".claude", "skills")];
@@ -89,6 +91,11 @@ test("the scenario core and its HTTP adapter stay within their line budgets", ()
 test("the stub program stays within its line budget", () => {
   const count = lines(STUB_SERVER);
   assert.ok(count <= BUDGETS.stub_server_lines, `stub-server.mjs: ${count} lines > ${BUDGETS.stub_server_lines}`);
+});
+
+test("the mock adapter stays within its line budget", () => {
+  const count = lines(MOCK_ADAPTER);
+  assert.ok(count <= BUDGETS.mock_adapter_lines, `stub.mts: ${count} lines > ${BUDGETS.mock_adapter_lines}`);
 });
 
 test("every skill has a 'Use when' trigger in its description or when_to_use, and a description within its cap", { skip: !existsSync(join(ROOT, ".claude", "rules")) && "phase 2 not landed" }, () => {

@@ -6,7 +6,7 @@ import { serviceEndpoints } from "../env/stack-start.mts";
 import { readStacks } from "../env/stacks.mts";
 import { itemKey, stackName } from "../env/standard.mts";
 import { listMocks } from "../mocks/definition.mts";
-import { stubbedMocks, withStubPorts } from "../mocks/stub.mts";
+import { stackMocks, stubbedMocks, withStubPorts } from "../mocks/stub.mts";
 import { FORMAT, parseScenario, writeScenario, type Card, type ScenarioHeader } from "../scenarios/format.mts";
 import type { HttpAdapter } from "../scenarios/http.mts";
 import { CANDIDATE_ID } from "../scenarios/keep.mts";
@@ -16,12 +16,11 @@ import type { WorkState } from "../work/state.mts";
 import type { CaseKind, CaseOutcome, CaseRow } from "./results.mts";
 
 export type CaseSpec = { criterion: string; kind: CaseKind; intent: string };
-export type CaseRun = { outcome: CaseOutcome; attempts: number; unstable: boolean; detail: string };
-export type ItemStack = { urls: Record<string, string>; services: string[]; mocks: string[] };
+export type CaseRun = { outcome: CaseOutcome; attempts: number; unstable: boolean; detail: string; mocks: string[]; gaps: string[] };
+export type ItemStack = { urls: Record<string, string>; services: string[]; stubs: Record<string, string>; ownMocks: string[] };
 export type CaseDeps = { runner: EngineRunner; adapter: HttpAdapter; sleep: (ms: number) => Promise<void>; random: (size: number) => Uint8Array };
 export type RunCaseInput = Omit<ReplayInput, "scenarios">;
 
-const MOCK_ROLE = "mock";
 const NO_ENGINE = "no container engine";
 const REQUEST_TIMEOUT_MS = 20_000;
 const RUN_KEY_BYTES = 2;
@@ -40,12 +39,9 @@ export function stackOf(root: string, engine: Engine, state: Pick<WorkState, "id
   if (entry === undefined) throw new Refused(`no stack for ${state.id}: run picket env start ${state.id}`, { id: state.id });
   const model = readModel(readModelJson(engine, root));
   const started = model.services.filter((service) => service.profiles.length === 0);
-  const stubbed = stubbedMocks(model, listMocks(root));
-  return {
-    urls: serviceEndpoints(engine, root, stack, entry.files, withStubPorts(started, stubbed)),
-    services: started.map((service) => service.name),
-    mocks: started.filter((service) => service.role === MOCK_ROLE).map((service) => service.name),
-  };
+  const mocks = listMocks(root);
+  const urls = serviceEndpoints(engine, root, stack, entry.files, withStubPorts(started, stubbedMocks(model, mocks)));
+  return { urls, services: started.map((service) => service.name), ...stackMocks(model, mocks, urls) };
 }
 
 export function openItemStack(ctx: Context, runner: EngineRunner, state: Pick<WorkState, "id" | "source">): ItemStack {
@@ -58,6 +54,8 @@ export function runCaseInput(ctx: Context, deps: CaseDeps, stack: ItemStack): Ru
   return {
     services: stack.services,
     urls: stack.urls,
+    stubs: stack.stubs,
+    ownMocks: stack.ownMocks,
     adapter: deps.adapter,
     env: ctx.env,
     today: ctx.now().toISOString().slice(0, DAY_LENGTH),
@@ -71,12 +69,13 @@ export async function runCase(card: Card, input: RunCaseInput): Promise<CaseRun>
   const scenario = { path: CASE_PATH, id: card.header.id, card, problems: [], fingerprint: "", byHand: false };
   const [run] = await replayScenarios({ ...input, scenarios: [scenario] });
   const outcome: CaseOutcome = run.outcome === "not run" ? "blocked" : run.outcome;
-  return { outcome, attempts: run.attempts.length, unstable: run.unstable, detail: run.detail };
+  return { outcome, attempts: run.attempts.length, unstable: run.unstable, detail: run.detail, mocks: run.mocks, gaps: run.gaps };
 }
 
-export function caseLine(id: string, row: Pick<CaseRow, "case" | "criterion" | "kind" | "outcome" | "detail" | "mocks">): string {
+export function caseLine(id: string, row: Pick<CaseRow, "case" | "criterion" | "kind" | "outcome" | "detail" | "mocks" | "gaps">): string {
   const head = `${row.case} ${row.criterion} ${row.kind} ${row.outcome}${row.outcome === "passed" || row.detail === "" ? "" : `: ${row.detail}`}`;
   const mocks = row.mocks.length ? ` · through a mock: ${row.mocks.join(", ")}` : "";
   const classify = row.outcome === "failed" ? [`classify it: picket test classify ${id} ${row.case} <product|test|environment> --evidence "<why>"`] : [];
-  return [`${head}${mocks}`, ...classify].join("\n");
+  const gaps = (row.gaps ?? []).map((gap) => ` · gap: ${gap}`).join("");
+  return [`${head}${mocks}${gaps}`, ...classify].join("\n");
 }

@@ -66,7 +66,7 @@ function baseAnswering(outcome: ScenarioOutcome | { failure: string }): BaseSpy 
   const base: ReplayDeps["base"] = async (input) => {
     calls.push(input);
     if (typeof outcome !== "string") return outcome;
-    const runs = input.scenarios.map((scenario) => ({ id: scenario.id ?? scenario.path, fingerprint: scenario.fingerprint, outcome, attempts: [outcome], unstable: false, byHand: false, detail: "" }));
+    const runs = input.scenarios.map((scenario) => ({ id: scenario.id ?? scenario.path, fingerprint: scenario.fingerprint, outcome, attempts: [outcome], unstable: false, byHand: false, detail: "", mocks: [], gaps: [] }));
     return { runs, versions: { orders: "base000" } };
   };
   return { calls, base };

@@ -51,6 +51,13 @@ test("a question renders with its choices, default and basis", () => {
   assert.ok(text.includes("\nno cases recorded\n"));
 });
 
+test("a gap gives a Gaps section after Unclassified, one line per gap and case (T-3.2)", () => {
+  const gapped: CaseRow = { ...caseRow("C-03", "failed", ["payments-mock"]), gaps: ["payments-mock has no answer for POST /refunds"] };
+  const derived: Derived = { verdict: "CHANGES REQUIRED", route: null, reasons: [], unclassified: ["C-03"] };
+  const text = renderReport({ id: "x-1", round: 1, derived, rows: [gapped], criteria: ["T-2.1"] });
+  assert.ok(text.includes("\n## Unclassified\n\n- C-03\n\n## Gaps\n\n- C-03: payments-mock has no answer for POST /refunds\n"));
+});
+
 test("a pipe in a detail does not break the table", () => {
   const rows: TestRow[] = [{ ...caseRow("C-01", "failed"), detail: "body a|b" }];
   const text = renderReport({ id: "x-1", round: 1, derived: FIX, rows, criteria: ["T-2.1"] });

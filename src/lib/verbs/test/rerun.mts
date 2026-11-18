@@ -13,7 +13,7 @@ export type RerunInput = { id: WorkId };
 export type RerunResult = { id: WorkId; round: number; rows: CaseRow[] };
 
 function blocked(detail: string): CaseRun {
-  return { outcome: "blocked", attempts: 0, unstable: false, detail };
+  return { outcome: "blocked", attempts: 0, unstable: false, detail, mocks: [], gaps: [] };
 }
 
 async function rerunOne(id: WorkId, earlier: CaseRow, input: RunCaseInput): Promise<CaseRun> {
@@ -24,9 +24,9 @@ async function rerunOne(id: WorkId, earlier: CaseRow, input: RunCaseInput): Prom
   return runCase(built.card, input);
 }
 
-function rerunEntry(earlier: CaseRow, round: number, run: CaseRun, mocks: string[]): Omit<CaseRow, "ts"> {
+function rerunEntry(earlier: CaseRow, round: number, run: CaseRun): Omit<CaseRow, "ts"> {
   const { case: id, criterion, kind, intent, steps } = earlier;
-  return { round, type: "case", case: id, criterion, kind, intent, steps, ...run, mocks };
+  return { round, type: "case", case: id, criterion, kind, intent, steps, ...run };
 }
 
 export async function rerunCases(ctx: Context, deps: CaseDeps, { id }: RerunInput): Promise<Outcome<RerunResult>> {
@@ -38,7 +38,7 @@ export async function rerunCases(ctx: Context, deps: CaseDeps, { id }: RerunInpu
   const input = runCaseInput(ctx, deps, stack);
   const rows: CaseRow[] = [];
   for (const row of earlier) {
-    const entry = rerunEntry(row, round, await rerunOne(id, row, input), stack.mocks);
+    const entry = rerunEntry(row, round, await rerunOne(id, row, input));
     const at = ctx.now();
     appendTestRow(ctx.root, id, entry, at);
     rows.push({ ts: at.toISOString(), ...entry });

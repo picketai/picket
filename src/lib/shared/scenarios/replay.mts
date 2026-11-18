@@ -1,3 +1,4 @@
+import { readTraffic, trafficBetween } from "../mocks/stub.mts";
 import type { SavedScenario } from "./files.mts";
 import type { Card } from "./format.mts";
 import type { HttpAdapter } from "./http.mts";
@@ -6,12 +7,14 @@ import type { ScenarioOutcome } from "./results.mts";
 import { scenarioProblems } from "./rules.mts";
 import { runScenario, type RunOutcome } from "./runner.mts";
 
-export type ScenarioRun = { id: string; fingerprint: string; outcome: ScenarioOutcome; attempts: string[]; unstable: boolean; byHand: boolean; detail: string };
+export type ScenarioRun = { id: string; fingerprint: string; outcome: ScenarioOutcome; attempts: string[]; unstable: boolean; byHand: boolean; detail: string; mocks: string[]; gaps: string[] };
 
 export type ReplayInput = {
   scenarios: SavedScenario[];
   services: string[];
   urls: Record<string, string>;
+  stubs: Record<string, string>;
+  ownMocks: string[];
   adapter: HttpAdapter;
   env: NodeJS.ProcessEnv;
   today: string;
@@ -45,8 +48,11 @@ async function confirmed(card: Card, input: ReplayInput): Promise<Pick<ScenarioR
 async function replayOne(scenario: SavedScenario, input: ReplayInput): Promise<ScenarioRun> {
   const base = { id: scenario.id ?? scenario.path, fingerprint: scenario.fingerprint, byHand: scenario.byHand };
   const [problem] = problemsOf(scenario, input.services);
-  if (problem !== undefined || scenario.card === null) return { ...base, outcome: "blocked", attempts: [], unstable: false, detail: problem ?? "" };
-  return { ...base, ...(await confirmed(scenario.card, input)) };
+  if (problem !== undefined || scenario.card === null) return { ...base, outcome: "blocked", attempts: [], unstable: false, detail: problem ?? "", mocks: [], gaps: [] };
+  const before = await readTraffic(input.adapter, input.stubs, input.timeoutMs);
+  const ran = await confirmed(scenario.card, input);
+  const traffic = trafficBetween(before, await readTraffic(input.adapter, input.stubs, input.timeoutMs));
+  return { ...base, ...ran, mocks: [...traffic.mocks, ...input.ownMocks], gaps: traffic.gaps };
 }
 
 export async function replayScenarios(input: ReplayInput): Promise<ScenarioRun[]> {

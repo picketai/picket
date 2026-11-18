@@ -28,6 +28,7 @@ export type CaseRow = Stamped & {
   unstable: boolean;
   detail: string;
   mocks: string[];
+  gaps?: string[];
 };
 export type ClassRow = Stamped & { type: "class"; case: string; class: FailureClass; evidence: string };
 export type CellRow = Stamped & { type: "cell"; criterion: string; kind: CaseKind; outcome: CellOutcome; why: string };

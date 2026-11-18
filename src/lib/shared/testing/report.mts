@@ -54,6 +54,10 @@ function questionLines(question: QuestionRow): string[] {
   return [`- ${question.criterion}: ${question.question}`, ...choices, ...basis];
 }
 
+function gapLines(cases: CaseRow[]): string[] {
+  return cases.flatMap((row) => (row.gaps ?? []).map((gap) => `- ${row.case}: ${gap}`));
+}
+
 function mockNames(cases: CaseRow[]): string[] {
   return [...new Set(cases.flatMap((row) => row.mocks))];
 }
@@ -75,6 +79,7 @@ export function renderReport(input: ReportInput): string {
     "",
     ...table(cases, cells, rows),
     ...section("Unclassified", input.derived.unclassified.map((caseId) => `- ${caseId}`)),
+    ...section("Gaps", gapLines(cases)),
     ...section("Reasons", input.derived.reasons.map((reason) => `- ${reason}`)),
     ...section("Questions", questions.flatMap(questionLines)),
     ...(mocks.length ? ["", `Through a mock: ${mocks.join(", ")}`] : []),

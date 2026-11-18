@@ -8,7 +8,7 @@ import { serviceEndpoints, unprovedBuild, writeOverride } from "../env/stack-sta
 import { hasError } from "../env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR, imageName, stackName } from "../env/standard.mts";
 import { repoPrefix } from "../git.mts";
-import { environmentStubs, prepareStubs, withStubPorts, type EnvironmentStubs } from "../mocks/stub.mts";
+import { environmentStubs, prepareStubs, stackMocks, withStubPorts, type EnvironmentStubs } from "../mocks/stub.mts";
 import { statePath } from "../paths.mts";
 import type { ItemLayout } from "../repos.mts";
 import type { WorkState } from "../work/state.mts";
@@ -24,7 +24,7 @@ export type BaseInput = {
   state: Pick<WorkState, "id" | "base">;
   key: string;
   scenarios: SavedScenario[];
-  replay: Omit<ReplayInput, "scenarios" | "services" | "urls">;
+  replay: Omit<ReplayInput, "scenarios" | "services" | "urls" | "stubs" | "ownMocks">;
 };
 export type BaseOutcome = { runs: ScenarioRun[]; versions: Versions } | { failure: string };
 
@@ -129,7 +129,7 @@ async function startAndReplay(input: BaseInput, checkouts: BaseCheckout[], stack
   compose(engine, baseRoot, stack, built.files, ["up", "--detach", "--wait"]);
   const started = model.services.filter((service) => service.profiles.length === 0);
   const urls = serviceEndpoints(engine, baseRoot, stack, built.files, withStubPorts(started, stubs.stubbed));
-  const runs = await replayScenarios({ ...input.replay, scenarios, services: model.services.map((service) => service.name), urls });
+  const runs = await replayScenarios({ ...input.replay, scenarios, services: model.services.map((service) => service.name), urls, ...stackMocks(model, stubs.mocks, urls) });
   return { runs, versions: Object.fromEntries(sources.map((source) => [source.service, source.version])) };
 }
 

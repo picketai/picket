@@ -5,8 +5,10 @@ import { join } from "node:path";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { deriveVerdict } from "../../shared/testing/derive.mts";
 import { testFacts } from "../../shared/testing/facts.mts";
+import { testReportPath } from "../../shared/testing/facts.mts";
+import { caseLine } from "../../shared/testing/cases.mts";
 import { renderReport } from "../../shared/testing/report.mts";
-import { appendTestRow, readTestRows, type TestEntry } from "../../shared/testing/results.mts";
+import { appendTestRow, readTestRows, type CaseRow, type TestEntry } from "../../shared/testing/results.mts";
 import { readSnapshot } from "../../shared/work/snapshot.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import type { WorkId } from "../../shared/work/files.mts";
@@ -50,6 +52,10 @@ function caseEntry(id: string, outcome: "passed" | "failed"): TestEntry {
   return { round: 1, type: "case", case: id, criterion: "T-1.1", kind: "boundary", intent: "an empty basket", steps: "request POST {orders}/orders", outcome, attempts: outcome === "failed" ? 2 : 1, unstable: false, detail: outcome === "failed" ? "expected 201, got 500" : "", mocks: [] };
 }
 
+function failedCase(id: string): Omit<CaseRow, "ts"> {
+  return { round: 1, type: "case", case: id, criterion: "T-1.1", kind: "boundary", intent: "an empty basket", steps: "request POST {orders}/orders", outcome: "failed", attempts: 2, unstable: false, detail: "expected 201, got 500", mocks: [] };
+}
+
 function seed(root: string, id: WorkId, entries: TestEntry[]): void {
   for (const entry of entries) appendTestRow(root, id, entry, new Date("2026-11-17T09:00:00.000Z"));
 }
@@ -74,6 +80,33 @@ test("classify refuses a case absent from the round and a case that passed (T-2.
   assert.equal(await refusal(classify.run({ id, case: "C-09", class: "product", evidence: "x" }, fixedContext(root))), "no case C-09 in round 1");
   assert.equal(await refusal(classify.run({ id, case: "C-01", class: "test", evidence: "x" }, fixedContext(root))), "C-01 passed; only a failed case takes a class");
   assert.equal(readTestRows(root, id).length, 1);
+});
+
+test("classify refuses product for a failed case that met a gap and records environment (T-3.3)", async (t) => {
+  const { root, id } = item(t);
+  seed(root, id, [{ ...failedCase("C-01"), mocks: ["payments-mock"], gaps: ["payments-mock has no answer for POST /refunds"] }]);
+  assert.equal(
+    await refusal(classify.run({ id, case: "C-01", class: "product", evidence: "the refund failed" }, fixedContext(root))),
+    "C-01 met a gap in a mock (payments-mock has no answer for POST /refunds); a gap is never a product defect: class it environment, or add the answer to the definition",
+  );
+  const outcome = await classify.run({ id, case: "C-01", class: "environment", evidence: "the mock has no refund answer" }, fixedContext(root));
+  assert.equal(outcome.status, "done");
+  assert.deepEqual(readTestRows(root, id).at(-1), { ts: "2026-10-23T10:00:00.000Z", round: 1, type: "class", case: "C-01", class: "environment", evidence: "the mock has no refund answer" });
+});
+
+test("a case row written without gaps reads as one with no gaps: same case line, report and verdict (T-3.4)", async (t) => {
+  const outputs = [];
+  for (const entry of [failedCase("C-01"), { ...failedCase("C-01"), gaps: [] }]) {
+    const { root, id } = item(t);
+    seed(root, id, [entry]);
+    const outcome = await report.run({ id }, fixedContext(root));
+    assert.ok(outcome.status === "done");
+    const [row] = readTestRows(root, id);
+    assert.ok(row.type === "case");
+    outputs.push({ line: caseLine(id, row), derived: outcome.value.derived, report: readFileSync(testReportPath(root, id), "utf8") });
+  }
+  assert.deepEqual(outputs[0], outputs[1]);
+  assert.ok(!outputs[0].report.includes("## Gaps"));
 });
 
 test("note records a not covered cell and an untestable criterion (T-2.4)", async (t) => {
