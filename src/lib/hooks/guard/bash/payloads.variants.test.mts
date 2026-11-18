@@ -20,7 +20,14 @@ const kernel = await loadGuard(() => import("./kernel.mts"), "src/lib/hooks/guar
 closureTests({
   guard: "guard.bash lead-only verbs",
   grammar: kernelCalls,
-  seeds: [],
+  seeds: [
+    "picket data show data/a.sql",
+    "picket data approve data/a.sql --sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "picket data run 20261118-x customer",
+    'picket drive --run "picket data show data/a.sql"',
+    'picket drive --run "picket data approve data/a.sql --sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"',
+    'picket drive --run "picket data run 20261118-x customer"',
+  ],
   rows: [{ table: tableRows(kernel, "LEAD_ONLY_VERBS"), key: (verb: string) => verb, seedsOf: (verb: string) => [`picket ${verb} 20261116-x --path a --text b`] }],
   run: (command: string, t) => decision(command, { root: projectOf(t), tool: "Bash", agent: SPAWNED_DEVELOPER }),
   closed: (decided) => decided === "deny",

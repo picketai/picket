@@ -156,11 +156,26 @@ export function leadOnlyRefusal(seg: Segment, agent: string | null): Refusal | n
   if (typeof verb === "string" && (isOpaqueWord(verb) || /[$`]/.test(verb))) {
     return { why: "lead_only", reason: "guard.bash: a spawned agent writes its picket verb out in full; an expansion in the verb position could hide `picket waive` or `picket comment`, which only the lead runs after the user answers at the gate." };
   }
-  if (!isLeadOnly(verb)) return null;
+  if (!isLeadOnly(verb)) return leadOnlyWrapped(launch, agent);
   return { why: "lead_only", reason: leadOnlyReason(verb, agent) };
 }
 
+function leadOnlyWrapped(launch: Segment, agent: string | null): Refusal | null {
+  for (const inner of wrappedCommands(launch)) {
+    const mentionsKernel = KERNEL_MENTION.test(inner);
+    const tokens = hasHiddenExecution(inner) ? null : parseWrapped(inner);
+    if (tokens === null) {
+      if (mentionsKernel) return HIDDEN_PAYLOAD_REFUSAL;
+      continue;
+    }
+    const found = splitIntoSegments(tokens).segments.map((seg) => leadOnlyRefusal(seg, agent) ?? leadOnlyInside(seg, agent, mentionsKernel)).find(Boolean);
+    if (found) return found;
+  }
+  return null;
+}
+
 function leadOnlyReason(verb: string, agent: string | null): string {
+  if (verb === "data") return `guard.bash: \`picket data\` shows, approves and runs SQL against a database, so only the lead runs it on the user's word. The ${agent} proposes the file and leaves the approval and the run to the user.`;
   if (verb === "uninstall") return `guard.bash: \`picket uninstall\` removes Picket from the project, so it is the user's to run. The ${agent} leaves it to the user and says so in its report.`;
   return `guard.bash: \`picket ${verb}\` records the user's approval, so only the lead runs it after the user answers at the gate. The ${agent} proposes it on its block instead.`;
 }

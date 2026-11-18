@@ -32,13 +32,13 @@ function classifyVerify(root: string, ...words: string[]): { verdict: string; se
 }
 
 const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify", "name"];
-const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"], env: ["check", "status"] };
+const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"], env: ["check", "status"], data: ["show"] };
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
   for (const flag of ["--only", "--run", "--start"]) assert.ok(WRAPPING_FLAGS.has(flag), flag);
 });
 
-test("kernelClass is safe for today's read verbs and subverbs and kernel for every other entry; isLeadOnly holds for comment, reply, uninstall and waive only (T-4.1)", () => {
+test("kernelClass is safe for today's read verbs and subverbs and kernel for every other entry; isLeadOnly holds for comment, data, reply, uninstall and waive only (T-4.1, T-7.5)", () => {
   const verbs = Object.keys(VERB_NAMES);
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const [verb, entry] of Object.entries(VERB_NAMES)) {
@@ -51,11 +51,11 @@ test("kernelClass is safe for today's read verbs and subverbs and kernel for eve
   }
   assert.equal(kernelClass("nosuchverb", undefined), "kernel");
   assert.equal(kernelClass("constructor", undefined), "kernel");
-  assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "reply", "uninstall", "waive"]);
+  assert.deepEqual(verbs.filter(isLeadOnly).sort(), ["comment", "data", "reply", "uninstall", "waive"]);
 });
 
-test("LEAD_ONLY_VERBS holds exactly the verbs whose entry is lead-only, and isLeadOnly reads it (T-2.5)", () => {
-  assert.deepEqual([...LEAD_ONLY_VERBS].sort(), ["comment", "reply", "uninstall", "waive"]);
+test("LEAD_ONLY_VERBS holds exactly the verbs whose entry is lead-only, and isLeadOnly reads it (T-2.5, T-7.5)", () => {
+  assert.deepEqual([...LEAD_ONLY_VERBS].sort(), ["comment", "data", "reply", "uninstall", "waive"]);
   assert.deepEqual(["comment", "state", "constructor", 3].map(isLeadOnly), [true, false, false, false]);
 });
 

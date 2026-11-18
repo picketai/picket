@@ -66,6 +66,26 @@ Sum the ledger: turns, tokens, cache, stops, bounces, escalations.
 picket cost [--session <id>] [--work <id>]
 ```
 
+## picket data
+
+Show, approve and run the SQL files that make test data.
+
+### picket data show
+
+Print a SQL file under .picket/env/data/ with its digest and approval status.
+
+```sh
+picket data show <path under .picket/env/, such as data/customer.sql>
+```
+
+### picket data approve
+
+Record the user's approval of a SQL file at the digest show printed.
+
+```sh
+picket data approve <path> --sha256 <the 64 hex digits data show printed>
+```
+
 ## picket drive
 
 Start the app or run a command, exercise it, stop it and log the evidence.

@@ -1,6 +1,6 @@
 export type VerbEntry = { summary: string; readOnly: boolean; leadOnly?: boolean };
 export type SubverbEntry = { summary: string; readOnly: boolean };
-export type GroupEntry = { summary: string; subverbs: Record<string, SubverbEntry> };
+export type GroupEntry = { summary: string; leadOnly?: boolean; subverbs: Record<string, SubverbEntry> };
 
 export const VERB_NAMES = {
   admit: { summary: "choose the lane for a change request", readOnly: true },
@@ -8,6 +8,14 @@ export const VERB_NAMES = {
   close: { summary: "mark a work item done and commit what it owns", readOnly: false },
   comment: { summary: "record the user's approval of one code comment", readOnly: false, leadOnly: true },
   cost: { summary: "sum the ledger: turns, tokens, cache, stops, bounces, escalations", readOnly: true },
+  data: {
+    summary: "show, approve and run the SQL files that make test data",
+    leadOnly: true,
+    subverbs: {
+      show: { summary: "print a SQL file under .picket/env/data/ with its digest and approval status", readOnly: true },
+      approve: { summary: "record the user's approval of a SQL file at the digest show printed", readOnly: false },
+    },
+  },
   drive: { summary: "start the app or run a command, exercise it, stop it and log the evidence", readOnly: false },
   env: {
     summary: "build, start, check and remove the project's test environment",
