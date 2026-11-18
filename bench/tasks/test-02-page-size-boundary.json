@@ -1,0 +1,11 @@
+{
+  "id": "test-02-page-size-boundary",
+  "lane": "design",
+  "kind": "tester",
+  "item": "20260101-oversized-pages-are-refused",
+  "title": "Oversized pages are refused",
+  "prompt": "Continue the work item 20260101-oversized-pages-are-refused.",
+  "budget_usd": 10,
+  "max_stops": 0,
+  "checks": {}
+}

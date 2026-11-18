@@ -72,22 +72,26 @@ export function materializeRun({ template, runDir }) {
     cpSync(join(template, f), join(repo, f));
   }
   symlinkSync(resolve(template, "node_modules"), join(repo, "node_modules"), "junction");
-  const env = {
-    ...process.env,
-    GIT_AUTHOR_NAME: "bench",
-    GIT_AUTHOR_EMAIL: "bench@example.invalid",
-    GIT_COMMITTER_NAME: "bench",
-    GIT_COMMITTER_EMAIL: "bench@example.invalid",
-    GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
-    GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
-  };
-  const git = (...args) => execFileSync("git", args, { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] }).toString().trim();
+  const git = fixedDateGit(repo, "2026-01-01T00:00:00Z");
   git("init", "-q", "-b", "main");
   git("config", "core.autocrlf", "false");
   git("add", "-A");
   git("commit", "-q", "-m", "fixture: ledgerlite baseline");
   const sha = git("rev-parse", "HEAD");
   return { repo, sha };
+}
+
+export function fixedDateGit(repo, date) {
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "bench",
+    GIT_AUTHOR_EMAIL: "bench@example.invalid",
+    GIT_COMMITTER_NAME: "bench",
+    GIT_COMMITTER_EMAIL: "bench@example.invalid",
+    GIT_AUTHOR_DATE: date,
+    GIT_COMMITTER_DATE: date,
+  };
+  return (...args) => execFileSync("git", args, { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] }).toString().trim();
 }
 
 export function writeText(path, text) {

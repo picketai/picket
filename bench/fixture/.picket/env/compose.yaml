@@ -1,0 +1,23 @@
+services:
+  ledgerlite:
+    build:
+      context: ../..
+      dockerfile: .picket/env/docker/ledgerlite/Dockerfile
+    labels:
+      io.github.picketai.role: app
+    ports:
+      - target: 8080
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+x-picket:
+  version: 1
+  wiring:
+    - service: root
+      file: data/config.json
+      key: server:host
+      by: file
+      replaced: .picket/env/docker/ledgerlite/config.json

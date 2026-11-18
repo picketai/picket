@@ -1,0 +1,11 @@
+{
+  "id": "test-03-delete-unknown-invoice",
+  "lane": "design",
+  "kind": "tester",
+  "item": "20260101-invoices-can-be-deleted",
+  "title": "Invoices can be deleted",
+  "prompt": "Continue the work item 20260101-invoices-can-be-deleted.",
+  "budget_usd": 10,
+  "max_stops": 0,
+  "checks": {}
+}

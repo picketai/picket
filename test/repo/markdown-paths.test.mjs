@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 
 const ROOT = resolve(".");
 
-const UNSCANNED_PREFIXES = ["work/", "artifacts/", "bench/results/", ".claude/agent-memory/"];
+const UNSCANNED_PREFIXES = ["work/", "artifacts/", "bench/results/", "bench/seeds/", ".claude/agent-memory/"];
 const PROJECT_MEMORY = ".claude/MEMORY.md";
 const SUPERSEDED = "[superseded";
 const SKILL_EXAMPLES = /^src\/skills\/[^/]+\/examples\//;

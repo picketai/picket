@@ -1,0 +1,11 @@
+{
+  "id": "test-01-negative-quantity",
+  "lane": "design",
+  "kind": "tester",
+  "item": "20260101-new-invoices-are-validated",
+  "title": "New invoices are validated",
+  "prompt": "Continue the work item 20260101-new-invoices-are-validated.",
+  "budget_usd": 10,
+  "max_stops": 0,
+  "checks": {}
+}

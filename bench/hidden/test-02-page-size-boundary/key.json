@@ -1,0 +1,4 @@
+{
+  "kind": "defect",
+  "defect": { "criterion": "T-1.1", "method": "GET", "path": "^/invoices\\?(?:.*&)?size=101(?:&|$)", "status": 400 }
+}

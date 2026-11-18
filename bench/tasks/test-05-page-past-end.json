@@ -1,0 +1,11 @@
+{
+  "id": "test-05-page-past-end",
+  "lane": "design",
+  "kind": "tester",
+  "item": "20260101-invoice-listing-reports-its-pages",
+  "title": "Invoice listing reports its pages",
+  "prompt": "Continue the work item 20260101-invoice-listing-reports-its-pages.",
+  "budget_usd": 10,
+  "max_stops": 0,
+  "checks": {}
+}

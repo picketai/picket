@@ -1,0 +1,11 @@
+{
+  "id": "test-04-replay-returns-200",
+  "lane": "design",
+  "kind": "tester",
+  "item": "20260101-invoice-creation-is-idempotent",
+  "title": "Invoice creation is idempotent",
+  "prompt": "Continue the work item 20260101-invoice-creation-is-idempotent.",
+  "budget_usd": 10,
+  "max_stops": 0,
+  "checks": {}
+}

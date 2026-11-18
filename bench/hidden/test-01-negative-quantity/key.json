@@ -1,0 +1,4 @@
+{
+  "kind": "defect",
+  "defect": { "criterion": "T-1.1", "method": "POST", "path": "^/invoices$", "status": 400 }
+}

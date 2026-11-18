@@ -1,0 +1,4 @@
+{
+  "kind": "defect",
+  "defect": { "criterion": "T-1.1", "method": "DELETE", "path": "^/invoices/[^/?]+$", "status": 404 }
+}

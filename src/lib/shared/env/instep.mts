@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { EnvModel, WiringRow } from "./model.mts";
 import type { Finding } from "./rules.mts";
 import type { Scan, ScannedEntry, ScannedService } from "./scan.mts";
@@ -16,8 +16,17 @@ function posix(path: string): string {
   return path.replaceAll("\\", "/");
 }
 
-function builtFrom(model: EnvModel, path: string): boolean {
-  return model.services.some((s) => s.build !== null && (posix(s.build.context) === path || posix(s.build.context).endsWith(`/${path}`)));
+function isUmbrellaRoot(context: string, root: string): boolean {
+  return posix(resolve(context)) === posix(resolve(root));
+}
+
+function contextPlaces(context: string, path: string, root: string): boolean {
+  if (path === "") return isUmbrellaRoot(context, root);
+  return posix(context) === path || posix(context).endsWith(`/${path}`);
+}
+
+function builtFrom(model: EnvModel, path: string, root: string): boolean {
+  return model.services.some((s) => s.build !== null && contextPlaces(s.build.context, path, root));
 }
 
 function levelFor(service: string | null, pending: Set<string>): Finding["level"] {
@@ -31,9 +40,9 @@ function gap(service: string | null, pending: Set<string>, message: string, rows
   return { finding: { rule: RULE, service, level: levelFor(service, pending), message }, service: rows.service ?? null, entry: rows.entry ?? null, path };
 }
 
-function serviceGaps(scan: Scan, model: EnvModel, pending: Set<string>): Gap[] {
+function serviceGaps(scan: Scan, model: EnvModel, root: string, pending: Set<string>): Gap[] {
   const picket = model.picket;
-  const placed = (s: ScannedService) => builtFrom(model, s.path) || Object.hasOwn(picket?.shared ?? {}, s.name) || (picket?.ignored ?? []).includes(s.path) || pending.has(s.name);
+  const placed = (s: ScannedService) => builtFrom(model, s.path, root) || Object.hasOwn(picket?.shared ?? {}, s.name) || (picket?.ignored ?? []).includes(s.path) || pending.has(s.name);
   return scan.services.filter((s) => !placed(s)).map((s) => gap(s.name, pending, `${s.path} is not in the environment: add a service, or list it as shared, ignored or pending`, { service: s }));
 }
 
@@ -70,7 +79,7 @@ function rowGaps(scan: Scan, model: EnvModel, root: string, pending: Set<string>
 function gaps(scan: Scan, model: EnvModel, root: string): Gap[] {
   const pending = new Set((model.picket?.pending ?? []).map((row) => row.service));
   const rows = (model.picket?.pending ?? []).map((row) => gap(row.service, pending, row.what, { service: scan.services.find((s) => s.name === row.service) }));
-  return [...rows, ...serviceGaps(scan, model, pending), ...entryGaps(scan, model, pending), ...rowGaps(scan, model, root, pending)];
+  return [...rows, ...serviceGaps(scan, model, root, pending), ...entryGaps(scan, model, pending), ...rowGaps(scan, model, root, pending)];
 }
 
 export function inStepFindings(scan: Scan, model: EnvModel, root: string): Finding[] {

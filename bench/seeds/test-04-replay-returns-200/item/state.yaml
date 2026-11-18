@@ -1,0 +1,7 @@
+id: 20260101-invoice-creation-is-idempotent
+lane: design
+title: Invoice creation is idempotent
+status: open
+created: 2026-01-01T08:00:00.000Z
+updated: 2026-01-01T09:30:00.000Z
+base: {{BASE}}

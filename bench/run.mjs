@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Golden-suite runner. One fresh fixture repo per run, the harness installed into it, a scripted
 // eager-approver user, HARD grading, and one JSON record per run appended to the results file.
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, appendFileSync, cpSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, appendFileSync, cpSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { buildTemplate, materializeRun } from "./lib/fixture.mjs";
 import { runClaude } from "./lib/claude.mjs";
+import { loadTasks } from "./lib/tasks.mjs";
 import { grade, changedFiles, linesAdded } from "./lib/grade.mjs";
 import { addUsage, cacheHitRatio, totalTokens, round } from "./lib/metrics.mjs";
 import { defaultExec, nextPort, parseNetstatListeners, runOrphans, stopProcesses } from "./lib/ports.mjs";
@@ -37,17 +38,6 @@ function parseArgs(argv) {
     else throw new Error(`unknown argument ${a}`);
   }
   return o;
-}
-
-function loadTasks(filter) {
-  const dir = join(BENCH, "tasks");
-  const all = readdirSync(dir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(join(dir, f), "utf8")))
-    .sort((a, b) => a.id.localeCompare(b.id));
-  if (filter === "all") return all;
-  const wanted = filter.split(",").map((s) => s.trim());
-  return all.filter((t) => wanted.some((w) => (w.startsWith("lane:") ? t.lane === w.slice(5) : t.id === w)));
 }
 
 function listeningPorts(pids) {

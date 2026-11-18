@@ -1,0 +1,11 @@
+{
+  "id": "test-06-credit-over-total",
+  "lane": "design",
+  "kind": "tester",
+  "item": "20260101-invoices-take-credit-notes",
+  "title": "Invoices take credit notes",
+  "prompt": "Continue the work item 20260101-invoices-take-credit-notes.",
+  "budget_usd": 10,
+  "max_stops": 0,
+  "checks": {}
+}

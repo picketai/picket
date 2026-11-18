@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { inStepFindings, locatedFindings, outOfStep, splitByChange } from "./instep.mts";
 import { readModel, type EnvModel } from "./model.mts";
 import { scanUmbrella } from "./scan.mts";
+import type { Scan, ScannedService } from "./scan.mts";
 
 const UMBRELLA = resolve("test/fixtures/env/umbrella");
 const RECORDED = JSON.parse(readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8")) as Record<string, any>;
@@ -67,6 +68,16 @@ test("splitByChange puts the services/stock finding under caused for a file in i
   const elsewhere = splitByChange(errorsOnly, ["services/orders/server.mjs"]);
   assert.deepEqual([elsewhere.caused.length, elsewhere.other.length], [0, 1]);
   assert.equal(splitByChange(errorsOnly, ["services"]).caused.length, 1, "a changed folder above the finding also causes it");
+});
+
+const ROOT_SERVICE: ScannedService = { id: "S1", path: "", name: "root", runtime: "node", linux: true, dockerfile: null, choices: ["write", "user", "shared", "ignore"], default: "write" };
+const ROOT_ONLY: Scan = { fingerprint: "", services: [ROOT_SERVICE], entries: [] };
+
+test("a root service is placed by a build whose context is the umbrella root, and unplaced without one (T-1.2)", () => {
+  const builtAtRoot = model((json) => (json.services.orders.build.context = UMBRELLA));
+  assert.deepEqual(inStepFindings(ROOT_ONLY, builtAtRoot, UMBRELLA).filter((f) => f.service === "root"), []);
+  const builtElsewhere = inStepFindings(ROOT_ONLY, model(), UMBRELLA).filter((f) => f.service === "root");
+  assert.deepEqual(builtElsewhere, [{ rule: "E9", service: "root", level: "error", message: " is not in the environment: add a service, or list it as shared, ignored or pending" }]);
 });
 
 test("a by: file row whose replaced file is missing is an error, and present it passes", (t) => {

@@ -1,0 +1,3 @@
+POST /invoices accepts any body, so an invoice without a customer or with a negative quantity is stored and later breaks the totals.
+
+Validate the body before anything is stored: customer is a non-empty string, currency is a three-letter upper-case code, lines is a non-empty list, and each line has a non-empty description, a whole-number quantity of at least 0 and whole unitPriceCents of at least 0. A body that breaks a rule answers 400 with `{ "error": { "field", "message" } }` naming the first offending field, such as `lines[0].quantity`, and stores nothing. A valid body is created as today, 201 with its totals.
