@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { agreement, cv, mean, passAt1, passHatK, percentile, round, stderr } from "./lib/metrics.mjs";
 import { laneMatches } from "./lib/lanes.mjs";
+import { testerCheck, testerRow, testerSuite } from "./lib/tester-measures.mjs";
 
 function load(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -68,6 +69,28 @@ function table(rows) {
       `| ${r.task} | ${r.lane} | ${r.n} | ${pct(r.pass1)} | ${pct(r.passk)} | ${pct(r.route_agree)} | ${pct(r.lane_ok)} | ${fmt(r.cost_mean)} | ${fmt(r.cost_cv)} | ${fmt(r.wall_p50, 0)} | ${fmt(r.wall_p90, 0)} | ${fmt(r.ttfr_p50, 0)} | ${fmt(r.stops, 1)} | ${fmt(r.denials, 1)} | ${fmt(r.turns, 0)} | ${fmt(r.tools, 0)} | ${fmt(r.rereads, 1)} | ${pct(r.cache)} | ${fmt(r.tokens_per_line, 0)} |`,
   );
   return [head, sep, ...body].join("\n");
+}
+
+const TESTER_KIND = "tester";
+const yesNo = (x) => (x ? "yes" : "no");
+const share = (x) => (x === null ? "-" : pct(x));
+
+function testerTable(rows) {
+  const head = "| task | key kind | n | found | false alarms per run | questions right | same every run | cost $ | wall p50 s |";
+  const sep = "|" + "---|".repeat(9);
+  const body = rows.map((r) => `| ${r.task} | ${r.key_kind} | ${r.n} | ${share(r.found)} | ${fmt(r.false_alarms)} | ${share(r.questions_right)} | ${yesNo(r.consistent)} | ${fmt(r.cost_mean)} | ${fmt(r.wall_p50, 0)} |`);
+  const s = testerSuite(rows);
+  const suiteLine = `suite: catch rate ${pct(s.catch_rate)} · false alarms per run ${fmt(s.false_alarms)} · questions right ${pct(s.questions_right)} · same every run on ${s.consistent} of ${rows.length} task(s)`;
+  return [head, sep, ...body, "", suiteLine].join("\n");
+}
+
+function testerRows(records) {
+  return [...byTask(records.filter((r) => r.kind === TESTER_KIND)).entries()].map(([t, rs]) => testerRow(t, rs)).sort((x, y) => x.task.localeCompare(y.task));
+}
+
+function testerDeltaLines(check) {
+  const line = (label, s, F) => `- ${label}: ${s.mean >= 0 ? "+" : ""}${F(s.mean)} ±${F(s.se)} over ${s.n} task(s)`;
+  return [line("defects found", check.found, pct), line("false alarms per run", check.false_alarms, fmt), line("questions asked rightly", check.questions_right, pct)];
 }
 
 const LANE_FIELDS = ["passk", "cost_mean", "wall_p50", "ttfr_p50", "stops", "denials", "rereads", "cache"];
@@ -134,8 +157,10 @@ function main() {
   const sets = files.map((f) => ({ file: f, data: load(f) }));
   const out = [];
   const rowSets = [];
+  const testerSets = [];
   for (const { file, data } of sets) {
     const rows = [...byTask(data.records).entries()].map(([t, rs]) => taskRow(t, rs, k)).sort((x, y) => x.task.localeCompare(y.task));
+    testerSets.push({ label: file, rows: testerRows(data.records) });
     const m = data.manifest ?? {};
     out.push(`## ${m.harness ?? file} @ ${m.harness_commit ?? "?"} · fixture ${m.fixture_hash ?? "?"} · claude ${m.claude_version ?? "?"} · ${data.records.length} runs`);
     out.push("");
@@ -164,6 +189,8 @@ function main() {
       out.push(suiteTable(suite(pick(rowSets[0])), suite(pick(rowSets[1])), LANE_FIELDS));
     }
   }
+  for (const { label, rows } of testerSets.filter(({ rows }) => rows.length)) out.push("", `## Tester · ${label}`, "", testerTable(rows));
+  const testerPaired = testerSets[1]?.rows.length && testerSets[0].rows.length ? testerCheck(testerSets[0].rows, testerSets[1].rows) : null;
   const failedRuns = sets.flatMap(({ data }) => data.records.filter((r) => !r.pass).map((r) => `- ${r.harness} ${r.task} run ${r.run}: ${r.terminal}${r.error ? ", " + r.error.slice(0, 160) : ""}; failed checks: ${r.grade?.checks?.filter((c) => !c.ok).map((c) => c.name).join(", ") || "-"}`));
   if (failedRuns.length) {
     out.push("");
@@ -178,10 +205,11 @@ function main() {
     out.push(`- cost: ${pc.cost.mean >= 0 ? "+" : ""}$${fmt(pc.cost.mean)} ±$${fmt(pc.cost.se)} over ${pc.cost.n} task(s); dearer on ${pc.cost.worse}`);
     const rl = sets.map(({ data }) => data.records.reduce((n, r) => n + (r.rate_limits ?? 0), 0));
     if (rl.some(Boolean)) out.push(`- rate-limit events seen: baseline ${rl[0]}, candidate ${rl[1]} (throttling, not harness latency)`);
+    if (testerPaired) out.push(...testerDeltaLines(testerPaired));
   }
   console.log(out.join("\n"));
   if (doCheck && rowSets[1]) {
-    const { fails } = pairedCheck(restrict(rowSets[0]), restrict(rowSets[1]));
+    const fails = [...pairedCheck(restrict(rowSets[0]), restrict(rowSets[1])).fails, ...(testerPaired?.fails ?? [])];
     if (fails.length) {
       console.error("\nREGRESSION:\n" + fails.map((f) => "- " + f).join("\n"));
       process.exit(1);
