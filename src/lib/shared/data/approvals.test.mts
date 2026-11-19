@@ -43,14 +43,15 @@ test("a path that leaves data/, an absolute path and a missing file are refused 
   assert.equal(refusal(() => sqlFile(root, "data/absent.sql")), "data/absent.sql does not exist under .picket/env/");
 });
 
-test("the status follows the latest approval row for the file and its bytes now (T-7.2, T-7.3)", (t) => {
+test("the status compares the latest approval row for the file with the digest it is given (T-7.2, T-7.3, T-3.4)", (t) => {
   const root = project(t);
   const file = sqlFile(root, "data/customer.sql");
-  assert.equal(approvalStatus(root, file), "not approved");
+  const digest = fileDigest(file.abs);
+  assert.equal(approvalStatus(root, file, digest), "not approved");
   recordApproval(root, file.path, "0".repeat(64), "s-1", new Date("2026-11-18T10:00:00Z"));
-  assert.equal(approvalStatus(root, file), "changed since approval");
-  recordApproval(root, file.path, fileDigest(file.abs), "s-1", new Date("2026-11-18T10:01:00Z"));
-  assert.equal(approvalStatus(root, file), "approved");
+  assert.equal(approvalStatus(root, file, digest), "changed since approval");
+  recordApproval(root, file.path, digest, "s-1", new Date("2026-11-18T10:01:00Z"));
+  assert.equal(approvalStatus(root, file, digest), "approved");
   writeFileSync(file.abs, SQL.replace("seed", "seeds"));
-  assert.equal(approvalStatus(root, file), "changed since approval");
+  assert.equal(approvalStatus(root, file, fileDigest(file.abs)), "changed since approval");
 });

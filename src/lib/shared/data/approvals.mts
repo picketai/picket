@@ -34,10 +34,10 @@ function latestApproval(root: string, path: string): DataApproval | null {
   return readJsonl<DataApproval>(approvalsPath(root)).rows.filter((row) => row.path === path).at(-1) ?? null;
 }
 
-export function approvalStatus(root: string, file: SqlFile): ApprovalStatus {
+export function approvalStatus(root: string, file: SqlFile, sha256: string): ApprovalStatus {
   const latest = latestApproval(root, file.path);
   if (latest === null) return "not approved";
-  return latest.sha256 === fileDigest(file.abs) ? "approved" : "changed since approval";
+  return latest.sha256 === sha256 ? "approved" : "changed since approval";
 }
 
 export function recordApproval(root: string, path: string, sha256: string, session: string | null, now: Date): DataApproval {

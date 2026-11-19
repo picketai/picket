@@ -11,7 +11,8 @@ const USAGE = "data show <path under .picket/env/, such as data/customer.sql>";
 
 export const showFile = action<ShowInput, ShownFile>(async ({ path }, { root }) => {
   const file = sqlFile(root, path);
-  return done({ path: file.path, sha256: fileDigest(file.abs), status: approvalStatus(root, file), text: readFileSync(file.abs, "utf8") });
+  const sha256 = fileDigest(file.abs);
+  return done({ path: file.path, sha256, status: approvalStatus(root, file, sha256), text: readFileSync(file.abs, "utf8") });
 });
 
 function parseShow(args: Args): ShowInput {

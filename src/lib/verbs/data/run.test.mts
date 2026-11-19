@@ -81,6 +81,21 @@ test("the run row names the item, entry, file, digest, server, database and stat
   for (const part of ["s3cret", "User Id", "qa;"]) assert.ok(!text.includes(part), part);
 });
 
+test("the run row records the digest the approval check compared, not the bytes after the run (T-3.1)", (t) => {
+  const { root, id } = project(t);
+  const sql = join(root, ".picket", "env", "data", "customer.sql");
+  const approved = fileDigest(sql);
+  const { runner } = engine();
+  const rewriting: EngineRunner = (program, args) => {
+    if (args.includes("--profile")) writeFileSync(sql, SQL.replace("seed", "rewritten"));
+    return runner(program, args);
+  };
+  runSqlEntry(context(root), rewriting, { id, entry: "customer" });
+  const row = JSON.parse(readFileSync(join(root, ".picket", "state", "data", "runs.jsonl"), "utf8"));
+  assert.equal(row.sha256, approved);
+  assert.notEqual(row.sha256, fileDigest(sql));
+});
+
 test("a client failure prints the exit status and a cause with the connection masked (T-8.4)", (t) => {
   const { root, id } = project(t);
   const outcome = runSqlEntry(context(root), engine(1, `Sqlcmd: Error: login failed for '${CONNECTION}' (password s3cret)`).runner, { id, entry: "customer" });

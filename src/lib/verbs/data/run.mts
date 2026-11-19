@@ -21,6 +21,8 @@ const CLOSED_STATUSES = ["done", "abandoned"];
 const SQL_KIND = "sql";
 const CONTAINER_FILE = "/picket/run.sql";
 
+type ApprovedFile = SqlFile & { sha256: string };
+
 function openState(root: string, id: WorkId): WorkState {
   const state = readState(root, id);
   if (CLOSED_STATUSES.includes(state.status)) throw new Refused(`${id} is ${state.status}; data run runs only for an open or blocked item`, { id });
@@ -36,12 +38,13 @@ function sqlEntry(root: string, name: string): CatalogEntry & { file: string; se
   return { ...entry, file: entry.file, service: entry.service };
 }
 
-function approvedFile(root: string, path: string): SqlFile {
+function approvedFile(root: string, path: string): ApprovedFile {
   const file = sqlFile(root, path);
-  const status = approvalStatus(root, file);
+  const sha256 = fileDigest(file.abs);
+  const status = approvalStatus(root, file, sha256);
   if (status === "not approved") throw new Refused(`${file.path} is not approved; the user reads it with picket data show ${file.path} and approves it`);
   if (status === "changed since approval") throw new Refused(`${file.path} changed since approval; the user reads it again with picket data show ${file.path}`);
-  return file;
+  return { ...file, sha256 };
 }
 
 function connection(env: NodeJS.ProcessEnv, variable: string): string {
@@ -70,7 +73,7 @@ export function runSqlEntry(ctx: Context, runner: EngineRunner, { id, entry: nam
   const stack = stackName(itemKey(state));
   const result = runCompose(engine, root, stack, stackFiles(root, stack), dataRunArgs(variable, file.abs, entry.service));
   const target = connectionTarget(value);
-  const run: DataRun = { at: now().toISOString(), item: id, entry: name, path: file.path, sha256: fileDigest(file.abs), ...target, status: result.status };
+  const run: DataRun = { at: now().toISOString(), item: id, entry: name, path: file.path, sha256: file.sha256, ...target, status: result.status };
   appendDataRun(root, run);
   const report: DataRunReport = { run, service: entry.service, cause: result.status === 0 ? null : maskConnection(failureCause(result), value) };
   return result.status === 0 ? done(report) : failed(report);
