@@ -827,7 +827,7 @@ export const sourcePathSpellings: Family<string, string> = {
       inSource(`${SOURCE_PLACEHOLDER}/.`),
       inSource(`${SOURCE_PLACEHOLDER}/sub/..`),
       ...(word === SOURCE_PLACEHOLDER ? [inSource(`${SOURCE_PLACEHOLDER}/`)] : []),
-      respelled(parts, at, `"${word}"`),
+      ...(otherQuotings(word) === null ? [respelled(parts, at, `"${word}"`)] : []),
       ...targetDirectorySpelling(parts, at),
     ]);
   },

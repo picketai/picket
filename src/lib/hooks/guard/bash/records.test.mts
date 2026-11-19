@@ -92,3 +92,67 @@ test("the lead's writes to kernel-owned work entries give no decision, as before
   const judge = judgeIn(t);
   for (const command of WORK_RECORD_WRITES) assert.equal(judge(command), null, command);
 });
+
+const HIDDEN_RECORD_WRITES = [
+  'picket drive --run "cd .picket/state/data && cp /tmp/a approvals.jsonl"',
+  'picket drive --run "cd .picket/state && cp /tmp/a data/approvals.jsonl"',
+  'bash -c "cd .picket/state && echo x >> data/approvals.jsonl"',
+  `picket drive --run "cd ${WORK_ITEM} && touch phases/1.approved"`,
+  "pushd .picket/state/data && cp /tmp/a approvals.jsonl",
+  `sed -n 'w ${APPROVALS}' /tmp/a`,
+  `sed 's/a/b/w ${APPROVALS}' /tmp/a`,
+  `picket drive --run "sed -n 'w ${APPROVALS}' /tmp/forged"`,
+];
+
+test("a record write after a cd inside wrapped text, or through a sed w script, is denied for a spawned agent", (t) => {
+  const judge = judgeIn(t);
+  for (const command of HIDDEN_RECORD_WRITES) assertRecordDenial(judge(command, { agent: SPAWNED_DEVELOPER }), command);
+});
+
+test("the lead's record writes after a cd inside wrapped text or through a sed w script give no decision", (t) => {
+  const judge = judgeIn(t);
+  for (const command of HIDDEN_RECORD_WRITES) assert.equal(judge(command), null, command);
+});
+
+test("the lead's in-place shell write to code under a kernel-owned work entry is denied as code, as before the record check", (t) => {
+  const judge = judgeIn(t);
+  for (const command of [`sed -i s/a/b/ ${WORK_ITEM}/sources/a.ts`, `node -e "require('fs').writeFileSync('${WORK_ITEM}/test/a.ts','x')"`]) {
+    const out = judge(command);
+    assert.equal(out?.permissionDecision, "deny", command);
+    assert.match(out?.permissionDecisionReason ?? "", /is code; a shell write skips guard\.comments/, command);
+  }
+});
+
+test("a picket call's verb words are not read as paths, so a drive from inside the state folder is not a record write", (t) => {
+  const judge = judgeIn(t);
+  const out = judge('cd .picket/state && picket drive --run "ls"', { agent: SPAWNED_DEVELOPER });
+  assert.doesNotMatch(out?.permissionDecisionReason ?? "", /kernel record/);
+});
+
+const UNSEEN_RECORD_WRITES = [
+  'picket drive --run "cp /tmp/a .picket/state/data/appr*"',
+  'picket drive --run "echo x >> .picket/state/data/approvals.json?"',
+  'picket drive --run "cd ~ && cp a .picket/state/data/approvals.jsonl"',
+  'picket drive --run "cd /tmp && cd - && cp a .picket/state/data/approvals.jsonl"',
+  'picket drive --run "cd .pick* && cp a state/data/approvals.jsonl"',
+  'picket drive --run "cp /tmp/a \$PWD/.picket/state/data/approvals.jsonl"',
+  `picket drive --run "touch ${WORK_ITEM}/ph*/1.approved"`,
+  'picket drive --run "cp /tmp/a \$(echo .picket)/state/data/approvals.jsonl"',
+];
+
+test("a spawned agent's picket-wrapped write through a glob, an expansion or an unknown folder that could reach a record is denied", (t) => {
+  const judge = judgeIn(t);
+  for (const command of UNSEEN_RECORD_WRITES) assertRecordDenial(judge(command, { agent: SPAWNED_DEVELOPER }), command);
+});
+
+test("a spawned agent's picket-wrapped glob that cannot reach a record keeps its decision", (t) => {
+  const judge = judgeIn(t);
+  for (const command of ['picket drive --run "node --test test/*.test.mjs"', 'picket drive --run "cp out/* .picket/state/scratch/20261119-x/"', 'picket drive --run "cat .picket/state/data/*"']) {
+    assert.doesNotMatch(judge(command, { agent: SPAWNED_DEVELOPER })?.permissionDecisionReason ?? "", /kernel record/, command);
+  }
+});
+
+test("the lead's picket-wrapped writes through a glob, an expansion or an unknown folder give no decision", (t) => {
+  const judge = judgeIn(t);
+  for (const command of UNSEEN_RECORD_WRITES) assert.equal(judge(command), null, command);
+});

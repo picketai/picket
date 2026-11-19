@@ -2,7 +2,7 @@ import { carriesMarker, leadingAssignments, withoutMarker } from "../../../share
 import { maskEnvValues } from "../../../shared/drive-log.mts";
 import { judgeEscalation, logEscalation, markerReason } from "./escalation.mts";
 import { stdinTexts } from "./in-place.mts";
-import { codeWriteDenial, codeWritesIn, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, deniedRecordWrite, isTester, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, TESTER_REFUSAL, testerRefusal, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
+import { codeWriteDenial, codeWritesIn, cwdChange, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, deniedRecordWrite, isTester, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, TESTER_REFUSAL, testerRefusal, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
 import { decide, fallThrough, isSanctionedLogSink, LOG_SINK_DIR, type Classification, type Dialect, type GuardContext, type Judgement, type Reading, type Refusal, type Segment } from "./rules.mts";
 import { recordDenial } from "./records.mts";
 import { redirectSource, sourceCheck, sourceDenial } from "./sources.mts";
@@ -53,7 +53,7 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
     const judged = dialect.classify({ seg, hit, cwd: effCwd, startCwd: cwd }, reading, ctx);
     if (typeof judged !== "string") return judged;
     classifications.push(deletesInsideWrapper(leadingAssignments(seg).command) ? "deny" : judged);
-    const cd = dialect.cdTarget(leadingAssignments(seg).command, effCwd);
+    const cd: { to: string | null } | null = dialect.cdTarget(leadingAssignments(seg).command, effCwd) ?? cwdChange(leadingAssignments(seg).command, effCwd);
     if (cd) {
       effCwd = cd.to;
       cwdsSeen.push(effCwd);
