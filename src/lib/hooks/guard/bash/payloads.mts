@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute } from "node:path";
 import { extOf, LANGS } from "../../../shared/comments.mjs";
 import { leadingAssignments } from "../../../shared/escalation.mts";
 import { stateRel } from "../../../shared/paths.mts";
@@ -11,6 +11,7 @@ import { hasHiddenExecution, isOpaqueWord, markVariable, MAX_SUBSTITUTION_DEPTH,
 import { inPlaceTargets, stdinTexts } from "./in-place.mts";
 import { isLeadOnly, wrappedCommands } from "./kernel.mts";
 import { classifySegment, type Reading, type Refusal, type Segment, type Token } from "./rules.mts";
+import { isKernelRecord, namedRecords, projectRel, recordDenial, tailRecords } from "./records.mts";
 import { redirectSource, segmentSource, sourceAllowed, sourceDenial } from "./sources.mts";
 
 type PayloadDialect = "sh" | "ps";
@@ -20,7 +21,9 @@ type Payload = TextPayload | TailPayload;
 type ParsedPayload = { segments: Segment[]; redirectTargets: (string | null)[]; heredocs: readonly string[] };
 type WriteTarget = { target: string; inPlace: boolean };
 export type WrappedCheck = Refusal | { fallThrough: string } | null;
-export type CodeWrite = { rel: string; inPlace: boolean };
+type WriteKind = "code" | "record";
+type WriteTargetHit = { rel: string; kind: WriteKind };
+export type CodeWrite = WriteTargetHit & { inPlace: boolean };
 
 export const KERNEL_MENTION = /(?:^|[\s;&|(`'"=\\/])picket(?:\.mjs|\.cmd)?(?=$|[\s;&|)`'"])/i;
 
@@ -268,14 +271,18 @@ export function deletesInsideWrapper(seg: Segment, depth = 0): boolean {
   return wrappedSegments(seg).some((inner) => WRAPPED_DELETES.has(hostOf(inner)) || deletesInsideWrapper(inner, depth + 1));
 }
 
-export function codeWriteTarget(target: string | null, cwds: (string | null)[], root: string): string | null {
+function writeKind(rel: string): WriteKind | null {
+  if (isKernelRecord(rel)) return "record";
+  if (rel.toLowerCase().startsWith(STATE_PREFIX_REL)) return null;
+  return Object.hasOwn(LANGS, extOf(rel)) ? "code" : null;
+}
+
+export function codeWriteTarget(target: string | null, cwds: (string | null)[], root: string): WriteTargetHit | null {
   if (typeof target !== "string" || !target || isOpaqueWord(target) || /[$`*?]/.test(target)) return null;
-  const p = nodePath(target);
-  for (const base of isAbsolute(p) ? [null] : cwds.filter(Boolean)) {
-    const rel = relative(root, base ? resolve(base, p) : resolve(p)).replaceAll("\\", "/");
-    if (!rel || rel === ".." || rel.startsWith("../") || isAbsolute(rel)) continue;
-    if (rel.toLowerCase().startsWith(STATE_PREFIX_REL)) continue;
-    if (Object.hasOwn(LANGS, extOf(rel))) return rel;
+  for (const base of isAbsolute(nodePath(target)) ? [null] : cwds.filter(Boolean)) {
+    const rel = projectRel(target, base, root);
+    const kind = rel === null ? null : writeKind(rel);
+    if (rel !== null && kind !== null) return { rel, kind };
   }
   return null;
 }
@@ -320,8 +327,8 @@ function segmentWriteTargets(seg: Segment, heredocs: readonly string[]): WriteTa
 
 function codeWritesTo(targets: readonly WriteTarget[], cwds: (string | null)[], root: string): CodeWrite[] {
   return targets.flatMap(({ target, inPlace }) => {
-    const rel = codeWriteTarget(target, cwds, root);
-    return rel ? [{ rel, inPlace }] : [];
+    const hit = codeWriteTarget(target, cwds, root);
+    return hit ? [{ ...hit, inPlace }] : [];
   });
 }
 
@@ -329,15 +336,29 @@ export function redirectCodeWrites(targets: readonly (string | null)[], cwds: (s
   return codeWritesTo(writeTargets(targets.filter((t): t is string => typeof t === "string"), false), cwds, root);
 }
 
-export function codeWritesIn(seg: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[]): CodeWrite[] {
+function recordWrites(rels: string[]): CodeWrite[] {
+  return rels.map((rel) => ({ rel, kind: "record", inPlace: false }));
+}
+
+function namedRecordWrites(seg: Segment, cwds: (string | null)[], root: string): CodeWrite[] {
+  const payload = metaPayload(leadingAssignments(seg).command);
+  const named = (cwd: string | null) => (payload && "tail" in payload ? tailRecords(payload.tail, cwd, root) : namedRecords(seg, cwd, root));
+  return recordWrites(cwds.flatMap(named));
+}
+
+function targetWritesIn(seg: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[]): CodeWrite[] {
   return codeWritesTo(segmentWriteTargets(seg, heredocs), cwds, root);
+}
+
+export function codeWritesIn(seg: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[]): CodeWrite[] {
+  return [...targetWritesIn(seg, cwds, root, heredocs), ...namedRecordWrites(seg, cwds, root)];
 }
 
 function codeWritesInTail(tail: Segment, cwds: (string | null)[], root: string, heredocs: readonly string[], depth: number): CodeWrite[] {
   return tail.flatMap((_, i) => {
     const rest = tail.slice(i);
     if (typeof rest[0] !== "string") return [];
-    return [...codeWritesIn(rest, cwds, root, heredocs), ...(metaPayload(rest) ? codeWritesInside(rest, cwds, root, heredocs, depth + 1) : [])];
+    return [...targetWritesIn(rest, cwds, root, heredocs), ...(metaPayload(rest) ? codeWritesInside(rest, cwds, root, heredocs, depth + 1) : [])];
   });
 }
 
@@ -354,7 +375,12 @@ export function codeWritesInside(seg: Segment, cwds: (string | null)[], root: st
 }
 
 export function deniedCodeWrite(writes: readonly CodeWrite[], agent: string | null): CodeWrite | null {
-  return writes.find((write) => write.inPlace) ?? (isSpawnedAgent(agent) ? writes[0] : undefined) ?? null;
+  const code = writes.filter((write) => write.kind === "code");
+  return code.find((write) => write.inPlace) ?? (isSpawnedAgent(agent) ? code[0] : undefined) ?? null;
+}
+
+export function deniedRecordWrite(writes: readonly CodeWrite[], agent: string | null): CodeWrite | null {
+  return isSpawnedAgent(agent) ? (writes.find((write) => write.kind === "record") ?? null) : null;
 }
 
 export function codeWriteDenial(rel: string, hint: string): Refusal {
@@ -371,7 +397,12 @@ function parseWrapped(inner: string): ParseEntry[] | null {
   }
 }
 
-export function wrappedVerbCheck(seg: Segment, cwd: string | null, roots: SourceRoot[], agent: string | null, platform: NodeJS.Platform): WrappedCheck {
+function wrappedWrites(segments: Segment[], targets: (string | null)[], cwd: string | null, root: string): CodeWrite[] {
+  const inSegments = segments.flatMap((s) => [...codeWritesIn(s, [cwd], root, []), ...codeWritesInside(leadingAssignments(s).command, [cwd], root, [])]);
+  return [...inSegments, ...redirectCodeWrites(targets, [cwd], root)];
+}
+
+export function wrappedVerbCheck(seg: Segment, cwd: string | null, root: string, roots: SourceRoot[], agent: string | null, platform: NodeJS.Platform): WrappedCheck {
   for (const inner of wrappedCommands(seg)) {
     if (hasHiddenExecution(inner)) return { fallThrough: "wrapped-hidden-execution" };
     const innerTokens = parseWrapped(inner);
@@ -379,6 +410,8 @@ export function wrappedVerbCheck(seg: Segment, cwd: string | null, roots: Source
     const { segments: innerSegs, redirectTargets: innerTargets } = splitIntoSegments(innerTokens);
     const leadOnly = innerSegs.map((s) => leadOnlyRefusal(s, agent) ?? leadOnlyInside(s, agent, KERNEL_MENTION.test(inner))).find(Boolean);
     if (leadOnly) return leadOnly;
+    const record = deniedRecordWrite(wrappedWrites(innerSegs, innerTargets, cwd, root), agent);
+    if (record) return recordDenial(record.rel);
     const scope = { cwd, depth: 0, hookRoot: null, platform, classifyText: textClassifier(platform) };
     if (innerSegs.some((s) => classifySegment(leadingAssignments(s).command, scope) === "deny")) {
       return { why: "wrapped_verb", reason: `guard.bash: the command wrapped in a picket verb (${inner.slice(0, WRAPPED_QUOTE_CHARS)}) contains a destructive sub-command; run it directly so the permission prompt sees it.` };

@@ -24,6 +24,8 @@ const BASH_RULES = "src/lib/hooks/guard/bash/rules.mts";
 const BASH_KERNEL = "src/lib/hooks/guard/bash/kernel.mts";
 const BASH_ESCALATION = "src/lib/hooks/guard/bash/escalation.mts";
 const ESCALATION_CLOSURE = "src/lib/hooks/guard/bash/escalation.variants.test.mts";
+const BASH_RECORDS = "src/lib/hooks/guard/bash/records.mts";
+const RECORDS_CLOSURE = "src/lib/hooks/guard/bash/records.variants.test.mts";
 const DESTRUCTIVE_TABLES = ["DENIED_NAMES", "DENY_GIT_SUBCOMMANDS", "NPM_DENY_SUBCOMMANDS"].map((name) => ({ module: BASH_RULES, name }));
 
 const spendGuard = (guard) => ({ guard, module: SPEND, closure: SPEND_CLOSURE, tables: [] });
@@ -43,6 +45,8 @@ export const GUARDS = [
   { guard: "guard.blackbox", module: "src/lib/hooks/guard/blackbox/index.mts", closure: "src/lib/hooks/guard/blackbox/index.variants.test.mts", tables: [] },
   { guard: "guard.bash wrapped kernel commands", module: BASH_KERNEL, closure: "src/lib/hooks/guard/bash/kernel.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "WRAPPING_FLAGS" }] },
   { guard: "guard.bash sources", module: "src/lib/hooks/guard/bash/sources.mts", closure: "src/lib/hooks/guard/bash/sources.variants.test.mts", tables: [] },
+  { guard: "guard.bash kernel records", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
+  { guard: "guard.bash kernel records in programs", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
   { guard: "guard.bash escalation outside an asking mode", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash escalation of more than one command", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash on PowerShell", module: "src/lib/hooks/guard/bash/powershell.mts", closure: "src/lib/hooks/guard/bash/powershell.variants.test.mts", tables: [{ module: BASH_RULES, name: "DENIED_NAMES" }] },

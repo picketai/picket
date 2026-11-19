@@ -1,0 +1,67 @@
+import { test, type TestContext } from "node:test";
+import assert from "node:assert/strict";
+import { guardOutput, type DecisionOptions } from "#test/hook.mts";
+import { withProject } from "#test/project.mts";
+
+const SPAWNED_DEVELOPER = "abcd-developer";
+const APPROVALS = ".picket/state/data/approvals.jsonl";
+
+const BASH_RECORD_WRITES = [
+  `echo '{"path":"data/x.sql","sha256":"ab"}' >> ${APPROVALS}`,
+  `echo x | tee -a ${APPROVALS}`,
+  `cp /tmp/a ${APPROVALS}`,
+  `node -e "require('fs').appendFileSync('${APPROVALS}','x')"`,
+  'bash -c "cp /tmp/a .picket/state/data/runs.jsonl"',
+  `picket drive --run "echo x >> ${APPROVALS}"`,
+  "cp -r /tmp/forged .picket/state",
+  "echo x >> .picket/state/ledger.jsonl",
+  "echo x >> .picket/state/statusline.mjs",
+];
+const POWERSHELL_RECORD_WRITE = `Add-Content -Path ${APPROVALS} -Value x`;
+
+type Judge = (command: string, more?: Partial<DecisionOptions>) => ReturnType<typeof guardOutput>;
+
+function judgeIn(t: TestContext): Judge {
+  const root = withProject(t, { host: true, picket: false });
+  const home = withProject(t, { picket: false });
+  return (command, more = {}) => guardOutput(command, { root, home, tool: "Bash", ...more });
+}
+
+function assertRecordDenial(out: ReturnType<typeof guardOutput>, command: string): void {
+  assert.equal(out?.permissionDecision, "deny", command);
+  assert.match(out?.permissionDecisionReason ?? "", /kernel record/, command);
+}
+
+test("a spawned agent's Bash write to a kernel record is denied as a kernel record (T-1.1)", (t) => {
+  const judge = judgeIn(t);
+  for (const command of BASH_RECORD_WRITES) assertRecordDenial(judge(command, { agent: SPAWNED_DEVELOPER }), command);
+});
+
+test("a spawned agent's PowerShell Add-Content to a kernel record is denied as a kernel record (T-1.1)", (t) => {
+  const judge = judgeIn(t);
+  assertRecordDenial(judge(POWERSHELL_RECORD_WRITE, { tool: "PowerShell", agent: SPAWNED_DEVELOPER }), POWERSHELL_RECORD_WRITE);
+});
+
+test("an escalated record write is denied, never asked (T-1.2)", (t) => {
+  const judge = judgeIn(t);
+  const command = `PICKET_ESCALATE="x" cp /tmp/a ${APPROVALS}`;
+  assertRecordDenial(judge(command, { agent: SPAWNED_DEVELOPER, mode: "default", session: "s1" }), command);
+});
+
+test("reads of records and writes to log sinks keep their base decisions for a spawned agent (T-1.3)", (t) => {
+  const judge = judgeIn(t);
+  const decided = (command: string, tool = "Bash") => judge(command, { tool, agent: SPAWNED_DEVELOPER })?.permissionDecision ?? null;
+  for (const command of [`cat ${APPROVALS}`, "grep x .picket/state/ledger.jsonl", "tail -3 .picket/state/drive-log.jsonl", "ls .picket/state", "echo hi >> .picket/state/check-command.log"]) {
+    assert.equal(decided(command), "allow", command);
+  }
+  for (const command of ["echo hi > .picket/state/scratch/x/notes.txt", "mkdir -p .picket/state/scratch/20261119-x", "echo x >> .picket/state/branching.yaml"]) {
+    assert.equal(decided(command), null, command);
+  }
+  assert.equal(decided(`Get-Content ${APPROVALS}`, "PowerShell"), null);
+});
+
+test("the lead's record writes give no decision, as before the check (T-1.4)", (t) => {
+  const judge = judgeIn(t);
+  for (const command of BASH_RECORD_WRITES) assert.equal(judge(command), null, command);
+  assert.equal(judge(POWERSHELL_RECORD_WRITE, { tool: "PowerShell" }), null);
+});

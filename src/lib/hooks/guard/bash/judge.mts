@@ -2,8 +2,9 @@ import { carriesMarker, leadingAssignments, withoutMarker } from "../../../share
 import { maskEnvValues } from "../../../shared/drive-log.mts";
 import { judgeEscalation, logEscalation, markerReason } from "./escalation.mts";
 import { stdinTexts } from "./in-place.mts";
-import { codeWriteDenial, codeWritesIn, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, isTester, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, TESTER_REFUSAL, testerRefusal, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
+import { codeWriteDenial, codeWritesIn, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, deniedRecordWrite, isTester, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, TESTER_REFUSAL, testerRefusal, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
 import { decide, fallThrough, isSanctionedLogSink, LOG_SINK_DIR, type Classification, type Dialect, type GuardContext, type Judgement, type Reading, type Refusal, type Segment } from "./rules.mts";
+import { recordDenial } from "./records.mts";
 import { redirectSource, sourceCheck, sourceDenial } from "./sources.mts";
 
 const ALLOW_REASON = `guard.bash: every sub-command is read-only/inspection or a bare picket call that wraps no command, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`;
@@ -47,15 +48,17 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
     const leadOnly = leadOnlyRefusal(seg, agent) ?? leadOnlyInside(leadingAssignments(seg).command, agent, mentionsKernel);
     if (leadOnly) return refuse(leadOnly);
     codeWrites.push(...codeWritesIn(seg, [effCwd], root, stdin), ...codeWritesInside(leadingAssignments(seg).command, [effCwd], root, stdin));
+    const record = deniedRecordWrite(codeWrites, agent);
+    if (record) return refuse(recordDenial(record.rel));
     const judged = dialect.classify({ seg, hit, cwd: effCwd, startCwd: cwd }, reading, ctx);
     if (typeof judged !== "string") return judged;
     classifications.push(deletesInsideWrapper(leadingAssignments(seg).command) ? "deny" : judged);
-    const cd = dialect.cdTarget(seg, effCwd);
+    const cd = dialect.cdTarget(leadingAssignments(seg).command, effCwd);
     if (cd) {
       effCwd = cd.to;
       cwdsSeen.push(effCwd);
     }
-    const wrapped = wrappedVerbCheck(seg, effCwd, roots, agent, platform);
+    const wrapped = wrappedVerbCheck(seg, effCwd, root, roots, agent, platform);
     if (wrapped && "fallThrough" in wrapped) return fallThrough(wrapped.fallThrough);
     if (wrapped) return refuse(wrapped);
   }
@@ -63,6 +66,8 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
   const redirectHit = roots.length && reading.sawWriteRedirect ? redirectSource(reading.redirectTargets, cwdsSeen, roots, platform) : null;
   if (redirectHit) return refuse({ why: "source", reason: sourceDenial(redirectHit, "a write redirect") });
   codeWrites.push(...redirectCodeWrites(reading.redirectTargets, cwdsSeen, root));
+  const record = deniedRecordWrite(codeWrites, agent);
+  if (record) return refuse(recordDenial(record.rel));
   const codeWrite = deniedCodeWrite(codeWrites, agent);
   if (codeWrite) {
     if (isEscalating(segments, ctx)) return judgeEscalation(command, segments, ["deny"], { ...reading, sawWriteRedirect: false }, ctx);

@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { LEGACY, MODEL_WRITABLE_STATE_FILES, PICKET_DIR, configRel, isPrTicketRel, stateRel } from "../../../shared/paths.mts";
+import { isHookOnlyState } from "../../../shared/kernel-records.mts";
+import { LEGACY, PICKET_DIR, configRel } from "../../../shared/paths.mts";
 import { SCENARIO_DIR } from "../../../shared/env/standard.mts";
 import { sourceRoots, underSource } from "../../../shared/sources/protection.mts";
 import { agentTranscript } from "../../../shared/transcript/agent.mts";
@@ -12,9 +13,6 @@ type EditEvent = PayloadOf<"PreToolUse">;
 
 const KERNEL_OWNED_ENTRIES = ["state.yaml", "verdicts.jsonl", "comments.jsonl", "waivers.jsonl", "mutation.json", "left.jsonl", "phases/", "request.md", "story.md", "sources.yaml", "sources/", "repos.yaml", "test/", "test.md"];
 const KERNEL_OWNED = new RegExp(`^work/[^/]+/(${KERNEL_OWNED_ENTRIES.map((entry) => entry.replaceAll(".", "\\.")).join("|")})`);
-const STATE_PREFIX = `${stateRel("")}/`.toLowerCase();
-const MODEL_WRITABLE_STATE: string[] = MODEL_WRITABLE_STATE_FILES.map((name) => stateRel(name).toLowerCase());
-const SCRATCH_PREFIX = `${stateRel("scratch")}/`.toLowerCase();
 const LEGACY_STATE_PREFIX = `${LEGACY.stateDir}/`;
 const EXTENSIONS_PREFIX = `${PICKET_DIR}/extensions/`;
 const CONFIG_REL = configRel();
@@ -30,11 +28,6 @@ function confirmationReason(rel: string, platform: NodeJS.Platform): string | nu
   if (path.startsWith(samePathCase(EXTENSIONS_PREFIX, platform))) return `${rel} is extension content: its text reaches every agent or changes what the kernel loads, so the user confirms each edit`;
   if (path === samePathCase(CONFIG_REL, platform)) return `${rel} changes what the kernel loads (extensions, sources, security paths, commands), so the user confirms each edit`;
   return null;
-}
-
-function isHookOnlyState(rel: string): boolean {
-  const path = rel.toLowerCase();
-  return path.startsWith(STATE_PREFIX) && !path.startsWith(SCRATCH_PREFIX) && !MODEL_WRITABLE_STATE.includes(path) && !isPrTicketRel(rel);
 }
 
 function isLegacyState(rel: string): boolean {
