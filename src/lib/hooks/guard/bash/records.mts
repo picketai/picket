@@ -1,6 +1,6 @@
-import { isAbsolute, relative, resolve } from "node:path";
+import { basename, isAbsolute, relative, resolve } from "node:path";
 import { leadingAssignments } from "../../../shared/escalation.mts";
-import { isHookOnlyState } from "../../../shared/kernel-records.mts";
+import { isHookOnlyState, isKernelOwnedWorkPath } from "../../../shared/kernel-records.mts";
 import { PICKET_DIR, stateRel } from "../../../shared/paths.mts";
 import { kernelVerbStart, normalizeRoot } from "../../../shared/shell/kernel-call.mts";
 import { isOpaqueWord, nodePath } from "./bash.mts";
@@ -11,10 +11,14 @@ import { sourceAllowed } from "./sources.mts";
 const RECORD_FOLDERS = [PICKET_DIR, stateRel("")].map((folder) => folder.toLowerCase());
 const FLAG_VALUE = /^--?[\w-]+=(.+)$/;
 const EXPANSION = /[$`]/;
+const TARGET_DIRECTORY_ROOTS = new Set(["cp", "mv", "install", "ln"]);
+const TARGET_DIRECTORY_FLAGS = new Set(["-t", "--target-directory"]);
+const ATTACHED_TARGET_DIRECTORY = /^(?:--target-directory=|-t)(.+)$/;
 
 export function isKernelRecord(rel: string): boolean {
   const path = rel.replaceAll("\\", "/").replace(/\/+$/, "");
   if (RECORD_FOLDERS.includes(path.toLowerCase())) return true;
+  if (isKernelOwnedWorkPath(path) || isKernelOwnedWorkPath(`${path}/`)) return true;
   return isHookOnlyState(path) && !isSanctionedLogSink(path);
 }
 
@@ -51,10 +55,29 @@ function recordsAmong(tokens: readonly unknown[], cwd: string | null, root: stri
   return tokens.map((token) => recordNamed(token, cwd, root)).filter((rel): rel is string => rel !== null);
 }
 
+function targetDirectoryOf(words: string[]): { dir: string | null; operands: string[] } {
+  let dir: string | null = null;
+  const operands: string[] = [];
+  for (let at = 0; at < words.length; at++) {
+    const word = words[at];
+    const attached = ATTACHED_TARGET_DIRECTORY.exec(word)?.[1];
+    if (TARGET_DIRECTORY_FLAGS.has(word)) dir = words[++at] ?? null;
+    else if (attached !== undefined) dir = attached;
+    else if (!word.startsWith("-")) operands.push(word);
+  }
+  return { dir, operands };
+}
+
+function copiedInto(command: Segment): string[] {
+  if (!TARGET_DIRECTORY_ROOTS.has(String(normalizeRoot(command[0])))) return [];
+  const { dir, operands } = targetDirectoryOf(command.slice(1).filter((token): token is string => typeof token === "string"));
+  return dir === null ? [] : operands.map((operand) => `${dir}/${basename(nodePath(operand))}`);
+}
+
 export function namedRecords(seg: Segment, cwd: string | null, root: string): string[] {
   const command = leadingAssignments(seg).command;
   if (command.length === 0 || isReader(command)) return [];
-  return recordsAmong(command.slice(1), cwd, root);
+  return recordsAmong([...command.slice(1), ...copiedInto(command)], cwd, root);
 }
 
 export function tailRecords(tail: Segment, cwd: string | null, root: string): string[] {

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { isHookOnlyState } from "../../../shared/kernel-records.mts";
+import { isHookOnlyState, isKernelOwnedWorkPath } from "../../../shared/kernel-records.mts";
 import { LEGACY, PICKET_DIR, configRel } from "../../../shared/paths.mts";
 import { SCENARIO_DIR } from "../../../shared/env/standard.mts";
 import { sourceRoots, underSource } from "../../../shared/sources/protection.mts";
@@ -11,8 +11,6 @@ import { editTarget, type EditTarget } from "../edit-target.mts";
 
 type EditEvent = PayloadOf<"PreToolUse">;
 
-const KERNEL_OWNED_ENTRIES = ["state.yaml", "verdicts.jsonl", "comments.jsonl", "waivers.jsonl", "mutation.json", "left.jsonl", "phases/", "request.md", "story.md", "sources.yaml", "sources/", "repos.yaml", "test/", "test.md"];
-const KERNEL_OWNED = new RegExp(`^work/[^/]+/(${KERNEL_OWNED_ENTRIES.map((entry) => entry.replaceAll(".", "\\.")).join("|")})`);
 const LEGACY_STATE_PREFIX = `${LEGACY.stateDir}/`;
 const EXTENSIONS_PREFIX = `${PICKET_DIR}/extensions/`;
 const CONFIG_REL = configRel();
@@ -51,7 +49,7 @@ function isSavedScenario(rel: string, platform: NodeJS.Platform): boolean {
 }
 
 function denialReason(event: EditEvent, ctx: HookContext, target: EditTarget, rel: string): string | null {
-  if (KERNEL_OWNED.test(samePathCase(rel, ctx.platform))) return `${rel} is kernel-owned; use \`picket open\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`;
+  if (isKernelOwnedWorkPath(samePathCase(rel, ctx.platform))) return `${rel} is kernel-owned; use \`picket open\`, \`picket set\`, \`picket route\`, \`picket comment\`, \`picket waive\` or \`picket source\`, never a direct write`;
   if (isSavedScenario(rel, ctx.platform)) return `${rel} is a saved scenario, written by the kernel: keep one through a declared check the user approves, replace one with replaces; a person edits one by hand outside Claude Code`;
   if (isHookOnlyState(rel)) return `${rel} is written by the hooks only`;
   if (isLegacyState(rel)) return `${rel} is under the legacy state folder ${LEGACY_STATE_PREFIX}; only \`picket migrate\` moves files out of it, nothing writes into it`;

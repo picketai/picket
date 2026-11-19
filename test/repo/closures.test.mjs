@@ -47,6 +47,7 @@ export const GUARDS = [
   { guard: "guard.bash sources", module: "src/lib/hooks/guard/bash/sources.mts", closure: "src/lib/hooks/guard/bash/sources.variants.test.mts", tables: [] },
   { guard: "guard.bash kernel records", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
   { guard: "guard.bash kernel records in programs", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
+  { guard: "guard.bash kernel records in work items", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
   { guard: "guard.bash escalation outside an asking mode", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash escalation of more than one command", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash on PowerShell", module: "src/lib/hooks/guard/bash/powershell.mts", closure: "src/lib/hooks/guard/bash/powershell.variants.test.mts", tables: [{ module: BASH_RULES, name: "DENIED_NAMES" }] },

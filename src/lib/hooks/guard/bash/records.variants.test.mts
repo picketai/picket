@@ -6,6 +6,7 @@ import { closureTests, interpreterArgv, programSeeds, SOURCE_PLACEHOLDER, source
 const SPAWNED_DEVELOPER = "abcd-developer";
 const DATA_STATE = ".picket/state/data";
 const APPROVALS = `${DATA_STATE}/approvals.jsonl`;
+const WORK_ITEM = "work/20261116-x";
 
 const projects = new WeakMap<TestContext, string>();
 
@@ -33,6 +34,22 @@ closureTests({
     `picket drive --run "echo x >> ${SOURCE_PLACEHOLDER}/approvals.jsonl"`,
   ],
   run: (command: string, t) => asDeveloper(command.replaceAll(SOURCE_PLACEHOLDER, DATA_STATE), t),
+  closed: (decided) => decided === "deny",
+});
+
+closureTests({
+  guard: "guard.bash kernel records in work items",
+  grammar: sourceCommands,
+  seeds: [
+    `echo x >> ${SOURCE_PLACEHOLDER}/comments.jsonl`,
+    `cp /tmp/waivers.jsonl ${SOURCE_PLACEHOLDER}/waivers.jsonl`,
+    `touch ${SOURCE_PLACEHOLDER}/phases/1.approved`,
+    `echo x | tee -a ${SOURCE_PLACEHOLDER}/verdicts.jsonl`,
+    `cp -r /tmp/phases ${SOURCE_PLACEHOLDER}/phases`,
+    `bash -c "cp a ${SOURCE_PLACEHOLDER}/comments.jsonl"`,
+    `picket drive --run "touch ${SOURCE_PLACEHOLDER}/phases/1.approved"`,
+  ],
+  run: (command: string, t) => asDeveloper(command.replaceAll(SOURCE_PLACEHOLDER, WORK_ITEM), t),
   closed: (decided) => decided === "deny",
 });
 

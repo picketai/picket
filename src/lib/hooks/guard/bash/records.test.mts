@@ -65,3 +65,30 @@ test("the lead's record writes give no decision, as before the check (T-1.4)", (
   for (const command of BASH_RECORD_WRITES) assert.equal(judge(command), null, command);
   assert.equal(judge(POWERSHELL_RECORD_WRITE, { tool: "PowerShell" }), null);
 });
+
+const WORK_ITEM = "work/20261119-x";
+const WORK_RECORD_WRITES = [
+  `echo x >> ${WORK_ITEM}/comments.jsonl`,
+  `cp /tmp/a ${WORK_ITEM}/waivers.jsonl`,
+  `touch ${WORK_ITEM}/phases/1.approved`,
+  `echo x >> ${WORK_ITEM}/verdicts.jsonl`,
+  `node -e "require('fs').appendFileSync('${WORK_ITEM}/waivers.jsonl','x')"`,
+  `picket drive --run "touch ${WORK_ITEM}/phases/1.approved"`,
+];
+
+test("a spawned agent's write to a kernel-owned work item entry is denied as a kernel record (T-2.1)", (t) => {
+  const judge = judgeIn(t);
+  for (const command of WORK_RECORD_WRITES) assertRecordDenial(judge(command, { agent: SPAWNED_DEVELOPER }), command);
+});
+
+test("reads of work entries and writes to the artifact keep their base decisions for a spawned agent (T-2.2)", (t) => {
+  const judge = judgeIn(t);
+  const decided = (command: string) => judge(command, { agent: SPAWNED_DEVELOPER })?.permissionDecision ?? null;
+  assert.equal(decided(`cat ${WORK_ITEM}/comments.jsonl`), "allow");
+  for (const command of [`echo x > ${WORK_ITEM}/order.md`, `git add -A -- src/a.ts ${WORK_ITEM}/order.md`]) assert.equal(decided(command), null, command);
+});
+
+test("the lead's writes to kernel-owned work entries give no decision, as before the check (T-2.3)", (t) => {
+  const judge = judgeIn(t);
+  for (const command of WORK_RECORD_WRITES) assert.equal(judge(command), null, command);
+});
