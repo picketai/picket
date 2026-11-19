@@ -1,0 +1,21 @@
+services:
+  orders:
+    image: busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    labels:
+      io.github.picketai.role: dependency
+    command: ["sh", "-c", "mkdir -p /www && echo [] > /www/customers && httpd -f -p 8080 -h /www"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/customers"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  orders-sql:
+    image: mcr.microsoft.com/mssql-tools:latest@sha256:62556500522072535cb3df2bb5965333dded9be47000473e9e0f84118e248642
+    labels:
+      io.github.picketai.role: data
+    profiles: ["picket-data"]
+    command: ["/opt/mssql-tools/bin/sqlcmd", "-i", "/picket/run.sql"]
+
+x-picket:
+  version: 1

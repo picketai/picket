@@ -10,7 +10,9 @@ import { hasError, type Finding } from "../../shared/env/rules.mts";
 import { COMPOSE_FILE, ENV_DIR, SCENARIO_DIR } from "../../shared/env/standard.mts";
 import { trialFinding } from "../../shared/env/trial.mts";
 import { environmentStubs } from "../../shared/mocks/stub.mts";
-import { entryFindings } from "../../shared/catalog/entry.mts";
+import { entryFindings, listEntries } from "../../shared/catalog/entry.mts";
+import { loadConfig } from "../../shared/config.mjs";
+import { targetFindings } from "../../shared/data/targets.mts";
 import { listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
 import { scenarioProblems } from "../../shared/scenarios/rules.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -44,13 +46,18 @@ function scenarioCheck(root: string, model: EnvModel, env: NodeJS.ProcessEnv): {
   return { findings: [...scenarios.flatMap((scenario) => scenarioFindings(scenario, services)), ...catalog], scenarios: countByStatus(scenarios) };
 }
 
+function declaredTargetFindings(root: string, env: NodeJS.ProcessEnv): Finding[] {
+  const entries = listEntries(root).flatMap((file) => (file.entry === null ? [] : [file.entry]));
+  return targetFindings(entries, loadConfig(root, env).data_targets);
+}
+
 function environmentReport(engine: Engine, machine: MachineReport, root: string, env: NodeJS.ProcessEnv): EnvCheckReport {
   if (!existsSync(join(root, ENV_DIR, COMPOSE_FILE))) return { ok: false, machine, environment: "missing", findings: [], scenarios: null };
   const modelJson = readModelJson(engine, root);
   const model = readModel(modelJson);
   const trial = trialFinding(root, modelJson);
   const saved = scenarioCheck(root, model, env);
-  const findings = [...environmentStubs(root, model).findings, ...inStepFindings(scanUmbrella(root), model, root), ...(trial ? [trial] : []), ...saved.findings];
+  const findings = [...environmentStubs(root, model).findings, ...inStepFindings(scanUmbrella(root), model, root), ...(trial ? [trial] : []), ...saved.findings, ...declaredTargetFindings(root, env)];
   return { ok: !hasError(findings), machine, environment: "present", findings, scenarios: saved.scenarios };
 }
 

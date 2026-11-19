@@ -9,6 +9,7 @@ import type { EngineRunner, MachineReport } from "../../shared/env/engine.mts";
 import { recordTrial } from "../../shared/env/trial.mts";
 import { fingerprintMatches, parseScenario, writeScenario } from "../../shared/scenarios/format.mts";
 import { parseArgs } from "../../util/args.mts";
+import { writeConfig } from "#test/project.mts";
 import { checkEnvironment, renderCheck, verb, type EnvCheckReport } from "./check.mts";
 
 type Model = Record<string, any>;
@@ -262,4 +263,25 @@ test("a model finding with no service prints the rule alone", () => {
 test("a failing machine renders one missing line per gap and no engine line", () => {
   const machine: MachineReport = { ...MACHINE, ok: false, missing: ["first gap", "second gap"] };
   assert.equal(renderCheck({ ok: false, machine, environment: null, findings: [], scenarios: null }), "missing: first gap\nmissing: second gap");
+});
+
+function dataGuardContext(t: TestContext): Context {
+  const ctx = context(t, { environment: false });
+  cpSync(resolve("test/fixtures/env/data-guard"), ctx.root, { recursive: true });
+  return ctx;
+}
+
+const E14_LINE = "E14 orders-sql: picket data run refuses it until data_targets in .picket/config.json lists its server and database";
+
+test("a sql entry whose data service declares no target fails the check with an E14 line under the service (T-1.6)", (t) => {
+  const outcome = checkEnvironment(dataGuardContext(t), linuxDocker(RECORDED));
+  assert.equal(describeExit(outcome).code, 2);
+  assert.deepEqual(renderCheck(report(outcome)).split("\n").filter((line) => line.startsWith("E14")), [E14_LINE]);
+});
+
+test("once data_targets declares the entry's service, no E14 line appears (T-1.6)", (t) => {
+  const ctx = dataGuardContext(t);
+  writeConfig(ctx.root, { version: 1, data_targets: { "orders-sql": [{ server: "sql01", database: "orders_test" }] } });
+  const lines = renderCheck(report(checkEnvironment(ctx, linuxDocker(RECORDED)))).split("\n");
+  assert.ok(!lines.some((line) => line.startsWith("E14")), lines.join("\n"));
 });

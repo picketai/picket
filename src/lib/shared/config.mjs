@@ -12,7 +12,7 @@ export const CONFIG_FILE = configRel();
 
 export const CONFIG_VERSION = 1;
 
-export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods", "picket_version", "testing"]);
+export const KNOWN_KEYS = Object.freeze(["version", "security_paths", "sources", "lanes", "commands", "extensions", "quality", "mods", "picket_version", "testing", "data_targets"]);
 
 export const TESTING_SETTINGS = Object.freeze(["all", "design", "off"]);
 export const DEFAULT_TESTING = "design";
@@ -36,6 +36,7 @@ export const CONFIG_DEFAULTS = Object.freeze({
   mods: {},
   picket_version: null,
   testing: DEFAULT_TESTING,
+  data_targets: {},
 });
 
 export const QUALITY_FIELDS = Object.freeze({
@@ -193,6 +194,26 @@ function checkTesting(value, warn) {
   return DEFAULT_TESTING;
 }
 
+const TARGET_FIELDS = Object.freeze(["server", "database"]);
+
+function isTarget(value) {
+  return isPlainObject(value) && Object.keys(value).every((field) => TARGET_FIELDS.includes(field)) && TARGET_FIELDS.every((field) => typeof value[field] === "string" && value[field] !== "");
+}
+
+function checkDataTargets(value, warn) {
+  if (value === undefined) return {};
+  if (!isPlainObject(value)) {
+    warn("data_targets must be an object; no data targets declared");
+    return {};
+  }
+  const declared = Object.entries(value).filter(([service, targets]) => {
+    const valid = Array.isArray(targets) && targets.length > 0 && targets.every(isTarget);
+    if (!valid) warn(`data_targets.${service} must be a non-empty list of { "server", "database" } with both set; it declares nothing`);
+    return valid;
+  });
+  return Object.fromEntries(declared.map(([service, targets]) => [service, targets.map(({ server, database }) => ({ server, database }))]));
+}
+
 function commandProblem(name, command) {
   if (!COMMAND_NAMES.includes(name)) return `unknown key "commands.${name}"`;
   if (typeof command !== "string" || !command.trim()) return `commands.${name} must be a non-empty string; detection stands`;
@@ -217,7 +238,8 @@ export function loadConfig(root, env = process.env) {
   const mods = checkMods(raw.mods, warn);
   const picket_version = checkPicketVersion(raw.picket_version, warn);
   const testing = checkTesting(raw.testing, warn);
-  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, picket_version, testing, error, warnings };
+  const data_targets = checkDataTargets(raw.data_targets, warn);
+  return { version: CONFIG_VERSION, security_paths, sources, lanes, commands, extensions, quality, mods, picket_version, testing, data_targets, error, warnings };
 }
 
 function resolveSource(name, decl, env) {

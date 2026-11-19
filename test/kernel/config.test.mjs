@@ -94,7 +94,7 @@ test("malformed JSON keeps the defaults and sets error (T-5.1)", (t) => {
 
 test("no config file is the defaults with no error and no warning", (t) => {
   withConfig(t,undefined, (root) => {
-    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, picket_version: null, testing: "design", error: null, warnings: [] });
+    assert.deepEqual(loadConfig(root, {}), { version: 1, security_paths: DEFAULT_SECURITY_PATHS, sources: [], lanes: DEFAULT_LANES, commands: {}, extensions: [], quality: {}, mods: {}, picket_version: null, testing: "design", data_targets: {}, error: null, warnings: [] });
   });
 });
 
@@ -218,5 +218,36 @@ test("the session switch loads with no warning, and a value that is not a boolea
     const config = loadConfig(root, {});
     assert.deepEqual(config.mods, {});
     assert.deepEqual(config.warnings, ["mods.session must be true or false; the mod stays on"]);
+  });
+});
+
+test("data_targets loads each service's declared servers and databases with no warning (T-1.3)", (t) => {
+  const data_targets = { "orders-sql": [{ server: "sql01", database: "orders_test" }, { server: "sql02", database: "orders_test" }] };
+  withConfig(t, { version: 1, data_targets }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.data_targets, data_targets);
+    assert.deepEqual(config.warnings, []);
+  });
+  assert.deepEqual(SCHEMA.properties.data_targets.additionalProperties.items.required, ["server", "database"]);
+});
+
+test("a malformed data_targets warns naming data_targets and declares nothing for that service (T-1.3)", (t) => {
+  withConfig(t, { version: 1, data_targets: ["orders-sql"] }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.data_targets, {});
+    assert.deepEqual(config.warnings, ["data_targets must be an object; no data targets declared"]);
+  });
+  const malformed = {
+    empty: [],
+    "not-a-list": { server: "sql01", database: "orders_test" },
+    "no-server": [{ database: "orders_test" }],
+    "empty-database": [{ server: "sql01", database: "" }],
+    "one-bad": [{ server: "sql01", database: "orders_test" }, { server: "sql02" }],
+    "extra-field": [{ server: "sql01", database: "orders_test", port: 1433 }],
+  };
+  withConfig(t, { version: 1, data_targets: { ...malformed, "orders-sql": [{ server: "sql01", database: "orders_test" }] } }, (root) => {
+    const config = loadConfig(root, {});
+    assert.deepEqual(config.data_targets, { "orders-sql": [{ server: "sql01", database: "orders_test" }] });
+    assert.deepEqual(config.warnings, Object.keys(malformed).map((service) => `data_targets.${service} must be a non-empty list of { "server", "database" } with both set; it declares nothing`));
   });
 });

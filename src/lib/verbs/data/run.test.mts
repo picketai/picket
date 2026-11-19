@@ -8,7 +8,7 @@ import { fileDigest, recordApproval } from "../../shared/data/approvals.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { fixedContext } from "#test/context.mts";
-import { openItem, withProject } from "#test/project.mts";
+import { openItem, withProject, writeConfig } from "#test/project.mts";
 import { renderRun, runSqlEntry, type DataRunReport } from "./run.mts";
 
 const CONNECTION = "Server=sql01;Database=orders_test;User Id=qa;Password=s3cret";
@@ -32,8 +32,11 @@ function engine(status = 0, stderr = ""): Engine {
   return { runner, calls };
 }
 
+const DECLARED = { "orders-sql": [{ server: "sql01", database: "orders_test" }] };
+
 function project(t: TestContext, { approve = true }: { approve?: boolean } = {}): { root: string; id: WorkId } {
   const root = withProject(t);
+  writeConfig(root, { version: 1, data_targets: DECLARED });
   const env = join(root, ".picket", "env");
   mkdirSync(join(env, "data"), { recursive: true });
   mkdirSync(join(env, "catalog"), { recursive: true });
@@ -121,4 +124,45 @@ test("data run refuses a file never approved or changed since approval, an unset
   const { runner, calls } = engine();
   assert.equal(refusal(() => runSqlEntry(context(root), runner, { id, entry: "customer" })), `${id} is done; data run runs only for an open or blocked item`);
   assert.deepEqual(calls, []);
+});
+
+test("a connection to a server or database its service does not declare is refused before compose, naming the service and the pair (T-1.4)", (t) => {
+  const { root, id } = project(t);
+  const undeclared = [
+    ["Server=sql01;Database=orders_live;User Id=qa;Password=s3cret", "sql01", "orders_live"],
+    ["Server=SQL01;Database=orders_test;User Id=qa;Password=s3cret", "SQL01", "orders_test"],
+  ];
+  for (const [connection, server, database] of undeclared) {
+    const { runner, calls } = engine();
+    const message = refusal(() => runSqlEntry(context(root, { [VARIABLE]: connection }), runner, { id, entry: "customer" }));
+    assert.equal(message, `orders-sql may reach only the targets data_targets.orders-sql in .picket/config.json lists, and it does not list server ${server}, database ${database}. Check them, then add {"server":"${server}","database":"${database}"} to that list`);
+    assert.ok(!message.includes("s3cret") && !message.includes("User Id"), message);
+    assert.deepEqual(calls, []);
+  }
+});
+
+test("a connection that does not name one server and one database is refused before compose (T-1.4)", (t) => {
+  const { root, id } = project(t);
+  const { runner, calls } = engine();
+  const message = refusal(() => runSqlEntry(context(root, { [VARIABLE]: "Server=sql01;Database=orders_test;Data Source=prod01;Password=s3cret" }), runner, { id, entry: "customer" }));
+  assert.equal(message, `${VARIABLE} does not name one server and one database: it names the server more than once (server, data source, address, addr, host)`);
+  assert.deepEqual(calls, []);
+});
+
+test("a project with no data_targets refuses every run before compose", (t) => {
+  const { root, id } = project(t);
+  writeConfig(root, { version: 1 });
+  const { runner, calls } = engine();
+  assert.match(refusal(() => runSqlEntry(context(root), runner, { id, entry: "customer" })), /^orders-sql may reach only the targets data_targets\.orders-sql/);
+  assert.deepEqual(calls, []);
+});
+
+test("a declared target with an approved file calls compose once and the run row holds that pair (T-1.5)", (t) => {
+  const { root, id } = project(t);
+  const { runner, calls } = engine();
+  const outcome = runSqlEntry(context(root), runner, { id, entry: "customer" });
+  assert.equal(describeExit(outcome).code, 0);
+  assert.equal(calls.length, 1);
+  const row = JSON.parse(readFileSync(join(root, ".picket", "state", "data", "runs.jsonl"), "utf8"));
+  assert.deepEqual([row.server, row.database], ["sql01", "orders_test"]);
 });

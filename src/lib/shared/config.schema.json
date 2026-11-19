@@ -105,6 +105,24 @@
       "description": "Which lanes the tester checks after the cumulative review: all for order and design items, design for design items only, off for none. A design or order item is tested only when it declares an HTTP check and the project has .picket/env/compose.yaml.",
       "enum": ["all", "design", "off"],
       "default": "design"
+    },
+    "data_targets": {
+      "description": "The servers and databases each data service may reach, keyed by the compose service a sql entry names. picket data run refuses a connection whose server and database, compared exactly, are not on its service's list.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "properties": {
+            "server": { "type": "string", "minLength": 1 },
+            "database": { "type": "string", "minLength": 1 }
+          },
+          "required": ["server", "database"],
+          "additionalProperties": false
+        }
+      },
+      "default": {}
     }
   },
   "additionalProperties": false
