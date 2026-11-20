@@ -371,7 +371,7 @@ To switch background updates off for the project, set `"autoUpdate": false` on `
 
 Coming from 1.0.0-alpha.5 or earlier, where Picket was a global npm install: run `npx @picketai/picket@alpha init` once in each project, which retires the old mod plugins and points the marketplace at the npm package, then remove the global copy with `npm uninstall -g @picketai/picket`.
 
-Release 1.0.0-alpha.4 renamed six verbs and removed one. An old name still answers with its new one: run the old verb `new` and `picket` prints `picket: "new" is now "open"`. The full list is in the [changelog](../CHANGELOG.md).
+Release 1.0.0-alpha.4 renamed six verbs and removed one. An old name still answers with its new one: run the old verb `new` and `picket` prints `picket: "new" is now "open"`. The full list is in the [changelog](https://github.com/picketai/picket/blob/trunk/CHANGELOG.md).
 
 ## Removing Picket from a project
 

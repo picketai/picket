@@ -11,15 +11,15 @@ Both artifacts are private. Open them from the owner's account, or ask the owner
 
 ## What each folder holds
 
-`docs/design/picketai-design-system/project/` holds the brand book `docs/design/picketai-design-system/project/README.md` (read it first), every token with its value and usage in `docs/design/picketai-design-system/project/tokens.json`, the cover `docs/design/picketai-design-system/project/components/Cover/preview.html` and the index `docs/design/picketai-design-system/project/design-system.json`.
+`design/picketai-design-system/project/` holds the brand book `design/picketai-design-system/project/README.md` (read it first), every token with its value and usage in `design/picketai-design-system/project/tokens.json`, the cover `design/picketai-design-system/project/components/Cover/preview.html` and the index `design/picketai-design-system/project/design-system.json`.
 
-`docs/design/status-line-canvas/project/` holds the board layout and pages in `docs/design/status-line-canvas/project/canvas.json`, one `.dc.html` file per artboard, and the design system's tokens as the canvas installed them in `docs/design/status-line-canvas/project/ds/picketai/tokens.json`.
+`design/status-line-canvas/project/` holds the board layout and pages in `design/status-line-canvas/project/canvas.json`, one `.dc.html` file per artboard, and the design system's tokens as the canvas installed them in `design/status-line-canvas/project/ds/picketai/tokens.json`.
 
 The design system's tokens come from `src/themes/picketai.json` and `src/lib/shared/styling/palette.mts`. Change those files first, then re-sync the design system, then refresh this copy.
 
 ## Refresh
 
-Ask Claude Code to read each artifact's project files into its folder here, for example: "refresh docs/design from its two artifacts". The Artifact tool's `read` action with `out_dir` set to the folder writes each file at its published path. List the artifact's files first, so a new artboard is not missed.
+Ask Claude Code to read each artifact's project files into its folder here, for example: "refresh design/ from its two artifacts". The Artifact tool's `read` action with `out_dir` set to the folder writes each file at its published path. List the artifact's files first, so a new artboard is not missed.
 
 Then review the diff and commit it on its own: `docs(design): refresh from artifacts`.
 
