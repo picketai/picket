@@ -19,6 +19,8 @@ const EXECUTABLE_MODE = "100755";
 
 const PLUGIN_HOOK_PREFIX = "${CLAUDE_PLUGIN_ROOT}/hooks/";
 
+const CONTAINER_IMPORTS = { [join(SRC, "lib", "shared", "browser", "driver.mjs")]: ["playwright-core"] };
+
 const SPECIFIER_PATTERNS = [/\bfrom\s+["']([^"']+)["']/g, /\bimport\s+["']([^"']+)["']/g, /\bimport\(\s*["']([^"']+)["']/g];
 
 function readJson(path) {
@@ -51,7 +53,7 @@ function staysInside(root, file, specifier) {
 function importsLeavingSrc() {
   return modulesUnder(SRC).flatMap((file) =>
     importSpecifiers(readFileSync(file, "utf8"))
-      .filter((specifier) => !staysInside(SRC, file, specifier))
+      .filter((specifier) => !staysInside(SRC, file, specifier) && !(CONTAINER_IMPORTS[file] ?? []).includes(specifier))
       .map((specifier) => `${file}: ${specifier}`),
   );
 }
@@ -121,7 +123,7 @@ test("a folder under skills/ without a SKILL.md is not a skill", (t) => {
   assert.equal(skillFolders(join(SRC, "skills")).length, 17);
 });
 
-test("every import under src/ is a Node built-in or a path inside src/", () => {
+test("every import under src/ is a Node built-in, a path inside src/, or the vendored package the browser driver loads in its container", () => {
   assert.deepEqual(importsLeavingSrc(), []);
 });
 

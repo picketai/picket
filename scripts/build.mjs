@@ -1,6 +1,6 @@
 import { build } from "esbuild";
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { HOOKS } from "../src/lib/hooks.mts";
@@ -235,6 +235,17 @@ export function buildMods(mods = MODS) {
   writeMarketplace();
 }
 
+const VENDORED_PACKAGES = ["playwright-core"];
+export const DIST_VENDOR = join(DIST, "lib", "vendor");
+
+export function copyVendored(modules = join(REPO, "node_modules"), target = DIST_VENDOR) {
+  for (const name of VENDORED_PACKAGES) {
+    const from = join(modules, name);
+    if (!existsSync(from)) throw new Error(`${name} is missing from node_modules: run npm ci`);
+    cpSync(from, join(target, name), { recursive: true });
+  }
+}
+
 const PACKAGE = join(REPO, "package.json");
 export const DIST_PACKAGE = join(DIST, "package.json");
 const PACKAGE_FIELDS = ["name", "version", "description", "license", "author", "repository", "homepage", "bugs", "type", "engines"];
@@ -263,6 +274,7 @@ export async function buildAll() {
   await build(moduleOptions(files.filter(isBuiltModule)));
   await Promise.all([...Object.keys(HOOKS).map((name) => build(entryOptions(name))), build(statuslineOptions())]);
   buildMods();
+  copyVendored();
   writePackage();
   await writeReferencePages();
 }

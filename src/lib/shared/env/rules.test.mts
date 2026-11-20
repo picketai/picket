@@ -86,3 +86,32 @@ test("hasError holds for any error finding and not for pending lines alone", () 
   assert.equal(hasError([{ rule: "E9", service: "billing", level: "pending", message: "Dockerfile" }]), false);
   assert.equal(hasError([]), false);
 });
+
+const PLAYWRIGHT = "mcr.microsoft.com/playwright:v1.65.1-noble@sha256:2c3e4b1f0a9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b";
+const OLD_PLAYWRIGHT = "mcr.microsoft.com/playwright:v1.50.0-noble@sha256:9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e";
+
+function browser(name: string, change: Partial<EnvService> = {}): EnvService {
+  const [first] = fixture().services;
+  return { ...first, name, role: "browser", build: null, image: PLAYWRIGHT, healthcheck: null, ports: [], volumes: [], profiles: [], environment: {}, labels: {}, ...change };
+}
+
+function withServices(...services: EnvService[]): EnvModel {
+  const model = fixture();
+  return { ...model, services: [...model.services, ...services] };
+}
+
+test("E1 accepts the browser role, and E3 asks no healthcheck of a browser service (T-2.1)", () => {
+  assert.deepEqual(staticFindings(withServices(browser("browser"))), []);
+});
+
+test("E15: a browser image of another Playwright version is one finding naming the image and the version (T-2.1)", () => {
+  assert.deepEqual(staticFindings(withServices(browser("browser", { image: OLD_PLAYWRIGHT }))), [
+    { rule: "E15", service: "browser", level: "error", message: `image ${OLD_PLAYWRIGHT} is not Playwright v1.65.1: use mcr.microsoft.com/playwright:v1.65.1-<distro> pinned by digest` },
+  ]);
+});
+
+test("E15: a second browser service and a browser service with build are findings under their names (T-2.1)", () => {
+  assert.deepEqual(staticFindings(withServices(browser("browser"), browser("chrome"))), [{ rule: "E15", service: "chrome", level: "error", message: "browser is the browser service already: keep one" }]);
+  const built = browser("browser", { build: { context: "/umbrella/browser", dockerfile: null } });
+  assert.deepEqual(staticFindings(withServices(built)), [{ rule: "E15", service: "browser", level: "error", message: "a browser service runs the Playwright image, not a build: remove build" }]);
+});

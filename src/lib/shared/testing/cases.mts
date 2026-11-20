@@ -9,6 +9,7 @@ import { listMocks } from "../mocks/definition.mts";
 import { catalogOf } from "../catalog/resolve.mts";
 import { stackMocks, stubbedMocks, withStubPorts } from "../mocks/stub.mts";
 import { FORMAT, parseScenario, writeScenario, type Card, type ScenarioHeader } from "../scenarios/format.mts";
+import { browserStack, withDriverPort } from "../browser/service.mts";
 import { browserAdapter } from "../scenarios/browser.mts";
 import type { HttpAdapter } from "../scenarios/http.mts";
 import { CANDIDATE_ID } from "../scenarios/keep.mts";
@@ -19,7 +20,7 @@ import type { CaseKind, CaseOutcome, CaseRow } from "./results.mts";
 
 export type CaseSpec = { criterion: string; kind: CaseKind; intent: string };
 export type CaseRun = { outcome: CaseOutcome; attempts: number; unstable: boolean; detail: string; mocks: string[]; gaps: string[] };
-export type ItemStack = { urls: Record<string, string>; services: string[]; stubs: Record<string, string>; ownMocks: string[] };
+export type ItemStack = { urls: Record<string, string>; services: string[]; stubs: Record<string, string>; ownMocks: string[]; driver: string | null; pages: Record<string, string> };
 export type CaseDeps = { runner: EngineRunner; adapter: HttpAdapter; sleep: (ms: number) => Promise<void>; random: (size: number) => Uint8Array };
 export type RunCaseInput = Omit<ReplayInput, "scenarios">;
 
@@ -52,8 +53,9 @@ export function stackOf(root: string, engine: Engine, state: Pick<WorkState, "id
   const model = readModel(readModelJson(engine, root));
   const started = model.services.filter((service) => service.profiles.length === 0);
   const mocks = listMocks(root);
-  const urls = serviceEndpoints(engine, root, stack, entry.files, withStubPorts(started, stubbedMocks(model, mocks)));
-  return { urls, services: started.map((service) => service.name), ...stackMocks(model, mocks, urls) };
+  const ported = withDriverPort(withStubPorts(started, stubbedMocks(model, mocks)));
+  const urls = serviceEndpoints(engine, root, stack, entry.files, ported);
+  return { urls, services: started.map((service) => service.name), ...stackMocks(model, mocks, urls), ...browserStack(ported, urls) };
 }
 
 export function openItemStack(ctx: Context, runner: EngineRunner, state: Pick<WorkState, "id" | "source">): ItemStack {
@@ -70,8 +72,8 @@ export function runCaseInput(ctx: Context, deps: CaseDeps, stack: ItemStack): Ru
     ownMocks: stack.ownMocks,
     catalog: catalogOf(ctx.root),
     adapter: deps.adapter,
-    browser: browserAdapter(deps.adapter, null),
-    pages: {},
+    browser: browserAdapter(deps.adapter, stack.driver),
+    pages: stack.pages,
     env: ctx.env,
     today: ctx.now().toISOString().slice(0, DAY_LENGTH),
     newRunKey: () => newRunKey(deps.random(RUN_KEY_BYTES)),

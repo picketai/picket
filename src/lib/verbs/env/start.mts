@@ -9,6 +9,7 @@ import { hasError } from "../../shared/env/rules.mts";
 import { serviceEndpoints, unprovedBuild, writeOverride } from "../../shared/env/stack-start.mts";
 import { activeClaim, readStacks, recordStack } from "../../shared/env/stacks.mts";
 import { COMPOSE_FILE, ENV_DIR, itemKey, stackName, urlVariable } from "../../shared/env/standard.mts";
+import { browserStack, prepareBrowser, withDriverPort, type BrowserStack } from "../../shared/browser/service.mts";
 import { environmentStubs, prepareStubs, withStubPorts, type EnvironmentStubs } from "../../shared/mocks/stub.mts";
 import { readLayout } from "../../shared/repos.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -19,7 +20,7 @@ import { UsageError, type Args } from "../../util/args.mts";
 export type StartInput = { id: WorkId };
 export type BuiltApp = { service: string; checkout: string; version: string };
 export type StartReport = { ok: boolean; machine: MachineReport; stack: string | null; apps: BuiltApp[]; urls: Record<string, string>; endpoints: Record<string, string> };
-export type StartedStack = { report: StartReport; model: EnvModel; key: string };
+export type StartedStack = { report: StartReport; model: EnvModel; key: string; browsing: BrowserStack };
 
 const CLOSED_STATUSES = ["done", "abandoned"];
 
@@ -69,14 +70,16 @@ export function startStack(ctx: Context, engine: Engine, machine: MachineReport,
   const started = model.services.filter((s) => s.profiles.length === 0);
   const apps = started.filter((s) => s.role === "app" && s.build !== null);
   const sources = apps.map((service) => sourceFor(root, layout, service, env));
-  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, id, prepareStubs(root, stack, model, stubs.mocks)))];
+  const overlays = { ...prepareStubs(root, stack, model, stubs.mocks), ...prepareBrowser(root, stack, model) };
+  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, overrideDoc(model, sources, key, id, overlays))];
   composeOrRefuse(engine, root, stack, files, ["build", ...apps.map((s) => s.name)]);
   refuseUnprovedBuild(engine, sources, key);
   recordStack(root, stack, { item: id, session, files, engine: { name: engine.name, program: engine.program, prefix: engine.prefix }, started: now().toISOString() });
   composeOrRefuse(engine, root, stack, files, ["up", "--detach", "--wait"]);
   const built = sources.map(({ service, checkout, version }) => ({ service, checkout: relative(root, checkout).replaceAll("\\", "/") || ".", version }));
-  const endpoints = serviceEndpoints(engine, root, stack, files, withStubPorts(started, stubs.stubbed));
-  return { report: { ok: true, machine, stack, apps: built, urls: urlVariables(endpoints), endpoints }, model, key };
+  const ported = withDriverPort(withStubPorts(started, stubs.stubbed));
+  const endpoints = serviceEndpoints(engine, root, stack, files, ported);
+  return { report: { ok: true, machine, stack, apps: built, urls: urlVariables(endpoints), endpoints }, model, key, browsing: browserStack(ported, endpoints) };
 }
 
 export function startEnvironment(ctx: Context, runner: EngineRunner, id: WorkId): Outcome<StartReport> {

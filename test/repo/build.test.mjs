@@ -6,6 +6,7 @@ import { join, relative } from "node:path";
 import { BANNER, DIST, SRC, STATUSLINE_BUNDLE, distPath, isBuiltModule, isCopied, outputCollisions, sourceFiles, swapInto, withBanner } from "../../scripts/build.mjs";
 
 const SHEBANG = "#!/usr/bin/env node";
+const VENDORED = "lib/vendor/";
 const RELATIVE_IMPORT = /(\bfrom\s+|\bimport\s*\(?\s*)["']\.\.?\//;
 
 function distFiles(dir = DIST) {
@@ -95,9 +96,9 @@ test("outputCollisions names both sources when an .mjs and an .mts build to the 
   assert.deepEqual(outputCollisions(files), ["src/lib/x.mjs and src/lib/x.mts both build to dist/lib/x.mjs"]);
 });
 
-test("every .mjs in dist/ starts with the generated-file banner", () => {
+test("every .mjs in dist/ but the vendored packages starts with the generated-file banner", () => {
   const missing = distFiles()
-    .filter((file) => file.endsWith(".mjs") && bannerLine(readFileSync(file, "utf8")) !== BANNER)
+    .filter((file) => file.endsWith(".mjs") && !distRel(file).startsWith(VENDORED) && bannerLine(readFileSync(file, "utf8")) !== BANNER)
     .map(distRel);
   assert.deepEqual(missing, []);
 });

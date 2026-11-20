@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { readJson } from "../../util/io.mts";
 import { STATE_FILES, statePath } from "../paths.mts";
 import type { MockFile } from "../mocks/definition.mts";
+import { prepareBrowser } from "../browser/service.mts";
 import { prepareStubs } from "../mocks/stub.mts";
 import { nestedRepos, type ItemLayout } from "../repos.mts";
 import { overrideDoc, sourceFor, type ServiceSource } from "./build-plan.mts";
@@ -58,8 +59,8 @@ function removeTrialImages(engine: Engine): number {
 }
 
 export function runTrial(engine: Engine, root: string, model: EnvModel, sources: ServiceSource[], mocks: MockFile[]): TrialResult {
-  const stubs = prepareStubs(root, TRIAL_STACK, model, mocks);
-  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, overrideDoc(model, sources, TRIAL_KEY, TRIAL_KEY, stubs))];
+  const overlays = { ...prepareStubs(root, TRIAL_STACK, model, mocks), ...prepareBrowser(root, TRIAL_STACK, model) };
+  const files = [join(root, ENV_DIR, COMPOSE_FILE), writeOverride(root, overrideDoc(model, sources, TRIAL_KEY, TRIAL_KEY, overlays))];
   const apps = sources.map((s) => s.service);
   let failure: string | null = null;
   let rounds = 0;

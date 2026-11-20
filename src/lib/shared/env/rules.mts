@@ -1,3 +1,4 @@
+import { BROWSER_ROLE, PLAYWRIGHT_VERSION } from "../browser/service.mts";
 import type { EnvModel, EnvService } from "./model.mts";
 import { DATA_PROFILE, isRole, LONG_RUNNING, ROLE_LABEL, ROLES, X_PICKET } from "./standard.mts";
 
@@ -45,6 +46,20 @@ function xPicketMessages(model: EnvModel): string[] {
 }
 
 const MODEL_RULE = "E8";
+const BROWSER_RULE = "E15";
+const PLAYWRIGHT_TAG = `:v${PLAYWRIGHT_VERSION}-`;
+
+function browserMessages(service: EnvService, first: EnvService): string[] {
+  const second = service === first ? [] : [`${first.name} is the browser service already: keep one`];
+  if (service.build !== null) return [...second, "a browser service runs the Playwright image, not a build: remove build"];
+  const tagged = service.image === null || service.image.includes(PLAYWRIGHT_TAG);
+  return [...second, ...(tagged ? [] : [`image ${service.image} is not Playwright v${PLAYWRIGHT_VERSION}: use mcr.microsoft.com/playwright${PLAYWRIGHT_TAG}<distro> pinned by digest`])];
+}
+
+function browserFindings(model: EnvModel): Finding[] {
+  const browsers = model.services.filter((service) => service.role === BROWSER_ROLE);
+  return browsers.flatMap((service) => browserMessages(service, browsers[0]).map((message) => error(BROWSER_RULE, service.name, message)));
+}
 
 function error(rule: string, service: string | null, message: string): Finding {
   return { rule, service, level: "error", message };
@@ -52,7 +67,7 @@ function error(rule: string, service: string | null, message: string): Finding {
 
 export function staticFindings(model: EnvModel, stubbed: readonly string[] = []): Finding[] {
   const serviceFindings = SERVICE_RULES.flatMap(({ rule, check }) => model.services.flatMap((service) => check(service, stubbed).map((message) => error(rule, service.name, message))));
-  return [...serviceFindings, ...xPicketMessages(model).map((message) => error(MODEL_RULE, null, message))];
+  return [...serviceFindings, ...browserFindings(model), ...xPicketMessages(model).map((message) => error(MODEL_RULE, null, message))];
 }
 
 export function hasError(findings: Finding[]): boolean {

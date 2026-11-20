@@ -18,6 +18,8 @@ const SHIPPED = [
   ...Object.keys(MODS).map((name) => `hooks/mods/${name}/hooks/index.tsx`),
   "hooks/mods/types/index.d.ts",
   "statusline.mjs",
+  "lib/vendor/playwright-core/package.json",
+  "lib/vendor/playwright-core/LICENSE",
   "LICENSE",
   "README.md",
 ];

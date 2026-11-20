@@ -13,6 +13,7 @@ import { environmentStubs, prepareStubs, stackMocks, withStubPorts, type Environ
 import { statePath } from "../paths.mts";
 import type { ItemLayout } from "../repos.mts";
 import type { WorkState } from "../work/state.mts";
+import { browserStack, prepareBrowser, withDriverPort } from "../browser/service.mts";
 import { browserAdapter } from "./browser.mts";
 import type { SavedScenario } from "./files.mts";
 import { replayScenarios, type ReplayInput, type ScenarioRun } from "./replay.mts";
@@ -123,15 +124,18 @@ async function startAndReplay(input: BaseInput, checkouts: BaseCheckout[], stack
   const stubs = checkedStubs(baseRoot, model);
   const sources = baseSources(baseRoot, model, checkouts);
   built.baseRoot = baseRoot;
-  const override = overrideDoc(model, sources, key, state.id, prepareStubs(root, stack, model, stubs.mocks));
+  const overlays = { ...prepareStubs(root, stack, model, stubs.mocks), ...prepareBrowser(root, stack, model) };
+  const override = overrideDoc(model, sources, key, state.id, overlays);
   built.files.push(join(baseRoot, ENV_DIR, COMPOSE_FILE), writeOverride(root, stack, override));
   built.images.push(...sources.map((source) => imageName(source.service, key, source.version)));
   compose(engine, baseRoot, stack, built.files, ["build", ...sources.map((source) => source.service)]);
   refuseUnprovedBuild(engine, sources, key);
   compose(engine, baseRoot, stack, built.files, ["up", "--detach", "--wait"]);
   const started = model.services.filter((service) => service.profiles.length === 0);
-  const urls = serviceEndpoints(engine, baseRoot, stack, built.files, withStubPorts(started, stubs.stubbed));
-  const browsing = { browser: browserAdapter(input.replay.adapter, null), pages: {} };
+  const ported = withDriverPort(withStubPorts(started, stubs.stubbed));
+  const urls = serviceEndpoints(engine, baseRoot, stack, built.files, ported);
+  const { driver, pages } = browserStack(ported, urls);
+  const browsing = { browser: browserAdapter(input.replay.adapter, driver), pages };
   const runs = await replayScenarios({ ...input.replay, ...browsing, scenarios, services: model.services.map((service) => service.name), urls, ...stackMocks(model, stubs.mocks, urls), catalog: catalogOf(baseRoot) });
   return { runs, versions: Object.fromEntries(sources.map((source) => [source.service, source.version])) };
 }

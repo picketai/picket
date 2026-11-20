@@ -5,7 +5,7 @@ import type { WorkState } from "../work/state.mts";
 export const LABEL_PREFIX = "io.github.picketai.";
 export const ROLE_LABEL = `${LABEL_PREFIX}role`;
 export const ITEM_LABEL = `${LABEL_PREFIX}item`;
-export const ROLES = ["app", "dependency", "mock", "data", "seed"] as const;
+export const ROLES = ["app", "dependency", "mock", "data", "seed", "browser"] as const;
 export type Role = (typeof ROLES)[number];
 export const LONG_RUNNING: readonly Role[] = ["app", "dependency", "mock"];
 export const DATA_PROFILE = "picket-data";
