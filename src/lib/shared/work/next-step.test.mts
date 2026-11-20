@@ -6,6 +6,8 @@ import { ACTION_TEXT } from "./action-text.mts";
 import { instanceTag } from "./send.mts";
 import type { ItemLayout } from "../repos.mts";
 import { snapshotOf, type PhaseInput, type SnapshotInput } from "#test/snapshot.mts";
+import type { VerdictRow } from "./verdict-log.mts";
+import type { ReplyRow } from "./replies.mts";
 
 const SECURITY_PATHS = ["src/auth/"];
 
@@ -347,6 +349,42 @@ test("a reviewed checkpoint phase lets phase 4 start, rejection row or not (T-1.
     const { action, phase } = step({ lane: "design", phases, verdicts });
     assert.deepEqual([action, phase], ["implement_phase", 4]);
   }
+});
+
+const INCIDENT_ROWS = [
+  { ts: "2026-11-20T18:00:18.270Z", agent: "architect", verdict: "ARTIFACT WRITTEN", phase: 1, scope: null, through: null },
+  { ts: "2026-11-20T18:15:05.919Z", agent: "architect", verdict: "AMENDED", phase: 1, scope: null, through: null },
+  { ts: "2026-11-20T18:21:17.747Z", agent: "developer", verdict: "PHASE DONE", phase: 1, scope: null, through: null },
+  { ts: "2026-11-20T18:22:20.426Z", agent: "user", verdict: "approved", phase: 1, scope: null, through: 3 },
+  { ts: "2026-11-20T18:35:14.325Z", agent: "developer", verdict: "PHASE DONE", phase: 2, scope: null, through: 3 },
+  { ts: "2026-11-20T18:41:10.887Z", agent: "developer", verdict: "PHASE DONE", phase: 3, scope: null, through: 3 },
+  { ts: "2026-11-20T18:46:47.868Z", agent: "reviewer", verdict: "CHANGES REQUIRED", phase: null, scope: "cumulative", through: null },
+  { ts: "2026-11-20T18:50:13.039Z", agent: "developer", verdict: "PHASE DONE", phase: 3, scope: null, through: null },
+  { ts: "2026-11-20T18:51:05.575Z", agent: "developer", verdict: "PHASE STALLED", phase: 3, scope: null, through: null },
+];
+const INCIDENT_CONTINUE: ReplyRow = { ts: "2026-11-20T18:54:19.656Z", session: "S", action: "resolve_block", phase: null, reply: "c", fresh: true };
+const INCIDENT_FIXED = { ts: "2026-11-20T18:54:39.690Z", agent: "developer", verdict: "PHASE DONE", phase: 3, scope: null, through: null };
+const CUMULATIVE_FIX = { action: "fix_findings", actor: "developer", phase: 3, review: "cumulative", detail: "the cumulative review returned CHANGES REQUIRED; fix its findings" };
+
+function incident(verdicts: Partial<VerdictRow>[], replies: ReplyRow[] = [INCIDENT_CONTINUE]): any {
+  return step({ status: "open", phases: numbered(3, { done: true, approved: true }), verdicts, replies });
+}
+
+test("a continue at a stall after a done fix round sends the developer back to the cumulative findings (T-1.1)", () => {
+  assert.deepEqual(incident(INCIDENT_ROWS), CUMULATIVE_FIX);
+});
+
+test("a PHASE DONE after the stall sends the item to the cumulative review; a lone stall keeps the findings open (T-1.2)", () => {
+  assert.equal(incident([...INCIDENT_ROWS, INCIDENT_FIXED]).action, "review_cumulative");
+  const loneStall = [row("approved"), row("CHANGES REQUIRED", "cumulative"), { ...row("PHASE STALLED"), agent: "developer", ts: "2026-10-23T10:01:00.000Z" }];
+  assert.deepEqual(incident(loneStall, [{ ...INCIDENT_CONTINUE, ts: "2026-10-23T10:02:00.000Z" }]), CUMULATIVE_FIX);
+});
+
+test("a stall after a done checkpoint fix keeps the checkpoint findings open; a done alone sends it back to review (T-1.3)", () => {
+  const stalled = { ...DEVELOPER_DONE, verdict: "PHASE STALLED" };
+  const fix = step({ lane: "design", phases: checkpointed(), verdicts: [CHECKPOINT_REJECTION, DEVELOPER_DONE, stalled] });
+  assert.deepEqual([fix.action, fix.actor, fix.phase, fix.review], ["fix_findings", "developer", 3, "checkpoint"]);
+  assert.equal(step({ lane: "design", phases: checkpointed(), verdicts: [CHECKPOINT_REJECTION, DEVELOPER_DONE] }).action, "review_checkpoint");
 });
 
 test("the first unfinished phase goes to the developer", () => {

@@ -111,7 +111,12 @@ const TEST_FORMS: readonly Form[] = [
   { pattern: /^(?:x|abandon)$/i, letter: "x", match: () => ({ kind: "abandon" }) },
 ];
 
-const CASE_CAP_FORMS: readonly Form[] = [{ pattern: /^[1-9]\d*$/, letter: null, match: (m) => ({ kind: "case_cap", cases: Number(m[0]) }) }];
+function caseCap(m: RegExpMatchArray): Matched | null {
+  const cases = Number(m[0]);
+  return Number.isSafeInteger(cases) ? { kind: "case_cap", cases } : null;
+}
+
+const CASE_CAP_FORMS: readonly Form[] = [{ pattern: /^[1-9]\d*$/, letter: null, match: caseCap }];
 
 function formsFor(step: NextStep, lane: Lane): readonly Form[] {
   if (lane === "research") return step.action === "approve_phase" ? RESEARCH_FORMS : [];

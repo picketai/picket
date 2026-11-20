@@ -184,6 +184,25 @@ test("at a stall, c reopens for developer-2, d abandons an order item, x abandon
   assert.equal(readState(abandoned.root, abandoned.id).status, "abandoned");
 });
 
+test("c at a stall after a done cumulative fix sends developer-2 back to the cumulative review's findings (T-1.4)", async (t) => {
+  const { root, id } = item(t);
+  for (const n of [1, 2, 3]) {
+    setMarker(root, id, n, "done", new Date());
+    setMarker(root, id, n, "approved", new Date());
+  }
+  appendVerdict(root, id, { agent: "reviewer", verdict: "CHANGES REQUIRED", phase: null, scope: "cumulative", through: null }, new Date("2026-10-29T09:00:00.000Z"));
+  appendVerdict(root, id, { agent: "developer", verdict: "PHASE DONE", phase: 3, scope: null, through: null }, new Date("2026-10-29T09:30:00.000Z"));
+  stall(root, id, "PHASE STALLED on phase 3");
+  const result = await applied(root, id, "c");
+  assert.equal(readState(root, id).status, "open");
+  assert.equal(replyRows(root, id).at(-1).fresh, true);
+  assert.equal(result.next.action, "fix_findings");
+  assert.equal(result.send.length, 1);
+  const [send] = result.send;
+  assert.deepEqual([send.tool, send.to], ["Agent", `${instanceTag(id)}-developer-2`]);
+  assert.match(send.message, new RegExp(`\\nreview: work/${id}/reviews/cumulative\\.md(\\n|$)`));
+});
+
 test("d at a design stall reopens the item and sends the architect the old blocked reason", async (t) => {
   const { root, id } = item(t, { lane: "design" });
   stall(root, id, "PHASE STALLED: the port moved");
@@ -444,4 +463,19 @@ test("zero, words and gate letters at set_case_cap are refused with the option a
     assert.equal(await refused(root, id, text), `"${text}" matches no option at set_case_cap; options: reply: <total>, 24 keeps six for each criterion`);
   }
   assert.equal(existsSync(join(root, "work", id, "replies.jsonl")), false);
+});
+
+test("totals past the safe integer range at set_case_cap are refused and write no row (T-1.5)", async (t) => {
+  const { root, id } = capStage(t);
+  for (const text of ["9".repeat(309), "9007199254740992"]) {
+    assert.equal(await refused(root, id, text), `"${text}" matches no option at set_case_cap; options: reply: <total>, 24 keeps six for each criterion`);
+  }
+  assert.equal(existsSync(join(root, "work", id, "replies.jsonl")), false);
+});
+
+test("the largest safe integer at set_case_cap is recorded as given (T-1.6)", async (t) => {
+  const { root, id } = capStage(t);
+  await applied(root, id, "9007199254740991");
+  const row = replyRows(root, id).at(-1);
+  assert.deepEqual([row.cases, row.default_cases], [9007199254740991, 24]);
 });

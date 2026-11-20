@@ -1,0 +1,9 @@
+id: 20261120-four-defects-that-give-wrong-results
+lane: order
+title: Four defects that give wrong results
+status: open
+created: 2026-11-20T20:22:51.096Z
+updated: 2026-11-20T20:37:50.051Z
+session: a2798d68-7fee-4cd5-9e8c-4ee0e429153d
+base: dba361739ffab5f4ffad111d1d9213e580be0d5f
+run_through: 3

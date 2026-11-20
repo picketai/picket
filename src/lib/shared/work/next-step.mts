@@ -136,9 +136,14 @@ function recheckStep(snap: WorkSnapshot): NextStep | null {
   return { action: "review_crosscheck", actor: "reviewer", detail: "the design record was amended after a drift; the cross-check runs again", delta };
 }
 
+function isDoneOrStalled(row: VerdictRow): boolean {
+  return row.verdict === "PHASE DONE" || row.verdict === "PHASE STALLED";
+}
+
 function findingsOpen({ verdicts }: WorkSnapshot, review: FindingsReview): boolean {
   const at = lastIndexWhere(verdicts, (v) => v.agent === "reviewer" && v.scope === review);
-  return verdicts[at]?.verdict === "CHANGES REQUIRED" && !verdicts.slice(at + 1).some((v) => v.verdict === "PHASE DONE");
+  if (verdicts[at]?.verdict !== "CHANGES REQUIRED") return false;
+  return verdicts.slice(at + 1).filter(isDoneOrStalled).at(-1)?.verdict !== "PHASE DONE";
 }
 
 function findingsStep(snap: WorkSnapshot): NextStep | null {
