@@ -92,3 +92,15 @@ test("a plan that passes names the item, entry, service, variable, file, digest,
   });
   assert.ok(!JSON.stringify(plan).includes("s3cret"));
 });
+
+test("a plan at a confirmed digest checks the approval at that digest and ignores the live file", (t) => {
+  const { root, id, sql } = project(t);
+  approve(root, sql);
+  writeConfig(root, DECLARED);
+  const approved = fileDigest(sql);
+  writeFileSync(sql, SQL.replace("seed", "rewritten"));
+  const env = { [VARIABLE]: CONNECTION };
+  assert.equal(planRun(root, env, id, "customer", { sha256: approved }).sha256, approved);
+  assert.equal(refusal(() => planRun(root, env, id, "customer")), "data/customer.sql changed since approval; the user reads it again with picket data show data/customer.sql");
+  assert.equal(refusal(() => planRun(root, env, id, "customer", { sha256: fileDigest(sql) })), "data/customer.sql changed since approval; the user reads it again with picket data show data/customer.sql");
+});

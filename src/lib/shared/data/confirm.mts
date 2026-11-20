@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { Refused } from "../action.mts";
@@ -24,6 +24,12 @@ export type Confirmation = {
 export type Voided = { id: string; voided_at: string };
 export type Taken = { id: string; taken_at: string };
 export type ConfirmationRow = Confirmation | Voided | Taken;
+export type ConfirmationRequest = { session: string | null; item: string; entry: string; nonce: string | null };
+
+export const CONFIRMATION_WINDOW_MS = 10 * 60 * 1000;
+
+const NONCE = /^[0-9a-f]{64}$/;
+const NO_CONFIRMATION = 'no permission dialog confirmed this run. The lead runs it as PICKET_ESCALATE="<why>" picket data run <id> <entry> in the default, acceptEdits or auto mode, and the user approves the dialog';
 
 export function sha256Hex(data: string | Buffer): string {
   return createHash("sha256").update(data).digest("hex");
@@ -74,6 +80,36 @@ export function confirmRun(root: string, plan: RunPlan, bytes: Buffer, session: 
     nonce_sha256: nonceSha256,
   };
   appendJsonl(confirmationsPath(root), row);
+  return row;
+}
+
+function sameHash(nonce: string, row: Confirmation): boolean {
+  const given = Buffer.from(sha256Hex(nonce), "hex");
+  const stored = Buffer.from(row.nonce_sha256, "hex");
+  return given.length === stored.length && timingSafeEqual(given, stored);
+}
+
+function matchingRow(rows: ConfirmationRow[], { session, item, entry, nonce }: ConfirmationRequest): Confirmation {
+  if (session === null || nonce === null || !NONCE.test(nonce)) throw new Refused(NO_CONFIRMATION);
+  const found = rows.filter((row): row is Confirmation => isConfirmation(row) && row.session === session && row.item === item && row.entry === entry && sameHash(nonce, row)).at(-1);
+  if (found === undefined) throw new Refused(NO_CONFIRMATION);
+  return found;
+}
+
+function settledProblem(rows: ConfirmationRow[], { id }: Confirmation): string | null {
+  const settled = rows.find((row): row is Voided | Taken => !isConfirmation(row) && row.id === id);
+  if (settled === undefined) return null;
+  if ("voided_at" in settled) return `the confirmation ${id} was voided at ${settled.voided_at}, because a later command of this session ran before it; ask again`;
+  return `the confirmation ${id} was already taken at ${settled.taken_at}; each dialog runs once, so ask again`;
+}
+
+export function takeConfirmation(root: string, request: ConfirmationRequest, now: Date): Confirmation {
+  const rows = readConfirmations(root);
+  const row = matchingRow(rows, request);
+  const problem = settledProblem(rows, row);
+  if (problem !== null) throw new Refused(problem);
+  if (now.getTime() - Date.parse(row.at) > CONFIRMATION_WINDOW_MS) throw new Refused(`the confirmation ${row.id} from ${row.at} is older than ${CONFIRMATION_WINDOW_MS / 60000} minutes; ask again`);
+  appendJsonl(confirmationsPath(root), { id: row.id, taken_at: now.toISOString() } satisfies Taken);
   return row;
 }
 

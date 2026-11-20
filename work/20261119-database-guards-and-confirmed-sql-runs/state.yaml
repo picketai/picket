@@ -3,7 +3,7 @@ lane: design
 title: Database guards and confirmed SQL runs
 status: open
 created: 2026-11-19T17:56:19.256Z
-updated: 2026-11-20T08:54:25.821Z
+updated: 2026-11-20T10:00:38.464Z
 session: a2798d68-7fee-4cd5-9e8c-4ee0e429153d
 base: b987c5a8e5575b90b0b9ede43dfa26c06b4e730d
 run_through: 5

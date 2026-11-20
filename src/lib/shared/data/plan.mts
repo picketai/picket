@@ -24,6 +24,7 @@ export type RunPlan = {
 
 type SqlEntry = CatalogEntry & { file: string; service: string };
 type ApprovedFile = { path: string; abs: string; sha256: string; approval: DataApproval };
+type ConfirmedDigest = { sha256: string };
 
 const CLOSED_STATUSES = ["done", "abandoned"];
 const SQL_KIND = "sql";
@@ -41,9 +42,9 @@ function latestApproval(root: string, path: string): DataApproval | null {
   return readJsonl<DataApproval>(statePath(root, STATE_FILES.dataApprovals)).rows.filter((row) => row.path === path).at(-1) ?? null;
 }
 
-function approvedFile(root: string, path: string): ApprovedFile {
+function approvedFile(root: string, path: string, confirmed: ConfirmedDigest | null): ApprovedFile {
   const file = sqlFile(root, path);
-  const sha256 = fileDigest(file.abs);
+  const sha256 = confirmed?.sha256 ?? fileDigest(file.abs);
   const approval = latestApproval(root, file.path);
   if (approval === null) throw new Refused(`${file.path} is not approved; the user reads it with picket data show ${file.path} and approves it`);
   if (approval.sha256 !== sha256) throw new Refused(`${file.path} changed since approval; the user reads it again with picket data show ${file.path}`);
@@ -73,9 +74,9 @@ function openItem(root: string, id: WorkId): void {
   if (CLOSED_STATUSES.includes(status)) throw new Refused(`${id} is ${status}; data run runs only for an open or blocked item`, { id });
 }
 
-export function planRun(root: string, env: NodeJS.ProcessEnv, id: WorkId, name: string): RunPlan {
+export function planRun(root: string, env: NodeJS.ProcessEnv, id: WorkId, name: string, confirmed: ConfirmedDigest | null = null): RunPlan {
   const entry = sqlEntry(root, name);
-  const file = approvedFile(root, entry.file);
+  const file = approvedFile(root, entry.file, confirmed);
   const variable = dataVariable(entry.service);
   const read = connectionTarget(variable, connection(env, variable));
   const target = declaredTarget(loadConfig(root, env).data_targets, entry.service, read);

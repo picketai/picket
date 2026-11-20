@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { withProject } from "#test/project.mts";
 import { statePath, STATE_FILES } from "../paths.mts";
 import { workId } from "../work/files.mts";
-import { confirmationsPath, confirmRun, readConfirmations, sha256Hex, voidPending, type Confirmation } from "./confirm.mts";
+import { confirmationsPath, confirmRun, readConfirmations, sha256Hex, takeConfirmation, voidPending, type Confirmation } from "./confirm.mts";
 import type { RunPlan } from "./plan.mts";
 
 const SQL = Buffer.from("insert into customers (name) values ('PKT-seed');\n");
@@ -91,4 +91,30 @@ test("voidPending voids each untaken, unvoided row of the session once and leave
   ]);
   assert.ok(!settled.some((row) => row.id === other.id));
   assert.equal((readConfirmations(root).filter((row) => "nonce_sha256" in row) as Confirmation[]).length, 4);
+});
+
+const NONCE = "a".repeat(64);
+const take = (root: string, nonce: string | null, now: Date, more: Partial<{ session: string | null; item: string; entry: string }> = {}) =>
+  takeConfirmation(root, { session: "s1", item: "20261119-orders", entry: "customer", nonce, ...more }, now);
+
+test("takeConfirmation takes the newest matching row of the session, item and entry once and appends its taken row", (t) => {
+  const { root, plan } = planned(t);
+  confirmRun(root, plan, SQL, "s1", NONCE_SHA, NOW);
+  const newest = confirmRun(root, plan, SQL, "s1", NONCE_SHA, NOW);
+  assert.deepEqual(take(root, NONCE, LATER), newest);
+  assert.deepEqual(readConfirmations(root).at(-1), { id: newest.id, taken_at: LATER.toISOString() });
+  assert.match(refusal(() => take(root, NONCE, LATER)), new RegExp(`^the confirmation ${newest.id} was already taken at ${LATER.toISOString()}`));
+});
+
+test("takeConfirmation refuses a missing or malformed nonce or session, another nonce, item or entry, a voided row and a row past the window", (t) => {
+  const { root, plan } = planned(t);
+  const row = confirmRun(root, plan, SQL, "s1", NONCE_SHA, NOW);
+  const none = /^no permission dialog confirmed this run\. The lead runs it as PICKET_ESCALATE=/;
+  for (const attempt of [() => take(root, null, NOW), () => take(root, "A".repeat(64), NOW), () => take(root, "b".repeat(64), NOW), () => take(root, NONCE, NOW, { session: null }), () => take(root, NONCE, NOW, { session: "s2" }), () => take(root, NONCE, NOW, { item: "20261119-other" }), () => take(root, NONCE, NOW, { entry: "order" })]) {
+    assert.match(refusal(attempt), none);
+  }
+  assert.equal(refusal(() => take(root, NONCE, new Date(NOW.getTime() + 10 * 60 * 1000 + 1))), `the confirmation ${row.id} from ${row.at} is older than 10 minutes; ask again`);
+  voidPending(root, "s1", LATER);
+  assert.equal(refusal(() => take(root, NONCE, LATER)), `the confirmation ${row.id} was voided at ${LATER.toISOString()}, because a later command of this session ran before it; ask again`);
+  assert.equal(readConfirmations(root).filter((one) => "taken_at" in one).length, 0);
 });

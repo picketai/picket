@@ -1,7 +1,8 @@
 import { appendJsonl, readJsonl } from "../../util/io.mts";
 import { statePath, STATE_FILES } from "../paths.mts";
 
-export type DataRun = { at: string; item: string; entry: string; path: string; sha256: string; server: string; database: string; status: number | null };
+export type DataRun = { at: string; item: string; entry: string; path: string; sha256: string; server: string; database: string; status: number | null; confirmation?: string; approved_at?: string | null };
+export type ConfirmedDataRun = DataRun & { confirmation: string; approved_at: string | null };
 
 function runsPath(root: string): string {
   return statePath(root, STATE_FILES.dataRuns);
