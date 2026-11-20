@@ -1,0 +1,6 @@
+Change how the tester's case cap is applied: six cases per criterion per round stays, but when the total for a round goes over 20 the user is informed first and decides the total. Today the brief prints "cases per round: at most <six times the criteria>" and the tester may use it all, so an item with four tested criteria allows 24 cases with nobody asked. When the total is over 20, the test stage stops at the user before the tester starts, shows the total and how it is made up (the criteria and six each), and takes the total the user sets, lower or higher; the brief then carries that number and picket test case enforces it. At 20 or under nothing changes and nobody is asked.
+
+## Brief
+purpose: Keep the tester's cost and reach in the user's hands: a round that would allow more than 20 cases asks the user for the total first.
+in scope: The case cap of a round: six per tested criterion stays; a stop at the user before the tester starts when the total is over 20, showing the total and its make-up; the total the user sets, lower or higher, carried in the brief and enforced by picket test case; nothing asked at 20 or under
+out of scope: A cap on picket test defect; the questions limit; the per-criterion number six; the setting testing; any benchmark run

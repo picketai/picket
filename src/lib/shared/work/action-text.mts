@@ -1,4 +1,4 @@
-export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none", "fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item", "resolve_tests", "approve_fixes"] as const;
+export const NEXT_ACTIONS = ["resolve_sources", "write_artifact", "implement_phase", "approve_phase", "review_cumulative", "review_checkpoint", "resolve_block", "resolve_rejections", "close", "none", "fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item", "resolve_tests", "approve_fixes", "set_case_cap"] as const;
 
 export const STALL_OPTIONS = ["[c] continue with a fresh developer", "[d] redesign", "[x] abandon"];
 
@@ -27,6 +27,7 @@ export const ACTION_TEXT: Readonly<Record<NextAction, (step: ActionStep, voice: 
   test_item: () => "tester tests the finished item",
   resolve_tests: (_step, voice) => (voice === "user" ? "you answer the tester" : "waits for answers to the tester"),
   approve_fixes: (_step, voice) => (voice === "user" ? "you approve the test fixes" : "waits for approval of the test fixes"),
+  set_case_cap: (_step, voice) => (voice === "user" ? "you set the cases per round" : "waits for the cases per round"),
 };
 
 const ACTIONS: readonly string[] = NEXT_ACTIONS;

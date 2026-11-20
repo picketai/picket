@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { testFacts } from "./facts.mts";
 import { appendTestRow } from "./results.mts";
+import type { ReplyRow } from "../work/replies.mts";
 
 const TOUCHED = "services/orders/server.mjs";
 const DESIGN = [
@@ -112,4 +113,25 @@ test("a catalog gives a Data catalog section, one line per entry, and none witho
   const text = compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, catalogOf(root));
   assert.ok(text.includes("\n## Data catalog\n\n- buyer (user): a buyer account; fields name, password as {user:buyer.<field>}\n- customer (create): a customer of its own; captures id\n"), text);
   assert.ok(!compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []).includes("## Data catalog"));
+});
+
+const FOUR_CRITERIA = ["T-1.1", "T-1.2", "T-1.3", "T-1.4"];
+
+function fourChecks(): string {
+  const checks = FOUR_CRITERIA.flatMap((covers, at) => [`      - covers: ${covers}`, "        method: GET", `        path: /orders/${at}`, "        status: 200"]);
+  const lines = FOUR_CRITERIA.map((covers) => `- **${covers}** an order is read back`);
+  return ["---", "lane: design", "phases:", "  - n: 1", "    files: [services/orders/routes.mjs]", "    drive:", ...checks, "---", "# Design: Orders", "", "## Phase 1: Orders", "", ...lines, ""].join("\n");
+}
+
+test("over twenty the cap line says whether the user set the total, and what six each gives (T-1.3)", (t) => {
+  const root = withProject(t);
+  const { id } = openItem(root, { lane: "design", title: "Orders" });
+  writeArtifact(root, id, "design.md", fourChecks());
+  const snap = readSnapshot(root, id);
+  const facts = testFacts(root, snap);
+  const set: ReplyRow = { ts: "2026-11-17T10:00:00.000Z", action: "set_case_cap", phase: null, reply: "12", cases: 12, default_cases: 24 };
+  const held = compileBrief(snap, facts, [], { request: null, story: null }, []);
+  const answered = compileBrief({ ...snap, replies: [set] }, facts, [], { request: null, story: null }, []);
+  assert.ok(held.includes("\ncases per round: at most 20 (not set by the user yet; six for each of 4 tested criteria gives 24)\n"), held);
+  assert.ok(answered.includes("\ncases per round: at most 12 (set by the user; six for each of 4 tested criteria gives 24)\n"), answered);
 });

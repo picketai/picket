@@ -1,12 +1,16 @@
 import type { ArtifactPhase } from "../work/artifact.mts";
 import { readChecks } from "../work/declared-checks.mts";
+import type { ReplyRow } from "../work/replies.mts";
 import { CASE_KINDS, latestCases, latestClass, roundRows, type CaseRow, type TestRow } from "./results.mts";
 
 export const MAX_QUESTIONS = 3;
+export const CASE_CAP_ASK_ABOVE = 20;
 
 export type TestVerdict = "APPROVED" | "CHANGES REQUIRED" | "DRIFT DETECTED";
 export type TestRoute = "fix" | "breaker" | "user";
 export type Derived = { verdict: TestVerdict; route: TestRoute | null; reasons: string[]; unclassified: string[] };
+export type CaseCap = { cases: number; byDefault: number; source: "default" | "user" | "held" };
+export type CapReply = Pick<ReplyRow, "action" | "cases" | "default_cases">;
 export type DeriveInput = {
   criteria: string[];
   rows: TestRow[];
@@ -28,6 +32,18 @@ export function testedCriteria(phases: readonly Pick<ArtifactPhase, "n" | "entry
 
 export function caseCap(criteria: readonly string[]): number {
   return CASE_KINDS.length * criteria.length;
+}
+
+function userTotal(replies: readonly CapReply[], byDefault: number): number | null {
+  const answers = replies.filter((reply) => reply.action === "set_case_cap" && reply.default_cases === byDefault && reply.cases !== undefined);
+  return answers.length ? (answers[answers.length - 1].cases ?? null) : null;
+}
+
+export function roundCap(criteria: readonly string[], replies: readonly CapReply[]): CaseCap {
+  const byDefault = caseCap(criteria);
+  if (byDefault <= CASE_CAP_ASK_ABOVE) return { cases: byDefault, byDefault, source: "default" };
+  const total = userTotal(replies, byDefault);
+  return total === null ? { cases: CASE_CAP_ASK_ABOVE, byDefault, source: "held" } : { cases: total, byDefault, source: "user" };
 }
 
 function confirmedFailure(row: CaseRow): boolean {

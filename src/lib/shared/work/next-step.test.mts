@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { NEXT_ACTIONS, nextStep } from "./next-step.mts";
 import { nextView } from "./next-view.mts";
+import { ACTION_TEXT } from "./action-text.mts";
 import { instanceTag } from "./send.mts";
 import type { ItemLayout } from "../repos.mts";
 import { snapshotOf, type PhaseInput, type SnapshotInput } from "#test/snapshot.mts";
@@ -86,9 +87,15 @@ test("rejections before the last approval, or of another scope, do not count tow
   assert.equal(step({ phases, verdicts: times(3, "CHANGES REQUIRED", "phase 2") }).action, "review_cumulative");
 });
 
-test("the actions end with the test stage's test_item, resolve_tests and approve_fixes, eighteen in all", () => {
-  assert.equal(NEXT_ACTIONS.length, 18);
-  assert.deepEqual(NEXT_ACTIONS.slice(-8), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item", "resolve_tests", "approve_fixes"]);
+test("the actions end with the test stage's test_item, resolve_tests, approve_fixes and set_case_cap, nineteen in all", () => {
+  assert.equal(NEXT_ACTIONS.length, 19);
+  assert.deepEqual(NEXT_ACTIONS.slice(-9), ["fix_findings", "amend", "review_crosscheck", "create_worktrees", "approve_amendment", "test_item", "resolve_tests", "approve_fixes", "set_case_cap"]);
+});
+
+test("the set_case_cap action reads as the user setting the cases per round", () => {
+  const capStep = { actor: "user", phase: null, lane: "design", detail: "" };
+  assert.equal(ACTION_TEXT.set_case_cap(capStep, "user"), "you set the cases per round");
+  assert.equal(ACTION_TEXT.set_case_cap(capStep, "observer"), "waits for the cases per round");
 });
 
 const ORDERS_LAYOUT: ItemLayout = { nested: ["src/Orders"], worktrees: null, repos: [] };

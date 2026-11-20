@@ -7,7 +7,7 @@ import { httpAdapter } from "../../shared/scenarios/http.mts";
 import type { Card } from "../../shared/scenarios/format.mts";
 import { scenarioProblems } from "../../shared/scenarios/rules.mts";
 import { caseCard, caseLine, openItemStack, runCase, runCaseInput, type CaseDeps, type CaseSpec } from "../../shared/testing/cases.mts";
-import { caseCap } from "../../shared/testing/derive.mts";
+import { roundCap } from "../../shared/testing/derive.mts";
 import { openTestItem } from "../../shared/testing/facts.mts";
 import { appendTestRow, CASE_KINDS, latestCases, nextCaseId, readTestRows, roundRows, testRound, type CaseKind, type CaseRow } from "../../shared/testing/results.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -45,7 +45,7 @@ export async function recordCase(ctx: Context, deps: CaseDeps, { id, spec, steps
   refuseCriterion(spec.criterion, criteria, id);
   const rows = readTestRows(ctx.root, id);
   const round = testRound(snap.verdicts);
-  refuseCap(id, spec, caseCap(criteria), latestCases(roundRows(rows, round)).length);
+  refuseCap(id, spec, roundCap(criteria, snap.replies).cases, latestCases(roundRows(rows, round)).length);
   const card = builtCard(id, spec, steps);
   const stack = openItemStack(ctx, deps.runner, snap.state);
   refuseProblems(scenarioProblems(card, stack.services), id);

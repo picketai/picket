@@ -20,6 +20,7 @@ import { rerunCases, verb as rerunVerb } from "./rerun.mts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { recordDefect } from "./defect.mts";
+import { appendReply } from "../../shared/work/replies.mts";
 import type { DefectRow } from "../../shared/testing/results.mts";
 
 const MODEL = readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8");
@@ -223,4 +224,32 @@ test("a failing case holds no test-user value and no answer text in its row or o
     assert.ok(!text.includes("fixture-secret-9"), text);
     assert.ok(!text.includes("fixture-answer-9"), text);
   }
+});
+
+const FOUR = ["T-1.1", "T-1.2", "T-1.3", "T-1.4"];
+
+function withUserCap(t: TestContext, cases: number): { ctx: Context; id: WorkId } {
+  const made = item(t, { criteria: FOUR });
+  appendReply(made.ctx.root, made.id, { action: "set_case_cap", phase: null, reply: String(cases), cases, default_cases: 24 }, new Date(NOW));
+  return made;
+}
+
+async function recordMany(ctx: Context, id: WorkId, count: number): Promise<void> {
+  for (let run = 0; run < count; run++) assert.equal((await recordCase(ctx, deps(answering(201)), caseInput(id, FOUR[run % FOUR.length]))).status, "done");
+}
+
+test("a total of 12 set by the user refuses the 13th case of the round (T-1.4)", async (t) => {
+  const { ctx, id } = withUserCap(t, 12);
+  await recordMany(ctx, id, 12);
+  const message = await refusal(recordCase(ctx, deps(answering(201)), caseInput(id, "T-1.2", STEPS, "state")));
+  assert.equal(message, `the cap of 12 cases this round is reached; record what is left with picket test note ${id} T-1.2 state not-covered --why "<why>"`);
+  assert.equal(readTestRows(ctx.root, id).length, 12);
+});
+
+test("a total of 30 set by the user records a 25th case of the round (T-1.5)", async (t) => {
+  const { ctx, id } = withUserCap(t, 30);
+  await recordMany(ctx, id, 24);
+  const outcome = await recordCase(ctx, deps(answering(201)), caseInput(id, "T-1.1", STEPS, "state"));
+  assert.equal(outcome.status, "done");
+  assert.equal(readTestRows(ctx.root, id).length, 25);
 });

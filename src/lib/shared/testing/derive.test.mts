@@ -4,6 +4,8 @@ import { caseCap, deriveVerdict, testedCriteria, type DeriveInput } from "./deri
 import type { CaseRow, ClassRow, TestRow } from "./results.mts";
 import type { DefectRow } from "./results.mts";
 import { roundCounts } from "./report.mts";
+import { roundCap } from "./derive.mts";
+import type { ReplyRow } from "../work/replies.mts";
 
 const TS = "2026-11-17T10:00:00.000Z";
 
@@ -157,4 +159,37 @@ test("an open question goes to the user (T-1.5)", () => {
 test("only the current round's rows count", () => {
   const derived = deriveVerdict(input(BOTH_PASSED, { round: 2 }));
   assert.deepEqual(derived.reasons, ["T-2.1 has no passed case", "T-2.3 has no passed case"]);
+});
+
+function capReply(cases: number, defaultCases: number): ReplyRow {
+  return { ts: TS, action: "set_case_cap", phase: null, reply: String(cases), cases, default_cases: defaultCases };
+}
+
+function criteriaOf(count: number): string[] {
+  return Array.from({ length: count }, (_, at) => `T-1.${at + 1}`);
+}
+
+test("one tested criterion gives six cases by default (T-1.1)", () => {
+  assert.deepEqual(roundCap(criteriaOf(1), []), { cases: 6, byDefault: 6, source: "default" });
+});
+
+test("at twenty or under a user's total does not count (T-1.1)", () => {
+  assert.deepEqual(roundCap(criteriaOf(3), [capReply(5, 18)]), { cases: 18, byDefault: 18, source: "default" });
+});
+
+test("over twenty with no answer the round is held at twenty (T-1.1)", () => {
+  assert.deepEqual(roundCap(criteriaOf(4), []), { cases: 20, byDefault: 24, source: "held" });
+});
+
+test("over twenty the user's total sets the cap, lower or higher (T-1.1)", () => {
+  assert.deepEqual(roundCap(criteriaOf(4), [capReply(12, 24)]), { cases: 12, byDefault: 24, source: "user" });
+  assert.deepEqual(roundCap(criteriaOf(4), [capReply(30, 24)]), { cases: 30, byDefault: 24, source: "user" });
+});
+
+test("the newest matching answer wins", () => {
+  assert.deepEqual(roundCap(criteriaOf(4), [capReply(12, 24), capReply(16, 24)]), { cases: 16, byDefault: 24, source: "user" });
+});
+
+test("an answer given for another make-up holds the round at twenty (T-1.1)", () => {
+  assert.deepEqual(roundCap(criteriaOf(5), [capReply(12, 24)]), { cases: 20, byDefault: 30, source: "held" });
 });

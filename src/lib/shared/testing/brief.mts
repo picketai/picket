@@ -3,7 +3,7 @@ import { criterionText } from "../scenarios/keep.mts";
 import type { SavedScenario } from "../scenarios/files.mts";
 import { readChecks, type HttpCheck } from "../work/declared-checks.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
-import { caseCap, MAX_QUESTIONS, type DeriveInput } from "./derive.mts";
+import { MAX_QUESTIONS, roundCap, type CapReply, type CaseCap, type DeriveInput } from "./derive.mts";
 import { latestCases, roundRows } from "./results.mts";
 
 export type BriefTexts = { request: string | null; story: string | null };
@@ -43,9 +43,17 @@ function answersSection(snap: WorkSnapshot): string[] {
   return answers.length ? section("Answers", answers) : [];
 }
 
-function limitLines(facts: DeriveInput): string[] {
+const CAP_SOURCE_TEXT: Readonly<Record<Exclude<CaseCap["source"], "default">, string>> = { user: "set by the user", held: "not set by the user yet" };
+
+function capLine(cap: CaseCap, criteria: number): string {
+  const line = `cases per round: at most ${cap.cases}`;
+  if (cap.source === "default") return line;
+  return `${line} (${CAP_SOURCE_TEXT[cap.source]}; six for each of ${criteria} tested criteria gives ${cap.byDefault})`;
+}
+
+function limitLines(facts: DeriveInput, replies: readonly CapReply[]): string[] {
   const asked = facts.rows.filter((row) => row.type === "question").length;
-  return [`cases per round: at most ${caseCap(facts.criteria)}`, `questions: ${asked} of ${MAX_QUESTIONS} asked`];
+  return [capLine(roundCap(facts.criteria, replies), facts.criteria.length), `questions: ${asked} of ${MAX_QUESTIONS} asked`];
 }
 
 function catalogLine(entry: CatalogEntry): string {
@@ -70,7 +78,7 @@ export function compileBrief(snap: WorkSnapshot, facts: DeriveInput, scenarios: 
     ...catalogSection(catalog),
     ...section("Earlier rounds", earlierLines(facts)),
     ...answersSection(snap),
-    ...section("Limits", limitLines(facts)),
+    ...section("Limits", limitLines(facts, snap.replies)),
   ];
   return `${lines.join("\n")}\n`;
 }
