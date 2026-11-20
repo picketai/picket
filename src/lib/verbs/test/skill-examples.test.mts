@@ -8,6 +8,8 @@ import { verb as ask } from "./ask.mts";
 import { verb as classify } from "./classify.mts";
 import { verb as note } from "./note.mts";
 import { verb as defect } from "./defect.mts";
+import { STEP_WORDS } from "../../shared/scenarios/format.mts";
+import { caseCard } from "../../shared/testing/cases.mts";
 
 const STEPS = resolve("src/skills/testing/steps");
 const ID = "20261118-example";
@@ -97,4 +99,46 @@ test("the unquoted classify the benchmark tester ran is refused", () => {
 
 test("an unquoted ask question is refused", () => {
   assert.throws(() => exampleProblems('picket test ask <id> T-2.1 --question Is an order with an empty basket an error --choices "yes, refuse it | no, store it as a draft"'), UsageError);
+});
+
+const CASES_STEP = join(STEPS, "cases.md");
+const FENCE = /^(\s*)```/;
+const CASE_SPEC = { criterion: "T-1.1", kind: "normal" as const, intent: "the example card reads back" };
+
+function fencedBlocks(text: string): string[] {
+  const blocks: string[] = [];
+  let open: { indent: number; lines: string[] } | null = null;
+  for (const line of text.replace(/\r\n/g, "\n").split("\n")) {
+    const fence = FENCE.exec(line);
+    if (fence && open === null) open = { indent: fence[1].length, lines: [] };
+    else if (fence && open !== null) {
+      blocks.push(`${open.lines.join("\n")}\n`);
+      open = null;
+    } else open?.lines.push(line.slice(open.indent));
+  }
+  return blocks;
+}
+
+function cardBlocks(text: string): string[] {
+  return fencedBlocks(text).filter((block) => (STEP_WORDS as readonly string[]).includes(block.trimStart().split(/\s/, 1)[0]));
+}
+
+function blockProblems(block: string): string[] {
+  const built = caseCard(ID, CASE_SPEC, block);
+  return "problems" in built ? built.problems : [];
+}
+
+test("every step block of the cases step parses as a case card, a mixed browser one included (T-3.3)", () => {
+  const blocks = cardBlocks(readFileSync(CASES_STEP, "utf8"));
+  assert.ok(blocks.length >= 2, `${blocks.length} step blocks`);
+  for (const block of blocks) assert.deepEqual(blockProblems(block), [], block);
+  const words = new Set(blocks.flatMap((block) => block.split("\n").map((line) => line.split(" ", 1)[0])));
+  assert.deepEqual(["request", "open", "fill", "click", "see"].filter((word) => !words.has(word)), []);
+});
+
+test("a step block holding an unknown word gives a problem naming it (T-3.3)", () => {
+  const text = ["Text.", "", "   ```", "   open {web}/login", '   press "Sign in"', "   ```", "", "```", "picket test case <id>", "```", ""].join("\n");
+  const blocks = cardBlocks(text);
+  assert.deepEqual(blocks, ['open {web}/login\npress "Sign in"\n']);
+  assert.deepEqual(blockProblems(blocks[0]), ['step 2: unknown step word "press"']);
 });
