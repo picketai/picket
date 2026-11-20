@@ -14,6 +14,9 @@ import { fixedContext } from "#test/context.mts";
 import { readLayout } from "../../shared/repos.mts";
 import { gitAt, gitIn, umbrella } from "#test/git.mts";
 import { openItem, withProject } from "#test/project.mts";
+import { seedReplay } from "#test/stall-replay.mts";
+import { readNext } from "../../shared/work/next-view.mts";
+import { route } from "../../shared/route/route.mts";
 import type { VerdictEntry } from "../../shared/work/verdict-log.mts";
 import { readSnapshot } from "../../shared/work/snapshot.mts";
 import { compileBrief } from "../../shared/testing/brief.mts";
@@ -350,4 +353,50 @@ test("x: <why> at approve_fixes commits nothing, records the rejection and sends
 test("yes at resolve_tests matches no option and lists them (T-8.6)", async (t) => {
   const { root, id } = testStage(t, ASKED);
   assert.match(await refused(root, id, "yes"), /matches no option at resolve_tests; options: \[t\] tell the tester: <answers> · \[n\] accept the unproved criteria as not verified · \[x\] abandon/);
+});
+
+const REDESIGN_AT = "2026-11-19T19:02:56.040Z";
+const AMENDED_AT = "2026-11-19T19:05:23.346Z";
+const STALL_REASON = "PHASE STALLED on phase 2";
+
+function stalledReplay(t: TestContext) {
+  const root = withProject(t, { host: true, picket: false });
+  const { id } = openItem(root, { lane: "design", title: "Replayed" });
+  writeFileSync(join(root, "work", id, "design.md"), `---\nlane: design\n---\n# R\n\n${phasesOf(5)}`);
+  for (const mark of ["done", "approved"] as const) setMarker(root, id, 1, mark, new Date("2026-11-19T18:30:10.691Z"));
+  seedReplay(root, id, 8, 2);
+  writeState(root, { ...readState(root, id), status: "blocked", blocked_reason: STALL_REASON }, new Date("2026-11-19T19:02:08.034Z"));
+  return { root, id };
+}
+
+async function replyAt(root: string, id: WorkId, text: string, now: string): Promise<ReplyResult> {
+  const outcome = await verb.run({ id, reply: text }, fixedContext(root, { session: SESSION, env: process.env, now, cwd: root }));
+  assert.equal(outcome.status, "done", JSON.stringify(outcome));
+  return (outcome as { value: ReplyResult }).value;
+}
+
+test("d at the replayed design stall records the redesign and next serves the amendment it asked for (T-2.1)", async (t) => {
+  const { root, id } = stalledReplay(t);
+  const result = await replyAt(root, id, "d", REDESIGN_AT);
+  assert.equal(readState(root, id).status, "open");
+  assert.deepEqual(replyRows(root, id).at(-1), { ts: REDESIGN_AT, session: SESSION, action: "resolve_block", phase: null, reply: "d", choice: "redesign", amend: STALL_REASON });
+  const next = readNext(root, id, SESSION);
+  assert.deepEqual([next.action, next.actor, next.detail], ["amend", "architect", STALL_REASON]);
+  assert.deepEqual(next.send, result.send);
+});
+
+test("an AMENDED after the redesign reply sends the replayed phase to developer-2 (T-2.2)", async (t) => {
+  const { root, id } = stalledReplay(t);
+  await replyAt(root, id, "d", REDESIGN_AT);
+  route({ id, verdict: "AMENDED", agent: "architect", session: SESSION }, fixedContext(root, { session: SESSION, env: process.env, now: AMENDED_AT, cwd: root }));
+  const next = readNext(root, id, SESSION);
+  assert.deepEqual([next.action, next.phase], ["implement_phase", 2]);
+  assert.deepEqual(next.send.map((s) => s.to), [`${instanceTag(id)}-developer-2`]);
+});
+
+test("d at an order item's stall writes a reply row with no choice (T-2.4)", async (t) => {
+  const { root, id } = item(t);
+  stall(root, id, "PHASE STALLED on phase 1");
+  await applied(root, id, "d");
+  assert.equal(Object.hasOwn(replyRows(root, id).at(-1), "choice"), false);
 });

@@ -537,3 +537,24 @@ test("after f on a mixed rejection, the developer fixes until PHASE DONE, and a 
   const next = step({ ...replied, verdicts: [...fixed, plain] });
   assert.deepEqual([next.action, next.actor, next.review], ["fix_findings", "developer", "cumulative"]);
 });
+
+const REDESIGN_REPLY = { ts: "2026-11-19T19:02:56.040Z", action: "resolve_block", phase: null, reply: "d", choice: "redesign", amend: "PHASE STALLED on phase 2" } as const;
+const OLD_D_REPLY = { ts: "2026-11-19T19:02:56.040Z", action: "resolve_block", phase: null, reply: "d" } as const;
+const REPLAY_PHASES = [{ n: 1, done: true, approved: true }, { n: 2 }, { n: 3 }];
+const stalledAt = (ts: string) => ({ ts, agent: "developer", verdict: "PHASE STALLED", phase: 2, scope: null, through: null });
+const amendedAt = (ts: string) => ({ ts, agent: "architect", verdict: "AMENDED", phase: 2, scope: null, through: null });
+
+test("an open design item with a redesign reply and no later AMENDED goes to the architect with the reply's reason (T-2.3)", () => {
+  const verdicts = [stalledAt("2026-11-19T19:02:08.034Z"), amendedAt("2026-11-19T18:12:40.238Z")];
+  assert.deepEqual(step({ lane: "design", phases: REPLAY_PHASES, verdicts, replies: [REDESIGN_REPLY] }), { action: "amend", actor: "architect", detail: "PHASE STALLED on phase 2" });
+});
+
+test("an AMENDED later than the redesign reply sends the phase to the developer (T-2.3)", () => {
+  const verdicts = [stalledAt("2026-11-19T19:02:08.034Z"), amendedAt("2026-11-19T19:05:23.346Z")];
+  assert.deepEqual(step({ lane: "design", phases: REPLAY_PHASES, verdicts, replies: [REDESIGN_REPLY] }), { action: "implement_phase", actor: "developer", phase: 2, detail: "phase 2 of 3: Phase 2" });
+});
+
+test("a d reply row with no choice, as older rows have, is not a pending redesign (T-2.3)", () => {
+  const verdicts = [stalledAt("2026-11-19T19:02:08.034Z")];
+  assert.deepEqual(step({ lane: "design", phases: REPLAY_PHASES, verdicts, replies: [OLD_D_REPLY] }), { action: "implement_phase", actor: "developer", phase: 2, detail: "phase 2 of 3: Phase 2" });
+});

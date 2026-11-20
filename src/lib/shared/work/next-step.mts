@@ -3,7 +3,7 @@ import { documentRel, documentSlug } from "../document-path.mts";
 import { isOutOfFrameAmendment, isUnchangedAmendment } from "./amendment.mts";
 import { decisionsRevisedSince, phasePaths } from "./artifact.mts";
 import { ownGate, type Gate } from "./gate.mts";
-import { amendmentChoice, freshReplies, type AmendmentChoice } from "./replies.mts";
+import { amendmentChoice, freshReplies, type AmendmentChoice, type ReplyRow } from "./replies.mts";
 import { reviewRel } from "./reviews.mts";
 import { phaseOf, type PhaseStatus, type WorkSnapshot } from "./snapshot.mts";
 import { amendmentsAnsweringBlocks, newestBlockRow, STALL_REPEATS } from "./stall.mts";
@@ -92,9 +92,22 @@ function amendReview(id: WorkId, row: AmendRow): string | null {
   return null;
 }
 
+type RedesignReply = ReplyRow & { amend: string };
+
+function pendingRedesign({ replies, verdicts }: WorkSnapshot): RedesignReply | null {
+  const reply = replies.filter((r) => r.choice === "redesign").at(-1);
+  if (!reply?.amend || verdicts.some((v) => v.verdict === "AMENDED" && isAfter(v, reply))) return null;
+  return { ...reply, amend: reply.amend };
+}
+
+function redesignStep(snap: WorkSnapshot): NextStep | null {
+  const reply = pendingRedesign(snap);
+  return reply ? { action: "amend", actor: "architect", detail: reply.amend } : null;
+}
+
 function amendStep(snap: WorkSnapshot): NextStep | null {
   const row = pendingAmend(snap);
-  if (!row) return null;
+  if (!row) return redesignStep(snap);
   const review = amendReview(snap.state.id, row);
   return { action: "amend", actor: "architect", detail: row.amend, ...(review ? { review } : {}) };
 }

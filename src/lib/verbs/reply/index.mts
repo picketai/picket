@@ -20,7 +20,7 @@ import { GATE_ACTIONS, matchReply, PUBLISH_REPLY, type Matched, type Proposals }
 export type ReplyInput = { id: WorkId; reply: string };
 export type ReplyResult = { id: WorkId; reply: string; applied: string[]; next: NextView; send: SendView[] };
 
-type Effect = { applied: string[]; send: SendView | null; fresh: boolean; choice?: ReplyChoice; answers?: string };
+type Effect = { applied: string[]; send: SendView | null; fresh: boolean; choice?: ReplyChoice; answers?: string; amend?: string };
 type Gate = { snap: WorkSnapshot; step: NextStep; phase: number | null; session: string | null; ctx: Context };
 
 const FRESH_DEVELOPER = "[c] continue with a fresh developer";
@@ -78,10 +78,10 @@ function waive(gate: Gate, proposal: string): Effect {
 }
 
 function redesign(gate: Gate): Effect {
-  const { snap, session } = gate;
+  const { snap } = gate;
   if (snap.state.lane !== "design") return effect([...setStatus(gate, "abandoned"), REDESIGN_IN_DESIGN_LANE]);
   const reason = snap.state.blocked_reason ?? gate.step.detail;
-  return effect(setStatus(gate, "open"), messageTo(snap, "architect", session, [`work: ${snap.state.id}`, `amend: ${reason}`]));
+  return { ...effect(setStatus(gate, "open")), choice: "redesign", amend: reason };
 }
 
 function applyMatched(gate: Gate, matched: Matched, found: Proposals): Effect {
@@ -147,7 +147,7 @@ export const applyReply = action<ReplyInput, ReplyResult>(async ({ id, reply }, 
   if (!matched) return unmatched(reply, step, snap.state);
   const session = isSessionId(ctx.session) ? ctx.session : null;
   const result = applyMatched({ snap, step, phase, session, ctx }, matched, found);
-  appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}), ...(result.choice ? { choice: result.choice } : {}), ...(result.answers ? { answers: result.answers } : {}) }, ctx.now());
+  appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}), ...(result.choice ? { choice: result.choice } : {}), ...(result.answers ? { answers: result.answers } : {}), ...(result.amend ? { amend: result.amend } : {}) }, ctx.now());
   const next = readNext(ctx.root, id, session);
   return done({ id, reply: reply.trim(), applied: result.applied, next, send: result.send ? [result.send] : next.send });
 });
