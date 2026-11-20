@@ -29,6 +29,7 @@ import { renderReport } from "../../shared/testing/report.mts";
 import { appendTestRow, type TestEntry } from "../../shared/testing/results.mts";
 import { setMarker } from "../../shared/work/markers.mts";
 import { appendVerdict, type VerdictEntry } from "../../shared/work/verdict-log.mts";
+import { writeDefect } from "../../shared/scenarios/defects.mts";
 
 type Routed = Partial<RouteInput> & { id: WorkId; verdict: string; agent: string; root: string; classes?: string[] };
 
@@ -959,6 +960,28 @@ test("a developer PHASE DONE after a tester fix round is refused until each prod
   appendTestRow(root, id, { round: 2, type: "escape", case: "C-03", root_cause: "the total skipped the discount", escaped: "unit test" }, new Date("2026-11-17T10:03:00.000Z"));
   route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 2, root });
   assert.deepEqual(verdictLines(root, id).map((row) => [row.agent, row.verdict]).at(-1), ["developer", "PHASE DONE"]);
+});
+
+function fixingTwoPhases(t: TestContext): { root: string; id: WorkId } {
+  const root = hostRoot(t);
+  const { id } = openItem(root, { lane: "order", title: "Fix" });
+  writeFileSync(join(root, "work", id, "order.md"), "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.ts]\n  - n: 2\n    files: [src/b.ts]\n---\n# O\n\n## Phase 1: A\n\nt\n\n## Phase 2: B\n\nt\n");
+  writeFileSync(join(root, "work", id, "request.md"), "fixes DF-0001\n");
+  writeDefect(root, { id: "DF-0001", status: "open", opened: "2026-11-01", found_in: "20261101-a", scenario: "S-0001", expected: "x", actual: "y", evidence: "z" });
+  return { root, id };
+}
+
+test("the last phase's PHASE DONE is refused while a named open known defect has no escape row; an earlier phase routes (T-2.3)", (t) => {
+  const { root, id } = fixingTwoPhases(t);
+  route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 1, root });
+  assert.deepEqual(verdictLines(root, id).map((row) => [row.agent, row.verdict, row.phase]).at(-1), ["developer", "PHASE DONE", 1]);
+  assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 2, root }), {
+    message: `record where DF-0001 escaped first: picket test escape ${id} DF-0001 --root-cause "<text>" --escaped "<point>"`,
+  });
+  assert.equal(verdictLines(root, id).length, 1);
+  appendTestRow(root, id, { round: 1, type: "escape", case: "DF-0001", root_cause: "the total skipped the discount", escaped: "unit test" }, new Date("2026-11-17T10:03:00.000Z"));
+  route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 2, root });
+  assert.deepEqual(verdictLines(root, id).map((row) => [row.agent, row.verdict, row.phase]).at(-1), ["developer", "PHASE DONE", 2]);
 });
 
 test("a developer PHASE DONE after a tester round routed to the user is not asked for escapes", (t) => {

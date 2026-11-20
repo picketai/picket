@@ -4,7 +4,7 @@ import { securityPaths } from "../config.mjs";
 import type { Context } from "../context.mts";
 import { TESTER_VERDICTS, VERDICTS } from "../verdicts.mjs";
 import { deriveVerdict } from "../testing/derive.mts";
-import { missingEscapes } from "../testing/escapes.mts";
+import { escapeFirstText, missingDefectEscapes, missingEscapes } from "../testing/escapes.mts";
 import { testFacts } from "../testing/facts.mts";
 import { readTestRows } from "../testing/results.mts";
 import { frameDigest, namedChecks, recordDigest } from "../work/amendment.mts";
@@ -86,7 +86,17 @@ function refuseUnrecordedEscapes(root: string, snap: WorkSnapshot, agent: string
   if (round === null) return;
   const [first] = missingEscapes(readTestRows(root, snap.state.id), round);
   if (first === undefined) return;
-  throw new Refused(`record where ${first} escaped first: picket test escape ${snap.state.id} ${first} --root-cause "<text>" --escaped "<point>"`);
+  throw new Refused(escapeFirstText(snap.state.id, first));
+}
+
+function isLastPhase(snap: WorkSnapshot, phase: number | null): boolean {
+  return phase === null || phase === snap.phases.at(-1)?.n;
+}
+
+function refuseUnrecordedDefectEscapes(root: string, snap: WorkSnapshot, agent: string | null, verdict: string, phase: number | null): void {
+  if (agent !== DEVELOPER || verdict !== PHASE_DONE || !isLastPhase(snap, phase)) return;
+  const [first] = missingDefectEscapes(root, snap);
+  if (first !== undefined) throw new Refused(escapeFirstText(snap.state.id, first));
 }
 
 function testPlan(tested: TestedRound | undefined): Pick<PlannedVerdict, "scope" | "phase" | "test"> | null {
@@ -163,6 +173,7 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   refuseMisplacedPublish(input, spec, snap);
   refuseUnrecordedEscapes(ctx.root, snap, agent, input.verdict);
   const phase = input.phase ?? currentPhase(snap)?.n ?? null;
+  refuseUnrecordedDefectEscapes(ctx.root, snap, agent, input.verdict, phase);
   const amend = rowAmend(input, spec);
   const tested = spec.effect === "tested" ? testedRound(ctx.root, snap, input.verdict) : undefined;
   const planned: PlannedVerdict = { ...input, agent: agent ?? input.agent, amend, phase, marks: marksOnDisk(ctx.root, input.id, phase), ...amendmentStamps(amend, input.verdict, snap), ...testPlan(tested) };

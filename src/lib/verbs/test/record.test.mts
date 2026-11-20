@@ -19,6 +19,8 @@ import { verb as classify } from "./classify.mts";
 import { verb as escape } from "./escape.mts";
 import { verb as note } from "./note.mts";
 import { verb as report } from "./report.mts";
+import { writeFileSync } from "node:fs";
+import { writeDefect, type DefectEntry } from "../../shared/scenarios/defects.mts";
 
 const DESIGN = [
   "---",
@@ -102,6 +104,35 @@ test("escape refuses a case classed test and a case no round holds (T-3.1)", asy
   assert.equal(await refusal(escape.run({ id, case: "C-02", root_cause: "x", escaped: "unit test" }, fixedContext(root))), "C-02 is not classed product; only a product failure takes an escape point");
   assert.equal(await refusal(escape.run({ id, case: "C-09", root_cause: "x", escaped: "unit test" }, fixedContext(root))), "no case C-09 in any round");
   assert.equal(readTestRows(root, id).length, 2);
+});
+
+function knownDefect(id: string, status: DefectEntry["status"]): DefectEntry {
+  return { id, status, opened: "2026-11-01", found_in: "20261101-a", scenario: "S-0001", expected: "x", actual: "y", evidence: "z" };
+}
+
+function fixingItem(t: TestContext): { root: string; id: WorkId } {
+  const { root, id } = item(t, NO_HTTP.replace("lane: design", "lane: order"));
+  writeFileSync(join(root, "work", id, "request.md"), "fixes DF-0001 and DF-0003\n");
+  for (const entry of [knownDefect("DF-0001", "open"), knownDefect("DF-0002", "open"), knownDefect("DF-0003", "fixed")]) writeDefect(root, entry);
+  return { root, id };
+}
+
+test("escape of a known defect the request names appends a row with the defect id, on an item with no HTTP check (T-2.1)", async (t) => {
+  const { root, id } = fixingItem(t);
+  const outcome = await escape.run({ id, case: "DF-0001", root_cause: "the total skipped the discount", escaped: "unit test" }, fixedContext(root));
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(readTestRows(root, id), [{ ts: "2026-10-23T10:00:00.000Z", round: 1, type: "escape", case: "DF-0001", root_cause: "the total skipped the discount", escaped: "unit test" }]);
+});
+
+test("escape refuses a defect with no entry, an open one the item does not name and a fixed one (T-2.1)", async (t) => {
+  const { root, id } = fixingItem(t);
+  const run = (caseId: string) => refusal(escape.run({ id, case: caseId, root_cause: "x", escaped: "unit test" }, fixedContext(root)));
+  assert.equal(await run("DF-0009"), "DF-0009 is no open known defect");
+  assert.equal(await run("DF-0002"), `${id} does not name DF-0002; only a known defect the item fixes on purpose takes an escape point`);
+  assert.equal(await run("DF-0003"), "DF-0003 is no open known defect");
+  writeState(root, { ...readState(root, id), status: "done" }, new Date("2026-11-17T09:00:00.000Z"));
+  assert.equal(await run("DF-0001"), `${id} is done; only an open or blocked item is tested`);
+  assert.deepEqual(readTestRows(root, id), []);
 });
 
 test("escape's parse takes a review row id and not checkable earlier and refuses a point outside the list (T-3.1)", () => {

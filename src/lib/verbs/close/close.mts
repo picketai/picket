@@ -1,6 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Refused } from "../../shared/action.mts";
+import { escapeFirstText, missingDefectEscapes } from "../../shared/testing/escapes.mts";
 import { machineCheck, readModelJson, type EngineRunner } from "../../shared/env/engine.mts";
 import { readModel, type EnvModel } from "../../shared/env/model.mts";
 import { foreignClaim, purgeStack, type Resources } from "../../shared/env/purge.mts";
@@ -175,6 +176,13 @@ function markDone(root: string, state: WorkState, now: Date): WorkState {
 function nextAllowsClose(lane: Lane, pending: NextView): boolean {
   if (pending.action === "close") return true;
   return lane === "research" && pending.action === "approve_phase" && pending.actor === "user";
+}
+
+function refuseUnrecordedFastDefectEscapes(root: string, snap: WorkSnapshot): void {
+  const { id, lane, status } = snap.state;
+  if (lane !== "fast" || status === "done") return;
+  const [first] = missingDefectEscapes(root, snap);
+  if (first !== undefined) throw new Refused(escapeFirstText(id, first), { id });
 }
 
 function refuseUnlessClosable(root: string, snap: WorkSnapshot): void {
@@ -364,6 +372,7 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const snap = readSnapshot(root, id);
   refuseUnlessClosable(root, snap);
   refuseUnreplayedFastClose(root, snap, closeCtx);
+  refuseUnrecordedFastDefectEscapes(root, snap);
   const audit = auditLine(snap.state, snap.phases.length, readLedger(root).rows);
   const commitMessage = checkedCloseMessage(message, snap.state);
   const repeats = ownRepeats(root, id);

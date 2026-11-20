@@ -458,7 +458,7 @@ picket test defect <id> --kind <kind> --intent "<the correct answer>" --evidence
 
 ### picket test escape
 
-Record the root cause of a fixed product case and the check it got past.
+Record the root cause of a fixed product case or known defect and the check it got past.
 
 ```sh
 picket test escape <id> <case> --root-cause "<text>" --escaped "<point>"

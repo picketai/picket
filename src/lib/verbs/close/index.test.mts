@@ -664,6 +664,50 @@ test("a close whose commit fails leaves neither the entry nor the card of a reco
   assert.equal(existsSync(join(root, FOUND_CARD)), false);
 });
 
+const DEFECT_ESCAPE: TestEntry = { round: 1, type: "escape", case: "DF-0001", root_cause: "the health route skipped the database ping", escaped: "unit test" };
+
+test("a fast close is refused while the request names an open known defect with no escape row, and closes once it has one (T-2.4)", (t) => {
+  const { root, id, head } = fastItem(t, { scenario: null });
+  writeDefect(root, { id: "DF-0001", status: "open", opened: "2026-10-10", found_in: "20261010-orders", scenario: "S-0002", expected: "health", actual: "y", evidence: "z" });
+  writeIn(root, `work/${id}/request.md`, "fixes DF-0001\n");
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "known defect");
+  const before = head();
+  assert.equal(refusal(() => closeFast(root, id)), `record where DF-0001 escaped first: picket test escape ${id} DF-0001 --root-cause "<text>" --escaped "<point>"`);
+  assert.equal(readState(root, id).status, "open");
+  assert.equal(head(), before);
+  appendTestRow(root, id, DEFECT_ESCAPE, STAGE_TS(5));
+  assert.equal(closeFast(root, id).status, "done");
+});
+
+test("a known defect fixed by the item takes the root cause and escape point of its escape row (T-2.5)", (t) => {
+  const { root, id } = knownItem(t, "fixed by this item", "");
+  appendTestRow(root, id, DEFECT_ESCAPE, STAGE_TS(5));
+  closeFast(root, id);
+  const [entry] = readDefects(root);
+  assert.deepEqual([entry.status, entry.reason, entry.root_cause, entry.escaped], ["fixed", "fixed by this item", "the health route skipped the database ping", "unit test"]);
+});
+
+test("a known defect fixed outside the item takes no root cause or escape point even with an escape row (T-2.5)", (t) => {
+  const { root, id } = knownItem(t, "fixed outside this item", "orders 1a2b3c4..5d6e7f8");
+  appendTestRow(root, id, DEFECT_ESCAPE, STAGE_TS(5));
+  closeFast(root, id);
+  const [entry] = readDefects(root);
+  assert.deepEqual([entry.status, entry.reason, entry.root_cause, entry.escaped], ["fixed", "fixed outside this item", undefined, undefined]);
+});
+
+test("a known defect fixed by the item counts with another item's unit test escape in the Learned line and the memory (T-2.6)", (t) => {
+  const { root, id } = knownItem(t, "fixed by this item", "");
+  writeDefect(root, { id: "DF-0002", status: "fixed", opened: "2026-11-01", found_in: "20261101-a", scenario: "none", expected: "x", actual: "y", evidence: "z", case: "C-01", root_cause: "a rounding slip", escaped: "unit test", fixed: "2026-11-02", fixed_in: "20261101-a", reason: "fixed by this item" });
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "earlier defect");
+  appendTestRow(root, id, DEFECT_ESCAPE, STAGE_TS(5));
+  const result = closeFast(root, id);
+  const memory = ".claude/agent-memory/picket-developer/escaped-defects.md";
+  assert.ok(blockLines(result).includes(`Learned: unit test in 2 items (DF-0001, DF-0002) to ${memory}`), blockLines(result).join("\n"));
+  assert.match(readFileSync(join(root, memory), "utf8"), /DF-0001 \([^)]*\): the health route skipped the database ping/);
+});
+
 const FIX_ROUND: StageSetup["verdicts"] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "fix" }], ["tester", "APPROVED", "test", { round: 2 }]];
 
 function fixedCaseRows(escaped: string | null): TestEntry[] {
