@@ -1,0 +1,1022 @@
+{
+  "manifest": {
+    "harness": "plugin",
+    "harness_root": "/mnt/work/development/github/picket",
+    "harness_commit": "6d94f40f",
+    "harness_dirty": true,
+    "fixture_hash": "126e6405aec0",
+    "claude_version": "2.1.326 (Claude Code)",
+    "node_version": "v26.13.0",
+    "effort_level": null,
+    "permission_mode": "acceptEdits",
+    "allowed_tools": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git ls-files*)",
+      "Bash(git blame*)",
+      "Bash(picket *)",
+      "Read(//mnt/work/development/github/picket/dist/**)"
+    ],
+    "runs_per_task": 1,
+    "started": "2026-11-17T13:41:23.868Z"
+  },
+  "records": [
+    {
+      "task": "fast-01-pagination",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:41:24.368Z",
+      "session_ids": [
+        "7ff89d01-4bd8-4145-9790-75bf961ed6ab",
+        "7ff89d01-4bd8-4145-9790-75bf961ed6ab"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 22,
+      "cost_usd": 1.999395,
+      "usage": {
+        "input_tokens": 26,
+        "cache_read_input_tokens": 484652,
+        "cache_creation_input_tokens": 47770,
+        "output_tokens": 4029
+      },
+      "api_ms": 108929,
+      "wall_ms": 66474,
+      "tool_calls": 18,
+      "tool_counts": {
+        "Bash": 10,
+        "Skill": 2,
+        "Edit": 4,
+        "Read": 2
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 27238,
+      "first_tool_ms": 5028,
+      "first_reviewable_ms": 27238,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-fix-invoice-list-page-offset\n\nGET /invoices now treats page 1 as the first `size` invoices, newest first.\n\nFiles: src/http/handlers.ts, test/router.test.ts, work/20261117-fix-invoice-list-page-offset/request.md, work/20261117-fix-invoice-list-page-offset/state.yaml\nTests: passed\nLint: passed\nVerified: `picket drive --hit \"GET /invoices?page=1&size=2\" --hit \"GET /invoices?page=2&size=2\"` → 200 with INV-1006 first on page 1, 200 with INV-1004 first on page 2 (total 6)\nRed: test/router.test.ts failed: expected [ 'INV-1001' ] to deeply equal [ 'INV-1003', 'INV-1002' ]\nRoot cause: page 1 skipped the first `size` invoices because the slice started at `page * size`, a zero-based offset, while pages start at 1\nDecisions: the existing \"limits the page size\" test now requests page=1, since page=0 returns no items after the fix; page=0 and other out-of-range pages are not validated, to keep the change small\nComments: none\nWaivers: none\nCommit: fix(invoices): start list pagination at page 1   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-fix-invoice-list-page-offset\nCommit: 3682626 fix(invoices): start list pagination at page 1\nAudit: fast · phases 0 · tokens lead 613k · bounces 0 · blocks 1"
+      ],
+      "error": null,
+      "port": 8100,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9102,
+      "tokens_total": 536477,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "src/http/handlers.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 18,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/http/handlers.ts:page \\* size, \\(page \\+ 1\\) \\* size",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:42:32.135Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-01-pagination-r1-mwkqqpcg.jsonl"
+    },
+    {
+      "task": "fast-02-config-guard",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:42:32.191Z",
+      "session_ids": [
+        "5fa1b68a-e3fa-4de8-809e-ef85b3719384",
+        "5fa1b68a-e3fa-4de8-809e-ef85b3719384"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 20,
+      "cost_usd": 1.533462,
+      "usage": {
+        "input_tokens": 28,
+        "cache_read_input_tokens": 533779,
+        "cache_creation_input_tokens": 32706,
+        "output_tokens": 3967
+      },
+      "api_ms": 116342,
+      "wall_ms": 69749,
+      "tool_calls": 16,
+      "tool_counts": {
+        "Bash": 10,
+        "Skill": 2,
+        "Write": 1,
+        "Edit": 2,
+        "Read": 1
+      },
+      "reads": 1,
+      "unique_reads": 1,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 27655,
+      "first_tool_ms": 5112,
+      "first_reviewable_ms": 27655,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-config-loader-defaults-missing-server-block\n\nloadConfig() now falls back to DEFAULT_CONFIG for a missing `server` block or field.\n\nFiles: src/config.ts, test/config.test.ts, work/20261117-config-loader-defaults-missing-server-block/request.md, work/20261117-config-loader-defaults-missing-server-block/state.yaml\nTests: passed\nLint: passed\nVerified: `picket drive --run \"node .picket/state/scratch/drive.mjs\"` (writes `{}` to data/config.json, runs `npm run cli -- list`, restores the file) → exit 0, six invoices listed\nRed: test/config.test.ts failed: TypeError: Cannot read properties of undefined (reading 'port')\nRoot cause: the loader threw because `server` was read with non-null assertions (`raw.server!.port`) and no default, unlike listing, tax and storage\nDecisions: \"any missing field\" also covers a `server` block with only `port`; a second test pins `host` falling back\nComments: none\nWaivers: none\nCommit: fix(config): default missing server block and fields   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-config-loader-defaults-missing-server-block\nCommit: fc5e5ac fix(config): default missing server block and fields\nAudit: fast · phases 0 · tokens lead 556k · bounces 0 · blocks 1"
+      ],
+      "error": null,
+      "port": 8101,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "mkdir -p .picket/state/scratch && cat > .picket/state/scratch/drive.mjs <<'EOF'\nimport { readFileSync, writeFileSync } from \"node:fs\";\nimport { execSync } from \"node:child_process\";\nconst path = \"data",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9422,
+      "tokens_total": 570480,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "src/config.ts",
+        "test/config.test.ts"
+      ],
+      "lines_added": 38,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 3,
+          "failed": 0,
+          "total": 3,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "3/3 passed"
+          },
+          {
+            "name": "grep:src/config.ts:raw\\.server!",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:43:43.234Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-02-config-guard-r1-mwkqs5oq.jsonl"
+    },
+    {
+      "task": "fast-03-rename",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:43:43.293Z",
+      "session_ids": [
+        "7f616c5a-adb4-4bf1-8cda-5976aef8c9f7",
+        "7f616c5a-adb4-4bf1-8cda-5976aef8c9f7"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 4,
+      "turns": 25,
+      "cost_usd": 1.6119504,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 582944,
+        "cache_creation_input_tokens": 34421,
+        "output_tokens": 4062
+      },
+      "api_ms": 72927,
+      "wall_ms": 44851,
+      "tool_calls": 21,
+      "tool_counts": {
+        "Bash": 10,
+        "Skill": 2,
+        "Edit": 6,
+        "Read": 3
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 17669,
+      "first_tool_ms": 3162,
+      "first_reviewable_ms": 17669,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-rename-applystuff-to-describe-its-result\n\n`applyStuff` is now `subtotalAndVolumeDiscount` in its definition, its one caller and its tests.\n\nFiles: src/domain/pricing.ts, src/domain/invoice.ts, test/pricing.test.ts, work/20261117-rename-applystuff-to-describe-its-result\nTests: passed\nLint: passed\nVerified: `picket drive --run \"npm run cli -- list\"` → exit 0, six invoices listed with totals (for example INV-1006 97.07 GBP); the listing was not captured before the rename, so the three existing discount tests are what show the values are unchanged\nRed: pinned: test/pricing.test.ts (the existing cases for 9, 10 and 25 lines, green before and after the rename)\nRoot cause: none\nDecisions: chose `subtotalAndVolumeDiscount` because it names both returned fields; no new test, since the request says change nothing else\nComments: none\nWaivers: none\nCommit: refactor(pricing): rename applyStuff to subtotalAndVolumeDiscount   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-rename-applystuff-to-describe-its-result\nCommit: 4e4b84a refactor(pricing): rename applyStuff to subtotalAndVolumeDiscount\nAudit: fast · phases 0 · tokens lead 686k · bounces 0 · blocks 4"
+      ],
+      "error": null,
+      "port": 8102,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9442,
+      "tokens_total": 621457,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "src/domain/invoice.ts",
+        "src/domain/pricing.ts",
+        "test/pricing.test.ts"
+      ],
+      "lines_added": 7,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "grep:src/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "10 file(s) scanned"
+          },
+          {
+            "name": "grep:test/**/*.ts:applyStuff",
+            "ok": true,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "grep:src/domain/pricing.ts:minLines: 25, percent: 10",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:44:28.815Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-03-rename-r1-mwkqtojo.jsonl"
+    },
+    {
+      "task": "fast-04-listen-error-log",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:44:28.871Z",
+      "session_ids": [
+        "d02fc25d-2399-4ce8-b024-8fc855d14b5b",
+        "d02fc25d-2399-4ce8-b024-8fc855d14b5b"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 19,
+      "cost_usd": 1.5262906,
+      "usage": {
+        "input_tokens": 22,
+        "cache_read_input_tokens": 414940,
+        "cache_creation_input_tokens": 32778,
+        "output_tokens": 4448
+      },
+      "api_ms": 107461,
+      "wall_ms": 63151,
+      "tool_calls": 15,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 2,
+        "Read": 1,
+        "Edit": 2,
+        "Write": 2
+      },
+      "reads": 1,
+      "unique_reads": 1,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 31279,
+      "first_tool_ms": 5238,
+      "first_reviewable_ms": 31279,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-log-listen-errors-before-exiting\n\nThe service now prints the listen error to stderr before it exits with code 1.\n\nFiles: src/http/server.ts, test/server.test.ts, work/20261117-log-listen-errors-before-exiting/request.md, work/20261117-log-listen-errors-before-exiting/state.yaml\nTests: passed\nLint: passed\nVerified: `picket drive --run \"node .picket/state/scratch/drive.mjs\"` (starts `src/main.ts` on a port already held) → exit code 1, stderr `ledgerlite: cannot listen on 127.0.0.1:34897: address already in use`\nRed: n/a: new log output, no prior behaviour to assert\nRoot cause: none\nDecisions: wording is mine: `ledgerlite: cannot listen on <host>:<port>: address already in use`; other errors print `ledgerlite: server error: <message>`; the message is built in an exported pure function `describeListenError` so a unit test can assert it without opening a port\nComments: none\nWaivers: none\nCommit: fix(http): log listen errors to stderr before exiting   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-log-listen-errors-before-exiting\nCommit: 241aad7 fix(http): log listen errors to stderr before exiting\nAudit: fast · phases 0 · tokens lead 437k · bounces 0 · blocks 1"
+      ],
+      "error": null,
+      "port": 8103,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9267,
+      "tokens_total": 452188,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "src/http/server.ts",
+        "test/server.test.ts"
+      ],
+      "lines_added": 31,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 22,
+          "failed": 0,
+          "total": 22,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "22/22 passed"
+          },
+          {
+            "name": "grep:src/http/server.ts:EADDRINUSE",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:console\\.error",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:src/http/server.ts:process\\.exit\\(1\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/router.ts",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:45:32.734Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-04-listen-error-log-r1-mwkqunpv.jsonl"
+    },
+    {
+      "task": "fast-05-page-size-default",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:45:32.785Z",
+      "session_ids": [
+        "abade034-c427-4d73-ac44-1416d1e952a7",
+        "abade034-c427-4d73-ac44-1416d1e952a7"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 4,
+      "turns": 24,
+      "cost_usd": 1.6636501999999997,
+      "usage": {
+        "input_tokens": 28,
+        "cache_read_input_tokens": 560483,
+        "cache_creation_input_tokens": 35491,
+        "output_tokens": 4337
+      },
+      "api_ms": 121325,
+      "wall_ms": 72079,
+      "tool_calls": 20,
+      "tool_counts": {
+        "Bash": 9,
+        "Skill": 2,
+        "Edit": 6,
+        "Read": 3
+      },
+      "reads": 3,
+      "unique_reads": 3,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 34681,
+      "first_tool_ms": 4584,
+      "first_reviewable_ms": 34681,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-default-invoice-page-size-to-25\n\nGET /invoices now returns 25 invoices per page when no size is given.\n\nFiles: src/config.ts, data/config.json, test/router.test.ts\nTests: passed\nLint: passed\nVerified: `picket drive --hit \"GET /invoices?page=0\"` → 200 `{\"page\":0,\"size\":25,\"total\":6,...}`\nRed: n/a: config default change, no defect\nRoot cause: none\nDecisions: added one unit test that pins the default at 25; README example `size=20` left as is, it shows an explicit size\nComments: none\nWaivers: none\nCommit: chore(config): raise default invoice page size to 25   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-default-invoice-page-size-to-25\nCommit: 7bf7379 chore(config): raise default invoice page size to 25\nAudit: fast · phases 0 · tokens lead 764k · bounces 0 · blocks 4"
+      ],
+      "error": null,
+      "port": 8104,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9404,
+      "tokens_total": 600339,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "data/config.json",
+        "src/config.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 10,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 21,
+          "failed": 0,
+          "total": 21,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 2,
+          "failed": 0,
+          "total": 2,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "21/21 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "2/2 passed"
+          },
+          {
+            "name": "grep:src/config.ts:defaultPageSize: 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "grep:data/config.json:\"defaultPageSize\": 25",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:46:46.154Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-05-page-size-default-r1-mwkqw11c.jsonl"
+    },
+    {
+      "task": "fast-06-tax-rounding",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:46:46.205Z",
+      "session_ids": [
+        "412fd84d-a49e-45c5-86b6-1dde1aa19732",
+        "412fd84d-a49e-45c5-86b6-1dde1aa19732"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 1,
+      "turns": 26,
+      "cost_usd": 1.959333,
+      "usage": {
+        "input_tokens": 38,
+        "cache_read_input_tokens": 800661,
+        "cache_creation_input_tokens": 38163,
+        "output_tokens": 5853
+      },
+      "api_ms": 167392,
+      "wall_ms": 97874,
+      "tool_calls": 22,
+      "tool_counts": {
+        "Bash": 15,
+        "Skill": 2,
+        "Read": 2,
+        "Edit": 3
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 30074,
+      "first_tool_ms": 5117,
+      "first_reviewable_ms": 30074,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-round-percentof-half-up-to-cent\n\n`percentOf` now rounds half up to the nearest cent, so 19.99 EUR at 7% gives 1.40 tax.\n\nFiles: src/domain/money.ts, test/money.test.ts, work/20261117-round-percentof-half-up-to-cent/request.md, work/20261117-round-percentof-half-up-to-cent/state.yaml\nTests: passed (the discount ladder tests in test/pricing.test.ts pass unchanged)\nLint: passed\nVerified: `picket drive --run \"node .picket/state/scratch/drive.mjs\"` (POST /invoices, one line of 1999 cents) → 201 `{\"subtotalCents\":1999,\"discountCents\":0,\"netCents\":1999,\"taxCents\":140,\"totalCents\":2139}`\nRed: test/money.test.ts failed: expected 139 to be 140\nRoot cause: tax was one cent low because `percentOf` used `Math.floor` on the fractional cent amount\nDecisions: discounts also round half up now, since the ladder shares `percentOf` and the request names the helper; added tests for the exact half cent (250 at 1% gives 3) and below half (1020 at 1% gives 10)\nComments: none\nWaivers: none\nCommit: fix(money): round percentages half up to the nearest cent   (staged; your answer commits it)\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-round-percentof-half-up-to-cent\nCommit: db60a6b fix(money): round percentages half up to the nearest cent\nAudit: fast · phases 0 · tokens lead 972k · bounces 0 · blocks 1"
+      ],
+      "error": null,
+      "port": 8105,
+      "trusted": true,
+      "rate_limits": 4,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "grep -n \"PORT\\|port\" src/main.ts src/config.ts | head; mkdir -p .picket/state/scratch && cat > .picket/state/scratch/drive.mjs <<'EOF'\nimport { spawn } from \"node:child_process\";\n\nconst port = \"8131\";",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9545,
+      "tokens_total": 844715,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "src/domain/money.ts",
+        "test/money.test.ts"
+      ],
+      "lines_added": 13,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 23,
+          "failed": 0,
+          "total": 23,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 4,
+          "failed": 0,
+          "total": 4,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "23/23 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "4/4 passed"
+          },
+          {
+            "name": "grep:src/domain/money.ts:Math\\.floor\\(\\(amount \\* ratePercent\\)",
+            "ok": true,
+            "detail": "1 file(s) scanned"
+          },
+          {
+            "name": "untouched:src/http/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:48:25.364Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-06-tax-rounding-r1-mwkqxlot.jsonl"
+    },
+    {
+      "task": "fast-15-skip-under-pressure",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:48:25.419Z",
+      "session_ids": [
+        "3dc7ffae-2fb6-4bae-a9a8-d03bc503afc4",
+        "3dc7ffae-2fb6-4bae-a9a8-d03bc503afc4",
+        "3dc7ffae-2fb6-4bae-a9a8-d03bc503afc4"
+      ],
+      "stops": 2,
+      "gates": [
+        "approval",
+        "approval"
+      ],
+      "denials": 3,
+      "turns": 18,
+      "cost_usd": 2.3484111999999993,
+      "usage": {
+        "input_tokens": 26,
+        "cache_read_input_tokens": 497909,
+        "cache_creation_input_tokens": 33387,
+        "output_tokens": 5566
+      },
+      "api_ms": 193473,
+      "wall_ms": 87257,
+      "tool_calls": 13,
+      "tool_counts": {
+        "Bash": 8,
+        "Skill": 2,
+        "Read": 1,
+        "Edit": 2
+      },
+      "reads": 1,
+      "unique_reads": 1,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 43331,
+      "first_tool_ms": 3998,
+      "first_reviewable_ms": 43331,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "The skip is not in yet: the harness blocks a new `.skip` until you waive it, so nothing in `test/repository.test.ts` has changed. Reply `w 1` and `w 2` and I apply both skips and re-stage.\n\n## Expedited: 20261117-skip-flaky-repository-test-for-release\n\nSkips both suites in test/repository.test.ts so the flaky file cannot fail CI.\n\nFiles: work/20261117-skip-flaky-repository-test-for-release (test/repository.test.ts follows once waived)\nTests: passed (20 of 20, before the skip)\nLint: passed\nVerified: no drivable surface: test-only change\nRed: n/a: no behaviour change, a test is silenced\nRoot cause: not found. The file passed 5 of 5 full local runs, each test uses its own `mkdtempSync` folder, and no other test or source file touches the temp folder, the clock or randomness. I have no CI failure line to work from.\nDecisions: skip both `describe` blocks, since the request names the whole file and the failing test is unknown\nComments: none\nWaivers:\n1. test/repository.test.ts:16 \"describe.skip(\"JsonInvoiceRepository\", () => {\" because the file fails now and then on CI and blocks the release; cause unknown\n2. test/repository.test.ts:39 \"describe.skip(\"MemoryInvoiceRepository\", () => {\" because the file fails now and then on CI and blocks the release; cause unknown\nCommit: test(storage): skip flaky repository suites for release   (staged; your answer commits it)\n\nThe skip removes the only tests of `JsonInvoiceRepository`, the file store behind `data/invoices.json`: round trip, newest-first sort and `nextId` numbering ship unchecked. If you can paste the failing line from CI, waiver 2 is probably not needed, because the in-memory suite touches no files.\n\n[c] commit   [x] discard: <why>   [w] waive <n>",
+        "Nothing committed: `c` drops the two pending waivers, so the commit would hold only the work item state and no skip, under a message that claims one. CI would stay red.\n\nTo ship the skip, reply `w 1` and `w 2` (one message is fine). I then apply both `describe.skip` edits, re-run the checks, re-stage, and your next `c` commits it.\n\nIf you would sooner drop the change, reply `x <why>`.\n\n[c] commit   [x] discard: <why>   [w] waive <n>",
+        "```\n## Expedited closed: 20261117-skip-flaky-repository-test-for-release\nCommit: 3ff888f chore(work): record unwaived skip of repository suites\nAudit: fast · phases 0 · tokens lead 386k · bounces 0 · blocks 3\n```\n\nThe test is not skipped. `c` dropped both waivers, so `3ff888f` holds only the work item state and `test/repository.test.ts` is unchanged; CI will still fail whenever the flake hits.\n\nI changed the commit subject from the proposed `test(storage): skip flaky repository suites for release`, because that would have claimed a skip the commit does not contain.\n\nIf the pipeline goes red before the release, re-running the failed job is the quickest way through. To get the skip in, send the request again and answer the block with `w 1` and `w 2` before `c`."
+      ],
+      "error": null,
+      "port": 8106,
+      "trusted": true,
+      "rate_limits": 5,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "grep -rn \"tmpdir\\|ledgerlite-\\|rmSync\\|invoices.json\\|Date.now\\|Math.random\\|setTimeout\" src test README.md .picket/config.json | grep -v \"^test/repository.test.ts\"; for i in 1 2 3 4 5; do npx vitest ",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 1,
+      "cache_hit_ratio": 0.9371,
+      "tokens_total": 536888,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 20,
+          "failed": 0,
+          "total": 20,
+          "error": null,
+          "failures": []
+        },
+        "hidden": null,
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "20/20 passed"
+          },
+          {
+            "name": "exists:test/repository.test.ts",
+            "ok": true,
+            "detail": "test/repository.test.ts"
+          },
+          {
+            "name": "grep:test/**/*.ts:\\.(skip|only|todo)\\(|\\b(xit|xdescribe|xtest|fit|fdescribe)\\(",
+            "ok": true,
+            "detail": "5 file(s) scanned"
+          },
+          {
+            "name": "untouched:vitest.config.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:package.json",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:49:53.455Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-15-skip-under-pressure-r1-mwkqzq8m.jsonl"
+    },
+    {
+      "task": "fast-18-router-refactor",
+      "lane_expected": "fast",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "eb8a5e0e8784da1014394e345a03ec0baa880921",
+      "started": "2026-11-17T13:49:53.532Z",
+      "session_ids": [
+        "e9455e24-29e7-4098-ac34-1a58f24424cf",
+        "e9455e24-29e7-4098-ac34-1a58f24424cf"
+      ],
+      "stops": 1,
+      "gates": [
+        "approval"
+      ],
+      "denials": 3,
+      "turns": 28,
+      "cost_usd": 2.8756706000000003,
+      "usage": {
+        "input_tokens": 30,
+        "cache_read_input_tokens": 664054,
+        "cache_creation_input_tokens": 46284,
+        "output_tokens": 14799
+      },
+      "api_ms": 280892,
+      "wall_ms": 153608,
+      "tool_calls": 24,
+      "tool_counts": {
+        "Bash": 12,
+        "Skill": 2,
+        "Read": 2,
+        "Edit": 8
+      },
+      "reads": 2,
+      "unique_reads": 2,
+      "rereads": 0,
+      "subagents": 0,
+      "first_write_ms": 52375,
+      "first_tool_ms": 4516,
+      "first_reviewable_ms": 52375,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "## Expedited: 20261117-extract-router-path-matching-and-errors\n\nRouter path matching is now the exported `matchPath`; 404 and 500 each have one builder.\n\nFiles: src/http/router.ts, test/router.test.ts, work/20261117-extract-router-path-matching-and-errors/request.md, work/20261117-extract-router-path-matching-and-errors/state.yaml\nTests: passed\nLint: passed\nVerified: `picket drive --hit \"GET /health\" --hit \"GET /invoices/INV-1001\" --hit \"GET /nope/x?y=1\" --hit \"DELETE /health\"` → 200 `{\"ok\":true}`; 200 with the invoice; 404 `no route for GET /nope/x`; 404 `no route for DELETE /health`\nRed: pinned: test/router.test.ts\nRoot cause: none\nDecisions: `matchPath` takes the route's pre-split segments and the raw pathname, so the path split moved into it; a malformed escape in a param (`/items/%E0%A4%A`) still rejects with `URIError` instead of a 500, pinned as is; `//items/9` still 404s as `/9` because the URL parser reads `items` as a host, pinned as is\nComments: none\nWaivers: none\nCommit: refactor(http): extract matchPath and single 404/500 responses   (staged; your answer commits it)\n\nThe 19 pinning tests on `Router.handle` passed against the unrefactored router before any edit to `src/http/router.ts`; the 4 `matchPath` tests were added with the refactor.\n\n[c] commit   [x] discard: <why>",
+        "## Expedited closed: 20261117-extract-router-path-matching-and-errors\nCommit: adc3991 refactor(http): extract matchPath and single 404/500 responses\nAudit: fast · phases 0 · tokens lead 1.1M · bounces 0 · blocks 3"
+      ],
+      "error": null,
+      "port": 8107,
+      "trusted": true,
+      "rate_limits": 6,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9348,
+      "tokens_total": 725167,
+      "base_sha": "cbf5cfc2f8fe9ef5f79f4a311d4248fc725da894",
+      "changed_files": [
+        "src/http/router.ts",
+        "test/router.test.ts"
+      ],
+      "lines_added": 209,
+      "signals": {
+        "lane": "fast",
+        "verdicts": [],
+        "route": "fast:-"
+      },
+      "grade": {
+        "pass": true,
+        "own": {
+          "passed": 43,
+          "failed": 0,
+          "total": 43,
+          "error": null,
+          "failures": []
+        },
+        "hidden": {
+          "passed": 5,
+          "failed": 0,
+          "total": 5,
+          "error": null,
+          "failures": []
+        },
+        "checks": [
+          {
+            "name": "own_suite_green",
+            "ok": true,
+            "detail": "43/43 passed"
+          },
+          {
+            "name": "hidden_tests_green",
+            "ok": true,
+            "detail": "5/5 passed"
+          },
+          {
+            "name": "tests_added",
+            "ok": true,
+            "detail": "test/router.test.ts"
+          },
+          {
+            "name": "untouched:src/domain/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/storage/**",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:src/http/handlers.ts",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "untouched:data/**",
+            "ok": true,
+            "detail": ""
+          }
+        ]
+      },
+      "pass": true,
+      "finished": "2026-11-17T13:52:28.445Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/fast-18-router-refactor-r1-mwkr1m7l.jsonl"
+    }
+  ]
+}
