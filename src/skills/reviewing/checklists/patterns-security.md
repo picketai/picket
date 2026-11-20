@@ -9,7 +9,11 @@ These rows run at every size against every changed file. When `security_path` is
 | Se1 | Secret in source | A string literal that looks like a password, token, API key, or connection string is hard-coded in a changed file | Critical |
 | Se2 | Injection | User-supplied input is concatenated into a SQL query, shell command, or OS path without parameterisation or sanitisation | Critical |
 | Se3 | Insecure default | Security-sensitive configuration (CORS `*`, `allowUnsafeEval`, `disableSSLVerification`, `DEBUG=true`) is hard-coded to an insecure value in non-test code | Critical |
-| Se4 | Guard bypass surface | A changed guard (auth filter, validator, trigger, analyzer rule, architecture test) leaves an input uncovered, or reads state a lower-trust actor can change, so the callers that trust it are wrong | Critical |
+| Se4 | Guard bypass surface | A changed guard (auth filter, validator, trigger, analyzer rule, architecture test) leaves an input uncovered, or reads state a lower-trust actor can change, so the callers that trust it are wrong | Critical or Major |
+
+## Grading Se4
+
+Grade an Se4 finding by what the bypass reaches. It is Critical when the bypass reaches an action that cannot be undone outside the repository, such as an authorisation decision in the running product or a SQL run on a real database; only such a guard is held to the determined-bypass bar. It is Major when the bypass reaches only a record whose forgery is reversible and visible in the history or the diff: a Picket phase marker, verdict, comment or waiver.
 
 ## Reading a guard
 

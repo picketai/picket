@@ -8,6 +8,12 @@ import type { CloseResult, Closing, Repeat } from "./close.mts";
 
 const HEADING: Readonly<Record<Lane, string>> = { fast: "Expedited", order: "Order", design: "Design", research: "Research" };
 const SEPARATOR = " · ";
+const SE4 = "Se4";
+export const REVERSIBLE_RECORDS = ["phase marker", "verdict", "comment", "waiver"] as const;
+
+export function orJoined(words: readonly string[]): string {
+  return `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+}
 
 function commitLine({ commit, message }: CloseResult): string {
   return `Commit: ${commit ? `${commit} ${message}` : "nothing to commit"}`;
@@ -82,7 +88,12 @@ function warningLines(v: CloseResult): string[] {
   return [...v.warnings, ...dirty].map((warning) => `WARNING: ${warning}`);
 }
 
+function se4FollowUp(items: readonly string[]): string {
+  return `Follow-up: Se4 repeats in ${items.join(", ")}. Only a guard whose bypass causes an irreversible action outside the repository (a SQL run on a real database) is held to the determined-bypass bar; a new spelling that reaches a ${orJoined(REVERSIBLE_RECORDS)} is a Major finding, fixed where a review finds it.`;
+}
+
 function followUp({ class: cls, items }: Repeat): string {
+  if (cls === SE4) return se4FollowUp(items);
   return `Follow-up: Fix the ${cls} mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in ${items.join(", ")} rejected.`;
 }
 

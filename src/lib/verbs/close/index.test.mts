@@ -19,6 +19,7 @@ import { writeScenario, type Card } from "../../shared/scenarios/format.mts";
 import { appendRows, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import { appendDataRun } from "../../shared/data/runs.mts";
 import { closingBlock } from "./block.mts";
+import { orJoined, REVERSIBLE_RECORDS } from "./block.mts";
 import { close, defaultCloseMessage, type CloseResult, type Closing } from "./close.mts";
 import { checkCommitMessage } from "../../shared/commit-message.mts";
 import { verb } from "./index.mts";
@@ -162,6 +163,23 @@ test("each repeat gets a Repeats line and a Follow-up line, after what is left a
     "Follow-up: Fix the Sl1 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261020-a, 20261021-b rejected.",
     "Follow-up: Fix the Ts4 mistake class at the highest level that works (type, lint rule, test, docs last); the new check must fail on the code the reviews in 20261022-c rejected.",
   ]);
+});
+
+test("a repeated Se4 gets its own Follow-up line naming both kinds of bypass (T-3.1)", () => {
+  const repeats = [{ class: "Se4", items: ["20261020-a", "20261021-b"] as WorkId[] }];
+  const lines = closingBlock(closed("fast", {}, { repeats })).split("\n");
+  assert.deepEqual(lines.filter((line) => line.startsWith("Follow-up: ")), [
+    "Follow-up: Se4 repeats in 20261020-a, 20261021-b. Only a guard whose bypass causes an irreversible action outside the repository (a SQL run on a real database) is held to the determined-bypass bar; a new spelling that reaches a phase marker, verdict, comment or waiver is a Major finding, fixed where a review finds it.",
+  ]);
+});
+
+test("the Se4 grading section of the security checklist names the reversible records the follow-up line names (T-3.3)", () => {
+  const checklist = readFileSync(resolve("src/skills/reviewing/checklists/patterns-security.md"), "utf8");
+  const start = checklist.indexOf("## Grading Se4");
+  assert.ok(start >= 0, "no Grading Se4 section");
+  const end = checklist.indexOf("\n## ", start + 1);
+  const section = checklist.slice(start, end < 0 ? undefined : end);
+  assert.ok(section.includes(orJoined(REVERSIBLE_RECORDS)), section);
 });
 
 type EngineCalls = { runner: EngineRunner; calls: string[][] };
