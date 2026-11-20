@@ -9,13 +9,13 @@
 - [Lead-only verbs denied to the reviewer](lead-only-verbs-denied-to-reviewer.md) — uninstall dry run is denied even in scratch; verify from code
 - [Probe lint with the shell's wording](probe-lint-with-shell-wording.md) — a new flag placement in a shell: run lint.schema on the literal reading
 - [left.jsonl is not proof of cleanup](left-jsonl-is-not-proof-of-cleanup.md) — ls every out-of-repo path a phase block admits to writing
-- [Probe guards from node -e](probe-guards-from-node-e.md) — #test/ imports resolve from -e at repo root; no probe file in src
+- [Probe guards from node -e](probe-guards-from-node-e.md) — #test/ imports resolve from -e at repo root; no probe file in src; record paths go in a JSON file
 - [Probe numeric caps to the consumer](probe-numeric-caps-to-consumer.md) — NaN, 0, negative through the guard and on to the CLI arg; ask what multiplies the cap
 - [Atom shape on new fields](atom-shape-on-new-fields.md) — engine keeps old atom values across reload; a new object field with no shape reads undefined
 - [picket verify runs npm test](picket-verify-runs-npm-test.md) — never loop verify over phases in a review; grep the must_haves by hand
 - [Recompute summary totals by numstat](recompute-summary-totals-by-numstat.md) — git show --numstat minus work/.claude/.picket; no picket summary write
-- [Status plugin tests and markdown-paths](mods-tests-red-on-2-1-319.md) — 25 pane fails fixed at 43ee39c; memory edits can redden markdown-paths
-- [plugin validate fails in subagent](plugin-validate-fails-in-subagent.md) — "No digest" from validate --strict in a subagent shell is not a code signal
+- [Status plugin tests and markdown-paths](mods-tests-red-on-2-1-319.md) — fixed at 43ee39c, red again on 2.1.326 (TS2740, ICON_MISSING); rerun validate
+- [plugin validate fails in subagent](plugin-validate-fails-in-subagent.md) — "No digest" from validate --strict in a subagent shell is not a code signal; passed in-subagent on 2.1.326
 - [AMENDED without an edit](amended-verdict-without-edit.md) — on re-review grep the amended T-N.x, revision log and artifact mtime
 - [Admit corpus before and after](admit-corpus-before-after.md) — git archive base src to scratch, import lane/signals via strip-types, diff lanes
 - [Replay a stop through guard.block](replay-stop-through-guard-block.md) — subagents/*.jsonl head -N, node -e payload, pipe into dist hook
@@ -26,4 +26,9 @@
 - [Attached open( in the fallback](probe-attached-open-in-fallback.md) — probe -weopen(...) and wrapped echo on in-place guard changes; echo | bash -c python3 still passes
 - [Reproduce red in a scratch copy](reproduce-red-in-scratch-copy.md) — git archive HEAD to scratch, swap one base file via archive|tar, node --test there
 - [In-place probes from a scratch file](in-place-probe-from-scratch-file.md) — node -e with a src write literal is denied by guard.bash; run a scratchpad .mts
+- [Bench selfcheck runs in review](bench-selfcheck-runs-in-review.md) — selfcheck, --dry and report --check are free; never a real run
 - [Replay labels by family block](replay-labels-by-family-block.md) — awk a replay's label to its is-open-under header; no git stash in probes
+- [Bash writes to approval state](bash-writes-to-approval-state.md) — developer can append to .picket/state and work/<id> ledgers via Bash; guard.scope is Edit/Write only
+- [Read phase blocks with file()](read-phase-blocks-with-file.md) — awk loop over phases/*.block.md is denied as a record write; use file().text()
+- [Budget rationale needs comment approval](budget-rationale-needs-comment-approval.md) — a mandated comment lands only after picket comment; ls work/<id>/comments.jsonl
+- [Drive-wrapped fall through is unprompted](drive-wrapped-fallthrough-is-unprompted.md) — Bash(picket *) runs a no-decision drive --run text with no prompt

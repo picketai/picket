@@ -15,6 +15,6 @@ Greps check presence only, but a grep entry takes an optional `flags` key (defau
 
 `files` entries are checked with `existsSync`, so a path a phase deletes or `git mv`s away cannot be a must_have; state the absence in a criterion and have the developer's block list the old path so the route commits the deletion (2026-10-23). The check also runs again at later checkpoints, so a file that a later phase moves breaks the earlier phase's `picket verify`. In a multi-phase move, list the path where the file ends up, or leave such files out of the early phases' `files` (item 06 checkpoint F-2, 2026-10-23).
 
-`lint.schema`'s leftover check flags a `[REPLACE` placeholder even inside backticks, so a record that describes a template change must paraphrase the placeholder (2026-10-31).
+`lint.schema`'s leftover check flags a `[REPLACE` placeholder even inside backticks, so a record that describes a template change must paraphrase the placeholder (2026-10-31). It also reports "template comment left in the file" for any HTML comment opener in the record, backticks included; describe an HTML comment in words (2026-11-16).
 
 **How to apply:** in order/design frontmatter, end heading patterns with `\b`. Edit frontmatter with the Edit tool, not sed in Git Bash: a sed `\r` in the replacement inserted a raw CR, and yaml-lite then threw `expected "key: value"` on that line. Related: [[claude-cli-plugin-facts]].

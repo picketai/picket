@@ -12,3 +12,5 @@ A drive of the runner that reaches the run loop spends real API money (per task 
 The routing model in `test/support/routing.mts` exposes `idf`, so "no skill claims prompt X" can be tested as "the prompt's distinctive terms are not in `MODEL.idf`", which is deterministic where a cosine ceiling is not.
 
 **How to apply:** when ordering bench work, put pure functions in `bench/lib/` and write drive criteria with `--dry` or `--runs 0`. Related: [[machine-node-and-test-runs]].
+
+Report drives (2026-11-18): no tracked `bench/results/*.json` holds tester records; `bench/test/fixtures/tester-baseline.json` and `tester-worse.json` are tracked and make `node bench/report.mjs` print the `## Tester` tables (baseline alone exits 0; both with `--check` exit 1 with a REGRESSION block), so they serve as drive input and before-image.

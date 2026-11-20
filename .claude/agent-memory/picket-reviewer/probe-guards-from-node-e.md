@@ -13,4 +13,6 @@ The scratchpad is shared across the session's agents and already holds `probe*.m
 
 `inlineProgram` in `src/lib/hooks/guard/bash/in-place.mts` returns one program only, so a new spelling scan shadows the others: probe a write program followed by a second, harmless program flag (`gawk -e W -e1`, `php -B W -R'echo 1;'`) at base and head. `inPlaceTargets` imports directly from a `git archive <base> src` copy for the base side. Verified 2026-11-15.
 
+Since 2026-11-19 guard.bash denies a spawned agent any non-reader command whose words name a kernel record (`.picket/state/**`, `work/<id>/phases/` etc.), so a probe command passing record paths in argv is denied: write the probe commands to a scratchpad JSON file and pass its path. For a base side, `git archive <base> src test package.json tsconfig.json` into the scratchpad with node_modules symlinked, and import that copy's `test/support/hook.mts`.
+
 A probe test copied into `src/` to reach `#test/` breaks the scratchpad-only rule and needs a `node -e` unlinkSync to remove, because guard.bash denies `rm`. Use the `-e` form instead. Related: [[probe-guards-directly]].

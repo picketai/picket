@@ -16,4 +16,6 @@ Read from compose-go `types/project.go` and `types/types.go` (main) on 2026-11-1
 - Compose 2.40.3 refuses `-p`, `-f`, `--project-directory` and `--profile` after any subcommand (`config`, `version`, `build`, `up`, `stop`, `down`, `port` checked): `unknown flag: --profile`, `unknown shorthand flag: 'p' in -p`. `docker compose <flags>` parses flags without a daemon, so it probes this even when `docker info` fails.
 - `podman compose` writes an ANSI banner line first and `Error: executing <provider> <args>: exit status N` last on stderr, so the last stderr line never holds the cause.
 
+- `compose run -e NAME` with no value takes NAME's value from Compose's own environment (`getEnvironment(project.Environment.Resolve)` in `cmd/compose/run.go`, same at v2.40.3 and main, read 2026-11-18), so a secret can reach a one-off container by name only, never in argv.
+
 **How to apply:** design env features against the JSON model, enable every profile when reading it, and keep Picket data in a top-level `x-` block. Related: [[machine-node-and-test-runs]].

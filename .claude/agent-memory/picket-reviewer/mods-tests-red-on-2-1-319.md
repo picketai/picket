@@ -11,5 +11,7 @@ Both `claude plugin test dist` and `claude plugin validate --strict dist` run re
 
 The product step's markdown-paths test (test/repo) scans agent memory files too: a backticked repository path cited in an unstaged memory edit fails `npm test`. Run that one file with `node --test` rather than the full suite.
 
+Red again on Claude Code 2.1.326 (seen 2026-11-17): `claude plugin validate --strict dist` fails on `TS2740` in the status mod's hooks test file, line 173 (the host's `AgentInfo` type grew fields) and `ICON_MISSING`; base and head both red, `picket mutate` reports `baseline red`. Fixed at 271dd9d8 (status test fields, src/.claude-plugin/icon.png); validate passes again. Rerun validate yourself (about 10 s) before grading.
+
 **Why:** a phase block can report `npm test` red for a cause outside the work item (a memory edit), which is fixed later without a commit in range.
 **How to apply:** re-run the one failing step yourself before grading an "npm test exits 0" criterion FAIL.

@@ -9,7 +9,7 @@
 - [Hook-continued phase routing fixed](hook-continued-phase-not-routed.md) — fixed 6b4385e; continued turns route unless they repeat the last row
 - [Scratch drive root](scratch-drive-root.md) — scratchpad picket runs land in the home folder; set CLAUDE_PROJECT_DIR first
 - [Lane open line pinned](lane-open-line-pinned.md) — lane-check.test.mjs matches each lane's `picket open` line; update it with the step
-- [Reply is lead-only](reply-is-lead-only.md) — guard.bash denies `picket reply` to agents; drive next/packet, unit-test the reply
+- [Lead-only verbs undrivable](reply-is-lead-only.md) — reply, comment, waive, uninstall, data denied to agents, even via drive --run; unit-test them
 - [Temp short names](temp-short-names.md) — tmpdir is 8.3 short form, git prints long form; realpath both before relative
 - [Block heading names the id](block-heading-names-the-id.md) — "## Phase N of <work id>:", never a phase count; Red/Root cause have fixed forms
 - [Mod tests see no hook state](mod-test-module-state.md) — a test's import of a hook module is a separate copy; pin via engine calls
@@ -31,3 +31,12 @@
 - [init test and TMPDIR under home](init-test-tmpdir-under-home.md) — product step fails when TMPDIR sits under the home folder; use a scratch TMPDIR
 - [Podman pasta signal denied](podman-pasta-signal-denied.md) — host AppArmor can block `env stop`; fixed on the dev machine, real-engine tests pass since 2026-11-15
 - [Artifact amended mid-run](artifact-amended-mid-run.md) — re-read the phase section and revision log at every phase of a run
+- [shell-quote globs in examples](shell-quote-glob-in-examples.md): unquoted ? in a skill-examples line throws Error, not UsageError
+- [UsageError name is Error](usage-error-name-is-error.md) — assert.throws {name} fails; use instanceof in a validator
+- [Target-directory spelling drops the name](target-directory-spelling-drops-name.md) — cp/mv seeds in file-level closures keep the guarded basename
+- [Glob tokens dropped by split](glob-tokens-dropped-by-split.md) — shell-quote globs are op objects; splitIntoSegments loses them
+- [Hook stdout in transcript](hook-stdout-in-transcript.md) — 2.1.328 keeps a refused ask's updatedInput in the session transcript
+- [Guard ask drive in scratch](guard-ask-drive-scratch-root.md) — seed a scratch root to drive guard.bash to an ask; PowerShell closures use powerShellCommands
+- [Read in an earlier call](read-just-before-edit.md) — read-before-edit scans the transcript; a Read in the same REPL call as the edit does not count
+- [picket check needs a long timeout](picket-check-timeout.md) — ~150 s; use .timeout(590000) or it moves to the background at 120 s
+- [npm install drops dev tools](npm-install-drops-dev-tools.md) — npm 11.20 add-a-devDependency removed esbuild/typescript; run npm ci after

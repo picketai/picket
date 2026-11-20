@@ -18,4 +18,6 @@ Seen 2026-11-08 (item 20261108-fix-25-failing-status-mod-tests, Claude Code 2.1.
 
 Seen 2026-11-14 (Claude Code 2.1.325): the host types sit in dist/.claude-plugin/types/claude-code/index.d.ts, written only by `claude plugin validate`. Under `claude plugin test`, hooks a test registers with `on` draw their own `AbovePrompt` band row as plugin `test` (probe: they never heard the mod's own chain), so a catch-all test `ui.render` adds a row. `claude plugin validate --strict --json` puts each `error TS` under `contents[].warnings` as `{ path: "line N, column M", message: "error TSxxxx: ..." }`, with absolute `file` paths; about 2 s per run.
 
+Seen 2026-11-17 (Claude Code 2.1.326): neither `validate` nor `plugin test` rewrote the stale 2.1.325 types file in dist, and the type text is not plain in the binary (grep finds no `AgentInfo = {`). To read a type's current shape, put a scratch probe test that builds the object with every unknown field set to a `Symbol()` value through `validate --strict --json`: each TS2322 names the field's real type, and a TS2739 lists the still-missing names in full (TS2740 truncates to four).
+
 **How to apply:** read the types file before designing a mod hook, and put any engine behaviour the types do not state behind an open question. Related: [[mod-theme-tokens]], [[claude-cli-plugin-facts]], [[next-and-mod-couplings]].

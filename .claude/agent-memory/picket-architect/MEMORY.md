@@ -16,18 +16,26 @@
 - [Fake Node version](fake-node-version.md): process.versions.node is configurable, so an --import preload fakes an old Node; write the preload with Write, not Bash
 - [Mod engine API facts](mod-engine-api-facts.md): engine types path, command.run queues, immediate commands, session registry, worktree -C, test fs paths resolve against plugin root, probe plugin
 - [Mod theme tokens](mod-theme-tokens.md): tokens the mods already render; role tokens unverified, binary grep refused
-- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1), Linux Node 26 runs .mts probes; mods step green since f39277ec; which interpreters exist; budgets; verify runs npm test; Podman 5.7.0 picked, pasta AppArmor blocks Compose up
+- [Machine Node and test runs](machine-node-and-test-runs.md): no Node 22 (nvm 20.11.1, 24.22.1), Linux Node 26 runs .mts probes; mods step green since f39277ec; which interpreters exist; budgets; verify runs npm test (never on a fresh record: kill is refused); Podman 5.7.0 picked, pasta AppArmor blocks Compose up
 - [Skill base directory facts](skill-base-directory-facts.md): the lead sees a skill's base directory line, a subagent's preloaded skill does not; path forms follow the reader
 - [Generated tracked files](generated-tracked-files.md): npm test builds before product tests, so staleness of build-written tracked files is checked against the git index
-- [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home and obeys CLAUDE_PROJECT_DIR first; lead-only verb list pinned in a guard test
+- [Zone and root facts](zone-and-root-facts.md): shared/ cannot import src/lib/mods.mts, even types; projectRoot can resolve to home and obeys CLAUDE_PROJECT_DIR first; lead-only verb list pinned in a guard test, groups can be lead-only
 - [Route owns directory prefixes](route-owns-directory-prefixes.md): a plan path ending in a slash owns every staged path under it, deletions included
 - [New skill touchpoints](new-skill-touchpoints.md): routing cases, Use when, plugin.json, docs section, EVERY_SKILL, CLAUDE.md template prefix, npm test rebuilds dist; when_to_use unread, Entry fixtures, one touch path per bullet
 - [Next and mod couplings](next-and-mod-couplings.md): mod imports limited to MOD_LIB_SHARED; rejection keeps approve_phase; rows lost the amend line; guard classes per verb; cli.md headings
 - [Verdict hook drive](verdict-hook-drive.md): pipe a SubagentStop payload into dist/hooks/route.verdict.mjs, a PostToolUse one into lint.schema.mjs; scratch replay needs midpoint N.reviewed and the rows session id; record digest skips frontmatter; picket reply is lead-only
 - [Admit rule probe](admit-rule-probe.md): size an admit signal change on the corpus and bench prompts with a scratch signals.mts copy; write .mts with Write
-- [Bench runner drive safety](bench-runner-drive-safety.md): run.mjs runs main at import; drives use --dry or --runs 0 with a temp --out; routing idf for vocabulary checks
+- [Bench runner drive safety](bench-runner-drive-safety.md): run.mjs runs main at import; drives use --dry or --runs 0 with a temp --out; routing idf for vocabulary checks; tester fixtures drive report.mjs
 - [npm OIDC dist-tag](npm-oidc-dist-tag.md): dist-tag does the OIDC exchange from npm 11.21.0 only; machine npm is 11.20.0; npm view and pack reach the registry
-- [Guard on probe paths](guard-bash-probe-paths.md): a Bash heredoc naming a src code file is denied as a code write; write probes with Write
+- [Guard on probe paths](guard-bash-probe-paths.md): a Bash heredoc naming a src code file is denied as a code write; write probes with Write, new names each time; guardOutput probes; hook drive as a run check
 - [Guard write paths](guard-write-paths.md): protect a folder in guard.scope; shell writes to non-code files already prompt; verify must not start stacks
-- [Compose model facts](compose-model-facts.md): config JSON drops profile-disabled services and service-level x- keys; global flags only before the subcommand; podman compose wrapper line last on stderr; info JSON fields
+- [Compose model facts](compose-model-facts.md): config JSON drops profile-disabled services and service-level x- keys; global flags only before the subcommand; podman compose wrapper line last on stderr; info JSON fields; run -e NAME passes a secret by name
+- [guard.bash Reading shape](guard-bash-reading-shape.md): heredoc bodies without quoting, unparsable commands skip judgeSegments, bareAgentName needs the role in INSTANCE_NAME
+- [Drive run timeout](drive-run-timeout.md): declared run checks stop at 20 s with no timeout key; stderr counts; use node dist/bin/picket.mjs; env check probes via CLAUDE_PROJECT_DIR
+- [init test and TMPDIR](init-test-tmpdir.md): init.test.mjs:104 fails when TMPDIR is under HOME (this session); npm test and verify need TMPDIR=/tmp
 - [Rejected tree locations](rejected-tree-locations.md): cumulative review tree is the close commit parent, checkpoint tree is the phase commit; old trees lack interpreters.mts and runRefusal
+- [Hook output in transcript](hook-output-in-transcript.md): 2.1.328 writes PreToolUse stdout and updatedInput into the transcript even on a refused ask; refusal fires no Post event
+- [Data verb drive limits](data-verb-drive-limits.md): data verbs are lead-only, so drive their guards via env check fixtures or hook payload files; plain data run had no guard decision on b987c5a8
+- [lint.schema on batch edits](lint-schema-batch-edit.md): a decision bump before its log line in one edit() batch trips a false revision log warning
+- [Bench run transcripts](bench-run-transcripts.md): result records drop case steps and run_dir; recover them from the run's session and subagent transcripts
+- [Testing skill example test](testing-skill-example-test.md): skill-examples.test parses only note/classify/ask from testing steps; covers [] cards parse
