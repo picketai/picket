@@ -34,7 +34,7 @@ const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
 const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0";
-const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [], defects: [], data: [] };
+const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [], defects: [], learned: [], data: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -618,6 +618,64 @@ test("a result on a deprecated card records nothing", (t) => {
   gitIn(root, "commit", "-q", "-am", "deprecate");
   assert.deepEqual(closeFast(root, id).closing.defects, []);
   assert.deepEqual(readDefects(root), []);
+});
+
+const FIX_ROUND: StageSetup["verdicts"] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "fix" }], ["tester", "APPROVED", "test", { round: 2 }]];
+
+function fixedCaseRows(escaped: string | null): TestEntry[] {
+  const escape: TestEntry[] = escaped === null ? [] : [{ round: 2, type: "escape", case: "C-03", root_cause: "the total skipped the discount", escaped }];
+  return [
+    testCase("C-03", "normal", GET_STEPS, { round: 1, outcome: "failed", attempts: 2, detail: "step 2: expected status 200, got 500" }),
+    { round: 1, type: "class", case: "C-03", class: "product", evidence: "the service answered 500" },
+    ...escape,
+    testCase("C-03", "normal", GET_STEPS),
+  ];
+}
+
+test("a product case fixed in the next round becomes a fixed entry with every field, once (T-3.4)", (t) => {
+  const { root, id } = testedItem(t, { verdicts: FIX_ROUND, cases: fixedCaseRows("unit test") });
+  const result = closeFast(root, id);
+  assert.deepEqual(readDefects(root), [
+    {
+      id: "DF-0001",
+      status: "fixed",
+      opened: "2026-11-17",
+      found_in: id,
+      scenario: "S-0003",
+      expected: "orders are listed",
+      actual: "step 2: expected status 200, got 500",
+      evidence: "the service answered 500",
+      case: "C-03",
+      root_cause: "the total skipped the discount",
+      escaped: "unit test",
+      fixed: "2026-11-15",
+      fixed_in: id,
+      reason: "fixed by this item",
+    },
+  ]);
+  assert.ok(result.committed.includes(FIRST_DEFECT), result.committed.join(", "));
+  assert.ok(blockLines(result).includes("Known defects: DF-0001 fixed by this item (C-03)"), blockLines(result).join("\n"));
+  closeFast(root, id);
+  assert.deepEqual(readDefects(root).map((entry) => entry.id), ["DF-0001"]);
+});
+
+test("a second item that escaped a unit test prints the Learned line and writes the developer's memory, uncommitted (T-3.7)", (t) => {
+  const { root, id } = testedItem(t, { verdicts: FIX_ROUND, cases: fixedCaseRows("unit test") });
+  writeDefect(root, { id: "DF-0001", status: "fixed", opened: "2026-11-01", found_in: "20261101-a", scenario: "none", expected: "x", actual: "y", evidence: "z", case: "C-01", root_cause: "a rounding slip", escaped: "unit test", fixed: "2026-11-02", fixed_in: "20261101-a", reason: "fixed by this item" });
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "earlier defect");
+  const result = closeFast(root, id);
+  const memory = ".claude/agent-memory/picket-developer/escaped-defects.md";
+  assert.ok(blockLines(result).includes(`Learned: unit test in 2 items (DF-0001, DF-0002) to ${memory}`), blockLines(result).join("\n"));
+  assert.match(readFileSync(join(root, memory), "utf8"), /^- Defects escaped a unit test in 2 items: DF-0001 \(20261101-a\): a rounding slip; DF-0002 \(/m);
+  assert.ok(!result.committed.some((path) => path.startsWith(".claude/")), result.committed.join(", "));
+});
+
+test("a product case fixed with no escape row and no other item prints no Learned line", (t) => {
+  const { root, id } = testedItem(t, { verdicts: FIX_ROUND, cases: fixedCaseRows(null) });
+  const result = closeFast(root, id);
+  assert.deepEqual([readDefects(root)[0].escaped, readDefects(root)[0].root_cause], [undefined, undefined]);
+  assert.deepEqual(result.closing.learned, []);
 });
 
 test("an item accepted at resolve_tests names each criterion not verified with its why (T-9.2)", (t) => {

@@ -945,6 +945,31 @@ test("a tester PHASE DONE or ALIGNED is refused as not the tester's (T-5.3)", (t
   assert.throws(() => route({ id, verdict: "ALIGNED", agent: "picket:tester", root }), { message: '"ALIGNED" may only come from reviewer, not tester' });
 });
 
+test("a developer PHASE DONE after a tester fix round is refused until each product case has an escape row (T-3.3)", (t) => {
+  const { root, id } = testedItem(t);
+  appendVerdict(root, id, { agent: "reviewer", verdict: "APPROVED", phase: 2, scope: "cumulative", through: null }, new Date("2026-11-17T10:01:00.000Z"));
+  appendVerdict(root, id, { agent: "tester", verdict: "CHANGES REQUIRED", phase: null, scope: "test", through: null, round: 1, test_route: "fix" }, new Date("2026-11-17T10:02:00.000Z"));
+  appendTestRow(root, id, failedCase("C-03"), new Date("2026-11-17T10:00:00.000Z"));
+  appendTestRow(root, id, { round: 1, type: "class", case: "C-03", class: "product", evidence: "the service answered 500" }, new Date("2026-11-17T10:00:30.000Z"));
+  assert.throws(() => route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 2, root }), {
+    message: `record where C-03 escaped first: picket test escape ${id} C-03 --root-cause "<text>" --escaped "<point>"`,
+  });
+  assert.equal(verdictLines(root, id).length, 2);
+  appendTestRow(root, id, { round: 2, type: "escape", case: "C-03", root_cause: "the total skipped the discount", escaped: "unit test" }, new Date("2026-11-17T10:03:00.000Z"));
+  route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 2, root });
+  assert.deepEqual(verdictLines(root, id).map((row) => [row.agent, row.verdict]).at(-1), ["developer", "PHASE DONE"]);
+});
+
+test("a developer PHASE DONE after a tester round routed to the user is not asked for escapes", (t) => {
+  const { root, id } = testedItem(t);
+  appendVerdict(root, id, { agent: "reviewer", verdict: "APPROVED", phase: 2, scope: "cumulative", through: null }, new Date("2026-11-17T10:01:00.000Z"));
+  appendVerdict(root, id, { agent: "tester", verdict: "CHANGES REQUIRED", phase: null, scope: "test", through: null, round: 1, test_route: "user" }, new Date("2026-11-17T10:02:00.000Z"));
+  appendTestRow(root, id, failedCase("C-03"), new Date("2026-11-17T10:00:00.000Z"));
+  appendTestRow(root, id, { round: 1, type: "class", case: "C-03", class: "product", evidence: "the service answered 500" }, new Date("2026-11-17T10:00:30.000Z"));
+  route({ id, verdict: "PHASE DONE", agent: "picket:developer", phase: 2, root });
+  assert.deepEqual(verdictLines(root, id).map((row) => row.agent).at(-1), "developer");
+});
+
 const FIXED_DESIGN = "---\nlane: design\nphases:\n  - n: 1\n    files: [src/a.js]\n    drive:\n      - covers: T-1.1\n        method: POST\n        path: /orders\n        status: 201\n  - n: 2\n    files: [src/b.js]\n---\n# D\n\n## Phase 1: A\n\n- **T-1.1** an order is placed\n\n## Phase 2: B\n\nt\n";
 const STAGE_TS = (minute: number) => new Date(`2026-11-17T10:${String(minute).padStart(2, "0")}:00.000Z`);
 

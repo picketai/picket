@@ -4,7 +4,9 @@ import { securityPaths } from "../config.mjs";
 import type { Context } from "../context.mts";
 import { TESTER_VERDICTS, VERDICTS } from "../verdicts.mjs";
 import { deriveVerdict } from "../testing/derive.mts";
+import { missingEscapes } from "../testing/escapes.mts";
 import { testFacts } from "../testing/facts.mts";
+import { readTestRows } from "../testing/results.mts";
 import { frameDigest, namedChecks, recordDigest } from "../work/amendment.mts";
 import type { WorkId } from "../work/files.mts";
 import { readDriveLog, type DriveRow } from "../drive-log.mts";
@@ -32,6 +34,8 @@ const SPECS = VERDICTS as Readonly<Record<string, VerdictSpec>>;
 const TESTER = "tester";
 const TEST_SCOPE = "test";
 const TESTER_SPECS = TESTER_VERDICTS as Readonly<Record<string, Effect>>;
+const DEVELOPER = "developer";
+const FIX_ROUTES: readonly string[] = ["fix", "breaker"];
 
 function testerSpec(verdict: string, spec: VerdictSpec): VerdictSpec {
   if (!Object.hasOwn(TESTER_SPECS, verdict)) throw new Refused(`"${verdict}" may only come from ${spec.agent}, not ${TESTER}`);
@@ -67,6 +71,22 @@ function testedRound(root: string, snap: WorkSnapshot, verdict: string): TestedR
     throw new Refused(`the recorded results derive ${derived.verdict} (${derived.reasons[0] ?? "every tested criterion has a passed case"}); end the block with ${derived.verdict}`);
   }
   return { input, derived };
+}
+
+function fixRound(snap: WorkSnapshot): number | null {
+  const tester = snap.verdicts.filter((row) => row.agent === TESTER).at(-1);
+  if (tester?.verdict !== CLASSED_VERDICT || tester.round === undefined || !FIX_ROUTES.includes(tester.test_route ?? "")) return null;
+  const reviewed = snap.verdicts.some((row) => row.agent === "reviewer" && row.scope === "cumulative" && row.verdict === "APPROVED" && Date.parse(row.ts) < Date.parse(tester.ts));
+  return reviewed ? tester.round : null;
+}
+
+function refuseUnrecordedEscapes(root: string, snap: WorkSnapshot, agent: string | null, verdict: string): void {
+  if (agent !== DEVELOPER || verdict !== PHASE_DONE) return;
+  const round = fixRound(snap);
+  if (round === null) return;
+  const [first] = missingEscapes(readTestRows(root, snap.state.id), round);
+  if (first === undefined) return;
+  throw new Refused(`record where ${first} escaped first: picket test escape ${snap.state.id} ${first} --root-cause "<text>" --escaped "<point>"`);
 }
 
 function testPlan(tested: TestedRound | undefined): Pick<PlannedVerdict, "scope" | "phase" | "test"> | null {
@@ -141,6 +161,7 @@ export function route(input: RouteInput, ctx: Context): RouteResult {
   const spec = verdictSpec(input.verdict, agent);
   const snap = readSnapshot(ctx.root, input.id);
   refuseMisplacedPublish(input, spec, snap);
+  refuseUnrecordedEscapes(ctx.root, snap, agent, input.verdict);
   const phase = input.phase ?? currentPhase(snap)?.n ?? null;
   const amend = rowAmend(input, spec);
   const tested = spec.effect === "tested" ? testedRound(ctx.root, snap, input.verdict) : undefined;

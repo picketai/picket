@@ -16,6 +16,7 @@ import { fixedContext } from "#test/context.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { verb as ask } from "./ask.mts";
 import { verb as classify } from "./classify.mts";
+import { verb as escape } from "./escape.mts";
 import { verb as note } from "./note.mts";
 import { verb as report } from "./report.mts";
 
@@ -80,6 +81,36 @@ test("classify refuses a case absent from the round and a case that passed (T-2.
   assert.equal(await refusal(classify.run({ id, case: "C-09", class: "product", evidence: "x" }, fixedContext(root))), "no case C-09 in round 1");
   assert.equal(await refusal(classify.run({ id, case: "C-01", class: "test", evidence: "x" }, fixedContext(root))), "C-01 passed; only a failed case takes a class");
   assert.equal(readTestRows(root, id).length, 1);
+});
+
+function classRow(caseId: string, cls: "product" | "test"): TestEntry {
+  return { round: 1, type: "class", case: caseId, class: cls, evidence: "the service answered 500" };
+}
+
+test("escape appends an escape row in the current round for a product case (T-3.1)", async (t) => {
+  const { root, id } = item(t);
+  seed(root, id, [failedCase("C-03"), classRow("C-03", "product")]);
+  const outcome = await escape.run({ id, case: "C-03", root_cause: "the total skipped the discount", escaped: "unit test" }, fixedContext(root));
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(readTestRows(root, id).at(-1), { ts: "2026-10-23T10:00:00.000Z", round: 1, type: "escape", case: "C-03", root_cause: "the total skipped the discount", escaped: "unit test" });
+  assert.equal(escape.render(outcome.value), "C-03 escaped unit test: the total skipped the discount");
+});
+
+test("escape refuses a case classed test and a case no round holds (T-3.1)", async (t) => {
+  const { root, id } = item(t);
+  seed(root, id, [failedCase("C-02"), classRow("C-02", "test")]);
+  assert.equal(await refusal(escape.run({ id, case: "C-02", root_cause: "x", escaped: "unit test" }, fixedContext(root))), "C-02 is not classed product; only a product failure takes an escape point");
+  assert.equal(await refusal(escape.run({ id, case: "C-09", root_cause: "x", escaped: "unit test" }, fixedContext(root))), "no case C-09 in any round");
+  assert.equal(readTestRows(root, id).length, 2);
+});
+
+test("escape's parse takes a review row id and not checkable earlier and refuses a point outside the list (T-3.1)", () => {
+  const parse = (point: string) => escape.parse(parseArgs(["x-12", "C-03", "--root-cause", "the total skipped the discount", "--escaped", point]));
+  assert.deepEqual(parse("Ts4"), { id: "x-12", case: "C-03", root_cause: "the total skipped the discount", escaped: "Ts4" });
+  assert.equal(parse("none: not checkable earlier").escaped, "none: not checkable earlier");
+  assert.throws(() => parse("code review"), (error) => error instanceof UsageError && error.message === "--escaped must be unit test, declared check, a review row id such as Ts4, or none: not checkable earlier");
+  assert.throws(() => escape.parse(parseArgs([])), (error) => error instanceof UsageError && error.message === escape.usage);
+  assert.equal(escape.usage, 'test escape <id> <case> --root-cause "<text>" --escaped "<point>"');
 });
 
 test("classify refuses product for a failed case that met a gap and records environment (T-3.3)", async (t) => {

@@ -448,6 +448,14 @@ Run every case of the previous round again under the same case ids.
 picket test rerun <id>
 ```
 
+### picket test escape
+
+Record the root cause of a fixed product case and the check it got past.
+
+```sh
+picket test escape <id> <case> --root-cause "<text>" --escaped "<point>"
+```
+
 ## picket summary
 
 Summarize a work item's diff, or a commit range, for the reviewer.

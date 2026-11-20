@@ -34,13 +34,14 @@ export type ClassRow = Stamped & { type: "class"; case: string; class: FailureCl
 export type CellRow = Stamped & { type: "cell"; criterion: string; kind: CaseKind; outcome: CellOutcome; why: string };
 export type QuestionRow = Stamped & { type: "question"; criterion: string; question: string; choices: string[]; default: string | null; basis: string | null };
 export type UntestableRow = Stamped & { type: "untestable"; criterion: string; why: string };
-export type TestRow = CaseRow | ClassRow | CellRow | QuestionRow | UntestableRow;
+export type EscapeRow = Stamped & { type: "escape"; case: string; root_cause: string; escaped: string };
+export type TestRow = CaseRow | ClassRow | CellRow | QuestionRow | UntestableRow | EscapeRow;
 
 type Unstamped<T> = T extends TestRow ? Omit<T, "ts"> : never;
 export type TestEntry = Unstamped<TestRow>;
 
 const RESULTS_FILE = "results.jsonl";
-const ROW_TYPES: ReadonlySet<string> = new Set(["case", "class", "cell", "question", "untestable"]);
+const ROW_TYPES: ReadonlySet<string> = new Set(["case", "class", "cell", "question", "untestable", "escape"]);
 const CASE_ID = /^C-(\d+)$/;
 const TESTER = "tester";
 

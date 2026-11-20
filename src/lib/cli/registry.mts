@@ -53,6 +53,7 @@ export const REGISTRY = {
   "test ask": () => import("../verbs/test/ask.mts"),
   "test case": () => import("../verbs/test/case.mts"),
   "test rerun": () => import("../verbs/test/rerun.mts"),
+  "test escape": () => import("../verbs/test/escape.mts"),
   summary: () => import("../verbs/summary/index.mts"),
   uninstall: () => import("../verbs/uninstall/index.mts"),
   verify: () => import("../verbs/verify/index.mts"),

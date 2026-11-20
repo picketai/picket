@@ -4,15 +4,22 @@ import { isUnexplained, type ResultClass } from "../../shared/scenarios/compare.
 import { defectPath, labelCard, nextDefectId, readDefects, writeDefect, type CardLabels, type DefectEntry } from "../../shared/scenarios/defects.mts";
 import { listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
 import type { KeptBefore, KeptFiles } from "../../shared/scenarios/keep.mts";
+import { newestEscape } from "../../shared/testing/escapes.mts";
+import type { KeptScenario } from "../../shared/testing/keep-cases.mts";
+import { escapeCounts, learningPath, writeLearning, type EscapeCount } from "../../shared/testing/learning.mts";
+import { latestCases, latestClass, type CaseRow, type TestRow } from "../../shared/testing/results.mts";
 import { readResults, type ResultRow, type RunRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import type { WorkSnapshot } from "../../shared/work/snapshot.mts";
 
+export type TestedCases = { rows: readonly TestRow[]; kept: readonly KeptScenario[] };
 type Settling = { root: string; item: string; today: string; run: RunRow; scenarios: SavedScenario[] };
 type Settled = { touched: KeptBefore[]; line: string };
 
 const RECORDED_MODES: readonly string[] = ["full", "affected"];
 const FAILING_BEFORE: ResultClass = "failing before the item";
-const FIXED: readonly ResultClass[] = ["fixed outside this item", "fixed by this item"];
+const FIXED_BY_ITEM: ResultClass = "fixed by this item";
+const FIXED: readonly ResultClass[] = ["fixed outside this item", FIXED_BY_ITEM];
+const NO_SCENARIO = "none";
 const DAY_LENGTH = 10;
 
 function recordedRun(rows: readonly ScenarioRow[], item: string): RunRow | null {
@@ -81,18 +88,64 @@ function settle(at: Settling, result: ResultRow): Settled | null {
   return result.class === FAILING_BEFORE ? recorded(at, result) : resolved(at, result);
 }
 
-export function recordKnownDefects(root: string, snap: WorkSnapshot, now: Date): KeptFiles {
-  const files: KeptFiles = { paths: [], lines: [], before: [] };
+function scenarioDefects(root: string, item: string, today: string): Settled[] {
   const rows = readResults(root);
-  const run = recordedRun(rows, snap.state.id);
-  if (run === null) return files;
-  const at: Settling = { root, item: snap.state.id, today: now.toISOString().slice(0, DAY_LENGTH), run, scenarios: listScenarios(root) };
-  for (const result of runResults(rows, run)) {
-    const settled = settle(at, result);
-    if (settled === null) continue;
-    files.paths.push(...settled.touched.map((before) => before.path));
-    files.before.push(...settled.touched);
-    files.lines.push(settled.line);
-  }
-  return files;
+  const run = recordedRun(rows, item);
+  if (run === null) return [];
+  const at: Settling = { root, item, today, run, scenarios: listScenarios(root) };
+  return runResults(rows, run).flatMap((result) => settle(at, result) ?? []);
+}
+
+function fixedProductCases(rows: readonly TestRow[]): CaseRow[] {
+  return latestCases(rows).filter((row) => row.outcome === "passed" && latestClass(rows, row.case)?.class === "product");
+}
+
+function lastFailure(rows: readonly TestRow[], caseId: string): CaseRow | null {
+  return rows.filter((row): row is CaseRow => row.type === "case" && row.case === caseId && row.outcome === "failed").at(-1) ?? null;
+}
+
+function caseDefect(root: string, item: string, today: string, { rows, kept }: TestedCases, row: CaseRow): Settled | null {
+  if (readDefects(root).some((entry) => entry.found_in === item && entry.case === row.case)) return null;
+  const cls = latestClass(rows, row.case);
+  const escape = newestEscape(rows, row.case);
+  const scenario = kept.find((saved) => saved.covers === `${row.criterion} ${row.kind}`)?.id ?? NO_SCENARIO;
+  const entry: DefectEntry = {
+    id: nextDefectId(root),
+    status: "fixed",
+    opened: (cls?.ts ?? today).slice(0, DAY_LENGTH),
+    found_in: item,
+    scenario,
+    expected: row.intent,
+    actual: lastFailure(rows, row.case)?.detail ?? "",
+    evidence: cls?.evidence ?? "",
+    case: row.case,
+    ...(escape === null ? {} : { root_cause: escape.root_cause, escaped: escape.escaped }),
+    fixed: today,
+    fixed_in: item,
+    reason: FIXED_BY_ITEM,
+  };
+  return { touched: [{ path: writeDefect(root, entry), text: null }], line: `${entry.id} ${FIXED_BY_ITEM} (${row.case})` };
+}
+
+function caseDefects(root: string, item: string, today: string, cases: TestedCases): Settled[] {
+  return fixedProductCases(cases.rows).flatMap((row) => caseDefect(root, item, today, cases, row) ?? []);
+}
+
+export function recordKnownDefects(root: string, snap: WorkSnapshot, now: Date, cases: TestedCases): KeptFiles {
+  const item = snap.state.id;
+  const today = now.toISOString().slice(0, DAY_LENGTH);
+  const settled = [...scenarioDefects(root, item, today), ...caseDefects(root, item, today, cases)];
+  const touched = settled.flatMap((entry) => entry.touched);
+  return { paths: touched.map((before) => before.path), lines: settled.map((entry) => entry.line), before: touched };
+}
+
+function learnedText({ point, role, items, entries }: EscapeCount): string {
+  const counted = `${point} in ${items.length} items (${entries.map((entry) => entry.id).join(", ")})`;
+  return role === null ? counted : `${counted} to ${learningPath(role)}`;
+}
+
+export function learnFromDefects(root: string, item: string): string[] {
+  const counts = escapeCounts(readDefects(root));
+  writeLearning(root, counts);
+  return counts.filter((count) => count.items.includes(item)).map(learnedText);
 }

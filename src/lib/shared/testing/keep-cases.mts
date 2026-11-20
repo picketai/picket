@@ -32,11 +32,12 @@ export function notProven(rows: readonly TestRow[], round: number, real: (mock: 
   return [...new Set(mocks.map(real))];
 }
 
-export type KeptCases = { files: KeptFiles; labels: string[] };
+export type KeptScenario = { covers: string; id: string };
+export type KeptCases = { files: KeptFiles; labels: string[]; scenarios: KeptScenario[] };
 
 export function keepFinalCases(root: string, item: string, rows: readonly TestRow[], round: number): KeptCases {
   const candidates = caseCandidates(item, rows, round, createdEntries(root));
   const files = keepCandidates(root, candidates);
-  const labels = files.paths.map((path, at) => `${basename(path, ".md")} (${candidates[at].covers})`);
-  return { files, labels };
+  const scenarios = files.paths.map((path, at) => ({ covers: candidates[at].covers, id: basename(path, ".md") }));
+  return { files, labels: scenarios.map(({ covers, id }) => `${id} (${covers})`), scenarios };
 }
