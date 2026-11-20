@@ -1,0 +1,111 @@
+{
+  "work_id": "20261119-database-guards-and-confirmed-sql-runs",
+  "base": "b987c5a8e5575b90b0b9ede43dfa26c06b4e730d",
+  "request": "work/20261119-database-guards-and-confirmed-sql-runs/request.md",
+  "size": "large",
+  "changed_files": [
+    "bench/lib/approver-mcp.mjs",
+    "bench/lib/ask-probe-hook.mjs",
+    "bench/probe-ask.mjs",
+    "bench/results/ask-probe.json",
+    "bench/test/probe-ask.test.mjs",
+    "src/lib/hooks/guard/bash/escalation.mts",
+    "src/lib/hooks/guard/bash/escalation.test.mts",
+    "src/lib/hooks/guard/bash/escalation.variants.test.mts",
+    "src/lib/hooks/guard/bash/index.mts",
+    "src/lib/hooks/guard/bash/index.test.mts",
+    "src/lib/hooks/guard/bash/judge.mts",
+    "src/lib/hooks/guard/bash/kernel.mts",
+    "src/lib/hooks/guard/bash/kernel.test.mts",
+    "src/lib/hooks/guard/bash/kernel.variants.test.mts",
+    "src/lib/hooks/guard/bash/payloads.test.mts",
+    "src/lib/hooks/output.mts",
+    "src/lib/shared/config.mjs",
+    "src/lib/shared/config.schema.json",
+    "src/lib/shared/data/confirm.mts",
+    "src/lib/shared/data/confirm.test.mts",
+    "src/lib/shared/data/connection.mts",
+    "src/lib/shared/data/connection.test.mts",
+    "src/lib/shared/data/plan.mts",
+    "src/lib/shared/data/plan.test.mts",
+    "src/lib/shared/data/runs.mts",
+    "src/lib/shared/data/targets.mts",
+    "src/lib/shared/data/targets.test.mts",
+    "src/lib/shared/escalation.mts",
+    "src/lib/shared/escalation.test.mts",
+    "src/lib/shared/paths.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/close/block.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/data/run.mts",
+    "src/lib/verbs/data/run.test.mts",
+    "src/lib/verbs/env/check.mts",
+    "src/lib/verbs/env/check.test.mts",
+    "src/lib/verbs/packet/index.test.mts",
+    "src/lib/verbs/packet/packet.mjs",
+    "test/fixtures/env/data-guard/.picket/env/catalog/customer.md",
+    "test/fixtures/env/data-guard/.picket/env/compose.yaml",
+    "test/fixtures/env/data-guard/.picket/env/data/customer.sql",
+    "test/fixtures/guard/data-run-marked.json",
+    "test/fixtures/guard/data-run-plain.json",
+    "test/kernel/config.test.mjs",
+    "test/repo/closures.test.mjs",
+    "test/support/data-run.mts",
+    "test/support/hook.mts"
+  ],
+  "lines_added": 1768,
+  "lines_removed": 231,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 5,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-20T10:09:51.361Z",
+    "base": "b987c5a8e5575b90b0b9ede43dfa26c06b4e730d",
+    "mutant": {
+      "path": "bench/lib/approver-mcp.mjs",
+      "line": 23,
+      "from": "&&",
+      "to": "||"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 164587
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

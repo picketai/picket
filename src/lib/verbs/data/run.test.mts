@@ -174,7 +174,7 @@ test("a connection that does not name one server and one database is refused bef
   const { root, id } = project(t);
   const { runner, calls } = engine();
   const message = refusal(() => runSqlEntry(context(root, { [VARIABLE]: "Server=sql01;Database=orders_test;Data Source=prod01;Password=s3cret" }), runner, confirmed(root, id)));
-  assert.equal(message, `${VARIABLE} does not name one server and one database: it names the server more than once (server, data source, address, addr, host)`);
+  assert.equal(message, `${VARIABLE} does not name one server and one database: it names the server more than once (server, data source, address, addr, network address, host, failover partner, failover_partner)`);
   assert.deepEqual(calls, []);
 });
 

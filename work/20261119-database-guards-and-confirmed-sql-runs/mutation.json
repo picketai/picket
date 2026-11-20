@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-20T10:09:51.361Z",
+  "base": "b987c5a8e5575b90b0b9ede43dfa26c06b4e730d",
+  "mutant": {
+    "path": "bench/lib/approver-mcp.mjs",
+    "line": 23,
+    "from": "&&",
+    "to": "||"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 164587
+}

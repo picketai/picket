@@ -4,3 +4,4 @@
 {"ts":"2026-11-20T07:50:20.815Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"resolve_block","phase":null,"reply":"c","fresh":true}
 {"ts":"2026-11-20T08:54:25.933Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"approve_phase","phase":3,"reply":"r"}
 {"ts":"2026-11-20T10:00:38.560Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"approve_phase","phase":4,"reply":"r"}
+{"ts":"2026-11-20T10:46:00.554Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"approve_amendment","phase":null,"reply":"a","choice":"amend"}

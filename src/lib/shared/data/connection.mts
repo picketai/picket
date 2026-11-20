@@ -3,7 +3,7 @@ export type TargetRead = { target: ConnectionTarget } | { problem: string };
 
 const MASK = "***";
 const URL_FORM = /^[a-z][a-z0-9+.-]*:\/\//i;
-const SERVER_KEYS = ["server", "data source", "address", "addr", "host"];
+const SERVER_KEYS = ["server", "data source", "address", "addr", "network address", "host", "failover partner", "failover_partner"];
 const DATABASE_KEYS = ["database", "initial catalog", "dbname"];
 const PASSWORD_KEYS = ["password", "pwd"];
 const NEITHER_FORM = "it is neither a URL (scheme://host/database) nor key=value pairs separated by ;";
@@ -50,7 +50,10 @@ function urlTarget(text: string): TargetRead {
   const url = parsedUrl(text);
   if (url === null) return { problem: NEITHER_FORM };
   if (url.host === "") return { problem: "it names no server" };
-  const [segment] = url.pathname.split("/").filter(Boolean);
+  if (url.search !== "") return { problem: "it carries a URL query, which a driver can read as another server or database" };
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length > 1) return { problem: "its URL path holds more than the database" };
+  const [segment] = segments;
   const database = segment === undefined ? null : decoded(segment);
   if (database === null || database === "") return { problem: "it names no database" };
   return { target: { server: url.host, database } };

@@ -1,9 +1,8 @@
 id: 20261119-database-guards-and-confirmed-sql-runs
 lane: design
 title: Database guards and confirmed SQL runs
-status: open
+status: done
 created: 2026-11-19T17:56:19.256Z
-updated: 2026-11-20T10:00:38.464Z
+updated: 2026-11-20T10:54:38.156Z
 session: a2798d68-7fee-4cd5-9e8c-4ee0e429153d
 base: b987c5a8e5575b90b0b9ede43dfa26c06b4e730d
-run_through: 5

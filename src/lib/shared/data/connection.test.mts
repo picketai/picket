@@ -21,6 +21,11 @@ test("an ambiguous, incomplete or unknown form is a problem with no target, and 
   const refused = [
     "Server=db01;Database=ShopTest;Data Source=prod01",
     "Server=db01;Database=ShopTest;Server=db01",
+    "Server=sql01;Database=orders_test;Failover Partner=prod01",
+    "Server=sql01;Database=orders_test;Network Address=prod01",
+    "postgresql://qa:pw@sql01/orders_test?host=prod-db&dbname=orders_live",
+    "postgres://db01/shop?sslmode=require",
+    "postgres://db01/shop/extra",
     "jdbc:sqlserver://db01:1433;databaseName=ShopTest",
     "host=db01 port=5432 dbname=shop",
     "Server=db01;Password=s3cret",
@@ -37,7 +42,11 @@ test("an ambiguous, incomplete or unknown form is a problem with no target, and 
 });
 
 test("each problem names what is missing or repeated", () => {
-  assert.deepEqual(readTarget("Server=db01;Database=ShopTest;Data Source=prod01"), { problem: "it names the server more than once (server, data source, address, addr, host)" });
+  assert.deepEqual(readTarget("Server=db01;Database=ShopTest;Data Source=prod01"), { problem: "it names the server more than once (server, data source, address, addr, network address, host, failover partner, failover_partner)" });
+  assert.deepEqual(readTarget("Server=sql01;Database=orders_test;Failover_Partner=prod01"), { problem: "it names the server more than once (server, data source, address, addr, network address, host, failover partner, failover_partner)" });
+  assert.deepEqual(readTarget("postgresql://qa:pw@sql01/orders_test?host=prod-db&dbname=orders_live"), { problem: "it carries a URL query, which a driver can read as another server or database" });
+  assert.deepEqual(readTarget("postgres://db01/shop/extra"), { problem: "its URL path holds more than the database" });
+  assert.deepEqual(readTarget("postgres://db01/shop/"), { target: { server: "db01", database: "shop" } });
   assert.deepEqual(readTarget("Server=db01;Initial Catalog=a;Database=a"), { problem: "it names the database more than once (database, initial catalog, dbname)" });
   assert.deepEqual(readTarget("Server=db01;Password=s3cret"), { problem: "it names no database" });
   assert.deepEqual(readTarget("Database=shop;Server="), { problem: "it names no server" });
