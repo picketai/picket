@@ -20,6 +20,11 @@ export function freshReplies(replies: readonly ReplyRow[]): ReplyRow[] {
   return replies.filter((row) => row.fresh === true);
 }
 
+export function rowsSinceLastReply<R extends { ts: string }>(rows: readonly R[], replies: readonly ReplyRow[]): R[] {
+  const newest = replies.reduce<string | null>((latest, reply) => (latest === null || reply.ts > latest ? reply.ts : latest), null);
+  return newest === null ? [...rows] : rows.filter((row) => row.ts > newest);
+}
+
 export function readReplies(root: string, id: WorkId): JsonlRead<ReplyRow> {
   return readJsonl<ReplyRow>(workFile(root, id, "replies.jsonl"));
 }

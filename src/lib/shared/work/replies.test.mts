@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { appendReply, freshReplies, readReplies } from "./replies.mts";
+import { appendReply, freshReplies, readReplies, rowsSinceLastReply } from "./replies.mts";
 import { readSnapshot } from "./snapshot.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -32,4 +32,23 @@ test("freshReplies keeps only the continue-with-a-fresh-developer rows", () => {
     { ts: "2", action: "approve_phase", phase: 1, reply: "a" },
   ] as const;
   assert.deepEqual(freshReplies([...rows]).map((r) => r.ts), ["1"]);
+});
+
+const rowsAt = (...stamps: string[]) => stamps.map((ts, i) => ({ ts, n: i + 1 }));
+const replyAt = (ts: string) => ({ ts, action: "resolve_block", phase: null, reply: "c" }) as const;
+
+test("rowsSinceLastReply keeps every row when there is no reply", () => {
+  const rows = rowsAt("2026-11-19T18:30:10.691Z", "2026-11-19T18:32:42.543Z");
+  assert.deepEqual(rowsSinceLastReply(rows, []), [{ ts: "2026-11-19T18:30:10.691Z", n: 1 }, { ts: "2026-11-19T18:32:42.543Z", n: 2 }]);
+});
+
+test("rowsSinceLastReply keeps only the rows later than the newest reply", () => {
+  const rows = rowsAt("2026-11-19T18:30:10.691Z", "2026-11-19T18:32:42.543Z", "2026-11-19T19:02:08.034Z");
+  const replies = [replyAt("2026-11-19T18:58:10.853Z"), replyAt("2026-11-19T18:30:11.176Z")];
+  assert.deepEqual(rowsSinceLastReply(rows, replies), [{ ts: "2026-11-19T19:02:08.034Z", n: 3 }]);
+});
+
+test("rowsSinceLastReply keeps nothing when the newest reply is later than every row", () => {
+  const rows = rowsAt("2026-11-19T18:30:10.691Z", "2026-11-19T18:32:42.543Z");
+  assert.deepEqual(rowsSinceLastReply(rows, [replyAt("2026-11-19T18:58:10.853Z")]), []);
 });

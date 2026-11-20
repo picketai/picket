@@ -16,6 +16,7 @@ import { hookContext } from "#test/context.mts";
 import { gitAt } from "#test/git.mts";
 import { assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
 import { openItem, withProject } from "#test/project.mts";
+import { seedReplay } from "#test/stall-replay.mts";
 
 const routeVerdict = looseHandler(verdictHandler);
 
@@ -558,4 +559,50 @@ test("a tester's ## Test: block ending DRIFT DETECTED that its rows derive is ro
   assert.deepEqual([row.agent, row.verdict, row.scope, row.round], ["tester", "DRIFT DETECTED", "test", 1]);
   assert.equal(readState(root, s.id).status, "open");
   assert.equal(existsSync(join(root, "work", s.id, "test.md")), true);
+});
+
+const SECOND_STALL_AT = "2026-11-19T18:59:58.179Z";
+
+function replayedDesignItem(root: string): string {
+  const s = openItem(root, { lane: "design", title: "Replayed" });
+  const phases = [1, 2, 3, 4, 5].map((n) => `\n## Phase ${n}: P${n}\n\nt\n`).join("");
+  writeFileSync(join(root, "work", s.id, "design.md"), `---\nlane: design\n---\n# D\n${phases}`);
+  for (const mark of ["done", "approved"] as const) setMarker(root, workId(s.id), 1, mark, new Date("2026-11-19T18:30:10.691Z"));
+  seedReplay(root, workId(s.id), 7, 2);
+  return s.id;
+}
+
+function routeStall(root: string, id: string, agentType: string) {
+  const block = `## Phase 2 of ${id}: P2\n\nThe probe cannot run in this session.\n\nRed: n/a: probe instrumentation\nRoot cause: none\n\nPHASE STALLED`;
+  const tp = transcript(root, [user(`work: ${id}\nphase: 2`), assistant(block)]);
+  return routeVerdict({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, cwd: root, agent_type: agentType }, hookContext(root, { now: SECOND_STALL_AT }));
+}
+
+function assertSecondStallRecorded(root: string, id: string, out: any) {
+  const rows = verdictRows(root, id);
+  assert.equal(rows.length, 8);
+  const { ts, agent, verdict, phase } = rows[7];
+  assert.deepEqual({ ts, agent, verdict, phase }, { ts: SECOND_STALL_AT, agent: "developer", verdict: "PHASE STALLED", phase: 2 });
+  assert.equal(readState(root, workId(id)).status, "blocked");
+  assert.match(out.hookSpecificOutput.additionalContext, /Next: resolve_block/);
+}
+
+test("a second developer's stall after the user's c reply is recorded and blocks the item (T-1.1)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = replayedDesignItem(root);
+  assertSecondStallRecorded(root, id, routeStall(root, id, "lpon-developer-2"));
+});
+
+test("the replayed stall from picket:developer is recorded the same way (T-1.2)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = replayedDesignItem(root);
+  assertSecondStallRecorded(root, id, routeStall(root, id, "picket:developer"));
+});
+
+test("the same stall again with no reply between is already recorded (T-1.3)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const id = replayedDesignItem(root);
+  routeStall(root, id, "lpon-developer-2");
+  assert.match(routeStall(root, id, "lpon-developer-2").hookSpecificOutput.additionalContext, /is already recorded/);
+  assert.equal(verdictRows(root, id).length, 8);
 });

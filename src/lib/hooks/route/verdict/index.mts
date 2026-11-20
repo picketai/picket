@@ -13,6 +13,7 @@ import { workId } from "../../../shared/work/files.mts";
 import { setMarker } from "../../../shared/work/markers.mts";
 import { saveReview } from "../../../shared/work/reviews.mts";
 import { runHandOff } from "../../../shared/work/send.mts";
+import { readReplies, rowsSinceLastReply } from "../../../shared/work/replies.mts";
 import { readSnapshot } from "../../../shared/work/snapshot.mts";
 import { readVerdicts, type VerdictRow } from "../../../shared/work/verdict-log.mts";
 import { route } from "../../../verbs/route/index.mts";
@@ -82,8 +83,13 @@ function saveReviewerBlock(info: BlockInfo | null, text: string, root: string): 
   } catch {}
 }
 
-function repeatsLastRow(root: string, id: string, verdict: string, phase: number | undefined): boolean {
-  const last = readVerdicts(root, workId(id)).rows.at(-1);
+function rowsSinceLastAnswer(root: string, id: string): VerdictRow[] {
+  const item = workId(id);
+  return rowsSinceLastReply(readVerdicts(root, item).rows, readReplies(root, item).rows);
+}
+
+function repeatsLastRow(rows: readonly VerdictRow[], verdict: string, phase: number | undefined): boolean {
+  const last = rows.at(-1);
   return last?.verdict === verdict && (phase === undefined || last.phase === phase);
 }
 
@@ -180,11 +186,12 @@ function routeTurn(event: PayloadOf<StopEvent>, ctx: HookContext): Outcome | nul
   const phase = info?.phase ?? hints.phase ?? undefined;
   if (repeatsSavedBlock(ctx.root, info, id, phase, text)) return null;
   if (!continued && isBouncedForCommit(info, verdict, text)) return null;
-  if (phase !== undefined && repeatsPhaseVerdict(readVerdicts(ctx.root, workId(id)).rows, { ...partiesOf(event, info, hints, verdict), verdict, phase })) {
+  const recent = rowsSinceLastAnswer(ctx.root, id);
+  if (phase !== undefined && repeatsPhaseVerdict(recent, { ...partiesOf(event, info, hints, verdict), verdict, phase })) {
     saveDeveloperBlock(info, id, phase, text, ctx.root);
     return continued ? null : { text: alreadyRecorded(id, verdict, phase), notice: null };
   }
-  if (continued && repeatsLastRow(ctx.root, id, verdict, phase)) {
+  if (continued && repeatsLastRow(recent, verdict, phase)) {
     saveDeveloperBlock(info, id, phase, text, ctx.root);
     return null;
   }

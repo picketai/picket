@@ -1,0 +1,9 @@
+id: 20261120-three-routing-faults-after-a-stall
+lane: order
+title: Three routing faults after a stall
+status: open
+created: 2026-11-20T12:58:07.338Z
+updated: 2026-11-20T13:57:24.400Z
+session: a2798d68-7fee-4cd5-9e8c-4ee0e429153d
+base: 5c9d53c7e28cb07fe356da8cd5279238e4bdfbb1
+run_through: 3

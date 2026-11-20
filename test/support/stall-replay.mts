@@ -1,0 +1,28 @@
+import { appendReply, type ReplyRow } from "../../src/lib/shared/work/replies.mts";
+import { appendVerdict, type VerdictRow } from "../../src/lib/shared/work/verdict-log.mts";
+import type { WorkId } from "../../src/lib/shared/work/files.mts";
+
+export const STALL_REPLAY_VERDICTS: readonly VerdictRow[] = [
+  {"ts":"2026-11-19T18:08:04.549Z","agent":"architect","verdict":"ARTIFACT WRITTEN","phase":1,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-19T18:08:55.339Z","agent":"reviewer","verdict":"DRIFT DETECTED","phase":1,"scope":"crosscheck","through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","amend":"AMENDMENT NEEDED: D-004 a refused dialog must not leave a usable confirmation, or the product owner must ratify the gap against SDR 00005","blocking":["work/20261119-database-guards-and-confirmed-sql-runs/design.md#D-004"],"record":"45ca5125f3f7c07ef4f45fb72a926e00b5acc53b358c348d78db98f5ec144f1c","frame":"1bc2676f7f5c263735895c287f827d117125f1011010dc3ea1af1b888b368f28"},
+  {"ts":"2026-11-19T18:12:40.238Z","agent":"architect","verdict":"AMENDED","phase":1,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","record":"f51bce5cc7c3dad2ac6daa0e0761bd978fd278d5b77d487495dea2f68e4be348","frame":"29018de240d43907ec5ca8fb069828c5bca7a16149ce83d598e509b703d1095b"},
+  {"ts":"2026-11-19T18:13:22.345Z","agent":"reviewer","verdict":"ALIGNED","phase":1,"scope":"crosscheck","through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-19T18:19:28.332Z","agent":"developer","verdict":"PHASE DONE","phase":1,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-19T18:30:10.691Z","agent":"user","verdict":"approved","phase":1,"scope":null,"through":5,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-19T18:32:42.543Z","agent":"developer","verdict":"PHASE STALLED","phase":2,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-19T19:02:08.034Z","agent":"developer","verdict":"PHASE STALLED","phase":2,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-19T19:05:23.346Z","agent":"architect","verdict":"AMENDED","phase":2,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","record":"1b90bf27ba093b97b2a4ec549a818b0244bfa6839fe04eaeac22f5370eefd17e","frame":"8854eb0d56019811a033450cce1f97553617a1bfadae46e2b11c0e5ba509e270"},
+  {"ts":"2026-11-20T06:59:22.948Z","agent":"developer","verdict":"PHASE STALLED","phase":2,"scope":null,"through":null,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+  {"ts":"2026-11-20T07:05:08.855Z","agent":"developer","verdict":"PHASE DONE","phase":2,"scope":null,"through":5,"session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d"},
+];
+
+export const STALL_REPLAY_REPLIES: readonly ReplyRow[] = [
+  {"ts":"2026-11-19T18:30:11.176Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"approve_phase","phase":1,"reply":"r"},
+  {"ts":"2026-11-19T18:58:10.853Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"resolve_block","phase":null,"reply":"c","fresh":true},
+  {"ts":"2026-11-19T19:02:56.040Z","session":"a2798d68-7fee-4cd5-9e8c-4ee0e429153d","action":"resolve_block","phase":null,"reply":"d"},
+];
+
+export function seedReplay(root: string, id: WorkId, verdictCount: number, replyCount: number): void {
+  for (const { ts, ...entry } of STALL_REPLAY_VERDICTS.slice(0, verdictCount)) appendVerdict(root, id, entry, new Date(ts));
+  for (const { ts, ...entry } of STALL_REPLAY_REPLIES.slice(0, replyCount)) appendReply(root, id, entry, new Date(ts));
+}
