@@ -1,0 +1,100 @@
+{
+  "work_id": "20261120-known-defects-watched-learning-counted",
+  "base": "9b3c81b35560dd30c831479f72d4b7e190f54fda",
+  "request": "work/20261120-known-defects-watched-learning-counted/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "src/agents/developer.md",
+    "src/lib/cli/registry.mts",
+    "src/lib/shared/route/plan.test.mts",
+    "src/lib/shared/route/route.mts",
+    "src/lib/shared/scenarios/compare.mts",
+    "src/lib/shared/scenarios/compare.test.mts",
+    "src/lib/shared/scenarios/defects.mts",
+    "src/lib/shared/scenarios/defects.test.mts",
+    "src/lib/shared/scenarios/format.mts",
+    "src/lib/shared/scenarios/format.test.mts",
+    "src/lib/shared/scenarios/known.mts",
+    "src/lib/shared/scenarios/known.test.mts",
+    "src/lib/shared/scenarios/results.mts",
+    "src/lib/shared/scenarios/results.test.mts",
+    "src/lib/shared/testing/derive.mts",
+    "src/lib/shared/testing/derive.test.mts",
+    "src/lib/shared/testing/escapes.mts",
+    "src/lib/shared/testing/escapes.test.mts",
+    "src/lib/shared/testing/facts.mts",
+    "src/lib/shared/testing/keep-cases.mts",
+    "src/lib/shared/testing/learning.mts",
+    "src/lib/shared/testing/learning.test.mts",
+    "src/lib/shared/testing/results.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/close/block.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/defects.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/env/replay.mts",
+    "src/lib/verbs/env/replay.test.mts",
+    "src/lib/verbs/route/index.test.mts",
+    "src/lib/verbs/test/escape.mts",
+    "src/lib/verbs/test/record.test.mts",
+    "src/skills/designing/SKILL.md",
+    "src/skills/expediting/SKILL.md",
+    "src/skills/ordering/SKILL.md"
+  ],
+  "lines_added": 1277,
+  "lines_removed": 125,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-20T12:53:58.042Z",
+    "base": "9b3c81b35560dd30c831479f72d4b7e190f54fda",
+    "mutant": {
+      "path": "src/lib/shared/route/route.mts",
+      "line": 77,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 160277
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
