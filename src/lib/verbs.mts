@@ -85,7 +85,7 @@ export const VERB_NAMES = {
       note: { summary: "record a cell the tester did not run, or a criterion that cannot be tested as written", readOnly: false },
       ask: { summary: "record a question on a tested criterion, with two to four choices", readOnly: false },
       case: { summary: "run one case, its step lines on stdin, on the item's stack and record the run", readOnly: false },
-      rerun: { summary: "run every case of the previous round again under the same case ids", readOnly: false },
+      rerun: { summary: "run every case of the previous round and every recorded defect again under the same ids", readOnly: false },
       defect: { summary: "run the steps of a defect met outside the tested criteria and record it for close", readOnly: false },
       escape: { summary: "record the root cause of a fixed product case or known defect and the check it got past", readOnly: false },
     },

@@ -35,7 +35,7 @@ export type CellRow = Stamped & { type: "cell"; criterion: string; kind: CaseKin
 export type QuestionRow = Stamped & { type: "question"; criterion: string; question: string; choices: string[]; default: string | null; basis: string | null };
 export type UntestableRow = Stamped & { type: "untestable"; criterion: string; why: string };
 export type EscapeRow = Stamped & { type: "escape"; case: string; root_cause: string; escaped: string };
-export type DefectRow = Stamped & { type: "defect"; found: string; kind: CaseKind; intent: string; steps: string; evidence: string; detail: string; attempts: number; mocks: string[] };
+export type DefectRow = Stamped & { type: "defect"; found: string; kind: CaseKind; intent: string; steps: string; evidence: string; outcome: CaseOutcome; detail: string; attempts: number; mocks: string[] };
 export type TestRow = CaseRow | ClassRow | CellRow | QuestionRow | UntestableRow | EscapeRow | DefectRow;
 
 type Unstamped<T> = T extends TestRow ? Omit<T, "ts"> : never;
@@ -74,6 +74,12 @@ export function roundRows(rows: readonly TestRow[], round: number): TestRow[] {
 export function latestCases(rows: readonly TestRow[]): CaseRow[] {
   const byId = new Map<string, CaseRow>();
   for (const row of rows) if (row.type === "case") byId.set(row.case, row);
+  return [...byId.values()];
+}
+
+export function latestDefects(rows: readonly TestRow[]): DefectRow[] {
+  const byId = new Map<string, DefectRow>();
+  for (const row of defectRows(rows)) byId.set(row.found, row);
   return [...byId.values()];
 }
 

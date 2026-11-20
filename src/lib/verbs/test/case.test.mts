@@ -17,6 +17,10 @@ import { parseArgs, UsageError } from "../../util/args.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { recordCase, verb as caseVerb, type CaseInput } from "./case.mts";
 import { rerunCases, verb as rerunVerb } from "./rerun.mts";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { recordDefect } from "./defect.mts";
+import type { DefectRow } from "../../shared/testing/results.mts";
 
 const MODEL = readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8");
 const VALUE_FLAGS = ["-p", "--project-directory", "-f", "--profile"];
@@ -135,6 +139,75 @@ test("test rerun in round 1 has no earlier cases (T-3.5)", async (t) => {
   assert.ok(outcome.status === "done");
   assert.equal(rerunVerb.render(outcome.value), "round 1 has no earlier cases");
   assert.deepEqual(readTestRows(ctx.root, id), []);
+});
+
+const REFUSED_ORDER = 'request POST {orders}/orders\n  body {"reference": "PKT-{run}", "quantity": -1}\nexpect status 400\n';
+const DEFECT_INTENT = "an order with a negative quantity is refused";
+const DEFECT_EVIDENCE = "POST /orders with quantity -1 answered 201";
+const MOCK = "---\nreplaces: payments-api\nsource: recorded\nrecorded: 2026-11-18\nformat: 1\n---\nwhen GET /charges/*\n  status 200\n";
+const RECEIVED = "/__picket/received";
+
+function withTraffic(status: number, traffic: unknown[][]): HttpAdapter {
+  return async (request) => (request.url.endsWith(RECEIVED) ? { status: 200, headers: {}, text: JSON.stringify(traffic.shift() ?? []), error: null } : { status, headers: {}, text: "", error: null });
+}
+
+async function withDefect(t: TestContext): Promise<{ ctx: Context; id: WorkId }> {
+  const made = item(t);
+  const recorded = await recordDefect(made.ctx, deps(answering(201)), { id: made.id, kind: "negative", intent: DEFECT_INTENT, evidence: DEFECT_EVIDENCE, steps: REFUSED_ORDER });
+  assert.ok(recorded.status === "done");
+  return made;
+}
+
+function closeRound(ctx: Context, id: WorkId): void {
+  appendVerdict(ctx.root, id, { agent: "tester", verdict: "CHANGES REQUIRED", phase: null, scope: "test", through: null }, new Date(NOW));
+}
+
+function defectsOf(ctx: Context, id: WorkId, round: number): DefectRow[] {
+  return readTestRows(ctx.root, id).filter((row): row is DefectRow => row.type === "defect" && row.round === round);
+}
+
+test("test rerun runs a recorded defect again under its id and records the pass on a defect row (T-1.1)", async (t) => {
+  const { ctx, id } = await withDefect(t);
+  closeRound(ctx, id);
+  const outcome = await rerunCases(ctx, deps(answering(400)), { id });
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(defectsOf(ctx, id, 2), [
+    { ts: NOW, round: 2, type: "defect", found: "K-01", kind: "negative", intent: DEFECT_INTENT, steps: REFUSED_ORDER, evidence: DEFECT_EVIDENCE, outcome: "passed", detail: "", attempts: 1, mocks: ["payments-mock"] },
+  ]);
+  assert.deepEqual(outcome.value.defects, defectsOf(ctx, id, 2));
+  assert.equal(rerunVerb.render(outcome.value), "K-01 negative passed");
+});
+
+test("test rerun of a defect the stack still has records the failure with its detail (T-1.2)", async (t) => {
+  const { ctx, id } = await withDefect(t);
+  closeRound(ctx, id);
+  const outcome = await rerunCases(ctx, deps(answering(201)), { id });
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(defectsOf(ctx, id, 2).map((row) => [row.found, row.outcome, row.detail, row.attempts]), [["K-01", "failed", "step 2: expected status 400, got 201", 2]]);
+  assert.equal(rerunVerb.render(outcome.value), "K-01 negative failed: step 2: expected status 400, got 201");
+});
+
+test("test rerun in round 3 runs a defect rerun in round 2 once more, from its newest row (T-1.3)", async (t) => {
+  const { ctx, id } = await withDefect(t);
+  closeRound(ctx, id);
+  await rerunCases(ctx, deps(answering(201)), { id });
+  closeRound(ctx, id);
+  const outcome = await rerunCases(ctx, deps(answering(400)), { id });
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(defectsOf(ctx, id, 3).map((row) => [row.found, row.outcome]), [["K-01", "passed"]]);
+  assert.equal(readTestRows(ctx.root, id).length, 3);
+});
+
+test("test rerun of a defect whose run meets a mock gap records it blocked with the gap (T-1.4)", async (t) => {
+  const { ctx, id } = await withDefect(t);
+  closeRound(ctx, id);
+  mkdirSync(join(ctx.root, ".picket", "env", "mocks"), { recursive: true });
+  writeFileSync(join(ctx.root, ".picket", "env", "mocks", "payments-mock.md"), MOCK);
+  const traffic = [[], [{ method: "POST", path: "/refunds", answered: false }]];
+  const outcome = await rerunCases(ctx, deps(withTraffic(201, traffic)), { id });
+  assert.ok(outcome.status === "done");
+  assert.deepEqual(defectsOf(ctx, id, 2).map((row) => [row.found, row.outcome, row.detail]), [["K-01", "blocked", "payments-mock has no answer for POST /refunds"]]);
+  assert.equal(rerunVerb.render(outcome.value), "K-01 negative blocked: payments-mock has no answer for POST /refunds");
 });
 
 test("a failing case holds no test-user value and no answer text in its row or output (T-3.6)", async (t) => {

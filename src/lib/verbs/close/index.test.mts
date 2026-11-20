@@ -624,7 +624,7 @@ test("a result on a deprecated card records nothing", (t) => {
 
 const FOUND_STEPS = 'request POST {orders}/orders\n  body {"reference": "PKT-{run}", "quantity": -1}\nexpect status 400\n';
 const FOUND_CARD = ".picket/env/scenarios/S-0001.md";
-const FOUND_ROW: TestEntry = { round: 1, type: "defect", found: "K-01", kind: "negative", intent: "an order with a negative quantity is refused", steps: FOUND_STEPS, evidence: "POST /orders answered 201", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: ["payments-mock"] };
+const FOUND_ROW: TestEntry = { round: 1, type: "defect", found: "K-01", kind: "negative", intent: "an order with a negative quantity is refused", steps: FOUND_STEPS, evidence: "POST /orders answered 201", outcome: "failed", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: ["payments-mock"] };
 
 function foundItem(t: TestContext): { root: string; id: WorkId } {
   return testedItem(t, { environment: false, verdicts: [["reviewer", "APPROVED", "cumulative"]], cases: [FOUND_ROW], done: true });

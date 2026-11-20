@@ -47,7 +47,7 @@ In a team session, also send the block to the lead with `SendMessage`, the verdi
 ### One round
 
 1. `picket env start <id>`. It prints a `PICKET_URL_<SERVICE>` line for each service; the cases reach a service as `{service}`. A start that fails is an environment fact: record it with `picket test note` and go on to the block.
-2. From round 2: `picket test rerun <id>` runs every case of the previous round again under its case id.
+2. From round 2: `picket test rerun <id>` runs every case of the previous round and every recorded defect again under its id.
 3. Build the matrix of tested criteria by case kind, as `testing/steps/matrix.md` says.
 4. Write and run the cases with `picket test case`, as `testing/steps/cases.md` says.
 5. `picket env replay <id>` replays the saved scenarios on the same stack.

@@ -442,7 +442,7 @@ picket test case <id> --criterion <T-N.x> --kind <kind> --intent "<words>", with
 
 ### picket test rerun
 
-Run every case of the previous round again under the same case ids.
+Run every case of the previous round and every recorded defect again under the same ids.
 
 ```sh
 picket test rerun <id>

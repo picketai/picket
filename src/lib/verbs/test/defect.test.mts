@@ -77,8 +77,8 @@ test("steps expecting 400 on a stack answering 201 record K-01 with the run's de
   const second = await recordDefect(ctx, deps(answering(200)), defectInput(id, REFUSED_LOOKUP));
   assert.ok(second.status === "done");
   assert.deepEqual(readTestRows(ctx.root, id), [
-    { ts: NOW, round: 1, type: "defect", found: "K-01", kind: "negative", intent: INTENT, steps: REFUSED_ORDER, evidence: EVIDENCE, detail: "step 2: expected status 400, got 201", attempts: 2, mocks: ["payments-mock"] },
-    { ts: NOW, round: 1, type: "defect", found: "K-02", kind: "negative", intent: INTENT, steps: REFUSED_LOOKUP, evidence: EVIDENCE, detail: "step 2: expected status 404, got 200", attempts: 2, mocks: ["payments-mock"] },
+    { ts: NOW, round: 1, type: "defect", found: "K-01", kind: "negative", intent: INTENT, steps: REFUSED_ORDER, evidence: EVIDENCE, outcome: "failed", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: ["payments-mock"] },
+    { ts: NOW, round: 1, type: "defect", found: "K-02", kind: "negative", intent: INTENT, steps: REFUSED_LOOKUP, evidence: EVIDENCE, outcome: "failed", detail: "step 2: expected status 404, got 200", attempts: 2, mocks: ["payments-mock"] },
   ]);
   assert.equal(verb.render(first.value), `K-01 recorded: ${INTENT}; the stack answered step 2: expected status 400, got 201; it becomes a known defect at close`);
 });

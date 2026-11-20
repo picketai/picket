@@ -55,7 +55,7 @@ export async function recordDefect(ctx: Context, deps: CaseDeps, input: DefectIn
   refuseUnownedData(ctx, id, card);
   const run = await runCase(card, runCaseInput(ctx, deps, stack));
   refuseNoDefect(id, run);
-  const entry: Omit<DefectRow, "ts"> = { round: testRound(snap.verdicts), type: "defect", found: nextFoundId(rows), kind: input.kind, intent: input.intent, steps: input.steps, evidence: input.evidence, detail: run.detail, attempts: run.attempts, mocks: run.mocks };
+  const entry: Omit<DefectRow, "ts"> = { round: testRound(snap.verdicts), type: "defect", found: nextFoundId(rows), kind: input.kind, intent: input.intent, steps: input.steps, evidence: input.evidence, outcome: "failed", detail: run.detail, attempts: run.attempts, mocks: run.mocks };
   const at = ctx.now();
   appendTestRow(ctx.root, id, entry, at);
   return done({ id, row: { ts: at.toISOString(), ...entry } });

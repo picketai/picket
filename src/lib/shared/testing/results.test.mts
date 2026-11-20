@@ -8,6 +8,7 @@ import { appendTestRow, nextCaseId, readTestRows, roundRows, testFolderRel, test
 import { roundCounts } from "./report.mts";
 import { COUNTED_OUTCOMES } from "./results.mts";
 import { nextFoundId } from "./results.mts";
+import { latestDefects } from "./results.mts";
 
 const ID = workId("20261117-orders");
 const TS = "2026-11-17T10:00:00.000Z";
@@ -23,8 +24,8 @@ function caseEntry(id: string, round = 1): TestEntry {
   return { round, type: "case", case: id, criterion: "T-2.1", kind: "boundary", intent: "an empty basket", steps: "request GET {orders}/orders\nexpect status 200", outcome: "failed", attempts: 2, unstable: false, detail: "expected 200, got 500", mocks: ["payments-mock"] };
 }
 
-function defectEntry(found: string): TestEntry {
-  return { round: 1, type: "defect", found, kind: "negative", intent: "a negative quantity is refused", steps: "request GET {orders}/orders\nexpect status 400", evidence: "POST /orders answered 201", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: [] };
+function defectEntry(found: string, round = 1): TestEntry {
+  return { round, type: "defect", found, kind: "negative", intent: "a negative quantity is refused", steps: "request GET {orders}/orders\nexpect status 400", evidence: "POST /orders answered 201", outcome: "failed", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: [] };
 }
 
 const ENTRIES: TestEntry[] = [
@@ -61,6 +62,11 @@ test("the next found id is one above the highest defect row, from K-01, and case
   const rows = readTestRows(root, ID);
   assert.equal(nextFoundId(rows), "K-02");
   assert.equal(nextCaseId(rows), "C-02");
+});
+
+test("the latest defects are the newest row of each found id, in first-seen order (T-1.3)", () => {
+  const rows = [defectEntry("K-01", 1), defectEntry("K-02", 1), defectEntry("K-01", 2), caseEntry("C-01", 2)].map((entry) => ({ ts: TS, ...entry }) as TestRow);
+  assert.deepEqual(latestDefects(rows).map((row) => [row.found, row.round]), [["K-01", 2], ["K-02", 1]]);
 });
 
 test("the round is one above the tester's verdict rows (T-1.6)", () => {
