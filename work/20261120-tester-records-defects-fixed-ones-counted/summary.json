@@ -1,0 +1,88 @@
+{
+  "work_id": "20261120-tester-records-defects-fixed-ones-counted",
+  "base": "79f5180a7d08a3adef4a2e7f2a19d502b6f303bc",
+  "request": "work/20261120-tester-records-defects-fixed-ones-counted/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "src/agents/developer.md",
+    "src/agents/tester.md",
+    "src/lib/cli/registry.mts",
+    "src/lib/shared/route/route.mts",
+    "src/lib/shared/scenarios/format.test.mts",
+    "src/lib/shared/testing/cases.mts",
+    "src/lib/shared/testing/derive.test.mts",
+    "src/lib/shared/testing/escapes.mts",
+    "src/lib/shared/testing/escapes.test.mts",
+    "src/lib/shared/testing/results.mts",
+    "src/lib/shared/testing/results.test.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/close/close.mts",
+    "src/lib/verbs/close/defects.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/route/index.test.mts",
+    "src/lib/verbs/test/defect.mts",
+    "src/lib/verbs/test/defect.test.mts",
+    "src/lib/verbs/test/escape.mts",
+    "src/lib/verbs/test/record.test.mts",
+    "src/lib/verbs/test/skill-examples.test.mts",
+    "src/skills/expediting/SKILL.md",
+    "src/skills/testing/SKILL.md",
+    "src/skills/testing/steps/results.md"
+  ],
+  "lines_added": 605,
+  "lines_removed": 41,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-20T16:23:07.918Z",
+    "base": "79f5180a7d08a3adef4a2e7f2a19d502b6f303bc",
+    "mutant": {
+      "path": "src/lib/shared/route/route.mts",
+      "line": 93,
+      "from": "===",
+      "to": "!=="
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 154957
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
