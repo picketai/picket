@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-20T21:26:39.494Z",
+  "base": "0ffc70d78bd051ddc89b82d9c3906f928a0e95e4",
+  "mutant": {
+    "path": "src/lib/shared/admission/signals.mts",
+    "line": 111,
+    "from": "||",
+    "to": "&&"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 155012
+}
