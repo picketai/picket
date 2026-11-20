@@ -91,7 +91,7 @@ test("a hand-changed card is run and returned as changed by hand (T-4.3)", async
 
 type Entry = { method: string; path: string; answered: boolean };
 
-function withStubs(statuses: number[], logs: Record<string, Entry[][]>): HttpAdapter {
+function withStubs(statuses: number[], logs: Record<string, (Entry[] | null)[]>): HttpAdapter {
   const reads: Record<string, number> = {};
   const app = scripted(statuses).adapter;
   return async (request) => {
@@ -99,7 +99,8 @@ function withStubs(statuses: number[], logs: Record<string, Entry[][]>): HttpAda
     if (stub === undefined) return app(request);
     const at = reads[stub] ?? 0;
     reads[stub] = at + 1;
-    return { status: 200, headers: {}, text: JSON.stringify(logs[stub][Math.min(at, logs[stub].length - 1)]), error: null };
+    const log = logs[stub][Math.min(at, logs[stub].length - 1)];
+    return log === null ? { status: null, headers: {}, text: "", error: "ECONNREFUSED" } : { status: 200, headers: {}, text: JSON.stringify(log), error: null };
   };
 }
 
@@ -120,6 +121,12 @@ test("an unanswered request during the run is a gap on the run (T-3.2)", async (
   const adapter = withStubs([201], { "payments-mock": [[], [CHARGE, REFUND]] });
   const [run] = await replayScenarios({ ...input([saved("S-0002", POST)], adapter), stubs: { "payments-mock": "http://payments-mock.stub" } });
   assert.deepEqual([run.mocks, run.gaps], [["payments-mock"], ["payments-mock has no answer for POST /refunds"]]);
+});
+
+test("a failed first log read counts none of that stub's traffic, leaving only the project-owned mocks (T-2.4)", async () => {
+  const adapter = withStubs([201], { "payments-mock": [null, [REFUND]] });
+  const [run] = await replayScenarios({ ...input([saved("S-0002", POST)], adapter), stubs: { "payments-mock": "http://payments-mock.stub" }, ownMocks: ["ledger-mock"] });
+  assert.deepEqual([run.outcome, run.mocks, run.gaps], ["passed", ["ledger-mock"], []]);
 });
 
 test("affected keeps the cards naming a changed app, or all when the environment changed (T-4.4)", () => {

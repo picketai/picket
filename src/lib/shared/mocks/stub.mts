@@ -17,7 +17,7 @@ export type StubFragment = {
 };
 export type EnvironmentStubs = { mocks: MockFile[]; stubbed: string[]; findings: Finding[] };
 export type TrafficEntry = { method: string; path: string; answered: boolean };
-export type Traffic = Record<string, TrafficEntry[]>;
+export type Traffic = Record<string, TrafficEntry[] | null>;
 export type StackMocks = { stubs: Record<string, string>; ownMocks: string[] };
 
 export const STUB_PORT = 8080;
@@ -99,19 +99,19 @@ function isEntry(value: unknown): value is TrafficEntry {
   return typeof entry.method === "string" && typeof entry.path === "string" && typeof entry.answered === "boolean";
 }
 
-function entriesOf(text: string): TrafficEntry[] {
+function entriesOf(text: string): TrafficEntry[] | null {
   try {
     const parsed: unknown = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+    return Array.isArray(parsed) ? parsed.filter(isEntry) : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
 export async function readTraffic(adapter: HttpAdapter, stubs: Record<string, string>, timeoutMs: number): Promise<Traffic> {
-  const read = Object.entries(stubs).map(async ([service, url]): Promise<[string, TrafficEntry[]]> => {
+  const read = Object.entries(stubs).map(async ([service, url]): Promise<[string, TrafficEntry[] | null]> => {
     const answer = await adapter({ method: "GET", url: `${url}${RECEIVED_PATH}`, headers: {}, body: null, timeoutMs });
-    return [service, answer.status === OK ? entriesOf(answer.text) : []];
+    return [service, answer.status === OK ? entriesOf(answer.text) : null];
   });
   return Object.fromEntries(await Promise.all(read));
 }
@@ -121,7 +121,10 @@ function duringRun(before: TrafficEntry[], after: TrafficEntry[]): TrafficEntry[
 }
 
 export function trafficBetween(before: Traffic, after: Traffic): { mocks: string[]; gaps: string[] } {
-  const runs = Object.entries(after).map(([service, entries]) => ({ service, entries: duringRun(before[service] ?? [], entries) }));
+  const runs = Object.entries(after).flatMap(([service, entries]) => {
+    const earlier = before[service];
+    return entries === null || earlier === null ? [] : [{ service, entries: duringRun(earlier ?? [], entries) }];
+  });
   const mocks = runs.filter(({ entries }) => entries.length > 0).map(({ service }) => service);
   const gaps = runs.flatMap(({ service, entries }) => entries.filter((entry) => !entry.answered).map((entry) => `${service} has no answer for ${entry.method} ${entry.path}`));
   return { mocks, gaps: [...new Set(gaps)] };

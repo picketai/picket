@@ -92,16 +92,36 @@ test("only entries added during the run count, and a repeated gap is named once"
   assert.deepEqual(trafficBetween(before, after), { mocks: ["payments-mock"], gaps: ["payments-mock has no answer for POST /refunds"] });
 });
 
-test("readTraffic asks each stub for its log and reads a stub that does not answer as an empty log", async () => {
+test("readTraffic gives a stub's filtered log only for a 200 JSON array, and null for a refused, failed or unreadable read (T-2.1)", async () => {
+  const answers: Record<string, { status: number | null; text: string; error: string | null }> = {
+    "http://pay:1": { status: 200, text: JSON.stringify([CHARGE, { method: "GET" }]), error: null },
+    "http://fraud:2": { status: null, text: "", error: "ECONNREFUSED" },
+    "http://ledger:3": { status: 500, text: JSON.stringify([CHARGE]), error: null },
+    "http://audit:4": { status: 200, text: "{}", error: null },
+    "http://tax:5": { status: 200, text: "not json", error: null },
+  };
   const seen: HttpRequest[] = [];
   const adapter: HttpAdapter = async (request) => {
     seen.push(request);
-    if (request.url.startsWith("http://pay")) return { status: 200, headers: {}, text: JSON.stringify([CHARGE, { method: "GET" }]), error: null };
-    return { status: null, headers: {}, text: "", error: "ECONNREFUSED" };
+    return { headers: {}, ...answers[request.url.replace("/__picket/received", "")] };
   };
-  const traffic = await readTraffic(adapter, { "payments-mock": "http://pay:1", "fraud-mock": "http://fraud:2" }, 500);
-  assert.deepEqual(traffic, { "payments-mock": [CHARGE], "fraud-mock": [] });
-  assert.deepEqual(seen.map(({ method, url, timeoutMs }) => [method, url, timeoutMs]), [["GET", "http://pay:1/__picket/received", 500], ["GET", "http://fraud:2/__picket/received", 500]]);
+  const stubs = { "payments-mock": "http://pay:1", "fraud-mock": "http://fraud:2", "ledger-mock": "http://ledger:3", "audit-mock": "http://audit:4", "tax-mock": "http://tax:5" };
+  const traffic = await readTraffic(adapter, stubs, 500);
+  assert.deepEqual(traffic, { "payments-mock": [CHARGE], "fraud-mock": null, "ledger-mock": null, "audit-mock": null, "tax-mock": null });
+  assert.deepEqual(
+    seen.map(({ method, url, timeoutMs }) => [method, url, timeoutMs]),
+    Object.values(stubs).map((url) => ["GET", `${url}/__picket/received`, 500]),
+  );
+});
+
+test("a failed read before the run counts none of the stub's log as the run's traffic (T-2.2)", () => {
+  assert.deepEqual(trafficBetween({ "payments-mock": null }, { "payments-mock": [CHARGE, REFUND] }), { mocks: [], gaps: [] });
+});
+
+test("a failed read after the run leaves that stub out and keeps the others' traffic (T-2.3)", () => {
+  const before = { "payments-mock": [CHARGE], "fraud-mock": [CHARGE] };
+  const after = { "payments-mock": null, "fraud-mock": [CHARGE, REFUND] };
+  assert.deepEqual(trafficBetween(before, after), { mocks: ["fraud-mock"], gaps: ["fraud-mock has no answer for POST /refunds"] });
 });
 
 test("stackMocks maps each stub to its endpoint and leaves every other started mock to the project", (t) => {
