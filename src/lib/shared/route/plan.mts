@@ -79,9 +79,15 @@ function runGrantChanges(snap: WorkSnapshot, n: number, marks: MarksOnDisk, gate
   return [marker(n, "approved", `phases/${n}.approved (run grant through ${through})`), ...keepChanges(n, keepsOf), { kind: "commit", phase: n }];
 }
 
+function stallAnsweredChanges(snap: WorkSnapshot, n: number): Change[] {
+  const block = newestBlockRow(snap.verdicts);
+  if (snap.state.status !== "blocked" || block?.verdict !== "PHASE STALLED" || block.phase !== n) return [];
+  return [{ kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: `status=open (phase ${n} done after its stall)` }];
+}
+
 const phaseDone: Plan = (snap, planned, gateOf, { keepsOf = NO_KEEPS } = {}) => {
   const n = needPhase(planned);
-  return [marker(n, "done"), ...runGrantChanges(snap, n, planned.marks, gateOf, keepsOf)];
+  return [marker(n, "done"), ...stallAnsweredChanges(snap, n), ...runGrantChanges(snap, n, planned.marks, gateOf, keepsOf)];
 };
 
 function publishChange({ state, artifact }: WorkSnapshot): Change {

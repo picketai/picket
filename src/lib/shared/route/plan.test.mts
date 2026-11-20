@@ -257,3 +257,21 @@ test("a user approval of the test fixes plans one fix commit and no marker", () 
   const snap = snapshotOf({ lane: "design", phases: [{ n: 1, done: true, approved: true, reviewed: true }] });
   assert.deepEqual(plan("approved", snap, { scope: "test" }), [{ kind: "commit_fixes", line: null }]);
 });
+
+const blockRow = (verdict: string, phase: number) => ({ ts: "2026-11-20T06:59:22.948Z", agent: verdict === "PHASE STALLED" ? "developer" : "reviewer", verdict, phase, scope: verdict === "PHASE STALLED" ? null : "crosscheck", through: null });
+const PHASE_2_DONE = { kind: "marker", phase: 2, mark: "done", line: "phases/2.done" };
+
+test("PHASE DONE on the phase whose stall blocked the item reopens it (T-3.2)", () => {
+  const snap = snapshotOf({ status: "blocked", blocked_reason: "PHASE STALLED on phase 2", phases: [{ n: 1, done: true, approved: true }, { n: 2 }], verdicts: [blockRow("PHASE STALLED", 2)] });
+  assert.deepEqual(plan("PHASE DONE", snap, { phase: 2 }), [PHASE_2_DONE, { kind: "state", set: { status: "open" }, unset: ["blocked_reason"], line: "status=open (phase 2 done after its stall)" }]);
+});
+
+test("PHASE DONE leaves the status alone after a drift, a stall on another phase, or on an open item (T-3.3)", () => {
+  const phases = [{ n: 1, done: true, approved: true }, { n: 2 }];
+  const drifted = snapshotOf({ status: "blocked", blocked_reason: "DRIFT DETECTED on phase 2", phases, verdicts: [blockRow("PHASE STALLED", 2), blockRow("DRIFT DETECTED", 2)] });
+  const otherPhase = snapshotOf({ status: "blocked", blocked_reason: "PHASE STALLED on phase 1", phases, verdicts: [blockRow("PHASE STALLED", 1)] });
+  const open = snapshotOf({ phases, verdicts: [blockRow("PHASE STALLED", 2)] });
+  assert.deepEqual(plan("PHASE DONE", drifted, { phase: 2 }), [PHASE_2_DONE]);
+  assert.deepEqual(plan("PHASE DONE", otherPhase, { phase: 2 }), [PHASE_2_DONE]);
+  assert.deepEqual(plan("PHASE DONE", open, { phase: 2 }), [PHASE_2_DONE]);
+});

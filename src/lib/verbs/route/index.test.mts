@@ -21,6 +21,7 @@ import { gitAt, umbrella } from "#test/git.mts";
 import { fingerprintMatches, parseScenario, writeScenario, type Card } from "../../shared/scenarios/format.mts";
 import { storeCandidates, type Candidate } from "../../shared/scenarios/keep.mts";
 import { openItem, withProject } from "#test/project.mts";
+import { seedReplay } from "#test/stall-replay.mts";
 import { appendRows } from "../../shared/scenarios/results.mts";
 import { deriveVerdict } from "../../shared/testing/derive.mts";
 import { testFacts } from "../../shared/testing/facts.mts";
@@ -1021,4 +1022,22 @@ test("a fix block with no Commit: line refuses the approval and commits nothing 
   assert.throws(() => route({ id, verdict: "approved", agent: "user", scope: "test", root }), /the test fixes are not committed: the block has no "Commit:" line/);
   assert.equal(git("rev-parse", "HEAD"), before);
   assert.equal(readNext(root, id, null).action, "approve_fixes");
+});
+
+test("the PHASE DONE that follows a stall on the same phase reopens the item and the grant goes on (T-3.1)", (t) => {
+  const root = hostRoot(t);
+  const { id } = openItem(root, { lane: "design", title: "Replayed" });
+  const phases = [1, 2, 3, 4, 5].map((n) => `## Phase ${n}: P${n}\n\nt\n`).join("\n");
+  writeFileSync(join(root, "work", id, "design.md"), `---\nlane: design\n---\n# D\n\n${phases}`);
+  for (const mark of ["done", "approved"] as const) setMarker(root, id, 1, mark, new Date("2026-11-19T18:30:10.691Z"));
+  seedReplay(root, id, 10, 3);
+  writeState(root, { ...readState(root, id), status: "blocked", blocked_reason: "PHASE STALLED on phase 2", run_through: 5 }, new Date("2026-11-20T06:59:22.948Z"));
+  saveBlock(root, id, 2, committableBlock(2));
+  routeAt({ id, verdict: "PHASE DONE", agent: "developer", phase: 2 }, fixedContext(root, { env: process.env, now: "2026-11-20T07:05:08.855Z", cwd: root }));
+  const state = readState(root, id);
+  assert.deepEqual([state.status, state.blocked_reason, state.run_through], ["open", undefined, 5]);
+  assert.equal(existsSync(join(root, "work", id, "phases", "2.approved")), true);
+  assert.equal(readSnapshot(root, id).verdicts.at(-1)?.through, 5);
+  const next = readNext(root, id);
+  assert.deepEqual([next.action, next.phase], ["implement_phase", 3]);
 });
