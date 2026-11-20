@@ -160,3 +160,40 @@ test("quoted prose is not migration work, while an unquoted irreversible step st
   assert.equal(signalsOf('Document the example "run the migration and backfill the schema" in the admit tests.', [], [], []).migration, false);
   assert.equal(signalsOf("See if we can drop table legacy_users safely.", [], [], []).irreversible, true);
 });
+
+const researchOf = (request: string) => signalsOf(request, [], [], []).research;
+
+test("every change verb opens a change, except an opening write a report (T-1.1)", () => {
+  for (const request of ["Build the report view for invoices.", "Create the report command's help text.", "Make the report list newest first."]) {
+    assert.equal(researchOf(request), false, request);
+  }
+  for (const request of ["Write a report on how pricing picks the tier.", "Write the report on how pricing picks the tier."]) {
+    assert.equal(researchOf(request), true, request);
+  }
+});
+
+test("a research word inside a file name or a hyphenated identifier asks nothing (T-1.2)", () => {
+  for (const request of [
+    "The report-builder helper prints the wrong total; it should sum the lines.",
+    "The hint in src/lib/verbs/test/report.mts prints --why unquoted; quote it.",
+  ]) {
+    assert.equal(researchOf(request), false, request);
+  }
+  for (const request of ["How does report.mts pick its findings?", "Explain how src/lib/verbs/test/report.mts counts cases."]) {
+    assert.equal(researchOf(request), true, request);
+  }
+});
+
+test("the irreversible signal reads a named action, not the adjective (T-1.3)", () => {
+  const irreversibleOf = (request: string) => signalsOf(request, [], [], []).irreversible;
+  assert.equal(irreversibleOf("Close two leftovers named in SDR 00005 D-001 (only an irreversible action outside the repository)."), false);
+  for (const request of ["Drop table legacy_users.", "Force-push the rebased branch.", "Purge cancelled invoices from storage.", "Delete all records older than seven years."]) {
+    assert.equal(irreversibleOf(request), true, request);
+  }
+});
+
+test("a build inside a why-does-it-fail question still asks for debugging, not a change (T-1.5)", () => {
+  const admission = admittedLane("Why does the test fail when I try to build the bundle?");
+  assert.equal(admission.lane, "none");
+  assert.equal(admission.skill, "debugging");
+});

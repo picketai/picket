@@ -25,7 +25,7 @@ const SECURITY = /\b(auth(entication|orization|enticate)?|api[- ]?key|password|c
 const MIGRATION = /\b(migrat(e|ion)|schema|alter table|data file|rewrite the file|backfill)\b/i;
 const IDENTIFIER = /\w+(?:[-./]\w+)+/g;
 const JSON_SCHEMA = /\bjson[- ]schemas?\b/gi;
-const IRREVERSIBLE = /\b(irreversible|delete (all|the) (data|records)|drop (table|column)|force[- ]push|purge)\b/i;
+const IRREVERSIBLE = /\b(delete (all|the) (data|records)|drop (table|column)|force[- ]push|purge)\b/i;
 const NEW_DEPENDENCY = /\b(add|install|introduce) (a |the |an )?(new )?(dependency|package|library|framework)\b|\bnpm install\b|\bnuget\b/i;
 const CROSS_CONTEXT = /\b(other (service|repo|repository|context)|second repo|both repos|contract change|breaking change|public api)\b/i;
 const NEW_SURFACE = /\b(add(ed)? (an? )?(new )?(endpoint|route|module|command|worker|handler|middleware|layer|feature)|new (endpoint|route|module|feature|capability)|(add(s|ed|ing)?|creat(e|es|ed|ing)|introduc(e|es|ed|ing)) (an? |the )?(\S+ ){0,3}?(skill|agent|hook|verb|subcommand|rule|step file)s?|in(to)? (its|their|a) own (module|file|class|folder)s?)\b/i;
@@ -38,7 +38,8 @@ const changeVerbAfter = (leads: string) => new RegExp(`(?:^|[.;:!?,]\\s*|\\b(?:$
 const CHANGE_VERB = changeVerbAfter("and|then|to|please|also");
 const ASKED_CHANGE = changeVerbAfter("and|then|please|also");
 const REVIEW_WHETHER = /\b(see|check|review|verify|find out)\s+(if|whether)\b/i;
-const OPENS_WITH_CHANGE = /^\s*(fix|add|change|implement|remove|refactor|update|replace|delete|patch|correct|resolve|adjust|modify|edit|rename|convert|move)\b/i;
+const OPENER_VERBS = `${CHANGE_VERBS}|build|convert|move`;
+const OPENS_WITH_CHANGE = new RegExp(`^\\s*(?!write (?:a|the) report\\b)(?:${OPENER_VERBS})\\b`, "i");
 const NO_CODE_CHANGES = /\bno code changes?\b|\bproduct code untouched\b/i;
 const NOT_A_CREDENTIAL = /\b(verdict tokens?|tokens? (budget|count|usage|cost|limit|window)s?|(input|output|cache|cached|prompt|context) tokens?)\b/gi;
 const CREDENTIAL_CONTEXT = /\b(refresh|access|bearer|session|api|auth|jwt|oauth|cookies?|login|log(s|ged|ging)? ?(in|out)|sign(s|ed|ing)?[- ]?(in|out))\b/i;
@@ -107,7 +108,7 @@ function asksOnlyToReview(text: string): boolean {
 function isResearch(text: string, declaredResearch: boolean): boolean {
   if (NEW_SURFACE.test(text)) return false;
   if (declaredResearch) return true;
-  const asks = RESEARCH.test(text) || asksOnlyToReview(text);
+  const asks = RESEARCH.test(text.replace(IDENTIFIER, " ")) || asksOnlyToReview(text);
   return asks && !SMALL_CHANGE.test(text) && !OPENS_WITH_CHANGE.test(text);
 }
 

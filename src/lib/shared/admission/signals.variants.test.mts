@@ -18,6 +18,9 @@ const CREDENTIAL_SENTENCES = [
   "Rotate the refresh token on every login.",
   "Fix the login password check in the form.",
   "Hash the api key before saving it.",
+  "Build the login form that keeps the session token in a cookie.",
+  "Make src/lib/verbs/test/report.mts hash the api key before saving it.",
+  "Create the password reset form named in SDR 00005, an irreversible action outside the repository.",
 ];
 
 closureTests({
