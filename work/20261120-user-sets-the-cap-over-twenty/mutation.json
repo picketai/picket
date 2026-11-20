@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-20T20:05:30.240Z",
+  "base": "9c3418ef9439bf4d96955968f46efcc29e425d29",
+  "mutant": {
+    "path": "src/lib/shared/testing/brief.mts",
+    "line": 50,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 152634
+}
