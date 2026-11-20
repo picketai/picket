@@ -19,7 +19,7 @@ export type FindingsReview = "checkpoint" | "cumulative" | "test";
 
 export type NextStep =
   | { action: "none"; actor: null; detail: string }
-  | { action: "resolve_block" | "resolve_rejections" | "approve_amendment" | "resolve_tests" | "approve_fixes"; actor: "user"; detail: string; options: string[] }
+  | { action: "resolve_block" | "resolve_rejections" | "approve_amendment" | "resolve_tests" | "approve_fixes" | "set_case_cap"; actor: "user"; detail: string; options: string[] }
   | { action: "resolve_sources"; actor: "user"; detail: string; options: string[] }
   | { action: "write_artifact"; actor: "architect" | "analyst"; detail: string }
   | { action: "implement_phase"; actor: "developer"; phase: number; detail: string }

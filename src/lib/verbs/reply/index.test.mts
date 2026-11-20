@@ -400,3 +400,48 @@ test("d at an order item's stall writes a reply row with no choice (T-2.4)", asy
   await applied(root, id, "d");
   assert.equal(Object.hasOwn(replyRows(root, id).at(-1), "choice"), false);
 });
+
+const CAP_CRITERIA = ["T-1.1", "T-1.2", "T-1.3", "T-1.4"];
+const CAP_DESIGN = [
+  "---",
+  "lane: design",
+  "phases:",
+  "  - n: 1",
+  "    files: [src/a.ts]",
+  "    drive:",
+  ...CAP_CRITERIA.flatMap((covers, at) => [`      - covers: ${covers}`, "        method: POST", `        path: /orders/${at}`, "        status: 201"]),
+  "---",
+  "# D",
+  "",
+  "## Phase 1: A",
+  "",
+  ...CAP_CRITERIA.map((covers) => `- **${covers}** an order is placed`),
+  "",
+].join("\n");
+
+function capStage(t: TestContext) {
+  const made = testStage(t, [["reviewer", "APPROVED", "cumulative"]]);
+  writeFileSync(join(made.root, "work", made.id, "design.md"), CAP_DESIGN);
+  return made;
+}
+
+test("a total at set_case_cap records it, prints it and sends the tester round 1 with a brief capped at it (T-2.4)", async (t) => {
+  const { root, id } = capStage(t);
+  const result = await applied(root, id, "12");
+  const row = replyRows(root, id).at(-1);
+  assert.deepEqual([row.action, row.phase, row.reply, row.cases, row.default_cases], ["set_case_cap", null, "12", 12, 24]);
+  assert.deepEqual(result.applied, ["cases per round set: 12 (six for each of 4 tested criteria gives 24)"]);
+  assert.equal(result.send.length, 1);
+  const [send] = result.send;
+  assert.deepEqual([send.tool, send.to, send.first], ["Agent", `${instanceTag(id)}-tester`, [`picket test brief ${id} --save`]]);
+  const snap = readSnapshot(root, id);
+  assert.match(compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []), /\ncases per round: at most 12 /);
+});
+
+test("zero, words and gate letters at set_case_cap are refused with the option and write no row (T-2.5)", async (t) => {
+  const { root, id } = capStage(t);
+  for (const text of ["0", "twelve", "a"]) {
+    assert.equal(await refused(root, id, text), `"${text}" matches no option at set_case_cap; options: reply: <total>, 24 keeps six for each criterion`);
+  }
+  assert.equal(existsSync(join(root, "work", id, "replies.jsonl")), false);
+});

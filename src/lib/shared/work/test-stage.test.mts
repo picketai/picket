@@ -216,3 +216,35 @@ test("the reasons the snapshot reads from test.md are the report's reasons, in o
   assert.deepEqual(reportReasons(text), derived.reasons);
   assert.deepEqual(reportReasons(null), []);
 });
+
+const capCriteria = (count: number) => Array.from({ length: count }, (_, at) => `T-1.${at + 1}`);
+const checkedWith = (count: number): PhaseInput => ({ ...CHECKED, entry: { n: 1, files: ["src/a.mjs"], drive: capCriteria(count).map((covers, at) => ({ ...HTTP_CHECK, covers, path: `/orders/${at}` })) } });
+const capSet = (cases: number, defaultCases: number): ReplyRow => ({ ts: at(), session: S, action: "set_case_cap", phase: null, reply: String(cases), cases, default_cases: defaultCases });
+
+test("four tested criteria stop at the user for the cases per round before the tester's first round (T-2.1)", () => {
+  assert.deepEqual(stepOf([cumulative("APPROVED")], { phases: [checkedWith(4)] }), {
+    action: "set_case_cap",
+    actor: "user",
+    detail: "the round allows 24 cases, six for each of 4 tested criteria; reply with the total for each round, lower or higher",
+    options: ["reply: <total>, 24 keeps six for each criterion"],
+  });
+});
+
+test("three tested criteria, eighteen cases, go to the tester with nothing asked (T-2.2)", () => {
+  assert.deepEqual(stepOf([cumulative("APPROVED")], { phases: [checkedWith(3)] }), { action: "test_item", actor: "tester", round: 1, detail: "the cumulative review passed; the tester checks the finished item" });
+});
+
+test("a set total sends the tester round 1 and round 2 with no second stop; a fifth criterion asks again (T-2.3)", () => {
+  const replies = [capSet(12, 24)];
+  const approved = [cumulative("APPROVED")];
+  assert.deepEqual(stepOf(approved, { phases: [checkedWith(4)], replies }), { action: "test_item", actor: "tester", round: 1, detail: "the cumulative review passed; the tester checks the finished item" });
+  const fixed = [...approved, tester("CHANGES REQUIRED", 1, "fix"), developer(), cumulative("APPROVED")];
+  assert.deepEqual(stepOf(fixed, { phases: [checkedWith(4)], replies }), { action: "test_item", actor: "tester", round: 2, detail: "the tester retests the finished item, round 2" });
+  const widened = stepOf(fixed, { phases: [checkedWith(5)], replies });
+  assert.deepEqual(widened, {
+    action: "set_case_cap",
+    actor: "user",
+    detail: "the round allows 30 cases, six for each of 5 tested criteria; reply with the total for each round, lower or higher",
+    options: ["reply: <total>, 30 keeps six for each criterion"],
+  });
+});

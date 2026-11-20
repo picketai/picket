@@ -3,6 +3,7 @@ import { recordBranch, recordNone, type BranchChoice } from "../../shared/checko
 import { securityPaths } from "../../shared/config.mjs";
 import type { Context } from "../../shared/context.mts";
 import { route } from "../../shared/route/route.mts";
+import { roundCap, testedCriteria } from "../../shared/testing/derive.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import type { SendView } from "../../shared/views.mts";
 import { appendComment, appendWaiver } from "../../shared/work/approvals.mts";
@@ -20,7 +21,7 @@ import { GATE_ACTIONS, matchReply, PUBLISH_REPLY, type Matched, type Proposals }
 export type ReplyInput = { id: WorkId; reply: string };
 export type ReplyResult = { id: WorkId; reply: string; applied: string[]; next: NextView; send: SendView[] };
 
-type Effect = { applied: string[]; send: SendView | null; fresh: boolean; choice?: ReplyChoice; answers?: string; amend?: string };
+type Effect = { applied: string[]; send: SendView | null; fresh: boolean; choice?: ReplyChoice; answers?: string; amend?: string; cases?: number; default_cases?: number };
 type Gate = { snap: WorkSnapshot; step: NextStep; phase: number | null; session: string | null; ctx: Context };
 
 const FRESH_DEVELOPER = "[c] continue with a fresh developer";
@@ -84,6 +85,12 @@ function redesign(gate: Gate): Effect {
   return { ...effect(setStatus(gate, "open")), choice: "redesign", amend: reason };
 }
 
+function setCaseCap({ snap }: Gate, cases: number): Effect {
+  const criteria = testedCriteria(snap.phases);
+  const byDefault = roundCap(criteria, snap.replies).byDefault;
+  return { ...effect([`cases per round set: ${cases} (six for each of ${criteria.length} tested criteria gives ${byDefault})`]), cases, default_cases: byDefault };
+}
+
 function applyMatched(gate: Gate, matched: Matched, found: Proposals): Effect {
   switch (matched.kind) {
     case "approve":
@@ -115,6 +122,8 @@ function applyMatched(gate: Gate, matched: Matched, found: Proposals): Effect {
       return { ...effect([`answers recorded: ${matched.text}`]), choice: "answers", answers: matched.text };
     case "accept_unproved":
       return { ...effect(["the unproved criteria are accepted as not verified"]), choice: "accept" };
+    case "case_cap":
+      return setCaseCap(gate, matched.cases);
   }
 }
 
@@ -122,6 +131,10 @@ function recordWorktreeBranch({ snap, ctx }: Gate, choice: BranchChoice): Effect
   const planned = recordBranch(ctx.root, snap.state.id, choice, ctx.now());
   const lines = planned.map(({ repo, from, base, worktree }) => `${repo} from ${from} @${(base ?? "").slice(0, SHORT_SHA)} -> ${worktree}`);
   return effect([`branch ${choice.name} recorded`, ...lines]);
+}
+
+function capFields({ cases, default_cases }: Effect): { cases?: number; default_cases?: number } {
+  return cases === undefined || default_cases === undefined ? {} : { cases, default_cases };
 }
 
 function optionsOf(step: NextStep): string[] {
@@ -147,7 +160,7 @@ export const applyReply = action<ReplyInput, ReplyResult>(async ({ id, reply }, 
   if (!matched) return unmatched(reply, step, snap.state);
   const session = isSessionId(ctx.session) ? ctx.session : null;
   const result = applyMatched({ snap, step, phase, session, ctx }, matched, found);
-  appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}), ...(result.choice ? { choice: result.choice } : {}), ...(result.answers ? { answers: result.answers } : {}), ...(result.amend ? { amend: result.amend } : {}) }, ctx.now());
+  appendReply(ctx.root, id, { ...(session ? { session } : {}), action: step.action, phase, reply: reply.trim(), ...(result.fresh ? { fresh: true as const } : {}), ...(result.choice ? { choice: result.choice } : {}), ...(result.answers ? { answers: result.answers } : {}), ...(result.amend ? { amend: result.amend } : {}), ...capFields(result) }, ctx.now());
   const next = readNext(ctx.root, id, session);
   return done({ id, reply: reply.trim(), applied: result.applied, next, send: result.send ? [result.send] : next.send });
 });

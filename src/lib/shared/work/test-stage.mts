@@ -1,4 +1,4 @@
-import { testedCriteria } from "../testing/derive.mts";
+import { roundCap, testedCriteria } from "../testing/derive.mts";
 import { testRound } from "../testing/results.mts";
 import { STALL_OPTIONS } from "./action-text.mts";
 import { isOutOfFrameAmendment, isUnchangedAmendment } from "./amendment.mts";
@@ -48,7 +48,19 @@ function firstReason(snap: WorkSnapshot): string {
   return snap.testing?.reasons[0] ?? SEE_REPORT;
 }
 
+function caseCapGate(snap: WorkSnapshot): NextStep | null {
+  const criteria = testedCriteria(snap.phases);
+  const cap = roundCap(criteria, snap.replies);
+  if (cap.source !== "held") return null;
+  const detail = `the round allows ${cap.byDefault} cases, six for each of ${criteria.length} tested criteria; reply with the total for each round, lower or higher`;
+  return { action: "set_case_cap", actor: "user", detail, options: [`reply: <total>, ${cap.byDefault} keeps six for each criterion`] };
+}
+
 function testStep(snap: WorkSnapshot, answers?: string): NextStep {
+  return caseCapGate(snap) ?? testerStep(snap, answers);
+}
+
+function testerStep(snap: WorkSnapshot, answers?: string): NextStep {
   const round = testRound(snap.verdicts);
   const detail = round === 1 ? "the cumulative review passed; the tester checks the finished item" : `the tester retests the finished item, round ${round}`;
   return { action: "test_item", actor: TESTER, round, detail, ...(answers === undefined ? {} : { answers }) };

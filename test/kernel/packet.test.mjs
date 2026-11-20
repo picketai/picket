@@ -600,3 +600,34 @@ test("cut keeps short strings and ends long ones with an ellipsis inside the lim
   assert.equal(cut("a".repeat(20), 10).length, 10);
   assert.ok(cut("a".repeat(20), 10).endsWith("…"));
 });
+
+const CAP_TEXTS = ["an order is placed", "an order is read back", "an order is paid", "an order is cancelled"];
+const CAP_DESIGN = [
+  "---",
+  "lane: design",
+  "phases:",
+  "  - n: 1",
+  "    files: [src/a.js]",
+  "    drive:",
+  ...CAP_TEXTS.flatMap((_, at) => [`      - covers: T-1.${at + 1}`, "        method: POST", `        path: /orders/${at}`, "        status: 201"]),
+  "---",
+  "# D",
+  "",
+  "## Phase 1: A",
+  "",
+  ...CAP_TEXTS.map((text, at) => `- **T-1.${at + 1}** ${text}`),
+  "",
+].join("\n");
+
+test("the set_case_cap packet prints the total, one line per tested criterion and the option (T-2.6)", (t) => {
+  const { root, id } = testStage(t, [["reviewer", "APPROVED", "cumulative"]]);
+  writeFileSync(join(root, "work", id, "design.md"), CAP_DESIGN);
+  const { text, next } = packet(id, root);
+  assert.equal(next.action, "set_case_cap");
+  const lines = text.split("\n");
+  assert.equal(lines[0], `▶ set case cap by user · ${id}`);
+  assert.ok(lines.includes("  total     24: six for each of 4 tested criteria"), text);
+  const criteria = ["  criteria  T-1.1 an order is placed: 6", "            T-1.2 an order is read back: 6", "            T-1.3 an order is paid: 6", "            T-1.4 an order is cancelled: 6"];
+  assert.ok(text.includes(criteria.join("\n")), text);
+  assert.equal(lines.at(-1), "reply: <total>, 24 keeps six for each criterion");
+});

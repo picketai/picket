@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { itemDataRuns } from "../../shared/data/runs.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
-import { keepText, readCandidates } from "../../shared/scenarios/keep.mts";
+import { criterionText, keepText, readCandidates } from "../../shared/scenarios/keep.mts";
 import { readResults, replaySummary, summaryText } from "../../shared/scenarios/results.mts";
 import { phaseOf, readSnapshot, stateView } from "../../shared/work/snapshot.mts";
 import { ARTIFACT_BY_LANE } from "../../shared/work/state.mts";
@@ -19,8 +19,8 @@ import { readDriveLog } from "../../shared/drive-log.mts";
 import { carriedResults, mismatchText, phaseCheckProblems, phaseCheckResults } from "../../shared/work/declared-checks.mts";
 import { testFixCommit, testFixPaths } from "../../shared/route/apply.mts";
 import { listedPathMatcher, stagedFiles } from "../../shared/git.mts";
-import { testedCriteria } from "../../shared/testing/derive.mts";
-import { latestCases, readTestRows, roundRows, testRound } from "../../shared/testing/results.mts";
+import { roundCap, testedCriteria } from "../../shared/testing/derive.mts";
+import { CASE_KINDS, latestCases, readTestRows, roundRows, testRound } from "../../shared/testing/results.mts";
 
 export const WIDTH = 100;
 const LABEL = 10;
@@ -215,6 +215,14 @@ function resolveTestsLines(root, snap, width) {
   return [...questions, ...listField("unproved", unproved, width), field("report", `work/${id}/test.md`, width)];
 }
 
+function caseCapLines(snap, width) {
+  const criteria = testedCriteria(snap.phases);
+  const { byDefault } = roundCap(criteria, snap.replies);
+  const body = snap.artifact?.body ?? "";
+  const each = criteria.map((criterion) => `${criterion} ${criterionText(body, criterion)}: ${CASE_KINDS.length}`);
+  return [field("total", `${byDefault}: six for each of ${criteria.length} tested criteria`, width), ...listField("criteria", each, width)];
+}
+
 function approveFixesLines(root, snap, width) {
   const owns = listedPathMatcher(root, [`work/${snap.state.id}/`, ...testFixPaths(root, snap)]);
   const staged = stagedFiles(root).filter((path) => owns(path));
@@ -307,6 +315,11 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(`  ${cut(n.detail, width - 2)}`);
     lines.push("");
     lines.push(...approveFixesLines(root, snap, width));
+  } else if (n.action === "set_case_cap") {
+    lines.push(actionHeading(n, id));
+    lines.push(...wrap(n.detail, width - 2).map((line) => `  ${line}`));
+    lines.push("");
+    lines.push(...caseCapLines(snap, width));
   } else if (n.action === "approve_amendment") {
     lines.push(actionHeading(n, id));
     lines.push(...wrap(n.detail, width - 2).map((line) => `  ${line}`));
