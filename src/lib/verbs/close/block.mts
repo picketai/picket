@@ -47,8 +47,12 @@ function testedLines({ tested, unproved, kept }: Closing): string[] {
   ];
 }
 
-function dataLine({ entry, server, database, status }: DataRun): string {
-  return `Data: ${entry} ran on server ${server}, database ${database}, exit ${status}`;
+function approvalPart(approvedAt: string | null | undefined): string {
+  return approvedAt ? `approved ${approvedAt}` : "approval not recorded";
+}
+
+function dataLine({ entry, server, database, status, approved_at }: DataRun): string {
+  return `Data: ${entry} ran on server ${server}, database ${database}, exit ${status}, ${approvalPart(approved_at)}`;
 }
 
 function leftForYou({ command, why }: LeftEntry): string {

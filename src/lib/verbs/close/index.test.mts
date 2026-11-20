@@ -467,13 +467,15 @@ test("the closing line names each mock's real service from its definition, else 
   assert.ok(lines.includes("Not verified end to end: ledger, payments-api"), lines.join("\n"));
 });
 
-test("each SQL run of the item prints a Data line with server, database and exit status after the tested lines (T-8.5)", (t) => {
+test("each SQL run of the item prints a Data line with server, database, exit status and approval after the tested lines, and an old row says the approval is not recorded (T-8.5, T-5.3, T-5.4)", (t) => {
   const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
   appendDataRun(root, { at: "2026-11-18T10:00:00.000Z", item: id, entry: "customer", path: "data/customer.sql", sha256: "a".repeat(64), server: "sql01", database: "orders_test", status: 0 });
   appendDataRun(root, { at: "2026-11-18T10:00:00.000Z", item: "20261118-other", entry: "other", path: "data/other.sql", sha256: "b".repeat(64), server: "sql02", database: "x", status: 1 });
+  appendDataRun(root, { at: "2026-11-18T11:00:00.000Z", item: id, entry: "customer", path: "data/customer.sql", sha256: "a".repeat(64), server: "sql01", database: "orders_test", status: 0, confirmation: "c-1", approved_at: "2026-11-18T09:00:00.000Z" });
   const lines = blockLines(closeFast(root, id));
-  assert.deepEqual(lines.filter((line) => line.startsWith("Data: ")), ["Data: customer ran on server sql01, database orders_test, exit 0"]);
-  assert.ok(lines.indexOf("Data: customer ran on server sql01, database orders_test, exit 0") > lines.findIndex((line) => line.startsWith("Tested: ")), lines.join("\n"));
+  const old = "Data: customer ran on server sql01, database orders_test, exit 0, approval not recorded";
+  assert.deepEqual(lines.filter((line) => line.startsWith("Data: ")), [old, "Data: customer ran on server sql01, database orders_test, exit 0, approved 2026-11-18T09:00:00.000Z"]);
+  assert.ok(lines.indexOf(old) > lines.findIndex((line) => line.startsWith("Tested: ")), lines.join("\n"));
 });
 
 test("an item with no tester verdict names the mocks of its latest full replay (T-4.4)", (t) => {

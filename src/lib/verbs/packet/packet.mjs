@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { itemDataRuns } from "../../shared/data/runs.mts";
 import { COMPOSE_FILE, ENV_DIR } from "../../shared/env/standard.mts";
 import { keepText, readCandidates } from "../../shared/scenarios/keep.mts";
 import { readResults, replaySummary, summaryText } from "../../shared/scenarios/results.mts";
@@ -186,6 +187,11 @@ function keepLines(root, snap, phase, width) {
   return listField("keeps", items, width);
 }
 
+function dataLines(root, id, width) {
+  const runs = itemDataRuns(root, id).map(({ entry, server, database, status }) => `${entry} on server ${server}, database ${database}, exit ${status}`);
+  return listField("data", runs, width);
+}
+
 const INDENT = `  ${"".padEnd(LABEL)}`;
 
 function questionLines(question, width) {
@@ -238,6 +244,7 @@ export function packet(id, root = projectRoot(), { width = WIDTH } = {}) {
     lines.push(...checkLines(root, snap, n.phase, width));
     lines.push(...scenarioLines(root, id, width));
     lines.push(...keepLines(root, snap, n.phase, width));
+    lines.push(...dataLines(root, id, width));
     const red = blockField(b, "Red");
     if (red) lines.push(...redLines(red, redBeforeChange(root, id, n.phase), width));
     const cause = blockField(b, "Root cause");
