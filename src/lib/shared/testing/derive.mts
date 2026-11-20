@@ -4,6 +4,7 @@ import type { ReplyRow } from "../work/replies.mts";
 import { CASE_KINDS, latestCases, latestClass, roundRows, type CaseRow, type TestRow } from "./results.mts";
 
 export const MAX_QUESTIONS = 3;
+export const MAX_DEFECTS = 3;
 export const CASE_CAP_ASK_ABOVE = 20;
 
 export type TestVerdict = "APPROVED" | "CHANGES REQUIRED" | "DRIFT DETECTED";

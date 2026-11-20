@@ -5,8 +5,9 @@ import type { Card } from "../../shared/scenarios/format.mts";
 import { writesUnownedData } from "../../shared/scenarios/keep.mts";
 import { scenarioProblems } from "../../shared/scenarios/rules.mts";
 import { defectCard, openItemStack, runCase, runCaseInput, type CaseDeps, type CaseRun } from "../../shared/testing/cases.mts";
+import { MAX_DEFECTS } from "../../shared/testing/derive.mts";
 import { openTestItem } from "../../shared/testing/facts.mts";
-import { appendTestRow, CASE_KINDS, defectRows, nextFoundId, readTestRows, testRound, type CaseKind, type DefectRow, type TestRow } from "../../shared/testing/results.mts";
+import { appendTestRow, CASE_KINDS, defectRows, nextFoundId, readTestRows, roundRows, testRound, type CaseKind, type DefectRow, type TestRow } from "../../shared/testing/results.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { workId, type WorkId } from "../../shared/work/files.mts";
 import { need, UsageError, type Args } from "../../util/args.mts";
@@ -27,6 +28,16 @@ function builtCard(id: WorkId, input: DefectInput): Card {
 function refuseRepeat(id: WorkId, rows: readonly TestRow[], steps: string): void {
   const earlier = defectRows(rows).find((row) => row.steps === steps);
   if (earlier) throw new Refused(`${earlier.found} already records these steps`, { id, found: earlier.found });
+}
+
+function newDefectIds(rows: readonly TestRow[], round: number): Set<string> {
+  const earlier = new Set(defectRows(rows.filter((row) => row.round < round)).map((row) => row.found));
+  return new Set(defectRows(roundRows(rows, round)).flatMap((row) => (earlier.has(row.found) ? [] : [row.found])));
+}
+
+function refuseCap(id: WorkId, rows: readonly TestRow[], round: number): void {
+  if (newDefectIds(rows, round).size < MAX_DEFECTS) return;
+  throw new Refused(`the cap of ${MAX_DEFECTS} defects this round is reached; a defect still there next round can be recorded then`, { id });
 }
 
 function createdEntries(root: string): string[] {
@@ -51,11 +62,13 @@ export async function recordDefect(ctx: Context, deps: CaseDeps, input: DefectIn
   const problems = scenarioProblems(card, stack.services);
   if (problems.length) throw new Refused(`the steps do not run: ${problems.join("; ")}`, { id, problems });
   const rows = readTestRows(ctx.root, id);
+  const round = testRound(snap.verdicts);
+  refuseCap(id, rows, round);
   refuseRepeat(id, rows, input.steps);
   refuseUnownedData(ctx, id, card);
   const run = await runCase(card, runCaseInput(ctx, deps, stack));
   refuseNoDefect(id, run);
-  const entry: Omit<DefectRow, "ts"> = { round: testRound(snap.verdicts), type: "defect", found: nextFoundId(rows), kind: input.kind, intent: input.intent, steps: input.steps, evidence: input.evidence, outcome: "failed", detail: run.detail, attempts: run.attempts, mocks: run.mocks };
+  const entry: Omit<DefectRow, "ts"> = { round, type: "defect", found: nextFoundId(rows), kind: input.kind, intent: input.intent, steps: input.steps, evidence: input.evidence, outcome: "failed", detail: run.detail, attempts: run.attempts, mocks: run.mocks };
   const at = ctx.now();
   appendTestRow(ctx.root, id, entry, at);
   return done({ id, row: { ts: at.toISOString(), ...entry } });

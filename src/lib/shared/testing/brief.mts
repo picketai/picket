@@ -3,7 +3,7 @@ import { criterionText } from "../scenarios/keep.mts";
 import type { SavedScenario } from "../scenarios/files.mts";
 import { readChecks, type HttpCheck } from "../work/declared-checks.mts";
 import type { WorkSnapshot } from "../work/snapshot.mts";
-import { MAX_QUESTIONS, roundCap, type CapReply, type CaseCap, type DeriveInput } from "./derive.mts";
+import { MAX_DEFECTS, MAX_QUESTIONS, roundCap, type CapReply, type CaseCap, type DeriveInput } from "./derive.mts";
 import { latestCases, roundRows } from "./results.mts";
 
 export type BriefTexts = { request: string | null; story: string | null };
@@ -53,7 +53,7 @@ function capLine(cap: CaseCap, criteria: number): string {
 
 function limitLines(facts: DeriveInput, replies: readonly CapReply[]): string[] {
   const asked = facts.rows.filter((row) => row.type === "question").length;
-  return [capLine(roundCap(facts.criteria, replies), facts.criteria.length), `questions: ${asked} of ${MAX_QUESTIONS} asked`];
+  return [capLine(roundCap(facts.criteria, replies), facts.criteria.length), `questions: ${asked} of ${MAX_QUESTIONS} asked`, `defects per round: at most ${MAX_DEFECTS}`];
 }
 
 function catalogLine(entry: CatalogEntry): string {

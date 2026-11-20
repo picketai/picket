@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { testFacts } from "./facts.mts";
 import { appendTestRow } from "./results.mts";
 import type { ReplyRow } from "../work/replies.mts";
+import { MAX_DEFECTS, MAX_QUESTIONS } from "./derive.mts";
 
 const TOUCHED = "services/orders/server.mjs";
 const DESIGN = [
@@ -113,6 +114,13 @@ test("a catalog gives a Data catalog section, one line per entry, and none witho
   const text = compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, catalogOf(root));
   assert.ok(text.includes("\n## Data catalog\n\n- buyer (user): a buyer account; fields name, password as {user:buyer.<field>}\n- customer (create): a customer of its own; captures id\n"), text);
   assert.ok(!compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []).includes("## Data catalog"));
+});
+
+test("the Limits section caps the defects per round right after the questions line (T-3.4)", (t) => {
+  const { root, id } = designItem(t);
+  const snap = readSnapshot(root, id);
+  const text = compileBrief(snap, testFacts(root, snap), [], { request: null, story: null }, []);
+  assert.ok(text.includes(`\nquestions: 0 of ${MAX_QUESTIONS} asked\ndefects per round: at most ${MAX_DEFECTS}\n`), text);
 });
 
 const FOUR_CRITERIA = ["T-1.1", "T-1.2", "T-1.3", "T-1.4"];

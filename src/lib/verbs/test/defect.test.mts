@@ -7,7 +7,7 @@ import type { Context } from "../../shared/context.mts";
 import type { EngineRunner } from "../../shared/env/engine.mts";
 import { recordStack } from "../../shared/env/stacks.mts";
 import { itemKey, stackName } from "../../shared/env/standard.mts";
-import type { HttpAdapter } from "../../shared/scenarios/http.mts";
+import type { HttpAdapter, HttpRequest } from "../../shared/scenarios/http.mts";
 import type { CaseDeps } from "../../shared/testing/cases.mts";
 import { readTestRows } from "../../shared/testing/results.mts";
 import type { WorkId } from "../../shared/work/files.mts";
@@ -15,7 +15,9 @@ import { readState } from "../../shared/work/state.mts";
 import { parseArgs, UsageError } from "../../util/args.mts";
 import { openItem, withProject, writeArtifact } from "#test/project.mts";
 import { recordDefect, verb, type DefectInput } from "./defect.mts";
-
+import { MAX_DEFECTS } from "../../shared/testing/derive.mts";
+import { appendTestRow, type DefectRow } from "../../shared/testing/results.mts";
+import { appendVerdict } from "../../shared/work/verdict-log.mts";
 const MODEL = readFileSync(resolve("test/fixtures/env/compose-config.json"), "utf8");
 const VALUE_FLAGS = ["-p", "--project-directory", "-f", "--profile"];
 const NOW = "2026-11-17T10:00:00.000Z";
@@ -122,6 +124,43 @@ test("a blocked run is refused with its detail and records nothing (T-1.3)", asy
   const message = await refusal(recordDefect(ctx, deps(answering(200)), defectInput(id, blocked)));
   assert.match(message, /^the steps were blocked: /);
   assert.deepEqual(readTestRows(ctx.root, id), []);
+});
+
+function foundId(n: number): string {
+  return `K-${String(n).padStart(2, "0")}`;
+}
+
+function seedDefects(ctx: Context, id: WorkId, round: number): void {
+  for (let n = 1; n <= MAX_DEFECTS; n++) {
+    const row: Omit<DefectRow, "ts"> = { round, type: "defect", found: foundId(n), kind: "negative", intent: INTENT, steps: `request GET {orders}/orders/seed-${n}\nexpect status 404\n`, evidence: EVIDENCE, outcome: "failed", detail: "step 2: expected status 404, got 200", attempts: 2, mocks: [] };
+    appendTestRow(ctx.root, id, row, new Date(NOW));
+  }
+}
+
+test("past the cap of new defects in a round, new steps are refused before they run and record nothing (T-3.2)", async (t) => {
+  const { ctx, id } = item(t);
+  seedDefects(ctx, id, 1);
+  const rows = readTestRows(ctx.root, id);
+  const seen: HttpRequest[] = [];
+  const stack = answering(201);
+  const watched: HttpAdapter = async (request) => {
+    seen.push(request);
+    return stack(request);
+  };
+  const message = await refusal(recordDefect(ctx, deps(watched), defectInput(id)));
+  assert.match(message, new RegExp(`the cap of ${MAX_DEFECTS} defects this round is reached`));
+  assert.deepEqual(seen.filter((request) => !request.url.endsWith(RECEIVED)), []);
+  assert.deepEqual(readTestRows(ctx.root, id), rows);
+});
+
+test("rerun rows of earlier defects do not count toward the round's cap, so a new defect takes the next id (T-3.3)", async (t) => {
+  const { ctx, id } = item(t);
+  appendVerdict(ctx.root, id, { agent: "tester", verdict: "CHANGES REQUIRED", phase: null, scope: null, through: null }, new Date(NOW));
+  seedDefects(ctx, id, 1);
+  seedDefects(ctx, id, 2);
+  const recorded = await recordDefect(ctx, deps(answering(201)), defectInput(id));
+  assert.ok(recorded.status === "done");
+  assert.deepEqual([recorded.value.row.round, recorded.value.row.found], [2, foundId(MAX_DEFECTS + 1)]);
 });
 
 test("test defect parses its flags whole and reads the steps from stdin", () => {
