@@ -28,10 +28,20 @@ const RUN_KEY_BYTES = 2;
 const DAY_LENGTH = 10;
 const CASE_PATH = "case";
 
-export function caseCard(item: string, spec: CaseSpec, steps: string): { card: Card } | { problems: string[] } {
-  const header: ScenarioHeader = { id: CANDIDATE_ID, kind: spec.kind, covers: [`${item}/${spec.criterion}`], intent: spec.intent, status: "active", format: FORMAT };
+export type BuiltCard = { card: Card } | { problems: string[] };
+
+function builtCard(kind: CaseKind, covers: string[], intent: string, steps: string): BuiltCard {
+  const header: ScenarioHeader = { id: CANDIDATE_ID, kind, covers, intent, status: "active", format: FORMAT };
   const { card, problems } = parseScenario(`${writeScenario({ header, steps: [] })}${steps}`);
   return card === null ? { problems } : { card };
+}
+
+export function caseCard(item: string, spec: CaseSpec, steps: string): BuiltCard {
+  return builtCard(spec.kind, [`${item}/${spec.criterion}`], spec.intent, steps);
+}
+
+export function defectCard(kind: CaseKind, intent: string, steps: string): BuiltCard {
+  return builtCard(kind, [], intent, steps);
 }
 
 export function stackOf(root: string, engine: Engine, state: Pick<WorkState, "id" | "source">): ItemStack {

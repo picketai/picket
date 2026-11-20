@@ -448,6 +448,14 @@ Run every case of the previous round again under the same case ids.
 picket test rerun <id>
 ```
 
+### picket test defect
+
+Run the steps of a defect met outside the tested criteria and record it for close.
+
+```sh
+picket test defect <id> --kind <kind> --intent "<the correct answer>" --evidence "<words>", with the step lines on stdin
+```
+
 ### picket test escape
 
 Record the root cause of a fixed product case and the check it got past.

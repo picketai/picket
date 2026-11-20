@@ -35,14 +35,16 @@ export type CellRow = Stamped & { type: "cell"; criterion: string; kind: CaseKin
 export type QuestionRow = Stamped & { type: "question"; criterion: string; question: string; choices: string[]; default: string | null; basis: string | null };
 export type UntestableRow = Stamped & { type: "untestable"; criterion: string; why: string };
 export type EscapeRow = Stamped & { type: "escape"; case: string; root_cause: string; escaped: string };
-export type TestRow = CaseRow | ClassRow | CellRow | QuestionRow | UntestableRow | EscapeRow;
+export type DefectRow = Stamped & { type: "defect"; found: string; kind: CaseKind; intent: string; steps: string; evidence: string; detail: string; attempts: number; mocks: string[] };
+export type TestRow = CaseRow | ClassRow | CellRow | QuestionRow | UntestableRow | EscapeRow | DefectRow;
 
 type Unstamped<T> = T extends TestRow ? Omit<T, "ts"> : never;
 export type TestEntry = Unstamped<TestRow>;
 
 const RESULTS_FILE = "results.jsonl";
-const ROW_TYPES: ReadonlySet<string> = new Set(["case", "class", "cell", "question", "untestable", "escape"]);
+const ROW_TYPES: ReadonlySet<string> = new Set(["case", "class", "cell", "question", "untestable", "escape", "defect"]);
 const CASE_ID = /^C-(\d+)$/;
+const FOUND_ID = /^K-(\d+)$/;
 const TESTER = "tester";
 
 function resultsPath(root: string, id: WorkId): string {
@@ -79,11 +81,19 @@ export function latestClass(rows: readonly TestRow[], caseId: string): ClassRow 
   return rows.filter((row): row is ClassRow => row.type === "class" && row.case === caseId).at(-1) ?? null;
 }
 
-function caseNumber(row: TestRow): number {
-  return row.type === "case" ? Number(row.case.match(CASE_ID)?.[1] ?? 0) : 0;
+export function defectRows(rows: readonly TestRow[]): DefectRow[] {
+  return rows.filter((row): row is DefectRow => row.type === "defect");
+}
+
+function nextId(prefix: string, ids: readonly string[], pattern: RegExp): string {
+  const highest = Math.max(0, ...ids.map((id) => Number(id.match(pattern)?.[1] ?? 0)));
+  return `${prefix}-${String(highest + 1).padStart(2, "0")}`;
 }
 
 export function nextCaseId(rows: readonly TestRow[]): string {
-  const highest = Math.max(0, ...rows.map(caseNumber));
-  return `C-${String(highest + 1).padStart(2, "0")}`;
+  return nextId("C", rows.flatMap((row) => (row.type === "case" ? [row.case] : [])), CASE_ID);
+}
+
+export function nextFoundId(rows: readonly TestRow[]): string {
+  return nextId("K", defectRows(rows).map((row) => row.found), FOUND_ID);
 }

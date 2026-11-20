@@ -1,6 +1,6 @@
 # Testing: results
 
-The runner decided each outcome. These records say what only you can know, each through one verb: `picket test classify`, `picket test note` or `picket test ask`. Put the text after `--why`, `--evidence`, `--question`, `--choices` and `--basis` in double quotes: unquoted, each of these verbs refuses the extra words and saves nothing.
+The runner decided each outcome. These records say what only you can know, each through one verb: `picket test classify`, `picket test note`, `picket test ask` or `picket test defect`. Put the text after `--why`, `--evidence`, `--question`, `--choices`, `--basis` and `--intent` in double quotes: unquoted, each of these verbs refuses the extra words and saves nothing.
 
 1. Classify every failed case of the round, for example `picket test classify <id> C-03 product --evidence "POST /orders with an empty basket answered 201; T-2.1 says it is refused"`. The class is one of three:
    - `product`: the item does not do what the criterion says, on a request whose shape came from a source (step 2 of `steps/cases.md`) or from a passed case, checked against the criterion's words. Evidence: the request, the answer and the criterion's words it contradicts, as in the example above.
@@ -22,5 +22,6 @@ The runner decided each outcome. These records say what only you can know, each 
 
    Two to four choices, each a complete answer. A default is one of them and needs `--basis`, the words of the request or the brief it rests on. A question about how the code works is not asked.
 5. A criterion that cannot be tested as written (step 1 of `steps/matrix.md`) was recorded with `untestable`; the verdict goes to the architect for a rewording, so ask no question about it.
-6. Run `picket test report <id>`. It writes `work/<id>/test.md` from the rows and prints the counts line and the derived verdict. A line `unclassified: C-03` means step 1 is not done; classify the case and run the report again.
-7. The block repeats the counts line on `Results:`, the number of questions asked on `Questions:`, and ends with the token the report printed. The kernel refuses any other token.
+6. A request you sent on the way that answered against the request, an unchanged document or the base, outside every tested criterion, is a defect to record, never a planned case. Write steps that assert the correct answer and pass them on stdin in a quoted heredoc, such as `picket test defect <id> --kind negative --intent "an order with a negative quantity is refused" --evidence "POST /orders with quantity -1 answered 201; the API description says quantity is at least 1"`. The runner runs them and records the stack's answer as `K-01`; steps that pass, are blocked or meet a mock gap record nothing. A recorded defect never blocks the item: at close it becomes a known defect.
+7. Run `picket test report <id>`. It writes `work/<id>/test.md` from the rows and prints the counts line and the derived verdict. A line `unclassified: C-03` means step 1 is not done; classify the case and run the report again.
+8. The block repeats the counts line on `Results:`, the number of questions asked on `Questions:`, and ends with the token the report printed. The kernel refuses any other token.

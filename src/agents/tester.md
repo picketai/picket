@@ -36,7 +36,7 @@ Every failed case is classified before your block, with runtime evidence: the st
 
 Ask at most three questions per item, on business matters only: what the request leaves open, never how the code works. Each question is a choice of two to four answers; a default needs its `Basis:`.
 
-Write nothing outside your memory folder. Results, the report and the verdict are the kernel's: `picket test case`, `picket test classify`, `picket test note`, `picket test ask` and `picket test report` record them.
+Write nothing outside your memory folder. Results, the report and the verdict are the kernel's: `picket test case`, `picket test classify`, `picket test note`, `picket test ask`, `picket test defect` and `picket test report` record them.
 
 Report only in your block. A turn that ends without a block, with a status line or a question in its place, is bounced.
 
@@ -51,7 +51,7 @@ In a team session, also send the block to the lead with `SendMessage`, the verdi
 3. Build the matrix of tested criteria by case kind, as `testing/steps/matrix.md` says.
 4. Write and run the cases with `picket test case`, as `testing/steps/cases.md` says.
 5. `picket env replay <id>` replays the saved scenarios on the same stack.
-6. Classify every failed case, record the cells you did not run and ask your questions, as `testing/steps/results.md` says.
+6. Classify every failed case, record the cells you did not run, ask your questions and record a defect met on the way with `picket test defect`, as `testing/steps/results.md` says.
 7. `picket test report <id>`. It writes the report and prints the counts line and the derived verdict, or the cases still unclassified. Classify those and run it again until it prints a verdict.
 8. Emit the block and end the turn.
 

@@ -29,6 +29,8 @@ import { appendTestRow, type CaseKind, type CaseRow, type TestEntry } from "../.
 import { setMarker } from "../../shared/work/markers.mts";
 import { appendReply, type ReplyEntry } from "../../shared/work/replies.mts";
 import { appendVerdict, type VerdictEntry } from "../../shared/work/verdict-log.mts";
+import { chmodSync, existsSync } from "node:fs";
+import { parseScenario } from "../../shared/scenarios/format.mts";
 
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
@@ -618,6 +620,48 @@ test("a result on a deprecated card records nothing", (t) => {
   gitIn(root, "commit", "-q", "-am", "deprecate");
   assert.deepEqual(closeFast(root, id).closing.defects, []);
   assert.deepEqual(readDefects(root), []);
+});
+
+const FOUND_STEPS = 'request POST {orders}/orders\n  body {"reference": "PKT-{run}", "quantity": -1}\nexpect status 400\n';
+const FOUND_CARD = ".picket/env/scenarios/S-0001.md";
+const FOUND_ROW: TestEntry = { round: 1, type: "defect", found: "K-01", kind: "negative", intent: "an order with a negative quantity is refused", steps: FOUND_STEPS, evidence: "POST /orders answered 201", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: ["payments-mock"] };
+
+function foundItem(t: TestContext): { root: string; id: WorkId } {
+  return testedItem(t, { environment: false, verdicts: [["reviewer", "APPROVED", "cumulative"]], cases: [FOUND_ROW], done: true });
+}
+
+test("closing an item holding a recorded defect writes an open entry and a known card, commits both and names them (T-1.5)", (t) => {
+  const { root, id } = foundItem(t);
+  const result = closeFast(root, id);
+  assert.deepEqual(readDefects(root), [
+    { id: "DF-0001", status: "open", opened: "2026-11-17", found_in: id, scenario: "S-0001", expected: "an order with a negative quantity is refused", actual: "step 2: expected status 400, got 201", evidence: "POST /orders answered 201; through a mock: payments-mock", case: "K-01" },
+  ]);
+  const text = readFileSync(join(root, FOUND_CARD), "utf8");
+  const { card, problems } = parseScenario(text);
+  assert.deepEqual(problems, []);
+  assert.ok(fingerprintMatches(text));
+  assert.deepEqual([card?.header.known, card?.header.covers, card?.header.kind, card?.header.intent, card?.header.status], ["DF-0001", [], "negative", "an order with a negative quantity is refused", "active"]);
+  assert.equal(text.slice(text.indexOf("request ")), FOUND_STEPS);
+  assert.ok(result.committed.includes(FOUND_CARD) && result.committed.includes(FIRST_DEFECT), result.committed.join(", "));
+  assert.ok(blockLines(result).includes("Known defects: DF-0001 recorded from K-01 (S-0001)"), blockLines(result).join("\n"));
+});
+
+test("a second close writes no second entry or card for a recorded defect (T-1.6)", (t) => {
+  const { root, id } = foundItem(t);
+  closeFast(root, id);
+  assert.deepEqual(closeFast(root, id).closing.defects, []);
+  assert.deepEqual(readDefects(root).map((entry) => entry.id), ["DF-0001"]);
+  assert.deepEqual(listScenarios(root).map((scenario) => scenario.id), ["S-0001"]);
+});
+
+test("a close whose commit fails leaves neither the entry nor the card of a recorded defect on disk (T-1.6)", (t) => {
+  const { root, id } = foundItem(t);
+  const hook = join(root, ".git", "hooks", "pre-commit");
+  writeFileSync(hook, "#!/bin/sh\necho 'blocked by hook' >&2\nexit 1\n");
+  chmodSync(hook, 0o755);
+  assert.match(refusal(() => closeFast(root, id)), /blocked by hook/);
+  assert.equal(existsSync(join(root, FIRST_DEFECT)), false);
+  assert.equal(existsSync(join(root, FOUND_CARD)), false);
 });
 
 const FIX_ROUND: StageSetup["verdicts"] = [["reviewer", "APPROVED", "cumulative"], ["tester", "CHANGES REQUIRED", "test", { round: 1, test_route: "fix" }], ["tester", "APPROVED", "test", { round: 2 }]];

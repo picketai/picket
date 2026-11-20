@@ -13,7 +13,7 @@ user-invocable: false
 
 # Testing
 
-Prove the request on a running system, from the outside, one risk per case. These steps decide what the tester records through `picket test case`, `picket test classify`, `picket test note` and `picket test ask`; the kernel turns the records into the report and the verdict.
+Prove the request on a running system, from the outside, one risk per case. These steps decide what the tester records through `picket test case`, `picket test classify`, `picket test note`, `picket test ask` and `picket test defect`; the kernel turns the records into the report and the verdict.
 
 ## Steps
 
@@ -21,7 +21,7 @@ Prove the request on a running system, from the outside, one risk per case. Thes
 2. Build the matrix of criteria by case kind: read `steps/matrix.md`. It decides which cells get a case, which get a cell note, and how the cap is spent.
 3. Write and run each case: read `steps/cases.md` for the card grammar, the test data, the login and the run itself.
 4. Replay the saved scenarios with `picket env replay <id>` on the same stack. A saved scenario that fails is the kernel's to classify; you only read its line.
-5. Classify the failed cases, record the cells you did not run and ask your questions: read `steps/results.md`.
+5. Classify the failed cases, record the cells you did not run, ask your questions and record a defect met on the way: read `steps/results.md`.
 6. Run `picket test report <id>`. It prints the counts line and `verdict: <token> · route <route>`, or the cases still unclassified. The block repeats both, and its last line is that token.
 
 ## Rules
@@ -32,7 +32,7 @@ Code decides what code can decide. The runner decides each case's outcome, the k
 
 One case, one risk. A case that checks two things fails for one of them and proves neither.
 
-No exploratory testing: a case that names no tested criterion is not run. A defect seen on the way goes into a question or the block's sentence, never into an unplanned case.
+No exploratory testing: a case that names no tested criterion is not run. A defect seen on the way, outside every tested criterion, is recorded with `picket test defect` (step 5), never turned into a planned case.
 
 Runtime evidence only. A class, a cell note or a question cites what the stack answered (status, body text, the failing step), never what the code probably does.
 

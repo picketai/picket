@@ -86,6 +86,7 @@ export const VERB_NAMES = {
       ask: { summary: "record a question on a tested criterion, with two to four choices", readOnly: false },
       case: { summary: "run one case, its step lines on stdin, on the item's stack and record the run", readOnly: false },
       rerun: { summary: "run every case of the previous round again under the same case ids", readOnly: false },
+      defect: { summary: "run the steps of a defect met outside the tested criteria and record it for close", readOnly: false },
       escape: { summary: "record the root cause of a fixed product case and the check it got past", readOnly: false },
     },
   },

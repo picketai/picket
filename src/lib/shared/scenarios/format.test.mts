@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fingerprintMatches, fingerprintOf, parseScenario, STEP_WORDS, writeScenario, type Card } from "./format.mts";
+import { defectCard } from "../testing/cases.mts";
+import { classify, isBlamed } from "./compare.mts";
 
 const HEADER = ["---", "id: S-0002", "kind: normal", "covers: [20261115-orders/T-2.1]", 'intent: "an order is created: then read back"', "format: 1", "---"];
 
@@ -136,6 +138,19 @@ test("the known and defect labels are read into the header and written back with
   assert.match(written, /^known: DF-0003\ndefect: DF-0003$/m);
   assert.ok(fingerprintMatches(written));
   assert.deepEqual(card(written), labelled.card);
+});
+
+test("a recorded defect's card with no covers and a known label reads back clean, and its confirmed failure is a known defect, never blamed (T-1.7)", () => {
+  const built = defectCard("negative", "an order with a negative quantity is refused", 'request POST {orders}/orders\n  body {"reference": "PKT-{run}", "quantity": -1}\nexpect status 400\n');
+  assert.ok("card" in built, JSON.stringify(built));
+  const written = writeScenario({ ...built.card, header: { ...built.card.header, id: "S-0001", covers: [], known: "DF-0001" } });
+  const { card: read, problems } = parseScenario(written);
+  assert.deepEqual(problems, []);
+  assert.ok(fingerprintMatches(written));
+  assert.deepEqual([read?.header.covers, read?.header.known], [[], "DF-0001"]);
+  const cls = classify({ outcome: "failed", unstable: false }, null, false, read?.header.known ?? null);
+  assert.equal(cls, "known defect");
+  assert.equal(isBlamed(cls), false);
 });
 
 test("a known or defect label that is not a defect id is a header problem (T-1.1)", () => {

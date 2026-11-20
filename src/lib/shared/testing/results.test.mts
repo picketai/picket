@@ -7,6 +7,7 @@ import { workId } from "../work/files.mts";
 import { appendTestRow, nextCaseId, readTestRows, roundRows, testFolderRel, testRound, type TestEntry, type TestRow } from "./results.mts";
 import { roundCounts } from "./report.mts";
 import { COUNTED_OUTCOMES } from "./results.mts";
+import { nextFoundId } from "./results.mts";
 
 const ID = workId("20261117-orders");
 const TS = "2026-11-17T10:00:00.000Z";
@@ -22,12 +23,17 @@ function caseEntry(id: string, round = 1): TestEntry {
   return { round, type: "case", case: id, criterion: "T-2.1", kind: "boundary", intent: "an empty basket", steps: "request GET {orders}/orders\nexpect status 200", outcome: "failed", attempts: 2, unstable: false, detail: "expected 200, got 500", mocks: ["payments-mock"] };
 }
 
+function defectEntry(found: string): TestEntry {
+  return { round: 1, type: "defect", found, kind: "negative", intent: "a negative quantity is refused", steps: "request GET {orders}/orders\nexpect status 400", evidence: "POST /orders answered 201", detail: "step 2: expected status 400, got 201", attempts: 2, mocks: [] };
+}
+
 const ENTRIES: TestEntry[] = [
   caseEntry("C-01"),
   { round: 1, type: "class", case: "C-01", class: "product", evidence: "the service answered 500" },
   { round: 1, type: "cell", criterion: "T-2.1", kind: "state", outcome: "not covered", why: "the cap is reached" },
   { round: 1, type: "question", criterion: "T-2.1", question: "Is an empty basket an error?", choices: ["yes", "no"], default: "no", basis: "the request says nothing" },
   { round: 1, type: "untestable", criterion: "T-2.1", why: "fast is not a number" },
+  defectEntry("K-01"),
 ];
 
 test("a row of each type reads back equal, stamped with the time (T-1.6)", (t) => {
@@ -45,6 +51,16 @@ test("the next case id is one above the highest, from C-01 (T-1.6)", (t) => {
   assert.equal(nextCaseId(readTestRows(root, ID)), "C-01");
   for (const id of ["C-01", "C-03", "C-02"]) appendTestRow(root, ID, caseEntry(id), NOW);
   assert.equal(nextCaseId(readTestRows(root, ID)), "C-04");
+});
+
+test("the next found id is one above the highest defect row, from K-01, and case ids ignore it (T-1.4)", (t) => {
+  const root = scratch(t);
+  assert.equal(nextFoundId(readTestRows(root, ID)), "K-01");
+  appendTestRow(root, ID, caseEntry("C-01"), NOW);
+  appendTestRow(root, ID, defectEntry("K-01"), NOW);
+  const rows = readTestRows(root, ID);
+  assert.equal(nextFoundId(rows), "K-02");
+  assert.equal(nextCaseId(rows), "C-02");
 });
 
 test("the round is one above the tester's verdict rows (T-1.6)", () => {

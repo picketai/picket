@@ -7,6 +7,7 @@ import { parse } from "../../util/vendor/shell-quote-parse.mjs";
 import { verb as ask } from "./ask.mts";
 import { verb as classify } from "./classify.mts";
 import { verb as note } from "./note.mts";
+import { verb as defect } from "./defect.mts";
 
 const STEPS = resolve("src/skills/testing/steps");
 const ID = "20261118-example";
@@ -14,10 +15,12 @@ const VERBS: ReadonlyMap<string, { parse: (args: Args) => object }> = new Map<st
   ["note", note],
   ["classify", classify],
   ["ask", ask],
+  ["defect", defect],
 ]);
-const FREE_TEXT_FLAGS = ["why", "evidence", "question", "basis"];
-const INLINE_COMMAND = /`(picket test (?:note|classify|ask) <id> [^`]*)`/g;
-const FENCED_COMMAND = /^\s*(picket test (?:note|classify|ask) <id> .*)$/gm;
+const FREE_TEXT_FLAGS = ["why", "evidence", "question", "basis", "intent"];
+const DEFECT_STEPS = "request GET {orders}/orders\nexpect status 400\n";
+const INLINE_COMMAND = /`(picket test (?:note|classify|ask|defect) <id> [^`]*)`/g;
+const FENCED_COMMAND = /^\s*(picket test (?:note|classify|ask|defect) <id> .*)$/gm;
 
 type Example = { file: string; line: string };
 type Written = { text: string; quoted: boolean };
@@ -47,7 +50,7 @@ function parsedInput(line: string): object {
   const [, , verbName, ...words] = shellWords(line);
   const spec = VERBS.get(verbName);
   if (!spec) throw new Error(`no test verb ${verbName}`);
-  return spec.parse(parseArgs(words));
+  return spec.parse(parseArgs(words, () => DEFECT_STEPS));
 }
 
 function writtenText(line: string, flag: string): Written | undefined {
@@ -73,12 +76,12 @@ function exampleProblems(line: string): string[] {
   });
 }
 
-test("the testing steps show at least one note, one classify and one ask command", () => {
+test("the testing steps show at least one note, one classify, one ask and one defect command", () => {
   const verbs = new Set(stepExamples().map((example) => verbOf(example.line)));
-  assert.deepEqual([...verbs].sort(), ["ask", "classify", "note"]);
+  assert.deepEqual([...verbs].sort(), ["ask", "classify", "defect", "note"]);
 });
 
-test("every note, classify and ask command in the testing steps parses with its free text whole and quoted", () => {
+test("every note, classify, ask and defect command in the testing steps parses with its free text whole and quoted", () => {
   for (const { file, line } of stepExamples()) {
     assert.deepEqual(exampleProblems(line), [], `${file}: ${line}`);
   }

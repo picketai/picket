@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { caseCap, deriveVerdict, testedCriteria, type DeriveInput } from "./derive.mts";
 import type { CaseRow, ClassRow, TestRow } from "./results.mts";
+import type { DefectRow } from "./results.mts";
+import { roundCounts } from "./report.mts";
 
 const TS = "2026-11-17T10:00:00.000Z";
 
@@ -47,6 +49,16 @@ test("the tested criteria are the covers of HTTP checks, in order and without re
 
 test("phases with no drive list give no tested criteria", () => {
   assert.deepEqual(testedCriteria([{ n: 1, entry: { n: 1, drive: true } }, { n: 2, entry: null }]), []);
+});
+
+const FOUND: DefectRow = { ts: TS, round: 1, type: "defect", found: "K-01", kind: "negative", intent: "a negative quantity is refused", steps: "request GET {orders}/orders", evidence: "answered 201", detail: "expected 400, got 201", attempts: 2, mocks: [] };
+
+test("a recorded defect leaves a passing round's verdict, route, reasons and counts as they are (T-1.4)", () => {
+  const withDefect = [...BOTH_PASSED, FOUND];
+  assert.deepEqual(deriveVerdict(input(withDefect)), deriveVerdict(input(BOTH_PASSED)));
+  assert.deepEqual(deriveVerdict(input(withDefect)), { verdict: "APPROVED", route: null, reasons: [], unclassified: [] });
+  assert.equal(roundCounts(withDefect, 1), roundCounts(BOTH_PASSED, 1));
+  assert.equal(roundCounts(withDefect, 1), "2 passed");
 });
 
 test("every criterion passed and a fresh replay approves (T-1.2)", () => {
