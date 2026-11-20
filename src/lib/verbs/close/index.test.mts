@@ -24,7 +24,7 @@ import { checkCommitMessage } from "../../shared/commit-message.mts";
 import { verb } from "./index.mts";
 import { fingerprintMatches } from "../../shared/scenarios/format.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
-import { readDefects } from "../../shared/scenarios/defects.mts";
+import { labelCard, readDefects, writeDefect } from "../../shared/scenarios/defects.mts";
 import { appendTestRow, type CaseKind, type CaseRow, type TestEntry } from "../../shared/testing/results.mts";
 import { setMarker } from "../../shared/work/markers.mts";
 import { appendReply, type ReplyEntry } from "../../shared/work/replies.mts";
@@ -557,6 +557,50 @@ test("a second close, or another item's run holding the same row, writes no seco
   failingBeforeRun(root, other, "r2");
   assert.deepEqual(closeFast(root, other).closing.defects, []);
   assert.deepEqual(readDefects(root).map((entry) => entry.id), ["DF-0001"]);
+});
+
+function knownItem(t: TestContext, cls: ResultClass, detail: string): { root: string; id: WorkId } {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  writeDefect(root, { id: "DF-0001", status: "open", opened: "2026-10-10", found_in: "20261010-orders", scenario: "S-0002", expected: "health", actual: "step 1: expected status 200, got 500", evidence: "run r0 on orders 1a2b3c4" });
+  writeIn(root, LABELLED_CARD, labelCard(readFileSync(join(root, LABELLED_CARD), "utf8"), { known: "DF-0001" }));
+  gitIn(root, "add", "-A");
+  gitIn(root, "commit", "-q", "-m", "known defect");
+  const versions = { orders: "5d6e7f8" };
+  appendRows(root, [
+    { type: "run", run: "r1", item: id, mode: "full", key: "k", versions },
+    { type: "result", run: "r1", scenario: "S-0002", fingerprint: "sha256:f", key: "k", versions, outcome: "passed", attempts: 1, unstable: false, class: cls, detail, defect: "DF-0001" },
+  ]);
+  return { root, id };
+}
+
+test("a known defect fixed outside the item is closed with its range, relabelled and committed (T-2.7)", (t) => {
+  const { root, id } = knownItem(t, "fixed outside this item", "orders 1a2b3c4..5d6e7f8");
+  const result = closeFast(root, id);
+  const [entry] = readDefects(root);
+  assert.deepEqual(entry, { id: "DF-0001", status: "fixed", opened: "2026-10-10", found_in: "20261010-orders", scenario: "S-0002", expected: "health", actual: "step 1: expected status 200, got 500", evidence: "run r0 on orders 1a2b3c4", fixed: "2026-11-15", fixed_in: id, reason: "fixed outside this item", range: "orders 1a2b3c4..5d6e7f8" });
+  const card = readFileSync(join(root, LABELLED_CARD), "utf8");
+  assert.match(card, /^defect: DF-0001$/m);
+  assert.doesNotMatch(card, /^known:/m);
+  assert.ok(fingerprintMatches(card));
+  assert.ok(result.committed.includes(LABELLED_CARD) && result.committed.includes(FIRST_DEFECT), result.committed.join(", "));
+  assert.ok(blockLines(result).includes("Known defects: DF-0001 fixed outside this item (orders 1a2b3c4..5d6e7f8)"), blockLines(result).join("\n"));
+});
+
+test("a known defect fixed by the item is closed with no range", (t) => {
+  const { root, id } = knownItem(t, "fixed by this item", "");
+  const result = closeFast(root, id);
+  const [entry] = readDefects(root);
+  assert.deepEqual([entry.status, entry.reason, entry.range], ["fixed", "fixed by this item", undefined]);
+  assert.deepEqual(result.closing.defects, ["DF-0001 fixed by this item"]);
+});
+
+test("a side effect leaves the entry open and the label in place, and says so (T-2.7)", (t) => {
+  const { root, id } = knownItem(t, "side effect", "changed: src/orders/cart.ts");
+  const before = readFileSync(join(root, LABELLED_CARD), "utf8");
+  const result = closeFast(root, id);
+  assert.equal(readDefects(root)[0].status, "open");
+  assert.equal(readFileSync(join(root, LABELLED_CARD), "utf8"), before);
+  assert.ok(blockLines(result).includes("Known defects: DF-0001 side effect (changed: src/orders/cart.ts); still open"), blockLines(result).join("\n"));
 });
 
 test("a later run that did not replay is passed over for the run before it", (t) => {

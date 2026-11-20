@@ -11,7 +11,7 @@ export type DeriveInput = {
   criteria: string[];
   rows: TestRow[];
   round: number;
-  replay: { run: string | null; passed: string[]; blamed: string[] };
+  replay: { run: string | null; passed: string[]; blamed: string[]; unexplained: string[] };
   previousReplay: { run: string | null; passed: string[] };
 };
 
@@ -61,7 +61,7 @@ function userReasons(input: DeriveInput, current: CaseRow[], rows: TestRow[]): s
   const passed = new Set(current.filter((row) => row.outcome === "passed").map((row) => row.criterion));
   const unproved = input.criteria.filter((criterion) => !passed.has(criterion)).map((criterion) => `${criterion} has no passed case`);
   const replayed = input.replay.run !== null && input.replay.run !== input.previousReplay.run;
-  return [...questions, ...unproved, ...(replayed ? [] : [NOT_REPLAYED])];
+  return [...questions, ...unproved, ...(replayed ? [] : [NOT_REPLAYED]), ...input.replay.unexplained];
 }
 
 function rules(input: DeriveInput, rows: TestRow[], current: CaseRow[], previous: CaseRow[]): Rule[] {

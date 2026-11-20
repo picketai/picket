@@ -17,7 +17,7 @@ import { baseKey, keyId } from "../../shared/scenarios/keys.mts";
 import { appendRows, readResults, type ResultRow, type ScenarioOutcome } from "../../shared/scenarios/results.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import { readState, writeState } from "../../shared/work/state.mts";
-import { gitIn, gitRepo } from "#test/git.mts";
+import { gitIn, gitOut, gitRepo } from "#test/git.mts";
 import { openItem, writeArtifact } from "#test/project.mts";
 import { parseArgs } from "../../util/args.mts";
 import { renderReplay, replayEnvironment, verb, type ReplayDeps, type ReplayInput, type ReplayReport } from "./replay.mts";
@@ -216,6 +216,58 @@ test("every replay ends with the open known defects and their age in days, or no
   assert.equal(text.split("\n").at(-1), "known defects open: DF-0001 (S-0002) 41 days, DF-0003 (S-0004) 1 day");
   const offline = await replay(later, deps(ctx.root, answering(200, "ok").adapter, () => ({ status: 1, stdout: "", stderr: "" })), full(id));
   assert.equal(offline.text, "not replayed: no container engine\nknown defects open: DF-0001 (S-0002) 41 days, DF-0003 (S-0004) 1 day");
+});
+
+function labelled(ctx: Context): void {
+  const path = join(ctx.root, CARD);
+  writeFileSync(path, labelCard(readFileSync(path, "utf8"), { known: "DF-0001" }));
+}
+
+function storedRow(ctx: Context): ResultRow | undefined {
+  return readResults(ctx.root).filter((row): row is ResultRow => row.type === "result" && row.run !== "base-1" && !row.run.endsWith("-base")).at(-1);
+}
+
+test("a labelled card that passes with no stored base row runs the base once and is fixed outside this item (T-2.4)", async (t) => {
+  const { ctx, id } = project(t);
+  labelled(ctx);
+  const spy = baseAnswering("passed");
+  const { code, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, engine(ctx.root), spy), full(id));
+  assert.equal(code, 0);
+  assert.deepEqual(spy.calls.map((call) => call.scenarios.map((scenario) => scenario.id)), [["S-0001"]]);
+  assert.equal(text.split("\n")[0], "S-0001 fixed outside this item: no failing run recorded");
+  assert.deepEqual([storedRow(ctx)?.class, storedRow(ctx)?.defect], ["fixed outside this item", "DF-0001"]);
+});
+
+test("a labelled card that passes beside a stored passed base row runs no base and is fixed outside this item (T-2.4)", async (t) => {
+  const { ctx, id } = project(t);
+  labelled(ctx);
+  storeBase(ctx, id, "passed");
+  const spy = baseAnswering("passed");
+  await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, engine(ctx.root), spy), full(id));
+  assert.equal(spy.calls.length, 0);
+  assert.equal(storedRow(ctx)?.class, "fixed outside this item");
+});
+
+function committedLabel(ctx: Context, id: WorkId): void {
+  labelled(ctx);
+  gitIn(ctx.root, "add", "-A");
+  gitIn(ctx.root, "commit", "-q", "-m", "label");
+  writeState(ctx.root, { ...readState(ctx.root, id), base: gitOut(ctx.root, "rev-parse", "HEAD") }, new Date());
+  writeFileSync(join(ctx.root, "services", "orders", "server.mjs"), "item change\n");
+  storeBase(ctx, id, "failed");
+}
+
+test("a labelled pass the base still fails is a side effect naming the changes, or fixed by this item when the request names it", async (t) => {
+  const unnamed = project(t);
+  committedLabel(unnamed.ctx, unnamed.id);
+  const side = await replay(unnamed.ctx, deps(unnamed.ctx.root, answering(200, "ok").adapter), full(unnamed.id));
+  assert.equal(side.code, 0);
+  assert.equal(side.text.split("\n")[0], "S-0001 side effect: changed: services/orders/server.mjs");
+  const named = project(t);
+  committedLabel(named.ctx, named.id);
+  writeFileSync(join(named.ctx.root, "work", named.id, "request.md"), "fix the health check, DF-0001.\n");
+  const fixed = await replay(named.ctx, deps(named.ctx.root, answering(200, "ok").adapter), full(named.id));
+  assert.equal(fixed.text.split("\n")[0], "S-0001 fixed by this item");
 });
 
 function baseKeyId(ctx: Context, id: WorkId): string {

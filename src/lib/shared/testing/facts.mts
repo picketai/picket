@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { Refused } from "../action.mts";
-import { readResults, replaySummary, type ResultRow, type ScenarioRow } from "../scenarios/results.mts";
+import { readResults, replaySummary, type ResultRow, type ScenarioRow, type UnexplainedRow } from "../scenarios/results.mts";
 import { workDir, type WorkId } from "../work/files.mts";
 import { readSnapshot, type WorkSnapshot } from "../work/snapshot.mts";
 import type { VerdictRow } from "../work/verdict-log.mts";
@@ -36,6 +36,10 @@ function passedIn(rows: readonly ScenarioRow[], run: string | null): string[] {
   return rows.filter((row): row is ResultRow => row.type === "result" && row.run === run && row.class === "passed").map((row) => row.scenario);
 }
 
+function unexplainedText({ scenario, class: cls, detail, defect }: UnexplainedRow): string {
+  return `${scenario}${defect === null ? "" : ` (${defect})`} ${cls}: ${detail}`;
+}
+
 function previousReplayRun(verdicts: readonly VerdictRow[]): string | null {
   return verdicts.filter((row) => row.agent === TESTER).at(-1)?.replay_run ?? null;
 }
@@ -50,7 +54,7 @@ export function testFacts(root: string, snap: WorkSnapshot): DeriveInput {
     criteria: testedCriteria(snap.phases),
     rows: readTestRows(root, id),
     round: testRound(snap.verdicts),
-    replay: { run, passed: passedIn(scenarioRows, run), blamed: summary.blamed.map((entry) => entry.scenario) },
+    replay: { run, passed: passedIn(scenarioRows, run), blamed: summary.blamed.map((entry) => entry.scenario), unexplained: summary.unexplained.map(unexplainedText) },
     previousReplay: { run: previous, passed: passedIn(scenarioRows, previous) },
   };
 }

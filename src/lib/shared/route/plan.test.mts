@@ -235,7 +235,7 @@ test("every effect in VERDICTS and TESTER_VERDICTS has a plan (T-5.7)", () => {
   for (const effect of Object.values(TESTER_VERDICTS)) assert.equal(typeof EFFECTS[effect as Effect], "function", effect);
 });
 
-const TESTED_INPUT: DeriveInput = { criteria: ["T-2.1"], rows: [], round: 2, replay: { run: "r2", passed: [], blamed: [] }, previousReplay: { run: "r1", passed: [] } };
+const TESTED_INPUT: DeriveInput = { criteria: ["T-2.1"], rows: [], round: 2, replay: { run: "r2", passed: [], blamed: [], unexplained: [] }, previousReplay: { run: "r1", passed: [] } };
 const NO_PASS: Derived = { verdict: "CHANGES REQUIRED", route: "user", reasons: ["T-2.1 has no passed case"], unclassified: [] };
 
 test("a tester verdict plans the report of its round and a note naming the route (T-5.7)", () => {

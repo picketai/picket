@@ -10,6 +10,7 @@ import { readLayout, type ItemLayout } from "../../shared/repos.mts";
 import { runBase, type BaseInput, type BaseOutcome } from "../../shared/scenarios/base-run.mts";
 import { classify, isBlamed, RESULT_CLASSES, type ResultClass } from "../../shared/scenarios/compare.mts";
 import { ageDays, readDefects } from "../../shared/scenarios/defects.mts";
+import { itemChanges, lastFailing, maskedBy, namesDefect, stoppedFailing } from "../../shared/scenarios/known.mts";
 import { acceptFingerprint, listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
 import { httpAdapter, type HttpAdapter } from "../../shared/scenarios/http.mts";
 import { baseKey, keyId, workingKey, type ContentKey } from "../../shared/scenarios/keys.mts";
@@ -24,9 +25,10 @@ import { scenarioProblems } from "../../shared/scenarios/rules.mts";
 import { runScenario } from "../../shared/scenarios/runner.mts";
 import { replacedScenarios } from "../../shared/work/declared-checks.mts";
 import { currentPhase, readSnapshot } from "../../shared/work/snapshot.mts";
-import { workId, type WorkId } from "../../shared/work/files.mts";
+import { workFile, workId, type WorkId } from "../../shared/work/files.mts";
 import { readState, type WorkState } from "../../shared/work/state.mts";
 import { flag, str, UsageError, type Args } from "../../util/args.mts";
+import { readText } from "../../util/io.mts";
 import { startStack, type StartedStack } from "./start.mts";
 
 export type ReplayMode = Exclude<RunMode, "base">;
@@ -73,6 +75,7 @@ function replacedByItem(root: string, id: WorkId): Set<string> {
 }
 
 type Labels = Map<string, string>;
+type KnownFacts = { labels: Labels; rows: ScenarioRow[]; baseId: string; paths: Map<string, string>; texts: string[]; changes: () => string[] };
 
 function knownLabels(scenarios: SavedScenario[]): Labels {
   return new Map(scenarios.flatMap((scenario) => (scenario.card?.header.known === undefined ? [] : [[scenario.id ?? scenario.path, scenario.card.header.known] as const])));
@@ -123,7 +126,8 @@ function replayDeps(ctx: Context, deps: ReplayDeps): BaseInput["replay"] {
 }
 
 function needsBase(run: ScenarioRun, stored: ScenarioRow[], baseId: string, labels: Labels): boolean {
-  return !labels.has(run.id) && run.outcome === "failed" && !run.unstable && lastKnown(stored, run.id, run.fingerprint, baseId) === null;
+  const compared = labels.has(run.id) ? "passed" : "failed";
+  return run.outcome === compared && !run.unstable && lastKnown(stored, run.id, run.fingerprint, baseId) === null;
 }
 
 async function compareWithBase(session: Session, unmatched: SavedScenario[], baseId: string): Promise<BaseComparison> {
@@ -134,6 +138,33 @@ async function compareWithBase(session: Session, unmatched: SavedScenario[], bas
   if ("failure" in outcome) return { rows: [], note: `the base did not start: ${outcome.failure}` };
   const context: RunContext = { item: input.id, run: `${run}-base`, mode: "base", key: baseId, versions: outcome.versions };
   return { rows: [runRow(context, null), ...outcome.runs.map((baseRun) => resultRow(baseRun, [], context, baseId, null))], note: null };
+}
+
+function once<T>(read: () => T): () => T {
+  let value: T | undefined;
+  return () => (value ??= read());
+}
+
+function knownFacts(session: Session, scenarios: SavedScenario[], labels: Labels, rows: ScenarioRow[], baseId: string): KnownFacts {
+  const { ctx, input, state, layout } = session;
+  const texts = [readText(workFile(ctx.root, input.id, "request.md")) ?? "", readSnapshot(ctx.root, input.id).artifact?.body ?? ""];
+  const paths = new Map(scenarios.map((scenario) => [scenario.id ?? scenario.path, scenario.path]));
+  return { labels, rows, baseId, paths, texts, changes: once(() => itemChanges(ctx.root, layout, state.base ?? null)) };
+}
+
+function explained(row: ResultRow, facts: KnownFacts): ResultRow {
+  const defect = facts.labels.get(row.scenario);
+  if (defect === undefined) return row;
+  if (row.class !== "passed") return { ...row, defect };
+  const changes = facts.changes();
+  const stopped = stoppedFailing({
+    base: lastKnown(facts.rows, row.scenario, row.fingerprint, facts.baseId),
+    lastFailing: lastFailing(facts.rows, row.scenario),
+    masked: maskedBy(changes, facts.paths.get(row.scenario) ?? ""),
+    named: namesDefect(facts.texts, defect),
+    changes,
+  });
+  return { ...row, class: stopped.class, detail: stopped.detail, defect };
 }
 
 function noted(row: ResultRow, note: string | null, unmatched: Set<string>): ResultRow {
@@ -155,7 +186,8 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const base = await compareWithBase(session, scenarios.filter((scenario) => unmatched.has(scenario.id ?? scenario.path)), baseId);
   const context: RunContext = { item: input.id, run, mode: input.mode, key: keyId(keys.working), versions: Object.fromEntries(start.report.apps.map((app) => [app.service, app.version])) };
   const known = [...stored, ...base.rows];
-  const rows = runs.map((scenarioRun) => noted(resultRow(scenarioRun, known, context, baseId, labels.get(scenarioRun.id) ?? null, session.replaced.has(scenarioRun.id)), base.note, unmatched));
+  const facts = knownFacts(session, scenarios, labels, known, baseId);
+  const rows = runs.map((scenarioRun) => explained(noted(resultRow(scenarioRun, known, context, baseId, labels.get(scenarioRun.id) ?? null, session.replaced.has(scenarioRun.id)), base.note, unmatched), facts));
   appendRows(root, [...base.rows, runRow(context, null), ...rows]);
   for (const scenarioRun of runs) if (scenarioRun.byHand && scenarioRun.outcome !== "blocked") acceptFingerprint(root, scenarioRun.fingerprint);
   const lines = runs.map((scenarioRun, at) => lineOf(scenarioRun, rows[at], flowOf(scenarios, scenarioRun)));

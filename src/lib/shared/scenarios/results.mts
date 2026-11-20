@@ -1,6 +1,6 @@
 import { appendJsonl, readJsonl } from "../../util/io.mts";
 import { statePath, STATE_FILES } from "../paths.mts";
-import { isBlamed, RESULT_CLASSES, type ResultClass } from "./compare.mts";
+import { isBlamed, isUnexplained, RESULT_CLASSES, type ResultClass } from "./compare.mts";
 
 export type RunMode = "full" | "affected" | "only" | "base";
 export type ScenarioOutcome = "passed" | "failed" | "blocked" | "not run";
@@ -21,9 +21,11 @@ export type ResultRow = {
   detail: string;
   mocks?: string[];
   gaps?: string[];
+  defect?: string;
 };
 export type ScenarioRow = RunRow | ResultRow;
-export type ReplaySummary = { run: RunRow | null; counts: Partial<Record<ResultClass, number>>; blamed: { scenario: string; class: ResultClass }[] };
+export type UnexplainedRow = { scenario: string; class: ResultClass; detail: string; defect: string | null };
+export type ReplaySummary = { run: RunRow | null; counts: Partial<Record<ResultClass, number>>; blamed: { scenario: string; class: ResultClass }[]; unexplained: UnexplainedRow[] };
 
 const KNOWN_MODES: readonly RunMode[] = ["full", "affected", "base"];
 
@@ -73,11 +75,12 @@ export function replaySummary(rows: readonly ScenarioRow[], item: string): Repla
   const counts: Partial<Record<ResultClass, number>> = {};
   for (const result of results) counts[result.class] = (counts[result.class] ?? 0) + 1;
   const blamed = results.filter((result) => isBlamed(result.class)).map((result) => ({ scenario: result.scenario, class: result.class }));
-  return { run, counts, blamed };
+  const unexplained = results.filter((result) => isUnexplained(result.class)).map((result) => ({ scenario: result.scenario, class: result.class, detail: result.detail, defect: result.defect ?? null }));
+  return { run, counts, blamed, unexplained };
 }
 
 function countText(summary: ReplaySummary, cls: ResultClass): string {
-  const named = summary.blamed.filter((entry) => entry.class === cls).map((entry) => entry.scenario);
+  const named = [...summary.blamed, ...summary.unexplained].filter((entry) => entry.class === cls).map((entry) => entry.scenario);
   return `${summary.counts[cls]} ${cls}${named.length ? ` (${named.join(", ")})` : ""}`;
 }
 

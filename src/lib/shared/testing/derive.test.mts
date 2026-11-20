@@ -30,7 +30,7 @@ function input(rows: TestRow[], overrides: Partial<DeriveInput> = {}): DeriveInp
     criteria: ["T-2.1", "T-2.3"],
     rows,
     round: 1,
-    replay: { run: "r2", passed: [], blamed: [] },
+    replay: { run: "r2", passed: [], blamed: [], unexplained: [] },
     previousReplay: { run: "r1", passed: [] },
     ...overrides,
   };
@@ -54,14 +54,21 @@ test("every criterion passed and a fresh replay approves (T-1.2)", () => {
 });
 
 test("a replay run no newer than the previous round sends the round to the user (T-1.2)", () => {
-  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: "r1", passed: [], blamed: [] } }));
+  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: "r1", passed: [], blamed: [], unexplained: [] } }));
   assert.deepEqual(derived, { verdict: "CHANGES REQUIRED", route: "user", reasons: ["saved scenarios not replayed this round"], unclassified: [] });
 });
 
 test("no full replay at all is not replayed this round", () => {
-  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: null, passed: [], blamed: [] }, previousReplay: { run: null, passed: [] } }));
+  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: null, passed: [], blamed: [], unexplained: [] }, previousReplay: { run: null, passed: [] } }));
   assert.equal(derived.route, "user");
   assert.deepEqual(derived.reasons, ["saved scenarios not replayed this round"]);
+});
+
+test("an unexplained stop of a known defect sends an otherwise passing round to the user with its reason (T-2.6)", () => {
+  const reason = "S-0002 (DF-0001) side effect: changed: src/orders/cart.ts";
+  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: "r2", passed: [], blamed: [], unexplained: [reason] } }));
+  assert.deepEqual(derived, { verdict: "CHANGES REQUIRED", route: "user", reasons: [reason], unclassified: [] });
+  assert.deepEqual(deriveVerdict(input(BOTH_PASSED, { replay: { run: "r2", passed: [], blamed: [], unexplained: [] } })), { verdict: "APPROVED", route: null, reasons: [], unclassified: [] });
 });
 
 test("a product failure routes to fix even beside an untestable row (T-1.3)", () => {
@@ -99,14 +106,14 @@ test("an unstable failure of a case that passed before does not trip the breaker
 });
 
 test("a saved scenario that passed in the previous replay and is blamed now trips the breaker (T-1.4)", () => {
-  const derived = deriveVerdict(input(BOTH_PASSED, { round: 2, replay: { run: "r2", passed: [], blamed: ["S-0004"] }, previousReplay: { run: "r1", passed: ["S-0004"] } }));
+  const derived = deriveVerdict(input(BOTH_PASSED, { round: 2, replay: { run: "r2", passed: [], blamed: ["S-0004"], unexplained: [] }, previousReplay: { run: "r1", passed: ["S-0004"] } }));
   assert.equal(derived.verdict, "CHANGES REQUIRED");
   assert.equal(derived.route, "breaker");
   assert.equal(derived.reasons[0], "S-0004 passed in round 1 and fails now");
 });
 
 test("a blamed scenario that did not pass before routes to fix", () => {
-  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: "r2", passed: [], blamed: ["S-0004"] } }));
+  const derived = deriveVerdict(input(BOTH_PASSED, { replay: { run: "r2", passed: [], blamed: ["S-0004"], unexplained: [] } }));
   assert.equal(derived.route, "fix");
   assert.deepEqual(derived.reasons, ["S-0004 fails in the latest replay"]);
 });

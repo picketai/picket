@@ -90,8 +90,17 @@ test("the replay summary counts the classes of the item's latest full run and na
       { scenario: "S-0002", class: "new failure" },
       { scenario: "S-0004", class: "no base result" },
     ],
+    unexplained: [],
   });
   assert.equal(summaryText(summary), "4 replayed: 1 passed, 1 new failure (S-0002), 1 failing before the item, 1 no base result (S-0004)");
+});
+
+test("the summary names the scenarios of an unexplained class and keeps their rows (T-2.5)", () => {
+  const rows = [run("r1", "full"), result("r1", { scenario: "S-0001", class: "passed" }), result("r1", { scenario: "S-0002", outcome: "passed", class: "side effect", detail: "changed: src/orders/cart.ts", defect: "DF-0001" })];
+  const summary = replaySummary(rows, "20261115-orders");
+  assert.equal(summaryText(summary), "2 replayed: 1 passed, 1 side effect (S-0002)");
+  assert.deepEqual(summary.unexplained, [{ scenario: "S-0002", class: "side effect", detail: "changed: src/orders/cart.ts", defect: "DF-0001" }]);
+  assert.deepEqual(summary.blamed, []);
 });
 
 test("the summary text says not replayed, with a run's reason, or that no scenario ran", () => {

@@ -1,9 +1,10 @@
 import type { ResultRow, ScenarioOutcome } from "./results.mts";
 
-export const RESULT_CLASSES = ["passed", "new failure", "failing before the item", "known defect", "no base result", "replaced by this item", "unstable", "blocked", "not run"] as const;
+export const RESULT_CLASSES = ["passed", "new failure", "failing before the item", "known defect", "no base result", "replaced by this item", "unstable", "blocked", "not run", "fixed outside this item", "fixed by this item", "side effect", "possibly masked"] as const;
 export type ResultClass = (typeof RESULT_CLASSES)[number];
 
 const BLAMED: readonly ResultClass[] = ["new failure", "no base result"];
+const UNEXPLAINED: readonly ResultClass[] = ["side effect", "possibly masked"];
 
 function againstBase(base: ResultRow | null): ResultClass {
   if (base?.outcome === "passed") return "new failure";
@@ -22,4 +23,8 @@ export function classify(item: { outcome: ScenarioOutcome; unstable: boolean }, 
 
 export function isBlamed(cls: ResultClass): boolean {
   return BLAMED.includes(cls);
+}
+
+export function isUnexplained(cls: ResultClass): boolean {
+  return UNEXPLAINED.includes(cls);
 }
