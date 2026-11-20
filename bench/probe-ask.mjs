@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ export const INTERACTIVE_DIR = join(SCRATCH_ROOT, `${SCRATCH_PREFIX}interactive`
 
 const OK_SENTINEL = "picket-probe-ok";
 const BANG_SENTINEL = "picket-probe-bang";
+const REWRITE_COMMANDS = { "ask+update": "echo picket-probe-update", "ask+refuse": "echo picket-probe-refuse" };
 const OK_COMMAND = `echo ${OK_SENTINEL}`;
 const PROBED_TOOLS = "Bash|PowerShell";
 const FAILING_COMMAND = "ls picket-probe-missing";
@@ -30,13 +31,16 @@ export const CELLS = [
   ...["manual", "acceptEdits", "auto", "bypassPermissions", "dontAsk"].map((mode) => ({ mode, scenario: "ask" })),
   ...["manual", "auto"].map((mode) => ({ mode, scenario: "ask+rule" })),
   { mode: "manual", scenario: "ask+fail" },
+  { mode: "manual", scenario: "ask+update" },
+  { mode: "manual", scenario: "ask+refuse" },
 ];
 
 const AUTO_ANSWERS = { shown: "shown", silent: "silent" };
 const UNRECORDED_INTERACTIVE = { auto_dialog: null, bang_hooked: null, tool: null };
 
 export function sentinelFor(scenario) {
-  return scenario === "ask+fail" ? FAILING_COMMAND : OK_COMMAND;
+  if (scenario === "ask+fail") return FAILING_COMMAND;
+  return Object.hasOwn(REWRITE_COMMANDS, scenario) ? REWRITE_COMMANDS[scenario] : OK_COMMAND;
 }
 
 function forwardSlashes(path) {
@@ -88,11 +92,24 @@ function buildProject(dir, scenario) {
   return paths;
 }
 
-export function summarizeCell(cell, { hookLines, promptLines, run }) {
+function nonceFields(nonce, postLines, files, ownLogs) {
+  if (nonce === null) return { ran_updated: false, nonce_found: [] };
+  const holding = files.filter(({ path, text }) => !ownLogs.includes(path) && text.includes(nonce));
+  return { ran_updated: postLines.some((line) => line.command?.includes(nonce)), nonce_found: holding.map(({ path }) => path) };
+}
+
+function rewriteFields(cell, preLines, postLines, files, ownLogs) {
+  if (!Object.hasOwn(REWRITE_COMMANDS, cell.scenario)) return {};
+  return { pre_count: preLines.length, ...nonceFields(preLines[0]?.nonce ?? null, postLines, files, ownLogs) };
+}
+
+export function summarizeCell(cell, { hookLines, promptLines, run, files = [], ownLogs = [] }) {
   const sentinel = sentinelFor(cell.scenario);
   const sentinelLines = hookLines.filter((line) => line.command?.includes(sentinel));
-  const pre = sentinelLines.find((line) => line.event === "PreToolUse");
-  const postEvents = sentinelLines.filter((line) => line.event !== "PreToolUse").map((line) => line.event);
+  const preLines = sentinelLines.filter((line) => line.event === "PreToolUse");
+  const pre = preLines[0];
+  const postLines = sentinelLines.filter((line) => line.event !== "PreToolUse");
+  const postEvents = postLines.map((line) => line.event);
   return {
     mode: cell.mode,
     scenario: cell.scenario,
@@ -102,6 +119,7 @@ export function summarizeCell(cell, { hookLines, promptLines, run }) {
     post_events: postEvents,
     has_tool_use_id: hookLines.length ? hookLines.every((line) => line.has_tool_use_id) : null,
     error: cellError(run, pre),
+    ...rewriteFields(cell, preLines, postLines, files, ownLogs),
   };
 }
 
@@ -110,6 +128,19 @@ function cellError(run, pre) {
   if (!run.result) return `no result event (exit ${run.exitCode}): ${run.stderr.slice(-300).trim()}`;
   if (!pre) return `the sentinel never reached PreToolUse (result: ${run.result.subtype ?? "unknown"})`;
   return null;
+}
+
+function filesUnder(dir) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name))
+    .map((path) => ({ path, text: readFileSync(path, "utf8") }));
+}
+
+function scannedFiles(dir, hookLines) {
+  const transcript = hookLines.find((line) => typeof line.transcript_path === "string")?.transcript_path;
+  return [...filesUnder(dir), ...(transcript ? filesUnder(dirname(transcript)) : [])];
 }
 
 async function runCell(cell) {
@@ -135,7 +166,9 @@ async function runCell(cell) {
   } finally {
     untrustWorkspace(dir);
   }
-  const summary = summarizeCell(cell, { hookLines: readJsonLines(paths.hookLog), promptLines: readJsonLines(paths.promptLog), run });
+  const hookLines = readJsonLines(paths.hookLog);
+  const files = scannedFiles(dir, hookLines);
+  const summary = summarizeCell(cell, { hookLines, promptLines: readJsonLines(paths.promptLog), run, files, ownLogs: [paths.hookLog, paths.promptLog] });
   removeScratch(dir);
   return summary;
 }

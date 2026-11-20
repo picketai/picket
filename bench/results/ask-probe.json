@@ -1,6 +1,6 @@
 {
-  "claude_version": "2.1.301 (Claude Code)",
-  "ran_at": "2026-10-16T19:02:18.652Z",
+  "claude_version": "2.1.329 (Claude Code)",
+  "ran_at": "2026-11-20T07:00:20.690Z",
   "cells": [
     {
       "mode": "manual",
@@ -97,6 +97,38 @@
       ],
       "has_tool_use_id": true,
       "error": null
+    },
+    {
+      "mode": "manual",
+      "scenario": "ask+update",
+      "hook_permission_mode": "default",
+      "prompt_tool_called": true,
+      "command_ran": true,
+      "post_events": [
+        "PostToolUse"
+      ],
+      "has_tool_use_id": true,
+      "error": null,
+      "pre_count": 1,
+      "ran_updated": true,
+      "nonce_found": [
+        "/home/vlad/.claude/projects/-mnt-work-development-containers-podman-tmp-picket-ask-probe-t8JOyF/3459b39a-18d6-49f2-84fe-38e04b920061.jsonl"
+      ]
+    },
+    {
+      "mode": "manual",
+      "scenario": "ask+refuse",
+      "hook_permission_mode": "default",
+      "prompt_tool_called": true,
+      "command_ran": false,
+      "post_events": [],
+      "has_tool_use_id": true,
+      "error": null,
+      "pre_count": 1,
+      "ran_updated": false,
+      "nonce_found": [
+        "/home/vlad/.claude/projects/-mnt-work-development-containers-podman-tmp-picket-ask-probe-EHgPUS/17a7d6af-7947-464b-8c72-506ba8f4fd9c.jsonl"
+      ]
     }
   ],
   "interactive": {

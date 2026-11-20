@@ -54,6 +54,8 @@ phases:
         pattern: '"ask\+update"'
       - path: bench/probe-ask.mjs
         pattern: 'ran_updated'
+      - path: bench/probe-ask.mjs
+        pattern: 'pre_count'
       - path: bench/lib/ask-probe-hook.mjs
         pattern: 'updatedInput'
       - path: bench/results/ask-probe.json
@@ -77,6 +79,8 @@ phases:
       - test/fixtures/guard/data-run-plain.json
       - test/fixtures/guard/data-run-marked.json
       - src/lib/hooks/output.mts
+      - src/lib/hooks/guard/bash/index.mts
+      - src/lib/hooks/guard/bash/index.test.mts
       - src/lib/shared/escalation.mts
       - src/lib/shared/escalation.test.mts
     greps:
@@ -94,6 +98,8 @@ phases:
         pattern: 'updatedInput'
       - path: src/lib/hooks/guard/bash/escalation.mts
         pattern: 'randomBytes\('
+      - path: src/lib/hooks/guard/bash/index.mts
+        pattern: 'voidPending\('
     tests: true
     drive:
       - covers: T-3.1
@@ -169,12 +175,13 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 - **RISK-003** The hook process may lack a variable the user set only in a shell profile. Mitigation: the plan refusal names the variable, and the verb compares its own reading with the confirmed pair (Phase 4).
 - **RISK-004** After a refused dialog the route will not ask the same run again in that session (`refused_before`). Mitigation: the denial says so; a new session asks again.
 
-### D-004 (r2): The hook snapshots the shown bytes, and only the accepted command can take them
-**Decision:** Infrastructural decision. A shared `RunPlan` (`src/lib/shared/data/plan.mts`) holds `{ item, entry, service, variable, path, abs, sha256, target, approval }`, never the connection value; `planRun` checks the entry, the file, the approval (D-005), the variable, the reader and the declared list, then the item's status. On `ask`, guard.bash reads the file once, writes those bytes to `.picket/state/data/snapshots/<sha256>.sql`, draws a random 32-byte nonce, and appends a `Confirmation` `{ id, at, session, item, entry, service, path, sha256, server, database, snapshot, nonce_sha256 }` to `.picket/state/data/confirmations.jsonl`. The `ask` carries `updatedInput`: the marked command rebuilt from its parsed words with `--confirmation <nonce hex>` appended. Until a run takes the row, the nonce lives only in that rewritten command; no row, ledger line or guard.log trace holds it. A refused dialog never runs the command, so its row can never be taken. `picket data run` takes the untaken row for its session, item and entry whose `nonce_sha256` equals the hash of its `--confirmation` value (constant-time compare) and that is younger than the window (OQ-001), appends `{ id, taken_at }` before compose starts, checks the snapshot's digest and its own reading of the pair, and mounts the snapshot at `/picket/run.sql`. The guard's shape rule (exactly `picket data run <id> <entry>`) denies a command that already carries `--confirmation`. `commandKey` drops a trailing `--confirmation <hex>`, so the PostToolUse `ran` row matches the ask row. Both state paths are hook-only (`isHookOnlyState`, `src/lib/shared/kernel-records.mts`).
-**Instead of:** a row that a PostToolUse hook marks accepted, as the crosscheck review proposed: PostToolUse fires after the command, so the verb has already run or refused before any mark lands. Feeding the bytes on stdin was also rejected: it breaks the `/picket/run.sql` contract every data service reads (`run.mts:22`).
+### D-004 (r3): The hook snapshots the shown bytes, and only the accepted command can take them
+**Decision:** Infrastructural decision. A shared `RunPlan` (`src/lib/shared/data/plan.mts`) holds `{ item, entry, service, variable, path, abs, sha256, target, approval }`, never the connection value; `planRun` checks the entry, the file, the approval (D-005), the variable, the reader and the declared list, then the item's status. On `ask`, guard.bash reads the file once, writes those bytes to `.picket/state/data/snapshots/<sha256>.sql`, draws a random 32-byte nonce, and appends a `Confirmation` `{ id, at, session, item, entry, service, path, sha256, server, database, snapshot, nonce_sha256 }` to `.picket/state/data/confirmations.jsonl`. The `ask` carries `updatedInput`: the marked command rebuilt from its parsed words with `--confirmation <nonce hex>` appended. No confirmation row, ledger line or guard.log trace holds the nonce. Claude Code 2.1.328 does copy the hook's output, nonce included, into the session transcript even when the user refuses (`bench/results/ask-probe.json`, cell `ask+refuse`), so guard.bash also voids rows: on every Bash or PowerShell PreToolUse of a session it appends `{ id, voided_at }` for each untaken, unvoided row of that session before judging the command, and the verb refuses a voided row. A refused dialog runs nothing, and any script an agent starts after it passes that hook first. `picket data run` takes the untaken row for its session, item and entry whose `nonce_sha256` equals the hash of its `--confirmation` value (constant-time compare) and that is younger than the window (OQ-001), appends `{ id, taken_at }` before compose starts, checks the snapshot's digest and its own reading of the pair, and mounts the snapshot at `/picket/run.sql`. The guard's shape rule (exactly `picket data run <id> <entry>`) denies a command that already carries `--confirmation`. `commandKey` drops a trailing `--confirmation <hex>`, so the PostToolUse `ran` row matches the ask row. Both state paths are hook-only (`isHookOnlyState`, `src/lib/shared/kernel-records.mts`).
+**Instead of:** the nonce alone, which the probe found in the transcript after a refusal; or a row that a PostToolUse hook marks accepted, as the crosscheck review proposed: PostToolUse fires after the command, so the verb has already run or refused before any mark lands. Feeding the bytes on stdin was also rejected: it breaks the `/picket/run.sql` contract every data service reads (`run.mts:22`).
 **Risks:**
 - **RISK-005** (r2) A script an agent writes can still forge a row around a nonce of its own, since every party is one operating system user. Mitigation: OQ-002 [STRATEGIC REVIEW NEEDED]; a refused dialog no longer leaves anything usable.
-- **RISK-006** Claude Code may not run the rewritten command after an `ask`, or may write the rewritten input where an agent can read it when the user refuses. Mitigation: Phase 2's probe settles both before Phase 3 starts (OQ-004).
+- **RISK-006** (r2) A process started before the dialog can read the nonce from the session transcript and use it before the session's next guarded command, inside the window. Mitigation: it must be planted in advance and read host transcripts, the determined-bypass bar of RISK-005 and OQ-002.
+- **RISK-008** Another agent's command in the same session while the dialog is open voids the row, so the accepted run is refused. Mitigation: the refusal says the row was voided; the failed run records `ran`, so the route asks again.
 - **RISK-007** While the accepted run lasts, the same user can read the nonce from the process's command line. Mitigation: the verb takes the row first, and a row only runs its own snapshot against its own pair, which is the run the user accepted.
 
 ### D-005: The stored approval is a precondition and a record, never an authority
@@ -248,13 +255,13 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 **Changes:**
 - `ask-probe-hook.mjs`: for a PreToolUse command holding `picket-probe-update` or `picket-probe-refuse`, `answer` returns `ask` with `updatedInput: { command: "<original command> <nonce>" }`, the nonce 32 random bytes in hex. `logLine` records `nonce` (on the PreToolUse line only) and `transcript_path`.
 - `approver-mcp.mjs`: `decide` denies a command holding `picket-probe-refuse` before its destructive check; every other answer is as today.
-- `probe-ask.mjs`: `CELLS` gains `{ mode: "manual", scenario: "ask+update" }` (command `echo picket-probe-update`) and `{ mode: "manual", scenario: "ask+refuse" }` (command `echo picket-probe-refuse`). `summarizeCell` adds `ran_updated` (a PostToolUse line's command holds the PreToolUse nonce) and `nonce_found` (the files under the scratch project and the transcript's folder, the probe's own hook log left out, whose text holds the nonce). The other cells and their fields do not change. A full run is at most 10 cells × `MAX_BUDGET_USD` 0.05 = USD 0.50 on `haiku`, and runs only on the user's word.
+- `probe-ask.mjs`: `CELLS` gains `{ mode: "manual", scenario: "ask+update" }` (command `echo picket-probe-update`) and `{ mode: "manual", scenario: "ask+refuse" }` (command `echo picket-probe-refuse`). `summarizeCell` adds `pre_count` (PreToolUse lines holding the sentinel), `ran_updated` (a PostToolUse line's command holds the PreToolUse nonce) and `nonce_found` (the files under the scratch project and the transcript's folder, the probe's own hook log left out, whose text holds the nonce). The other cells and their fields do not change. A full run is at most 10 cells × `MAX_BUDGET_USD` 0.05 = USD 0.50 on `haiku`, and runs only on the user's word.
 
 **Done when:**
 - **T-2.1** `answer` for a `picket-probe-update` command returns `ask` with an `updatedInput.command` holding the original command and 64 hex characters, two calls give different nonces, and `logLine` records the nonce and `transcript_path`.
 - **T-2.2** `summarizeCell` sets `ran_updated` true when a PostToolUse command holds the PreToolUse nonce and false when it holds only the original command; `nonce_found` lists a scratch file holding the nonce and leaves out the hook log.
 - **T-2.3** The approver denies `echo picket-probe-refuse` and still allows `echo picket-probe-ok`.
-- **T-2.4** After `node bench/probe-ask.mjs` on this machine, `bench/results/ask-probe.json` holds an `ask+update` cell with `prompt_tool_called`, `command_ran` and `ran_updated` true, and an `ask+refuse` cell with `command_ran` false and an empty `nonce_found`; Phase 3 starts only when this holds.
+- **T-2.4** After `node bench/probe-ask.mjs` on this machine, `bench/results/ask-probe.json` holds an `ask+update` cell with `prompt_tool_called`, `command_ran` and `ran_updated` true and `pre_count` 1 (the rewritten command gets no second PreToolUse), and an `ask+refuse` cell with `command_ran` false, no post events, and a `nonce_found` that lists only the session transcript under `~/.claude/projects/` and no file of the scratch project; Phase 3 starts only when this holds.
 - **T-2.5** [DEFERRED: the product owner, before Phase 3 starts] In an interactive session in default mode, the dialog for `echo picket-probe-update` shows the rewritten command and runs it after a yes.
 
 ## Phase 3: The marked run asks through the escalation route
@@ -268,6 +275,8 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 - `src/lib/hooks/guard/bash/escalation.variants.test.mts`: marked data run seeds
 - `src/lib/hooks/guard/bash/judge.mts`: plain form denial reason
 - `src/lib/hooks/output.mts`: ask carries updatedInput
+- `src/lib/hooks/guard/bash/index.mts`: void pending rows per command
+- `src/lib/hooks/guard/bash/index.test.mts`: void rows by session
 - `src/lib/shared/escalation.mts`: commandKey drops the confirmation flag
 - `src/lib/shared/escalation.test.mts`: key with and without flag
 - `src/lib/shared/data/confirm.mts`: new, snapshot and confirmation rows
@@ -279,8 +288,9 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 **Changes:**
 - `verbs.mts`: `SubverbEntry` gains `confirmed?: true`; `data.subverbs.run` sets it. `kernel.mts`'s `VerbTable` reads it and `kernelClass` (with `classifyKernelCall`) returns `"deny"` for a confirmed subverb. No other verb sets the flag.
 - `paths.mts`: `STATE_FILES.dataConfirmations = "data/confirmations.jsonl"` and `STATE_FILES.dataSnapshots = "data/snapshots"`.
-- `confirm.mts`: `export type Confirmation = { id: string; at: string; session: string; item: string; entry: string; service: string; path: string; sha256: string; server: string; database: string; snapshot: string; nonce_sha256: string }` (`snapshot` is state-relative). `confirmRun(root, plan: RunPlan, bytes: Buffer, session: string, nonceSha256: string, now: Date): Confirmation` writes the bytes to `<dataSnapshots>/<sha256>.sql` (temporary name, then rename) and appends the row; `id` is random. The caller passes the bytes it digested, so the snapshot is the shown bytes. A null session refuses: no session, no confirmation.
+- `confirm.mts`: `export type Confirmation = { id: string; at: string; session: string; item: string; entry: string; service: string; path: string; sha256: string; server: string; database: string; snapshot: string; nonce_sha256: string }` (`snapshot` is state-relative). `confirmRun(root, plan: RunPlan, bytes: Buffer, session: string, nonceSha256: string, now: Date): Confirmation` writes the bytes to `<dataSnapshots>/<sha256>.sql` (temporary name, then rename) and appends the row; `id` is random. The caller passes the bytes it digested, so the snapshot is the shown bytes. A null session refuses: no session, no confirmation. `voidPending(root, session, now): number` appends `{ id, voided_at }` for each row of that session with no taken or voided row and returns the count.
 - `escalation.mts`: `dataRunWords(segment): { id, entry } | null` recognises exactly `picket data run <id> <entry>` after the marker (any `kernelVerbStart` launcher, no other word). In `judgeEscalation`, when the escalated segment is a data run: other words under the marker deny with the shape cause `escalate data run as picket data run <id> <entry>, alone`; `planRun(root, ctx.env, id, entry)` runs before `escalationVerdict`, and its `Refused` denies with the message, logged with `why: "data_plan"`. On `ask`, the guard reads the file once, checks the digest against the plan, draws a 32-byte nonce with `randomBytes`, calls `confirmRun` with its sha256, and returns `ask` with `updatedInput: { command }`, the command rebuilt from the parsed words with the nonce appended: `PICKET_ESCALATE=<reason, single-quoted> <launcher> data run <id> <entry> --confirmation <nonce hex>` for Bash, `$env:PICKET_ESCALATE = '<reason>'; <launcher> data run <id> <entry> --confirmation <nonce hex>` for PowerShell. The reason is `guard.bash: data run by <agent or main>: "<reason>". entry <entry> · file <path> · sha256 <64 hex> · server <server> · database <database> · approved <approval at>. Approving runs this snapshot once; nothing carries over.` Denials for a data run end with `data run asks only in the default, acceptEdits and auto modes, through this marked command` in place of `run it yourself: ! <command>`.
+- `index.mts`: `guardBash` calls `voidPending` for the payload's session before `judgeCommand`, for Bash and PowerShell alike; a missing session voids nothing.
 - `output.mts`: `ask(reason, updatedInput?: Record<string, unknown>)` adds `updatedInput` to `hookSpecificOutput` when given.
 - `src/lib/shared/escalation.mts`: `commandKey` drops a trailing `--confirmation <64 hex>` before hashing.
 - `judge.mts`: when a segment's class is `deny` because its subverb is confirmed and no marker stands before it, the reason is `guard.bash: picket data run reaches a database, so it runs only through the permission dialog: PICKET_ESCALATE="<why>" picket data run <id> <entry>` instead of the generic destructive denial.
@@ -291,8 +301,8 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 - **T-3.1** Driven through `dist/hooks/guard.bash.mjs`, the lead's plain `picket data run <id> customer` in default mode is denied with a reason holding `PICKET_ESCALATE`.
 - **T-3.2** Driven through `dist/hooks/guard.bash.mjs` in a root with no catalog, the marked form is denied with `no catalog entry customer`; in a unit test an undeclared target is denied with the plan's cause in `bypassPermissions` mode as well, and neither case writes a confirmation row or a snapshot.
 - **T-3.3** In a unit test with an approved file, a declared target and the variable set, the marked form in `default` mode gets `ask`; the reason holds `customer`, `data/customer.sql`, the file's full 64-hex digest, the server, the database and the approval's `at`; `confirmations.jsonl` holds one row with the session, item, entry, digest, server, database and snapshot; the snapshot's sha256 equals the row's digest; the output's `updatedInput.command` is the marked command plus `--confirmation <64 hex>`, the row's `nonce_sha256` is the sha256 of that hex, and the hex appears in no confirmation row, ledger row or guard.log line.
-- **T-3.4** The same marked command in modes unset, `plan`, `bypassPermissions` and `dontAsk`, and in `default` with `Bash(*)` in the project's `.claude/settings.json`, is denied naming the mode or the rule, writes no confirmation, and the reason holds no `! picket data run`.
-- **T-3.5** `abcd-developer`'s marked form is denied with the lead-only reason, and the lead's marked form with `--root x` added or `--confirmation` followed by 64 hex characters added, or followed by `&& echo x`, is denied with a shape cause; none writes a confirmation.
+- **T-3.4** None of these writes a confirmation: the marked command in modes unset, `plan`, `bypassPermissions` and `dontAsk`, or in `default` with `Bash(*)` in the project's `.claude/settings.json` (denied naming the mode or the rule, with no `! picket data run` in the reason); `abcd-developer`'s marked form (lead-only reason); the lead's marked form with `--root x` added, with `--confirmation` and 64 hex characters added, or followed by `&& echo x` (shape cause).
+- **T-3.5** After an `ask` in session `s1`, any next Bash or PowerShell command of `s1` through `guardBash` leaves a voided row for that confirmation, and a command of session `s2` voids nothing.
 - **T-3.6** With the variable `Server=sql01;Database=orders_test;User Id=qa;Password=s3cret`, `s3cret` appears in no ask reason, confirmation row or ledger row.
 - **T-3.7** `commandKey` gives the same key for the marked command with and without a trailing `--confirmation <64 hex>`.
 - **T-3.8** `npm test` passes with the new seeds in `kernel.variants.test.mts` and `escalation.variants.test.mts` and every closure in `test/repo/closures.test.mjs` closed.
@@ -302,21 +312,21 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 - `src/lib/verbs/data/run.mts`: take the confirmation, mount the snapshot
 - `src/lib/verbs/data/run.test.mts`: refusals, single use, snapshot mount
 - `src/lib/shared/data/confirm.mts`: takeConfirmation and the taken row
-- `src/lib/shared/data/confirm.test.mts`: window, newest row, single use
+- `src/lib/shared/data/confirm.test.mts`: window, voided, newest row, single use
 - `src/lib/shared/data/plan.mts`: plan at a confirmed digest
 - `src/lib/shared/data/plan.test.mts`: approval at the confirmed digest
 - `src/lib/shared/data/runs.mts`: confirmation and approved_at fields
 
 **Changes:**
-- `confirm.mts`: `CONFIRMATION_WINDOW_MS` (OQ-001) and `takeConfirmation(root, { session, item, entry, nonce }, now): Confirmation`, which picks the newest row for that session, item and entry whose `nonce_sha256` equals the sha256 of `nonce` (compared with `timingSafeEqual`), refuses when there is none, when it has a taken row, or when it is older than the window, then appends `{ id, taken_at }` and returns it. The refusal for no confirmation names the marked form and the asking modes.
+- `confirm.mts`: `CONFIRMATION_WINDOW_MS` (OQ-001) and `takeConfirmation(root, { session, item, entry, nonce }, now): Confirmation`, which picks the newest row for that session, item and entry whose `nonce_sha256` equals the sha256 of `nonce` (compared with `timingSafeEqual`), refuses when there is none, when it has a taken or voided row (naming which), or when it is older than the window, then appends `{ id, taken_at }` and returns it. The refusal for no confirmation names the marked form and the asking modes.
 - `plan.mts`: `planRun` takes an optional `{ sha256 }`; with it, the approval is checked at that digest and the live file is not read, so a file edited after the dialog does not block the snapshot the user saw.
 - `runs.mts`: `DataRun` gains `confirmation: string` and `approved_at: string | null`; readers accept rows without them.
 - `run.mts`: `parseRun` reads an optional `--confirmation` (64 lowercase hex, else a usage error) into `RunInput.confirmation: string | null`; `USAGE` stays `data run <id> <entry>`, because only the guard writes the flag. `runSqlEntry` takes the confirmation first (`ctx.session` or the flag null refuses), then `planRun` at the confirmed digest, then refuses when the snapshot's digest differs from the confirmed one or when its own reading of the variable gives a pair other than the confirmed server and database (naming both pairs, never the value). Only then the engine check and compose, with `dataRunArgs` given the snapshot's absolute path. The run row takes the confirmed digest, the pair, the confirmation id and the approval's `at`.
 
 **Done when:**
-- **T-4.1** With an approval row and a confirmation row for the session, item and entry, a run with no `--confirmation`, a run whose `--confirmation` hashes to no row (a refused dialog's case), and a run with `session` null are each `runSqlEntry` is refused naming `PICKET_ESCALATE`, and the fake runner gets no compose call.
-- **T-4.2** With the clock injected, a confirmation older than `CONFIRMATION_WINDOW_MS` is refused and one inside it runs.
-- **T-4.3** A second `runSqlEntry` on the same confirmation is refused, and the taken row is already in `confirmations.jsonl` when the fake runner receives the compose call.
+- **T-4.1** With an approval row and a confirmation row for the session, item and entry, a run with no `--confirmation`, a run whose `--confirmation` hashes to no row (a refused dialog's case), and a run with `session` null are each refused by `runSqlEntry` naming `PICKET_ESCALATE`, and the fake runner gets no compose call.
+- **T-4.2** A confirmation with a voided row is refused with a reason naming the void, and no compose call is made.
+- **T-4.3** With the clock injected, a confirmation older than `CONFIRMATION_WINDOW_MS` is refused and one inside it runs; a second `runSqlEntry` on the same confirmation is refused, and the taken row is already in `confirmations.jsonl` when the fake runner receives the compose call.
 - **T-4.4** After `data/customer.sql` is rewritten following the confirmation, the compose call mounts the snapshot path at `/picket/run.sql` and the run row holds the confirmed digest.
 - **T-4.5** When the snapshot's bytes no longer match the confirmed digest, the run is refused with no compose call.
 - **T-4.6** When the variable now reads `Server=sql02;Database=orders_test` (also declared) against a confirmation for `sql01`, the run is refused naming both pairs and no compose call is made.
@@ -344,7 +354,8 @@ Today `picket data run` is authorised by a stored row: `approvedFile` (`src/lib/
 - **OQ-001** How long may a confirmation wait between the dialog and the run? Owner: the product owner. Fallback: `CONFIRMATION_WINDOW_MS` is 10 minutes, a placeholder this record picks, not a measured value.
 - **OQ-002** [STRATEGIC REVIEW NEEDED] SDR 00005 D-001 holds SQL runs to a determined bypass and says an agent's script run through `picket drive --run` is closed, but with one operating system user such a script can still forge a confirmation and its snapshot, and agents' shells inherit the `PICKET_DATA_*` variable, so a client run outside Picket reaches the database. Owner: the product owner, through picket:consulting. Fallback: ship as designed, with RISK-005 open until SDR 00005 TF-003.
 - **OQ-003** Which connection form does the product owner's SQL Server 2016 data service read: the `key=value` form, JDBC `jdbc:sqlserver://host:port;databaseName=...`, or another? Owner: the product owner. Fallback: forms other than URL and `key=value` are refused with a problem naming the two forms read.
-- **OQ-004** Does Claude Code run the command a PreToolUse hook rewrote through `updatedInput` under `ask`, and keep the rewritten input out of every file an agent can read when the user refuses? Owner: the developer (Phase 2's probe) and the product owner (T-2.5). Fallback: Phase 3 does not start; Phase 1 ships alone and D-004 returns for amendment.
+- **OQ-004** Does the rewritten command get exactly one PreToolUse, and does the interactive dialog show and run it as the headless probe did? The 2.1.328 probe answered that it runs and that its nonce reaches the session transcript after a refusal. Owner: the developer (T-2.4, one more probe run at most USD 0.50 on the user's word) and the product owner (T-2.5). Fallback: Phase 3 does not start; Phase 1 ships alone and D-004 returns for amendment.
 
 ## Revision log
 - 2026-11-19: D-004 (r2): only the hook-rewritten, accepted command holds the nonce that takes a confirmation, so a refused dialog leaves nothing usable; crosscheck review.
+- 2026-11-19: D-004 (r3): the probe found the nonce in the transcript after a refusal; guard.bash now voids a session's pending rows on its next command; T-2.4 reworded.
