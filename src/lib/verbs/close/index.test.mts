@@ -24,6 +24,7 @@ import { checkCommitMessage } from "../../shared/commit-message.mts";
 import { verb } from "./index.mts";
 import { fingerprintMatches } from "../../shared/scenarios/format.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
+import { readDefects } from "../../shared/scenarios/defects.mts";
 import { appendTestRow, type CaseKind, type CaseRow, type TestEntry } from "../../shared/testing/results.mts";
 import { setMarker } from "../../shared/work/markers.mts";
 import { appendReply, type ReplyEntry } from "../../shared/work/replies.mts";
@@ -33,7 +34,7 @@ const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
 
 const AUDIT = "order · phases 0 · tokens none · bounces 0 · blocks 0";
-const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [], data: [] };
+const NO_FACTS: Closing = { audit: AUDIT, phases: 0, commits: null, decisions: null, review: null, questions: null, deferred: [], report: null, strategic: [], tested: null, unproved: [], kept: [], defects: [], data: [] };
 
 function closed(lane: Lane, closing: Partial<Closing> = {}, rest: Partial<CloseResult> = {}): CloseResult {
   return {
@@ -513,6 +514,66 @@ test("a tester APPROVED in round 2 prints its counts, the mocked service and the
     assert.ok(fingerprintMatches(readFileSync(join(root, path), "utf8")), file);
   }
   assert.equal(listScenarios(root).length, 3);
+});
+
+function failingBeforeRun(root: string, id: WorkId, run: string): void {
+  const versions = { orders: "1a2b3c4" };
+  const rows: ScenarioRow[] = [
+    { type: "run", run, item: id, mode: "full", key: "k", versions },
+    { type: "result", run, scenario: "S-0002", fingerprint: "sha256:f", key: "k", versions, outcome: "failed", attempts: 2, unstable: false, class: "failing before the item", detail: "step 1: expected status 200, got 500" },
+  ];
+  appendRows(root, rows);
+}
+
+const LABELLED_CARD = ".picket/env/scenarios/S-0002.md";
+const FIRST_DEFECT = ".picket/env/scenarios/defects/DF-0001.md";
+
+test("closing an item whose full run failed before the item records an open defect, labels the card and commits both (T-1.6)", (t) => {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  failingBeforeRun(root, id, "r1");
+  const result = closeFast(root, id);
+  assert.deepEqual(readDefects(root), [
+    { id: "DF-0001", status: "open", opened: "2026-11-15", found_in: id, scenario: "S-0002", expected: "health", actual: "step 1: expected status 200, got 500", evidence: "run r1 on orders 1a2b3c4" },
+  ]);
+  const card = readFileSync(join(root, LABELLED_CARD), "utf8");
+  assert.match(card, /^known: DF-0001$/m);
+  assert.ok(fingerprintMatches(card));
+  assert.ok(result.committed.includes(LABELLED_CARD) && result.committed.includes(FIRST_DEFECT), result.committed.join(", "));
+  assert.deepEqual(gitOut(root, "status", "--porcelain", "--", ".picket/env/scenarios"), "");
+  assert.deepEqual(result.closing.defects, ["DF-0001 recorded from S-0002"]);
+  const lines = blockLines(result);
+  assert.ok(lines.includes("Known defects: DF-0001 recorded from S-0002"), lines.join("\n"));
+});
+
+test("a second close, or another item's run holding the same row, writes no second entry (T-1.7)", (t) => {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  failingBeforeRun(root, id, "r1");
+  closeFast(root, id);
+  const again = closeFast(root, id);
+  assert.deepEqual(again.closing.defects, []);
+  assert.ok(!blockLines(again).some((line) => line.startsWith("Known defects:")));
+  const { id: other } = openItem(root, { lane: "order", title: "Other" });
+  writeState(root, { ...readState(root, other), status: "done" }, new Date());
+  failingBeforeRun(root, other, "r2");
+  assert.deepEqual(closeFast(root, other).closing.defects, []);
+  assert.deepEqual(readDefects(root).map((entry) => entry.id), ["DF-0001"]);
+});
+
+test("a later run that did not replay is passed over for the run before it", (t) => {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  failingBeforeRun(root, id, "r1");
+  appendRows(root, [{ type: "run", run: "r2", item: id, mode: "full", key: "", versions: {}, reason: "no container engine" }]);
+  assert.deepEqual(closeFast(root, id).closing.defects, ["DF-0001 recorded from S-0002"]);
+});
+
+test("a result on a deprecated card records nothing", (t) => {
+  const { root, id } = testedItem(t, { verdicts: [["reviewer", "APPROVED", "cumulative"]], done: true });
+  failingBeforeRun(root, id, "r1");
+  const card = readFileSync(join(root, LABELLED_CARD), "utf8");
+  writeIn(root, LABELLED_CARD, card.replace("status: active", "status: deprecated"));
+  gitIn(root, "commit", "-q", "-am", "deprecate");
+  assert.deepEqual(closeFast(root, id).closing.defects, []);
+  assert.deepEqual(readDefects(root), []);
 });
 
 test("an item accepted at resolve_tests names each criterion not verified with its why (T-9.2)", (t) => {

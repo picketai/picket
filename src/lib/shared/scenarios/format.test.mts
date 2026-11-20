@@ -127,6 +127,23 @@ test("a malformed request, expect or capture line is a step problem", () => {
   assert.deepEqual(problemsOf([]), ["step 1: a card holds no steps; start with a request"]);
 });
 
+test("the known and defect labels are read into the header and written back with a matching fingerprint (T-1.1)", () => {
+  const labelled = parseScenario(withHeader(["id: S-0002", "kind: normal", "covers: []", "intent: health", "known: DF-0003", "defect: DF-0003", "format: 1"]));
+  assert.deepEqual(labelled.problems, []);
+  assert.ok(labelled.card);
+  assert.deepEqual([labelled.card.header.known, labelled.card.header.defect], ["DF-0003", "DF-0003"]);
+  const written = writeScenario(labelled.card);
+  assert.match(written, /^known: DF-0003\ndefect: DF-0003$/m);
+  assert.ok(fingerprintMatches(written));
+  assert.deepEqual(card(written), labelled.card);
+});
+
+test("a known or defect label that is not a defect id is a header problem (T-1.1)", () => {
+  const header = ["id: S-0002", "kind: normal", "covers: []", "intent: health", "format: 1"];
+  assert.deepEqual(parseScenario(withHeader([...header, "known: 3"])).problems, ["header: known must be a defect id such as DF-0001"]);
+  assert.deepEqual(parseScenario(withHeader([...header, "defect: S-0001"])).problems, ["header: defect must be a defect id such as DF-0001"]);
+});
+
 test("a card with any problem parses to no card", () => {
   assert.equal(parseScenario([...HEADER, "click #submit", ""].join("\n")).card, null);
 });

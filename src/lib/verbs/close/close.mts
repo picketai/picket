@@ -34,6 +34,7 @@ import { roundCounts } from "../../shared/testing/report.mts";
 import { latestCases, readTestRows, roundRows, testRound, type TestRow } from "../../shared/testing/results.mts";
 import { testApplies } from "../../shared/work/test-stage.mts";
 import { auditLine } from "./audit.mts";
+import { recordKnownDefects } from "./defects.mts";
 
 export type Repeat = { class: string; items: WorkId[] };
 export type CloseOptions = { message?: string; touched?: string[] };
@@ -53,6 +54,7 @@ export type Closing = {
   tested: string | null;
   unproved: string[];
   kept: string[];
+  defects: string[];
   data: DataRun[];
 };
 export type CloseResult = WorkState & {
@@ -226,7 +228,8 @@ function commitClose(root: string, snap: WorkSnapshot, message: string, touched:
 
 type TestStage = { tested: string | null; passed: boolean; round: number | null };
 
-const NO_KEPT: KeptCases = { files: { paths: [], lines: [], before: [] }, labels: [] };
+const NO_FILES: KeptFiles = { paths: [], lines: [], before: [] };
+const NO_KEPT: KeptCases = { files: NO_FILES, labels: [] };
 const TESTER = "tester";
 
 function isAcceptedAfter(snap: WorkSnapshot, tester: VerdictRow): boolean {
@@ -265,6 +268,10 @@ function keptCases(root: string, snap: WorkSnapshot, rows: readonly TestRow[], s
   return keepFinalCases(root, snap.state.id, rows, stage.round);
 }
 
+function joinedFiles(first: KeptFiles, second: KeptFiles): KeptFiles {
+  return { paths: [...first.paths, ...second.paths], lines: [...first.lines, ...second.lines], before: [...first.before, ...second.before] };
+}
+
 function approvalCommit(root: string, id: WorkId, phase: number): string | null {
   return lastCommitOf(root, `${workRel(id)}phases/${phase}.approved`);
 }
@@ -281,7 +288,7 @@ function cumulativeVerdict(snap: WorkSnapshot): string | null {
   return snap.verdicts.filter((row) => row.agent === "reviewer" && row.scope === "cumulative").at(-1)?.verdict ?? null;
 }
 
-type TestedFacts = Pick<Closing, "tested" | "unproved" | "kept">;
+type TestedFacts = Pick<Closing, "tested" | "unproved" | "kept" | "defects">;
 
 function unprovedServices(root: string, id: WorkId, stage: TestStage, rows: readonly TestRow[]): string[] {
   const mocks = listMocks(root);
@@ -290,8 +297,8 @@ function unprovedServices(root: string, id: WorkId, stage: TestStage, rows: read
   return [...new Set([...tested, ...itemMocks(readResults(root), id).map(real)])].sort();
 }
 
-function testedFacts(root: string, id: WorkId, stage: TestStage, rows: readonly TestRow[], kept: KeptCases): TestedFacts {
-  return { tested: stage.tested, unproved: unprovedServices(root, id, stage, rows), kept: kept.labels };
+function testedFacts(root: string, id: WorkId, stage: TestStage, rows: readonly TestRow[], kept: KeptCases, defects: KeptFiles = NO_FILES): TestedFacts {
+  return { tested: stage.tested, unproved: unprovedServices(root, id, stage, rows), kept: kept.labels, defects: defects.lines };
 }
 
 function closingFacts(root: string, snap: WorkSnapshot, audit: string, closeCommit: string | null, tested: TestedFacts): Closing {
@@ -375,10 +382,11 @@ export function close(root: string, id: WorkId, { message, touched = [] }: Close
   const state = markDone(root, snap.state, now);
   writeAudit(root, id, audit);
   const kept = keptCases(root, snap, rows, stage);
-  const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env, kept.files);
+  const defects = recordKnownDefects(root, snap, now);
+  const { sha: commit, left_staged, warnings } = commitClose(root, snap, commitMessage, touched, env, joinedFiles(kept.files, defects));
   if (commit) recordAccept(root, id, commit, null, now);
   const committed = commit ? filesInCommit(root, commit) : [];
   const environment = purgeOnClose(root, state, closeCtx);
-  const closing = closingFacts(root, snap, audit, commit, testedFacts(root, id, stage, rows, kept));
+  const closing = closingFacts(root, snap, audit, commit, testedFacts(root, id, stage, rows, kept, defects));
   return { ...state, commit, message: commitMessage, committed, left_staged, warnings, dirty: dirtyPaths(root), left: readLeft(root, id), repeats, closing, worktrees, environment };
 }

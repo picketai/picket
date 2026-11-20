@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { frontmatter, readValue, stringify, type YamlMap, type YamlValue } from "../../util/yaml-lite.mts";
 
 export const STEP_WORDS = ["request", "expect", "capture", "wait"] as const;
-export const HEADER_KEYS = ["id", "kind", "covers", "intent", "flow", "supersedes", "superseded_by", "status", "format", "fingerprint"] as const;
+export const HEADER_KEYS = ["id", "kind", "covers", "intent", "flow", "supersedes", "superseded_by", "known", "defect", "status", "format", "fingerprint"] as const;
 export const KINDS = ["normal", "boundary", "negative", "permission", "state", "integration", "smoke"] as const;
 export const STATUSES = ["active", "deprecated"] as const;
 export const FORMAT = 1;
@@ -20,6 +20,8 @@ export type ScenarioHeader = {
   flow?: string;
   supersedes?: string;
   superseded_by?: string;
+  known?: string;
+  defect?: string;
   status: ScenarioStatus;
   format: typeof FORMAT;
 };
@@ -33,6 +35,7 @@ export type Card = { header: ScenarioHeader; steps: Step[] };
 
 const REQUIRED_KEYS = ["id", "kind", "covers", "intent", "format"];
 const SCENARIO_ID = /^S-\d{4,}$/;
+const DEFECT_ID = /^DF-\d{4,}$/;
 const COVER = /^[^\s/]+\/T-\d+\.\d+$/;
 const FRONTMATTER_START = /^---\r?\n/;
 const FINGERPRINT_KEY = "fingerprint:";
@@ -52,6 +55,7 @@ type FieldRule = { key: string; valid: (value: YamlValue) => boolean; message: s
 
 const isText = (value: YamlValue): boolean => typeof value === "string" && value.trim() !== "";
 const isScenarioId = (value: YamlValue): boolean => typeof value === "string" && SCENARIO_ID.test(value);
+const isDefectId = (value: YamlValue): boolean => typeof value === "string" && DEFECT_ID.test(value);
 const isOneOf = (list: readonly string[]) => (value: YamlValue): boolean => typeof value === "string" && list.includes(value);
 
 const FIELD_RULES: FieldRule[] = [
@@ -62,6 +66,8 @@ const FIELD_RULES: FieldRule[] = [
   { key: "flow", valid: isText, message: "flow must be text" },
   { key: "supersedes", valid: isScenarioId, message: "supersedes must be a scenario id such as S-0001" },
   { key: "superseded_by", valid: isScenarioId, message: "superseded_by must be a scenario id such as S-0001" },
+  { key: "known", valid: isDefectId, message: "known must be a defect id such as DF-0001" },
+  { key: "defect", valid: isDefectId, message: "defect must be a defect id such as DF-0001" },
   { key: "status", valid: isOneOf(STATUSES), message: "status must be active or deprecated" },
   { key: "format", valid: (v) => v === FORMAT, message: `format must be ${FORMAT}` },
 ];
@@ -74,7 +80,7 @@ function headerProblems(front: YamlMap): string[] {
   return [...unknown, ...missing, ...invalid];
 }
 
-function optionalText(front: YamlMap, key: "flow" | "supersedes" | "superseded_by"): Partial<ScenarioHeader> {
+function optionalText(front: YamlMap, key: "flow" | "supersedes" | "superseded_by" | "known" | "defect"): Partial<ScenarioHeader> {
   return typeof front[key] === "string" ? { [key]: front[key] } : {};
 }
 
@@ -87,6 +93,8 @@ function toHeader(front: YamlMap): ScenarioHeader {
     ...optionalText(front, "flow"),
     ...optionalText(front, "supersedes"),
     ...optionalText(front, "superseded_by"),
+    ...optionalText(front, "known"),
+    ...optionalText(front, "defect"),
     status: (front.status as ScenarioStatus | undefined) ?? "active",
     format: FORMAT,
   };
@@ -224,6 +232,8 @@ function headerMap(header: ScenarioHeader): YamlMap {
     ...present("flow", header.flow),
     ...present("supersedes", header.supersedes),
     ...present("superseded_by", header.superseded_by),
+    ...present("known", header.known),
+    ...present("defect", header.defect),
     status: header.status,
     format: header.format,
   };

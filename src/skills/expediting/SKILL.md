@@ -34,7 +34,7 @@ Re-run the admit of step 2, `picket admit --request - --touched <comma-separated
 
 | Reply | Do |
 |---|---|
-| `c`, `commit`, `ok`, `yes` | `picket close <id> --message "<the proposed message>" --touched <the paths you staged, comma-separated> --human`, which commits those paths and the closing state together and leaves any other staged path staged; print its output verbatim and stop |
+| `c`, `commit`, `ok`, `yes` | `picket close <id> --message "<the proposed message>" --touched <the paths you staged, comma-separated> --human`, which commits those paths and the closing state together and leaves any other staged path staged; print its output verbatim. When its `Known defects:` line names `recorded`, offer `picket:ticketing --create --bug` for each recorded defect, drafted from its entry file; nothing is created without the user's yes. Then stop |
 | `x <why>`, `discard`, `reject: <why>` | leave the index as it is, print one line saying the change is staged and uncommitted, `picket set <id> status=abandoned`, stop; the user decides what to do with the working tree |
 | `k <n>`, `keep <n>` | `picket comment <id> --path <p> --text "<t>"` with proposal n's path and text, write exactly that comment at its line, re-stage, re-print the block |
 | `w <n>`, `waive <n>` | `picket waive <id> --path <p> --text "<t>"` with proposal n's path and text from the block's `Waivers:` line, or `picket waive <id> --path <p> --deleted` for a `<path> deleted` proposal; make the edit it waives, re-stage, re-print the block |

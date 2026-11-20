@@ -39,11 +39,12 @@ function laneLine(v: CloseResult): string | null {
   return phasesLine(v.closing);
 }
 
-function testedLines({ tested, unproved, kept }: Closing): string[] {
+function testedLines({ tested, unproved, kept, defects }: Closing): string[] {
   return [
     ...(tested === null ? [] : [`Tested: ${tested}`]),
     ...(unproved.length ? [`Not verified end to end: ${unproved.join(", ")}`] : []),
     ...(kept.length ? [`Kept: ${kept.join(", ")}`] : []),
+    ...(defects.length ? [`Known defects: ${defects.join("; ")}`] : []),
   ];
 }
 

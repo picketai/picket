@@ -9,6 +9,7 @@ import { readModel } from "../../shared/env/model.mts";
 import { readLayout } from "../../shared/repos.mts";
 import type { BaseInput } from "../../shared/scenarios/base-run.mts";
 import { appendDriveRow } from "../../shared/drive-log.mts";
+import { labelCard, writeDefect } from "../../shared/scenarios/defects.mts";
 import { listScenarios } from "../../shared/scenarios/files.mts";
 import { readCandidates } from "../../shared/scenarios/keep.mts";
 import type { HttpAdapter, HttpRequest } from "../../shared/scenarios/http.mts";
@@ -125,7 +126,7 @@ test("a passing replay prints the scenario and the summary and stores a run and 
   const { adapter, seen } = answering(200, "ok");
   const { code, text } = await replay(ctx, deps(ctx.root, adapter), full(id));
   assert.equal(code, 0);
-  assert.equal(text, "S-0001 passed\nreplayed 1 on picket-proj-481: 1 passed\nflow (none): verified up to payments, which is mocked");
+  assert.equal(text, "S-0001 passed\nreplayed 1 on picket-proj-481: 1 passed\nflow (none): verified up to payments, which is mocked\nknown defects open: none");
   assert.equal(seen[0].url, "http://127.0.0.1:49153/health");
   const [run, result] = readResults(ctx.root);
   assert.ok(run.type === "run" && result.type === "result");
@@ -139,7 +140,7 @@ test("with no engine a run row with the reason is stored and the replay fails (T
   const { code, report, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, () => ({ status: 1, stdout: "", stderr: "" })), full(id));
   assert.equal(code, 2);
   assert.equal(report.reason, "no container engine");
-  assert.equal(text, "not replayed: no container engine");
+  assert.equal(text, "not replayed: no container engine\nknown defects open: none");
   const [row] = readResults(ctx.root);
   assert.deepEqual(row.type === "run" && [row.item, row.mode, row.reason], [id, "full", "no container engine"]);
 });
@@ -148,7 +149,7 @@ test("with no engine an affected replay stores a run row of mode affected with t
   const { ctx, id } = project(t);
   const { code, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter, () => ({ status: 1, stdout: "", stderr: "" })), { id, mode: "affected", only: null });
   assert.equal(code, 2);
-  assert.equal(text, "not replayed: no container engine");
+  assert.equal(text, "not replayed: no container engine\nknown defects open: none");
   const rows = readResults(ctx.root);
   assert.deepEqual(rows.map((row) => row.type === "run" && [row.item, row.mode, row.reason]), [[id, "affected", "no container engine"]]);
 });
@@ -160,7 +161,7 @@ test("a pass after a failed first attempt prints as unstable, counts as unstable
   const { code, report, text } = await replay(ctx, deps(ctx.root, flaky), full(id));
   assert.equal(code, 0);
   assert.equal(report.ok, true);
-  assert.equal(text, "S-0001 unstable: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 unstable\nflow (none): verified up to payments, which is mocked");
+  assert.equal(text, "S-0001 unstable: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 unstable\nflow (none): verified up to payments, which is mocked\nknown defects open: none");
   const result = readResults(ctx.root).find((row) => row.type === "result");
   assert.ok(result && result.type === "result");
   assert.deepEqual([result.scenario, result.outcome, result.unstable, result.class, result.attempts], ["S-0001", "passed", true, "unstable", 2]);
@@ -171,7 +172,7 @@ test("--affected with no app change still replays a card that does not parse, as
   writeFileSync(join(ctx.root, ".picket/env/scenarios/S-0002.md"), "request GET {orders}/health\n");
   const { code, text } = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), { id, mode: "affected", only: null });
   assert.equal(code, 0);
-  assert.equal(text, "S-0002 blocked: header: a card starts with a --- header block · changed by hand\nreplayed 1 on picket-proj-481: 1 blocked");
+  assert.equal(text, "S-0002 blocked: header: a card starts with a --- header block · changed by hand\nreplayed 1 on picket-proj-481: 1 blocked\nknown defects open: none");
 });
 
 test("a failure the stored base passed is a new failure and exits 2; one the base failed exits 0 (T-4.6)", async (t) => {
@@ -179,12 +180,42 @@ test("a failure the stored base passed is a new failure and exits 2; one the bas
   storeBase(failing.ctx, failing.id, "passed");
   const blamed = await replay(failing.ctx, deps(failing.ctx.root, answering(500, "boom").adapter), full(failing.id));
   assert.equal(blamed.code, 2);
-  assert.equal(blamed.text, "S-0001 new failure: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 new failure\nflow (none): verified up to payments, which is mocked");
+  assert.equal(blamed.text, "S-0001 new failure: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 new failure\nflow (none): verified up to payments, which is mocked\nknown defects open: none");
   const before = project(t);
   storeBase(before.ctx, before.id, "failed");
   const known = await replay(before.ctx, deps(before.ctx.root, answering(500, "boom").adapter), full(before.id));
   assert.equal(known.code, 0);
-  assert.equal(known.text, "S-0001 failing before the item: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 failing before the item\nflow (none): verified up to payments, which is mocked");
+  assert.equal(known.text, "S-0001 failing before the item: step 2: expected status 200, got 500\nreplayed 1 on picket-proj-481: 1 failing before the item\nflow (none): verified up to payments, which is mocked\nknown defects open: none");
+});
+
+test("a labelled card that fails twice is a known defect: no base run, not blamed, ok (T-1.4)", async (t) => {
+  const { ctx, id } = project(t);
+  const path = join(ctx.root, CARD);
+  writeFileSync(path, labelCard(readFileSync(path, "utf8"), { known: "DF-0001" }));
+  const spy = baseAnswering("passed");
+  const { code, report, text } = await replay(ctx, deps(ctx.root, failingTwice(), engine(ctx.root), spy), full(id));
+  assert.equal(spy.calls.length, 0);
+  assert.equal(code, 0);
+  assert.equal(report.ok, true);
+  assert.equal(text.split("\n")[0], "S-0001 known defect: step 2: expected status 200, got 500");
+  const result = readResults(ctx.root).find((row) => row.type === "result");
+  assert.ok(result && result.type === "result");
+  assert.deepEqual([result.scenario, result.outcome, result.class], ["S-0001", "failed", "known defect"]);
+});
+
+const OPEN_DEFECT = { id: "DF-0001", status: "open", opened: "2026-10-10", found_in: "20261010-orders", scenario: "S-0002", expected: "health", actual: "step 2: expected status 200, got 500", evidence: "run r1" } as const;
+
+test("every replay ends with the open known defects and their age in days, or none (T-1.5)", async (t) => {
+  const { ctx, id } = project(t);
+  const later: Context = { ...ctx, now: () => new Date("2026-11-20T09:00:00Z") };
+  assert.equal((await replay(later, deps(ctx.root, answering(200, "ok").adapter), full(id))).text.split("\n").at(-1), "known defects open: none");
+  writeDefect(ctx.root, OPEN_DEFECT);
+  writeDefect(ctx.root, { ...OPEN_DEFECT, id: "DF-0002", status: "fixed" });
+  writeDefect(ctx.root, { ...OPEN_DEFECT, id: "DF-0003", opened: "2026-11-19", scenario: "S-0004" });
+  const { text } = await replay(later, deps(ctx.root, answering(200, "ok").adapter), full(id));
+  assert.equal(text.split("\n").at(-1), "known defects open: DF-0001 (S-0002) 41 days, DF-0003 (S-0004) 1 day");
+  const offline = await replay(later, deps(ctx.root, answering(200, "ok").adapter, () => ({ status: 1, stdout: "", stderr: "" })), full(id));
+  assert.equal(offline.text, "not replayed: no container engine\nknown defects open: DF-0001 (S-0002) 41 days, DF-0003 (S-0004) 1 day");
 });
 
 function baseKeyId(ctx: Context, id: WorkId): string {
@@ -262,7 +293,7 @@ test("--affected on an unchanged item replays nothing; --only of an unknown id r
   const { ctx, id } = project(t);
   const none = await replay(ctx, deps(ctx.root, answering(200, "ok").adapter), { id, mode: "affected", only: null });
   assert.equal(none.code, 0);
-  assert.equal(none.text, "no saved scenarios to replay");
+  assert.equal(none.text, "no saved scenarios to replay\nknown defects open: none");
   assert.equal(await refusal(() => replayEnvironment(ctx, deps(ctx.root, answering(200, "ok").adapter), { id, mode: "only", only: "S-0009" })), "no saved scenario S-0009");
 });
 
@@ -336,7 +367,7 @@ test("each HTTP check of the phase becomes a candidate replayed once, stored wit
   appendDriveRow(ctx.root, { ts: "2026-11-15T09:00:00.000Z", kind: "drive", command: "picket drive", source: "picket drive", work_id: id, phase: 1, hits });
   const { code, text } = await replay(ctx, deps(ctx.root, byPath), full(id));
   assert.equal(code, 0);
-  assert.deepEqual(text.split("\n").slice(-2), ["keep T-1.1: replay passed; kept on approval", "keep T-1.2: not kept: replay failed: step 2: expected status 201, got 500"]);
+  assert.deepEqual(text.split("\n").slice(-3, -1), ["keep T-1.1: replay passed; kept on approval", "keep T-1.2: not kept: replay failed: step 2: expected status 201, got 500"]);
   const [orders, refunds] = readCandidates(ctx.root, id)["1"];
   assert.deepEqual([orders.covers, orders.outcome, orders.detail, orders.replaces], ["T-1.1", "passed", "", null]);
   assert.deepEqual([refunds.covers, refunds.outcome, refunds.detail], ["T-1.2", "failed", "step 2: expected status 201, got 500"]);
@@ -357,7 +388,7 @@ test("a failing scenario that a phase of the item replaces is classed replaced b
   const spy = baseAnswering("passed");
   const { code, text } = await replay(ctx, deps(ctx.root, answering(503, "draining").adapter, engine(ctx.root), spy), full(id));
   assert.equal(code, 0);
-  assert.equal(text, "S-0001 replaced by this item: step 2: expected status 200, got 503\nreplayed 1 on picket-proj-481: 1 replaced by this item\nflow (none): verified up to payments, which is mocked\nkeep T-1.1: not kept: the check did not run");
+  assert.equal(text, "S-0001 replaced by this item: step 2: expected status 200, got 503\nreplayed 1 on picket-proj-481: 1 replaced by this item\nflow (none): verified up to payments, which is mocked\nkeep T-1.1: not kept: the check did not run\nknown defects open: none");
   assert.equal(spy.calls.length, 0);
 });
 
@@ -381,7 +412,7 @@ test("each stored result row carries the run's mocks and gaps, and the gap joins
   const { text } = await replay(ctx, deps(ctx.root, adapter, stubbedEngine(ctx.root)), full(id));
   const results = readResults(ctx.root).filter((row): row is ResultRow => row.type === "result");
   assert.deepEqual(results.map(({ scenario, mocks, gaps }) => ({ scenario, mocks, gaps })), [{ scenario: "S-0001", mocks: ["payments-mock"], gaps: ["payments-mock has no answer for POST /refunds"] }]);
-  assert.deepEqual(text.split("\n"), ["S-0001 passed: gap: payments-mock has no answer for POST /refunds", "replayed 1 on picket-proj-481: 1 passed", "flow (none): verified up to payments, which is mocked"]);
+  assert.deepEqual(text.split("\n"), ["S-0001 passed: gap: payments-mock has no answer for POST /refunds", "replayed 1 on picket-proj-481: 1 passed", "flow (none): verified up to payments, which is mocked", "known defects open: none"]);
 });
 
 function line(scenario: string, flow: string, mocks: string[]): ReplayLine {
@@ -391,8 +422,8 @@ function line(scenario: string, flow: string, mocks: string[]): ReplayLine {
 test("one flow line per flow whose runs had mocks, naming the real services (T-4.2)", () => {
   const mocks = [{ service: "payments-mock", path: ".picket/env/mocks/payments-mock.md", ...parseMock(PAYMENTS_DEFINITION, "payments-mock") }];
   const lines = [line("S-0001", "checkout", ["payments-mock"]), line("S-0002", "checkout", ["payments-mock"]), line("S-0003", "search", [])];
-  const report: ReplayReport = { ok: true, stack: "picket-a", reason: null, lines, flows: mockedFlows(lines, mocks), keeps: [] };
+  const report: ReplayReport = { ok: true, stack: "picket-a", reason: null, lines, flows: mockedFlows(lines, mocks), keeps: [], open: [] };
   assert.deepEqual(renderReplay(report).split("\n").filter((text) => text.startsWith("flow ")), ["flow checkout: verified up to payments, which is mocked"]);
   const unnamed = [line("S-0004", "(none)", ["payments-mock", "ledger-mock"])];
-  assert.deepEqual(renderReplay({ ...report, lines: unnamed, flows: mockedFlows(unnamed, mocks) }).split("\n").at(-1), "flow (none): verified up to ledger and payments, which are mocked");
+  assert.deepEqual(renderReplay({ ...report, lines: unnamed, flows: mockedFlows(unnamed, mocks) }).split("\n").at(-2), "flow (none): verified up to ledger and payments, which are mocked");
 });

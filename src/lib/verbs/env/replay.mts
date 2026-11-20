@@ -9,6 +9,7 @@ import { catalogOf } from "../../shared/catalog/resolve.mts";
 import { readLayout, type ItemLayout } from "../../shared/repos.mts";
 import { runBase, type BaseInput, type BaseOutcome } from "../../shared/scenarios/base-run.mts";
 import { classify, isBlamed, RESULT_CLASSES, type ResultClass } from "../../shared/scenarios/compare.mts";
+import { ageDays, readDefects } from "../../shared/scenarios/defects.mts";
 import { acceptFingerprint, listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
 import { httpAdapter, type HttpAdapter } from "../../shared/scenarios/http.mts";
 import { baseKey, keyId, workingKey, type ContentKey } from "../../shared/scenarios/keys.mts";
@@ -33,7 +34,8 @@ export type ReplayInput = { id: WorkId; mode: ReplayMode; only: string | null };
 export type ReplayLine = { scenario: string; class: ResultClass; detail: string; byHand: boolean; flow: string; mocks: string[] };
 export type MockedFlow = { flow: string; real: string[] };
 export type KeepLine = { covers: string; text: string };
-export type ReplayReport = { ok: boolean; stack: string | null; reason: string | null; lines: ReplayLine[]; flows: MockedFlow[]; keeps: KeepLine[] };
+export type OpenDefect = { id: string; scenario: string; days: number };
+export type ReplayReport = { ok: boolean; stack: string | null; reason: string | null; lines: ReplayLine[]; flows: MockedFlow[]; keeps: KeepLine[]; open: OpenDefect[] };
 export type ReplayDeps = {
   runner: EngineRunner;
   adapter: HttpAdapter;
@@ -70,8 +72,20 @@ function replacedByItem(root: string, id: WorkId): Set<string> {
   return new Set(readSnapshot(root, id).phases.flatMap((phase) => replacedScenarios(phase.entry?.drive, phase.n)));
 }
 
-function resultRow(scenarioRun: ScenarioRun, rows: ScenarioRow[], context: RunContext, baseId: string, replaced = false): ResultRow {
-  const cls = classify(scenarioRun, lastKnown(rows, scenarioRun.id, scenarioRun.fingerprint, baseId), replaced);
+type Labels = Map<string, string>;
+
+function knownLabels(scenarios: SavedScenario[]): Labels {
+  return new Map(scenarios.flatMap((scenario) => (scenario.card?.header.known === undefined ? [] : [[scenario.id ?? scenario.path, scenario.card.header.known] as const])));
+}
+
+function openDefects(root: string, now: Date): OpenDefect[] {
+  return readDefects(root)
+    .filter((entry) => entry.status === "open")
+    .map((entry) => ({ id: entry.id, scenario: entry.scenario, days: ageDays(entry.opened, now) }));
+}
+
+function resultRow(scenarioRun: ScenarioRun, rows: ScenarioRow[], context: RunContext, baseId: string, known: string | null, replaced = false): ResultRow {
+  const cls = classify(scenarioRun, lastKnown(rows, scenarioRun.id, scenarioRun.fingerprint, baseId), replaced, known);
   const { id: scenario, fingerprint, outcome, attempts, unstable, detail, mocks, gaps } = scenarioRun;
   return { type: "result", run: context.run, scenario, fingerprint, key: context.key, versions: context.versions, outcome, attempts: attempts.length, unstable, class: cls, detail, mocks, gaps };
 }
@@ -108,8 +122,8 @@ function replayDeps(ctx: Context, deps: ReplayDeps): BaseInput["replay"] {
   return { adapter: deps.adapter, env: ctx.env, today, newRunKey: () => newRunKey(deps.random(RUN_KEY_BYTES)), timeoutMs: REQUEST_TIMEOUT_MS, sleep: deps.sleep };
 }
 
-function needsBase(run: ScenarioRun, stored: ScenarioRow[], baseId: string): boolean {
-  return run.outcome === "failed" && !run.unstable && lastKnown(stored, run.id, run.fingerprint, baseId) === null;
+function needsBase(run: ScenarioRun, stored: ScenarioRow[], baseId: string, labels: Labels): boolean {
+  return !labels.has(run.id) && run.outcome === "failed" && !run.unstable && lastKnown(stored, run.id, run.fingerprint, baseId) === null;
 }
 
 async function compareWithBase(session: Session, unmatched: SavedScenario[], baseId: string): Promise<BaseComparison> {
@@ -119,7 +133,7 @@ async function compareWithBase(session: Session, unmatched: SavedScenario[], bas
   const outcome = await deps.base({ root: ctx.root, engine, layout, state, key: start.key, scenarios: unmatched, replay: replayDeps(ctx, deps) });
   if ("failure" in outcome) return { rows: [], note: `the base did not start: ${outcome.failure}` };
   const context: RunContext = { item: input.id, run: `${run}-base`, mode: "base", key: baseId, versions: outcome.versions };
-  return { rows: [runRow(context, null), ...outcome.runs.map((baseRun) => resultRow(baseRun, [], context, baseId))], note: null };
+  return { rows: [runRow(context, null), ...outcome.runs.map((baseRun) => resultRow(baseRun, [], context, baseId, null))], note: null };
 }
 
 function noted(row: ResultRow, note: string | null, unmatched: Set<string>): ResultRow {
@@ -136,16 +150,17 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...stackMocks(start.model, mockFiles, start.report.endpoints), catalog: catalogOf(root) });
   const baseId = keyId(keys.base);
   const stored = readResults(root);
-  const unmatched = new Set(runs.filter((scenarioRun) => !session.replaced.has(scenarioRun.id) && needsBase(scenarioRun, stored, baseId)).map((scenarioRun) => scenarioRun.id));
+  const labels = knownLabels(scenarios);
+  const unmatched = new Set(runs.filter((scenarioRun) => !session.replaced.has(scenarioRun.id) && needsBase(scenarioRun, stored, baseId, labels)).map((scenarioRun) => scenarioRun.id));
   const base = await compareWithBase(session, scenarios.filter((scenario) => unmatched.has(scenario.id ?? scenario.path)), baseId);
   const context: RunContext = { item: input.id, run, mode: input.mode, key: keyId(keys.working), versions: Object.fromEntries(start.report.apps.map((app) => [app.service, app.version])) };
   const known = [...stored, ...base.rows];
-  const rows = runs.map((scenarioRun) => noted(resultRow(scenarioRun, known, context, baseId, session.replaced.has(scenarioRun.id)), base.note, unmatched));
+  const rows = runs.map((scenarioRun) => noted(resultRow(scenarioRun, known, context, baseId, labels.get(scenarioRun.id) ?? null, session.replaced.has(scenarioRun.id)), base.note, unmatched));
   appendRows(root, [...base.rows, runRow(context, null), ...rows]);
   for (const scenarioRun of runs) if (scenarioRun.byHand && scenarioRun.outcome !== "blocked") acceptFingerprint(root, scenarioRun.fingerprint);
   const lines = runs.map((scenarioRun, at) => lineOf(scenarioRun, rows[at], flowOf(scenarios, scenarioRun)));
   const keeps = await replayCandidates(session, services);
-  return { ok: !lines.some((line) => isBlamed(line.class)), stack: start.report.stack, reason: null, lines, flows: mockedFlows(lines, mockFiles), keeps };
+  return { ok: !lines.some((line) => isBlamed(line.class)), stack: start.report.stack, reason: null, lines, flows: mockedFlows(lines, mockFiles), keeps, open: openDefects(root, ctx.now()) };
 }
 
 async function replayCandidate(candidate: CandidateInput, session: Session, services: string[]): Promise<Candidate> {
@@ -181,7 +196,7 @@ export async function replayEnvironment(ctx: Context, deps: ReplayDeps, input: R
   if (!engine || !machine.ok) {
     const reason = engine ? machine.missing.join("; ") : NO_ENGINE;
     appendRows(ctx.root, [runRow({ item: input.id, run, mode: input.mode, key: "", versions: {} }, reason)]);
-    return failed({ ok: false, stack: null, reason, lines: [], flows: [], keeps: [] });
+    return failed({ ok: false, stack: null, reason, lines: [], flows: [], keeps: [], open: openDefects(ctx.root, ctx.now()) });
   }
   const start = startStack(ctx, engine, machine, input.id);
   const report = await replayStack({ ctx, deps, input, state, engine, start, layout: readLayout(ctx.root, input.id), run, replaced: replacedByItem(ctx.root, input.id) });
@@ -205,9 +220,22 @@ function flowText({ flow, real }: MockedFlow): string {
   return `flow ${flow}: verified up to ${real.join(" and ")}, which ${real.length > 1 ? "are" : "is"} mocked`;
 }
 
+function dayText(days: number): string {
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function openText(open: readonly OpenDefect[]): string {
+  const entries = open.map(({ id, scenario, days }) => `${id} (${scenario}) ${dayText(days)}`);
+  return `known defects open: ${entries.length ? entries.join(", ") : "none"}`;
+}
+
+function replayedLines(report: ReplayReport): string[] {
+  if (report.reason !== null) return [`not replayed: ${report.reason}`];
+  return [...report.lines.map(lineText), summaryText(report), ...report.flows.map(flowText), ...report.keeps.map((keep) => `keep ${keep.covers}: ${keep.text}`)];
+}
+
 export function renderReplay(report: ReplayReport): string {
-  if (report.reason !== null) return `not replayed: ${report.reason}`;
-  return [...report.lines.map(lineText), summaryText(report), ...report.flows.map(flowText), ...report.keeps.map((keep) => `keep ${keep.covers}: ${keep.text}`)].join("\n");
+  return [...replayedLines(report), openText(report.open)].join("\n");
 }
 
 function parseReplay(args: Args): ReplayInput {
