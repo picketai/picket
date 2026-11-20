@@ -134,6 +134,6 @@
   "interactive": {
     "auto_dialog": "shown",
     "bang_hooked": false,
-    "tool": "PowerShell"
+    "tool": "Bash"
   }
 }

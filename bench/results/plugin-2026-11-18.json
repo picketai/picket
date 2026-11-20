@@ -1,0 +1,710 @@
+{
+  "manifest": {
+    "harness": "plugin",
+    "harness_root": "/mnt/work/development/github/picket",
+    "harness_commit": "08da3132",
+    "harness_dirty": true,
+    "fixture_hash": "93bf210ad365",
+    "claude_version": "2.1.327 (Claude Code)",
+    "node_version": "v26.13.0",
+    "effort_level": null,
+    "permission_mode": "acceptEdits",
+    "allowed_tools": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "Bash(git ls-files*)",
+      "Bash(git blame*)",
+      "Bash(picket *)",
+      "Read(//mnt/work/development/github/picket/dist/**)"
+    ],
+    "runs_per_task": 1,
+    "started": "2026-11-18T10:35:27.742Z"
+  },
+  "records": [
+    {
+      "task": "test-01-negative-quantity",
+      "kind": "tester",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "9442cb8911d44e30da1e0ce9aa1a2ffbd2dcef54",
+      "started": "2026-11-18T10:35:28.228Z",
+      "session_ids": [
+        "8e4c7e83-4c12-4bf7-9f75-1104e80a3d61"
+      ],
+      "stops": 0,
+      "gates": [],
+      "denials": 1,
+      "turns": 3,
+      "cost_usd": 0.6132762000000002,
+      "usage": {
+        "input_tokens": 6,
+        "cache_read_input_tokens": 110640,
+        "cache_creation_input_tokens": 1242,
+        "output_tokens": 459
+      },
+      "api_ms": 39248,
+      "wall_ms": 65437,
+      "tool_calls": 39,
+      "tool_counts": {
+        "Skill": 1,
+        "Bash": 32,
+        "Agent": 2,
+        "Read": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 2,
+      "first_write_ms": null,
+      "first_tool_ms": 2003,
+      "first_reviewable_ms": 65436,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "The tester's round 1 verdict is CHANGES REQUIRED: it found product failures in phase 1, recorded in `work/20260101-new-invoices-are-validated/test.md`.\n\nThe next action is `fix_findings` by the developer, but a hook blocked the developer spawn (\"the benchmark ends after the tester's verdict\"), so no fix has started. The item stays open at that step; `picket next 20260101-new-invoices-are-validated` will print the developer handoff again when you want to continue."
+      ],
+      "error": null,
+      "port": 8100,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind normal --intent \"a valid body is created with 201 and totals\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  header content-",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind negative --intent \"a negative quantity is refused naming lines[0].quantity\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  h",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind negative --intent \"a missing customer is refused naming customer\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  header cont",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind negative --intent \"a lower-case currency is refused naming currency\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  header c",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind boundary --intent \"an empty lines list is refused naming lines\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  header conten",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind boundary --intent \"quantity 0 and unit price 0 are accepted\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  header content-t",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.1 --kind negative --intent \"a fractional quantity is refused naming lines[0].quantity\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n ",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.2 --kind normal --intent \"a refused body leaves the GET /invoices total unchanged\" <<'EOF'\nrequest GET {ledgerlite}/invoices\nexpect",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-new-invoices-are-validated --criterion T-1.2 --kind negative --intent \"a negative quantity body stores nothing\" <<'EOF'\nrequest GET {ledgerlite}/invoices\nexpect status 200\nca",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 9,
+      "cache_hit_ratio": 0.9888,
+      "tokens_total": 112347,
+      "base_sha": "4bcbcda0643077c714beb2219e9a9aa7a037c6a3",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "delegated",
+        "verdicts": [
+          "CHANGES REQUIRED"
+        ],
+        "route": "delegated:CHANGES REQUIRED"
+      },
+      "grade": {
+        "pass": false,
+        "checks": [
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20260101-new-invoices-are-validated/test.md"
+          },
+          {
+            "name": "defect_found",
+            "ok": true,
+            "detail": "C-02"
+          },
+          {
+            "name": "no_false_alarm",
+            "ok": false,
+            "detail": "1 unmatched product failure(s)"
+          }
+        ],
+        "tester": {
+          "verdict": "CHANGES REQUIRED",
+          "found": true,
+          "false_alarms": 1,
+          "questions_right": null,
+          "signature": "found=true false_alarms=1 questions_right=null"
+        }
+      },
+      "pass": false,
+      "finished": "2026-11-18T10:36:33.784Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/test-01-negative-quantity-r1-mwlzjfvk.jsonl"
+    },
+    {
+      "task": "test-02-page-size-boundary",
+      "kind": "tester",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "9442cb8911d44e30da1e0ce9aa1a2ffbd2dcef54",
+      "started": "2026-11-18T10:36:33.882Z",
+      "session_ids": [
+        "26e385ea-5311-4efb-876d-4f8377af393c"
+      ],
+      "stops": 0,
+      "gates": [],
+      "denials": 1,
+      "turns": 3,
+      "cost_usd": 0.5695867,
+      "usage": {
+        "input_tokens": 6,
+        "cache_read_input_tokens": 110757,
+        "cache_creation_input_tokens": 1260,
+        "output_tokens": 461
+      },
+      "api_ms": 32006,
+      "wall_ms": 58024,
+      "tool_calls": 27,
+      "tool_counts": {
+        "Skill": 1,
+        "Bash": 20,
+        "Agent": 2,
+        "Read": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 2,
+      "first_write_ms": null,
+      "first_tool_ms": 2112,
+      "first_reviewable_ms": 58024,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "Test round 1 ended with CHANGES REQUIRED: `GET /invoices?page=0&size=101` answered 200, while T-1.1 requires 400 for every size above 100.\n\nThe next step is the developer fixing that boundary failure in phase 1, but a hook blocked the developer spawn (\"the benchmark ends after the tester's verdict\"), so the fix has not started. The item stays open at `fix_findings`, with the findings in `work/20260101-oversized-pages-are-refused/test.md`."
+      ],
+      "error": null,
+      "port": 8101,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9887,
+      "tokens_total": 112484,
+      "base_sha": "a3c767f335ea89fd97dbc870c636c41b95a4435b",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "delegated",
+        "verdicts": [
+          "CHANGES REQUIRED"
+        ],
+        "route": "delegated:CHANGES REQUIRED"
+      },
+      "grade": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20260101-oversized-pages-are-refused/test.md"
+          },
+          {
+            "name": "defect_found",
+            "ok": true,
+            "detail": "C-03"
+          },
+          {
+            "name": "no_false_alarm",
+            "ok": true,
+            "detail": "0 unmatched product failure(s)"
+          }
+        ],
+        "tester": {
+          "verdict": "CHANGES REQUIRED",
+          "found": true,
+          "false_alarms": 0,
+          "questions_right": null,
+          "signature": "found=true false_alarms=0 questions_right=null"
+        }
+      },
+      "pass": true,
+      "finished": "2026-11-18T10:37:31.996Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/test-02-page-size-boundary-r1-mwlzkuij.jsonl"
+    },
+    {
+      "task": "test-03-delete-unknown-invoice",
+      "kind": "tester",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "9442cb8911d44e30da1e0ce9aa1a2ffbd2dcef54",
+      "started": "2026-11-18T10:37:32.090Z",
+      "session_ids": [
+        "3f78235e-4b9f-494a-b92a-5de81e7ac006"
+      ],
+      "stops": 0,
+      "gates": [],
+      "denials": 1,
+      "turns": 3,
+      "cost_usd": 0.5771659,
+      "usage": {
+        "input_tokens": 6,
+        "cache_read_input_tokens": 110852,
+        "cache_creation_input_tokens": 1372,
+        "output_tokens": 498
+      },
+      "api_ms": 36420,
+      "wall_ms": 63313,
+      "tool_calls": 24,
+      "tool_counts": {
+        "Skill": 1,
+        "Bash": 17,
+        "Agent": 2,
+        "Read": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 2,
+      "first_write_ms": null,
+      "first_tool_ms": 2601,
+      "first_reviewable_ms": 63313,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "The test round ended with CHANGES REQUIRED, and the fix has not started: a hook blocked the developer spawn (\"the benchmark ends after the tester's verdict; end your turn\").\n\nThe tester found that `DELETE /invoices/:id` works for an invoice the store holds, but answers 204 for an id the store does not hold, where the request asks for 404 with `error.message`. Cases C-02, C-03 and C-04 show this; the report is in `work/20260101-invoices-can-be-deleted/test.md`.\n\nThe item is now at `fix_findings` for phase 1, waiting on the developer."
+      ],
+      "error": null,
+      "port": 8102,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9877,
+      "tokens_total": 112728,
+      "base_sha": "34ecfee66b5a4db5352aa947fd8185ce16655c2c",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "delegated",
+        "verdicts": [
+          "CHANGES REQUIRED"
+        ],
+        "route": "delegated:CHANGES REQUIRED"
+      },
+      "grade": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20260101-invoices-can-be-deleted/test.md"
+          },
+          {
+            "name": "defect_found",
+            "ok": true,
+            "detail": "C-02, C-03, C-04"
+          },
+          {
+            "name": "no_false_alarm",
+            "ok": true,
+            "detail": "0 unmatched product failure(s)"
+          }
+        ],
+        "tester": {
+          "verdict": "CHANGES REQUIRED",
+          "found": true,
+          "false_alarms": 0,
+          "questions_right": null,
+          "signature": "found=true false_alarms=0 questions_right=null"
+        }
+      },
+      "pass": true,
+      "finished": "2026-11-18T10:38:35.485Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/test-03-delete-unknown-invoice-r1-mwlzm3fj.jsonl"
+    },
+    {
+      "task": "test-04-replay-returns-200",
+      "kind": "tester",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "9442cb8911d44e30da1e0ce9aa1a2ffbd2dcef54",
+      "started": "2026-11-18T10:38:35.586Z",
+      "session_ids": [
+        "0ee28013-933f-4eee-9e8a-82d30f901fc8"
+      ],
+      "stops": 0,
+      "gates": [],
+      "denials": 1,
+      "turns": 3,
+      "cost_usd": 0.5901109000000002,
+      "usage": {
+        "input_tokens": 6,
+        "cache_read_input_tokens": 111093,
+        "cache_creation_input_tokens": 1578,
+        "output_tokens": 600
+      },
+      "api_ms": 37853,
+      "wall_ms": 62320,
+      "tool_calls": 22,
+      "tool_counts": {
+        "Skill": 1,
+        "Bash": 15,
+        "Agent": 2,
+        "Read": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 2,
+      "first_write_ms": null,
+      "first_tool_ms": 2131,
+      "first_reviewable_ms": 62320,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "Test round 1 came back CHANGES REQUIRED: all four cases got a 500 on POST /invoices, with and without an `Idempotency-Key`, so neither T-1.1 nor T-1.2 has a passing case.\n\nThe tester never saw the real request body schema, so the 500s may come from wrong test bodies and not from a product defect. That needs checking before any code changes.\n\n`picket next` routed the item to the developer to fix the findings in phase 1, but a hook blocked that spawn (\"the benchmark ends after the tester's verdict\"), so the developer was not started and nothing has been fixed. The report is at `work/20260101-invoice-creation-is-idempotent/test.md`."
+      ],
+      "error": null,
+      "port": 8103,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoice-creation-is-idempotent --criterion T-1.1 --kind normal --intent \"a new key creates the invoice with 201\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  header Idempoten",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoice-creation-is-idempotent --criterion T-1.1 --kind normal --intent \"a request without a key creates the invoice with 201\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  bo",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoice-creation-is-idempotent --criterion T-1.1 --kind normal --intent \"an empty body shape check: a request without a key creates the invoice with 201\" <<'EOF'\nrequest POST",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoice-creation-is-idempotent --criterion T-1.2 --kind state --intent \"the same key twice answers 200 with the first invoice\" <<'EOF'\nrequest POST {ledgerlite}/invoices\n  he",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 4,
+      "cache_hit_ratio": 0.9859,
+      "tokens_total": 113277,
+      "base_sha": "eb15143ee423f754e29fcdf5a84db6b9a828364c",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "delegated",
+        "verdicts": [
+          "CHANGES REQUIRED"
+        ],
+        "route": "delegated:CHANGES REQUIRED"
+      },
+      "grade": {
+        "pass": false,
+        "checks": [
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20260101-invoice-creation-is-idempotent/test.md"
+          },
+          {
+            "name": "no_product_failure",
+            "ok": false,
+            "detail": "C-01, C-02, C-03, C-04"
+          },
+          {
+            "name": "no_question",
+            "ok": true,
+            "detail": ""
+          }
+        ],
+        "tester": {
+          "verdict": "CHANGES REQUIRED",
+          "found": null,
+          "false_alarms": 4,
+          "questions_right": null,
+          "signature": "found=null false_alarms=4 questions_right=null"
+        }
+      },
+      "pass": false,
+      "finished": "2026-11-18T10:39:38.000Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/test-04-replay-returns-200-r1-mwlzngf5.jsonl"
+    },
+    {
+      "task": "test-05-page-past-end",
+      "kind": "tester",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "9442cb8911d44e30da1e0ce9aa1a2ffbd2dcef54",
+      "started": "2026-11-18T10:39:38.112Z",
+      "session_ids": [
+        "c5e405ea-a356-4304-a421-ff3ee0afaebe"
+      ],
+      "stops": 0,
+      "gates": [],
+      "denials": 0,
+      "turns": 4,
+      "cost_usd": 0.6033426000000001,
+      "usage": {
+        "input_tokens": 8,
+        "cache_read_input_tokens": 150725,
+        "cache_creation_input_tokens": 2644,
+        "output_tokens": 746
+      },
+      "api_ms": 31330,
+      "wall_ms": 65626,
+      "tool_calls": 21,
+      "tool_counts": {
+        "Skill": 1,
+        "Bash": 15,
+        "Agent": 1,
+        "Read": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 1,
+      "first_write_ms": null,
+      "first_tool_ms": 2531,
+      "first_reviewable_ms": 65626,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "GET /invoices now reports `pages`, defaults `page` to 0, answers 200 with an empty `items` list for a page at or past the last, and answers 400 for a negative or fractional `page`.\n\n```\n## Design closed: 20260101-invoice-listing-reports-its-pages\nPhases: 1 · decisions: 1 · commits 91fb2ea..5b8170e · review: APPROVED\nTested: APPROVED in round 1 · 6 passed\nKept: S-0001 (T-1.1 normal), S-0002 (T-1.1 boundary), S-0003 (T-1.2 normal), S-0004 (T-1.2 boundary), S-0005 (T-1.3 negative), S-0006 (T-1.3 boundary)\nAudit: design · phases 1 · tokens tester 702k · bounces 0 · blocks 0\nEnvironment: removed 1 container, 0 volumes, 1 network, 2 images\n```"
+      ],
+      "error": null,
+      "port": 8104,
+      "trusted": true,
+      "rate_limits": 2,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [],
+      "prompts": 0,
+      "cache_hit_ratio": 0.9827,
+      "tokens_total": 154123,
+      "base_sha": "91fb2ea54c15b95a316cbd58462ee6ebe36e4f06",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED",
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": true,
+        "checks": [
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20260101-invoice-listing-reports-its-pages/test.md"
+          },
+          {
+            "name": "no_product_failure",
+            "ok": true,
+            "detail": ""
+          },
+          {
+            "name": "no_question",
+            "ok": true,
+            "detail": ""
+          }
+        ],
+        "tester": {
+          "verdict": "APPROVED",
+          "found": null,
+          "false_alarms": 0,
+          "questions_right": null,
+          "signature": "found=null false_alarms=0 questions_right=null"
+        }
+      },
+      "pass": true,
+      "finished": "2026-11-18T10:40:43.818Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/test-05-page-past-end-r1-mwlzosnm.jsonl"
+    },
+    {
+      "task": "test-06-credit-over-total",
+      "kind": "tester",
+      "lane_expected": "design",
+      "harness": "plugin",
+      "run": 1,
+      "fixture_sha": "9442cb8911d44e30da1e0ce9aa1a2ffbd2dcef54",
+      "started": "2026-11-18T10:40:43.886Z",
+      "session_ids": [
+        "086a3e5e-bf16-42df-afd6-067ae342f4cf"
+      ],
+      "stops": 0,
+      "gates": [],
+      "denials": 0,
+      "turns": 5,
+      "cost_usd": 0.6309294,
+      "usage": {
+        "input_tokens": 8,
+        "cache_read_input_tokens": 150496,
+        "cache_creation_input_tokens": 3184,
+        "output_tokens": 826
+      },
+      "api_ms": 41042,
+      "wall_ms": 76820,
+      "tool_calls": 29,
+      "tool_counts": {
+        "Skill": 2,
+        "Bash": 22,
+        "Agent": 1,
+        "Read": 4
+      },
+      "reads": 4,
+      "unique_reads": 4,
+      "rereads": 0,
+      "subagents": 1,
+      "first_write_ms": null,
+      "first_tool_ms": 2355,
+      "first_reviewable_ms": 76820,
+      "model": "claude-fable-5-2",
+      "terminal": "completed",
+      "texts": [
+        "`POST /invoices/:id/credit` shipped: it issues an in-memory credit note (`CN-1`, `CN-2`, ...) for a held invoice, answers 404 for an unknown invoice and 400 for a bad `amountCents` or `reason`.\n\n```\n## Design closed: 20260101-invoices-take-credit-notes\nPhases: 1 · decisions: 1 · commits 0eea57d..2bbaea4 · review: APPROVED\nTested: APPROVED in round 1 · 6 passed, 4 not run\nKept: S-0001 (T-1.1 normal), S-0002 (T-1.1 boundary), S-0003 (T-1.2 normal), S-0004 (T-1.3 normal), S-0005 (T-1.3 boundary)\nAudit: design · phases 1 · tokens tester 1.2M · bounces 0 · blocks 0\nEnvironment: removed 1 container, 0 volumes, 1 network, 2 images\n```\n\nOne gap the tester flagged: the request says nothing about a credit larger than the invoice total, so no case covered it and that behaviour is untested. If such a credit should be refused, that needs a new change request with the rule stated."
+      ],
+      "error": null,
+      "port": 8105,
+      "trusted": true,
+      "rate_limits": 3,
+      "orphans": 0,
+      "tracked": 0,
+      "prompt_log": [
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoices-take-credit-notes --criterion T-1.1 --kind normal --intent \"a valid body on a held invoice answers 201 with the credit note fields\" <<'EOF'\nrequest POST {ledgerlite}",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoices-take-credit-notes --criterion T-1.1 --kind boundary --intent \"an amountCents of exactly 1 is accepted\" <<'EOF'\nrequest POST {ledgerlite}/invoices/INV-1001/credit\n  h",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoices-take-credit-notes --criterion T-1.2 --kind normal --intent \"an unknown invoice answers 404 not found\" <<'EOF'\nrequest POST {ledgerlite}/invoices/INV-9999/credit\n  he",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoices-take-credit-notes --criterion T-1.3 --kind normal --intent \"an amountCents of 0 answers 400 naming amountCents\" <<'EOF'\nrequest POST {ledgerlite}/invoices/INV-1001/c",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoices-take-credit-notes --criterion T-1.3 --kind boundary --intent \"a fractional amountCents answers 400 naming amountCents\" <<'EOF'\nrequest POST {ledgerlite}/invoices/INV",
+          "decision": "allow"
+        },
+        {
+          "tool": "Bash",
+          "command": "picket test case 20260101-invoices-take-credit-notes --criterion T-1.3 --kind negative --intent \"an empty reason answers 400 naming reason\" <<'EOF'\nrequest POST {ledgerlite}/invoices/INV-1001/credit\n ",
+          "decision": "allow"
+        }
+      ],
+      "prompts": 6,
+      "cache_hit_ratio": 0.9792,
+      "tokens_total": 154514,
+      "base_sha": "0eea57df66a80a6e677c3b9f9bde502d2895fc63",
+      "changed_files": [],
+      "lines_added": 0,
+      "signals": {
+        "lane": "design",
+        "verdicts": [
+          "APPROVED",
+          "APPROVED"
+        ],
+        "route": "design:APPROVED"
+      },
+      "grade": {
+        "pass": false,
+        "checks": [
+          {
+            "name": "report_exists",
+            "ok": true,
+            "detail": "work/20260101-invoices-take-credit-notes/test.md"
+          },
+          {
+            "name": "question_asked",
+            "ok": false,
+            "detail": ""
+          },
+          {
+            "name": "no_product_failure",
+            "ok": true,
+            "detail": ""
+          }
+        ],
+        "tester": {
+          "verdict": "APPROVED",
+          "found": null,
+          "false_alarms": 0,
+          "questions_right": false,
+          "signature": "found=null false_alarms=0 questions_right=false"
+        }
+      },
+      "pass": false,
+      "finished": "2026-11-18T10:42:00.787Z",
+      "run_dir": null,
+      "events": "bench/.runs/events/test-06-credit-over-total-r1-mwlzq7fw.jsonl"
+    }
+  ]
+}
