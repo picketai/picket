@@ -1,5 +1,5 @@
 import { isSecretName, mapSecretLeaves } from "../env/config-entries.mts";
-import type { Card, RequestStep, Step } from "./format.mts";
+import { browserTexts, isBrowserStep, type BrowserStep, type Card, type FillStep, type OpenStep, type RequestStep, type Step } from "./format.mts";
 
 export const PLACEHOLDER = /\{([a-z][a-z0-9_]*(?::[A-Za-z0-9_.+-]+)?)\}/g;
 
@@ -36,11 +36,14 @@ function valueProblems(line: number, texts: string[], captured: Set<string>): st
   ]);
 }
 
-function targetProblems(step: RequestStep, services: string[] | null): { problems: string[]; rest: string } {
+function outsideProblem(step: RequestStep | OpenStep): string {
+  if (step.word === "open") return `rule 1: step ${step.line} opens ${step.target}; a page opens only {<service>} of the environment`;
+  return `rule 1: step ${step.line} sends to ${step.target}; a request goes only to {<service>} of the environment`;
+}
+
+function targetProblems(step: RequestStep | OpenStep, services: string[] | null): { problems: string[]; rest: string } {
   const token = step.target.match(SERVICE_TOKEN);
-  if (!token || !SERVICE_NAME.test(token[1])) {
-    return { problems: [`rule 1: step ${step.line} sends to ${step.target}; a request goes only to {<service>} of the environment`], rest: step.target };
-  }
+  if (!token || !SERVICE_NAME.test(token[1])) return { problems: [outsideProblem(step)], rest: step.target };
   const known = services === null || services.includes(token[1]);
   const problems = known ? [] : [`rule 1: step ${step.line} names {${token[1]}}, which is no service of the environment`];
   return { problems, rest: step.target.slice(token[0].length) };
@@ -83,6 +86,17 @@ function secretBodyProblems(step: RequestStep): string[] {
   return literalSecretKeys(jsonBody(step.body)).map((key) => `step ${step.line}: body key ${key} holds a literal secret; ${SECRET_SOURCE}`);
 }
 
+function secretFillProblems(step: FillStep): string[] {
+  const secret = isSecretName(step.label) && holdsLiteral(step.value);
+  return secret ? [`step ${step.line}: fill ${JSON.stringify(step.label)} holds a literal secret; ${SECRET_SOURCE}`] : [];
+}
+
+function browserProblems(step: BrowserStep, captured: Set<string>, services: string[] | null): string[] {
+  if (step.word !== "open") return [...valueProblems(step.line, browserTexts(step), captured), ...(step.word === "fill" ? secretFillProblems(step) : [])];
+  const target = targetProblems(step, services);
+  return [...target.problems, ...valueProblems(step.line, [target.rest], captured)];
+}
+
 function requestProblems(step: RequestStep, captured: Set<string>, services: string[] | null): string[] {
   const target = targetProblems(step, services);
   const texts = [target.rest, ...step.headers.map(([, value]) => value), ...(step.body === null ? [] : [step.body])];
@@ -92,7 +106,7 @@ function requestProblems(step: RequestStep, captured: Set<string>, services: str
 function stepProblems(step: Step, captured: Set<string>, services: string[] | null): string[] {
   if (step.word === "request") return requestProblems(step, captured, services);
   if (step.word === "expect" && step.what === "contains") return valueProblems(step.line, [step.text], captured);
-  return [];
+  return isBrowserStep(step) ? browserProblems(step, captured, services) : [];
 }
 
 export function scenarioProblems(card: Card, services: string[] | null): string[] {

@@ -50,3 +50,13 @@ test("a name that is no catalog entry blocks before any request", async () => {
   assert.deepEqual(await resolveData(card("request GET {orders}/x/{data:tenant.id}\n"), [], run(adapter)), { blocked: "no catalog entry tenant" });
   assert.equal(seen.length, 0);
 });
+
+const BROWSER_ONLY = 'open {web}/signup\nfill "Email" with "{data:customer.email}"\nsee "PKT-"\n';
+
+test("a data name used only in a browser step is found and its entry runs (T-1.6)", async () => {
+  assert.deepEqual(dataRefs(card(BROWSER_ONLY)), ["customer"]);
+  const { adapter, seen } = scripted([{ status: 201, headers: {}, text: '{"email":"PKT-7f3a-c@example.com"}', error: null }]);
+  const resolved = await resolveData(card(BROWSER_ONLY), [entry(CUSTOMER.replace("capture id json id", "capture email json email"), "customer")], run(adapter));
+  assert.deepEqual(resolved, { data: { "customer.email": "PKT-7f3a-c@example.com" } });
+  assert.deepEqual(seen.map(({ method, url }) => [method, url]), [["POST", "http://127.0.0.1:49153/customers"]]);
+});

@@ -1,4 +1,5 @@
-import type { Card, CaptureStep, ExpectStep, RequestStep, Step } from "./format.mts";
+import { noBrowser, type BrowserAction, type BrowserAdapter } from "./browser.mts";
+import { browserTexts, isBrowserStep, type BrowserStep, type OpenStep, type Card, type CaptureStep, type ExpectStep, type RequestStep, type Step } from "./format.mts";
 import type { HttpAdapter, HttpAnswer, HttpRequest } from "./http.mts";
 import { resolveText, type ValueScope } from "./values.mts";
 
@@ -6,6 +7,8 @@ export type RunInput = {
   card: Card;
   urls: Record<string, string>;
   adapter: HttpAdapter;
+  browser?: BrowserAdapter;
+  pages?: Record<string, string>;
   env: NodeJS.ProcessEnv;
   today: string;
   runKey: string;
@@ -17,8 +20,9 @@ export type RunOutcome = { outcome: "passed" | "failed" | "blocked"; step: numbe
 
 type Stop = Omit<RunOutcome, "captures">;
 
-type RunState = { scope: ValueScope; answer: HttpAnswer };
+type RunState = { scope: ValueScope; answer: HttpAnswer; browsed: boolean };
 type Prepared = { request: HttpRequest; service: string } | { stop: Stop };
+type Acted = { action: BrowserAction } | { stop: Stop };
 
 const SERVICE_TARGET = /^\{([^{}]+)\}(.*)$/;
 const NO_ANSWER: HttpAnswer = { status: null, headers: {}, text: "", error: null };
@@ -57,6 +61,36 @@ async function sendRequest(step: RequestStep, input: RunInput, state: RunState):
   state.answer = await input.adapter(prepared.request);
   if (state.answer.status === null) return halt("blocked", step, `{${prepared.service}} did not answer: ${state.answer.error}`);
   return null;
+}
+
+function openAction(step: OpenStep, input: RunInput, scope: ValueScope): Acted {
+  const [, service, path] = step.target.match(SERVICE_TARGET) ?? [];
+  const page = service === undefined ? undefined : input.pages?.[service];
+  if (page === undefined) return { stop: halt("blocked", step, `{${service ?? step.target}} has no address inside the stack`) };
+  const resolved = resolveText(path, scope);
+  return "blocked" in resolved ? { stop: halt("blocked", step, resolved.blocked) } : { action: { word: "open", url: page + resolved.text } };
+}
+
+function pageAction(step: BrowserStep, input: RunInput, scope: ValueScope): Acted {
+  if (step.word === "open") return openAction(step, input, scope);
+  const texts = resolveAll(browserTexts(step), scope);
+  if (!Array.isArray(texts)) return { stop: halt("blocked", step, texts.blocked) };
+  const [first, second] = texts;
+  if (step.word === "fill") return { action: { word: "fill", label: first, value: second } };
+  return { action: step.word === "click" ? { word: "click", name: first } : { word: "see", text: first } };
+}
+
+function browserOf(input: RunInput): BrowserAdapter {
+  return input.browser ?? noBrowser;
+}
+
+async function browse(step: BrowserStep, input: RunInput, state: RunState): Promise<Stop | null> {
+  const acted = pageAction(step, input, state.scope);
+  if ("stop" in acted) return acted.stop;
+  state.browsed = true;
+  const answer = await browserOf(input)({ session: input.runKey, timeoutMs: input.timeoutMs, ...acted.action });
+  if (answer.ok === null) return halt("blocked", step, answer.detail);
+  return answer.ok ? null : halt("failed", step, answer.detail);
 }
 
 function checkExpect(step: ExpectStep, state: RunState): Stop | null {
@@ -99,15 +133,22 @@ async function runStep(step: Step, input: RunInput, state: RunState): Promise<St
   if (step.word === "request") return sendRequest(step, input, state);
   if (step.word === "expect") return checkExpect(step, state);
   if (step.word === "capture") return capture(step, state);
+  if (isBrowserStep(step)) return browse(step, input, state);
   await input.sleep(step.seconds * SECOND_MS);
   return null;
 }
 
-export async function runScenario(input: RunInput): Promise<RunOutcome> {
-  const state: RunState = { scope: { run: input.runKey, captures: {}, data: input.data, env: input.env, today: input.today }, answer: NO_ANSWER };
+async function runSteps(input: RunInput, state: RunState): Promise<Stop> {
   for (const step of input.card.steps) {
     const outcome = await runStep(step, input, state);
-    if (outcome !== null) return { ...outcome, captures: state.scope.captures };
+    if (outcome !== null) return outcome;
   }
-  return { ...PASSED, captures: state.scope.captures };
+  return PASSED;
+}
+
+export async function runScenario(input: RunInput): Promise<RunOutcome> {
+  const state: RunState = { scope: { run: input.runKey, captures: {}, data: input.data, env: input.env, today: input.today }, answer: NO_ANSWER, browsed: false };
+  const stop = await runSteps(input, state);
+  if (state.browsed) await browserOf(input)({ session: input.runKey, word: "close", timeoutMs: input.timeoutMs });
+  return { ...stop, captures: state.scope.captures };
 }

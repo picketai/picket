@@ -5,7 +5,7 @@ import type { EnvModel } from "../env/model.mts";
 import type { Finding } from "../env/rules.mts";
 import { CATALOG_DIR, DATA_DIR, ENV_DIR } from "../env/standard.mts";
 import type { SavedScenario } from "../scenarios/files.mts";
-import { FORMAT, readSteps, type Card, type Step } from "../scenarios/format.mts";
+import { browserTexts, FORMAT, isBrowserStep, readSteps, type Card, type Step } from "../scenarios/format.mts";
 import { scenarioProblems } from "../scenarios/rules.mts";
 import { userVariable } from "../scenarios/values.mts";
 
@@ -81,7 +81,7 @@ function requests(steps: Step[]) {
 function stepTexts(step: Step): string[] {
   if (step.word === "request") return [step.target, ...step.headers.map(([, value]) => value), ...(step.body === null ? [] : [step.body])];
   if (step.word === "expect" && step.what === "contains") return [step.text];
-  return [];
+  return isBrowserStep(step) ? browserTexts(step) : [];
 }
 
 function kindStepProblems(kind: EntryKind, steps: Step[]): string[] {
@@ -96,7 +96,8 @@ function kindStepProblems(kind: EntryKind, steps: Step[]): string[] {
 function stepRuleProblems(kind: EntryKind, steps: Step[]): string[] {
   const captures = steps.some((step) => step.word === "capture") ? [] : ["an entry captures at least one value"];
   const data = steps.filter((step) => stepTexts(step).some((text) => text.includes(DATA_MARK))).map((step) => `step ${step.line}: an entry takes no {data:...} value`);
-  return [...kindStepProblems(kind, steps), ...captures, ...data];
+  const browsing = steps.filter(isBrowserStep).map((step) => `step ${step.line}: an entry uses only request, expect, capture and wait`);
+  return [...browsing, ...kindStepProblems(kind, steps), ...captures, ...data];
 }
 
 function hasStepLines(body: string): boolean {

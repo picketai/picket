@@ -19,8 +19,9 @@ const BUDGETS = {
   rule_lines: 60,
   hook_cold_ms: 200, // a hook runs on every matching tool call
   inject_chars: 10000,
-  scenario_core_lines: 600, // the replay core's landed 554 lines rounded up to 50 (design OQ-001)
+  scenario_core_lines: 750,
   scenario_adapter_lines: 50, // the fetch adapter's landed 21 lines rounded up to 50 (design OQ-001)
+  browser_adapter_lines: 50,
   stub_server_lines: 100,
   mock_adapter_lines: 150,
 };
@@ -28,6 +29,7 @@ const BUDGETS = {
 const SCENARIO_DIR = join(ROOT, "src", "lib", "shared", "scenarios");
 const SCENARIO_CORE = ["format.mts", "rules.mts", "values.mts", "runner.mts"];
 const SCENARIO_ADAPTER = "http.mts";
+const BROWSER_ADAPTER = "browser.mts";
 const STUB_SERVER = join(ROOT, "src", "lib", "shared", "mocks", "stub-server.mjs");
 const MOCK_ADAPTER = join(ROOT, "src", "lib", "shared", "mocks", "stub.mts");
 
@@ -86,6 +88,11 @@ test("the scenario core and its HTTP adapter stay within their line budgets", ()
   assert.ok(core <= BUDGETS.scenario_core_lines, `${SCENARIO_CORE.join(", ")}: ${core} lines > ${BUDGETS.scenario_core_lines}`);
   const adapter = lines(join(SCENARIO_DIR, SCENARIO_ADAPTER));
   assert.ok(adapter <= BUDGETS.scenario_adapter_lines, `${SCENARIO_ADAPTER}: ${adapter} lines > ${BUDGETS.scenario_adapter_lines}`);
+});
+
+test("the browser adapter stays within its line budget", () => {
+  const count = lines(join(SCENARIO_DIR, BROWSER_ADAPTER));
+  assert.ok(count <= BUDGETS.browser_adapter_lines, `${BROWSER_ADAPTER}: ${count} lines > ${BUDGETS.browser_adapter_lines}`);
 });
 
 test("the stub program stays within its line budget", () => {

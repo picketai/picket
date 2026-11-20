@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { SavedScenario } from "./files.mts";
 import { fingerprintOf, parseScenario, writeScenario } from "./format.mts";
+import { noBrowser, type BrowserAdapter, type BrowserCommand } from "./browser.mts";
 import type { HttpAdapter, HttpAnswer, HttpRequest } from "./http.mts";
 import type { ContentKey } from "./keys.mts";
 import { affected, replayScenarios, type ReplayInput } from "./replay.mts";
@@ -29,7 +30,7 @@ function scripted(statuses: number[]): { adapter: HttpAdapter; seen: HttpRequest
 
 function input(scenarios: SavedScenario[], adapter: HttpAdapter): ReplayInput {
   const keys = ["aaaa", "bbbb", "cccc", "dddd"];
-  return { scenarios, services: ["orders", "billing"], urls: { orders: "http://127.0.0.1:49153" }, adapter, env: {}, today: "2026-11-15", newRunKey: () => keys.shift() ?? "ffff", timeoutMs: 20000, sleep: async () => {}, stubs: {}, ownMocks: [], catalog: [] };
+  return { scenarios, services: ["orders", "billing"], urls: { orders: "http://127.0.0.1:49153" }, adapter, browser: noBrowser, pages: {}, env: {}, today: "2026-11-15", newRunKey: () => keys.shift() ?? "ffff", timeoutMs: 20000, sleep: async () => {}, stubs: {}, ownMocks: [], catalog: [] };
 }
 
 test("a card failing twice is a confirmed failure with two attempts on different run keys (T-4.1)", async () => {
@@ -178,4 +179,37 @@ test("an entry runs once per attempt, before the scenario, whose PUT goes to the
   assert.deepEqual(seen.map((request) => request.method), ["POST", "PUT", "POST", "PUT"]);
   assert.deepEqual([seen[0].body, seen[2].body], ['{"n":"PKT-aaaa"}', '{"n":"PKT-bbbb"}']);
   assert.deepEqual([seen[1].url, seen[1].body], ["http://127.0.0.1:49153/customers/c-1", '{"again":"c-1"}']);
+});
+
+const LOGIN_PAGE = ["open {web}/login", 'click "Pay"', 'see "Paid"'];
+
+function recordingBrowser(): { browser: BrowserAdapter; sent: BrowserCommand[] } {
+  const sent: BrowserCommand[] = [];
+  const browser: BrowserAdapter = async (command) => {
+    sent.push(command);
+    return { ok: true, detail: "" };
+  };
+  return { browser, sent };
+}
+
+test("affected selects a card whose only service is an open target when that app changed (T-1.5)", () => {
+  const page = saved("S-0001", LOGIN_PAGE);
+  const base: ContentKey = { env: "e1", apps: { web: "t1", orders: "t2" } };
+  assert.deepEqual(affected([page], { ...base, apps: { web: "t9", orders: "t2" } }, base), [page]);
+  assert.deepEqual(affected([page], { ...base, apps: { web: "t1", orders: "t9" } }, base), []);
+});
+
+test("a browser card lists the stub whose log grew while it ran, and passes its pages and run key to the browser (T-1.5)", async () => {
+  const adapter = withStubs([], { "payments-mock": [[], [CHARGE]] });
+  const { browser, sent } = recordingBrowser();
+  const services = ["web", "orders"];
+  const [run] = await replayScenarios({ ...input([saved("S-0002", LOGIN_PAGE)], adapter), services, browser, pages: { web: "http://web:3000" }, stubs: { "payments-mock": "http://payments-mock.stub" } });
+  assert.deepEqual([run.outcome, run.mocks, run.gaps], ["passed", ["payments-mock"], []]);
+  assert.deepEqual(sent.map((command) => [command.session, command.word]), [["aaaa", "open"], ["aaaa", "click"], ["aaaa", "see"], ["aaaa", "close"]]);
+  assert.deepEqual(sent[0], { session: "aaaa", timeoutMs: 20000, word: "open", url: "http://web:3000/login" });
+});
+
+test("a browser card replayed with no browser service is blocked on its first browser step", async () => {
+  const [run] = await replayScenarios({ ...input([saved("S-0002", LOGIN_PAGE)], scripted([]).adapter), services: ["web"], browser: noBrowser, pages: { web: "http://web:3000" } });
+  assert.deepEqual([run.outcome, run.attempts, run.detail], ["blocked", ["blocked"], "step 1: the environment has no browser service"]);
 });

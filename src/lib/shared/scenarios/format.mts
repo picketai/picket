@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { frontmatter, readValue, stringify, type YamlMap, type YamlValue } from "../../util/yaml-lite.mts";
 
-export const STEP_WORDS = ["request", "expect", "capture", "wait"] as const;
+export const STEP_WORDS = ["request", "expect", "capture", "wait", "open", "fill", "click", "see"] as const;
 export const HEADER_KEYS = ["id", "kind", "covers", "intent", "flow", "supersedes", "superseded_by", "known", "defect", "status", "format", "fingerprint"] as const;
 export const KINDS = ["normal", "boundary", "negative", "permission", "state", "integration", "smoke"] as const;
 export const STATUSES = ["active", "deprecated"] as const;
@@ -30,7 +30,12 @@ export type RequestStep = { word: "request"; line: number; method: string; targe
 export type ExpectStep = { word: "expect"; line: number; what: "status"; status: number } | { word: "expect"; line: number; what: "contains"; text: string };
 export type CaptureStep = { word: "capture"; line: number; name: string; from: "json" | "header"; key: string };
 export type WaitStep = { word: "wait"; line: number; seconds: number };
-export type Step = RequestStep | ExpectStep | CaptureStep | WaitStep;
+export type OpenStep = { word: "open"; line: number; target: string };
+export type FillStep = { word: "fill"; line: number; label: string; value: string };
+export type ClickStep = { word: "click"; line: number; name: string };
+export type SeeStep = { word: "see"; line: number; text: string };
+export type BrowserStep = OpenStep | FillStep | ClickStep | SeeStep;
+export type Step = RequestStep | ExpectStep | CaptureStep | WaitStep | BrowserStep;
 export type Card = { header: ScenarioHeader; steps: Step[] };
 
 const REQUIRED_KEYS = ["id", "kind", "covers", "intent", "format"];
@@ -50,6 +55,10 @@ const EXPECT_STATUS = /^status\s+(\d{3})$/;
 const EXPECT_CONTAINS = /^contains\s+(.+)$/;
 const CAPTURE = /^([a-z][a-z0-9_]*)\s+(json|header)\s+(\S+)$/;
 const WAIT = /^(\d+)s$/;
+const OPEN_WORD = /^open(?:\s|$)/;
+const OPEN = /^(\S+)$/;
+const FILL = /^("(?:[^"\\]|\\.)*")\s+with\s+("(?:[^"\\]|\\.)*")$/;
+const PAGE_WORDS = ["fill", "click", "see"];
 
 type FieldRule = { key: string; valid: (value: YamlValue) => boolean; message: string };
 
@@ -150,15 +159,63 @@ function readWait(rest: string, line: number): StepRead {
   return stepProblem(line, `wait takes 1s to ${MAX_WAIT_SECONDS}s`);
 }
 
-function readStep(text: string, line: number, requested: boolean): StepRead {
+function quoted(raw: string): string | null {
+  const text = jsonString(raw);
+  return text === "" ? null : text;
+}
+
+function readOpen(rest: string, line: number): StepRead {
+  const match = rest.match(OPEN);
+  return match ? { step: { word: "open", line, target: match[1] } } : stepProblem(line, "open takes a page, such as open {web}/login");
+}
+
+function readFill(rest: string, line: number): StepRead {
+  const match = rest.match(FILL);
+  const label = match ? quoted(match[1]) : null;
+  const value = match ? jsonString(match[2]) : null;
+  if (label === null || value === null) return stepProblem(line, 'fill takes "<label>" with "<value>", such as fill "Email" with "PKT-{run}@example.com"');
+  return { step: { word: "fill", line, label, value } };
+}
+
+function readClick(rest: string, line: number): StepRead {
+  const name = quoted(rest);
+  return name === null ? stepProblem(line, 'click takes the name of a button, a link or a text, such as click "Sign in"') : { step: { word: "click", line, name } };
+}
+
+function readSee(rest: string, line: number): StepRead {
+  const text = quoted(rest);
+  return text === null ? stepProblem(line, 'see takes the text a user sees, such as see "Welcome"') : { step: { word: "see", line, text } };
+}
+
+const READERS: Record<StepWord, (rest: string, line: number) => StepRead> = {
+  request: readRequest,
+  expect: readExpect,
+  capture: readCapture,
+  wait: readWait,
+  open: readOpen,
+  fill: readFill,
+  click: readClick,
+  see: readSee,
+};
+
+type Seen = { requested: boolean; opened: boolean };
+
+function orderProblem(word: string, seen: Seen): string | null {
+  if ((word === "expect" || word === "capture") && !seen.requested) return `${word} comes before any request`;
+  if (PAGE_WORDS.includes(word) && !seen.opened) return `${word} comes before any open`;
+  return null;
+}
+
+function isStepWord(word: string): word is StepWord {
+  return (STEP_WORDS as readonly string[]).includes(word);
+}
+
+function readStep(text: string, line: number, seen: Seen): StepRead {
   const word = text.split(/\s+/, 1)[0];
-  const rest = text.slice(word.length).trim();
-  if ((word === "expect" || word === "capture") && !requested) return stepProblem(line, `${word} comes before any request`);
-  if (word === "request") return readRequest(rest, line);
-  if (word === "expect") return readExpect(rest, line);
-  if (word === "capture") return readCapture(rest, line);
-  if (word === "wait") return readWait(rest, line);
-  return stepProblem(line, `unknown step word "${word}"`);
+  const order = orderProblem(word, seen);
+  if (order !== null) return stepProblem(line, order);
+  if (!isStepWord(word)) return stepProblem(line, `unknown step word "${word}"`);
+  return READERS[word](text.slice(word.length).trim(), line);
 }
 
 function attachLine(request: RequestStep, text: string): string | null {
@@ -181,7 +238,7 @@ export function readSteps(body: string): StepsRead {
   const problems: string[] = [];
   let line = 0;
   let last: Step | "broken" | null = null;
-  let requested = false;
+  const seen: Seen = { requested: false, opened: false };
   for (const raw of body.split("\n")) {
     if (raw.trim() === "") continue;
     if (INDENTED.test(raw)) {
@@ -191,8 +248,9 @@ export function readSteps(body: string): StepsRead {
       continue;
     }
     line += 1;
-    const read = readStep(raw.trim(), line, requested);
-    requested ||= REQUEST_WORD.test(raw);
+    const read = readStep(raw.trim(), line, seen);
+    seen.requested ||= REQUEST_WORD.test(raw);
+    seen.opened ||= OPEN_WORD.test(raw);
     if ("problem" in read) problems.push(read.problem);
     else steps.push(read.step);
     last = "step" in read ? read.step : "broken";
@@ -246,7 +304,25 @@ function stepLines(step: Step): string[] {
   }
   if (step.word === "expect") return [step.what === "status" ? `expect status ${step.status}` : `expect contains ${JSON.stringify(step.text)}`];
   if (step.word === "capture") return [`capture ${step.name} ${step.from} ${step.key}`];
-  return [`wait ${step.seconds}s`];
+  if (step.word === "wait") return [`wait ${step.seconds}s`];
+  return [browserLine(step)];
+}
+
+function browserLine(step: BrowserStep): string {
+  if (step.word === "open") return `open ${step.target}`;
+  if (step.word === "fill") return `fill ${JSON.stringify(step.label)} with ${JSON.stringify(step.value)}`;
+  if (step.word === "click") return `click ${JSON.stringify(step.name)}`;
+  return `see ${JSON.stringify(step.text)}`;
+}
+
+export function browserTexts(step: BrowserStep): string[] {
+  if (step.word === "open") return [step.target];
+  if (step.word === "fill") return [step.label, step.value];
+  return [step.word === "click" ? step.name : step.text];
+}
+
+export function isBrowserStep(step: Step): step is BrowserStep {
+  return step.word === "open" || step.word === "fill" || step.word === "click" || step.word === "see";
 }
 
 export function writeScenario(card: Card): string {

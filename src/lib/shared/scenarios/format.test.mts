@@ -34,7 +34,7 @@ function withHeader(lines: string[]): string {
 }
 
 test("the step words are the closed list of the format", () => {
-  assert.deepEqual(STEP_WORDS, ["request", "expect", "capture", "wait"]);
+  assert.deepEqual(STEP_WORDS, ["request", "expect", "capture", "wait", "open", "fill", "click", "see"]);
 });
 
 test("the example card parses into its requests, expects and capture (T-1.1)", () => {
@@ -79,7 +79,7 @@ test("the fingerprint ignores line endings and a card with no fingerprint line d
 });
 
 test("an unknown step word names the word and its step line, a command included (T-1.3)", () => {
-  assert.deepEqual(problemsOf(["request GET {orders}/health", "expect status 200", 'expect contains "ok"', "click #submit"]), ['step 4: unknown step word "click"']);
+  assert.deepEqual(problemsOf(["request GET {orders}/health", "expect status 200", 'expect contains "ok"', "press #submit"]), ['step 4: unknown step word "press"']);
   assert.deepEqual(problemsOf(["request GET {orders}/health", "run npm test"]), ['step 2: unknown step word "run"']);
 });
 
@@ -161,4 +161,47 @@ test("a known or defect label that is not a defect id is a header problem (T-1.1
 
 test("a card with any problem parses to no card", () => {
   assert.equal(parseScenario([...HEADER, "click #submit", ""].join("\n")).card, null);
+});
+
+const BROWSER_STEPS = ["open {web}/login", 'fill "Email" with "PKT-{run}@example.com"', 'click "Sign in"', 'see "Welcome PKT-{run}"'];
+
+test("the browser words parse into their steps and write back byte for byte (T-1.1)", () => {
+  const parsed = card([...HEADER, ...BROWSER_STEPS, ""].join("\n"));
+  assert.deepEqual(parsed.steps, [
+    { word: "open", line: 1, target: "{web}/login" },
+    { word: "fill", line: 2, label: "Email", value: "PKT-{run}@example.com" },
+    { word: "click", line: 3, name: "Sign in" },
+    { word: "see", line: 4, text: "Welcome PKT-{run}" },
+  ]);
+  const written = writeScenario(parsed);
+  assert.ok(written.endsWith(`---\n${BROWSER_STEPS.join("\n")}\n`), written);
+  assert.ok(fingerprintMatches(written));
+  assert.equal(writeScenario(card(written)), written);
+});
+
+test("quoted browser texts are JSON strings and keep their escapes through a write (T-1.1)", () => {
+  const steps = ["open {web}/", 'fill "Say \\"hi\\"" with "a\\\\b"', 'see "line\\none"'];
+  const parsed = card([...HEADER, ...steps, ""].join("\n"));
+  assert.deepEqual(parsed.steps.slice(1), [
+    { word: "fill", line: 2, label: 'Say "hi"', value: "a\\b" },
+    { word: "see", line: 3, text: "line\none" },
+  ]);
+  assert.ok(writeScenario(parsed).endsWith(`---\n${steps.join("\n")}\n`));
+});
+
+test("fill, click and see before any open are step problems (T-1.1)", () => {
+  assert.deepEqual(problemsOf(['click "x"', "open {web}/"]), ["step 1: click comes before any open"]);
+  assert.deepEqual(problemsOf(["request GET {orders}/health", 'fill "Email" with "a"', 'see "ok"']), ["step 2: fill comes before any open", "step 3: see comes before any open"]);
+  assert.deepEqual(problemsOf(["open {web}/", 'click "x"', "expect status 200"]), ["step 3: expect comes before any request"]);
+});
+
+test("a malformed browser step names its word, and an unknown word is still named (T-1.1)", () => {
+  const fillForm = 'fill takes "<label>" with "<value>", such as fill "Email" with "PKT-{run}@example.com"';
+  assert.deepEqual(problemsOf(["open {web}/", 'fill "Email"']), [`step 2: ${fillForm}`]);
+  assert.deepEqual(problemsOf(["open {web}/", 'fill Email with "a"']), [`step 2: ${fillForm}`]);
+  assert.deepEqual(problemsOf(["open {web}/", 'fill "" with "a"']), [`step 2: ${fillForm}`]);
+  assert.deepEqual(problemsOf(["open {web}/", "click Sign in"]), ['step 2: click takes the name of a button, a link or a text, such as click "Sign in"']);
+  assert.deepEqual(problemsOf(["open {web}/", 'see ""']), ['step 2: see takes the text a user sees, such as see "Welcome"']);
+  assert.deepEqual(problemsOf(["open", "open {web}/ x"]), ["step 1: open takes a page, such as open {web}/login", "step 2: open takes a page, such as open {web}/login"]);
+  assert.deepEqual(problemsOf(["open {web}/", "press #submit"]), ['step 2: unknown step word "press"']);
 });

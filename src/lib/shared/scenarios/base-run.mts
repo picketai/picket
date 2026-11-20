@@ -13,6 +13,7 @@ import { environmentStubs, prepareStubs, stackMocks, withStubPorts, type Environ
 import { statePath } from "../paths.mts";
 import type { ItemLayout } from "../repos.mts";
 import type { WorkState } from "../work/state.mts";
+import { browserAdapter } from "./browser.mts";
 import type { SavedScenario } from "./files.mts";
 import { replayScenarios, type ReplayInput, type ScenarioRun } from "./replay.mts";
 import type { Versions } from "./results.mts";
@@ -25,7 +26,7 @@ export type BaseInput = {
   state: Pick<WorkState, "id" | "base">;
   key: string;
   scenarios: SavedScenario[];
-  replay: Omit<ReplayInput, "scenarios" | "services" | "urls" | "stubs" | "ownMocks" | "catalog">;
+  replay: Omit<ReplayInput, "scenarios" | "services" | "urls" | "stubs" | "ownMocks" | "catalog" | "browser" | "pages">;
 };
 export type BaseOutcome = { runs: ScenarioRun[]; versions: Versions } | { failure: string };
 
@@ -130,7 +131,8 @@ async function startAndReplay(input: BaseInput, checkouts: BaseCheckout[], stack
   compose(engine, baseRoot, stack, built.files, ["up", "--detach", "--wait"]);
   const started = model.services.filter((service) => service.profiles.length === 0);
   const urls = serviceEndpoints(engine, baseRoot, stack, built.files, withStubPorts(started, stubs.stubbed));
-  const runs = await replayScenarios({ ...input.replay, scenarios, services: model.services.map((service) => service.name), urls, ...stackMocks(model, stubs.mocks, urls), catalog: catalogOf(baseRoot) });
+  const browsing = { browser: browserAdapter(input.replay.adapter, null), pages: {} };
+  const runs = await replayScenarios({ ...input.replay, ...browsing, scenarios, services: model.services.map((service) => service.name), urls, ...stackMocks(model, stubs.mocks, urls), catalog: catalogOf(baseRoot) });
   return { runs, versions: Object.fromEntries(sources.map((source) => [source.service, source.version])) };
 }
 

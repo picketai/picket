@@ -124,3 +124,19 @@ test("listEntries reads one entry per .md file in name order and nothing without
   t.after(() => rmSync(empty, { recursive: true, force: true }));
   assert.deepEqual(listEntries(empty), []);
 });
+
+test("an entry with a browser word is refused with the words an entry may use (T-1.6)", () => {
+  const opening = FIND.replace("capture id json 0.id\n", 'capture id json 0.id\nopen {orders}/orders\nsee "PKT-"\n');
+  assert.deepEqual(parseEntry(opening, "open-order"), {
+    entry: null,
+    problems: ["step 4: an entry uses only request, expect, capture and wait", "step 5: an entry uses only request, expect, capture and wait"],
+  });
+});
+
+test("a scenario's {data:...} value in a browser step is checked against the catalog", (t) => {
+  const root = project(t, { "open-order.md": FIND });
+  const text = ["---", "id: S-0001", "kind: normal", "covers: []", "intent: page", "format: 1", "---", "open {orders}/orders", 'see "{data:open-order.number}"', ""].join("\n");
+  const { card } = parseScenario(text);
+  const scenario: SavedScenario = { path: ".picket/env/scenarios/S-0001.md", id: "S-0001", card, problems: [], fingerprint: "", byHand: false };
+  assert.deepEqual(messages(root, [scenario]), ["E13 error S-0001: {data:open-order.number}: open-order captures only id"]);
+});

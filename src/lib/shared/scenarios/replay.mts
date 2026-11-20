@@ -3,6 +3,7 @@ import type { CatalogEntry } from "../catalog/entry.mts";
 import { readTraffic, trafficBetween } from "../mocks/stub.mts";
 import type { SavedScenario } from "./files.mts";
 import type { Card } from "./format.mts";
+import type { BrowserAdapter } from "./browser.mts";
 import type { HttpAdapter } from "./http.mts";
 import type { ContentKey } from "./keys.mts";
 import type { ScenarioOutcome } from "./results.mts";
@@ -19,6 +20,8 @@ export type ReplayInput = {
   ownMocks: string[];
   catalog: CatalogEntry[];
   adapter: HttpAdapter;
+  browser: BrowserAdapter;
+  pages: Record<string, string>;
   env: NodeJS.ProcessEnv;
   today: string;
   newRunKey: () => string;
@@ -37,8 +40,8 @@ function problemsOf(scenario: SavedScenario, services: string[]): string[] {
 }
 
 async function attempt(card: Card, input: ReplayInput): Promise<RunOutcome> {
-  const { urls, adapter, env, today, timeoutMs, sleep } = input;
-  const run = { urls, adapter, env, today, runKey: input.newRunKey(), timeoutMs, sleep };
+  const { urls, adapter, browser, pages, env, today, timeoutMs, sleep } = input;
+  const run = { urls, adapter, browser, pages, env, today, runKey: input.newRunKey(), timeoutMs, sleep };
   const resolved = await resolveData(card, input.catalog, run);
   if ("blocked" in resolved) return { outcome: "blocked", step: null, detail: resolved.blocked, captures: {} };
   return runScenario({ ...run, card, data: resolved.data });
@@ -68,7 +71,7 @@ export async function replayScenarios(input: ReplayInput): Promise<ScenarioRun[]
 }
 
 function targetServices(card: Card): string[] {
-  return card.steps.flatMap((step) => (step.word === "request" ? (step.target.match(SERVICE_TARGET)?.slice(1, 2) ?? []) : []));
+  return card.steps.flatMap((step) => (step.word === "request" || step.word === "open" ? (step.target.match(SERVICE_TARGET)?.slice(1, 2) ?? []) : []));
 }
 
 export function affected(scenarios: SavedScenario[], working: ContentKey, base: ContentKey): SavedScenario[] {

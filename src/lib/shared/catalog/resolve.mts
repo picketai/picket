@@ -1,4 +1,4 @@
-import type { Card, Step } from "../scenarios/format.mts";
+import { browserTexts, isBrowserStep, type Card, type Step } from "../scenarios/format.mts";
 import { runScenario, type RunInput } from "../scenarios/runner.mts";
 import { asCard, listEntries, type CatalogEntry, type EntryKind } from "./entry.mts";
 
@@ -18,7 +18,7 @@ const FAILED_ENTRY: Record<EntryKind, (name: string) => string> = {
 function stepTexts(step: Step): string[] {
   if (step.word === "request") return [step.target, ...step.headers.map(([, value]) => value), ...(step.body === null ? [] : [step.body])];
   if (step.word === "expect" && step.what === "contains") return [step.text];
-  return [];
+  return isBrowserStep(step) ? browserTexts(step) : [];
 }
 
 export function dataRefs(card: Card): string[] {

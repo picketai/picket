@@ -131,11 +131,11 @@ function withCard(ctx: Context, name: string, text: string): Context {
 const CARD_HEADER = "---\nid: S-0002\nkind: normal\ncovers: []\nintent: billing\nformat: 1\n---\n";
 
 test("a broken scenario card fails the check with one E11 line per problem under its file's id (T-1.6)", (t) => {
-  const ctx = withCard(umbrellaContext(t), "S-0002.md", `${CARD_HEADER}request GET {billing}/invoices\nclick #pay\n`);
+  const ctx = withCard(umbrellaContext(t), "S-0002.md", `${CARD_HEADER}request GET {billing}/invoices\npress #pay\n`);
   const outcome = checkEnvironment(ctx, linuxDocker(RECORDED));
   assert.equal(describeExit(outcome).code, 2);
   const lines = renderCheck(report(outcome)).split("\n");
-  assert.deepEqual(lines.filter((line) => line.startsWith("E11")), ['E11 S-0002: step 2: unknown step word "click"']);
+  assert.deepEqual(lines.filter((line) => line.startsWith("E11")), ['E11 S-0002: step 2: unknown step word "press"']);
   assert.equal(lines.at(-1), FIXTURE_COUNT);
 });
 

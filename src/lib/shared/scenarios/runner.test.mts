@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseScenario, type Card } from "./format.mts";
+import type { BrowserAdapter, BrowserAnswer, BrowserCommand } from "./browser.mts";
 import type { HttpAdapter, HttpAnswer, HttpRequest } from "./http.mts";
 import { runScenario, type RunInput } from "./runner.mts";
 
@@ -103,4 +104,69 @@ test("a wait sleeps its seconds through the injected sleep", async () => {
   const outcome = await runScenario(input(["request GET {orders}/x", "wait 3s", "expect status 200"], adapter, { sleep: async (ms) => void slept.push(ms) }));
   assert.equal(outcome.outcome, "passed");
   assert.deepEqual(slept, [3000]);
+});
+
+const PAGES = { web: "http://web:3000" };
+const LOGIN_PAGE = ["request POST {orders}/login", "capture token json token", "open {web}/orders/{token}", 'fill "Email" with "PKT-{run}@example.com"', 'click "Sign in"', 'see "Welcome PKT-{run}"'];
+
+function browsing(answers: BrowserAnswer[] = []): { browser: BrowserAdapter; sent: BrowserCommand[] } {
+  const sent: BrowserCommand[] = [];
+  const browser: BrowserAdapter = async (command) => {
+    sent.push(command);
+    return command.word === "close" ? { ok: true, detail: "" } : (answers.shift() ?? { ok: true, detail: "" });
+  };
+  return { browser, sent };
+}
+
+test("a mixed card sends its browser steps in card order on one session, then one close (T-1.3)", async () => {
+  const { adapter, seen } = scripted([answer(200, '{"token":"t-1"}'), answer(200)]);
+  const { browser, sent } = browsing();
+  const outcome = await runScenario(input([...LOGIN_PAGE, "request GET {orders}/orders", "expect status 200"], adapter, { browser, pages: PAGES }));
+  assert.deepEqual(outcome, { outcome: "passed", step: null, detail: "", captures: { token: "t-1" } });
+  assert.deepEqual(sent, [
+    { session: "7f3a", timeoutMs: 20000, word: "open", url: "http://web:3000/orders/t-1" },
+    { session: "7f3a", timeoutMs: 20000, word: "fill", label: "Email", value: "PKT-7f3a@example.com" },
+    { session: "7f3a", timeoutMs: 20000, word: "click", name: "Sign in" },
+    { session: "7f3a", timeoutMs: 20000, word: "see", text: "Welcome PKT-7f3a" },
+    { session: "7f3a", timeoutMs: 20000, word: "close" },
+  ]);
+  assert.deepEqual(seen.map((request) => request.url), ["http://127.0.0.1:49153/login", "http://127.0.0.1:49153/orders"]);
+});
+
+test("an expect after browser steps reads the last HTTP answer (T-1.3)", async () => {
+  const { adapter } = scripted([answer(201, "made")]);
+  const { browser } = browsing();
+  const steps = ["request POST {orders}/orders", "open {web}/orders", 'see "made"', "expect status 201", 'expect contains "made"'];
+  assert.equal((await runScenario(input(steps, adapter, { browser, pages: PAGES }))).outcome, "passed");
+});
+
+test("a failed browser check fails its step, no answer blocks it, and the session is closed either way (T-1.3)", async () => {
+  const failing = browsing([{ ok: true, detail: "" }, { ok: false, detail: "no field labelled Email" }]);
+  const { adapter } = scripted([answer(200, '{"token":"t-1"}')]);
+  const failed = await runScenario(input(LOGIN_PAGE, adapter, { browser: failing.browser, pages: PAGES }));
+  assert.deepEqual(failed, { outcome: "failed", step: 4, detail: "step 4: no field labelled Email", captures: { token: "t-1" } });
+  assert.deepEqual(failing.sent.map((command) => command.word), ["open", "fill", "close"]);
+  const silent = browsing([{ ok: null, detail: "the browser service did not answer: ECONNREFUSED" }]);
+  const blocked = await runScenario(input(["open {web}/", 'see "x"'], scripted([]).adapter, { browser: silent.browser, pages: PAGES }));
+  assert.deepEqual(blocked, { outcome: "blocked", step: 1, detail: "step 1: the browser service did not answer: ECONNREFUSED", captures: {} });
+  assert.deepEqual(silent.sent.map((command) => command.word), ["open", "close"]);
+});
+
+test("a card with no browser step sends no browser command (T-1.3)", async () => {
+  const { adapter } = scripted([answer(201, '{"id":"PKT-7f3a-1"}'), answer(200, '{"id":"PKT-7f3a-1"}')]);
+  const { browser, sent } = browsing();
+  assert.equal((await runScenario(input(EXAMPLE, adapter, { browser, pages: PAGES }))).outcome, "passed");
+  assert.deepEqual(sent, []);
+});
+
+test("an open of a service with no address inside the stack is blocked and sends nothing (T-1.3)", async () => {
+  const { browser, sent } = browsing();
+  const outcome = await runScenario(input(["open {web}/", 'see "x"'], scripted([]).adapter, { browser, pages: {} }));
+  assert.deepEqual(outcome, { outcome: "blocked", step: 1, detail: "step 1: {web} has no address inside the stack", captures: {} });
+  assert.deepEqual(sent, []);
+});
+
+test("a run given no browser adapter blocks its first browser step on the missing browser service", async () => {
+  const outcome = await runScenario(input(["open {web}/", 'see "x"'], scripted([]).adapter, { pages: PAGES }));
+  assert.deepEqual(outcome, { outcome: "blocked", step: 1, detail: "step 1: the environment has no browser service", captures: {} });
 });

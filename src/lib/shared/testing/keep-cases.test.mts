@@ -52,3 +52,18 @@ test("the final round's mocks are named through the given real-name map, once ea
   const rows: TestRow[] = [caseRow("C-01", "normal", { mocks: ["payments-mock", "mailer"] }), caseRow("C-02", "boundary", { mocks: ["payments-mock"] }), caseRow("C-03", "state", { round: 1, mocks: ["stock-mock"] })];
   assert.deepEqual(notProven(rows, 2, (mock) => (mock === "payments-mock" ? "payments-api" : mock)), ["payments-api", "mailer"]);
 });
+
+test("a passed case with browser steps becomes a candidate whose text parses back to the same steps (T-1.5)", () => {
+  const steps = `${LOGIN_STEPS}open {web}/orders\nfill "Reference" with "PKT-{run}"\nclick "Save"\nsee "Saved PKT-{run}"\n`;
+  const [candidate] = caseCandidates(ITEM, [caseRow("C-01", "normal", { steps })], 2, []);
+  assert.ok(candidate?.text, "no candidate");
+  const { card, problems } = parseScenario(candidate.text);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(card?.steps.slice(3), [
+    { word: "open", line: 4, target: "{web}/orders" },
+    { word: "fill", line: 5, label: "Reference", value: "PKT-{run}" },
+    { word: "click", line: 6, name: "Save" },
+    { word: "see", line: 7, text: "Saved PKT-{run}" },
+  ]);
+  assert.ok(fingerprintMatches(candidate.text));
+});

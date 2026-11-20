@@ -98,3 +98,27 @@ test("ordinary code keys and headers pass the card rule, a passcode does not (T-
   assert.deepEqual(problems(["request GET {orders}/x", "  header X-Country-Code: DE"]), []);
   assert.deepEqual(problems(["request POST {orders}/x", '  body {"passcode":"1234"}']), ["step 1: body key passcode holds a literal secret; take it from a capture or {user:<role>.<field>}"]);
 });
+
+test("an open outside the environment's services breaks rule 1 (T-1.2)", () => {
+  assert.deepEqual(problems(["open https://example.com/x"]), ["rule 1: step 1 opens https://example.com/x; a page opens only {<service>} of the environment"]);
+  assert.deepEqual(problems(["open /x"]), ["rule 1: step 1 opens /x; a page opens only {<service>} of the environment"]);
+  assert.deepEqual(problems(["open {nope}/"]), ["rule 1: step 1 names {nope}, which is no service of the environment"]);
+  assert.deepEqual(problems(["open {orders}/x"]), []);
+});
+
+test("every text of a browser step follows rule 3 and the fixed-date check (T-1.2)", () => {
+  assert.deepEqual(problems(["open {orders}/x", 'see "{secret}"']), [`rule 3: step 2 takes {secret}, ${RULE_3}`]);
+  assert.deepEqual(problems(["open {orders}/x/{order_id}"]), [`rule 3: step 1 takes {order_id}, ${RULE_3}`]);
+  assert.deepEqual(problems(["open {orders}/x", 'click "{HOME}"', 'fill "{label}" with "a"']), [`rule 3: step 2 takes {HOME}, ${RULE_3}`, `rule 3: step 3 takes {label}, ${RULE_3}`]);
+  assert.deepEqual(problems(["open {orders}/x", 'fill "Due" with "2026-01-02"']), ["step 2: fixed date 2026-01-02; write {date:+Nd}"]);
+  assert.deepEqual(problems(["open {orders}/x?at=2026-01-02"]), ["step 1: fixed date 2026-01-02; write {date:+Nd}"]);
+  assert.deepEqual(problems(["request POST {orders}/login", "capture token json token", "open {orders}/x/{token}", 'fill "Due" with "{date:+7d}"', 'see "PKT-{run}"']), []);
+});
+
+test("a literal value in a fill whose label names a secret is refused, a test user is not (T-1.2)", () => {
+  const source = "take it from a capture or {user:<role>.<field>}";
+  assert.deepEqual(problems(["open {orders}/login", 'fill "Password" with "hunter2"']), [`step 2: fill "Password" holds a literal secret; ${source}`]);
+  assert.deepEqual(problems(["open {orders}/login", 'fill "API key" with "k1"']), [`step 2: fill "API key" holds a literal secret; ${source}`]);
+  assert.deepEqual(problems(["open {orders}/login", 'fill "Password" with "{user:buyer.password}"']), []);
+  assert.deepEqual(problems(["open {orders}/login", 'fill "Email" with "PKT-{run}@example.com"', 'fill "Postal code" with "10115"']), []);
+});

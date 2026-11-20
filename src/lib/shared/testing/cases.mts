@@ -9,6 +9,7 @@ import { listMocks } from "../mocks/definition.mts";
 import { catalogOf } from "../catalog/resolve.mts";
 import { stackMocks, stubbedMocks, withStubPorts } from "../mocks/stub.mts";
 import { FORMAT, parseScenario, writeScenario, type Card, type ScenarioHeader } from "../scenarios/format.mts";
+import { browserAdapter } from "../scenarios/browser.mts";
 import type { HttpAdapter } from "../scenarios/http.mts";
 import { CANDIDATE_ID } from "../scenarios/keep.mts";
 import { replayScenarios, type ReplayInput } from "../scenarios/replay.mts";
@@ -69,6 +70,8 @@ export function runCaseInput(ctx: Context, deps: CaseDeps, stack: ItemStack): Ru
     ownMocks: stack.ownMocks,
     catalog: catalogOf(ctx.root),
     adapter: deps.adapter,
+    browser: browserAdapter(deps.adapter, null),
+    pages: {},
     env: ctx.env,
     today: ctx.now().toISOString().slice(0, DAY_LENGTH),
     newRunKey: () => newRunKey(deps.random(RUN_KEY_BYTES)),

@@ -12,6 +12,7 @@ import { classify, isBlamed, RESULT_CLASSES, type ResultClass } from "../../shar
 import { ageDays, readDefects } from "../../shared/scenarios/defects.mts";
 import { itemChanges, lastFailing, maskedBy, namesDefect, stoppedFailing } from "../../shared/scenarios/known.mts";
 import { acceptFingerprint, listScenarios, type SavedScenario } from "../../shared/scenarios/files.mts";
+import { browserAdapter } from "../../shared/scenarios/browser.mts";
 import { httpAdapter, type HttpAdapter } from "../../shared/scenarios/http.mts";
 import { baseKey, keyId, workingKey, type ContentKey } from "../../shared/scenarios/keys.mts";
 import { affected, replayScenarios, type ScenarioRun } from "../../shared/scenarios/replay.mts";
@@ -178,7 +179,8 @@ async function replayStack(session: Session): Promise<ReplayReport> {
   const scenarios = selected(listScenarios(root), input, keys);
   const services = start.model.services.map((service) => service.name);
   const mockFiles = listMocks(root);
-  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), scenarios, services, urls: start.report.endpoints, ...stackMocks(start.model, mockFiles, start.report.endpoints), catalog: catalogOf(root) });
+  const browsing = { browser: browserAdapter(session.deps.adapter, null), pages: {} };
+  const runs = await replayScenarios({ ...replayDeps(ctx, session.deps), ...browsing, scenarios, services, urls: start.report.endpoints, ...stackMocks(start.model, mockFiles, start.report.endpoints), catalog: catalogOf(root) });
   const baseId = keyId(keys.base);
   const stored = readResults(root);
   const labels = knownLabels(scenarios);
