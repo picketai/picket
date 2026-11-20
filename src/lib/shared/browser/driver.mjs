@@ -84,7 +84,10 @@ function stepper(launch) {
   let browser = null;
   const sessionFor = async (id) => {
     if (!sessions.has(id)) {
-      browser ??= launch();
+      browser ??= launch().catch((err) => {
+        browser = null;
+        throw err;
+      });
       const context = await (await browser).newContext();
       sessions.set(id, { context, page: await context.newPage() });
     }

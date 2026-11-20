@@ -1,6 +1,5 @@
-import { BROWSER_ROLE, PLAYWRIGHT_VERSION } from "../browser/service.mts";
 import type { EnvModel, EnvService } from "./model.mts";
-import { DATA_PROFILE, isRole, LONG_RUNNING, ROLE_LABEL, ROLES, X_PICKET } from "./standard.mts";
+import { BROWSER_ROLE, DATA_PROFILE, isRole, LONG_RUNNING, PLAYWRIGHT_VERSION, ROLE_LABEL, ROLES, X_PICKET } from "./standard.mts";
 
 export type Finding = { rule: string; service: string | null; level: "error" | "pending"; message: string };
 

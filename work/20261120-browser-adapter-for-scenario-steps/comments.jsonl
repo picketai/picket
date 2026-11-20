@@ -1,0 +1,4 @@
+{"ts":"2026-11-20T18:50:49.939Z","path":"test/timing/budgets.test.mjs","text":"the replay core's landed 705 lines with the browser words, rounded up to the next 50 (order D-005)"}
+{"ts":"2026-11-20T18:50:50.120Z","path":"test/timing/budgets.test.mjs","text":"the browser adapter's landed 38 lines, rounded up to the next 50 (order D-005)"}
+{"ts":"2026-11-20T18:50:50.321Z","path":"test/timing/budgets.test.mjs","text":"the browser driver's landed 166 lines, rounded up to the next 50 (order D-005)"}
+{"ts":"2026-11-20T18:54:19.449Z","path":"test/timing/budgets.test.mjs","text":"the browser driver's landed 167 lines, rounded up to the next 50 (order D-005)"}

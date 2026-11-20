@@ -2,23 +2,23 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, renameSync, rmSync } from 
 import { join } from "node:path";
 import { Refused } from "../action.mts";
 import type { EnvModel, EnvService } from "../env/model.mts";
-import type { Role } from "../env/standard.mts";
+import { BROWSER_ROLE, PLAYWRIGHT_VERSION } from "../env/standard.mts";
 import { pluginRoot, statePath } from "../paths.mts";
 
 export type BrowserFragment = {
   command: string[];
   volumes: { type: "bind"; source: string; target: string; read_only: true }[];
   healthcheck: { test: string[]; interval: string; timeout: string; retries: number };
-  ports: { target: number }[];
+  ports: { target: number; host_ip: string }[];
   init: true;
   ipc: "host";
 };
 export type BrowserFiles = { driver: string; vendored: string };
 export type BrowserStack = { driver: string | null; pages: Record<string, string> };
 
-export const PLAYWRIGHT_VERSION = "1.65.1";
-export const BROWSER_ROLE: Role = "browser";
+export { BROWSER_ROLE, PLAYWRIGHT_VERSION };
 export const DRIVER_PORT = 8080;
+const LOOPBACK = "127.0.0.1";
 const DRIVER_NAME = "driver.mjs";
 const PACKAGE_NAME = "playwright-core";
 const CONTAINER_DRIVER = `/picket/${DRIVER_NAME}`;
@@ -45,7 +45,7 @@ export function browserFragment(driver: string, vendored: string): BrowserFragme
     command: ["node", CONTAINER_DRIVER, "--serve"],
     volumes: [bind(driver, CONTAINER_DRIVER), bind(vendored, CONTAINER_PACKAGE)],
     healthcheck: { test: ["CMD", "node", CONTAINER_DRIVER, "--health"], interval: HEALTH_INTERVAL, timeout: HEALTH_TIMEOUT, retries: HEALTH_RETRIES },
-    ports: [{ target: DRIVER_PORT }],
+    ports: [{ target: DRIVER_PORT, host_ip: LOOPBACK }],
     init: true,
     ipc: "host",
   };

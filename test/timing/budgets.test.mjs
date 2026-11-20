@@ -19,10 +19,10 @@ const BUDGETS = {
   rule_lines: 60,
   hook_cold_ms: 200, // a hook runs on every matching tool call
   inject_chars: 10000,
-  scenario_core_lines: 750,
+  scenario_core_lines: 750, // the replay core's landed 705 lines with the browser words, rounded up to the next 50 (order D-005)
   scenario_adapter_lines: 50, // the fetch adapter's landed 21 lines rounded up to 50 (design OQ-001)
-  browser_adapter_lines: 50,
-  browser_driver_lines: 200,
+  browser_adapter_lines: 50, // the browser adapter's landed 38 lines, rounded up to the next 50 (order D-005)
+  browser_driver_lines: 200, // the browser driver's landed 167 lines, rounded up to the next 50 (order D-005)
   stub_server_lines: 100,
   mock_adapter_lines: 150,
 };

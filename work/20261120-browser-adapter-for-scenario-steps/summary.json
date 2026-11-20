@@ -1,0 +1,105 @@
+{
+  "work_id": "20261120-browser-adapter-for-scenario-steps",
+  "base": "ce44e8265ee7790d3a2ccc56d6f8a3c1b6730e02",
+  "request": "work/20261120-browser-adapter-for-scenario-steps/request.md",
+  "size": "large",
+  "changed_files": [
+    "package-lock.json",
+    "package.json",
+    "scripts/build.mjs",
+    "src/lib/shared/browser/driver.mjs",
+    "src/lib/shared/browser/driver.test.mts",
+    "src/lib/shared/browser/service.mts",
+    "src/lib/shared/browser/service.test.mts",
+    "src/lib/shared/catalog/entry.mts",
+    "src/lib/shared/catalog/entry.test.mts",
+    "src/lib/shared/catalog/resolve.mts",
+    "src/lib/shared/catalog/resolve.test.mts",
+    "src/lib/shared/env/rules.mts",
+    "src/lib/shared/env/rules.test.mts",
+    "src/lib/shared/env/standard.mts",
+    "src/lib/shared/env/trial.mts",
+    "src/lib/shared/scenarios/base-run.mts",
+    "src/lib/shared/scenarios/browser.mts",
+    "src/lib/shared/scenarios/browser.test.mts",
+    "src/lib/shared/scenarios/format.mts",
+    "src/lib/shared/scenarios/format.test.mts",
+    "src/lib/shared/scenarios/replay.mts",
+    "src/lib/shared/scenarios/replay.test.mts",
+    "src/lib/shared/scenarios/rules.mts",
+    "src/lib/shared/scenarios/rules.test.mts",
+    "src/lib/shared/scenarios/rules.variants.test.mts",
+    "src/lib/shared/scenarios/runner.mts",
+    "src/lib/shared/scenarios/runner.test.mts",
+    "src/lib/shared/testing/cases.mts",
+    "src/lib/shared/testing/cases.test.mts",
+    "src/lib/shared/testing/keep-cases.test.mts",
+    "src/lib/verbs/env/check.test.mts",
+    "src/lib/verbs/env/replay.mts",
+    "src/lib/verbs/env/start.mts",
+    "src/lib/verbs/test/skill-examples.test.mts",
+    "src/skills/testing/steps/cases.md",
+    "test/fixtures/env/browser-card/.picket/env/compose.yaml",
+    "test/fixtures/env/browser-card/.picket/env/scenarios/S-0001.md",
+    "test/fixtures/env/browser/.picket/env/compose.yaml",
+    "test/repo/build.test.mjs",
+    "test/repo/package.test.mjs",
+    "test/repo/plugin-layout.test.mjs",
+    "test/timing/budgets.test.mjs"
+  ],
+  "lines_added": 1346,
+  "lines_removed": 87,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-20T18:44:04.671Z",
+    "base": "ce44e8265ee7790d3a2ccc56d6f8a3c1b6730e02",
+    "mutant": {
+      "path": "scripts/build.mjs",
+      "line": 245,
+      "from": "true",
+      "to": "false"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 157424
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}

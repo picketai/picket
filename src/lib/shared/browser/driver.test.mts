@@ -161,3 +161,20 @@ test("a missing label arrives as failed with the driver's detail unchanged (T-2.
   const { outcome } = await runOn(t, ["open {web}/signup", 'fill "Phone" with "PKT-{run}"']);
   assert.deepEqual(outcome, { outcome: "failed", step: 2, detail: 'step 2: found 0 fields labelled "Phone"; the step needs exactly one', captures: {} });
 });
+
+test("a failed Chromium start does not stick: the next open launches again", async (t) => {
+  const fake = fakeLaunch(FORM);
+  let starts = 0;
+  const launch = async () => {
+    starts += 1;
+    if (starts === 1) throw new Error("chromium did not start");
+    return fake.launch();
+  };
+  const driver = await startDriver({ host: "127.0.0.1", port: 0, launch });
+  t.after(() => driver.close());
+  const browser = browserAdapter(httpAdapter(), `http://127.0.0.1:${driver.port}`);
+  const open = { session: "a", timeoutMs: 0, word: "open" as const, url: "http://web:3000/" };
+  assert.deepEqual(await browser(open), { ok: false, detail: "chromium did not start" });
+  assert.deepEqual(await browser(open), { ok: true, detail: "" });
+  assert.equal(starts, 2);
+});

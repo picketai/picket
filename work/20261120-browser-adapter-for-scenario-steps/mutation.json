@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-20T18:44:04.671Z",
+  "base": "ce44e8265ee7790d3a2ccc56d6f8a3c1b6730e02",
+  "mutant": {
+    "path": "scripts/build.mjs",
+    "line": 245,
+    "from": "true",
+    "to": "false"
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 157424
+}

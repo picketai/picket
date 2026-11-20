@@ -24,7 +24,7 @@ function project(t: TestContext): { root: string; files: BrowserFiles } {
   return { root, files: { driver: join(built, "driver.mjs"), vendored: join(built, "playwright-core") } };
 }
 
-test("the browser overlay runs the driver with two read-only binds, its health check, one engine-picked port, init and ipc host (T-2.2)", (t) => {
+test("the browser overlay runs the driver with two read-only binds, its health check, one engine-picked port on the loopback address only, init and ipc host (T-2.2)", (t) => {
   const { root, files } = project(t);
   const fragments = prepareBrowser(root, "picket-proj-481", WITH_BROWSER, files);
   const driver = join(root, ".picket", "state", "env", "picket-proj-481", "browser", "driver.mjs");
@@ -37,7 +37,7 @@ test("the browser overlay runs the driver with two read-only binds, its health c
         { type: "bind", source: vendored, target: "/picket/node_modules/playwright-core", read_only: true },
       ],
       healthcheck: { test: ["CMD", "node", "/picket/driver.mjs", "--health"], interval: "2s", timeout: "2s", retries: 15 },
-      ports: [{ target: 8080 }],
+      ports: [{ target: 8080, host_ip: "127.0.0.1" }],
       init: true,
       ipc: "host",
     },
