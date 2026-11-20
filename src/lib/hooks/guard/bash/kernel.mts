@@ -1,16 +1,19 @@
 import { join, resolve } from "node:path";
 import { testRuns, type TestRun } from "../../../shared/checkouts.mts";
 import { kernelVerbStart } from "../../../shared/shell/kernel-call.mts";
+import { parseArgs } from "../../../util/args.mts";
 import { workId } from "../../../shared/work/files.mts";
 import { VERB_NAMES } from "../../../verbs.mts";
 
-type VerbTable = Record<string, { readOnly?: boolean; leadOnly?: boolean; subverbs?: Record<string, { readOnly: boolean }> }>;
+type SubverbFlags = { readOnly: boolean; confirmed?: true };
+type VerbTable = Record<string, { readOnly?: boolean; leadOnly?: boolean; subverbs?: Record<string, SubverbFlags> }>;
 type KernelScope = { cwd: string | null; depth: number; hookRoot: string | null; platform: NodeJS.Platform; classifyText: (text: string, cwd: string | null, depth: number) => string };
 
 export const WRAPPING_FLAGS = new Set(["--run", "--start", "--only"]);
 export const BARE_KERNEL = "picket";
 
 const PHASE_NUMBER = /^\d+$/;
+const BOOLEAN_GLOBALS = new Set(["--human", "--pretty", "--json"]);
 
 const VERBS: VerbTable = VERB_NAMES;
 
@@ -18,11 +21,31 @@ function entryOf(verb: unknown): VerbTable[string] | undefined {
   return typeof verb === "string" && Object.hasOwn(VERBS, verb) ? VERBS[verb] : undefined;
 }
 
-export function kernelClass(verb: unknown, subverb: unknown): "safe" | "kernel" {
+function subverbOf(entry: VerbTable[string], subverb: unknown): SubverbFlags | undefined {
+  return entry.subverbs && typeof subverb === "string" && Object.hasOwn(entry.subverbs, subverb) ? entry.subverbs[subverb] : undefined;
+}
+
+export function kernelClass(verb: unknown, subverb: unknown): "safe" | "kernel" | "deny" {
   const entry = entryOf(verb);
   if (!entry) return "kernel";
-  if (entry.subverbs) return typeof subverb === "string" && Object.hasOwn(entry.subverbs, subverb) && entry.subverbs[subverb].readOnly ? "safe" : "kernel";
-  return entry.readOnly ? "safe" : "kernel";
+  if (!entry.subverbs) return entry.readOnly ? "safe" : "kernel";
+  const sub = subverbOf(entry, subverb);
+  if (sub?.confirmed) return "deny";
+  return sub?.readOnly ? "safe" : "kernel";
+}
+
+export const CONFIRMED_SUBVERBS: readonly string[] = Object.entries(VERBS).flatMap(([verb, entry]) =>
+  Object.entries(entry.subverbs ?? {})
+    .filter(([, sub]) => sub.confirmed)
+    .map(([sub]) => `${verb} ${sub}`),
+);
+
+export function isConfirmedCall(seg: readonly unknown[]): boolean {
+  const start = kernelVerbStart(seg);
+  if (start === null) return false;
+  const words = seg.slice(start).map((word) => (typeof word === "string" ? word : "")).filter((word) => !BOOLEAN_GLOBALS.has(word));
+  const [verb, subverb] = parseArgs(words).pos;
+  return kernelClass(verb, subverb) === "deny";
 }
 
 export const LEAD_ONLY_VERBS: ReadonlySet<string> = new Set(Object.keys(VERBS).filter((verb) => VERBS[verb].leadOnly === true));
@@ -72,7 +95,8 @@ function verifyRunsNoProjectCode(tokens: readonly unknown[], { cwd, hookRoot, de
   return runs.every(({ dir, command }) => !command || classifyText(command, join(hookRoot, dir), depth) === "safe");
 }
 
-export function classifyKernelCall(tokens: readonly unknown[], scope: KernelScope): "safe" | "unknown" | "kernel" {
+export function classifyKernelCall(tokens: readonly unknown[], scope: KernelScope): "safe" | "unknown" | "kernel" | "deny" {
+  if (isConfirmedCall(tokens)) return "deny";
   const [, verb, subverb] = tokens;
   if (verb === "verify") return verifyRunsNoProjectCode(tokens, scope) ? "safe" : "unknown";
   return kernelClass(verb, subverb);

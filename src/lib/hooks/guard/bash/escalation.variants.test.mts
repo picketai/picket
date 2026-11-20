@@ -38,3 +38,11 @@ closureTests({
   run: decisionsIn([...ASKING_MODES]),
   closed: allDenied,
 });
+
+closureTests({
+  guard: "guard.bash escalation of a data run",
+  grammar: commandLines,
+  seeds: ["picket data run 20261116-x customer", "picket data run 20261116-x customer extra"].map((command) => `${MARKED}${command}`),
+  run: decisionsIn([...ASKING_MODES, ...NON_ASKING_MODES]),
+  closed: allDenied,
+});

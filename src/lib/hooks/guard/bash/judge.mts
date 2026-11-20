@@ -1,13 +1,19 @@
-import { carriesMarker, leadingAssignments, withoutMarker } from "../../../shared/escalation.mts";
+import { carriesMarker, leadingAssignments, POWERSHELL_MARKER_TEXT, withoutMarker } from "../../../shared/escalation.mts";
 import { maskEnvValues } from "../../../shared/drive-log.mts";
 import { judgeEscalation, logEscalation, markerReason } from "./escalation.mts";
 import { stdinTexts } from "./in-place.mts";
+import { isConfirmedCall } from "./kernel.mts";
 import { codeWriteDenial, codeWritesIn, cwdChange, codeWritesInside, deletesInsideWrapper, deniedCodeWrite, deniedRecordWrite, isTester, KERNEL_MENTION, leadOnlyInside, leadOnlyRefusal, redirectCodeWrites, TESTER_REFUSAL, testerRefusal, wrappedVerbCheck, type CodeWrite } from "./payloads.mts";
 import { decide, fallThrough, isSanctionedLogSink, LOG_SINK_DIR, type Classification, type Dialect, type GuardContext, type Judgement, type Reading, type Refusal, type Segment } from "./rules.mts";
 import { recordDenial } from "./records.mts";
 import { redirectSource, sourceCheck, sourceDenial } from "./sources.mts";
 
 const ALLOW_REASON = `guard.bash: every sub-command is read-only/inspection or a bare picket call that wraps no command, with no hidden execution and no write redirection outside the sanctioned ${LOG_SINK_DIR} log sink.`;
+
+function confirmedCallDenial(dialect: Dialect<unknown>): string {
+  const marked = dialect.name === "powershell" ? `${POWERSHELL_MARKER_TEXT} = "<why>"; picket data run <id> <entry>` : 'PICKET_ESCALATE="<why>" picket data run <id> <entry>';
+  return `guard.bash: picket data run reaches a database, so it runs only through the permission dialog: ${marked}`;
+}
 
 export function isEscalating(segments: Segment[], ctx: GuardContext): boolean {
   return ctx.depth === 0 && segments.some(carriesMarker);
@@ -74,6 +80,7 @@ export function judgeSegments(reading: Reading<unknown>, ctx: GuardContext, dial
     return refuse(codeWriteDenial(codeWrite.rel, dialect.hints.escalate));
   }
   if (isEscalating(segments, ctx)) return judgeEscalation(command, segments, classifications, reading, ctx);
+  if (segments.some(isConfirmedCall)) return decide("deny", confirmedCallDenial(dialect));
   if (classifications.includes("deny")) return decide("deny", dialect.hints.denial(command));
   if (!dialect.allows) return fallThrough(`${dialect.name}:[${classifications.join(",")}]`);
   if (reading.hiddenExecution) return fallThrough("hidden-execution");

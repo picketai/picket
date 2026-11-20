@@ -1,7 +1,7 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { classifyKernelCall, isLeadOnly, kernelClass, WRAPPING_FLAGS } from "./kernel.mts";
+import { classifyKernelCall, CONFIRMED_SUBVERBS, isConfirmedCall, isLeadOnly, kernelClass, WRAPPING_FLAGS } from "./kernel.mts";
 import { LEAD_ONLY_VERBS } from "./kernel.mts";
 import { VERB_NAMES } from "../../../verbs.mts";
 import { writeLayout } from "../../../shared/repos.mts";
@@ -33,12 +33,13 @@ function classifyVerify(root: string, ...words: string[]): { verdict: string; se
 
 const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify", "name"];
 const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"], env: ["check", "status"], data: ["show"] };
+const CONFIRMED = ["data run"];
 
 test("every flag whose value drive or check executes is a wrapping flag guard.bash inspects", () => {
   for (const flag of ["--only", "--run", "--start"]) assert.ok(WRAPPING_FLAGS.has(flag), flag);
 });
 
-test("kernelClass is safe for today's read verbs and subverbs and kernel for every other entry; isLeadOnly holds for comment, data, reply, uninstall and waive only (T-4.1, T-7.5)", () => {
+test("kernelClass is safe for today's read verbs and subverbs, deny for data run and kernel for every other entry; isLeadOnly holds for comment, data, reply, uninstall and waive only (T-4.1, T-7.5)", () => {
   const verbs = Object.keys(VERB_NAMES);
   assert.ok(verbs.length > 10, verbs.join(" "));
   for (const [verb, entry] of Object.entries(VERB_NAMES)) {
@@ -47,7 +48,7 @@ test("kernelClass is safe for today's read verbs and subverbs and kernel for eve
       continue;
     }
     assert.equal(kernelClass(verb, undefined), "kernel", `${verb} without a subverb`);
-    for (const sub of Object.keys(entry.subverbs)) assert.equal(kernelClass(verb, sub), READ_SUBVERBS[verb]?.includes(sub) ? "safe" : "kernel", `${verb} ${sub}`);
+    for (const sub of Object.keys(entry.subverbs)) assert.equal(kernelClass(verb, sub), READ_SUBVERBS[verb]?.includes(sub) ? "safe" : CONFIRMED.includes(`${verb} ${sub}`) ? "deny" : "kernel", `${verb} ${sub}`);
   }
   assert.equal(kernelClass("nosuchverb", undefined), "kernel");
   assert.equal(kernelClass("constructor", undefined), "kernel");
@@ -90,4 +91,18 @@ test("picket verify of a missing item, a phase with no entry, or no phase classi
   assert.equal(classifyVerify(root, id, "2").verdict, "unknown");
   assert.equal(classifyVerify(root, id).verdict, "unknown");
   assert.equal(classifyVerify(root, "Not An Id", "1").verdict, "unknown");
+});
+
+test("data run is the one confirmed subverb, and a confirmed call is found past assignments, global flags and the node launcher", () => {
+  assert.deepEqual(CONFIRMED_SUBVERBS, CONFIRMED);
+  const confirmed = [
+    ["picket", "data", "run", "20261119-x", "customer"],
+    ["picket", "--root", ".", "data", "run", "20261119-x", "customer"],
+    ["picket", "--json", "data", "run"],
+    ["A=1", "picket", "data", "run"],
+    ["node", "dist/bin/picket.mjs", "data", "run"],
+  ];
+  for (const words of confirmed) assert.equal(isConfirmedCall(words), true, words.join(" "));
+  for (const words of [["picket", "data", "show", "data/a.sql"], ["picket", "data"], ["echo", "picket", "data", "run"], ["picket", "run", "data"]]) assert.equal(isConfirmedCall(words), false, words.join(" "));
+  assert.equal(classifyKernelCall(["picket", "--human", "data", "run", "x", "y"], { cwd: null, depth: 0, hookRoot: null, platform: process.platform, classifyText: () => "safe" }), "deny");
 });

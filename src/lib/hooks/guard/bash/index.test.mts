@@ -2,7 +2,9 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readConfirmations } from "../../../shared/data/confirm.mts";
 import { statePath, stateRel, STATE_FILES } from "../../../shared/paths.mts";
+import { DATA_ENV, seedDataRun } from "#test/data-run.mts";
 import { decision } from "#test/hook.mts";
 import { openItem, withProject } from "#test/project.mts";
 
@@ -133,4 +135,21 @@ test("guardBash never allows a heredoc redirect into an extension file", (t) => 
   const root = project(t);
   const command = "cat > .picket/extensions/x/rules/a.md <<'EOF'\nUse pnpm.\nEOF";
   assert.notEqual(decision(command, { root, tool: "Bash" }), "allow");
+});
+
+test("a session's next Bash or PowerShell command voids its pending data run confirmation, while another session's or a sessionless one voids nothing (T-3.5)", (t) => {
+  for (const tool of ["Bash", "PowerShell"]) {
+    const root = project(t);
+    const { marked } = seedDataRun(root);
+    assert.equal(decision(marked, { root, tool: "Bash", mode: "default", session: "s1", env: DATA_ENV }), "ask");
+    const [asked] = readConfirmations(root);
+    decision("git status", { root, tool, session: "s2" });
+    decision("git status", { root, tool });
+    assert.deepEqual(readConfirmations(root), [asked], tool);
+    decision("git status", { root, tool, session: "s1" });
+    const [, voided, ...more] = readConfirmations(root);
+    assert.deepEqual(more, [], tool);
+    assert.deepEqual(Object.keys(voided), ["id", "voided_at"], tool);
+    assert.equal(voided.id, asked.id, tool);
+  }
 });

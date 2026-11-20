@@ -1,5 +1,5 @@
 export type VerbEntry = { summary: string; readOnly: boolean; leadOnly?: boolean };
-export type SubverbEntry = { summary: string; readOnly: boolean };
+export type SubverbEntry = { summary: string; readOnly: boolean; confirmed?: true };
 export type GroupEntry = { summary: string; leadOnly?: boolean; subverbs: Record<string, SubverbEntry> };
 
 export const VERB_NAMES = {
@@ -14,7 +14,7 @@ export const VERB_NAMES = {
     subverbs: {
       show: { summary: "print a SQL file under .picket/env/data/ with its digest and approval status", readOnly: true },
       approve: { summary: "record the user's approval of a SQL file at the digest show printed", readOnly: false },
-      run: { summary: "run an approved sql entry's file through its data service on the item's stack", readOnly: false },
+      run: { summary: "run an approved sql entry's file through its data service on the item's stack", readOnly: false, confirmed: true },
     },
   },
   drive: { summary: "start the app or run a command, exercise it, stop it and log the evidence", readOnly: false },

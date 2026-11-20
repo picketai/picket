@@ -12,7 +12,7 @@ import { openItem, withProject } from "./project.mts";
 export const HOOK_BUNDLES = resolve("dist/hooks");
 
 export type DecisionOptions = { root: string; tool?: string; agent?: string; mode?: string; session?: string; cwd?: string; home?: string; env?: NodeJS.ProcessEnv };
-export type GuardOutput = { permissionDecision: "allow" | "ask" | "deny"; permissionDecisionReason: string };
+export type GuardOutput = { permissionDecision: "allow" | "ask" | "deny"; permissionDecisionReason: string; updatedInput?: { command?: unknown } };
 
 export function guardOutput(command: string, { root, tool, agent, mode, session, cwd = root, home, env }: DecisionOptions): GuardOutput | null {
   const event = { hook_event_name: "PreToolUse", tool_name: tool, tool_input: { command }, cwd, agent_type: agent, session_id: session, permission_mode: mode };

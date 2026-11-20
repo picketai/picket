@@ -48,14 +48,15 @@ test("only the lead and the user run picket waive and picket comment; a spawned 
   assert.notEqual(outcome("picket state 20261018-x", "picket:developer")?.permissionDecision, "deny");
 });
 
-test("picket data, bare or inside picket drive --run, is denied to a spawned developer with its own reason and left to the lead (T-7.5)", (t) => {
+test("picket data, bare or inside picket drive --run, is denied to a spawned developer with its own reason, and the lead's show and approve are left to the lead (T-7.5)", (t) => {
   const root = project(t);
   const outcome = (command: string, agent: string | undefined) => guardOutput(command, { root, tool: "Bash", agent });
   for (const command of ["picket data approve data/a.sql --sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 'picket drive --run "picket data show data/a.sql"', "picket data run 20261118-x customer"]) {
     const denied = outcome(command, "abcd-developer");
     assert.equal(denied?.permissionDecision, "deny", command);
     assert.match(denied?.permissionDecisionReason ?? "", LEAD_ONLY_REASONS.data, command);
-    assert.notEqual(outcome(command, undefined)?.permissionDecision, "deny", `lead: ${command}`);
+    if (command.includes("data run")) assert.match(outcome(command, undefined)?.permissionDecisionReason ?? "", /runs only through the permission dialog/, `lead: ${command}`);
+    else assert.notEqual(outcome(command, undefined)?.permissionDecision, "deny", `lead: ${command}`);
   }
 });
 

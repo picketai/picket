@@ -1,0 +1,9 @@
+{
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "picket data run 20261119-database-guards-and-confirmed-sql-runs customer"
+  },
+  "permission_mode": "default",
+  "session_id": "fixture-data-run"
+}

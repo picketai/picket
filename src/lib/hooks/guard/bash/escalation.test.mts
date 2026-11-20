@@ -1,8 +1,11 @@
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { observeDrive as driveHandler } from "../../observe/drive/index.mts";
+import { confirmationsPath, readConfirmations, sha256Hex, type Confirmation } from "../../../shared/data/confirm.mts";
+import { statePath, STATE_FILES } from "../../../shared/paths.mts";
+import { DATA_APPROVED_AT, DATA_ENV, DATA_SECRET, seedDataRun } from "#test/data-run.mts";
 import { hookContext } from "#test/context.mts";
 import { gitIn } from "#test/git.mts";
 import { guardOutput, ledgerRows, looseHandler, type DecisionOptions, type GuardOutput } from "#test/hook.mts";
@@ -209,4 +212,132 @@ test("the PowerShell deny names the PowerShell marker form and the Bash deny kee
     mustJudge(PUSH).permissionDecisionReason,
     'guard.bash: command contains a destructive sub-command (e.g. rm, sudo, git push/reset/rebase/checkout/merge/clean). If the user asked for this action in this session or the work cannot continue without it, run it alone as `PICKET_ESCALATE="<why>" <command>` and the user decides in the dialog. Cleanup after the work is never escalated: record it with `picket leave <id> --command "<command>"` and it is listed when the item closes.',
   );
+});
+
+const DATA_RUN_ROUTE = "data run asks only in the default, acceptEdits and auto modes, through this marked command";
+
+function dataRunProject(t: TestContext, options: { declared?: boolean; seeded?: boolean } = {}) {
+  const project = escalationProject(t);
+  const seed = options.seeded === false ? null : seedDataRun(project.root, options);
+  const noConfirmation = () => {
+    assert.equal(existsSync(confirmationsPath(project.root)), false, "confirmations.jsonl");
+    assert.equal(existsSync(statePath(project.root, STATE_FILES.dataSnapshots)), false, "snapshots");
+  };
+  return { ...project, seed, noConfirmation };
+}
+
+function readState(root: string, name: string): string {
+  const path = statePath(root, name);
+  return existsSync(path) ? readFileSync(path, "utf8") : "";
+}
+
+test("the lead's plain data run is denied in Bash and PowerShell with the marked form it must take", (t) => {
+  const { mustJudge, seed, noConfirmation, escalationRows } = dataRunProject(t);
+  assert.ok(seed);
+  const bash = mustJudge(seed.plain, { env: DATA_ENV });
+  assert.equal(bash.permissionDecision, "deny");
+  assert.equal(bash.permissionDecisionReason, 'guard.bash: picket data run reaches a database, so it runs only through the permission dialog: PICKET_ESCALATE="<why>" picket data run <id> <entry>');
+  const powerShell = mustJudge(seed.plain, { env: DATA_ENV, tool: "PowerShell" });
+  assert.equal(powerShell.permissionDecision, "deny");
+  assert.match(powerShell.permissionDecisionReason, /\$env:PICKET_ESCALATE = "<why>"; picket data run <id> <entry>$/);
+  assert.equal(mustJudge(`picket drive --run "${seed.plain}"`, { env: DATA_ENV }).permissionDecision, "deny");
+  noConfirmation();
+  assert.deepEqual(escalationRows(), []);
+});
+
+test("the lead's marked data run asks with the run it shows and snapshots those bytes behind a nonce only the rewritten command holds (T-3.3, T-3.6)", (t) => {
+  const { root, mustJudge, seed, escalationRows } = dataRunProject(t);
+  assert.ok(seed);
+  const out = mustJudge(seed.marked, { env: DATA_ENV });
+  assert.equal(out.permissionDecision, "ask");
+  assert.equal(
+    out.permissionDecisionReason,
+    `guard.bash: data run by main: "seed one customer". entry customer · file data/customer.sql · sha256 ${seed.digest} · server sql01 · database orders_test · approved ${DATA_APPROVED_AT}. Approving runs this snapshot once; nothing carries over.`,
+  );
+  const [row, ...others] = readConfirmations(root) as Confirmation[];
+  assert.deepEqual(others, []);
+  assert.deepEqual(
+    { ...row, id: "", at: "", nonce_sha256: "" },
+    { id: "", at: "", session: "s1", item: seed.id, entry: "customer", service: "orders-sql", path: "data/customer.sql", sha256: seed.digest, server: "sql01", database: "orders_test", snapshot: `data/snapshots/${seed.digest}.sql`, nonce_sha256: "" },
+  );
+  assert.equal(sha256Hex(readFileSync(statePath(root, row.snapshot))), row.sha256);
+  const command = String(out.updatedInput?.command);
+  const rewritten = /^PICKET_ESCALATE='seed one customer' picket data run (\S+) customer --confirmation ([0-9a-f]{64})$/.exec(command);
+  assert.ok(rewritten, command);
+  assert.equal(rewritten[1], seed.id);
+  const nonce = rewritten[2];
+  assert.equal(row.nonce_sha256, sha256Hex(nonce));
+  for (const name of [STATE_FILES.dataConfirmations, STATE_FILES.ledger, STATE_FILES.guardLog]) {
+    assert.ok(!readState(root, name).includes(nonce), `nonce in ${name}`);
+    assert.ok(!readState(root, name).includes(DATA_SECRET), `secret in ${name}`);
+  }
+  assert.ok(!out.permissionDecisionReason.includes(DATA_SECRET));
+  assert.deepEqual(escalationRows().map((r) => [r.outcome, r.why, r.command, r.reason]), [["ask", null, seed.plain, "seed one customer"]]);
+});
+
+test("a PowerShell-marked data run asks and is rewritten as a PowerShell statement carrying the nonce", (t) => {
+  const { mustJudge, seed } = dataRunProject(t);
+  assert.ok(seed);
+  const out = mustJudge(`$env:PICKET_ESCALATE = "seed one customer"; ${seed.plain}`, { env: DATA_ENV, tool: "PowerShell" });
+  assert.equal(out.permissionDecision, "ask");
+  assert.match(String(out.updatedInput?.command), new RegExp(`^\\$env:PICKET_ESCALATE = 'seed one customer'; picket data run ${seed.id} customer --confirmation [0-9a-f]{64}$`));
+});
+
+test("a plan refusal denies the marked data run with its cause in every mode and writes no confirmation (T-3.2)", (t) => {
+  for (const mode of ["default", "bypassPermissions"]) {
+    const undeclared = dataRunProject(t, { declared: false });
+    assert.ok(undeclared.seed);
+    const out = undeclared.mustJudge(undeclared.seed.marked, { env: DATA_ENV, mode });
+    assert.equal(out.permissionDecision, "deny", mode);
+    assert.match(out.permissionDecisionReason, /^guard\.bash: orders-sql may reach only the targets data_targets\.orders-sql/, mode);
+    assert.ok(out.permissionDecisionReason.endsWith(`; ${DATA_RUN_ROUTE}`), out.permissionDecisionReason);
+    assert.ok(!out.permissionDecisionReason.includes(DATA_SECRET));
+    assert.deepEqual(undeclared.escalationRows().map((r) => [r.outcome, r.why]), [["denied", "data_plan"]]);
+    undeclared.noConfirmation();
+  }
+  const bare = dataRunProject(t, { seeded: false });
+  const out = bare.mustJudge('PICKET_ESCALATE="seed one customer" picket data run 20261119-orders customer');
+  assert.equal(out.permissionDecision, "deny");
+  assert.equal(out.permissionDecisionReason, `guard.bash: no catalog entry customer; ${DATA_RUN_ROUTE}`);
+  bare.noConfirmation();
+});
+
+test("a marked data run outside an asking mode, under a saved rule, by an agent or in any other shape is denied without a confirmation (T-3.4)", (t) => {
+  for (const mode of [undefined, "plan", "bypassPermissions", "dontAsk"]) {
+    const { mustJudge, seed, noConfirmation } = dataRunProject(t);
+    assert.ok(seed);
+    const out = mustJudge(seed.marked, { env: DATA_ENV, mode });
+    assert.equal(out.permissionDecision, "deny", String(mode));
+    assert.ok(out.permissionDecisionReason.includes(`permission mode ${mode ?? "unknown"}`), out.permissionDecisionReason);
+    assert.ok(!out.permissionDecisionReason.includes("! picket data run"), out.permissionDecisionReason);
+    noConfirmation();
+  }
+  const ruled = dataRunProject(t);
+  assert.ok(ruled.seed);
+  writeFileSync(join(ruled.root, ".claude", "settings.json"), JSON.stringify({ permissions: { allow: ["Bash(*)"] } }));
+  const byRule = ruled.mustJudge(ruled.seed.marked, { env: DATA_ENV });
+  assert.equal(byRule.permissionDecision, "deny");
+  assert.ok(byRule.permissionDecisionReason.includes("the saved allow rule Bash(*)"), byRule.permissionDecisionReason);
+  assert.ok(byRule.permissionDecisionReason.endsWith(DATA_RUN_ROUTE));
+  ruled.noConfirmation();
+
+  const { mustJudge, seed, noConfirmation } = dataRunProject(t);
+  assert.ok(seed);
+  const byAgent = mustJudge(seed.marked, { env: DATA_ENV, agent: "abcd-developer" });
+  assert.equal(byAgent.permissionDecision, "deny");
+  assert.match(byAgent.permissionDecisionReason, /only the lead runs it on the user's word/);
+  const shapes = [
+    seed.marked.replace("picket data run", "picket --root x data run"),
+    `${seed.marked} --root x`,
+    `${seed.marked} --confirmation ${"a".repeat(64)}`,
+  ];
+  for (const command of shapes) {
+    const out = mustJudge(command, { env: DATA_ENV });
+    assert.equal(out.permissionDecision, "deny", command);
+    assert.equal(out.permissionDecisionReason, `guard.bash: escalate data run as picket data run <id> <entry>, alone; ${DATA_RUN_ROUTE}`, command);
+  }
+  const chained = mustJudge(`${seed.marked} && echo x`, { env: DATA_ENV });
+  assert.equal(chained.permissionDecision, "deny");
+  assert.equal(chained.permissionDecisionReason, `guard.bash: escalate one command, alone; ${DATA_RUN_ROUTE}`);
+  noConfirmation();
 });

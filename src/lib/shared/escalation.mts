@@ -10,6 +10,7 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const NON_LITERAL = /[\n\r$`]/;
 const LEADING_MARKER = new RegExp(`^\\s*${MARKER}=(?:"(?:[^"\\\\]|\\\\.)*"|'[^']*'|\\\\.|[^\\s"'\\\\])*\\s*`);
 const POWERSHELL_ENV_DRIVE = "$env:";
+const TRAILING_CONFIRMATION = /\s+--confirmation\s+[0-9a-f]{64}\s*$/;
 export const POWERSHELL_MARKER_TEXT = `${POWERSHELL_ENV_DRIVE}${MARKER}`;
 
 function anyCase(text: string): string {
@@ -67,7 +68,7 @@ export function withoutMarker(rawCommand: string): string {
 }
 
 export function commandKey(command: string): string {
-  return createHash("sha256").update(withoutMarker(command).replace(/\s+/g, " ")).digest("hex");
+  return createHash("sha256").update(withoutMarker(command).replace(TRAILING_CONFIRMATION, "").replace(/\s+/g, " ")).digest("hex");
 }
 
 function isEscalation(row: LedgerRow | null | undefined): row is EscalationRow {

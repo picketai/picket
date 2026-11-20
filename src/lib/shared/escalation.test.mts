@@ -33,3 +33,10 @@ test("recordEscalation appends a v2 escalation row stamped with the given time a
   assert.deepEqual([row.v, row.ts, row.event, row.outcome], [2, "2026-10-23T10:00:00.000Z", "escalation", "ask"]);
   assert.match(row.key, /^[0-9a-f]{64}$/);
 });
+
+test("the escalation key of a data run is the same with and without the trailing confirmation the guard appends (T-3.7)", () => {
+  const key = commandKey('PICKET_ESCALATE="seed one customer" picket data run 20261119-x customer');
+  assert.equal(commandKey(`PICKET_ESCALATE='seed one customer' picket data run 20261119-x customer --confirmation ${"0f".repeat(32)}`), key);
+  assert.equal(commandKey(`$env:PICKET_ESCALATE = 'seed one customer'; picket data run 20261119-x customer --confirmation ${"0f".repeat(32)}`), key);
+  assert.notEqual(commandKey(`picket data run 20261119-x customer --confirmation ${"0f".repeat(31)}`), key);
+});

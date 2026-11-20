@@ -2,7 +2,8 @@ import type { HookEvent } from "../hooks.mts";
 
 type PermissionDecision = "allow" | "ask" | "deny";
 
-export type PermissionOutput = { hookSpecificOutput: { hookEventName: "PreToolUse"; permissionDecision: PermissionDecision; permissionDecisionReason: string } };
+export type UpdatedInput = Record<string, unknown>;
+export type PermissionOutput = { hookSpecificOutput: { hookEventName: "PreToolUse"; permissionDecision: PermissionDecision; permissionDecisionReason: string; updatedInput?: UpdatedInput } };
 export type ContextOutput = { hookSpecificOutput: { hookEventName: HookEvent; additionalContext: string }; systemMessage?: string };
 export type BounceOutput = { decision: "block"; reason: string };
 export type HookOutput = PermissionOutput | ContextOutput | BounceOutput;
@@ -15,8 +16,9 @@ export function allow(reason: string): PermissionOutput {
   return permission("allow", reason);
 }
 
-export function ask(reason: string): PermissionOutput {
-  return permission("ask", reason);
+export function ask(reason: string, updatedInput?: UpdatedInput): PermissionOutput {
+  const output = permission("ask", reason);
+  return updatedInput === undefined ? output : { hookSpecificOutput: { ...output.hookSpecificOutput, updatedInput } };
 }
 
 export function deny(reason: string): PermissionOutput {

@@ -23,6 +23,7 @@ const SECRET_WORDS = [{ module: CONFIG_ENTRIES, name: "SECRET_WORDS" }];
 const BASH_RULES = "src/lib/hooks/guard/bash/rules.mts";
 const BASH_KERNEL = "src/lib/hooks/guard/bash/kernel.mts";
 const BASH_ESCALATION = "src/lib/hooks/guard/bash/escalation.mts";
+const KERNEL_CLOSURE = "src/lib/hooks/guard/bash/kernel.variants.test.mts";
 const ESCALATION_CLOSURE = "src/lib/hooks/guard/bash/escalation.variants.test.mts";
 const BASH_RECORDS = "src/lib/hooks/guard/bash/records.mts";
 const RECORDS_CLOSURE = "src/lib/hooks/guard/bash/records.variants.test.mts";
@@ -43,13 +44,16 @@ export const GUARDS = [
   { guard: "guard.bash lead-only verbs", module: "src/lib/hooks/guard/bash/payloads.mts", closure: "src/lib/hooks/guard/bash/payloads.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "LEAD_ONLY_VERBS" }] },
   { guard: "guard.bash tester commands", module: "src/lib/hooks/guard/bash/payloads.mts", closure: "src/lib/hooks/guard/bash/tester.variants.test.mts", tables: [{ module: "src/lib/hooks/guard/bash/payloads.mts", name: "TESTER_VERBS" }] },
   { guard: "guard.blackbox", module: "src/lib/hooks/guard/blackbox/index.mts", closure: "src/lib/hooks/guard/blackbox/index.variants.test.mts", tables: [] },
-  { guard: "guard.bash wrapped kernel commands", module: BASH_KERNEL, closure: "src/lib/hooks/guard/bash/kernel.variants.test.mts", tables: [{ module: BASH_KERNEL, name: "WRAPPING_FLAGS" }] },
+  { guard: "guard.bash wrapped kernel commands", module: BASH_KERNEL, closure: KERNEL_CLOSURE, tables: [{ module: BASH_KERNEL, name: "WRAPPING_FLAGS" }] },
+  { guard: "guard.bash confirmed kernel subverbs", module: BASH_KERNEL, closure: KERNEL_CLOSURE, tables: [{ module: BASH_KERNEL, name: "CONFIRMED_SUBVERBS" }] },
+  { guard: "guard.bash confirmed kernel subverbs on PowerShell", module: BASH_KERNEL, closure: KERNEL_CLOSURE, tables: [{ module: BASH_KERNEL, name: "CONFIRMED_SUBVERBS" }] },
   { guard: "guard.bash sources", module: "src/lib/hooks/guard/bash/sources.mts", closure: "src/lib/hooks/guard/bash/sources.variants.test.mts", tables: [] },
   { guard: "guard.bash kernel records", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
   { guard: "guard.bash kernel records in programs", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
   { guard: "guard.bash kernel records in work items", module: BASH_RECORDS, closure: RECORDS_CLOSURE, tables: [] },
   { guard: "guard.bash escalation outside an asking mode", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash escalation of more than one command", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
+  { guard: "guard.bash escalation of a data run", module: BASH_ESCALATION, closure: ESCALATION_CLOSURE, tables: [] },
   { guard: "guard.bash on PowerShell", module: "src/lib/hooks/guard/bash/powershell.mts", closure: "src/lib/hooks/guard/bash/powershell.variants.test.mts", tables: [{ module: BASH_RULES, name: "DENIED_NAMES" }] },
   { guard: "edit target", module: "src/lib/hooks/guard/edit-target.mts", closure: "src/lib/hooks/guard/edit-target.variants.test.mts", tables: [] },
   { guard: "guard.comments", module: "src/lib/hooks/guard/comments/index.mts", closure: "src/lib/hooks/guard/comments/index.variants.test.mts", tables: [{ module: "src/lib/shared/comments.mjs", name: "LANGS" }] },
