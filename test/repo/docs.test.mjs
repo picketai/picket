@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, posix, resolve } from "node:path";
 import { cliPage, hooksPage, modsPage, referencePages, REFERENCE_DIR, withLineFeeds } from "../../scripts/docs.mjs";
 import { isGroup, VERB_NAMES } from "../../src/lib/verbs.mts";
+import { SITE_STYLESHEET, siteStylesheet } from "../../scripts/docs.mjs";
 
 const ROOT = resolve(".");
 const EXIT = { done: 0 };
@@ -98,6 +99,54 @@ test("stalePages names npm run docs for a changed page and a missing one, and re
   const read = (path) => committed[path] ?? null;
   assert.deepEqual(stalePages(pages, read), [staleMessage("docs/reference/b.md"), staleMessage("docs/reference/c.md")]);
   assert.match(staleMessage("docs/reference/b.md"), /run npm run docs and stage it/);
+});
+
+const SITE_COLOUR_TABLE = {
+  "--md-default-bg-color": "inverseText",
+  "--md-default-fg-color": "text",
+  "--md-typeset-color": "text",
+  "--md-primary-bg-color": "text",
+  "--md-code-fg-color": "text",
+  "--md-default-fg-color--light": "inactiveShimmer",
+  "--md-default-fg-color--lighter": "inactive",
+  "--md-default-fg-color--lightest": "subtle",
+  "--md-primary-fg-color": "bashMessageBackgroundColor",
+  "--md-accent-fg-color": "claudeShimmer",
+  "--md-typeset-a-color": "claude",
+  "--md-code-bg-color": "userMessageBackground",
+};
+const SITE_THEME_KEYS = [...new Set([...Object.values(SITE_COLOUR_TABLE), "selectionBg"])];
+
+function distinctTheme(keys) {
+  return { overrides: Object.fromEntries(keys.map((key, index) => [key, `#${String(index).padStart(6, "0")}`])) };
+}
+
+function ruleBody(css, selector) {
+  const start = css.indexOf(`${selector} {`);
+  assert.notEqual(start, -1, `no rule for ${selector}`);
+  return css.slice(start, css.indexOf("}", start));
+}
+
+test("the site stylesheet declares each slate colour, the selection and the wordmark from its theme key", () => {
+  const theme = distinctTheme(SITE_THEME_KEYS);
+  const colour = (key) => theme.overrides[key];
+  const css = siteStylesheet(theme);
+  const slate = ruleBody(css, '[data-md-color-scheme="slate"]');
+  for (const [property, key] of Object.entries(SITE_COLOUR_TABLE)) assert.match(slate, new RegExp(`\\n  ${property}: ${colour(key)};`));
+  assert.match(ruleBody(css, "::selection"), new RegExp(`background-color: ${colour("selectionBg")};`));
+  assert.match(ruleBody(css, ".picket-wordmark__name"), new RegExp(`color: ${colour("text")};\\n  font-weight: 700;`));
+  assert.match(ruleBody(css, ".picket-wordmark__ai"), new RegExp(`color: ${colour("claude")};\\n  font-weight: 700;`));
+  assert.match(ruleBody(css, ".picket-wordmark__prompt"), new RegExp(`color: ${colour("claude")};`));
+  assert.doesNotMatch(ruleBody(css, ".picket-wordmark__prompt"), /font-weight/);
+});
+
+test("the site stylesheet names the theme key it lacks", () => {
+  const theme = distinctTheme(SITE_THEME_KEYS.filter((key) => key !== "claude"));
+  assert.throws(() => siteStylesheet(theme), (error) => error instanceof Error && /overrides\.claude\b/.test(error.message));
+});
+
+test("the site stylesheet is one of the generated pages", async () => {
+  assert.ok((await referencePages()).some(({ path }) => path === SITE_STYLESHEET));
 });
 
 const ROOT_DOCS = ["README.md", "CONTRIBUTING.md", "CHANGELOG.md"];

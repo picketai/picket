@@ -1,0 +1,32 @@
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #0D0A08;
+  --md-default-fg-color: #FDEFD4;
+  --md-typeset-color: #FDEFD4;
+  --md-primary-bg-color: #FDEFD4;
+  --md-code-fg-color: #FDEFD4;
+  --md-default-fg-color--light: #B8AA96;
+  --md-default-fg-color--lighter: #8C8072;
+  --md-default-fg-color--lightest: #4A4038;
+  --md-primary-fg-color: #14110E;
+  --md-accent-fg-color: #FFB27A;
+  --md-typeset-a-color: #F9782B;
+  --md-code-bg-color: #1A1410;
+}
+
+::selection {
+  background-color: #5A3A22;
+}
+
+.picket-wordmark__name {
+  color: #FDEFD4;
+  font-weight: 700;
+}
+
+.picket-wordmark__ai {
+  color: #F9782B;
+  font-weight: 700;
+}
+
+.picket-wordmark__prompt {
+  color: #F9782B;
+}

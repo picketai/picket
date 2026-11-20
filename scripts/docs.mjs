@@ -12,6 +12,8 @@ export const REFERENCE_DIR = "docs/reference";
 export const CLI_PAGE = "cli.md";
 export const HOOKS_PAGE = "hooks.md";
 export const MODS_PAGE = "mods.md";
+export const SITE_STYLESHEET = "docs/stylesheets/picketai.css";
+const THEME_FILE = "src/themes/picketai.json";
 
 const USAGE_LINE = "picket <verb> [args] [--pretty | --human]";
 const LEAD_LINE = "Only the lead runs it; the Bash guard denies it to agents.";
@@ -127,6 +129,51 @@ export function modsPage(mods) {
   return page([["# Mods", "", generatedLine("`src/lib/mods.mts`")], [MODS_INTRO], ["| Mod | Off switch | Does |", "|---|---|---|", ...rows]]);
 }
 
+const SITE_COLOURS = [
+  ["--md-default-bg-color", "inverseText"],
+  ["--md-default-fg-color", "text"],
+  ["--md-typeset-color", "text"],
+  ["--md-primary-bg-color", "text"],
+  ["--md-code-fg-color", "text"],
+  ["--md-default-fg-color--light", "inactiveShimmer"],
+  ["--md-default-fg-color--lighter", "inactive"],
+  ["--md-default-fg-color--lightest", "subtle"],
+  ["--md-primary-fg-color", "bashMessageBackgroundColor"],
+  ["--md-accent-fg-color", "claudeShimmer"],
+  ["--md-typeset-a-color", "claude"],
+  ["--md-code-bg-color", "userMessageBackground"],
+];
+
+const SITE_RULES = [
+  { selector: "::selection", property: "background-color", key: "selectionBg", bold: false },
+  { selector: ".picket-wordmark__name", property: "color", key: "text", bold: true },
+  { selector: ".picket-wordmark__ai", property: "color", key: "claude", bold: true },
+  { selector: ".picket-wordmark__prompt", property: "color", key: "claude", bold: false },
+];
+
+function themeColour(overrides, key) {
+  const colour = overrides[key];
+  if (colour === undefined) throw new Error(`${THEME_FILE} has no overrides.${key}`);
+  return colour;
+}
+
+function cssRule(selector, declarations) {
+  return [`${selector} {`, ...declarations.map(([property, value]) => `  ${property}: ${value};`), "}"].join("\n");
+}
+
+function siteRule(overrides, { selector, property, key, bold }) {
+  return cssRule(selector, [[property, themeColour(overrides, key)], ...(bold ? [["font-weight", "700"]] : [])]);
+}
+
+export function siteStylesheet({ overrides }) {
+  const scheme = cssRule('[data-md-color-scheme="slate"]', SITE_COLOURS.map(([property, key]) => [property, themeColour(overrides, key)]));
+  return `${[scheme, ...SITE_RULES.map((rule) => siteRule(overrides, rule))].join("\n\n")}\n`;
+}
+
+function siteTheme() {
+  return JSON.parse(readFileSync(join(REPO, THEME_FILE), "utf8"));
+}
+
 function commandEntry(command, usage) {
   const [name, sub] = command.split(" ");
   const entry = VERB_NAMES[name];
@@ -147,6 +194,7 @@ export async function referencePages() {
     { path: pagePath(CLI_PAGE), text: cliPage(await cliCommands(), EXIT) },
     { path: pagePath(HOOKS_PAGE), text: hooksPage(HOOKS) },
     { path: pagePath(MODS_PAGE), text: modsPage(MODS) },
+    { path: SITE_STYLESHEET, text: siteStylesheet(siteTheme()) },
   ];
 }
 
