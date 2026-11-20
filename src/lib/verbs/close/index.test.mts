@@ -31,6 +31,7 @@ import { appendReply, type ReplyEntry } from "../../shared/work/replies.mts";
 import { appendVerdict, type VerdictEntry } from "../../shared/work/verdict-log.mts";
 import { chmodSync, existsSync } from "node:fs";
 import { parseScenario } from "../../shared/scenarios/format.mts";
+import { defectCard } from "../../shared/testing/cases.mts";
 
 const ID = "20261023-x";
 const parse = (argv: string[]) => verb.parse(parseArgs(argv));
@@ -662,6 +663,49 @@ test("a close whose commit fails leaves neither the entry nor the card of a reco
   assert.match(refusal(() => closeFast(root, id)), /blocked by hook/);
   assert.equal(existsSync(join(root, FIRST_DEFECT)), false);
   assert.equal(existsSync(join(root, FOUND_CARD)), false);
+});
+
+const ROUND_TWO = new Date(Date.UTC(2026, 10, 18, 10));
+
+function rerunOf(outcome: "passed" | "failed" | "blocked", detail: string): TestEntry {
+  return { ...FOUND_ROW, round: 2, outcome, detail, attempts: 1 } as TestEntry;
+}
+
+test("a recorded defect whose rerun passed records nothing and says so (T-2.1)", (t) => {
+  const { root, id } = foundItem(t);
+  appendTestRow(root, id, rerunOf("passed", ""), ROUND_TWO);
+  const result = closeFast(root, id);
+  assert.deepEqual(readDefects(root), []);
+  assert.deepEqual(listScenarios(root), []);
+  assert.ok(blockLines(result).includes("Known defects: K-01 passed in round 2, not recorded"), blockLines(result).join("\n"));
+});
+
+test("a recorded defect failing again records one entry with the newest detail, opened on the first day (T-2.2)", (t) => {
+  const { root, id } = foundItem(t);
+  appendTestRow(root, id, rerunOf("failed", "step 2: expected status 400, got 202"), ROUND_TWO);
+  closeFast(root, id);
+  assert.deepEqual(readDefects(root).map((entry) => [entry.id, entry.status, entry.actual, entry.opened, entry.case]), [["DF-0001", "open", "step 2: expected status 400, got 202", "2026-11-17", "K-01"]]);
+  assert.deepEqual(listScenarios(root).map((scenario) => [scenario.id, scenario.card?.header.known]), [["S-0001", "DF-0001"]]);
+});
+
+test("a recorded defect whose rerun was blocked keeps the failing run's detail (T-2.3)", (t) => {
+  const { root, id } = foundItem(t);
+  appendTestRow(root, id, rerunOf("blocked", "payments-mock has no answer for POST /refunds"), ROUND_TWO);
+  closeFast(root, id);
+  assert.deepEqual(readDefects(root).map((entry) => [entry.id, entry.actual, entry.opened]), [["DF-0001", "step 2: expected status 400, got 201", "2026-11-17"]]);
+});
+
+test("a recorded defect whose steps no longer parse is named with its problems and the others are recorded (T-2.4)", (t) => {
+  const broken = "fetch the orders\nexpect status 400\n";
+  const unparsed = { ...FOUND_ROW, steps: broken } as TestEntry;
+  const other = { ...FOUND_ROW, found: "K-02" } as TestEntry;
+  const { root, id } = testedItem(t, { environment: false, verdicts: [["reviewer", "APPROVED", "cumulative"]], cases: [unparsed, other], done: true });
+  const built = defectCard("negative", "an order with a negative quantity is refused", broken);
+  assert.ok("problems" in built);
+  const result = closeFast(root, id);
+  assert.deepEqual(readDefects(root).map((entry) => [entry.id, entry.case]), [["DF-0001", "K-02"]]);
+  assert.deepEqual(listScenarios(root).map((scenario) => scenario.id), ["S-0001"]);
+  assert.deepEqual(result.closing.defects, [`K-01 not recorded: ${built.problems.join(", ")}`, "DF-0001 recorded from K-02 (S-0001)"]);
 });
 
 const DEFECT_ESCAPE: TestEntry = { round: 1, type: "escape", case: "DF-0001", root_cause: "the health route skipped the database ping", escaped: "unit test" };

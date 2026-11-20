@@ -9,7 +9,7 @@ import type { KeptBefore, KeptFiles } from "../../shared/scenarios/keep.mts";
 import { newestEscape } from "../../shared/testing/escapes.mts";
 import type { KeptScenario } from "../../shared/testing/keep-cases.mts";
 import { escapeCounts, learningPath, writeLearning, type EscapeCount } from "../../shared/testing/learning.mts";
-import { defectRows, latestCases, latestClass, type CaseRow, type DefectRow, type TestRow } from "../../shared/testing/results.mts";
+import { defectRows, latestCases, latestClass, latestDefects, type CaseRow, type DefectRow, type TestRow } from "../../shared/testing/results.mts";
 import { readResults, type ResultRow, type RunRow, type ScenarioRow } from "../../shared/scenarios/results.mts";
 import type { WorkSnapshot } from "../../shared/work/snapshot.mts";
 
@@ -142,19 +142,27 @@ function recordedEvidence(row: DefectRow): string {
   return row.mocks.length ? `${row.evidence}; through a mock: ${row.mocks.join(", ")}` : row.evidence;
 }
 
-function foundDefect(root: string, item: string, row: DefectRow): Settled | null {
-  if (readDefects(root).some((entry) => entry.found_in === item && entry.case === row.found)) return null;
+function lastFailingRun(runs: readonly DefectRow[], newest: DefectRow): DefectRow {
+  return runs.filter((run) => run.outcome !== "passed" && run.outcome !== "blocked").at(-1) ?? newest;
+}
+
+function foundDefect(root: string, item: string, newest: DefectRow, runs: readonly DefectRow[]): Settled | null {
+  if (readDefects(root).some((entry) => entry.found_in === item && entry.case === newest.found)) return null;
+  if (newest.outcome === "passed") return { touched: [], line: `${newest.found} passed in round ${newest.round}, not recorded` };
+  const row = lastFailingRun(runs, newest);
   const built = defectCard(row.kind, row.intent, row.steps);
-  if ("problems" in built) return null;
+  if ("problems" in built) return { touched: [], line: `${row.found} not recorded: ${built.problems.join(", ")}` };
+  const opened = (runs[0] ?? row).ts.slice(0, DAY_LENGTH);
   const id = nextDefectId(root);
   const scenario = nextScenarioId(root, readResults(root));
   const card = writeScenarioFile(root, scenario, writeScenario({ ...built.card, header: { ...built.card.header, id: scenario, covers: [], known: id } }));
-  const entry: DefectEntry = { id, status: "open", opened: row.ts.slice(0, DAY_LENGTH), found_in: item, scenario, expected: row.intent, actual: row.detail, evidence: recordedEvidence(row), case: row.found };
+  const entry: DefectEntry = { id, status: "open", opened, found_in: item, scenario, expected: row.intent, actual: row.detail, evidence: recordedEvidence(row), case: row.found };
   return { touched: [{ path: writeDefect(root, entry), text: null }, { path: card, text: null }], line: `${id} recorded from ${row.found} (${scenario})` };
 }
 
 function foundDefects(root: string, item: string, rows: readonly TestRow[]): Settled[] {
-  return defectRows(rows).flatMap((row) => foundDefect(root, item, row) ?? []);
+  const recorded = defectRows(rows);
+  return latestDefects(rows).flatMap((newest) => foundDefect(root, item, newest, recorded.filter((run) => run.found === newest.found)) ?? []);
 }
 
 export function recordKnownDefects(root: string, snap: WorkSnapshot, now: Date, cases: TestedCases): KeptFiles {

@@ -84,7 +84,7 @@ function parseDefect(args: Args): DefectInput {
 }
 
 export function defectLine({ row }: DefectResult): string {
-  return `${row.found} recorded: ${row.intent}; the stack answered ${row.detail}; it becomes a known defect at close`;
+  return `${row.found} recorded: ${row.intent}; the stack answered ${row.detail}; it becomes a known defect at close unless a later rerun passes it`;
 }
 
 export const verb: VerbSpec<DefectInput, DefectResult> = {
