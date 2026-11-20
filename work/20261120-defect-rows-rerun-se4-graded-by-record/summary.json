@@ -1,0 +1,78 @@
+{
+  "work_id": "20261120-defect-rows-rerun-se4-graded-by-record",
+  "base": "7ccaee2bd941ed06d8c5858ca48618c4d04e17ef",
+  "request": "work/20261120-defect-rows-rerun-se4-graded-by-record/request.md",
+  "size": "large",
+  "changed_files": [
+    "docs/reference/cli.md",
+    "src/agents/tester.md",
+    "src/lib/shared/testing/derive.test.mts",
+    "src/lib/shared/testing/results.mts",
+    "src/lib/shared/testing/results.test.mts",
+    "src/lib/verbs.mts",
+    "src/lib/verbs/close/block.mts",
+    "src/lib/verbs/close/defects.mts",
+    "src/lib/verbs/close/index.test.mts",
+    "src/lib/verbs/test/case.test.mts",
+    "src/lib/verbs/test/defect.mts",
+    "src/lib/verbs/test/defect.test.mts",
+    "src/lib/verbs/test/rerun.mts",
+    "src/skills/reviewing/checklists/patterns-security.md",
+    "src/skills/testing/steps/results.md"
+  ],
+  "lines_added": 229,
+  "lines_removed": 38,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 3,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-20T17:47:51.078Z",
+    "base": "7ccaee2bd941ed06d8c5858ca48618c4d04e17ef",
+    "mutant": {
+      "path": "src/lib/verbs.mts",
+      "line": 88,
+      "from": "false",
+      "to": "true"
+    },
+    "command": "npm test",
+    "outcome": "killed",
+    "rebuild": "passed",
+    "ms": 165450
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
