@@ -1,55 +1,50 @@
-# Picket
+<p align="center">
+  <img alt="PicketAI: guardrails for AI" src="https://raw.githubusercontent.com/picketai/picket/trunk/.github/assets/picket-logo.png" width="280">
+</p>
 
-Picket is a software-development workflow for Claude Code: four lanes, five agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag. Set up a project from its root with `npx @picketai/picket@alpha init`; nothing is installed globally.
+<p align="center">
+  <strong>A software-development workflow for Claude Code: four lanes, five agents, one kernel.</strong>
+</p>
 
-To install it in your own project, read [Get started](docs/index.md); the daily loop is in [The daily loop](docs/how-to.md). The reference pages in `docs/reference/` cover [the agents](docs/reference/agents.md), [the skills](docs/reference/skills.md), [the commands](docs/reference/cli.md), [the hooks](docs/reference/hooks.md) and [the mods](docs/reference/mods.md). What changed in each release is in the [changelog](CHANGELOG.md).
+<p align="center">
+  <a href="https://www.npmjs.com/package/@picketai/picket"><img src="https://img.shields.io/npm/v/@picketai/picket/alpha?label=npm" alt="npm version, alpha tag"></a>
+  <a href="https://github.com/picketai/picket/actions/workflows/docs.yml"><img src="https://github.com/picketai/picket/actions/workflows/docs.yml/badge.svg" alt="Documentation build"></a>
+</p>
 
-Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it ships to `dist/`. In this repository, start every session with `npm run claude`: it builds, then runs `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH`, so `picket` is the checkout's kernel, not the plugin's.
+<p align="center">
+  <a href="https://picketai.github.io/picket/"><strong>Get started</strong></a>
+  ·
+  <a href="https://picketai.github.io/picket/how-it-works/"><strong>How Picket works</strong></a>
+  ·
+  <a href="https://picketai.github.io/picket/how-to/"><strong>The daily loop</strong></a>
+  ·
+  <a href="https://picketai.github.io/picket/lanes/"><strong>In depth</strong></a>
+  ·
+  <a href="https://github.com/picketai/picket/blob/trunk/CHANGELOG.md"><strong>Changelog</strong></a>
+</p>
+
+You describe a change in plain words. Picket picks how much process it needs, writes a plan when one is worth having, implements it phase by phase, verifies each phase by running it, and stops for your approval before anything lands in git history.
+
+Picket is an alpha, published on npm under the `alpha` dist-tag. Set up a project from its root; nothing is installed globally:
+
+```sh
+npx @picketai/picket@alpha init
+```
+
+## Documentation
+
+The documentation is at **[picketai.github.io/picket](https://picketai.github.io/picket/)**.
+
+- [Get started](https://picketai.github.io/picket/): install Picket, configure your project, set up testing, upgrade and uninstall.
+- [How Picket works](https://picketai.github.io/picket/how-it-works/): the parts, and a change from your request to the commit.
+- [The daily loop](https://picketai.github.io/picket/how-to/): a change in seven short steps.
+- [The four lanes](https://picketai.github.io/picket/lanes/): fast, order, design and research, and how Picket picks one.
+- [Troubleshooting](https://picketai.github.io/picket/troubleshooting/): what to do when something stops you.
+- Reference: [agents](https://picketai.github.io/picket/reference/agents/), [skills](https://picketai.github.io/picket/reference/skills/), [commands](https://picketai.github.io/picket/reference/cli/), [hooks](https://picketai.github.io/picket/reference/hooks/) and [mods](https://picketai.github.io/picket/reference/mods/).
+
+## The idea
 
 Code decides what code can decide. Lane admission, the next action, phase verification, verdict routing and cost all come from `picket <verb>`; the model fills in what remains. State is the filesystem: one directory per work item under `work/<id>/`, read fresh on every call, never remembered.
-
-## Lanes
-
-- fast (`picket:expediting`): a small change made in the main session, with one stop before the commit.
-- order (`picket:ordering`): a bounded feature, planned and built in phases, with a stop after each phase.
-- design (`picket:designing`): a security path, a migration, an irreversible step or a larger change, with a design record first.
-- research (`picket:researching`): a question answered with a report instead of a change.
-
-`picket admit --text "<request>"` picks the lane deterministically from the text and a repository probe, and re-checks it against the files actually touched. The limits of each lane are in [the lanes table](docs/lanes/index.md).
-
-## Layout
-
-```
-CLAUDE.md                  under 2 KB, loaded on every turn
-src/                       the hand-written source of the picket plugin
-  .claude-plugin/          the plugin manifest: name picket, version, the skills list
-  agents/                  picket:analyst, architect, developer, reviewer
-  bin/                     the picket command
-  lib/                     the kernel: verbs, hooks and the code they share
-  mods/                    the status and Markdown mods and index.tsx, the one hooks module that composes them
-  output-styles/           picket:custom, the response rules
-  rules/                   the rules injected into the lead and every agent
-  skills/                  the lane skills and the command skills
-  templates/               the CLAUDE.md block picket init writes
-  themes/                  the PicketAI Claude Code theme
-dist/                      written by npm run build and ignored by git: the same folders as src/ built, plus
-                           hooks/ (one bundled file per hook, and mods/ with the built mods inside the
-                           plugin), statusline.mjs and package.json, the npm package that is published
-scripts/                   the build, the watcher, the test runner and the reference page generator
-docs/                      the how-to and the reference pages
-test/                      tests of the built product and of the repository; unit tests sit beside src/ code
-bench/                     golden task suite, fixture repo, runner, reporter (see bench/README.md)
-.claude/                   this repository's own Claude Code settings and rules, never installed
-.claude-plugin/            the root marketplace picketai, for developing Picket: only picket, from dist/
-.github/                   CI and the release workflow
-.picket/config.json        project settings: security paths, sources, lane caps, commands
-artifacts/                 decision records and reports
-work/<id>/                 state.yaml, the lane artifact, phase markers, verdicts.jsonl
-```
-
-## Benchmarks
-
-`node bench/run.mjs --harness <plugin|trunk> --tasks all --runs 5` runs the 18 golden tasks against one Picket build in fresh fixture repos with a scripted approver, grades by code, and `node bench/report.mjs <baseline> <candidate> --check` reports pass@1, pass^k, route agreement, cost and variance, time to first reviewable output, stops, prompts, re-reads and cache hit ratio, failing on a regression past two standard errors. Every run spends real API budget: dry-run first.
 
 ## Compared with agent-skills and pstack
 
@@ -66,6 +61,12 @@ Two research reports compare Picket with two other collections of agent instruct
 Both reports also name what the others do better, and several of those ideas are now in Picket: the untrusted-content rule, the guard against silenced checks, prove before change, the measured lane and routing checks, the design red flags and the repeated-mistake loop. Others are not, for example pstack's parallel design and review and agent-skills' wider domain guides; the reports list them.
 
 Every Picket number in this README comes from a tracked file under `bench/results/`, here `bench/results/comparison-clean.md`: pass@1 of 100% against the previous harness's 93%, the intended lane on 100% of tasks against 57%, and 0.4 permission prompts per task against 3.1. No head-to-head bench run of agent-skills or pstack exists, so there are no numbers for them; the comparison above is from reading their sources.
+
+## Working on Picket itself
+
+Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it ships to `dist/`. In this repository, start every session with `npm run claude`: it builds, then runs `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH`, so `picket` is the checkout's kernel, not the plugin's.
+
+The layout of the repository, the tests, the conventions and the release steps are in `CONTRIBUTING.md`. The benchmark that measures Picket itself, with its 18 golden tasks, is described in `bench/README.md`; every run spends real API budget, so dry-run first.
 
 ## A note from the maintainer
 
