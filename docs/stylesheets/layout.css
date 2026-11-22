@@ -1,0 +1,39 @@
+.md-typeset__table {
+  display: block;
+  width: 100%;
+}
+
+.md-typeset__table table:not([class]) {
+  display: table;
+  width: 100%;
+}
+
+.diagram-fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: 0 0 0.3rem auto;
+  padding: 0;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+}
+
+.diagram-fullscreen:hover {
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+}
+
+.mermaid:fullscreen {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 2rem;
+  background-color: var(--md-default-bg-color);
+  cursor: zoom-out;
+}

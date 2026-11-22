@@ -30,7 +30,7 @@ All settings live in `.picket/config.json`. Every key is optional.
 | `sources` | declares read-only repositories outside the project, such as a specification repository. |
 | `extensions` | enables and orders your [extensions](#extensions). |
 | `quality` | records the bar your checks must hold: `coverage_min` (0 to 100) and `max_warnings` (0 or more). |
-| `testing` | decides which finished items the tester checks after the final review: `design` (the default), `all` or `off`. |
+| `testing` | decides which finished items the tester checks after the final review: `design` (the default), `all` or `off`. The environment it needs is built in [How to set up testing](set-up-testing.md). |
 | `mods` | switches off the [Markdown pane](#the-markdown-pane) or the [work pane](#the-work-pane). |
 | `data_targets` | lists the servers and databases each data service may reach; `picket data run` refuses a connection that is not on its service's list. |
 

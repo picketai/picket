@@ -85,10 +85,12 @@ Run `/plugin` and check that `picket@picketai` is listed and enabled. Then ask f
 /picket:inspecting
 ```
 
-It lists the work items (none yet). Asking Claude to run `picket list` shows the same from the kernel. If the command is unknown, the plugin is not enabled; see [Troubleshooting](how-to.md#troubleshooting).
+It lists the work items (none yet). Asking Claude to run `picket list` shows the same from the kernel. If the command is unknown, the plugin is not enabled; see [Troubleshooting](troubleshooting.md).
 
 ## Next steps
 
 - [Configure your project](configure-your-project.md): where Picket goes in a single repository and in an umbrella of repositories.
-- [How to use Picket](how-to.md): the daily loop, from a request to a commit.
+- [Set up testing](set-up-testing.md): optional; the test environment the tester needs.
+- [How Picket works](how-it-works.md): the parts, and a change from your request to the commit.
+- [The daily loop](how-to.md): a change in seven short steps, from your request to the commit.
 - [Customization](customization.md): the settings, extensions and look you can change.

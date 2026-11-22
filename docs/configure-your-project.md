@@ -54,7 +54,7 @@ Picket is set up in one folder, the project root, and keeps everything it writes
 
     Picket finds the nested repositories itself: every folder directly under `src/` that holds a `.git` entry. When `.picket/state/branching.yaml` exists, the repositories it lists are used in place of that scan; `/picket:branching` writes the file.
 
-    Plans keep naming files by their path from the umbrella root, such as `src/Orders/pricing.cs`. When a plan touches a nested repository, Picket stops once to ask for a branch name and creates one worktree for each touched repository under that repository's `.worktrees/` folder. An approval commits the phase in each worktree before the umbrella. The steps and the replies are in [Worktrees in an umbrella](how-to.md#worktrees-in-an-umbrella).
+    Plans keep naming files by their path from the umbrella root, such as `src/Orders/pricing.cs`. When a plan touches a nested repository, Picket stops once to ask for a branch name and creates one worktree for each touched repository under that repository's `.worktrees/` folder. An approval commits the phase in each worktree before the umbrella. The steps and the replies are in [Worktrees in an umbrella](umbrella-worktrees.md).
 
 ## What lands in your repository
 
@@ -63,6 +63,7 @@ Picket is set up in one folder, the project root, and keeps everything it writes
 | `work/<id>/` | yes | one folder per work item: `state.yaml`, the plan or report, phase markers, the verdicts |
 | `.picket/config.json` | yes | project settings; see [Customization](customization.md#settings) |
 | `.picket/extensions/<name>/` | yes | your extensions; see [Customization](customization.md#extensions) |
+| `.picket/env/compose.yaml` and the folders beside it | yes | the test environment, when you [set up testing](set-up-testing.md) |
 | `.picket/state/` | no | logs, the cost ledger, scratch files |
 | `CLAUDE.md` | yes | the Picket block plus your project facts |
 

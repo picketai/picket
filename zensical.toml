@@ -5,12 +5,13 @@ site_url = "https://picketai.github.io/picket/"
 repo_url = "https://github.com/picketai/picket"
 repo_name = "picketai/picket"
 nav = [
-  { "Get started" = [{ "Get started" = "index.md" }, { "Configure your project" = "configure-your-project.md" }, { "Customization" = "customization.md" }, { "How to upgrade" = "upgrade.md" }, { "How to uninstall" = "uninstall.md" }, { "Platform support" = "platform-support.md" }] },
-  { "How to use Picket" = "how-to.md" },
-  { "Reference" = [{ "Agents" = "reference/agents.md" }, { "Skills" = "reference/skills.md" }, { "Commands" = "reference/cli.md" }, { "Hooks" = "reference/hooks.md" }, { "Mods" = "reference/mods.md" }] },
+  { "Get started" = [{ "Get started" = "index.md" }, { "Configure your project" = "configure-your-project.md" }, { "Set up testing" = "set-up-testing.md" }, { "Customization" = "customization.md" }, { "How to upgrade" = "upgrade.md" }, { "How to uninstall" = "uninstall.md" }, { "Platform support" = "platform-support.md" }] },
+  { "How to use Picket" = [{ "How Picket works" = "how-it-works.md" }, { "The daily loop" = "how-to.md" }, { "Adopt in an existing codebase" = "adopting.md" }, { "Troubleshooting" = "troubleshooting.md" }] },
+  { "In depth" = [{ "Lanes" = [{ "The four lanes" = "lanes/index.md" }, { "Fast" = "lanes/fast.md" }, { "Order" = "lanes/order.md" }, { "Design" = "lanes/design.md" }, { "Research" = "lanes/research.md" }] }, { "The flow in detail" = [{ "Gates and replies" = "gates.md" }, { "Review and testing" = "review-and-testing.md" }, { "Worktrees in an umbrella" = "umbrella-worktrees.md" }] }, { "Reference" = [{ "Agents" = "reference/agents.md" }, { "Skills" = "reference/skills.md" }, { "Commands" = "reference/cli.md" }, { "Hooks" = "reference/hooks.md" }, { "Mods" = "reference/mods.md" }] }] },
 ]
 not_in_nav = "style-checklist.md"
-extra_css = ["stylesheets/picketai.css"]
+extra_css = ["stylesheets/picketai.css", "stylesheets/layout.css"]
+extra_javascript = ["javascripts/diagram-fullscreen.js"]
 
 [project.theme]
 custom_dir = "docs-theme"
