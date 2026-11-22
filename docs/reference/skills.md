@@ -4,7 +4,7 @@ icon: lucide/wand-sparkles
 
 # Picket skills
 
-A skill is a set of instructions Claude loads when your words match its trigger phrases or when you type its `/picket:<name>` command. You rarely start the four lane skills yourself: Claude runs `picket admit` on every change request, and the lane it answers starts on its own. The other skills are commands you run when you want them, or checklists the agents load for their own work.
+A skill is a set of instructions Claude loads when your words match its trigger phrases or when you type its `/picket:<name>` command. You rarely start the four lane skills yourself: Claude runs `picket admit` on every change request, and the lane it answers starts on its own. The other skills are commands you run when you want them, or checklists the agents load for their own work. The lanes themselves are described under [The four lanes](../lanes/index.md).
 
 | Skill | Group | What it does | How you reach it |
 |---|---|---|---|
@@ -28,7 +28,7 @@ A skill is a set of instructions Claude loads when your words match its trigger 
 
 ## picket:expediting
 
-The fast lane makes a small, low-risk change end to end: a few files within [the fast lane's limit](../how-to.md#the-daily-loop), nothing new to design, no security path or migration.
+The fast lane makes a small, low-risk change end to end: a few files within [the fast lane's limit](../lanes/fast.md), nothing new to design, no security path or migration.
 
 **How you reach it.** Ask for the change in plain words; it starts when `picket admit` answers `fast`. Phrases such as "just fix", "quick change" or "don't spin up the pipeline" point here. To force it, add a line `lane: fast` to the request.
 
@@ -36,7 +36,7 @@ The fast lane makes a small, low-risk change end to end: a few files within [the
 
 ## picket:ordering
 
-The order lane delivers a bounded feature, such as a new endpoint or module, within [the order lane's phase and decision limits](../how-to.md#the-daily-loop).
+The order lane delivers a bounded feature, such as a new endpoint or module, within [the order lane's phase and decision limits](../lanes/order.md).
 
 **How you reach it.** It starts when `picket admit` answers `order`, or on a forced `lane: order` line.
 
@@ -44,7 +44,7 @@ The order lane delivers a bounded feature, such as a new endpoint or module, wit
 
 ## picket:designing
 
-The design lane handles a change that touches a security path, a schema or data migration, an irreversible step, a second repository, or more than [an order can hold](../how-to.md#the-daily-loop).
+The design lane handles a change that touches a security path, a schema or data migration, an irreversible step, a second repository, or more than [an order can hold](../lanes/order.md).
 
 **How you reach it.** It starts when `picket admit` answers `design`, when a change touches a security path, when the order lane reports that a plan outgrew its caps, or on a forced `lane: design` line.
 
@@ -62,7 +62,11 @@ The research lane answers a question with a report instead of a change: "how doe
 
 Shows every work item with its lane, phase and next step, and what the session has cost.
 
-**How you reach it.** `/picket:inspecting [<work-id>]`, or "status", "where are we", "what's open", "how much has this cost".
+``` text
+/picket:inspecting [<work-id>]
+```
+
+**How you reach it.** Type the command, or say "status", "where are we", "what's open", "how much has this cost".
 
 **Where it fits.** Read-only, in the main session. With no id it lists all items and the project's spend and cache hit ratio; with an id it shows that item's next step, spend and last three verdicts. From a terminal, `picket list` and `picket cost` show the same numbers.
 
@@ -70,7 +74,11 @@ Shows every work item with its lane, phase and next step, and what the session h
 
 Continues a work item from its state on disk, with no replay of the old conversation.
 
-**How you reach it.** `/picket:resuming [<work-id>]`, or "resume", "continue <id>", "where were we".
+``` text
+/picket:resuming [<work-id>]
+```
+
+**How you reach it.** Type the command, or say "resume", "continue <id>", "where were we".
 
 **Where it fits.** With no id it lists the open items and resumes the only one if there is just one. It reads the item's state, asks the kernel for the next step, and either shows the gate packet you left or hands the step to new agents (the agents of the earlier session are gone). An interrupted fast-lane change shows its `git status` and asks whether to finish or abandon.
 
@@ -78,15 +86,25 @@ Continues a work item from its state on disk, with no replay of the old conversa
 
 A thinking partner for strategic and domain design questions before any change: "should we", "build or buy", "where does this boundary go", "is this a separate context". It also runs a questioning session that tests a plan, design or idea against the project's existing words and code, one question at a time.
 
-**How you reach it.** `/picket:consulting [<question or plan>]`, or one of those phrases. For the questioning session: "question me on this", "stress-test this plan", "interview me", "challenge my thinking", "sharpen the terminology".
+``` text
+/picket:consulting [<question or plan>]
+```
 
-**Where it fits.** It runs in the main session with no agent. In discuss mode, the default, it recommends one direction, weighs the real alternatives with what each gains and gives up, and names what cannot be undone. In interview mode each question comes with Claude's recommended answer, and claims are checked against the code. Settled terms and decisions go to `.claude/MEMORY.md` at once, never code or specs; a code convention goes to a project rule under `.claude/rules/`. When a direction is reached, say "ratify" and it writes a strategic decision record, a context charter or a context map. A tactical question ("how do I structure this module") is sent to the order or design lane instead.
+**How you reach it.** Type the command, or use one of those phrases. For the questioning session: "question me on this", "stress-test this plan", "interview me", "challenge my thinking", "sharpen the terminology".
+
+**Where it fits.** It runs in the main session with no agent. In discuss mode, the default, it recommends one direction, weighs the real alternatives with what each gains and gives up, and names what cannot be undone. In interview mode each question comes with Claude's recommended answer, and claims are checked against the code.
+
+Settled terms and decisions go to `.claude/MEMORY.md` at once, never code or specs; a code convention goes to a project rule under `.claude/rules/`. When a direction is reached, say "ratify" and it writes a strategic decision record, a context charter or a context map. A tactical question ("how do I structure this module") is sent to the order or design lane instead.
 
 ## picket:proofreading
 
 Proofreads a document whose next reader is outside the team (a README, a release note, a customer email, a spec) and reports every defect before changing any text.
 
-**How you reach it.** `/picket:proofreading <path or pasted text>`, or "proofread this", "check this before I send it", "is this clear?".
+``` text
+/picket:proofreading <path or pasted text>
+```
+
+**How you reach it.** Type the command, or say "proofread this", "check this before I send it", "is this clear?".
 
 **Where it fits.** It runs in the main session. It first names the audience, purpose and surface, then makes five passes and returns a table of findings, each quoted and graded from L0 (a plain error) to L3 (a claim it cannot verify, which it asks about and never fixes). It ends with `READY TO SEND` or `NEEDS FIXES`. Nothing changes until you say "apply".
 
@@ -94,23 +112,45 @@ Proofreads a document whose next reader is outside the team (a README, a release
 
 Explains one scenario the way a customer or a QA tester would go through the application, with real or relevant data, and shows how each value changes from the first step to the last. It also explains a general concept outside the project, such as "what is an ETag", with the same kind of worked example.
 
-**How you reach it.** `/picket:explaining <scenario or concept>`, or "explain with an example", "walk me through", "show me with real data", "what happens to the data when", "explain the concept of", "explain X simply".
+``` text
+/picket:explaining <scenario or concept>
+```
 
-**Where it fits.** It runs in the main session with no agent and writes no file; the answer is in the reply. It has two modes. Codebase mode, the default, takes data from what you gave, the work item's snapshots, test fixtures and configuration, the code and a pulled ticket, in that order, and may run a read-only command to capture real output. Concept mode reads reliable web sources (official documentation, standards such as IETF RFCs, peer-reviewed papers), cites each rule by URL, and lists every page it read; a fact found only on a blog or forum stays `[ASSUMED]`. The answer has a starting data table, numbered steps with the code location and the values in and out, and an end state table. Every value is marked `[VERIFIED]` with its source, `[INFERRED]` or `[ASSUMED]`, and a value nobody could find is listed under "Not known" instead of being made up. When a scenario needs more than 12 files read or 5 pages fetched, it offers the research lane, which keeps a report on disk.
+**How you reach it.** Type the command, or say "explain with an example", "walk me through", "show me with real data", "what happens to the data when", "explain the concept of", "explain X simply".
+
+**Where it fits.** It runs in the main session with no agent and writes no file; the answer is in the reply. It has two modes.
+
+Codebase mode, the default, takes data from what you gave, the work item's snapshots, test fixtures and configuration, the code and a pulled ticket, in that order, and may run a read-only command to capture real output.
+
+Concept mode reads reliable web sources (official documentation, standards such as IETF RFCs, peer-reviewed papers), cites each rule by URL, and lists every page it read; a fact found only on a blog or forum stays `[ASSUMED]`.
+
+The answer has a starting data table, numbered steps with the code location and the values in and out, and an end state table. Every value is marked `[VERIFIED]` with its source, `[INFERRED]` or `[ASSUMED]`, and a value nobody could find is listed under "Not known" instead of being made up. When a scenario needs more than 12 files read or 5 pages fetched, it offers the research lane, which keeps a report on disk.
 
 ## picket:debugging
 
 Finds the root cause of a bug before anyone fixes it. It reproduces the failure where you saw it, narrows it down with real evidence, and ends in a diagnosis and one failing test, never in a fix.
 
-**How you reach it.** `/picket:debugging <symptom>`, or "debug X", "why does X fail" (or crash, or throw), "find the root cause", "this test is flaky", "it worked yesterday", "reproduce this bug", "diagnose before anyone fixes it".
+``` text
+/picket:debugging <symptom>
+```
 
-**Where it fits.** It runs in the main session with no agent and opens no work item. It reproduces on your surface (`picket drive` for an endpoint or a CLI, `picket check` for a test); when a bug will not reproduce, it walks environment, data, timing and leftover state in turn. It shrinks the input, halves the code path with captured values, uses `git bisect` when the code used to work, and tests each hypothesis on its own, undoing what a disproved one changed. The only file it writes is the smallest test that fails for the cause it found. The diagnosis block gives the symptom, the reproduction, the root cause, the red test, the evidence marked `[VERIFIED]`, `[INFERRED]` or `[ASSUMED]`, what was ruled out, and a one-paragraph hand-off. Reply `f` and the hand-off goes through `picket admit` to the lane that fixes it; that lane runs the red test first instead of writing its own. A cause with no capture from the session stays "strongest hypothesis".
+**How you reach it.** Type the command, or say "debug X", "why does X fail" (or crash, or throw), "find the root cause", "this test is flaky", "it worked yesterday", "reproduce this bug", "diagnose before anyone fixes it".
+
+**Where it fits.** It runs in the main session with no agent and opens no work item. It reproduces on your surface (`picket drive` for an endpoint or a CLI, `picket check` for a test); when a bug will not reproduce, it walks environment, data, timing and leftover state in turn.
+
+It shrinks the input, halves the code path with captured values, uses `git bisect` when the code used to work, and tests each hypothesis on its own, undoing what a disproved one changed. The only file it writes is the smallest test that fails for the cause it found.
+
+The diagnosis block gives the symptom, the reproduction, the root cause, the red test, the evidence marked `[VERIFIED]`, `[INFERRED]` or `[ASSUMED]`, what was ruled out, and a one-paragraph hand-off. Reply `f` and the hand-off goes through `picket admit` to the lane that fixes it; that lane runs the red test first instead of writing its own. A cause with no capture from the session stays "strongest hypothesis".
 
 ## picket:ticketing
 
 Pulls, drafts, creates and updates Jira work items: user story, change request, bug, technical debt, spike and epic, each from a fixed template.
 
-**How you reach it.** `/picket:ticketing [--pull|--create|--update] [--story|--change|--bug|--debt|--spike|--epic] <text or key>`, or "write a ticket", "log a bug", "pull JIRA-123". With no operation flag it drafts in the reply only.
+``` text
+/picket:ticketing [--pull|--create|--update] [--story|--change|--bug|--debt|--spike|--epic] <text or key>
+```
+
+**How you reach it.** Type the command, or say "write a ticket", "log a bug", "pull JIRA-123". With no operation flag it drafts in the reply only.
 
 **Where it fits.** It needs the Atlassian MCP server configured for the project. Pulls run on their own; every create, edit, transition or comment is shown to you for confirmation first. Missing facts appear as `REQUIRES INPUT` lines rather than being made up.
 
@@ -118,7 +158,11 @@ Pulls, drafts, creates and updates Jira work items: user story, change request, 
 
 Writes the pull request description for the branch into your repository's pull request template, at most 4000 characters, ready to paste.
 
-**How you reach it.** `/picket:summarizing [branch or repo hint]`, or "write the PR description". Only you start it; Claude never runs it on its own, because you decide when a branch is done.
+``` text
+/picket:summarizing [branch or repo hint]
+```
+
+**How you reach it.** Type the command, or say "write the PR description". Only you start it; Claude never runs it on its own, because you decide when a branch is done.
 
 **Where it fits.** It reads the branch's commits and diff, the work item's plan and verdicts, and the conversation. It ticks only the checklist items the evidence supports and says plainly when tests failed or were skipped. In a multi-repository umbrella it writes one description per touched repository.
 
@@ -126,7 +170,14 @@ Writes the pull request description for the branch into your repository's pull r
 
 Creates, lists and removes git worktrees (separate working folders on their own branch) across the nested repositories of a multi-repository umbrella.
 
-**How you reach it.** `/picket:branching <branch> [--from <ref>]` to create or resume, `/picket:branching <branch> --into <branch|path> [--from <base>]` to switch an existing worktree onto a branch, `/picket:branching --list [branch]`, and `/picket:branching --remove <branch>`. A branch name is required; it never invents one. Inside a lane you rarely need it: the `create_worktrees` stop asks for the branch and the developer runs `picket worktree <id>` itself.
+``` text
+/picket:branching <branch> [--from <ref>]
+/picket:branching <branch> --into <branch|path> [--from <base>]
+/picket:branching --list [branch]
+/picket:branching --remove <branch>
+```
+
+**How you reach it.** The four forms create or resume a worktree, switch an existing worktree onto a branch, list the worktrees, and remove one. A branch name is required; it never invents one. Inside a lane you rarely need it: the `create_worktrees` stop asks for the branch and the developer runs `picket worktree <id>` itself.
 
 **Where it fits.** Create records the branch on the open work item and runs `picket worktree`, which puts each worktree under the repository's `.worktrees/` folder for every nested repository the plan touches. `--into` is a manual switch: every `switch` and `submodule update` command is shown for confirmation first, and it records nothing in a work item. Remove surveys uncommitted and unpushed work before anything is deleted, and every deletion is confirmed. The nested repositories come from `.picket/state/branching.yaml` when it exists, else from the folders under `src/` that hold a `.git`.
 
@@ -153,6 +204,7 @@ How a change is made and proven: the kind of change named first, a red test befo
 **How you reach it.** You never invoke it. The [developer](agents.md#picketdeveloper) preloads it for every phase, and the fast lane loads it before its first edit.
 
 **Where it fits.** It decides what the block's `Red:`, `Root cause:`, `Tests:`, `Lint:` and `Verified:` lines say. A bug handed over by `picket:debugging` keeps its red test: the lane runs that test first instead of writing another. The fast lane prints the same block under `## Expedited: <id>` and ends it with `[c] commit   [x] discard: <why>` instead of a verdict.
+
 ## picket:testing
 
 How a finished item is checked from the outside: a matrix of the tested criteria by case kind, one case per risk run on the item's own stack, the saved scenarios replayed, every failure classified with runtime evidence, and at most three questions for you.
