@@ -2,8 +2,10 @@
 site_name = "Picket"
 site_description = "A software-development workflow for Claude Code: four lanes, five agents, one kernel."
 site_url = "https://picketai.github.io/picket/"
+repo_url = "https://github.com/picketai/picket"
+repo_name = "picketai/picket"
 nav = [
-  { "Home" = "index.md" },
+  { "Get started" = "index.md" },
   { "How to install and use Picket" = "how-to.md" },
   { "Reference" = [{ "Agents" = "reference/agents.md" }, { "Skills" = "reference/skills.md" }, { "Commands" = "reference/cli.md" }, { "Hooks" = "reference/hooks.md" }, { "Mods" = "reference/mods.md" }] },
 ]
@@ -13,7 +15,7 @@ extra_css = ["stylesheets/picketai.css"]
 [project.theme]
 custom_dir = "docs-theme"
 language = "en"
-features = ["navigation.sections", "navigation.top", "search.highlight", "content.code.copy"]
+features = ["navigation.tabs", "navigation.sections", "navigation.path", "navigation.footer", "navigation.top", "search.highlight", "content.code.copy"]
 
 [project.theme.font]
 text = "IBM Plex Sans"
