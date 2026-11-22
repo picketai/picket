@@ -1,0 +1,72 @@
+{
+  "work_id": "20261120-docs-site-layout-like-zensical-docs",
+  "base": "82bb29d9734a8073c153770f4f27f322bcfcc65b",
+  "request": "work/20261120-docs-site-layout-like-zensical-docs/request.md",
+  "size": "medium",
+  "changed_files": [
+    "docs/how-to.md",
+    "docs/index.md",
+    "docs/reference/agents.md",
+    "docs/reference/cli.md",
+    "docs/reference/hooks.md",
+    "docs/reference/mods.md",
+    "docs/reference/skills.md",
+    "scripts/docs.mjs",
+    "test/repo/docs.test.mjs",
+    "zensical.toml"
+  ],
+  "lines_added": 52,
+  "lines_removed": 3,
+  "frameworks": [
+    "typescript"
+  ],
+  "concerns": [
+    "clean-architecture"
+  ],
+  "security_path": false,
+  "extension_steps": [],
+  "phases": 2,
+  "repos": [],
+  "sources": [],
+  "silenced": [],
+  "mutation": {
+    "ts": "2026-11-22T06:06:14.608Z",
+    "base": "82bb29d9734a8073c153770f4f27f322bcfcc65b",
+    "mutant": null,
+    "command": "npm test",
+    "outcome": "no candidate",
+    "rebuild": null,
+    "ms": 145999
+  },
+  "scope": "cumulative",
+  "checklists": [
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/alignment.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/bar.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/traced.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-core.md",
+      "skip": [
+        "SOLID",
+        "DRY"
+      ]
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/design-red-flags.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/patterns-security.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/framework-typescript.md"
+    },
+    {
+      "path": "${CLAUDE_PLUGIN_ROOT}/skills/reviewing/checklists/concern-clean-architecture.md"
+    }
+  ]
+}
