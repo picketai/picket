@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { appendLedger, isTurn, readLedger, turnTokens, type LedgerRow, type NewRow, type TurnRow } from "./ledger.mts";
+import { agentTurns } from "./ledger.mts";
 import { statePath, STATE_FILES } from "./paths.mts";
 import { withProject } from "#test/project.mts";
 
@@ -94,4 +95,14 @@ test("isTurn holds for stop, subagent_stop and gate rows and for no other event"
 test("readLedger of a project without a ledger is empty", (t) => {
   const { root } = ledgerProject(t, null);
   assert.deepEqual(readLedger(root), { rows: [], skipped: 0 });
+});
+
+test("agentTurns keeps the last row of each session and turn_id and every row without one, in ledger order (T-3.1)", () => {
+  const row = (extra: Partial<TurnRow>): TurnRow => ({ v: 2, ts: NOW.toISOString(), ...TURN, ...extra });
+  const bounced = row({ turn_id: "r1", duration_ms: 1 });
+  const otherSession = row({ session: "s2", turn_id: "r1" });
+  const legacy = row({});
+  const continued = row({ turn_id: "r1", duration_ms: 2 });
+  const legacyAgain = row({});
+  assert.deepEqual(agentTurns([bounced, otherSession, legacy, continued, legacyAgain]), [otherSession, legacy, continued, legacyAgain]);
 });

@@ -1,7 +1,7 @@
 import { action, done } from "../../shared/action.mts";
 import { notRunAsks } from "../../shared/escalation.mts";
 import { compactTokens } from "../../shared/format.mts";
-import { isTurn, readLedger, turnTokens, USAGE_KEYS, type EscalationRow, type LedgerRow, type TurnRow, type Usage } from "../../shared/ledger.mts";
+import { agentTurns, readLedger, turnTokens, USAGE_KEYS, type EscalationRow, type LedgerRow, type TurnRow, type Usage } from "../../shared/ledger.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
 import { str, type Args } from "../../util/args.mts";
 
@@ -81,7 +81,7 @@ export function summarizeLedger(rows: LedgerRow[], { session = null, work_id = n
   let scoped = rows;
   if (session) scoped = scoped.filter((r) => r.session === session);
   if (work_id) scoped = scoped.filter((r) => r.work_id === work_id);
-  const rs = scoped.filter(isTurn);
+  const rs = agentTurns(scoped);
   const usage = sumUsage(rs);
   const tokens = rs.reduce((sum, r) => sum + turnTokens(r), 0);
   const lines = scoped.reduce((a, r) => (r.event === "accept" ? a + (r.lines_added ?? 0) : a), 0);

@@ -7,6 +7,10 @@ import { parseArgs, UsageError } from "../../util/args.mts";
 import { readLedger, type AcceptRow, type DenialRow, type EscalationRow, type LedgerRow, type TurnRow, type Usage } from "../../shared/ledger.mts";
 import { statePath, STATE_FILES } from "../../shared/paths.mts";
 import { withProject } from "#test/project.mts";
+import { emitLedger } from "../../hooks/emit/ledger/index.mts";
+import { turnTokens } from "../../shared/ledger.mts";
+import { hookContext } from "#test/context.mts";
+import { bouncedThenContinuedSteps, looseHandler, writeTranscript } from "#test/hook.mts";
 
 type Row = Partial<TurnRow> | Partial<EscalationRow> | Partial<DenialRow> | Partial<AcceptRow>;
 
@@ -100,4 +104,31 @@ test("an ask with no later ran row for its session and key counts as not run, an
   assert.equal(escalations.asked, 2);
   assert.equal(escalations.not_run, 1);
   assert.deepEqual(escalations.recent.map((r) => r.key), ["b", "b", "d1", "d2", "d3"]);
+});
+
+const writeTurnRow = looseHandler(emitLedger);
+
+function bouncedThenContinuedTurn(root: string): TurnRow[] {
+  const entries: Record<string, unknown>[] = [];
+  for (const step of bouncedThenContinuedSteps()) {
+    entries.push(...step);
+    const tp = writeTranscript(root, entries);
+    writeTurnRow({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, agent_transcript_path: tp, agent_type: "picket:developer", cwd: root }, hookContext(root));
+  }
+  return readLedger(root).rows as TurnRow[];
+}
+
+test("the stops of one bounced and continued turn written by emitLedger count as one turn (T-3.2)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const rows = bouncedThenContinuedTurn(root);
+  assert.equal(rows.length, 3);
+  const summary = summarize(rows);
+  assert.equal(summary.turns, 1);
+  assert.equal(summary.by_agent.developer.turns, 1);
+  assert.equal(summary.tokens_total, turnTokens(rows[2]));
+  assert.match(verb.render?.(summary) ?? "", /^1 turns /);
+});
+
+test("two turn rows without a turn_id count as two turns (T-3.4)", () => {
+  assert.equal(summarizeRows([stop("s1", "developer", usageOf(1)), stop("s1", "developer", usageOf(1))]).turns, 2);
 });

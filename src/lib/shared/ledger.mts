@@ -61,6 +61,23 @@ export function isTurn(row: LedgerRow): row is TurnRow {
   return TURN_EVENTS.has(row.event);
 }
 
+function agentTurnKey(row: TurnRow): string | null {
+  return row.turn_id ? JSON.stringify([row.session, row.turn_id]) : null;
+}
+
+export function agentTurns(rows: readonly LedgerRow[]): TurnRow[] {
+  const turns = rows.filter(isTurn);
+  const lastIndex = new Map<string, number>();
+  turns.forEach((row, i) => {
+    const key = agentTurnKey(row);
+    if (key) lastIndex.set(key, i);
+  });
+  return turns.filter((row, i) => {
+    const key = agentTurnKey(row);
+    return key === null || lastIndex.get(key) === i;
+  });
+}
+
 function isCurrent(row: unknown): row is LedgerRow {
   return (row as { v?: unknown } | null)?.v === VERSION;
 }

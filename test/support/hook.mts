@@ -59,6 +59,16 @@ export const assistantEntry = (content: unknown[]): TranscriptEntry => ({
 
 export const assistantText = (text: string): TranscriptEntry => assistantEntry([{ type: "text", text }]);
 
+export function bouncedThenContinuedSteps(): TranscriptEntry[][] {
+  const request = { ...userEntry("work: w1\nphase: 1"), uuid: "r1" };
+  const failedBash = [
+    assistantEntry([{ type: "tool_use", id: "b1", name: "Bash", input: { command: "false" } }]),
+    { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "b1", is_error: true, content: "Exit code 1" }] } },
+  ];
+  const bounce = { type: "user", isMeta: true, message: { role: "user", content: "Stop hook feedback:\nre-emit the block" } };
+  return [[request, ...failedBash, assistantText("block")], [bounce, assistantText("block again")], [assistantText("continued")]];
+}
+
 export const toolUse = (name: string, input: object) => ({ type: "tool_use", id: "t", name, input });
 
 const ORDER_RECORD = "---\nlane: order\nphases:\n  - n: 1\n    files: [src/a.ts]\n---\n# O\n\n## Decisions\n### D-001: Keep it\n**Decision:** x\n\n## Phase 1: A\n\n- **T-1.1** a\n- **T-1.2** b\n- **T-1.3** c\n\n## Revision log\n";

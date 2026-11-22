@@ -11,6 +11,7 @@ import { workFile } from "../../shared/work/files.mts";
 import { fixedContext, hookContext } from "#test/context.mts";
 import { assistantEntry, assistantText, looseHandler, userEntry, writeTranscript } from "#test/hook.mts";
 import { openItem, withProject } from "#test/project.mts";
+import { bouncedThenContinuedSteps } from "#test/hook.mts";
 
 const writeTurnRow = looseHandler(emitLedger);
 const NOW = new Date("2026-11-22T10:00:00.000Z");
@@ -121,4 +122,29 @@ test("an empty project gives three empty sections", async (t) => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, "not json\n");
   assert.deepEqual(await report(root), { rows: 0, skipped: 1, denials: [], rejections: [], failed_tools: [] });
+});
+
+function bouncedThenContinuedTurn(root: string): void {
+  const entries: Record<string, unknown>[] = [];
+  for (const step of bouncedThenContinuedSteps()) {
+    entries.push(...step);
+    const tp = writeTranscript(root, entries);
+    writeTurnRow({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, agent_transcript_path: tp, agent_type: "picket:developer", cwd: root }, hookContext(root));
+  }
+}
+
+test("a failed call in a bounced and continued turn written by emitLedger counts once (T-3.3)", async (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  bouncedThenContinuedTurn(root);
+  const { failed_tools } = await report(root);
+  assert.deepEqual(failed_tools, [{ agent: "developer", tool: "Bash", count: 1, items: ["w1"], recurring: false }]);
+});
+
+test("the failed calls of two turn rows without a turn_id both count (T-3.4)", async (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = { event: "subagent_stop", session: "s1", agent: "developer", work_id: "w1", lane: null, phase: 1, model: null, duration_ms: 0, verdict: null, gate_kind: null, tool_calls: 1, failed_tool_calls: 1, failed_tools: { Bash: 1 }, reads: 0, rereads: 0, first_reviewable_ms: null, usage: null } as const;
+  appendLedger(root, row, NOW);
+  appendLedger(root, row, NOW);
+  const { failed_tools } = await report(root);
+  assert.deepEqual(failed_tools, [{ agent: "developer", tool: "Bash", count: 2, items: ["w1"], recurring: false }]);
 });

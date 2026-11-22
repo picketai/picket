@@ -1,5 +1,5 @@
 import { action, done } from "../../shared/action.mts";
-import { isTurn, readLedger, type DenialRow, type LedgerRow, type TurnRow } from "../../shared/ledger.mts";
+import { agentTurns, readLedger, type DenialRow, type LedgerRow, type TurnRow } from "../../shared/ledger.mts";
 import { readReplies, REJECT_REPLY, type ReplyRow } from "../../shared/work/replies.mts";
 import { listWork } from "../../shared/work/state.mts";
 import type { VerbSpec } from "../../shared/verb-spec.mts";
@@ -59,7 +59,7 @@ function failedToolsOf(row: TurnRow): [string, number][] {
 
 export function groupFailedTools(rows: readonly LedgerRow[]): FailedToolGroup[] {
   const tallies = new Map<string, Tally<Pick<FailedToolGroup, "agent" | "tool">>>();
-  for (const row of rows.filter(isTurn)) {
+  for (const row of agentTurns(rows)) {
     for (const [tool, count] of failedToolsOf(row)) tallyInto(tallies, JSON.stringify([row.agent, tool]), () => ({ agent: row.agent, tool }), count, row.work_id);
   }
   return [...tallies.values()].map(finish).sort((a, b) => b.count - a.count || String(a.agent).localeCompare(String(b.agent)) || a.tool.localeCompare(b.tool));
