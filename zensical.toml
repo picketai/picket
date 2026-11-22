@@ -5,8 +5,8 @@ site_url = "https://picketai.github.io/picket/"
 repo_url = "https://github.com/picketai/picket"
 repo_name = "picketai/picket"
 nav = [
-  { "Get started" = "index.md" },
-  { "How to install and use Picket" = "how-to.md" },
+  { "Get started" = [{ "Get started" = "index.md" }, { "Configure your project" = "configure-your-project.md" }, { "Customization" = "customization.md" }, { "How to upgrade" = "upgrade.md" }, { "How to uninstall" = "uninstall.md" }, { "Platform support" = "platform-support.md" }] },
+  { "How to use Picket" = "how-to.md" },
   { "Reference" = [{ "Agents" = "reference/agents.md" }, { "Skills" = "reference/skills.md" }, { "Commands" = "reference/cli.md" }, { "Hooks" = "reference/hooks.md" }, { "Mods" = "reference/mods.md" }] },
 ]
 not_in_nav = "style-checklist.md"

@@ -2,7 +2,7 @@
 
 Picket is a software-development workflow for Claude Code: four lanes, five agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag. Set up a project from its root with `npx @picketai/picket@alpha init`; nothing is installed globally.
 
-To install it in your own project and learn the daily loop, read [How to install and use Picket](docs/how-to.md). The reference pages in `docs/reference/` cover [the agents](docs/reference/agents.md), [the skills](docs/reference/skills.md), [the commands](docs/reference/cli.md), [the hooks](docs/reference/hooks.md) and [the mods](docs/reference/mods.md). What changed in each release is in the [changelog](CHANGELOG.md).
+To install it in your own project, read [Get started](docs/index.md); the daily loop is in [How to use Picket](docs/how-to.md). The reference pages in `docs/reference/` cover [the agents](docs/reference/agents.md), [the skills](docs/reference/skills.md), [the commands](docs/reference/cli.md), [the hooks](docs/reference/hooks.md) and [the mods](docs/reference/mods.md). What changed in each release is in the [changelog](CHANGELOG.md).
 
 Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it ships to `dist/`. In this repository, start every session with `npm run claude`: it builds, then runs `claude --plugin-dir dist` with this checkout's `dist/bin` first on `PATH`, so `picket` is the checkout's kernel, not the plugin's.
 
