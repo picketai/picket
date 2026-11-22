@@ -2,6 +2,12 @@
 
 Newest release first; each heading is a version.
 
+## 1.0.0-alpha.8 (not released yet)
+
+### Changed, act on these
+
+- The licence changes from MIT to the GNU Affero General Public License, version 3, from this version on. You may still use, change and share Picket, at work included. If you share a changed version, or let others use one over a network, you must offer them its source under the same licence and keep the copyright notices. Versions up to 1.0.0-alpha.7 stay under MIT.
+
 ## 1.0.0-alpha.7
 
 ### Changed, act on these

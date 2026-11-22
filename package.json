@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/picketai/picket.git"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "author": "Vlad Apetre",
   "type": "module",
   "imports": {

@@ -57,6 +57,14 @@ Picket's source is `src/`, and `npm run build` writes the Claude Code plugin it 
 
 The layout of the repository, the tests, the conventions and the release steps are in `CONTRIBUTING.md`. The benchmark that measures Picket itself, with its 18 golden tasks, is described in `bench/README.md`; every run spends real API budget, so dry-run first.
 
+## Licence
+
+Copyright (C) 2026 Vlad Apetre.
+
+Picket is free software under the [GNU Affero General Public License, version 3](LICENSE). You may use, change and share it, at work included. If you share a changed version, or let others use one over a network, you must offer them its source under the same licence and keep the copyright notices. Picket comes with no warranty.
+
+For a use under other terms, [open an issue](https://github.com/picketai/picket/issues) and ask the maintainer. Versions up to 1.0.0-alpha.7 were released under the MIT licence and stay under it. The vendored third-party files keep their own licences.
+
 ## A note from the maintainer
 
 I did not set out to build Picket. It grew out of my own day-to-day work as I started using cloud platforms and AI agents in my professional life. It was not built for any particular company; it is simply the tool I use myself.

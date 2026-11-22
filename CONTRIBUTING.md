@@ -211,3 +211,13 @@ Every real run spends API budget, so it passes a dollar cap as `--max-usd`, and 
 ## Folders outside the product
 
 `work/` holds one dated folder per work item and `artifacts/` holds dated reports and decision records; both are records of their time, so the Markdown path test does not check them.
+
+## Licence of contributions
+
+Picket is licensed under the GNU Affero General Public License, version 3 (`LICENSE`). Before a pull request from someone else is merged, its author agrees to the contributor agreement in `CLA.md`. You keep the copyright of your contribution, and you give the maintainer the right to publish it under that licence and under other terms.
+
+To agree, add this comment to your first pull request, once:
+
+```text
+I have read the CLA in CLA.md and I agree to it.
+```
