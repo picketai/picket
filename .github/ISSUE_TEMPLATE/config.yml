@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://picketai.github.io/picket/
+    about: Setup, the daily loop and the reference pages.
+  - name: Troubleshooting
+    url: https://picketai.github.io/picket/troubleshooting/
+    about: What to do when a message or a hook stops you.
+  - name: Report a vulnerability
+    url: https://github.com/picketai/picket/security/advisories/new
+    about: A way past a guard or a leaked secret goes here, in private.
