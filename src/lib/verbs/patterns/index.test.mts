@@ -9,9 +9,8 @@ import { statePath, STATE_FILES } from "../../shared/paths.mts";
 import { appendReply } from "../../shared/work/replies.mts";
 import { workFile } from "../../shared/work/files.mts";
 import { fixedContext, hookContext } from "#test/context.mts";
-import { assistantEntry, assistantText, looseHandler, userEntry, writeTranscript } from "#test/hook.mts";
+import { assistantEntry, assistantText, bouncedThenContinuedSteps, looseHandler, userEntry, writeTranscript } from "#test/hook.mts";
 import { openItem, withProject } from "#test/project.mts";
-import { bouncedThenContinuedSteps } from "#test/hook.mts";
 
 const writeTurnRow = looseHandler(emitLedger);
 const NOW = new Date("2026-11-22T10:00:00.000Z");

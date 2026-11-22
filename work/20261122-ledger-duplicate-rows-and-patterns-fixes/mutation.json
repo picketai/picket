@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-22T19:16:48.840Z",
+  "base": "f15edd9448cb11714175b7daa5cdd039df168633",
+  "mutant": {
+    "path": "src/lib/shared/ledger.mts",
+    "line": 77,
+    "from": "===",
+    "to": "!=="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 151341
+}
