@@ -42,7 +42,7 @@ Anything that is not on the main path leaves the paragraph and goes in a box.
     Detail most readers skip.
 ```
 
-Use `note` for prerequisites, `tip` for an optional or faster path, `warning` for a limit or a risk. At most one box between two paragraphs of the main path; a page of boxes is as heavy as a page of prose.
+Use `note` for prerequisites, `tip` for an optional or faster path, `warning` for a limit or a risk. At most one box in a section; a page of boxes is as heavy as a page of prose. Do not put a table of two or three short rows where a sentence says the same, and do not nest a box inside a tab.
 
 ## Variants: content tabs
 
