@@ -1,5 +1,5 @@
 import { compactTokens } from "../../shared/format.mts";
-import { isTurn, turnTokens, type LedgerRow, type TurnRow } from "../../shared/ledger.mts";
+import { agentTurns, turnTokens, type LedgerRow, type TurnRow } from "../../shared/ledger.mts";
 import type { WorkState } from "../../shared/work/state.mts";
 
 const SEPARATOR = " · ";
@@ -22,5 +22,5 @@ function countOf(rows: LedgerRow[], event: LedgerRow["event"]): number {
 
 export function auditLine(state: WorkState, phases: number, rows: LedgerRow[]): string {
   const own = rows.filter((row) => row.work_id === state.id);
-  return [state.lane, `phases ${phases}`, tokensPart(own.filter(isTurn)), `bounces ${countOf(own, "bounce")}`, `blocks ${countOf(own, "block")}`].join(SEPARATOR);
+  return [state.lane, `phases ${phases}`, tokensPart(agentTurns(own)), `bounces ${countOf(own, "bounce")}`, `blocks ${countOf(own, "block")}`].join(SEPARATOR);
 }

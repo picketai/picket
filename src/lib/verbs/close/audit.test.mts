@@ -1,10 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { compactTokens } from "../../shared/format.mts";
-import type { DenialRow, LedgerRow, TurnRow, Usage } from "../../shared/ledger.mts";
+import { readLedger, turnTokens, type DenialRow, type LedgerRow, type TurnRow, type Usage } from "../../shared/ledger.mts";
 import type { WorkId } from "../../shared/work/files.mts";
 import type { WorkState } from "../../shared/work/state.mts";
 import { auditLine } from "./audit.mts";
+import { emitLedger } from "../../hooks/emit/ledger/index.mts";
+import { hookContext } from "#test/context.mts";
+import { bouncedThenContinuedSteps, looseHandler, writeTranscript } from "#test/hook.mts";
+import { withProject } from "#test/project.mts";
 
 const STATE: WorkState = { id: "w1" as WorkId, lane: "design", title: "X", status: "open", created: "2026-11-08T09:00:00.000Z" };
 
@@ -38,4 +42,18 @@ test("the audit line with no rows says tokens none and zero counts (T-2.2)", () 
 test("a turn without an agent counts as unknown, sorted with the named agents", () => {
   const rows = [turn(null, "2026-11-08T10:00:00.000Z", usage(10, 0)), turn("analyst", "2026-11-08T10:05:00.000Z", usage(20, 0))];
   assert.equal(auditLine({ ...STATE, lane: "fast" }, 0, rows), `fast · phases 0 · tokens analyst 20, unknown 10 · bounces 0 · blocks 0`);
+});
+
+test("the audit line counts the tokens of a bounced and continued turn written by emitLedger once", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const writeTurnRow = looseHandler(emitLedger);
+  const entries: Record<string, unknown>[] = [];
+  for (const step of bouncedThenContinuedSteps()) {
+    entries.push(...step);
+    const tp = writeTranscript(root, entries);
+    writeTurnRow({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, agent_transcript_path: tp, agent_type: "picket:developer", cwd: root }, hookContext(root));
+  }
+  const rows = readLedger(root).rows as TurnRow[];
+  assert.equal(rows.length, 3);
+  assert.equal(auditLine(STATE, 1, rows), `design · phases 1 · tokens developer ${compactTokens(turnTokens(rows[2]))} · bounces 0 · blocks 0`);
 });
