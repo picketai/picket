@@ -1,3 +1,7 @@
+---
+icon: lucide/book-open
+---
+
 # How to install and use Picket
 
 Picket turns Claude Code into a small, disciplined team. You describe a change in plain words; Picket picks how much process it needs, writes a plan when one is worth having, implements it phase by phase, verifies each phase by running it, and stops for your approval before anything lands in git history.

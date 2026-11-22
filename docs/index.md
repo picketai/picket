@@ -1,3 +1,7 @@
+---
+icon: lucide/rocket
+---
+
 # Picket
 
 Picket is a software-development workflow for Claude Code: four lanes, five agents, one kernel, and a benchmark that measures Picket itself. It is an alpha, published on npm under the `alpha` dist-tag, and nothing is installed globally.

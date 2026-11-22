@@ -1,3 +1,7 @@
+---
+icon: lucide/bot
+---
+
 # Picket agents
 
 The agents are teammates that the lead (the main Claude Code session) spawns for a work item. Each one has its own context and a narrow job, and the lead continues the same instance for later turns rather than starting a new one. You never call an agent directly: a lane skill spawns it, and you meet its work in the gate packets.

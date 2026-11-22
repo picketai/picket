@@ -1,3 +1,7 @@
+---
+icon: lucide/wand-sparkles
+---
+
 # Picket skills
 
 A skill is a set of instructions Claude loads when your words match its trigger phrases or when you type its `/picket:<name>` command. You rarely start the four lane skills yourself: Claude runs `picket admit` on every change request, and the lane it answers starts on its own. The other skills are commands you run when you want them, or checklists the agents load for their own work.

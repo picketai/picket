@@ -13,6 +13,9 @@ export const CLI_PAGE = "cli.md";
 export const HOOKS_PAGE = "hooks.md";
 export const MODS_PAGE = "mods.md";
 export const SITE_STYLESHEET = "docs/stylesheets/picketai.css";
+const CLI_ICON = "lucide/terminal";
+const HOOKS_ICON = "lucide/webhook";
+const MODS_ICON = "lucide/puzzle";
 const THEME_FILE = "src/themes/picketai.json";
 
 const USAGE_LINE = "picket <verb> [args] [--pretty | --human]";
@@ -62,6 +65,10 @@ function page(blocks) {
   return `${blocks.map((block) => block.join("\n")).join("\n\n")}\n`;
 }
 
+function frontMatter(icon) {
+  return ["---", `icon: ${icon}`, "---"];
+}
+
 function commandSection(heading, { summary, usage, leadOnly }) {
   return [heading, "", sentence(summary), ...(leadOnly ? ["", LEAD_LINE] : []), "", ...fenced([`picket ${usage}`])];
 }
@@ -90,6 +97,7 @@ function exitRows(exit) {
 
 export function cliPage(commands, exit) {
   return page([
+    frontMatter(CLI_ICON),
     ["# Command reference", "", generatedLine("`src/lib/verbs.mts` and each verb's `usage`")],
     [`Usage: \`${USAGE_LINE}\`. Each verb prints JSON or text, and the flags below switch it. \`picket --version\` prints the installed version.`],
     ["## Shared flags", "", "| Flag | Does |", "|---|---|", ...SHARED_FLAGS.map(([flag, does]) => `| ${code(flag)} | ${cell(does)} |`)],
@@ -110,6 +118,7 @@ function hookRow(name, { summary, on }) {
 
 export function hooksPage(hooks) {
   return page([
+    frontMatter(HOOKS_ICON),
     ["# Hooks", "", generatedLine("`src/lib/hooks.mts`")],
     [HOOK_KINDS],
     ["| Hook | Events | Matcher | Does |", "|---|---|---|---|", ...Object.entries(hooks).map(([name, entry]) => hookRow(name, entry))],
@@ -126,7 +135,7 @@ function switchCell(modSwitch) {
 
 export function modsPage(mods) {
   const rows = Object.entries(mods).map(([name, { summary, switch: modSwitch }]) => `| ${name} | ${switchCell(modSwitch)} | ${cell(summary)} |`);
-  return page([["# Mods", "", generatedLine("`src/lib/mods.mts`")], [MODS_INTRO], ["| Mod | Off switch | Does |", "|---|---|---|", ...rows]]);
+  return page([frontMatter(MODS_ICON), ["# Mods", "", generatedLine("`src/lib/mods.mts`")], [MODS_INTRO], ["| Mod | Off switch | Does |", "|---|---|---|", ...rows]]);
 }
 
 const SITE_COLOURS = [

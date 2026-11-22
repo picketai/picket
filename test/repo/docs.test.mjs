@@ -78,6 +78,16 @@ test("the mods page lists status with mods.session for the work pane only, markd
   assert.doesNotMatch(text, /picket-session@|\| session \|/);
 });
 
+test("each generated page starts with front matter naming its icon, then its title", () => {
+  const opening = (icon, title) => `---\nicon: lucide/${icon}\n---\n\n# ${title}\n`;
+  const start = (text, expected) => text.slice(0, expected.length);
+  for (const [text, expected] of [
+    [cliPage([], EXIT), opening("terminal", "Command reference")],
+    [hooksPage({}), opening("webhook", "Hooks")],
+    [modsPage({}), opening("puzzle", "Mods")],
+  ]) assert.equal(start(text, expected), expected);
+});
+
 test("cli.md has one ## section per verb and one ### section per subverb", async () => {
   const text = await cliText();
   const subverbs = Object.entries(VERB_NAMES).flatMap(([name, entry]) => (isGroup(entry) ? Object.keys(entry.subverbs).map((sub) => `${name} ${sub}`) : []));
