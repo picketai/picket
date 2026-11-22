@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, sep } from "node:path";
+import { join } from "node:path";
 import { CELLS, INTERACTIVE_DIR, RECORD, interactiveAnswers, parseConfirm, probeDirs, probeSettings, summarizeCell, withInteractive } from "../probe-ask.mjs";
 import { answer, logLine, rewriteNonce } from "../lib/ask-probe-hook.mjs";
 import { decide } from "../lib/approver-mcp.mjs";
@@ -154,6 +154,12 @@ test("nonce_found lists the scanned files holding the nonce and leaves out the p
   });
 });
 
+test("nonce_found names a file under the home folder from ~ with forward slashes, whatever the machine", () => {
+  const transcript = join(homedir(), ".claude", "projects", "p", "s.jsonl");
+  const summary = rewriteSummary("ask+refuse", null, [{ path: transcript, text: NONCE }]);
+  assert.deepEqual(summary.nonce_found, ["~/.claude/projects/p/s.jsonl"]);
+});
+
 test("pre_count counts every PreToolUse holding the sentinel, so a second hook call on the rewritten command shows", () => {
   const pre = (command) => ({ event: "PreToolUse", permission_mode: "default", has_tool_use_id: true, command, nonce: NONCE });
   const once = summarizeCell({ mode: "manual", scenario: "ask+update" }, { hookLines: [pre("echo picket-probe-update")], promptLines: [], run: RUN });
@@ -175,10 +181,10 @@ test("the approver refuses the refusal sentinel and still allows the other probe
 });
 
 const REWRITE_SCENARIOS = ["ask+update", "ask+refuse"];
-const TRANSCRIPTS = join(homedir(), ".claude", "projects") + sep;
+const SESSION_TRANSCRIPT = /^~\/\.claude\/projects\/[^/]+\/[^/]+\.jsonl$/;
 
 function isSessionTranscript(path) {
-  return path.startsWith(TRANSCRIPTS) && path.endsWith(".jsonl");
+  return SESSION_TRANSCRIPT.test(path);
 }
 
 function expectedCell({ mode, scenario }) {

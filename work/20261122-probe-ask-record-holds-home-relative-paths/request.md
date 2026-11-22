@@ -1,0 +1,1 @@
+Fix the bench test probe-ask T-2.4 that fails on CI: it checks the recorded transcript path against the home folder of the machine running the test. Record the path starting at ~ instead of the absolute home folder, rewrite the committed record the same way, and make the test check the path shape.

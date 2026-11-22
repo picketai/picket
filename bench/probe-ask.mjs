@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { runClaude } from "./lib/claude.mjs";
@@ -92,10 +92,15 @@ function buildProject(dir, scenario) {
   return paths;
 }
 
+function fromHome(path) {
+  const home = homedir() + sep;
+  return path.startsWith(home) ? `~/${path.slice(home.length).split(sep).join("/")}` : path;
+}
+
 function nonceFields(nonce, postLines, files, ownLogs) {
   if (nonce === null) return { ran_updated: false, nonce_found: [] };
   const holding = files.filter(({ path, text }) => !ownLogs.includes(path) && text.includes(nonce));
-  return { ran_updated: postLines.some((line) => line.command?.includes(nonce)), nonce_found: holding.map(({ path }) => path) };
+  return { ran_updated: postLines.some((line) => line.command?.includes(nonce)), nonce_found: holding.map(({ path }) => fromHome(path)) };
 }
 
 function rewriteFields(cell, preLines, postLines, files, ownLogs) {
