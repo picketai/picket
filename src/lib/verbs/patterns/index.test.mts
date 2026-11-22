@@ -46,6 +46,17 @@ test("the reason key masks paths, numbers and the clause after the first stop (T
   assert.equal(code("c/y.mts"), code("a/b/x.mts"));
 });
 
+test("the reason key does not cut at a full stop after a one-letter segment (T-1.1)", () => {
+  assert.equal(
+    reasonKey("guard.bash", "guard.bash: command contains a destructive sub-command (e.g. rm, sudo, git push/reset). If the user asked for this action, run it alone"),
+    "command contains a destructive sub-command (e.g. rm, sudo, git <path>",
+  );
+});
+
+test("the reason key still cuts at a full stop after a word (T-1.2)", () => {
+  assert.equal(reasonKey("guard.scope", "guard.scope: the file is missing. Read it first"), "the file is missing");
+});
+
 test("the reason key masks quoted spans before it cuts the clause", () => {
   assert.equal(reasonKey("guard.block", 'guard.block: "Red: none; feature" is none of <test> failed'), "<q> is none of <test> failed");
   assert.equal(reasonKey("guard.bash", "guard.bash: `picket uninstall` removes Picket. The developer leaves it"), "<q> removes Picket");
@@ -74,7 +85,7 @@ test("denials group by event, hook and key, recurring when two work items share 
   assert.equal(rows, 4);
   assert.deepEqual(denials, [
     { event: "block", hook: "guard.bash", key: "<path> is code", count: 3, items: ["20261122-one", "20261122-two"], recurring: true, example: "guard.bash: a/b/x.mts is code; write it with Edit" },
-    { event: "block", hook: "guard.bash", key: "command contains a destructive sub-command (e.g", count: 1, items: ["20261122-one"], recurring: false, example: "guard.bash: command contains a destructive sub-command (e.g. rm)" },
+    { event: "block", hook: "guard.bash", key: "command contains a destructive sub-command (e.g. rm)", count: 1, items: ["20261122-one"], recurring: false, example: "guard.bash: command contains a destructive sub-command (e.g. rm)" },
   ]);
 });
 
@@ -109,4 +120,5 @@ test("an empty project gives three empty sections", async (t) => {
   const path = statePath(root, STATE_FILES.ledger);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, "not json\n");
-  assert.deepEqual(await report(root), { rows: 0, skipped: 1, denials: [], rejections: [], failed_tools: [] });});
+  assert.deepEqual(await report(root), { rows: 0, skipped: 1, denials: [], rejections: [], failed_tools: [] });
+});

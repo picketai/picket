@@ -258,20 +258,20 @@ Open a work item in a lane.
 picket open --lane <fast|order|design|research> --title "<title>" [--text "<request>" | --request <file|->] [--purpose "<p>" --in-scope "<s>" --out-of-scope "<o>"] [--ticket <KEY> --story <file>] [--id <id>] [--user-lane]
 ```
 
-## picket patterns
-
-Group the ledger's denials, the user's rejections and failed tool calls across work items.
-
-```sh
-picket patterns
-```
-
 ## picket packet
 
 Print the gate packet the lead shows the user.
 
 ```sh
 picket packet <id> [--width <n>] [--json]
+```
+
+## picket patterns
+
+Group the ledger's denials, the user's rejections and failed tool calls across work items.
+
+```sh
+picket patterns
 ```
 
 ## picket preflight

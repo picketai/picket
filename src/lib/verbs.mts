@@ -46,8 +46,8 @@ export const VERB_NAMES = {
   name: { summary: "print the project path a document of a kind and subject is written to", readOnly: true },
   next: { summary: "print the next action for a work item, or for the latest open one", readOnly: true },
   open: { summary: "open a work item in a lane", readOnly: false },
-  patterns: { summary: "group the ledger's denials, the user's rejections and failed tool calls across work items", readOnly: true },
   packet: { summary: "print the gate packet the lead shows the user", readOnly: true },
+  patterns: { summary: "group the ledger's denials, the user's rejections and failed tool calls across work items", readOnly: true },
   preflight: { summary: "check the inputs, the tree and the tooling before a lane starts", readOnly: true },
   pullrequest: {
     summary: "review a pull request with the same summary a phase gets",

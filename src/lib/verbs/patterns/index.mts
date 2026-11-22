@@ -11,7 +11,7 @@ export type PatternsReport = { rows: number; skipped: number; denials: DenialGro
 
 const MIN_ITEMS = 2;
 const QUOTED = /"[^"]*"|`[^`]*`/g;
-const CLAUSE_END = /; |: |\. /;
+const CLAUSE_END = /; |: |(?<!(?:^|[^A-Za-z])[A-Za-z])\. /;
 const FILE_NAME = /^[\w.-]*\w\.[A-Za-z]\w*$/;
 const WHOLE_NUMBER = /\b\d+\b/g;
 
