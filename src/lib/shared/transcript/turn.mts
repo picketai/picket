@@ -5,11 +5,11 @@ import { entriesFromEnd, TAIL_WINDOWS } from "./tail.mts";
 
 export type Turn = { text: string; model: string | null };
 export type TurnUsage = { input: number; output: number; cache_read: number; cache_creation: number };
-export type TurnSpan = { durationMs: number | null; usage: TurnUsage | null; assistantTurns: number | null };
+export type TurnSpan = { durationMs: number | null; usage: TurnUsage | null; assistantTurns: number | null; request: string | null };
 export type BlockLines = { lines: string[]; nonEmpty: string[]; last: string };
 export type TurnFailures = { count: number; tools: Record<string, number> };
 
-const [SPAN_BYTES, TURN_BYTES] = TAIL_WINDOWS;
+const [, TURN_BYTES] = TAIL_WINDOWS;
 
 function isAssistantWithContent(entry: TranscriptEntry): boolean {
   return entry?.type === "assistant" && Array.isArray(entry.message?.content);
@@ -18,6 +18,14 @@ function isAssistantWithContent(entry: TranscriptEntry): boolean {
 function isToolResult(entry: TranscriptEntry): boolean {
   const content = entry.message?.content;
   return Array.isArray(content) && content.some((c) => c?.type === "tool_result");
+}
+
+function isMeta(entry: TranscriptEntry): boolean {
+  return entry?.isMeta === true;
+}
+
+function isRequest(entry: TranscriptEntry): boolean {
+  return entry?.type === "user" && !isToolResult(entry) && !isMeta(entry);
 }
 
 function lastAssistantEntry(path: string): TranscriptEntry | null {
@@ -72,7 +80,7 @@ export function turnFailures(path: string | null | undefined): TurnFailures {
     for (const entry of entriesFromEnd(path, { maxBytes: TURN_BYTES })) {
       for (const use of toolUses(entry)) if (typeof use.id === "string") toolNames.set(use.id, use.name);
       failedIds.push(...failedResultIds(entry));
-      if (entry?.type === "user" && !isToolResult(entry)) break;
+      if (isRequest(entry)) break;
     }
   } catch {
     return { count: 0, tools: {} };
@@ -184,14 +192,15 @@ function addUsage(total: TurnUsage, u: Usage): void {
  * window: a missing number is honest, a wrong one is worse than none.
  */
 export function turnSpan(path: string | null | undefined): TurnSpan {
-  const empty: TurnSpan = { durationMs: null, usage: null, assistantTurns: null };
+  const empty: TurnSpan = { durationMs: null, usage: null, assistantTurns: null, request: null };
   const usage: TurnUsage = { input: 0, output: 0, cache_read: 0, cache_creation: 0 };
   let assistantTurns = 0;
   let endedAt: number | null = null;
   let startedAt: number | null = null;
+  let request: string | null = null;
 
   try {
-    for (const entry of entriesFromEnd(path, { maxBytes: SPAN_BYTES })) {
+    for (const entry of entriesFromEnd(path, { maxBytes: TURN_BYTES })) {
       const ts = entry?.timestamp ? Date.parse(entry.timestamp) : NaN;
       if (entry?.type === "assistant") {
         if (endedAt === null && !Number.isNaN(ts)) endedAt = ts;
@@ -203,8 +212,9 @@ export function turnSpan(path: string | null | undefined): TurnSpan {
       // tool_result content is this turn's own tool output coming back, not a new
       // request, so it is not the boundary.
       if (entry?.type === "user") {
-        if (isToolResult(entry)) continue;
+        if (!isRequest(entry)) continue;
         if (!Number.isNaN(ts)) startedAt = ts;
+        request = typeof entry.uuid === "string" ? entry.uuid : null;
         break;
       }
     }
@@ -217,5 +227,6 @@ export function turnSpan(path: string | null | undefined): TurnSpan {
     durationMs,
     usage: assistantTurns ? usage : null,
     assistantTurns: assistantTurns || null,
+    request,
   };
 }

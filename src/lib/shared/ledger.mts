@@ -24,6 +24,7 @@ export type TurnRow = Common & {
   rereads: number;
   first_reviewable_ms: number | null;
   usage: Usage | null;
+  turn_id?: string | null;
 };
 export type AcceptRow = Common & { event: "accept"; phase: number | null; commit: string; lines_added: number };
 export type DenialRow = Common & { event: "block" | "bounce"; hook: string; reason: string };

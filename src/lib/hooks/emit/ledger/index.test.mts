@@ -89,3 +89,51 @@ test("emitLedger counts a failed result whose tool use is outside the turn under
   assert.equal(row.failed_tool_calls, 1);
   assert.deepEqual(row.failed_tools, { unknown: 1 });
 });
+
+const bounce = { type: "user", isMeta: true, message: { role: "user", content: "Stop hook feedback:\nre-emit the block" } };
+const request = (uuid: string, text: string) => ({ ...user(text), uuid });
+const TWO_ENTRIES = { input_tokens: 20, output_tokens: 40, cache_read_input_tokens: 2000, cache_creation_input_tokens: 200 };
+
+test("a turn bounced by a stop hook spans from its request across the feedback entry (T-2.1)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [request("r1", "work: w1\nphase: 1"), assistant("First block."), bounce, assistant("Second block.")]);
+  assert.equal(row.turn_id, "r1");
+  assert.deepEqual(row.usage, TWO_ENTRIES);
+  assert.equal(row.duration_ms, 3000);
+});
+
+test("a failed tool call before the feedback entry counts in the bounced turn (T-2.2)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [
+    request("r1", "work: w1\nphase: 1"),
+    assistantEntry([use("b1", "Bash")]),
+    results(result("b1", { is_error: true })),
+    bounce,
+    assistant("Second block."),
+  ]);
+  assert.equal(row.failed_tool_calls, 1);
+  assert.deepEqual(row.failed_tools, { Bash: 1 });
+});
+
+test("stops of one turn share its turn_id and a new request starts another (T-2.3)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const turn = [request("r1", "work: w1\nphase: 1"), assistant("First block.")];
+  const first = subagentRow(root, turn);
+  const continued = [...turn, bounce, assistant("Second block."), assistant("Continued.")];
+  const second = subagentRow(root, continued);
+  const third = subagentRow(root, [...continued, request("r2", "go on"), assistant("Next turn.")]);
+  assert.deepEqual([first.turn_id, second.turn_id, third.turn_id], ["r1", "r1", "r2"]);
+});
+
+test("a request more than 512 KiB back still names the turn and starts its span (T-2.4)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [request("r1", "work: w1\nphase: 1"), assistant("x".repeat(600 * 1024)), bounce, assistant("Done.")]);
+  assert.equal(row.turn_id, "r1");
+  assert.equal(row.duration_ms, 3000);
+});
+
+test("a transcript with no request writes a null turn_id (T-2.5)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [assistant("Done.")]);
+  assert.equal(row.turn_id, null);
+});

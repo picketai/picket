@@ -65,6 +65,7 @@ export function emitLedger(event: PayloadOf<StopEvent>, { root, now }: HookConte
     rereads: stats.rereads,
     first_reviewable_ms: firstReviewableMs(stats),
     usage: ledgerUsage(span.usage),
+    turn_id: span.request,
   }, now());
   return null;
 }
