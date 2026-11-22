@@ -18,6 +18,8 @@ export type TurnRow = Common & {
   verdict: string | null;
   gate_kind: "approval" | "stall" | "irreversible" | null;
   tool_calls: number;
+  failed_tool_calls?: number;
+  failed_tools?: Record<string, number>;
   reads: number;
   rereads: number;
   first_reviewable_ms: number | null;

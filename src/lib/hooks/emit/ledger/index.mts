@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { appendLedger, type TurnRow, type Usage } from "../../../shared/ledger.mts";
 import { agentName, agentTranscript, isSubagentTurn } from "../../../shared/transcript/agent.mts";
 import { spawnHints, toolStats, type Hints, type ToolStats } from "../../../shared/transcript/entries.mts";
-import { blockLines, readTurn, turnSpan, type TurnUsage } from "../../../shared/transcript/turn.mts";
+import { blockLines, readTurn, turnFailures, turnSpan, type TurnUsage } from "../../../shared/transcript/turn.mts";
 import { findVerdict } from "../../../shared/verdicts.mjs";
 import { readHeading } from "../../../shared/work/block.mts";
 import { workId } from "../../../shared/work/files.mts";
@@ -42,6 +42,7 @@ export function emitLedger(event: PayloadOf<StopEvent>, { root, now }: HookConte
   const { text } = readTurn(event, { includeToolPayloads: true });
   const span = turnSpan(path);
   const stats = toolStats(path);
+  const failures = turnFailures(path);
   const hints = spawnHints(main && existsSync(main) ? main : path);
   const heading = readHeading(text);
   const work_id = heading?.id ?? hints.work_id ?? null;
@@ -58,6 +59,8 @@ export function emitLedger(event: PayloadOf<StopEvent>, { root, now }: HookConte
     verdict: findVerdict(blockLines(text).last) ?? null,
     gate_kind: gate ? gateKind(text) : null,
     tool_calls: stats.tool_calls,
+    failed_tool_calls: failures.count,
+    failed_tools: failures.tools,
     reads: stats.reads,
     rereads: stats.rereads,
     first_reviewable_ms: firstReviewableMs(stats),

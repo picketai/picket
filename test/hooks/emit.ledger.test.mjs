@@ -46,3 +46,17 @@ test("emit.ledger writes a null session for a Stop event without one, and the id
   run({ hook_event_name: "Stop", session_id: "s2", transcript_path: tp, cwd: root }, root);
   assert.deepEqual(ledgerRows(root).map((row) => row.session), [null, "s2"]);
 });
+
+test("emit.ledger writes the turn's failed tool calls on the row (T-1.4)", (t) => {
+  const { root, id } = hookProject(t);
+  const tp = transcript(root, [
+    user(`work: ${id}\nphase: 1`),
+    assistant([{ type: "tool_use", id: "b1", name: "Bash", input: { command: "false" } }]),
+    { type: "user", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "b1", is_error: true, content: "Exit code 1" }] } },
+    assistant([{ type: "text", text: "ok" }]),
+  ]);
+  run({ hook_event_name: "SubagentStop", session_id: "s9", transcript_path: tp, agent_transcript_path: tp, cwd: root, agent_type: "picket:developer" }, root);
+  const row = ledgerRows(root).at(-1);
+  assert.equal(row.failed_tool_calls, 1);
+  assert.deepEqual(row.failed_tools, { Bash: 1 });
+});

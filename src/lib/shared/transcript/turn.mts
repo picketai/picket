@@ -7,6 +7,7 @@ export type Turn = { text: string; model: string | null };
 export type TurnUsage = { input: number; output: number; cache_read: number; cache_creation: number };
 export type TurnSpan = { durationMs: number | null; usage: TurnUsage | null; assistantTurns: number | null };
 export type BlockLines = { lines: string[]; nonEmpty: string[]; last: string };
+export type TurnFailures = { count: number; tools: Record<string, number> };
 
 const [SPAN_BYTES, TURN_BYTES] = TAIL_WINDOWS;
 
@@ -41,6 +42,42 @@ export function currentTurnAssistantEntries(path: string): TranscriptEntry[] {
     return [];
   }
   return out;
+}
+
+type ResultItem = { type?: string; tool_use_id?: unknown; is_error?: unknown };
+
+function contentOf(entry: TranscriptEntry): unknown[] {
+  const content = entry?.message?.content;
+  return Array.isArray(content) ? content : [];
+}
+
+function failedResultIds(entry: TranscriptEntry): string[] {
+  if (entry?.type !== "user") return [];
+  return (contentOf(entry) as ResultItem[]).filter((c) => c?.type === "tool_result" && c.is_error === true).map((c) => String(c.tool_use_id ?? ""));
+}
+
+function tally(failedIds: string[], toolNames: Map<string, string>): TurnFailures {
+  const tools: Record<string, number> = {};
+  for (const id of failedIds) {
+    const name = toolNames.get(id) ?? "unknown";
+    tools[name] = (tools[name] ?? 0) + 1;
+  }
+  return { count: failedIds.length, tools };
+}
+
+export function turnFailures(path: string | null | undefined): TurnFailures {
+  const failedIds: string[] = [];
+  const toolNames = new Map<string, string>();
+  try {
+    for (const entry of entriesFromEnd(path, { maxBytes: TURN_BYTES })) {
+      for (const use of toolUses(entry)) if (typeof use.id === "string") toolNames.set(use.id, use.name);
+      failedIds.push(...failedResultIds(entry));
+      if (entry?.type === "user" && !isToolResult(entry)) break;
+    }
+  } catch {
+    return { count: 0, tools: {} };
+  }
+  return tally(failedIds, toolNames);
 }
 
 // SendMessage is matched loosely: the team tool may surface plain or MCP-scoped.

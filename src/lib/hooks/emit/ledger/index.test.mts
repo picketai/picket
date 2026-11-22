@@ -4,10 +4,20 @@ import { readFileSync } from "node:fs";
 import { emitLedger as ledgerHandler } from "./index.mts";
 import { statePath, STATE_FILES } from "../../../shared/paths.mts";
 import { hookContext } from "#test/context.mts";
-import { assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
+import { assistantEntry, assistantText as assistant, looseHandler, userEntry as user, writeTranscript as transcript } from "#test/hook.mts";
 import { withProject } from "#test/project.mts";
 
 const emitLedger = looseHandler(ledgerHandler);
+
+const use = (id: string, name: string) => ({ type: "tool_use", id, name, input: {} });
+const result = (id: string, extra: object = {}) => ({ type: "tool_result", tool_use_id: id, content: "out", ...extra });
+const results = (...items: object[]) => ({ type: "user", message: { role: "user", content: items } });
+
+function subagentRow(root: string, entries: object[]): any {
+  const tp = transcript(root, entries as Record<string, unknown>[]);
+  emitLedger({ hook_event_name: "SubagentStop", session_id: "s1", transcript_path: tp, agent_transcript_path: tp, agent_type: "picket:developer", cwd: root }, hookContext(root));
+  return ledger(root).at(-1);
+}
 
 function ledger(root: string): any[] {
   return readFileSync(statePath(root, STATE_FILES.ledger), "utf8").trim().split("\n").map((l) => JSON.parse(l));
@@ -30,4 +40,52 @@ test("emitLedger writes a turn row with no cost field of any kind", (t) => {
   const [row] = ledger(root);
   assert.equal(row.event, "stop");
   for (const key of ["session_cost_usd", "cost_usd", "lines_added", "bounces", "blocks"]) assert.equal(key in row, false, key);
+});
+
+
+test("emitLedger counts the failed tool calls of the last turn by tool name (T-1.1)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [
+    user("work: w1\nphase: 1"),
+    assistantEntry([use("b1", "Bash"), use("e1", "Edit"), use("r1", "Read")]),
+    results(result("b1", { is_error: true }), result("e1", { is_error: true }), result("r1")),
+    assistant("Done."),
+  ]);
+  assert.equal(row.failed_tool_calls, 2);
+  assert.deepEqual(row.failed_tools, { Bash: 1, Edit: 1 });
+});
+
+test("emitLedger leaves a failure of an earlier turn out of the row (T-1.2)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [
+    user("work: w1\nphase: 1"),
+    assistantEntry([use("r1", "Read")]),
+    results(result("r1", { is_error: true })),
+    assistant("First turn."),
+    user("go on"),
+    assistantEntry([use("r2", "Read")]),
+    results(result("r2")),
+    assistant("Second turn."),
+  ]);
+  assert.equal(row.failed_tool_calls, 0);
+  assert.deepEqual(row.failed_tools, {});
+});
+
+test("emitLedger counts no result whose is_error is false or missing (T-1.3)", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [
+    user("work: w1\nphase: 1"),
+    assistantEntry([use("b1", "Bash"), use("b2", "Bash")]),
+    results(result("b1", { is_error: false }), result("b2")),
+    assistant("Done."),
+  ]);
+  assert.equal(row.failed_tool_calls, 0);
+  assert.deepEqual(row.failed_tools, {});
+});
+
+test("emitLedger counts a failed result whose tool use is outside the turn under unknown", (t) => {
+  const root = withProject(t, { host: true, picket: false });
+  const row = subagentRow(root, [user("work: w1\nphase: 1"), results(result("gone", { is_error: true })), assistant("Done.")]);
+  assert.equal(row.failed_tool_calls, 1);
+  assert.deepEqual(row.failed_tools, { unknown: 1 });
 });
