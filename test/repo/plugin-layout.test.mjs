@@ -100,7 +100,7 @@ test(".claude/settings.json carries no hooks, so the plugin is the only loader",
 test(".claude/ tracks no agents or output styles, and only the project skills", () => {
   const tracked = (paths) => execFileSync("git", ["ls-files", "--", ...paths], { encoding: "utf8" }).trim();
   assert.equal(tracked([".claude/agents", ".claude/output-styles"]), "");
-  assert.equal(tracked([".claude/skills"]), ".claude/skills/benchmarking/SKILL.md");
+  assert.equal(tracked([".claude/skills"]), [".claude/skills/benchmarking/SKILL.md", ".claude/skills/docwriting/SKILL.md", ".claude/skills/docwriting/diataxis.md", ".claude/skills/docwriting/zensical.md"].join("\n"));
 });
 
 function skillFolders(skillsDir) {
