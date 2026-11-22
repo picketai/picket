@@ -49,7 +49,7 @@ npx fetches the package for this one run; nothing stays on your `PATH`. `init` f
     1. Adds the Picket block to `CLAUDE.md`, or creates the file. Your own text stays; put project notes under `## Project facts`, which `init` never touches.
     2. Creates `.picket/config.json` with `{ "version": 1 }`.
     3. Adds `.picket/state/` to `.gitignore`. That folder holds logs and runtime state that never belong in git.
-    4. Updates `.claude/settings.json`. It allows `Bash(picket *)` and `PowerShell(picket *)` so the kernel runs without a prompt, and read access to the plugin cache; if your `permissions.deny` already blocks one of them, `init` leaves it out and says so. It adds the ask rules `PowerShell(picket drive *)` and `PowerShell(picket check *)`, because those two run your code. It sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"1"`. It writes a status line only when you ask for one; see [The status line](customization.md#the-status-line).
+    4. Updates `.claude/settings.json`. It allows `Bash(picket *)` and `PowerShell(picket *)` so the kernel runs without a prompt, and read access to the plugin cache; if your `permissions.deny` already blocks one of them, `init` leaves it out and says so. It adds the ask rules `PowerShell(picket drive *)` and `PowerShell(picket check *)`, because those two run your code. It sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"1"`. It writes a status line only when you ask for one; see [The status line](look.md#the-status-line).
     5. Uninstalls the retired plugins picket-status, picket-markdown and picket-session when the project still enables them. Their features are now part of `picket@picketai`.
     6. Writes the marketplace `picketai` into `.claude/settings.json` as `extraKnownMarketplaces.picketai`: a marketplace declared in the settings file itself, whose one plugin, `picket`, comes from the npm package `@picketai/picket` under the `alpha` tag. An older entry for `picketai` (a folder path or a GitHub source) is replaced, and `init` names the old source.
     7. Installs the plugin `picket@picketai` with project scope.
@@ -90,7 +90,8 @@ It lists the work items (none yet). Asking Claude to run `picket list` shows the
 ## Next steps
 
 - [Configure your project](configure-your-project.md): where Picket goes in a single repository and in an umbrella of repositories.
+- [Your first change](first-change.md): a tutorial that takes a tiny project through two changes.
 - [Set up testing](set-up-testing.md): optional; the test environment the tester needs.
 - [How Picket works](how-it-works.md): the parts, and a change from your request to the commit.
 - [The daily loop](how-to.md): a change in seven short steps, from your request to the commit.
-- [Customization](customization.md): the settings, extensions and look you can change.
+- [Customization](customization.md): the settings and extensions you can change.

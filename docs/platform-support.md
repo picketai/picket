@@ -33,4 +33,4 @@ Picket's automated tests run on Linux. macOS and Windows have no automated run y
 | Notifications | `notify-send` | `osascript` | a toast |
 | Terminal styling | GNOME Terminal, Ptyxis, Konsole | Terminal.app | Windows Terminal |
 
-In any other terminal, `picket style apply` prints the colours to set by hand. Details are in [Customization](customization.md#terminal-styling).
+In any other terminal, `picket style apply` prints the colours to set by hand. Details are in [Look and notifications](look.md#terminal-styling).

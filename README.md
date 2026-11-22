@@ -18,7 +18,7 @@
   ·
   <a href="https://picketai.github.io/picket/how-to/"><strong>The daily loop</strong></a>
   ·
-  <a href="https://picketai.github.io/picket/lanes/"><strong>In depth</strong></a>
+  <a href="https://picketai.github.io/picket/lanes/"><strong>Learn more</strong></a>
   ·
   <a href="https://github.com/picketai/picket/blob/trunk/CHANGELOG.md"><strong>Changelog</strong></a>
 </p>
@@ -36,6 +36,7 @@ npx @picketai/picket@alpha init
 The documentation is at **[picketai.github.io/picket](https://picketai.github.io/picket/)**.
 
 - [Get started](https://picketai.github.io/picket/): install Picket, configure your project, set up testing, upgrade and uninstall.
+- [Your first change](https://picketai.github.io/picket/first-change/): a tutorial that takes a tiny project through two changes.
 - [How Picket works](https://picketai.github.io/picket/how-it-works/): the parts, and a change from your request to the commit.
 - [The daily loop](https://picketai.github.io/picket/how-to/): a change in seven short steps.
 - [The four lanes](https://picketai.github.io/picket/lanes/): fast, order, design and research, and how Picket picks one.
@@ -48,19 +49,7 @@ Code decides what code can decide. Lane admission, the next action, phase verifi
 
 ## Compared with agent-skills and pstack
 
-Two research reports compare Picket with two other collections of agent instructions for Claude Code: `work/20261017-compare-agent-skills-with-picket-skills/research.md` (agent-skills) and `work/20261017-compare-cursor-pstack-with-picket-skills/research.md` (pstack). The short version: agent-skills and pstack teach the model with prose and checklists it chooses to follow, while Picket enforces the same kind of rule in code where code can decide it.
-
-| | agent-skills | pstack | Picket |
-|---|---|---|---|
-| Guards on the agent's own tool calls | three optional bash hooks | none | hooks that deny or bounce: destructive commands, kernel-owned files, new comments, silenced checks, malformed blocks |
-| How much process a request gets | the model picks a skill | a router skill picks a playbook | `picket admit` picks the lane in code, from the text and the files touched |
-| Stops for a human | by convention | by convention | one gate per phase, rendered by code; nothing lands in git without your approval |
-| Proof a change works | checklists and an eval of the skills | red-first commit order, verification skills | a drive of the real entry point logged by a hook, and a red or pinning test named on the block |
-| Measurement | a trigger and routing check of its skills | none reported | a cost and determinism bench with a regression check, plus labelled lane and skill-routing tests in `npm test` |
-
-Both reports also name what the others do better, and several of those ideas are now in Picket: the untrusted-content rule, the guard against silenced checks, prove before change, the measured lane and routing checks, the design red flags and the repeated-mistake loop. Others are not, for example pstack's parallel design and review and agent-skills' wider domain guides; the reports list them.
-
-Every Picket number in this README comes from a tracked file under `bench/results/`, here `bench/results/comparison-clean.md`: pass@1 of 100% against the previous harness's 93%, the intended lane on 100% of tasks against 57%, and 0.4 permission prompts per task against 3.1. No head-to-head bench run of agent-skills or pstack exists, so there are no numbers for them; the comparison above is from reading their sources.
+agent-skills and pstack teach the model with prose and checklists it chooses to follow, while Picket enforces the same kind of rule in code where code can decide it. [How Picket compares](https://picketai.github.io/picket/comparison/) has the table, what the others do better, and the measured numbers.
 
 ## Working on Picket itself
 

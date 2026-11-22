@@ -82,7 +82,7 @@ Probed on 2026-11-22 with Zensical 0.1.3 and no `markdown_extensions` section in
 
 ## Layout in use
 
-The theme features in `zensical.toml` give top tabs, a sidebar with sections, a breadcrumb, previous and next links, a back-to-top button and search highlighting. Each top-level `nav` entry is a tab; the pages nested under it are that tab's sidebar. The site is dark only by the user's ruling of 2026-11-21. The header shows no version until the repository has a GitHub release.
+The theme features in `zensical.toml` give top tabs, a sidebar with sections, a breadcrumb, previous and next links, a back-to-top button and search highlighting. Each top-level `nav` entry is a tab; the pages nested under it are that tab's sidebar. The site is dark only by the user's ruling of 2026-11-21. The header shows no version while every GitHub release is a pre-release, as all the alphas are.
 
 ## Links
 
