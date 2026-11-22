@@ -4,10 +4,38 @@ Newest release first; each heading is a version.
 
 ## 1.0.0-alpha.7 (not released yet)
 
+### Changed, act on these
+
+- After the update, run `picket init` in the session and commit the changed files. It refreshes the Picket block in `CLAUDE.md`, which now names five agents and says that only `picket` verbs change a work item's state.
+- A plan now declares its checks. For each phase the architect lists the requests and commands that prove it: a request with its method, path, expected status and the text the answer must hold, or a command with its expected exit code. `picket verify` compares these declared checks with what the developer ran, the phase gate shows declared against ran, and a run grant stops at a declared check that did not hold. A phase with `drive: true` or `drive: false` still works as before.
+- In a project with a test environment (`.picket/env/compose.yaml`), a fast lane change is replayed before it closes: Claude runs `picket env replay <id> --affected`, and `picket close` refuses while that replay is missing or blames the change. A project without a test environment sees no difference.
+
+### Added
+
+- A test stage, with a fifth agent, the tester. After the final review passes, the tester checks the finished item the way its users will meet it: on a running copy of the system, against the request, without reading the change. It runs one case for each risk, replays the saved scenarios, classes every failure as a product, test or environment problem, and asks you at most three questions, each a choice. The kernel counts the results, writes `work/<id>/test.md` and derives the verdict; the closing block's `Tested:` line says what came of it. A hook, `guard.blackbox`, denies the tester any read of the change. The stage has not yet run on a real project's stack, so expect rough edges.
+- The `testing` setting in `.picket/config.json` decides which items are tested: `design` (the default), `all` (order items too) or `off`. An item is tested only when its plan declares a check against an HTTP endpoint and the project has a test environment.
+- A test environment that Picket builds with you, on Docker or Podman with Compose 2 or later. `picket env check` checks the machine, `picket env init` scans the project and lists the decisions to make, `picket env init --create` opens a work item that writes the environment, and `picket env trial` proves that it starts twice. Each tested work item gets its own stack: `picket env start`, `picket env stop`, `picket env status` and `picket env purge` look after it. A stack is stopped when its session ends and removed when its item closes.
+- Saved scenarios. A declared check that you approved at a gate is kept in the environment's `scenarios` folder and replayed on later changes, with `picket env replay` and by the tester. No agent can edit a saved scenario; a plan changes one on purpose by naming it in the check's `replaces` key, and you approve that at the gate.
+- Mocks for outside services. A service outside the project can be stood in for by Picket's stub server, with its answers kept in the environment. The closing block's `Not verified end to end:` line names each real service a mock stood in for.
+- Test data from SQL files, behind your approval. `picket data show` prints a file with its digest, `picket data approve` records your approval of that exact digest, and `picket data run` runs it once, behind a confirmation dialog, and only against a server and database listed in the `data_targets` setting. Only the main session can run these three.
+- Known defects. A defect the tester meets outside the tested criteria is recorded, at most three in a round. At close each one becomes a numbered entry (`DF-0001`) with a saved scenario of its own, the closing block lists them on a `Known defects:` line, and later replays say when one has stopped failing.
+- Browser steps in scenarios: `open`, `fill`, `click` and `see`, run through a browser service in the test environment.
+- A documentation site at https://picketai.github.io/picket/, with a tutorial, the reference pages and a guide to setting up testing.
+- The guards deny more ways around them: a shell write by a spawned agent to a file the kernel owns, and code rewritten in place through php, lua, R, awk or tclsh. Interpreters are recognised under their versioned names and aliases, such as `python3.12`.
+- The plugin ships an icon.
+
 ### Fixed
 
 - `picket init` no longer stops at `plugin: failed` when Claude Code still holds an older copy of the `picketai` marketplace, as it does after 1.0.0-alpha.5. When the plugin install fails, init runs `claude plugin marketplace update picketai` and installs once more; if that install fails too, it names both commands to run by hand.
 - `picket init --statusline` no longer writes nothing when `.claude/settings.local.json` or `~/.claude/settings.json` holds an old Picket status line, such as `picket statusline`. It writes the project value, and init warns `remove the statusLine entry from <file>: it holds an old Picket status line` for that file, with or without the flag; it leaves both files as they are. `picket uninstall` lists the same note under `Manual steps:` for the user settings file. The line `picket style apply` sets in user settings is still yours to keep.
+- The guard on shell commands reads more spellings of the same command: ANSI-C quotes, a program piped in through `echo` or `printf`, `/dev/fd/0` as standard input, and flags written together in one cluster.
+- The guards on comments and on silenced checks read every comment form, suppression, skipped test and threshold spelling of the languages they cover.
+- A guard follows a symbolic link to the file an edit really changes.
+- `picket init` refuses the home folder also when `HOME` is a symbolic link to it.
+- `picket admit` no longer reads "build", a report's file name or the bare word "irreversible" as a reason for a heavier or a different lane.
+- A work item reopens when its stalled phase is done, and a redesign reply at a stalled phase reaches the architect.
+- Picket's read-only git calls no longer take git's index lock, so they do not collide with a git command of yours that runs at the same time.
+- The mods match the hook types of Claude Code 2.1.326.
 
 ## 1.0.0-alpha.6
 
