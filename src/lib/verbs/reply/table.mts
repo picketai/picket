@@ -1,4 +1,5 @@
 import type { NextStep } from "../../shared/work/next-step.mts";
+import { REJECT_REPLY } from "../../shared/work/replies.mts";
 import type { Lane } from "../../shared/work/state.mts";
 
 export type Proposals = { comments: string[]; waivers: string[] };
@@ -72,7 +73,7 @@ const APPROVE_FORMS: readonly Form[] = [
   { pattern: /^(?:i|confirm)$/i, letter: "i", match: () => ({ kind: "approve" }) },
   { pattern: /^r$/i, letter: "r", match: (_m, step) => runToLimit(step) },
   { pattern: /^(?:r|approved through|run to)\s+(\d+)$/i, letter: "r", match: (m, step) => runThrough(m, step) },
-  { pattern: /^(?:x:?|reject:)\s+(\S.*)$/i, letter: "x", match: (m) => ({ kind: "reject", why: m[1].trim() }) },
+  { pattern: REJECT_REPLY, letter: "x", match: (m) => ({ kind: "reject", why: m[1].trim() }) },
   { pattern: /^(?:k|keep)\s+(\d+)$/i, letter: null, match: (m, _step, { comments }) => numbered("keep", comments.length, m) },
   { pattern: /^(?:w|waive)\s+(\d+)$/i, letter: null, match: (m, _step, { waivers }) => numbered("waive", waivers.length, m) },
 ];

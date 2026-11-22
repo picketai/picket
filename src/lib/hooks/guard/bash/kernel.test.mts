@@ -31,7 +31,7 @@ function classifyVerify(root: string, ...words: string[]): { verdict: string; se
   return { verdict, seen };
 }
 
-const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "preflight", "admit", "verify", "name"];
+const READ_VERBS = ["state", "next", "packet", "list", "summary", "cost", "patterns", "preflight", "admit", "verify", "name"];
 const READ_SUBVERBS: Record<string, string[]> = { source: ["find", "grep"], extension: ["list"], env: ["check", "status"], data: ["show"] };
 const CONFIRMED = ["data run"];
 
