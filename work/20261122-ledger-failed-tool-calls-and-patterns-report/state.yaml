@@ -1,9 +1,9 @@
 id: 20261122-ledger-failed-tool-calls-and-patterns-report
 lane: order
 title: Ledger failed tool calls and patterns report
-status: open
+status: done
 created: 2026-11-22T17:53:06.854Z
-updated: 2026-11-22T18:05:44.351Z
+updated: 2026-11-22T18:20:19.130Z
 session: e204b597-64b4-4006-abd8-d5810c6ccd70
 base: aa8f6cb019fcc10718ed7a4fb30db57487bd8ea3
 run_through: 2

@@ -1,0 +1,14 @@
+{
+  "ts": "2026-11-22T18:19:59.842Z",
+  "base": "54270f53e4f661a7d56deba18204852df8386104",
+  "mutant": {
+    "path": "src/lib/shared/transcript/turn.mts",
+    "line": 55,
+    "from": "!==",
+    "to": "==="
+  },
+  "command": "npm test",
+  "outcome": "killed",
+  "rebuild": "passed",
+  "ms": 161304
+}
